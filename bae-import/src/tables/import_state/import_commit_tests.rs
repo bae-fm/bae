@@ -89,7 +89,7 @@ fn test_track(
         id: id.to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        medium_id: bae_records::identity::release_medium_id(release_id, 1),
+        medium_id: bae_records::first_medium_id(release_id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
@@ -323,7 +323,8 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     records.insert_artist(&composer).await.unwrap();
 
     let album = test_album(ALBUM_A, "Album Title A", now);
-    let album_artists = [bae_records::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
+    let album_artists =
+        [bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, &album_artist.id, 0, now)];
     let release = DbRelease { ..test_release(RELEASE_A, &album.id, now) };
     let track_files = vec![crate::TrackFile {
         db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
@@ -560,8 +561,10 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         },
     }];
     let credits = [incoming.clone()];
-    let album_artists = [bae_records::DbAlbumArtist::new(&album.id, &incoming.id, 0, now)];
-    let track_artists = [bae_records::DbTrackArtist::new(&track.id, &incoming.id, 0, now)];
+    let album_artists =
+        [bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, &incoming.id, 0, now)];
+    let track_artists =
+        [bae_records::DbTrackArtist::new(&coven::UuidIds, &track.id, &incoming.id, 0, now)];
 
     commit_import(
         &db,

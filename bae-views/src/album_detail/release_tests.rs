@@ -44,6 +44,7 @@ fn detail_of(
     let raw = bae_records::DbReleaseDetail {
         release,
         mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new(
+            &coven::UuidIds,
             "release-id",
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium {

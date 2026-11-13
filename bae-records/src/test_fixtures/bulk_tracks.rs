@@ -23,7 +23,7 @@ pub fn insert_with_triggers_off(database: &std::path::Path, release_id: &str, co
                         ?1, 'Track Title ' || i, ?2, 1, i + 1, 1000, '2026-01-01T00:00:00Z' \
                  FROM n"
             ),
-            rusqlite::params![release_id, crate::identity::release_medium_id(release_id, 1)],
+            rusqlite::params![release_id, crate::first_medium_id(release_id)],
         )
         .unwrap();
 }

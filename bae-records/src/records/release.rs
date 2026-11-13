@@ -27,11 +27,11 @@ pub enum AlbumFields {
 }
 
 /// Write `release`'s pressing over its row, its labels naming the library
-/// labels `labels` decides.
+/// labels `pressing` decides.
 pub(super) fn update_release_pressing_on(
     tx: &CovenWrite<'_>,
     release: &DbRelease,
-    labels: &super::LabelWrite<'_>,
+    pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     tx.execute(
@@ -52,10 +52,20 @@ pub(super) fn update_release_pressing_on(
         tx,
         &release.id,
         &release.pressing.labels,
-        labels,
+        pressing,
     )?;
-    super::write::replace_release_barcodes(tx, &release.id, &release.pressing.barcodes)?;
-    super::write::replace_release_media(tx, &release.id, &release.pressing.facts.media)?;
+    super::write::replace_release_barcodes(
+        tx,
+        &release.id,
+        &release.pressing.barcodes,
+        pressing.barcode_ids,
+    )?;
+    super::write::replace_release_media(
+        tx,
+        &release.id,
+        &release.pressing.facts.media,
+        pressing.media_ids,
+    )?;
     Ok(())
 }
 
@@ -72,7 +82,7 @@ pub(super) fn write_release_metadata_on(
     metadata: &ReleaseMetadataRows,
     album_fields: AlbumFields,
     now: &str,
-    labels: &super::LabelWrite<'_>,
+    pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let ReleaseMetadataRows {
         album,
@@ -101,7 +111,7 @@ pub(super) fn write_release_metadata_on(
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
 
-    update_release_pressing_on(tx, release, labels)?;
+    update_release_pressing_on(tx, release, pressing)?;
 
     for (existing_id, new_track) in track_updates {
         tx.execute(
@@ -120,8 +130,10 @@ impl Records {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), IdentityWriteError> {
         let release = release.clone();
-        let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
-        self.store.write(move |sql| insert_release_row(&sql, &release, &label_write(&labels))).await
+        let pressing = PressingParts::new(&*self.ids, self.store.now_utc(), &release.pressing);
+        self.store
+            .write(move |sql| insert_release_row(&sql, &release, &pressing_write(&pressing)))
+            .await
     }
 
     /// [`Self::insert_release`], answering how many rows the write changed,
@@ -132,14 +144,14 @@ impl Records {
         release: &DbRelease,
     ) -> Result<i64, IdentityWriteError> {
         let release = release.clone();
-        let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
+        let pressing = PressingParts::new(&*self.ids, self.store.now_utc(), &release.pressing);
         self.store
             .write(move |sql| {
                 let changes = |sql: &CovenWrite<'_>| {
                     sql.query_row("SELECT total_changes()", [], |row| row.get::<_, i64>(0))
                 };
                 let before = changes(&sql)?;
-                insert_release_row(&sql, &release, &label_write(&labels))?;
+                insert_release_row(&sql, &release, &pressing_write(&pressing))?;
                 Ok(changes(&sql)? - before)
             })
             .await
@@ -166,7 +178,7 @@ impl Records {
             tracks.to_vec(),
             track_artists.to_vec(),
         );
-        let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
+        let pressing = PressingParts::new(&*self.ids, self.store.now_utc(), &release.pressing);
         self.store
             .write(move |sql| {
                 let tx = &sql;
@@ -175,7 +187,7 @@ impl Records {
                 for credit in &album_artists {
                     insert_album_artist_row(tx, credit)?;
                 }
-                insert_release_row(tx, &release, &label_write(&labels))?;
+                insert_release_row(tx, &release, &pressing_write(&pressing))?;
                 for medium in &mediums {
                     insert_release_medium_row(tx, medium)?;
                 }
@@ -200,12 +212,12 @@ impl Records {
     ) -> Result<(), IdentityWriteError> {
         let (release, mediums, tracks, track_artists) =
             (release.clone(), mediums.to_vec(), tracks.to_vec(), track_artists.to_vec());
-        let labels = LabelParts::new(&*self.ids, self.store.now_utc(), &release.pressing.labels);
+        let pressing = PressingParts::new(&*self.ids, self.store.now_utc(), &release.pressing);
         self.store
             .write(move |sql| {
                 let tx = &sql;
 
-                insert_release_row(tx, &release, &label_write(&labels))?;
+                insert_release_row(tx, &release, &pressing_write(&pressing))?;
                 for medium in &mediums {
                     insert_release_medium_row(tx, medium)?;
                 }
@@ -227,8 +239,8 @@ impl Records {
         &self,
         metadata: ReleaseMetadataRows,
     ) -> Result<(), IdentityWriteError> {
-        let labels =
-            LabelParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing.labels);
+        let pressing =
+            PressingParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing);
         let now = self.store.now_utc().to_rfc3339();
         self.store
             .write(move |sql| {
@@ -238,7 +250,7 @@ impl Records {
                     &metadata,
                     AlbumFields::Written,
                     &now,
-                    &label_write(&labels),
+                    &pressing_write(&pressing),
                 )?;
                 Ok(emptiable.remove_emptied(&sql)?)
             })

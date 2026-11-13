@@ -156,8 +156,8 @@ impl Records {
         &self,
         rows: crate::test_fixtures::library::LibraryRows,
     ) -> Result<(), IdentityWriteError> {
-        let labels = rows.label_parts(&*self.ids, self.store.now_utc());
-        self.store.write(move |sql| rows.write_on(&sql, &labels)).await
+        let pressing = rows.pressing_parts(&*self.ids, self.store.now_utc());
+        self.store.write(move |sql| rows.write_on(&sql, &pressing)).await
     }
 
     /// Save `release_id`'s metadata as a person's edit of it does: the
@@ -209,7 +209,7 @@ impl Records {
             .map(|(artist_id, position, credit, join_phrase)| DbAlbumArtist {
                 credit,
                 join_phrase,
-                ..DbAlbumArtist::new(&album.id, &artist_id, position, now)
+                ..DbAlbumArtist::new(&coven::UuidIds, &album.id, &artist_id, position, now)
             })
             .collect();
         let track_artists = track_credits
@@ -219,7 +219,7 @@ impl Records {
                     DbTrackArtist {
                         credit,
                         join_phrase,
-                        ..DbTrackArtist::new(&track_id, &artist_id, position, now)
+                        ..DbTrackArtist::new(&coven::UuidIds, &track_id, &artist_id, position, now)
                     }
                 })
             })
@@ -335,7 +335,9 @@ impl Records {
             rows.album_artists = artists
                 .iter()
                 .zip(0..)
-                .map(|(artist, position)| DbAlbumArtist::new(album_id, artist, position, now))
+                .map(|(artist, position)| {
+                    DbAlbumArtist::new(&coven::UuidIds, album_id, artist, position, now)
+                })
                 .collect();
             for artist in credited {
                 if !rows.picked.contains(&artist.id) {
@@ -405,26 +407,26 @@ fn file_column_for_test(table: &str) -> &'static str {
 }
 
 impl crate::test_fixtures::library::LibraryRows {
-    /// The parts of each release's labels, in order: ids from `ids` for the
-    /// labels a write may make, at `now`.
-    pub fn label_parts(
+    /// The parts of each release's pressing, in order: ids from `ids` for the
+    /// labels a write may make and each row of its lists, at `now`.
+    pub fn pressing_parts(
         &self,
         ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
-    ) -> Vec<LabelParts> {
+    ) -> Vec<PressingParts> {
         self.releases
             .iter()
-            .map(|release| LabelParts::new(ids, now, &release.pressing.labels))
+            .map(|release| PressingParts::new(ids, now, &release.pressing))
             .collect()
     }
 
     /// Write the rows inside `conn`'s write through the records' own row
-    /// inserts, each kind in the order this lists them; `labels` holds
-    /// [`Self::label_parts`].
+    /// inserts, each kind in the order this lists them; `pressing` holds
+    /// [`Self::pressing_parts`].
     pub fn write_on(
         &self,
         conn: &CovenWrite<'_>,
-        labels: &[LabelParts],
+        pressing: &[PressingParts],
     ) -> Result<(), IdentityWriteError> {
         for artist in &self.artists {
             insert_artist_row(conn, artist)?;
@@ -435,8 +437,8 @@ impl crate::test_fixtures::library::LibraryRows {
         for credit in &self.album_artists {
             insert_album_artist_row(conn, credit)?;
         }
-        for (release, labels) in self.releases.iter().zip(labels) {
-            insert_release_row(conn, release, &label_write(labels))?;
+        for (release, pressing) in self.releases.iter().zip(pressing) {
+            insert_release_row(conn, release, &pressing_write(pressing))?;
         }
         for medium in &self.mediums {
             insert_release_medium_row(conn, medium)?;

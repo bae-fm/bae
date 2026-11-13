@@ -1,8 +1,8 @@
 //! A library of one release, and how a test writes, adds and reads back the
 //! labels that release names.
 
-use crate::records::label_resolution::{label_write, write_release_labels_on, LabelRow};
-use crate::{DbAlbum, DbRelease, IdentityWriteError, LabelParts, Records};
+use crate::records::label_resolution::{pressing_write, write_release_labels_on, LabelRow};
+use crate::{DbAlbum, DbRelease, IdentityWriteError, PressingParts, Records};
 use bae_store::Store;
 use bae_types::pressing::ReleaseLabel;
 
@@ -62,9 +62,13 @@ pub async fn add_label(
 
 /// Write `RELEASE`'s labels as an edit would.
 pub async fn write(store: &Store, labels: Vec<ReleaseLabel>) -> Result<(), IdentityWriteError> {
-    let parts = LabelParts::new(&coven::UuidIds, store.now_utc(), &labels);
+    let pressing = bae_types::pressing::Pressing {
+        labels: labels.clone(),
+        ..bae_types::pressing::Pressing::blank()
+    };
+    let parts = PressingParts::new(&coven::UuidIds, store.now_utc(), &pressing);
     store
-        .write(move |sql| write_release_labels_on(&sql, RELEASE, &labels, &label_write(&parts)))
+        .write(move |sql| write_release_labels_on(&sql, RELEASE, &labels, &pressing_write(&parts)))
         .await
 }
 

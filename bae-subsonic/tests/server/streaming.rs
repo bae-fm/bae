@@ -370,6 +370,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         created_at: now,
     };
     let medium = bae_records::DbReleaseMedium::new(
+        &coven::UuidIds,
         &release.id,
         std::num::NonZeroU16::MIN,
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
@@ -581,14 +582,14 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     let credits = [
         bae_records::DbAlbumArtist {
             join_phrase: Some(" & ".to_string()),
-            ..bae_records::DbAlbumArtist::new(&album.id, &artist_a, 0, now)
+            ..bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, &artist_a, 0, now)
         },
         bae_records::DbAlbumArtist {
             credit: Some(bae_records::credits::CreditName {
                 key: "b alias".to_string(),
                 name: "B Alias".to_string(),
             }),
-            ..bae_records::DbAlbumArtist::new(&album.id, &artist_b, 1, now)
+            ..bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, &artist_b, 1, now)
         },
     ];
     library

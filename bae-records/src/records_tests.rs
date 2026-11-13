@@ -209,7 +209,7 @@ async fn a_track_cannot_sit_on_another_releases_medium() {
     }
 
     let mut track = DbTrack::new_test(RELEASE_A, TRACK_A, "Track Title A", 1);
-    track.medium_id = crate::identity::release_medium_id(RELEASE_B, 1);
+    track.medium_id = crate::first_medium_id(RELEASE_B);
     let error = records
         .insert_track(&track)
         .await
@@ -231,7 +231,7 @@ async fn a_medium_id_belongs_to_one_release() {
     records.insert_release_medium(&crate::DbReleaseMedium::new_test(RELEASE_A)).await.unwrap();
 
     let mut medium = crate::DbReleaseMedium::new_test(RELEASE_B);
-    medium.id = crate::identity::release_medium_id(RELEASE_A, 1);
+    medium.id = crate::first_medium_id(RELEASE_A);
     let error = records
         .insert_release_medium(&medium)
         .await

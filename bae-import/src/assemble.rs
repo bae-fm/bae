@@ -91,7 +91,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
         .map(|((artist_id, credited), position)| DbAlbumArtist {
             credit: credited.artist.link_credit(),
             join_phrase: credited.join.clone(),
-            ..DbAlbumArtist::new(&album.id, artist_id, position, now)
+            ..DbAlbumArtist::new(ids, &album.id, artist_id, position, now)
         })
         .collect();
 
@@ -134,6 +134,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
         .enumerate()
         .map(|(index, medium)| {
             bae_records::DbReleaseMedium::new(
+                ids,
                 &release.id,
                 bae_types::mediums::medium_position(index),
                 *medium,
@@ -172,6 +173,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
                     credit: credited.artist.link_credit(),
                     join_phrase: credited.join.clone(),
                     ..DbTrackArtist::new(
+                        ids,
                         &row.id,
                         &artists.assigned(&credited.artist),
                         position,

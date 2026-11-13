@@ -653,7 +653,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
                 title: format!("Track {index}"),
-                medium_id: bae_records::identity::release_medium_id("rel", 1),
+                medium_id: bae_records::first_medium_id("rel"),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::new(
                     u32::try_from(index + 1).expect("a test track number fits u32"),

@@ -760,8 +760,13 @@ async fn a_done_row_reads_its_library_release() {
         .save_release_metadata_for_test(&release_id, |rows| {
             rows.picked.push(artist.clone());
             rows.credits.push(artist_row);
-            rows.album_artists =
-                vec![bae_records::DbAlbumArtist::new(&album_id, &artist, 0, fixed_now())];
+            rows.album_artists = vec![bae_records::DbAlbumArtist::new(
+                &coven::UuidIds,
+                &album_id,
+                &artist,
+                0,
+                fixed_now(),
+            )];
         })
         .await
         .unwrap();

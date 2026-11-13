@@ -105,7 +105,7 @@ pub(super) fn insert_album_artist_row(
     let created_at = aa.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), &created_at)?;
     let credit = Credit {
-        id: aa.id(),
+        id: &aa.id,
         artist_id: &aa.artist_id,
         position: aa.position,
         credit_key,
@@ -120,7 +120,7 @@ pub(super) fn insert_album_artist_row(
 pub fn insert_release_row(
     conn: &CovenWrite<'_>,
     release: &DbRelease,
-    labels: &super::LabelWrite<'_>,
+    pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     conn.execute(
@@ -157,104 +157,49 @@ pub fn insert_release_row(
         conn,
         &release.id,
         &release.pressing.labels,
-        labels,
+        pressing,
     )?;
-    replace_release_barcodes(conn, &release.id, &release.pressing.barcodes)?;
-    replace_release_media(conn, &release.id, &release.pressing.facts.media)?;
+    replace_release_barcodes(conn, &release.id, &release.pressing.barcodes, pressing.barcode_ids)?;
+    replace_release_media(conn, &release.id, &release.pressing.facts.media, pressing.media_ids)?;
     Ok(())
 }
 
 /// Make the release `release_id`'s barcodes exactly `barcodes`, in order,
-/// touching only the rows that differ: a row is a place in the list.
+/// each row under its id of `row_ids`.
 pub(super) fn replace_release_barcodes(
     conn: &CovenWrite<'_>,
     release_id: &str,
     barcodes: &[String],
+    row_ids: &[String],
 ) -> Result<(), DbError> {
-    let stored: HashMap<String, String> = conn
-        .query(
-            "SELECT id, barcode FROM release_barcodes WHERE release_id = ?",
-            params![release_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )?
-        .into_iter()
-        .collect();
-    let ids: Vec<String> = (0..barcodes.len())
-        .map(|position| crate::identity::release_barcode_id(release_id, position))
-        .collect();
-    for id in stored.keys() {
-        if !ids.contains(id) {
-            conn.execute("DELETE FROM release_barcodes WHERE id = ?", params![id])?;
-        }
-    }
-    for (position, (id, barcode)) in ids.iter().zip(barcodes).enumerate() {
-        match stored.get(id) {
-            Some(stored) if stored == barcode => {}
-            Some(_) => {
-                conn.execute(
-                    "UPDATE release_barcodes SET barcode = ? WHERE id = ?",
-                    params![barcode, id],
-                )?;
-            }
-            None => {
-                conn.execute(
-                    "INSERT INTO release_barcodes (id, release_id, position, barcode) \
-                     VALUES (?, ?, ?, ?)",
-                    params![id, release_id, position as i64, barcode],
-                )?;
-            }
-        }
+    assert_eq!(barcodes.len(), row_ids.len(), "a write holds an id for each barcode it makes");
+    conn.execute("DELETE FROM release_barcodes WHERE release_id = ?", params![release_id])?;
+    for (position, (barcode, id)) in barcodes.iter().zip(row_ids).enumerate() {
+        conn.execute(
+            "INSERT INTO release_barcodes (id, release_id, position, barcode) \
+             VALUES (?, ?, ?, ?)",
+            params![id, release_id, position as i64, barcode],
+        )?;
     }
     Ok(())
 }
 
-/// Make the release `release_id`'s media exactly `media`, in order, touching
-/// only the rows that differ: a row is a place in the list.
+/// Make the release `release_id`'s media exactly `media`, in order, each row
+/// under its id of `row_ids`.
 pub(super) fn replace_release_media(
     conn: &CovenWrite<'_>,
     release_id: &str,
     media: &[bae_types::pressing::MediaCount],
+    row_ids: &[String],
 ) -> Result<(), DbError> {
-    let stored: HashMap<String, (String, i64)> = conn
-        .query(
-            "SELECT id, medium, count FROM release_media WHERE release_id = ?",
-            params![release_id],
-            |row| Ok((row.get::<_, String>(0)?, (row.get(1)?, row.get(2)?))),
-        )?
-        .into_iter()
-        .collect();
-    let rows: Vec<(String, usize, &bae_types::pressing::MediaCount)> = media
-        .iter()
-        .enumerate()
-        .map(|(position, count)| {
-            (crate::identity::release_media_id(release_id, position), position, count)
-        })
-        .collect();
-    for id in stored.keys() {
-        if !rows.iter().any(|(row_id, _, _)| row_id == id) {
-            conn.execute("DELETE FROM release_media WHERE id = ?", params![id])?;
-        }
-    }
-    for (id, position, count) in &rows {
-        let medium = count.medium.key();
-        let quantity = i64::from(count.count);
-        match stored.get(id) {
-            Some((stored_medium, stored_count))
-                if stored_medium == medium && *stored_count == quantity => {}
-            Some(_) => {
-                conn.execute(
-                    "UPDATE release_media SET medium = ?, count = ? WHERE id = ?",
-                    params![medium, quantity, id],
-                )?;
-            }
-            None => {
-                conn.execute(
-                    "INSERT INTO release_media (id, release_id, position, medium, count) \
-                     VALUES (?, ?, ?, ?, ?)",
-                    params![id, release_id, *position as i64, medium, quantity],
-                )?;
-            }
-        }
+    assert_eq!(media.len(), row_ids.len(), "a write holds an id for each medium it makes");
+    conn.execute("DELETE FROM release_media WHERE release_id = ?", params![release_id])?;
+    for (position, (count, id)) in media.iter().zip(row_ids).enumerate() {
+        conn.execute(
+            "INSERT INTO release_media (id, release_id, position, medium, count) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![id, release_id, position as i64, count.medium.key(), i64::from(count.count)],
+        )?;
     }
     Ok(())
 }
@@ -308,7 +253,7 @@ pub fn insert_track_artist_row(conn: &CovenWrite<'_>, ta: &DbTrackArtist) -> Res
     let created_at = ta.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), &created_at)?;
     let credit = Credit {
-        id: ta.id(),
+        id: &ta.id,
         artist_id: &ta.artist_id,
         position: ta.position,
         credit_key,
@@ -677,9 +622,8 @@ pub fn write_release_records(
     Ok(())
 }
 
-/// Make `album_id`'s credit list exactly `artists`, touching only the rows
-/// that differ (see `write_credits`). An artist of another album is a bug
-/// of the caller's, which panics in the store's work.
+/// Make `album_id`'s credit list exactly `artists`. An artist of another
+/// album is a bug of the caller's, which panics in the store's work.
 pub fn replace_album_artists(
     conn: &CovenWrite<'_>,
     album_id: &str,
@@ -692,27 +636,25 @@ pub fn replace_album_artists(
             stray.album_id
         );
     }
-    let credits: Vec<Credit<'_>> = artists
-        .iter()
-        .map(|aa| {
-            Ok(Credit {
-                id: aa.id(),
-                artist_id: &aa.artist_id,
-                position: aa.position,
-                credit_key: settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), now)?,
-                join_phrase: aa.join_phrase.as_deref(),
-            })
-        })
-        .collect::<Result<_, DbError>>()?;
-    write_credits(conn, "album_artists", "album_id", album_id, &credits, now)
+    conn.execute("DELETE FROM album_artists WHERE album_id = ?", params![album_id])?;
+    for aa in artists {
+        let credit = Credit {
+            id: &aa.id,
+            artist_id: &aa.artist_id,
+            position: aa.position,
+            credit_key: settle_credit_name(conn, &aa.artist_id, aa.credit.as_ref(), now)?,
+            join_phrase: aa.join_phrase.as_deref(),
+        };
+        insert_credit_row(conn, "album_artists", "album_id", album_id, &credit, now)?;
+    }
+    Ok(())
 }
 
-/// Make each track of `track_ids` credit exactly its `artists`, touching only
-/// the rows that differ (see `write_credits`). Callers pass the affected
-/// track ids explicitly because `artists` may not cover every track (a track
-/// legitimately has no per-track artists when it inherits from the album).
-/// An artist of a track outside `track_ids` is a bug of the caller's, which
-/// panics in the store's work.
+/// Make each track of `track_ids` credit exactly its `artists`. Callers pass
+/// the affected track ids explicitly because `artists` may not cover every
+/// track (a track legitimately has no per-track artists when it inherits from
+/// the album). An artist of a track outside `track_ids` is a bug of the
+/// caller's, which panics in the store's work.
 pub(super) fn replace_track_artists(
     conn: &CovenWrite<'_>,
     track_ids: &[&str],
@@ -726,29 +668,24 @@ pub(super) fn replace_track_artists(
         );
     }
     for track_id in track_ids {
-        let credits: Vec<Credit<'_>> = artists
-            .iter()
-            .filter(|ta| ta.track_id == *track_id)
-            .map(|ta| {
-                Ok(Credit {
-                    id: ta.id(),
-                    artist_id: &ta.artist_id,
-                    position: ta.position,
-                    credit_key: settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), now)?,
-                    join_phrase: ta.join_phrase.as_deref(),
-                })
-            })
-            .collect::<Result<_, DbError>>()?;
-        write_credits(conn, "track_artists", "track_id", track_id, &credits, now)?;
+        conn.execute("DELETE FROM track_artists WHERE track_id = ?", params![track_id])?;
+        for ta in artists.iter().filter(|ta| ta.track_id == *track_id) {
+            let credit = Credit {
+                id: &ta.id,
+                artist_id: &ta.artist_id,
+                position: ta.position,
+                credit_key: settle_credit_name(conn, &ta.artist_id, ta.credit.as_ref(), now)?,
+                join_phrase: ta.join_phrase.as_deref(),
+            };
+            insert_credit_row(conn, "track_artists", "track_id", track_id, &credit, now)?;
+        }
     }
     Ok(())
 }
 
-/// One place of an `album_artists` / `track_artists` list. Its id derives
-/// from the owner and the position, so the same place written again names
-/// the same row.
+/// One place of an `album_artists` / `track_artists` list.
 struct Credit<'a> {
-    id: String,
+    id: &'a str,
     artist_id: &'a str,
     position: u32,
     credit_key: Option<String>,
@@ -782,55 +719,4 @@ fn insert_credit_row(
     )
     .map(|_| ())
     .map_err(DbError::from)
-}
-
-/// What one stored place says: its artist, credit name and join.
-type StoredCredit = (String, Option<String>, Option<String>);
-
-/// Make `owner_id`'s rows of `table` exactly `credits`. A place no longer
-/// given is deleted, a new one inserted, and one given again saying anything
-/// else (another artist, credit name or join) rewritten; one given again as
-/// it stands is not touched. So a write that keeps a credit leaves its row,
-/// and its `created_at`, as they were, and syncs nothing for it.
-fn write_credits(
-    conn: &CovenWrite<'_>,
-    table: &'static str,
-    owner_column: &'static str,
-    owner_id: &str,
-    credits: &[Credit<'_>],
-    now: &str,
-) -> Result<(), DbError> {
-    let stored: HashMap<String, StoredCredit> = conn
-        .query(
-            &format!(
-                "SELECT id, artist_id, credit_key, join_phrase FROM {table} WHERE {owner_column} = ?"
-            ),
-            params![owner_id],
-            |row| Ok((row.get::<_, String>(0)?, (row.get(1)?, row.get(2)?, row.get(3)?))),
-        )?
-        .into_iter()
-        .collect();
-    for id in stored.keys() {
-        if !credits.iter().any(|credit| credit.id == *id) {
-            conn.execute(&format!("DELETE FROM {table} WHERE id = ?"), params![id])?;
-        }
-    }
-    for credit in credits {
-        match stored.get(&credit.id) {
-            Some((artist_id, credit_key, join_phrase))
-                if artist_id == credit.artist_id
-                    && *credit_key == credit.credit_key
-                    && join_phrase.as_deref() == credit.join_phrase => {}
-            Some(_) => {
-                conn.execute(
-                    &format!(
-                        "UPDATE {table} SET artist_id = ?, credit_key = ?, join_phrase = ? WHERE id = ?"
-                    ),
-                    params![credit.artist_id, credit.credit_key, credit.join_phrase, credit.id],
-                )?;
-            }
-            None => insert_credit_row(conn, table, owner_column, owner_id, credit, now)?,
-        }
-    }
-    Ok(())
 }

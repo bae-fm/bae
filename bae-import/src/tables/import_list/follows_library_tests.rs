@@ -96,6 +96,7 @@ fn a_done_row_follows_its_library_album() {
                 credit: credit.map(bae_records::credits::CreditName::of),
                 join_phrase: join.map(str::to_string),
                 ..bae_records::DbAlbumArtist::new(
+                    &coven::UuidIds,
                     &album_id,
                     artist,
                     position,

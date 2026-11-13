@@ -59,6 +59,8 @@ bae-app = { workspace = true, features = ["test-utils"] }
 bae-library = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
+# The ids the credit and medium rows the server tests seed are made with.
+coven = { workspace = true }
 # The stable fixture ids the server tests name rows by.
 bae-util = { workspace = true, features = ["test-utils"] }
 # The WAV reader the transcode tests check served bytes with.

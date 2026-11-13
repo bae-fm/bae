@@ -44,7 +44,7 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
-        medium_id: bae_records::identity::release_medium_id(&release.id, 1),
+        medium_id: bae_records::first_medium_id(&release.id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,

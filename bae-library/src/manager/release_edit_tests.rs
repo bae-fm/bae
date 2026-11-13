@@ -929,6 +929,7 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     let first = bae_records::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
     let mut second = bae_records::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
     let second_disc = bae_records::DbReleaseMedium::new(
+        &coven::UuidIds,
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),

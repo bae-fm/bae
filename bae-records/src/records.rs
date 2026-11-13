@@ -38,8 +38,8 @@ pub use artist_resolution::resolved_in_an_empty_library;
 pub use artist_resolution::ArtistCredits;
 use artist_resolution::{relink_album_artists, relink_track_artists};
 pub use artist_resolution::{IdentityRefusal, IdentityWriteError};
-use label_resolution::label_write;
-pub use label_resolution::{LabelParts, LabelWrite};
+use label_resolution::pressing_write;
+pub use label_resolution::{PressingParts, PressingWrite};
 // Only the import write resolves credits inside a release's own write.
 #[cfg(desktop)]
 use artist_resolution::relink;

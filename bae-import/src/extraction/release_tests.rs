@@ -162,7 +162,7 @@ async fn test_resolve_release_identity_local() {
             id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
             release_id: release_id.clone(),
             title: format!("Track {n}"),
-            medium_id: bae_records::identity::release_medium_id(&release_id, 1),
+            medium_id: bae_records::first_medium_id(&release_id),
             side: std::num::NonZeroU8::MIN,
             track_number: std::num::NonZeroU32::new(
                 u32::try_from(n).expect("a test track number fits u32"),

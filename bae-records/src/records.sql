@@ -151,11 +151,9 @@ CREATE TABLE IF NOT EXISTS albums (
     created_at TEXT NOT NULL
 ) STRICT;
 
--- The album's credits, in credit order from position 0. A row is one place in
--- the list (its id derives from the album and the position), so a list that
--- names one artist twice keeps both credits. Positions need not be dense: two
--- devices editing one list at once can leave a gap, and readers order by
--- position. `credit_key` names one of the artist's other printed names
+-- The album's credits, in credit order from position 0. A save replaces the
+-- album's whole list, so a list that names one artist twice keeps both
+-- credits. `credit_key` names one of the artist's other printed names
 -- (`artist_credits`); NULL prints the artist's own name. `join_phrase` is
 -- printed after the credit when another follows; NULL prints ", ".
 CREATE TABLE IF NOT EXISTS album_artists (
@@ -347,8 +345,8 @@ resolved(label_id, survivor_id) AS (
 SELECT label_id, survivor_id FROM resolved WHERE label_id <> survivor_id;
 
 -- Every label a pressing is on, in its source's order, each naming a library
--- label, the catalog number that label gives the pressing, or both. The id
--- derives from (release, position): one place in a release's labels is one row.
+-- label, the catalog number that label gives the pressing, or both. A save
+-- replaces the release's whole list.
 CREATE TABLE IF NOT EXISTS release_labels (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -364,9 +362,8 @@ CREATE TABLE IF NOT EXISTS release_labels (
 
 CREATE INDEX IF NOT EXISTS idx_release_labels_label ON release_labels (label_id);
 
--- Every barcode a pressing is printed with, in its source's order. The id
--- derives from (release, position): one place in a release's barcodes is one
--- row.
+-- Every barcode a pressing is printed with, in its source's order. A save
+-- replaces the release's whole list.
 CREATE TABLE IF NOT EXISTS release_barcodes (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -378,8 +375,8 @@ CREATE TABLE IF NOT EXISTS release_barcodes (
 ) STRICT;
 
 -- The carriers a pressing is made of, each with how many of it there are, in
--- the record's order: two CDs, one vinyl record. The id derives from
--- (release, position): one place in a release's media is one row.
+-- the record's order: two CDs, one vinyl record. A save replaces the
+-- release's whole list.
 CREATE TABLE IF NOT EXISTS release_media (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
@@ -560,8 +557,7 @@ CREATE INDEX IF NOT EXISTS idx_release_records_catalog_album ON release_records
     (catalog, CASE WHEN kind = 'album' THEN key ELSE album_key END);
 
 -- The mediums a release holds — the discs, records or tapes its audio was
--- read from — in order. The id derives from (release, position), so two
--- devices that write one release's mediums write the same rows.
+-- read from — in order.
 CREATE TABLE IF NOT EXISTS release_mediums (
     id TEXT NOT NULL,
     release_id TEXT NOT NULL,
@@ -607,8 +603,8 @@ CREATE INDEX IF NOT EXISTS idx_tracks_release_id ON tracks (release_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS tracks_release_position ON tracks(release_id, position);
 
--- A track's own credits, in credit order from position 0, keyed like
--- `album_artists` by (track, position), with the same printed name and join.
+-- A track's own credits, in credit order from position 0, saved like
+-- `album_artists`, with the same printed name and join.
 -- A track with none takes the album's.
 CREATE TABLE IF NOT EXISTS track_artists (
     id TEXT PRIMARY KEY,

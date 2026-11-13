@@ -35,7 +35,8 @@ pub use records::RecordsChange;
 pub use records::ReleaseMetadataRows;
 pub use records::{
     Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError, ImageWriteError,
-    ImageWriteRefusal, LabelParts, OtherDeviceError, PrimaryReleaseError, Records, ReleaseDeletion,
+    ImageWriteRefusal, OtherDeviceError, PressingParts, PrimaryReleaseError, Records,
+    ReleaseDeletion,
 };
 #[cfg(desktop)]
 pub use records::{ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite};

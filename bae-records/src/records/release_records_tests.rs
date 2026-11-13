@@ -71,7 +71,7 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", number),
-        medium_id: crate::identity::release_medium_id(release_id, 1),
+        medium_id: crate::first_medium_id(release_id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::new(
             u32::try_from(number).expect("a test track number fits u32"),
@@ -504,11 +504,10 @@ async fn ids(store: &Store, query: &'static str) -> Vec<String> {
         .unwrap()
 }
 
-/// A release's records and an album's credits are facts: each row's id is
-/// computed from the fact it states, so another device stating the same fact
-/// writes the same row.
+/// A release's record is a fact: its row's id is computed from the fact it
+/// states, and a move to a fresh album copies the album's credits to it.
 #[tokio::test]
-async fn fact_rows_take_their_ids_from_their_facts() {
+async fn a_record_takes_its_id_from_its_fact() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     let now = Utc::now();
@@ -526,7 +525,10 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     let mut album = DbAlbum::new_test("Album", &coven::UuidIds);
     album.id = ALBUM_1.to_string();
     records.insert_album(&album).await.unwrap();
-    records.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
+    records
+        .insert_album_artist(&DbAlbumArtist::new(&coven::UuidIds, &album.id, &artist.id, 0, now))
+        .await
+        .unwrap();
 
     let release = DbRelease::new_test(&album.id, RELEASE_1);
     records.insert_release(&release).await.unwrap();
@@ -539,8 +541,8 @@ async fn fact_rows_take_their_ids_from_their_facts() {
         vec![identity::release_record_id(&release.id, Catalog::Discogs)],
     );
 
-    // Moving the release to a fresh album copies its credits under the new
-    // album's ids.
+    // Moving the release to a fresh album copies its credits to the new
+    // album.
     let target = DbAlbum::new_test("Target Album", &coven::UuidIds);
     records
         .set_records_atomic(crate::RecordsChange {
@@ -553,11 +555,11 @@ async fn fact_rows_take_their_ids_from_their_facts() {
         .await
         .unwrap();
 
-    let credits = ids(&db, "SELECT id FROM album_artists").await;
-    assert!(
-        credits.contains(&identity::album_artist_id(&target.id, 0)),
-        "the copied credit's id is its (album, position), got {credits:?}"
-    );
+    // The emptied source album went with its credits; the new one holds the
+    // copy.
+    let credited =
+        ids(&db, "SELECT album_id || ':' || artist_id || ':' || position FROM album_artists").await;
+    assert_eq!(credited, vec![format!("{}:{}:0", target.id, artist.id)]);
     assert_eq!(
         ids(&db, "SELECT id FROM release_records").await,
         vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],

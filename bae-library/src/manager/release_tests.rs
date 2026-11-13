@@ -580,7 +580,8 @@ async fn display_artist_is_set_only_for_a_compilation() {
             musicbrainz_artist_id: None,
             created_at: Utc::now(),
         };
-        let track_artist = bae_records::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
+        let track_artist =
+            bae_records::DbTrackArtist::new(&coven::UuidIds, &track.id, &guest.id, 0, Utc::now());
         manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
         manager.records.insert_artist(&guest).await.unwrap();

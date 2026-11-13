@@ -3,8 +3,7 @@
 //! concurrent writes from leaving one either.
 //!
 //! A release's media, barcodes and labels are rows, one per place in their
-//! list: a device's edit of them reaches every other device, and two devices
-//! editing different places at once keep both edits.
+//! list: a save replaces the whole list, and reaches every other device.
 
 use crate::test_fixtures::*;
 use bae_store::test_fixtures::*;
@@ -15,43 +14,43 @@ const KEPT_TRACK: &str = "4f3c4c52-4d1b-4bd5-9b45-6a6f2f3c1a10";
 const MOVED_TRACK: &str = "6b1e1f0e-55a8-4d0f-8a5e-0d2e4a3c7b21";
 const STRAY_TRACK: &str = "8d2f6a1b-7c3e-4e5f-9a0b-1c2d3e4f5a6b";
 
-fn medium_id(position: u16) -> String {
-    crate::identity::release_medium_id(RELEASE, position)
-}
-
-/// The seeded release with two CDs and one track on each.
-async fn seed_two_discs(db: &bae_store::Store) {
+/// The ids of the two mediums `seed_two_discs` makes, by position.
+async fn seed_two_discs(db: &bae_store::Store) -> [String; 2] {
     seed_artist_album_release(db).await;
     let records = crate::test_fixtures::test_records(db);
+    let mut ids = Vec::new();
     for position in [1u16, 2] {
         let medium = crate::DbReleaseMedium::new(
+            &coven::UuidIds,
             RELEASE,
             std::num::NonZeroU16::new(position).unwrap(),
             bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
             chrono::Utc::now(),
         );
         records.insert_release_medium(&medium).await.unwrap();
+        ids.push(medium.id);
     }
-    for (track, medium) in [(KEPT_TRACK, 1u16), (MOVED_TRACK, 2)] {
+    for (track, medium) in [(KEPT_TRACK, &ids[0]), (MOVED_TRACK, &ids[1])] {
         let track = crate::DbTrack {
-            medium_id: medium_id(medium),
+            medium_id: medium.clone(),
             ..crate::DbTrack::new_test(RELEASE, track, "Track Title", 1)
         };
         records.insert_track(&track).await.unwrap();
     }
+    [ids[0].clone(), ids[1].clone()]
 }
 
 fn insert_track(
     conn: &coven::CovenWrite<'_>,
     track: &str,
     position: i64,
-    medium: u16,
+    medium: &str,
 ) -> Result<(), bae_store::DbError> {
     conn.execute(
         "INSERT INTO tracks (id, release_id, title, medium_id, side, track_number, \
              duration_ms, position, created_at) \
          VALUES (?1, ?2, 'Track Title', ?3, 1, 1, 1000, ?4, '2026-01-01T00:00:00Z')",
-        rusqlite::params![track, RELEASE, medium_id(medium), position],
+        rusqlite::params![track, RELEASE, medium, position],
     )?;
     Ok(())
 }
@@ -62,25 +61,23 @@ fn insert_track(
 async fn a_medium_still_holding_a_track_cannot_be_removed() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    seed_two_discs(&db).await;
+    let [disc_one, disc_two] = seed_two_discs(&db).await;
 
+    let second = disc_two.clone();
     let refused = db
-        .call(|conn| {
-            conn.execute(
-                "DELETE FROM release_mediums WHERE id = ?1",
-                rusqlite::params![medium_id(2)],
-            )?;
+        .call(move |conn| {
+            conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![second])?;
             Ok(())
         })
         .await;
     assert!(refused.is_err(), "the track on disc 2 keeps its medium");
 
-    db.call(|conn| {
+    db.call(move |conn| {
         conn.execute(
             "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
-            rusqlite::params![medium_id(1), medium_id(2)],
+            rusqlite::params![disc_one, disc_two],
         )?;
-        conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![medium_id(2)])?;
+        conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![disc_two])?;
         Ok(())
     })
     .await
@@ -120,28 +117,26 @@ fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium(
 }
 
 async fn check_concurrent_medium_removal(devices: &bae_store::test_devices::TwoStores) {
-    seed_two_discs(devices.a()).await;
+    let [disc_one, disc_two] = seed_two_discs(devices.a()).await;
     let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
          UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";
     devices.converge(rows).await;
 
     devices.pause().await;
+    let (kept, removed) = (disc_one, disc_two.clone());
     devices
         .a()
-        .call(|conn| {
+        .call(move |conn| {
             conn.execute(
                 "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
-                rusqlite::params![medium_id(1), medium_id(2)],
+                rusqlite::params![kept, removed],
             )?;
-            conn.execute(
-                "DELETE FROM release_mediums WHERE id = ?1",
-                rusqlite::params![medium_id(2)],
-            )?;
+            conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![removed])?;
             Ok(())
         })
         .await
         .unwrap();
-    devices.b().call(|conn| insert_track(conn, STRAY_TRACK, 2, 2)).await.unwrap();
+    devices.b().call(move |conn| insert_track(conn, STRAY_TRACK, 2, &disc_two)).await.unwrap();
     devices.resume().await;
     devices.converge(rows).await;
 
@@ -154,11 +149,34 @@ fn count(medium: Medium, count: u32) -> MediaCount {
     MediaCount { medium, count }
 }
 
+/// A fresh id for each of `count` rows.
+fn row_ids(count: usize) -> Vec<String> {
+    use coven::IdSource;
+    (0..count).map(|_| coven::UuidIds.new_id().to_string()).collect()
+}
+
 /// Make `RELEASE`'s media `media` on `db`.
-async fn set_media(db: &bae_store::Store, media: Vec<MediaCount>) {
-    db.call(move |conn| crate::records::write::replace_release_media(conn, RELEASE, &media))
+/// Return the ids it gave the rows.
+async fn set_media(db: &bae_store::Store, media: Vec<MediaCount>) -> Vec<String> {
+    let ids = row_ids(media.len());
+    let given = ids.clone();
+    db.call(move |conn| crate::records::write::replace_release_media(conn, RELEASE, &media, &ids))
         .await
         .unwrap();
+    given
+}
+
+/// The ids of `table`'s rows of `RELEASE`, in the order of their places.
+async fn row_ids_of(db: &bae_store::Store, table: &'static str) -> Vec<String> {
+    db.read(move |sql| {
+        Ok(sql.query(
+            &format!("SELECT id FROM {table} WHERE release_id = ? ORDER BY position"),
+            [RELEASE],
+            |row| row.get(0),
+        )?)
+    })
+    .await
+    .unwrap()
 }
 
 /// `RELEASE`'s media as `db` reads the release.
@@ -169,6 +187,37 @@ async fn media_on(db: &crate::Records) -> Vec<MediaCount> {
 /// The rows both devices must agree on.
 const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' || count \
      FROM release_media ORDER BY id";
+
+/// A save of a release's media makes them exactly the list it gives, in its
+/// order, whether it grows, reorders or empties the list.
+#[tokio::test]
+async fn a_media_save_replaces_the_list() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    seed_artist_album_release(&db).await;
+    let records = crate::test_fixtures::test_records(&db);
+
+    for media in [
+        vec![count(Medium::Cd, 1)],
+        vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1), count(Medium::Dvd, 1)],
+        vec![count(Medium::Dvd, 1), count(Medium::Vinyl, 2)],
+        vec![],
+    ] {
+        let ids = set_media(&db, media.clone()).await;
+        assert_eq!(media_on(&records).await, media);
+        assert_eq!(row_ids_of(&db, "release_media").await, ids, "each place is a row of its own");
+        let positions: Vec<i64> = db
+            .read(|sql| {
+                Ok(sql.query(
+                    "SELECT position FROM release_media WHERE release_id = ? ORDER BY position",
+                    [RELEASE],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        assert_eq!(positions, (0..media.len() as i64).collect::<Vec<_>>());
+    }
+}
 
 /// One device's edit of a release's media reaches the other, which reads the
 /// release by them.
@@ -194,38 +243,18 @@ async fn check_media_edit_reaches(devices: &bae_store::test_devices::TwoStores) 
     );
 }
 
-/// Two devices, apart, each change a different place in one release's media.
-/// Once each has the other's write, both hold both changes.
-#[test]
-fn concurrent_edits_of_different_places_both_stay() {
-    bae_store::test_devices::run_two_store_test(
-        crate::test_fixtures::TEST_SCHEMA,
-        check_concurrent_places,
-    );
-}
-
-async fn check_concurrent_places(devices: &bae_store::test_devices::TwoStores) {
-    seed_artist_album_release(devices.a()).await;
-    set_media(devices.a(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
-    devices.converge(MEDIA_ROWS).await;
-
-    devices.pause().await;
-    set_media(devices.a(), vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]).await;
-    set_media(devices.b(), vec![count(Medium::Cd, 1), count(Medium::BluRay, 1)]).await;
-    devices.resume().await;
-    devices.converge(MEDIA_ROWS).await;
-
-    let both = vec![count(Medium::Cd, 2), count(Medium::BluRay, 1)];
-    assert_eq!(media_on(&crate::test_fixtures::test_records(devices.a())).await, both);
-    assert_eq!(media_on(&crate::test_fixtures::test_records(devices.b())).await, both);
-}
-
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.
-async fn set_barcodes(db: &bae_store::Store, barcodes: &[&str]) {
+/// Return the ids it gave the rows.
+async fn set_barcodes(db: &bae_store::Store, barcodes: &[&str]) -> Vec<String> {
     let barcodes: Vec<String> = barcodes.iter().map(|code| code.to_string()).collect();
-    db.call(move |conn| crate::records::write::replace_release_barcodes(conn, RELEASE, &barcodes))
-        .await
-        .unwrap();
+    let ids = row_ids(barcodes.len());
+    let given = ids.clone();
+    db.call(move |conn| {
+        crate::records::write::replace_release_barcodes(conn, RELEASE, &barcodes, &ids)
+    })
+    .await
+    .unwrap();
+    given
 }
 
 /// `RELEASE`'s barcodes as `db` reads the release.
@@ -233,48 +262,43 @@ async fn barcodes_on(db: &crate::Records) -> Vec<String> {
     db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.barcodes
 }
 
-const BARCODE_ROWS: &str = "SELECT id || ':' || position || ':' || barcode \
-     FROM release_barcodes ORDER BY id";
+/// A save of a release's barcodes makes them exactly the list it gives, in
+/// its order; a save that drops one leaves the others.
+#[tokio::test]
+async fn a_barcode_save_replaces_the_list() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    seed_artist_album_release(&db).await;
+    let records = crate::test_fixtures::test_records(&db);
 
-/// Two devices, apart, each change a different place in one release's
-/// barcodes; once each has the other's write, both hold both changes. A
-/// later edit that drops one leaves only the other on both.
-#[test]
-fn barcode_edits_merge_by_place_and_reach_the_other_device() {
-    bae_store::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_barcodes);
-}
-
-async fn check_barcodes(devices: &bae_store::test_devices::TwoStores) {
-    seed_artist_album_release(devices.a()).await;
-    set_barcodes(devices.a(), &["0123456789012", "5012345678900"]).await;
-    devices.converge(BARCODE_ROWS).await;
-
-    devices.pause().await;
-    set_barcodes(devices.a(), &["0123456789029", "5012345678900"]).await;
-    set_barcodes(devices.b(), &["0123456789012", "5012345678917"]).await;
-    devices.resume().await;
-    devices.converge(BARCODE_ROWS).await;
-    let both = ["0123456789029", "5012345678917"];
-    assert_eq!(barcodes_on(&crate::test_fixtures::test_records(devices.a())).await, both);
-    assert_eq!(barcodes_on(&crate::test_fixtures::test_records(devices.b())).await, both);
-
-    set_barcodes(devices.b(), &["0123456789029"]).await;
-    devices.converge(BARCODE_ROWS).await;
-    assert_eq!(
-        barcodes_on(&crate::test_fixtures::test_records(devices.a())).await,
-        ["0123456789029"]
-    );
+    for barcodes in [
+        vec!["0123456789012", "5012345678900"],
+        vec!["5012345678900", "0123456789012", "0123456789029"],
+        vec!["0123456789029"],
+        vec![],
+    ] {
+        let ids = set_barcodes(&db, &barcodes).await;
+        assert_eq!(barcodes_on(&records).await, barcodes);
+        assert_eq!(
+            row_ids_of(&db, "release_barcodes").await,
+            ids,
+            "each place is a row of its own"
+        );
+    }
 }
 
 /// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
 async fn set_labels(db: &bae_store::Store, labels: Vec<bae_types::pressing::ReleaseLabel>) {
-    let parts = crate::LabelParts::new(&coven::UuidIds, db.now_utc(), &labels);
+    let pressing = bae_types::pressing::Pressing {
+        labels: labels.clone(),
+        ..bae_types::pressing::Pressing::blank()
+    };
+    let parts = crate::PressingParts::new(&coven::UuidIds, db.now_utc(), &pressing);
     db.write(move |conn| {
         crate::records::label_resolution::write_release_labels_on(
             &conn,
             RELEASE,
             &labels,
-            &crate::records::label_write(&parts),
+            &crate::records::pressing_write(&parts),
         )
     })
     .await
@@ -286,51 +310,28 @@ async fn labels_on(db: &crate::Records) -> Vec<bae_types::pressing::ReleaseLabel
     db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
 }
 
-const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_label_id, '') \
-     FROM labels UNION ALL \
-     SELECT id || ':' || position || ':' || ifnull(label_id, '') || ':' \
-         || ifnull(catalog_number, '') FROM release_labels ORDER BY 1";
-
-/// Two devices, apart, each write a label Discogs names onto one release:
-/// both make the one label row its id names, and once each has the other's
-/// write, both read the release with the label at each place either wrote.
-#[test]
-fn label_rows_converge_on_both_devices() {
-    bae_store::test_devices::run_two_store_test(crate::test_fixtures::TEST_SCHEMA, check_labels);
-}
-
-async fn check_labels(devices: &bae_store::test_devices::TwoStores) {
+/// A save of a release's labels makes them exactly the list it gives, in its
+/// order, a place that states only a catalog number included.
+#[tokio::test]
+async fn a_label_save_replaces_the_list() {
     use bae_types::pressing::ReleaseLabel;
-    let label_name = |number: &str| {
-        ReleaseLabel::new(Some("Label Name".to_string()), Some(number.to_string()))
-            .unwrap()
-            .with_ids(None, Some("7190".to_string()))
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    seed_artist_album_release(&db).await;
+    let records = crate::test_fixtures::test_records(&db);
+    let named = |name: &str, number: &str| {
+        ReleaseLabel::new(Some(name.to_string()), Some(number.to_string())).unwrap()
     };
-    seed_artist_album_release(devices.a()).await;
-    devices.converge(LABEL_ROWS).await;
+    let number_only = |number: &str| ReleaseLabel::new(None, Some(number.to_string())).unwrap();
 
-    devices.pause().await;
-    set_labels(devices.a(), vec![label_name("R2 1")]).await;
-    set_labels(
-        devices.b(),
-        vec![label_name("R2 1"), ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap()],
-    )
-    .await;
-    devices.resume().await;
-    devices.converge(LABEL_ROWS).await;
-
-    let both = vec![
-        ReleaseLabel::new(Some("Label Name".to_string()), Some("R2 1".to_string())).unwrap(),
-        ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
-    ];
-    assert_eq!(labels_on(&crate::test_fixtures::test_records(devices.a())).await, both);
-    assert_eq!(labels_on(&crate::test_fixtures::test_records(devices.b())).await, both);
-    let labels: i64 = devices
-        .a()
-        .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
-        .await
-        .unwrap();
-    assert_eq!(labels, 1);
+    for labels in [
+        vec![named("Label Name", "R2 1")],
+        vec![number_only("XY 3"), named("Label Name", "R2 1"), named("Other Label", "OL 9")],
+        vec![named("Other Label", "OL 9"), number_only("XY 3")],
+        vec![],
+    ] {
+        set_labels(&db, labels.clone()).await;
+        assert_eq!(labels_on(&records).await, labels);
+    }
 }
 
 /// The release editor reads each segment's role: a track whose pregap is

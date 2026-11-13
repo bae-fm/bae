@@ -144,7 +144,7 @@ impl LibraryManager {
             .map(|((artist_id, credited), position)| DbAlbumArtist {
                 credit: credited.artist.link_credit(),
                 join_phrase: credited.join.clone(),
-                ..DbAlbumArtist::new(&updated_album.id, artist_id, position, now)
+                ..DbAlbumArtist::new(self.ids.as_ref(), &updated_album.id, artist_id, position, now)
             })
             .collect();
 
@@ -159,7 +159,13 @@ impl LibraryManager {
                 track_artists.push(DbTrackArtist {
                     credit: credited.artist.link_credit(),
                     join_phrase: credited.join.clone(),
-                    ..DbTrackArtist::new(&existing.id, &credit_of(&credited.artist), position, now)
+                    ..DbTrackArtist::new(
+                        self.ids.as_ref(),
+                        &existing.id,
+                        &credit_of(&credited.artist),
+                        position,
+                        now,
+                    )
                 });
             }
         }

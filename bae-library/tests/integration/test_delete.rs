@@ -9,7 +9,7 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),
         title: format!("Track {}", track_number),
-        medium_id: bae_records::identity::release_medium_id(release_id, 1),
+        medium_id: bae_records::first_medium_id(release_id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::new(
             u32::try_from(track_number).expect("a test track number fits u32"),

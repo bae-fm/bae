@@ -210,6 +210,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     let filename_by_id: std::collections::HashMap<String, String> =
         files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
+    let mediums = library.records().get_release_mediums(&release_id).await.expect("mediums");
+    let [disc_one, disc_two] = [&mediums.0[0].id, &mediums.0[1].id];
     for track in &tracks {
         let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
             .await
@@ -223,8 +225,6 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
             .get(&segment.file_id)
             .unwrap_or_else(|| panic!("file_id {} not in release_files", segment.file_id));
 
-        let disc_one = bae_records::identity::release_medium_id(&release_id, 1);
-        let disc_two = bae_records::identity::release_medium_id(&release_id, 2);
         let expected = match track.medium_id.as_str() {
             medium if medium == disc_one => "CD1/CDImage.ape",
             medium if medium == disc_two => "CD2/CDImage.ape",

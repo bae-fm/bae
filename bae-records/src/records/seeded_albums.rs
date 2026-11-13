@@ -44,10 +44,10 @@ impl Records {
             .collect();
         let mut originals = Vec::new();
         let mut audios = Vec::new();
-        let labels: Vec<super::label_resolution::LabelParts> = albums
+        let pressing: Vec<super::label_resolution::PressingParts> = albums
             .iter()
             .map(|seeded| {
-                LabelParts::new(&*self.ids, self.store.now_utc(), &seeded.release.pressing.labels)
+                PressingParts::new(&*self.ids, self.store.now_utc(), &seeded.release.pressing)
             })
             .collect();
         for seeded in &mut albums {
@@ -92,12 +92,12 @@ impl Records {
                     for artist in &artists {
                         insert_artist_row(tx, artist)?;
                     }
-                    for (seeded, labels) in albums.iter().zip(&labels) {
+                    for (seeded, pressing) in albums.iter().zip(&pressing) {
                         insert_album_row(tx, &seeded.album)?;
                         for credit in &seeded.credits {
                             insert_album_artist_row(tx, credit)?;
                         }
-                        insert_release_row(tx, &seeded.release, &label_write(labels))?;
+                        insert_release_row(tx, &seeded.release, &pressing_write(pressing))?;
                         insert_release_medium_row(tx, &seeded.medium)?;
                         for track in &seeded.tracks {
                             insert_track_row(tx, track)?;

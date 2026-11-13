@@ -12,6 +12,7 @@ use std::num::NonZeroU16;
 fn the_disc_a_track_states_is_its_medium_of_several() {
     let row = |position: u16| {
         DbReleaseMedium::new(
+            &coven::UuidIds,
             "release-id",
             NonZeroU16::new(position).expect("mediums count from one"),
             ReleaseMedium::one_sided(Some(Medium::Cd)),

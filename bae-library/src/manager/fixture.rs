@@ -131,11 +131,12 @@ impl LibraryManager {
             .iter()
             .zip(0..)
             .map(|(artist_id, position)| {
-                DbAlbumArtist::new(&db_album.id, artist_id, position, added)
+                DbAlbumArtist::new(&coven::UuidIds, &db_album.id, artist_id, position, added)
             })
             .collect();
         // One disc of unstated carrier, its tracks numbered in order.
         let medium = bae_records::DbReleaseMedium::new(
+            &coven::UuidIds,
             &release_id,
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium::one_sided(None),

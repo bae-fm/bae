@@ -77,9 +77,10 @@ pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Ident
             is_compilation: false,
             created_at: at,
         });
-        rows.album_artists.push(DbAlbumArtist::new(&album, &artist, 0, at));
+        rows.album_artists.push(DbAlbumArtist::new(&coven::UuidIds, &album, &artist, 0, at));
         rows.releases.push(DbRelease { created_at: at, ..DbRelease::new_test(&album, &release) });
         rows.mediums.push(DbReleaseMedium::new(
+            &coven::UuidIds,
             &release,
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium::one_sided(None),
@@ -109,6 +110,6 @@ pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Ident
             at,
         ));
     }
-    let labels = rows.label_parts(&coven::UuidIds, created_at(start));
+    let labels = rows.pressing_parts(&coven::UuidIds, created_at(start));
     rows.write_on(sql, &labels)
 }

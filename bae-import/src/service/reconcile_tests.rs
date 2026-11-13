@@ -30,7 +30,8 @@ fn artists_replaced_by_edits_are_not_reconciled() {
         is_compilation: false,
         created_at: now,
     };
-    let credits = [bae_records::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
+    let credits =
+        [bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, "artist-referenced", 0, now)];
 
     retain_referenced_artists(&mut artists, Some((&album, &credits)), &[], &[], &[], &[]);
 

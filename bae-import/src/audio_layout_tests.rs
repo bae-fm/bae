@@ -104,7 +104,7 @@ pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_records::TrackRow, Aud
                     id: format!("track-{index}"),
                     release_id: "release-1".to_string(),
                     title: format!("Track Title {}", index + 1),
-                    medium_id: bae_records::identity::release_medium_id("release-1", 1),
+                    medium_id: bae_records::first_medium_id("release-1"),
                     side: std::num::NonZeroU8::MIN,
                     track_number: std::num::NonZeroU32::new(
                         u32::try_from(index + 1).expect("a test track number fits u32"),

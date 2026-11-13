@@ -246,7 +246,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release.id.clone(),
         title: "My Track".to_string(),
-        medium_id: bae_records::identity::release_medium_id(&release.id, 1),
+        medium_id: bae_records::first_medium_id(&release.id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
@@ -305,7 +305,13 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     for (position, artist_id) in [(0, &primary.id), (1, &secondary.id)] {
         manager
             .records
-            .insert_album_artist(&DbAlbumArtist::new(&album_a.id, artist_id, position, Utc::now()))
+            .insert_album_artist(&DbAlbumArtist::new(
+                &coven::UuidIds,
+                &album_a.id,
+                artist_id,
+                position,
+                Utc::now(),
+            ))
             .await
             .unwrap();
     }
@@ -350,7 +356,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         id: beta_track_id.clone(),
         release_id: release_beta.id.clone(),
         title: "Track Title".to_string(),
-        medium_id: bae_records::identity::release_medium_id(&release_beta.id, 1),
+        medium_id: bae_records::first_medium_id(&release_beta.id),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,

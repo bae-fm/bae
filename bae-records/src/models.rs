@@ -89,6 +89,7 @@ impl DbArtist {
 /// the artist's `artist_credits` if it is new there.
 #[derive(Debug, Clone)]
 pub struct DbAlbumArtist {
+    pub id: String,
     pub album_id: String,
     pub artist_id: String,
     /// The credit's place in the list, from 0.
@@ -102,6 +103,7 @@ pub struct DbAlbumArtist {
 /// album's.
 #[derive(Debug, Clone)]
 pub struct DbTrackArtist {
+    pub id: String,
     pub track_id: String,
     pub artist_id: String,
     /// The credit's place in the list, from 0.
@@ -405,15 +407,17 @@ pub struct DbReleaseMedium {
 }
 
 impl DbReleaseMedium {
-    /// The row for `medium` at `position` of `release_id`.
+    /// The row for `medium` at `position` of `release_id`, under a fresh id
+    /// from `ids`.
     pub fn new(
+        ids: &dyn coven::IdSource,
         release_id: &str,
         position: std::num::NonZeroU16,
         medium: bae_types::mediums::ReleaseMedium,
         created_at: DateTime<Utc>,
     ) -> Self {
         Self {
-            id: crate::identity::release_medium_id(release_id, position.get()),
+            id: ids.new_id().to_string(),
             release_id: release_id.to_string(),
             position,
             medium,
@@ -659,16 +663,17 @@ pub struct DbScrubPoints {
     pub points: Vec<ScrubPoint>,
 }
 impl DbAlbumArtist {
-    /// The credit's row id: one place of one album's list is one row on
-    /// every device.
-    pub fn id(&self) -> String {
-        crate::identity::album_artist_id(&self.album_id, self.position)
-    }
-
     /// `artist_id` at `position`, printed by its own name, followed by the
-    /// default separator.
-    pub fn new(album_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
+    /// default separator, under a fresh id from `ids`.
+    pub fn new(
+        ids: &dyn coven::IdSource,
+        album_id: &str,
+        artist_id: &str,
+        position: u32,
+        now: DateTime<Utc>,
+    ) -> Self {
         DbAlbumArtist {
+            id: ids.new_id().to_string(),
             album_id: album_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
@@ -681,20 +686,21 @@ impl DbAlbumArtist {
     /// A test album's one credit: `artist_id` at position 0.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn new_test(album_id: &str, artist_id: &str) -> Self {
-        Self::new(album_id, artist_id, 0, chrono::Utc::now())
+        Self::new(&coven::UuidIds, album_id, artist_id, 0, chrono::Utc::now())
     }
 }
 impl DbTrackArtist {
-    /// The credit's row id: one place of one track's list is one row on
-    /// every device.
-    pub fn id(&self) -> String {
-        crate::identity::track_artist_id(&self.track_id, self.position)
-    }
-
     /// `artist_id` at `position`, printed by its own name, followed by the
-    /// default separator.
-    pub fn new(track_id: &str, artist_id: &str, position: u32, now: DateTime<Utc>) -> Self {
+    /// default separator, under a fresh id from `ids`.
+    pub fn new(
+        ids: &dyn coven::IdSource,
+        track_id: &str,
+        artist_id: &str,
+        position: u32,
+        now: DateTime<Utc>,
+    ) -> Self {
         DbTrackArtist {
+            id: ids.new_id().to_string(),
             track_id: track_id.to_string(),
             artist_id: artist_id.to_string(),
             position,
@@ -870,7 +876,7 @@ impl DbTrack {
             id: track_id.to_string(),
             release_id: release_id.to_string(),
             title: title.to_string(),
-            medium_id: crate::identity::release_medium_id(release_id, 1),
+            medium_id: first_medium_id(release_id),
             side: std::num::NonZeroU8::MIN,
             track_number: NonZeroU32::new(track_number).expect("track numbers count from one"),
             duration_ms: 180_000,
@@ -878,16 +884,30 @@ impl DbTrack {
         }
     }
 }
+/// The id of the first medium of a test release, so a test names the medium
+/// [`DbReleaseMedium::new_test`] makes without reading it back: a UUIDv4
+/// drawn from `release_id`.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn first_medium_id(release_id: &str) -> String {
+    let named = uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, release_id.as_bytes());
+    uuid::Builder::from_random_bytes(*named.as_bytes()).into_uuid().to_string()
+}
+
 impl DbReleaseMedium {
-    /// The first medium of `release_id`: one CD side.
+    /// The first medium of `release_id`: one CD side, under
+    /// [`first_medium_id`].
     #[cfg(any(test, feature = "test-utils"))]
     pub fn new_test(release_id: &str) -> Self {
-        Self::new(
-            release_id,
-            std::num::NonZeroU16::MIN,
-            bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
-            chrono::Utc::now(),
-        )
+        Self {
+            id: first_medium_id(release_id),
+            ..Self::new(
+                &coven::UuidIds,
+                release_id,
+                std::num::NonZeroU16::MIN,
+                bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
+                chrono::Utc::now(),
+            )
+        }
     }
 }
 

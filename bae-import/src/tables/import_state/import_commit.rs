@@ -5,7 +5,7 @@
 
 use super::*;
 use bae_records::records::artist_resolution::{relink, relink_album_artists, relink_track_artists};
-use bae_records::records::label_resolution::label_write;
+use bae_records::records::label_resolution::pressing_write;
 use bae_records::records::write::{
     insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
     insert_release_file_row, insert_release_medium_row, insert_release_row,
@@ -340,7 +340,7 @@ impl ImportTables {
         let records = rows.records.to_vec();
         let now_dt = self.store.now_utc();
         let now = now_dt.to_rfc3339();
-        let labels = bae_records::LabelParts::new(ids, now_dt, &release.pressing.labels);
+        let pressing = bae_records::PressingParts::new(ids, now_dt, &release.pressing);
         self.store
             .write_staged(
                 move |w| {
@@ -407,7 +407,7 @@ impl ImportTables {
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
                     }
 
-                    insert_release_row(tx, &release, &label_write(&labels))
+                    insert_release_row(tx, &release, &pressing_write(&pressing))
                         .map_err(commit_error)?;
                     record_import_origin_on(tx, &guard, &release.id)?;
                     // The credits are resolved above, so the artist decisions

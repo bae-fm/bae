@@ -5,7 +5,7 @@
 
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
-use bae_import::{ArtistAssignment, ReleaseUserEdit};
+use bae_import::ArtistAssignment;
 use bae_library::test_libraries::{run_two_device_test, TestDevice, TwoDevices};
 use bae_records::test_fixtures::library::LibraryRows;
 use bae_records::ExistingArtist;
@@ -283,61 +283,6 @@ fn one_release_group_identified_on_two_devices_is_one_album() {
                 listed_albums(db).await.len(),
                 1,
                 "one release group is one album on every device"
-            );
-        }
-        assert_nothing_held(devices).await;
-    });
-}
-
-/// The edit crediting `artist_ids`, in order, as a release's album artists.
-async fn album_artist_edit(device: &TestDevice, artist_ids: &[&str]) -> ReleaseUserEdit {
-    let mut assignments = Vec::new();
-    for id in artist_ids {
-        let artist = device
-            .records()
-            .find_artist_by_id(id)
-            .await
-            .unwrap()
-            .expect("the credited artist is in the library");
-        assignments.push(ArtistAssignment::Picked {
-            credit_name: None,
-            artist: ExistingArtist::from(artist),
-        });
-    }
-    ReleaseUserEdit {
-        album_title: "Album".to_string(),
-        album_artist_assignments: bae_import::Credited::plain_list(assignments),
-        album_year: None,
-        pressing: bae_types::pressing::Pressing::blank(),
-        tracks: Vec::new(),
-    }
-}
-
-/// Both devices credit the same second artist on one album while apart. The
-/// credit is one fact, and neither device's edit is refused.
-#[test]
-fn the_same_album_credit_added_on_two_devices_merges() {
-    run_two_device_test(async |devices| {
-        let (first, album_id, release_id) =
-            remote_album_by(devices.a(), catalog_artist(None, Some(DISCOGS_ARTIST)), "Album").await;
-        let (second, _, other_release) =
-            remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
-        releases_on_both(devices, &[&release_id, &other_release]).await;
-
-        devices.pause().await;
-        for device in [devices.a(), devices.b()] {
-            let edit = album_artist_edit(device, &[&first, &second]).await;
-            device.manager().apply_release_metadata_user_edit(&release_id, &edit).await.unwrap();
-        }
-        devices.resume().await;
-
-        devices
-            .converge("SELECT id || ' ' || album_id || ' ' || artist_id FROM album_artists")
-            .await;
-        for db in [devices.a().store(), devices.b().store()] {
-            assert_eq!(
-                album_artist_ids(&bae_records::test_fixtures::test_records(db), &album_id).await,
-                vec![first.clone(), second.clone()]
             );
         }
         assert_nothing_held(devices).await;

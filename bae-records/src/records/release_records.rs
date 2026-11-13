@@ -100,10 +100,11 @@ impl Records {
     #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = self.store.now_utc();
+        let ids = self.ids.clone();
         self.store
             .call_sql(move |sql| {
                 let emptiable = Emptiable::of_releases(&sql, &[change.release_id.as_str()])?;
-                set_records_on(&sql, &change, now)?;
+                set_records_on(&sql, &change, now, &*ids)?;
                 emptiable.remove_emptied(&sql)
             })
             .await
@@ -180,6 +181,7 @@ pub(super) fn set_records_on(
     tx: &CovenWrite<'_>,
     change: &RecordsChange,
     now_dt: chrono::DateTime<chrono::Utc>,
+    ids: &dyn coven::IdSource,
 ) -> Result<(), DbError> {
     let now = now_dt.to_rfc3339();
     let RecordsChange { release_id, records, current_album_id, target_album_id, new_album } =
@@ -211,6 +213,7 @@ pub(super) fn set_records_on(
                         credit: super::read::credit_name_column(row, "name_key", "name")?,
                         join_phrase: row.get("join_phrase")?,
                         ..DbAlbumArtist::new(
+                            ids,
                             &album.id,
                             &row.get::<_, String>("artist_id")?,
                             row.get::<_, u32>("position")?,

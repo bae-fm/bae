@@ -144,7 +144,7 @@ async fn credited_library_holding(discogs_artist_id: Option<&str>) -> CreditedLi
             .insert_album_artist(&bae_records::DbAlbumArtist {
                 credit: credit.map(bae_records::credits::CreditName::of),
                 join_phrase: join.map(str::to_string),
-                ..bae_records::DbAlbumArtist::new(&album.id, artist, position, now)
+                ..bae_records::DbAlbumArtist::new(&coven::UuidIds, &album.id, artist, position, now)
             })
             .await
             .unwrap();
@@ -172,7 +172,13 @@ async fn credited_library_holding(discogs_artist_id: Option<&str>) -> CreditedLi
             .records
             .insert_track_artist(&bae_records::DbTrackArtist {
                 join_phrase: join.map(str::to_string),
-                ..bae_records::DbTrackArtist::new(&featured.id, artist, position, now)
+                ..bae_records::DbTrackArtist::new(
+                    &coven::UuidIds,
+                    &featured.id,
+                    artist,
+                    position,
+                    now,
+                )
             })
             .await
             .unwrap();

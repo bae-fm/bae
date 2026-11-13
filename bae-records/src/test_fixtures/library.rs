@@ -105,7 +105,13 @@ impl RecordsFixture {
             created_at: self.at,
         });
         for (artist, position) in credits.iter().zip(0..) {
-            self.rows.album_artists.push(DbAlbumArtist::new(id, artist, position, self.at));
+            self.rows.album_artists.push(DbAlbumArtist::new(
+                &coven::UuidIds,
+                id,
+                artist,
+                position,
+                self.at,
+            ));
         }
         self
     }
@@ -147,7 +153,13 @@ impl RecordsFixture {
     /// `track`'s own credits, `artists` in that order.
     pub fn track_credits(mut self, track: &str, artists: &[&str]) -> Self {
         for (artist, position) in artists.iter().zip(0..) {
-            self.rows.track_artists.push(DbTrackArtist::new(track, artist, position, self.at));
+            self.rows.track_artists.push(DbTrackArtist::new(
+                &coven::UuidIds,
+                track,
+                artist,
+                position,
+                self.at,
+            ));
         }
         self
     }
@@ -288,7 +300,7 @@ impl RecordsFixture {
     /// Write the library inside `conn`'s write, its labels made at the time
     /// its last rows were described.
     pub fn write_on(self, conn: &coven::CovenWrite<'_>) -> Result<(), crate::IdentityWriteError> {
-        let labels = self.rows.label_parts(&coven::UuidIds, self.at);
+        let labels = self.rows.pressing_parts(&coven::UuidIds, self.at);
         self.rows.write_on(conn, &labels)
     }
 }

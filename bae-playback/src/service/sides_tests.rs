@@ -91,6 +91,7 @@ fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbR
             .enumerate()
             .map(|(index, medium)| {
                 bae_records::DbReleaseMedium::new(
+                    &coven::UuidIds,
                     "release-id",
                     bae_types::mediums::medium_position(index),
                     *medium,

@@ -58,14 +58,15 @@ impl Records {
             + 'static,
     ) -> Result<(), ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
-        let labels = LabelParts::new(
+        let pressing = PressingParts::new(
             &*self.ids,
             self.store.now_utc(),
             match &write {
-                ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing.labels,
-                ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing.labels,
+                ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing,
+                ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing,
             },
         );
+        let ids = self.ids.clone();
         let release_id = match &write {
             ReleaseEditWrite::Fields(metadata) => metadata.release.id.clone(),
             ReleaseEditWrite::Applied { rows, .. } => rows.release.id.clone(),
@@ -82,7 +83,7 @@ impl Records {
                 let emptiable = Emptiable::of_releases(&sql, &[release_id.as_str()])?
                     .including_album(&sql, &album_id)?;
                 if let Some(change) = &change {
-                    super::release_records::set_records_on(&sql, change, now_dt)?;
+                    super::release_records::set_records_on(&sql, change, now_dt, &*ids)?;
                 }
                 let now = now_dt.to_rfc3339();
                 match &write {
@@ -91,7 +92,7 @@ impl Records {
                         metadata,
                         album_fields,
                         &now,
-                        &label_write(&labels),
+                        &pressing_write(&pressing),
                     ),
                     ReleaseEditWrite::Applied { rows, picked } => write_applied_rows_on(
                         &sql,
@@ -99,7 +100,7 @@ impl Records {
                         picked,
                         album_fields,
                         &now,
-                        &label_write(&labels),
+                        &pressing_write(&pressing),
                     ),
                 }
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
@@ -120,7 +121,7 @@ fn write_applied_rows_on(
     picked: &[String],
     album_fields: AlbumFields,
     now: &str,
-    labels: &super::LabelWrite<'_>,
+    pressing: &super::PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let resolved = ArtistCredits { credits: &rows.artists, picked }.resolve_on(tx)?;
     resolved.write_on(tx)?;
@@ -146,51 +147,62 @@ fn write_applied_rows_on(
         )?;
         replace_album_artists(tx, &album.id, &album_artists, now)?;
     }
-    super::release::update_release_pressing_on(tx, &rows.release, labels)?;
+    super::release::update_release_pressing_on(tx, &rows.release, pressing)?;
 
-    // Each medium row is keyed by its release and position, so one the
-    // release keeps is rewritten in place; tracks move onto the new rows
-    // before a medium no track sits on any more goes.
+    // A medium the release holds at a position keeps its row, rewritten in
+    // place, and a position it did not hold gets the new row; tracks move
+    // onto the kept rows before a medium no track sits on any more goes.
     let release_id = &rows.release.id;
+    let held: std::collections::HashMap<u16, String> = tx
+        .query(
+            "SELECT position, id FROM release_mediums WHERE release_id = ?",
+            params![release_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?
+        .into_iter()
+        .collect();
+    let mut kept: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
     for medium in &rows.mediums {
-        tx.execute(
-            "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?) \
-             ON CONFLICT (id, release_id) DO UPDATE SET medium = excluded.medium, \
-                 side_count = excluded.side_count",
-            params![
-                medium.id,
-                medium.release_id,
-                medium.position,
-                medium.medium.carrier.map(bae_types::pressing::Medium::key),
-                medium.medium.sides,
-                medium.created_at.to_rfc3339(),
-            ],
-        )?;
+        let carrier = medium.medium.carrier.map(bae_types::pressing::Medium::key);
+        let id = match held.get(&medium.position.get()) {
+            Some(id) => {
+                tx.execute(
+                    "UPDATE release_mediums SET medium = ?, side_count = ? WHERE id = ?",
+                    params![carrier, medium.medium.sides, id],
+                )?;
+                id.clone()
+            }
+            None => {
+                tx.execute(
+                    "INSERT INTO release_mediums \
+                         (id, release_id, position, medium, side_count, created_at) \
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                    params![
+                        medium.id,
+                        medium.release_id,
+                        medium.position,
+                        carrier,
+                        medium.medium.sides,
+                        medium.created_at.to_rfc3339(),
+                    ],
+                )?;
+                medium.id.clone()
+            }
+        };
+        kept.insert(medium.id.as_str(), id);
     }
     // The save checked, in this write, that the release is as the session
     // opened on it, so it holds every track these rows name.
     for track in &rows.tracks {
+        let medium_id = kept.get(track.medium_id.as_str()).unwrap_or(&track.medium_id);
         tx.execute(
             "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ? \
              WHERE id = ? AND release_id = ?",
-            params![
-                track.title,
-                track.medium_id,
-                track.side,
-                track.track_number,
-                track.id,
-                release_id,
-            ],
+            params![track.title, medium_id, track.side, track.track_number, track.id, release_id],
         )?;
     }
-    let kept: Vec<&str> = rows.mediums.iter().map(|medium| medium.id.as_str()).collect();
-    for stale in tx.query(
-        "SELECT id FROM release_mediums WHERE release_id = ?",
-        params![release_id],
-        |row| row.get::<_, String>(0),
-    )? {
-        if !kept.contains(&stale.as_str()) {
+    for stale in held.values() {
+        if !kept.values().any(|id| id == stale) {
             tx.execute("DELETE FROM release_mediums WHERE id = ?", params![stale])?;
         }
     }

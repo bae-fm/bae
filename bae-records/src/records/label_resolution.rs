@@ -36,39 +36,61 @@ use super::catalog_match::*;
 use super::*;
 use bae_types::pressing::ReleaseLabel;
 
-/// What a write of a release's labels decides by, beside the labels.
-pub struct LabelWrite<'a> {
+/// What a write of a release's pressing decides by, beside the pressing: the
+/// ids it makes rows with, and its time.
+pub struct PressingWrite<'a> {
     /// The ids new labels are made with, in order: one for each label the
     /// release names, since each makes at most one. A new label a catalog
     /// names takes its catalog entry's id once the write has decided every
     /// label.
     fresh_ids: &'a [String],
+    /// The ids of the release's label rows, one for each label.
+    label_row_ids: &'a [String],
+    /// The ids of the release's barcode rows, one for each barcode.
+    pub(super) barcode_ids: &'a [String],
+    /// The ids of the release's media rows, one for each carrier.
+    pub(super) media_ids: &'a [String],
     /// `created_at` for a new label.
     now: &'a str,
 }
 
-/// The [`LabelWrite`] of a write that gives new labels the ids of `parts`,
+/// The [`PressingWrite`] of a write that makes rows with the ids of `parts`,
 /// made at its time.
-pub fn label_write(parts: &LabelParts) -> LabelWrite<'_> {
-    LabelWrite { fresh_ids: &parts.fresh_ids, now: &parts.now }
+pub fn pressing_write(parts: &PressingParts) -> PressingWrite<'_> {
+    PressingWrite {
+        fresh_ids: &parts.fresh_ids,
+        label_row_ids: &parts.label_row_ids,
+        barcode_ids: &parts.barcode_ids,
+        media_ids: &parts.media_ids,
+        now: &parts.now,
+    }
 }
 
-/// What a write of labels takes along into its closure: an id for each label
-/// that may be new, and the time the write makes them at.
-pub struct LabelParts {
+/// What a write of a pressing takes along into its closure: an id for each
+/// label that may be new and for each row of its lists, and the time the
+/// write makes them at.
+pub struct PressingParts {
     fresh_ids: Vec<String>,
+    label_row_ids: Vec<String>,
+    barcode_ids: Vec<String>,
+    media_ids: Vec<String>,
     now: String,
 }
 
-impl LabelParts {
-    /// The parts of a write of `labels` at `now`: an id from `ids` for each.
+impl PressingParts {
+    /// The parts of a write of `pressing` at `now`: an id from `ids` for each
+    /// label that may be new and each row of its labels, barcodes and media.
     pub fn new(
         ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
-        labels: &[ReleaseLabel],
+        pressing: &bae_types::pressing::Pressing,
     ) -> Self {
+        let mint = |count: usize| (0..count).map(|_| ids.new_id().to_string()).collect::<Vec<_>>();
         Self {
-            fresh_ids: labels.iter().map(|_| ids.new_id().to_string()).collect(),
+            fresh_ids: mint(pressing.labels.len()),
+            label_row_ids: mint(pressing.labels.len()),
+            barcode_ids: mint(pressing.barcodes.len()),
+            media_ids: mint(pressing.facts.media.len()),
             now: now.to_rfc3339(),
         }
     }
@@ -258,7 +280,7 @@ pub fn write_release_labels_on(
     tx: &CovenWrite<'_>,
     release_id: &str,
     labels: &[ReleaseLabel],
-    write: &LabelWrite<'_>,
+    write: &PressingWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
     let named_now = labels_named_on(tx, release_id)?;
     let mut decided = Decided::default();
@@ -307,7 +329,7 @@ pub fn write_release_labels_on(
             },
         )?;
     }
-    replace_release_label_rows(tx, release_id, &rows)?;
+    replace_release_label_rows(tx, release_id, &rows, write.label_row_ids)?;
     Ok(())
 }
 
@@ -336,7 +358,7 @@ fn resolve_label_on(
     named_now: &[(String, String)],
     decided: &mut Decided,
     rows: &mut [(Option<String>, Option<&str>)],
-    write: &LabelWrite<'_>,
+    write: &PressingWrite<'_>,
 ) -> Result<String, IdentityWriteError> {
     let so_far = WriteSoFar { inserts: &decided.inserts, staged: &decided.fills };
     let matched = catalog_match_on(tx, label, so_far)?;
@@ -425,47 +447,21 @@ fn name_instead(rows: &mut [(Option<String>, Option<&str>)], from: &str, to: &st
 }
 
 /// Make the release `release_id`'s label rows exactly `rows`, in order,
-/// touching only the rows that differ: a row is a place in the list.
+/// each under its id of `row_ids`.
 fn replace_release_label_rows(
     tx: &CovenWrite<'_>,
     release_id: &str,
     rows: &[(Option<String>, Option<&str>)],
+    row_ids: &[String],
 ) -> Result<(), DbError> {
-    let stored: HashMap<String, (Option<String>, Option<String>)> = tx
-        .query(
-            "SELECT id, label_id, catalog_number FROM release_labels WHERE release_id = ?",
-            params![release_id],
-            |row| Ok((row.get::<_, String>(0)?, (row.get(1)?, row.get(2)?))),
-        )?
-        .into_iter()
-        .collect();
-    let ids: Vec<String> = (0..rows.len())
-        .map(|position| crate::identity::release_label_id(release_id, position))
-        .collect();
-    for id in stored.keys() {
-        if !ids.contains(id) {
-            tx.execute("DELETE FROM release_labels WHERE id = ?", params![id])?;
-        }
-    }
-    for (position, (id, (label_id, catalog_number))) in ids.iter().zip(rows).enumerate() {
-        let wanted = (label_id.clone(), catalog_number.map(str::to_string));
-        match stored.get(id) {
-            Some(stored) if *stored == wanted => {}
-            Some(_) => {
-                tx.execute(
-                    "UPDATE release_labels SET label_id = ?, catalog_number = ? WHERE id = ?",
-                    params![label_id, catalog_number, id],
-                )?;
-            }
-            None => {
-                tx.execute(
-                    "INSERT INTO release_labels \
-                         (id, release_id, position, label_id, catalog_number) \
-                     VALUES (?, ?, ?, ?, ?)",
-                    params![id, release_id, position as i64, label_id, catalog_number],
-                )?;
-            }
-        }
+    assert_eq!(rows.len(), row_ids.len(), "a write holds an id for each label row it makes");
+    tx.execute("DELETE FROM release_labels WHERE release_id = ?", params![release_id])?;
+    for (position, ((label_id, catalog_number), id)) in rows.iter().zip(row_ids).enumerate() {
+        tx.execute(
+            "INSERT INTO release_labels (id, release_id, position, label_id, catalog_number) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![id, release_id, position as i64, label_id, catalog_number],
+        )?;
     }
     Ok(())
 }

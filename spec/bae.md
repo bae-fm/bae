@@ -144,7 +144,7 @@ media are a list of carriers, each with how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number
 alone. Its labels, its barcodes and its media are each kept one row per place
-in the list. A saved
+in the list, and a save replaces the whole list. A saved
 CUE sheet's `CATALOG` line states the barcode when every one names the same
 product, and none otherwise.
 
@@ -625,19 +625,17 @@ key that spells the fact.
 | label | its MusicBrainz label id, or failing that its Discogs label id |
 | work | its MusicBrainz work id |
 | album | its MusicBrainz release group, or failing that its Discogs master |
-| album credit | the album and the place in its list |
-| track credit | the track and the place in its list |
-| release label | the release and the place in its list |
 | work credit | the work, the artist and the position |
 | work part | the parent and child works |
 | release record | the release and the catalog |
 | cover | the release |
 | artist image | the artist |
 
-Every other row gets a fresh id: a UUIDv7, whose first 48 bits are when it was
-made by the device's clock, so one write's new rows sit together in the
-store's indexes. Anyone who can read the row can read when it was made, as its
-`created_at` already says.
+Every other row gets a fresh id, a place in a list (an album's or track's
+credits, a release's labels, barcodes, media and mediums) included: a UUIDv7,
+whose first 48 bits are when it was made by the device's clock, so one write's
+new rows sit together in the store's indexes. Anyone who can read the row can
+read when it was made, as its `created_at` already says.
 
 A row's id is its table's key
 ([coven §9.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#92-keys-and-unique-values)),
@@ -661,8 +659,10 @@ so one fact is one row.
   MusicBrainz group of an album already in the library joins that album
   (§3.7); where the two records name two library albums, the one the draft
   was read from decides.
-- **A credit list.** A credit row is a place in the list: one place is one
-  row, and the artist it names is a cell of it.
+- **A list saved whole.** A save of an album's or a track's credits, or of a
+  release's labels, barcodes, media or mediums, replaces the list: the rows it
+  held go and the rows it names are written, numbered from the start of the
+  list, so positions have no gaps.
 - **A credit name removed.** Removing an artist's other name unlinks every
   credit linking it in the same write, so no credit prints a name its artist no
   longer holds.
