@@ -72,10 +72,12 @@ pub(super) unsafe fn seek_input(
             seek_to_indexed_frame(fmt_ctx, audio, sample_clock, byte, sample)?
         }
         // Import records frames only for FLAC and MP3.
-        DecodeStart::Frame { byte, sample } => error!(
-            "a {content_type:?} stream was given a recorded frame (byte {byte}, sample \
-             {sample}); decoding from the start"
-        ),
+        DecodeStart::Frame { byte, sample } => {
+            return Err(format!(
+                "a {content_type:?} stream has no recorded frames, yet was given one (byte \
+                 {byte}, sample {sample})"
+            ))
+        }
         // Opened without `AVFMT_FLAG_FAST_SEEK`, an MP3 demuxer indexes only
         // the frames it has read, so a sample seek would read forward from its
         // first frames anyway, landing a pre-roll short of the frames its bit
@@ -113,6 +115,25 @@ unsafe fn seek_preroll(codec_ctx: *const ffmpeg_sys_next::AVCodecContext) -> u64
     declared.max(frame)
 }
 
+/// A recorded frame's byte as an FFmpeg offset. A frame begins before the
+/// file's end, so a byte at or past it is a bad record: FFmpeg's seek there
+/// succeeds at the end of the file and the decode would play nothing as a
+/// success. A byte above `i64::MAX` has no offset: cast, it wraps negative and
+/// FFmpeg clamps it to the file's start. Both fail the decode. A reader that
+/// states no size has no end to check against.
+unsafe fn recorded_byte_offset(
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    byte: u64,
+) -> Result<i64, String> {
+    let offset = i64::try_from(byte)
+        .map_err(|e| format!("recorded byte {byte} does not fit a file offset ({e})"))?;
+    let size = ffmpeg_sys_next::avio_size((*fmt_ctx).pb);
+    if size >= 0 && offset >= size {
+        return Err(format!("recorded byte {byte} is past the end of the {size}-byte file"));
+    }
+    Ok(offset)
+}
+
 /// Jump straight to a recorded frame's byte offset: no seektable consulted, no
 /// binary search reading the file's end. The landed frame states its own first
 /// sample, so the caller's `start_at_sample` trim still reaches the exact
@@ -129,7 +150,8 @@ unsafe fn seek_to_byte(
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
-    let ret = av_seek_frame(fmt_ctx, stream_index, byte_pos as i64, AVSEEK_FLAG_BYTE as c_int);
+    let offset = recorded_byte_offset(fmt_ctx, byte_pos)?;
+    let ret = av_seek_frame(fmt_ctx, stream_index, offset, AVSEEK_FLAG_BYTE as c_int);
     if ret < 0 {
         return Err(format!("byte seek to {byte_pos} failed ({})", av_err_str(ret)));
     }
@@ -157,9 +179,9 @@ unsafe fn seek_to_indexed_frame(
 ) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
+    let offset = recorded_byte_offset(fmt_ctx, byte)?;
     let timestamp = sample_clock.timestamp_of(sample as i64);
-    let ret =
-        av_add_index_entry(audio.stream, byte as i64, timestamp, 0, 0, AVINDEX_KEYFRAME as c_int);
+    let ret = av_add_index_entry(audio.stream, offset, timestamp, 0, 0, AVINDEX_KEYFRAME as c_int);
     if ret < 0 {
         return Err(format!(
             "indexing the frame at byte {byte} (sample {sample}) failed ({})",

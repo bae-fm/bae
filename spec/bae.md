@@ -4426,7 +4426,10 @@ frame: a seek it can't place decodes from where the audio begins and plays from
 the sample asked for, and one that can't even do that fails the playback.
 Any other seek FFmpeg can't make (a jump to a recorded byte, or to a recorded
 MP3 frame) fails the playback too: bae never plays from wherever the failed
-seek left the reader.
+seek left the reader. So does a recorded position that can't be a start: a byte
+at or past the file's end, one above `i64::MAX`, or a recorded frame given to a
+format that has none (only FLAC and MP3 have them). The failure names the
+record.
 An MP3 has no index FFmpeg seeks by both exactly and directly: with fast seek
 or `usetoc` it places the seek from the file's bitrate or its table of
 contents, an estimate, and without them, as bae opens an MP3, it reads forward

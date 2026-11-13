@@ -604,9 +604,17 @@ fn play_from(
     start: DecodeStart,
     trim: Option<u64>,
 ) -> Result<Vec<f32>, crate::DecodeError> {
+    play_from_buffer(filled_sparse_buffer(bytes), start, trim)
+}
+
+/// [`play_from`] over a buffer in whatever state of fill the caller made it.
+fn play_from_buffer(
+    buffer: crate::sparse_buffer::SharedSparseBuffer,
+    start: DecodeStart,
+    trim: Option<u64>,
+) -> Result<Vec<f32>, crate::DecodeError> {
     use crate::track_stream::create_track_stream_pair_with_capacity;
 
-    let buffer = filled_sparse_buffer(bytes);
     // Room for the whole 20 s track, which nothing drains until the decode ends.
     let (mut sink, mut source, _ready) =
         create_track_stream_pair_with_capacity(44100, 2, 4_410_000);
@@ -670,4 +678,98 @@ fn a_failed_byte_seek_fails_the_decode() {
         "the byte seek failed, yet the decode played {} samples",
         played.as_ref().map_or(0, Vec::len),
     );
+}
+
+/// A recorded byte at or past the file's end: FFmpeg's seek there succeeds, and
+/// the decode then read nothing and ended as a success with 0 samples. The
+/// decode fails instead, naming the record.
+#[test]
+fn a_recorded_byte_past_the_files_end_fails_the_decode() {
+    init();
+    let mp3 = lossy_sweep(EncodeFormat::Mp3 { bitrate_kbps: 192 });
+    let opus = lossy_sweep(EncodeFormat::OpusOgg { bitrate_kbps: 128 });
+    let cases = [
+        (
+            "MP3 frame",
+            mp3.clone(),
+            DecodeStart::Frame { byte: mp3.len() as u64 + 10_000, sample: 441_000 },
+        ),
+        ("Opus byte", opus.clone(), DecodeStart::Byte(opus.len() as u64 + 10_000)),
+        (
+            "Opus frame",
+            opus.clone(),
+            DecodeStart::Frame { byte: opus.len() as u64, sample: 441_000 },
+        ),
+    ];
+    for (label, bytes, start) in cases {
+        let played = play_from(&bytes, start, Some(441_000));
+        assert!(
+            played.is_err(),
+            "{label}: the recorded byte is past the file's end, yet the decode played {} samples",
+            played.as_ref().map_or(0, Vec::len),
+        );
+    }
+}
+
+/// A recorded byte above `i64::MAX` wrapped to a negative offset, which FFmpeg
+/// clamped to the file's start: the decode played from there as a success.
+/// The decode fails instead.
+#[test]
+fn a_recorded_byte_above_i64_max_fails_the_decode() {
+    init();
+    let opus = lossy_sweep(EncodeFormat::OpusOgg { bitrate_kbps: 128 });
+    let played = play_from(&opus, DecodeStart::Byte(1 << 63), None);
+    assert!(
+        played.is_err(),
+        "the byte does not fit an offset, yet the decode played {} samples",
+        played.as_ref().map_or(0, Vec::len),
+    );
+    let mp3 = lossy_sweep(EncodeFormat::Mp3 { bitrate_kbps: 192 });
+    let start = DecodeStart::Frame { byte: 1 << 63, sample: 441_000 };
+    let played = play_from(&mp3, start, Some(441_000));
+    assert!(
+        played.is_err(),
+        "the frame's byte does not fit an offset, yet the decode played {} samples",
+        played.as_ref().map_or(0, Vec::len),
+    );
+}
+
+/// Import records frames only for FLAC and MP3. A recorded frame given to any
+/// other format logged an error and decoded from the stream's start, as a
+/// success. The decode fails instead.
+#[test]
+fn a_recorded_frame_for_a_format_with_none_fails_the_decode() {
+    init();
+    let bytes = lossy_sweep(EncodeFormat::Aac { bitrate_kbps: 192 });
+    let start = DecodeStart::Frame { byte: 5000, sample: 441_000 };
+    let played = play_from(&bytes, start, Some(441_000));
+    assert!(
+        played.is_err(),
+        "AAC has no recorded frames, yet the decode played {} samples",
+        played.as_ref().map_or(0, Vec::len),
+    );
+}
+
+/// A file still downloading reports its full length, not the bytes fetched so
+/// far, so a recorded byte inside the file but beyond the fetched part is not
+/// past its end: the decode waits for the fill and plays from it.
+#[test]
+fn a_recorded_byte_beyond_the_fetched_part_is_not_past_the_files_end() {
+    init();
+    let bytes = lossy_sweep(EncodeFormat::OpusOgg { bitrate_kbps: 128 });
+    let fetched = bytes.len() / 4;
+    let byte = (bytes.len() / 2) as u64;
+    let buffer = crate::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+    buffer.append_at(0, &bytes[..fetched]);
+    let rest = buffer.clone();
+    let tail = bytes[fetched..].to_vec();
+    std::thread::spawn(move || {
+        // The decode parks reading the bytes the first quarter lacks; only
+        // then does the fill deliver them.
+        rest.wait_until_parked(1);
+        rest.append_at(fetched as u64, &tail);
+    });
+    let played = play_from_buffer(buffer, DecodeStart::Byte(byte), None)
+        .expect("a byte inside the file decodes once the fill reaches it");
+    assert!(!played.is_empty(), "the decode from byte {byte} played nothing");
 }

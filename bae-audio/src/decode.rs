@@ -18,7 +18,7 @@ use std::os::raw::{c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
 use std::time::Instant;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 mod output;
 use output::*;
