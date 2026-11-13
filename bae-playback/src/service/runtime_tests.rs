@@ -134,6 +134,64 @@ async fn read_failure_on_the_playing_track_reports_the_error() {
     );
 }
 
+/// Halting playback names no operation: it can't tell which one failed, so
+/// the failure's own site reports it.
+#[tokio::test]
+async fn halting_an_active_slot_ships_no_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    service.slot = active_slot(
+        test_prepared_track_with_file("current-track", "current-file", create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+
+    service.halt_on_error().await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), Vec::<String>::new());
+}
+
+/// The playing track's read failure ships the read as the operation that
+/// failed; the halt it causes ships nothing of its own.
+#[tokio::test]
+async fn the_playing_tracks_read_failure_ships_a_read_failure_and_its_halt_ships_none() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(
+        test_prepared_track_with_file("current-track", "current-file", buffer.clone()),
+        TrackPhase::Playing,
+    );
+
+    service
+        .handle_read_failed(
+            buffer.id(),
+            std::sync::Arc::new(bae_track_audio::TrackReadError::OriginalMissing),
+        )
+        .await;
+    service.halt_on_error().await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["read"]);
+}
+
+/// A decode failure ships the decode as the operation that failed.
+#[tokio::test]
+async fn a_decode_failure_ships_a_decode_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+
+    let served =
+        service.handle_command(PlaybackCommand::DecodeFailed { message: "bad frame".into() }).await;
+    assert!(served.is_continue());
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["decode"]);
+}
+
 /// A buffer that serves neither the current track nor the preload left the
 /// pipeline before its failure surfaced (released on a track change, cancelled
 /// by a stop). There is nothing to halt, and halting would kill whatever the
@@ -801,4 +859,62 @@ async fn saving_state_starts_no_fresh_service() {
     playback.shutdown().await;
 
     assert_eq!(script.openings(), 1);
+}
+
+/// An output that stopped sending partway through a track ships the output
+/// stopping as the operation that failed.
+#[tokio::test]
+async fn an_output_that_stopped_sending_ships_an_output_stopped_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+
+    service.output_stopped_sending("the conversion failed".to_string()).await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["output_stopped"]);
+}
+
+/// A required audio event the callback's queue dropped ships the dropped
+/// events as the operation that failed.
+#[tokio::test]
+async fn a_dropped_required_audio_event_ships_an_audio_events_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    let prepared = test_prepared_track("current-track", create_sparse_buffer(1_024));
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    let (_sink, stream, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 4000);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
+    let (mut audio_tx, audio_rx) =
+        crate::audio_output::audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
+    for _ in 0..4_096 {
+        audio_tx
+            .push_required(crate::audio_output::AudioEvent::SourceLockReacquired { missed_ms: 0 });
+    }
+    service.output = Some(test_output(source, audio_rx));
+
+    service.drain_current_audio_events().await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["audio_events"]);
+}
+
+/// A panic the loop recovers from ships the panic as the operation that
+/// failed, once.
+#[tokio::test]
+async fn a_recovered_panic_ships_one_panic_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let store = seeded_store(&[]).await;
+    let (mut service, _progress_rx) = playback_service_over(store.store(), diagnostics.clone());
+    let bug = bae_util::task_failure::caught_sync("serve a command", || {
+        bae_diagnostics::test_panic::panics("the command failed")
+    })
+    .expect_err("the closure panics");
+
+    service.recover_from_panic(bug).await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["panic"]);
 }

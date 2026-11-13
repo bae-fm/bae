@@ -132,6 +132,7 @@ impl PlaybackService {
 
         let command_tx = self.command_tx.clone();
         let progress_tx = self.progress_tx.clone();
+        let watcher_diagnostics = self.diagnostics.clone();
         self.diagnostics.spawn_reported(
             &self.runtime,
             "wait for the track's first samples",
@@ -149,6 +150,8 @@ impl PlaybackService {
             // The load would wait for its TrackReady forever: stop it with
             // an error instead.
             move |failed| {
+                watcher_diagnostics
+                    .event(TelemetryEvent::PlaybackFailed { operation: PlaybackOperation::Panic });
                 emit_progress(
                     &progress_tx,
                     PlaybackProgress::PlaybackError {
@@ -177,23 +180,21 @@ impl PlaybackService {
         Ok(())
     }
 
-    /// Drive playback down to Stopped after a mid-flight read/decode failure
-    /// surfaced a `PlaybackError`. The self-handled failure paths in `play_track`
-    /// emit `PlaybackError` AND call `stop()` synchronously before returning to
+    /// Drive playback down to Stopped after a mid-flight failure surfaced a
+    /// `PlaybackError`. The self-handled failure paths in `play_track` emit
+    /// `PlaybackError` AND call `stop()` synchronously before returning to
     /// the loop, so by the time this dequeues the slot is already Stopped and a
     /// second `stop()` would emit a duplicate Stopped — no-op there. A genuine
     /// mid-flight failure leaves the slot Active, so the teardown fires. The
     /// serial loop can't interleave a new load between `stop()` finishing and
     /// this running, so the guard is race-free. `stop()` emits no `PlaybackError`,
     /// so this can't feed back into the self-subscription that dispatched it.
+    /// It reports no telemetry: it doesn't know which operation failed, and
+    /// each failure's own site names it.
     pub(super) async fn halt_on_error(&mut self) {
         if matches!(self.slot, PlaybackSlot::Stopped) {
             debug!("HaltOnError: playback already stopped, nothing to halt");
         } else {
-            // A slot still Active here is a genuine mid-flight read/decode failure
-            // (the inline failure paths stop() before their HaltOnError dequeues,
-            // leaving the slot Stopped). That is the read-failure operation.
-            self.telemetry_playback_failed(PlaybackOperation::Read);
             self.stop().await;
         }
     }
@@ -222,6 +223,7 @@ impl PlaybackService {
                     track_id = %cur.prepared.track_id,
                     "read failed for the playing track; halting playback"
                 );
+                self.telemetry_playback_failed(PlaybackOperation::Read);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError { reason: crate::read_failure_reason(&error) },
@@ -302,6 +304,18 @@ impl PlaybackService {
     /// `error!` next to the call; only the coarse operation ships.
     pub(super) fn telemetry_playback_failed(&self, operation: PlaybackOperation) {
         self.record_telemetry(TelemetryEvent::PlaybackFailed { operation });
+    }
+
+    /// Playback failed in `operation`: report that operation, and tell the app
+    /// why. Every playback error the service emits goes out through this or
+    /// through a report of its own beside it, so each is reported once.
+    pub(super) fn fail_playback(
+        &self,
+        operation: PlaybackOperation,
+        reason: crate::PlaybackErrorReason,
+    ) {
+        self.telemetry_playback_failed(operation);
+        emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
     }
 
     /// An impossible-state site fired. The free-text detail stays in the local
@@ -611,13 +625,11 @@ impl PlaybackService {
             .map(|o| report_dropped_audio_events(&o.audio_events, "playback"))
             .unwrap_or(false);
         if dropped_required {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::PlaybackErrorReason::internal(
-                        "Playback event queue dropped a required audio event".to_string(),
-                    ),
-                },
+            self.fail_playback(
+                PlaybackOperation::AudioEvents,
+                crate::PlaybackErrorReason::internal(
+                    "Playback event queue dropped a required audio event".to_string(),
+                ),
             );
             self.stop().await;
         }

@@ -125,6 +125,12 @@ impl PlaybackProgressHandle {
                                             );
                                             diagnostics
                                                 .report_failure("write what playback is doing", &e);
+                                            diagnostics.event(
+                                                bae_diagnostics::TelemetryEvent::PlaybackFailed {
+                                                    operation:
+                                                        bae_diagnostics::PlaybackOperation::Write,
+                                                },
+                                            );
                                             // The change is told below, then this failure: the
                                             // row holds it for the screens when it can. Playback
                                             // halts on hearing it, so the row, the audio and the

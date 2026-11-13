@@ -137,7 +137,7 @@ impl PlaybackService {
                     &format!("restart the audio output for track {track_id} after a seek"),
                     &error,
                 );
-                emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
+                self.fail_playback(PlaybackOperation::AudioOutputInit, reason);
                 self.stop().await;
                 return;
             }

@@ -317,10 +317,7 @@ impl PlaybackService {
 
     fn listening_failed(&self, error: PlaybackError) {
         error!("could not record listening history: {error}");
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PlaybackError { reason: error.ui_reason() },
-        );
+        self.fail_playback(PlaybackOperation::History, error.ui_reason());
     }
 }
 

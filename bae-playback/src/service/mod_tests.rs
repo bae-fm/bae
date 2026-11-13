@@ -205,10 +205,9 @@ pub(super) async fn test_playback_service(
     seeded_playback_service(&[]).await
 }
 
-/// A `Diagnostics` wired to a `RecordingTransport`, for emission tests that
-/// assert typed events reach the wire. The transport replays success (the
-/// drained outcome queue defaults to `Ok`).
-pub(super) fn recording_diagnostics(
+/// A `Diagnostics` wired to a `RecordingTransport` that replays success, for
+/// emission tests that assert typed events reach the wire.
+pub(crate) fn recording_diagnostics(
 ) -> (bae_diagnostics::Diagnostics, Arc<bae_diagnostics::RecordingTransport>) {
     use bae_diagnostics::{
         AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
@@ -234,6 +233,17 @@ pub(super) fn recording_diagnostics(
     )
     .expect("diagnostics starts");
     (diagnostics, transport)
+}
+
+/// The `operation` of each `playback_failed` event shipped, in order.
+pub(crate) fn playback_failed_operations(
+    transport: &bae_diagnostics::RecordingTransport,
+) -> Vec<String> {
+    let operation = |event: bae_diagnostics::DiagnosticEvent| {
+        (event.name == "playback_failed")
+            .then(|| event.fields["operation"].as_str().unwrap_or_default().to_string())
+    };
+    transport.events().into_iter().filter_map(operation).collect()
 }
 
 pub(super) async fn seeded_playback_service(

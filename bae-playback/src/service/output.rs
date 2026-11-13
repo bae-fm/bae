@@ -69,11 +69,9 @@ impl PlaybackService {
     /// audio missing.
     pub(super) async fn output_stopped_sending(&mut self, detail: String) {
         self.diagnostics.report_bug("keep the audio output playing", &detail);
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: crate::PlaybackErrorReason::internal(detail),
-            },
+        self.fail_playback(
+            PlaybackOperation::OutputStopped,
+            crate::PlaybackErrorReason::internal(detail),
         );
         self.stop().await;
     }

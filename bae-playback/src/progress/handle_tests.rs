@@ -197,6 +197,32 @@ async fn a_failed_write_of_what_playback_is_doing_is_reported() {
     assert_eq!(operations, ["write what playback is doing", "write why playback failed"]);
 }
 
+/// A write of what playback is doing that fails ships the write as the
+/// operation that failed.
+#[tokio::test]
+async fn a_failed_write_of_what_playback_is_doing_ships_a_write_failure() {
+    let (diagnostics, transport) = crate::service::tests::recording_diagnostics();
+    let (handle, progress_tx, _db, tmp) = started_reporting(diagnostics.clone()).await;
+    let mut events = handle.subscribe_all();
+    crate::tables::lose_playback_level_for_test(tmp.path());
+
+    progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
+    next_event(&mut events).await;
+    next_event(&mut events).await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let shipped: Vec<_> = transport
+        .requests()
+        .iter()
+        .flat_map(|request| {
+            serde_json::from_slice::<Vec<bae_diagnostics::DiagnosticEvent>>(&request.body)
+                .expect("recorded request body is a diagnostic-event array")
+        })
+        .map(|event| (event.name, event.fields["operation"].as_str().map(str::to_string)))
+        .collect();
+    assert_eq!(shipped, [("playback_failed".to_string(), Some("write".to_string()))]);
+}
+
 /// What the fan-out compares an event against is what the row took: a value
 /// the row refused is still the row's old one, so the same value told again
 /// is a change to write again, not one the fan-out already holds.

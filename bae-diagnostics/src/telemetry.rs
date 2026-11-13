@@ -148,6 +148,13 @@ telemetry_value_enum! {
         DeviceRebuild => "device_rebuild",
         StreamStart => "stream_start",
         Read => "read",
+        Decode => "decode",
+        Write => "write",
+        Renderer => "renderer",
+        History => "history",
+        OutputStopped => "output_stopped",
+        AudioEvents => "audio_events",
+        Panic => "panic",
         Preview => "preview",
     }
 }

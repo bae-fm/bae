@@ -117,7 +117,7 @@ use volume::OutputVolume;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(test)]
 mod command_kind_tests;

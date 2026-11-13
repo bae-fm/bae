@@ -905,3 +905,20 @@ async fn a_receiver_that_refuses_a_pause_ends_airplay() {
         "{announced:?}"
     );
 }
+
+/// A refused command ships the renderer as the operation that failed.
+#[tokio::test]
+async fn a_refused_command_ships_a_renderer_failure() {
+    let (_home, mut service, _state, _rx) = remote_over_fake().await;
+    let (diagnostics, transport) = recording_diagnostics();
+    service.diagnostics = diagnostics.clone();
+
+    service
+        .handle_remote_event(RendererSessionEvent::CommandFailed(
+            crate::renderer::RendererError::Command("LOAD failed: unsupported media".to_string()),
+        ))
+        .await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["renderer"]);
+}

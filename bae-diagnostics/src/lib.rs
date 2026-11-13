@@ -789,16 +789,20 @@ impl RecordingTransport {
         self.requests.lock().expect("requests mutex is available").clone()
     }
 
-    /// Every event name across every recorded request body, in send order.
-    pub fn event_names(&self) -> Vec<String> {
+    /// Every event across every recorded request body, in send order.
+    pub fn events(&self) -> Vec<DiagnosticEvent> {
         self.requests()
             .iter()
             .flat_map(|request| {
-                let body: Vec<DiagnosticEvent> = serde_json::from_slice(&request.body)
-                    .expect("recorded request body is a diagnostic-event array");
-                body.into_iter().map(|event| event.name)
+                serde_json::from_slice::<Vec<DiagnosticEvent>>(&request.body)
+                    .expect("recorded request body is a diagnostic-event array")
             })
             .collect()
+    }
+
+    /// Every event name across every recorded request body, in send order.
+    pub fn event_names(&self) -> Vec<String> {
+        self.events().into_iter().map(|event| event.name).collect()
     }
 }
 

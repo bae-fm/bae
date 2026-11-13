@@ -338,3 +338,17 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
     assert_eq!(rows[0].played, Duration::from_secs(20));
     assert!(!drained_a_playback_error(&mut progress));
 }
+
+/// A listening history that can't be recorded ships the history as the
+/// operation that failed.
+#[tokio::test]
+async fn a_listening_that_cannot_be_recorded_ships_a_history_failure() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let (_home, mut service, _progress) = test_playback_service().await;
+    service.diagnostics = diagnostics.clone();
+
+    service.listening_failed(PlaybackError::internal("the play could not be saved"));
+
+    diagnostics.flush().await.expect("flush succeeds");
+    assert_eq!(playback_failed_operations(&transport), ["history"]);
+}

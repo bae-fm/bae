@@ -85,6 +85,7 @@ impl PlaybackService {
                 self.halt_on_error().await;
             }
             PlaybackCommand::DecodeFailed { message } => {
+                self.telemetry_playback_failed(PlaybackOperation::Decode);
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {

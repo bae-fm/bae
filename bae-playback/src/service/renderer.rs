@@ -313,11 +313,9 @@ impl PlaybackService {
             Ok(session) => session,
             Err(error) => {
                 error!("remote: failed to start the renderer session's thread: {error}");
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: crate::PlaybackErrorReason::internal(error),
-                    },
+                self.fail_playback(
+                    PlaybackOperation::Renderer,
+                    crate::PlaybackErrorReason::internal(error),
                 );
                 self.stop().await;
                 return;
@@ -382,11 +380,9 @@ impl PlaybackService {
         }
         match event {
             RendererSessionEvent::Status(status) => self.apply_remote_status(status).await,
-            RendererSessionEvent::CommandFailed(error) => emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: crate::PlaybackErrorReason::renderer(error),
-                },
+            RendererSessionEvent::CommandFailed(error) => self.fail_playback(
+                PlaybackOperation::Renderer,
+                crate::PlaybackErrorReason::renderer(error),
             ),
             RendererSessionEvent::Ended(error) => {
                 self.end_remote_and_resume_local(RemoteEnd::Lost(error.to_string())).await;
@@ -597,7 +593,7 @@ impl PlaybackService {
     /// A remote track load failed: surface the error and stop remote playback,
     /// dropping back to a stopped local renderer.
     async fn fail_remote(&mut self, reason: crate::PlaybackErrorReason) {
-        emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
+        self.fail_playback(PlaybackOperation::Renderer, reason);
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,

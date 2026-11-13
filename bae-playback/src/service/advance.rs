@@ -825,7 +825,7 @@ impl PlaybackService {
                 &format!("start the audio output for track {}", next_prepared.track_id),
                 &error,
             );
-            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
+            self.fail_playback(PlaybackOperation::AudioOutputInit, reason);
             self.stop().await;
             return;
         }

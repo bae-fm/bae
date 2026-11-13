@@ -173,17 +173,23 @@ impl PlaybackThread {
                 ),
                 |_| {},
             );
-            let reason = match caught_sync(PLAYBACK_THREAD, || {
-                self.serve(start, &commands, messages)
-            }) {
-                Ok(Ok(())) => return,
-                Ok(Err(error)) => super::output::output_start_failed(
-                    &self.diagnostics,
-                    "open the audio output",
-                    &PlaybackError::AudioOutput(error),
-                ),
-                Err(bug) => crate::PlaybackErrorReason::internal(self.diagnostics.panicked(bug)),
-            };
+            let (operation, reason) =
+                match caught_sync(PLAYBACK_THREAD, || self.serve(start, &commands, messages)) {
+                    Ok(Ok(())) => return,
+                    Ok(Err(error)) => (
+                        PlaybackOperation::AudioOutputInit,
+                        super::output::output_start_failed(
+                            &self.diagnostics,
+                            "open the audio output",
+                            &PlaybackError::AudioOutput(error),
+                        ),
+                    ),
+                    Err(bug) => (
+                        PlaybackOperation::Panic,
+                        crate::PlaybackErrorReason::internal(self.diagnostics.panicked(bug)),
+                    ),
+                };
+            self.diagnostics.event(TelemetryEvent::PlaybackFailed { operation });
             self.report_the_end(reason);
             // Its follower ends on hearing that end, which the fan-out wrote
             // into `playback_now` first: the next service reads the level
@@ -493,12 +499,7 @@ impl PlaybackService {
     /// output goes first, before the stop reads anything from it.
     pub(super) async fn recover_from_panic(&mut self, bug: Bug) {
         let failed = self.diagnostics.panicked(bug);
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: crate::PlaybackErrorReason::internal(&failed),
-            },
-        );
+        self.fail_playback(PlaybackOperation::Panic, crate::PlaybackErrorReason::internal(&failed));
         self.discard_output();
         if let Err(again) = caught("stop playback after a panic", self.stop()).await {
             self.diagnostics.panicked(again);
