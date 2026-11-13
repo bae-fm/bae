@@ -287,6 +287,58 @@ struct PlaybackProgressViewTests {
     }
 }
 
+@Suite("Seek bar drag", .serialized)
+@MainActor
+struct SeekBarDragTests {
+    /// While the person drags, the time follows the dragged position and the
+    /// positions core keeps sending do not move it, whether the bar counts up
+    /// or down; at the drop it stays until core applies the seek.
+    @Test(
+        "the time follows the drag, not the playing position",
+        arguments: [false, true]
+    )
+    func timeFollowsDrag(showRemaining: Bool) async throws {
+        let positions = LatestStream<BridgeTrackPosition>.written()
+        positions.set(
+            position(45_000, of: 180_000, progress: 0.25),
+            for: "track"
+        )
+        try await SnapshotTestSupport.withHostedWindow(
+            PlaybackProgressView(
+                position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
+                showRemainingTime: showRemaining,
+                onSeek: { _ in },
+                onToggleRemainingTime: {}
+            ),
+            size: NSSize(width: 460, height: 40)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let descendants = SnapshotTestSupport.descendants(of: host)
+            let slider = try #require(
+                descendants.compactMap { $0 as? SeekSlider }.first
+            )
+            let bar = try #require(
+                descendants.compactMap { $0 as? SeekBarNSView }.first
+            )
+            let labels = descendants.compactMap { $0 as? NSTextField }
+            let probe = DragProbe(slider: slider) {
+                positions.set(
+                    position(46_000, of: 180_000, progress: 0.26),
+                    for: "track"
+                )
+                bar.tracks.frame()
+            }
+            try clickMiddle(of: slider, in: window)
+            #expect(probe.shownDuringDrag == [showRemaining ? "-1:30" : "1:30"])
+            #expect(
+                labels.map(\.stringValue)
+                    == [showRemaining ? "-1:30" : "1:30", "3:00"]
+            )
+        }
+    }
+}
+
 @Suite("Seek bar held parts")
 @MainActor
 struct SeekBarHeldPartsTests {
@@ -385,4 +437,36 @@ private func clickMiddle(of slider: SeekSlider, in window: NSWindow) throws {
     let rect = cell.barRect(flipped: slider.isFlipped)
     let point = slider.convert(NSPoint(x: rect.midX, y: rect.midY), to: nil)
     try HostedInput.track(slider, at: point)
+}
+
+/// Stands in for the slider's target during a press: forwards each action
+/// to the bar, then makes `during` happen mid-drag and records the leading
+/// label after it.
+@MainActor
+private final class DragProbe: NSObject {
+    private let slider: SeekSlider
+    private let target: AnyObject?
+    private let action: Selector?
+    private let during: () -> Void
+    private(set) var shownDuringDrag: [String] = []
+
+    init(slider: SeekSlider, during: @escaping () -> Void) {
+        self.slider = slider
+        self.target = slider.target
+        self.action = slider.action
+        self.during = during
+        super.init()
+        slider.target = self
+        slider.action = #selector(fired(_:))
+    }
+
+    @objc
+    private func fired(_ sender: SeekSlider) {
+        if let action {
+            NSApp.sendAction(action, to: target, from: sender)
+        }
+        during()
+        let host = slider.superview?.subviews.compactMap { $0 as? NSTextField }
+        shownDuringDrag.append(host?.first?.stringValue ?? "")
+    }
 }
