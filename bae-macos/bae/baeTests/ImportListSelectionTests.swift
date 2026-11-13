@@ -304,7 +304,11 @@ enum ImportListHosting {
         uiStore: UiStore,
         imageStore: ImageStore = .stub()
     ) -> some View {
-        MacImportSidebarContainer(
+        // The list draws once the queue's summary has landed, as in the app.
+        if store.summary == nil {
+            store.applySummary(settledSummary)
+        }
+        return MacImportSidebarContainer(
             importStore: store,
             listSlot: slot,
             onAddFolder: {},
@@ -322,6 +326,19 @@ enum ImportListHosting {
         .environment(ImportSelection())
         .environment(imageStore)
     }
+
+    /// A summary of a queue with nothing watched and no narrowing.
+    static let settledSummary = BridgeImportQueueSummary(
+        watchedFolders: [],
+        hasGroups: false,
+        narrowed: nil,
+        narrowing: BridgeImportListNarrowing(
+            tab: .pending,
+            filterText: "",
+            pendingFilter: .all
+        ),
+        openedAt: 0
+    )
 
     /// Host the list, wait for its table to lay out its rows, and hand the
     /// table to `body`.

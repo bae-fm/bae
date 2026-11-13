@@ -131,7 +131,7 @@ struct MacImportSidebarContainer: View {
         )
     }
 
-    private var summary: BridgeImportQueueSummary {
+    private var summary: BridgeImportQueueSummary? {
         importStore.summary
     }
 
@@ -150,7 +150,7 @@ struct MacImportSidebarContainer: View {
             activeTab: activeTabBinding,
             counts: importStore.tabCounts,
             filterText: filterTextBinding,
-            narrowed: summary.narrowedCount(under: shownNarrowing),
+            narrowed: summary?.narrowedCount(under: shownNarrowing),
             answersView: listSlot.answersView
         ) {
             IdentificationProgressSlot(
@@ -163,34 +163,36 @@ struct MacImportSidebarContainer: View {
                 onCancelAll: onCancelAllImports
             )
             FolderScanActivitySlot(importStore: importStore)
-            CandidateListMenu(
-                watchedFolders: importStore.watchedFolders,
-                refreshingFolders: uiStore.refreshingWatchedFolders,
-                hasGroups: summary.hasGroups,
-                sortOrder: listSlot.sortOrder,
-                pendingFilter: uiStore
-                    .importCandidatePendingFilter,
-                importStore: importStore,
-                pendingFilterApplies: uiStore
-                    .importCandidateTab == .pending,
-                actions: CandidateListMenuActions(
-                    onSetSortOrder: { order in
-                        cancelReveal()
-                        listSlot.setSortOrder(order)
-                    },
-                    onSetPendingFilter: { filter in
-                        cancelReveal()
-                        listSlot.setPendingFilter(filter)
-                    },
-                    onAddFolder: onAddFolder,
-                    onSetAllGroupsExpanded: { expanded in
-                        cancelReveal()
-                        listSlot.setAllGroupsExpanded(expanded)
-                    },
-                    onRefreshFolder: onRefreshFolder,
-                    onRemoveFolder: onRemoveFolder
+            if let watchedFolders = importStore.watchedFolders {
+                CandidateListMenu(
+                    watchedFolders: watchedFolders,
+                    refreshingFolders: uiStore.refreshingWatchedFolders,
+                    hasGroups: summary?.hasGroups ?? false,
+                    sortOrder: listSlot.sortOrder,
+                    pendingFilter: uiStore
+                        .importCandidatePendingFilter,
+                    importStore: importStore,
+                    pendingFilterApplies: uiStore
+                        .importCandidateTab == .pending,
+                    actions: CandidateListMenuActions(
+                        onSetSortOrder: { order in
+                            cancelReveal()
+                            listSlot.setSortOrder(order)
+                        },
+                        onSetPendingFilter: { filter in
+                            cancelReveal()
+                            listSlot.setPendingFilter(filter)
+                        },
+                        onAddFolder: onAddFolder,
+                        onSetAllGroupsExpanded: { expanded in
+                            cancelReveal()
+                            listSlot.setAllGroupsExpanded(expanded)
+                        },
+                        onRefreshFolder: onRefreshFolder,
+                        onRemoveFolder: onRemoveFolder
+                    )
                 )
-            )
+            }
         } content: {
             ImportCandidateListSwitch(
                 listSlot: listSlot,
@@ -224,9 +226,10 @@ struct MacImportSidebarContainer: View {
 
     @ViewBuilder
     private var tabList: some View {
-        if let list = listSlot.list {
+        if let list = listSlot.list, let summary = importStore.summary {
             ImportCandidateTable(
                 list: list,
+                summary: summary,
                 importStore: importStore,
                 listSlot: listSlot,
                 actions: entryActions,
@@ -339,7 +342,9 @@ private struct ImportCoverWarmer: View {
     }
 }
 
-/// The list's table, or the empty tab, or a narrowed list with no matches.
+/// The list's table, or the empty tab, or a narrowed list with no matches. A
+/// plain surface stands in until the list and the summary have landed, and
+/// while the rows are another view's: a list not read yet is not an empty one.
 /// A view of its own so that the list's count and the summary are read here
 /// and not by the list's chrome.
 private struct ImportCandidateListSwitch<Table: View>: View {
@@ -349,18 +354,26 @@ private struct ImportCandidateListSwitch<Table: View>: View {
     let table: () -> Table
 
     var body: some View {
-        if (listSlot.list?.totalCount ?? 0) == 0 {
-            ContentUnavailableView {
-                Text(
-                    importStore.summary.narrowed == nil
-                        ? "Nothing here yet" : "No matches"
-                )
+        if let list = listSlot.list, let summary = importStore.summary {
+            if list.totalCount > 0 {
+                table()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.surface)
+            else if listSlot.answersView {
+                ContentUnavailableView {
+                    Text(
+                        summary.narrowed == nil
+                            ? "Nothing here yet" : "No matches"
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.surface)
+            }
+            else {
+                Rectangle().fill(Theme.surface)
+            }
         }
         else {
-            table()
+            Rectangle().fill(Theme.surface)
         }
     }
 }

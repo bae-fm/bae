@@ -14,6 +14,8 @@ import SwiftUI
 /// letters, Select All — goes to core as the change it is.
 struct ImportCandidateTable: NSViewRepresentable {
     let list: PaginatedList<BridgeImportListItem>
+    /// The queue's summary, which names the narrowing the rows answer.
+    let summary: BridgeImportQueueSummary
     let importStore: ImportStore
     /// Holds the person's place in the list across tab switches.
     let listSlot: ImportListSlot
@@ -112,7 +114,6 @@ struct ImportCandidateTable: NSViewRepresentable {
             count: list.totalCount,
             revision: list.contentRevision
         )
-        let summary = importStore.summary
         coordinator.update(
             list: list,
             rows: rows,

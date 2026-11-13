@@ -58,7 +58,7 @@ struct ImportPreviewDataTests {
         // The smoke scene is the Import tab's own rows under a second watched
         // root: every state it draws is one the tab reads in production, and
         // the second root is the only thing it adds.
-        #expect(smoke.store.watchedFolders.count == 2)
+        #expect(smoke.store.watchedFolders?.count == 2)
         // The identify count is over the whole queue, one row short of done.
         let counts = PreviewData.importTabCounts
         let queue = counts.pending + counts.done + counts.skipped

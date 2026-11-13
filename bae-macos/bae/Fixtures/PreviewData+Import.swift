@@ -381,7 +381,9 @@ extension PreviewData {
     @MainActor
     static func importSmokeTestScene() -> ImportPreviewFixture {
         let scene = importTabScene()
-        let base = scene.store.summary
+        guard let base = scene.store.summary else {
+            preconditionFailure("the tab scene's store holds a summary")
+        }
         scene.store.applySummary(
             importQueueSummary(
                 watchedFolders: base.watchedFolders

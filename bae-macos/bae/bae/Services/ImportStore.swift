@@ -37,27 +37,16 @@ class ImportStore {
     @ObservationIgnored
     private var clickCount: UInt64 = 0
 
-    /// Everything the chrome around the list shows: the tab counts, the
-    /// watched folders, and whether Found has groups to fold. Defaults to an
-    /// empty summary rather than `nil`: "not loaded yet" and "the queue is
-    /// genuinely empty" render identically, so no surface needs to tell them
-    /// apart.
+    /// Everything the chrome around the list shows: the watched folders,
+    /// whether Found has groups to fold, and the narrowed count. `nil` until
+    /// the first delivery: a queue with no watched folders is a different
+    /// thing from a queue not read yet, and each surface says which.
     ///
     /// Written through `applySummary`, which drops a delivery that says the
     /// same thing as the one before it: every verdict the sweep commits
     /// re-delivers this whole value, and an equal write would still invalidate
     /// everything reading it.
-    private(set) var summary = BridgeImportQueueSummary(
-        watchedFolders: [],
-        hasGroups: false,
-        narrowed: nil,
-        narrowing: BridgeImportListNarrowing(
-            tab: .pending,
-            filterText: "",
-            pendingFilter: .all
-        ),
-        openedAt: 0
-    )
+    private(set) var summary: BridgeImportQueueSummary?
 
     /// Where each watched folder's scan stands, from the folder scans' own
     /// subscription: a scan moves its found count with every folder it walks,
@@ -145,9 +134,10 @@ class ImportStore {
     /// way folder events do. The sheet inserts on open and removes on dismiss.
     var reIdentifyCandidates: OrderedDictionary<Data, Candidate> = [:]
 
-    /// The folders being watched for imports, in add order.
-    var watchedFolders: [BridgeWatchedFolder] {
-        summary.watchedFolders
+    /// The folders being watched for imports, in add order; `nil` before the
+    /// summary has landed.
+    var watchedFolders: [BridgeWatchedFolder]? {
+        summary?.watchedFolders
     }
 
     /// How far the identifications running right now have got — how many

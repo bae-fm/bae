@@ -932,7 +932,9 @@ different things about one file fails the scan.
 With no watched folder, the Import screen has no list: bae's sheep plays
 there, every few seconds taking in made-up releases or playing on its own,
 above *Add a folder to import music from* with *Import Folder…* and *Add
-Discogs Key…*; with reduced motion asked for, it holds still.
+Discogs Key…*; with reduced motion asked for, it holds still. Until the
+watched folders have been read, the screen shows a plain surface: a library
+not read yet is not a library without folders.
 
 The import list shows every candidate in one of three tabs:
 
@@ -941,6 +943,10 @@ The import list shows every candidate in one of three tabs:
 | Pending | this device imported no release from the folder's files, and not skipped; including a failed import |
 | Done | this device imported a release from the folder's files (§2.7); what is still uploading first |
 | Skipped | dismissed by the person, or broken |
+
+A tab reads *Nothing here yet* only once its list has been read and holds no
+rows (*No matches* when the filter narrows it to none); until then, and while
+its rows are still another tab's or filter's, the list is a plain surface.
 
 Done runs the releases coven still has files of in its upload queue first,
 the first queued first, and then the rest in the list's order. Only a

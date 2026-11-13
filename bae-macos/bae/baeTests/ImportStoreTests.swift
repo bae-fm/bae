@@ -334,3 +334,20 @@ struct ImportStoreSidebarCoverTests {
         }
     }
 }
+
+@MainActor
+@Suite("ImportStore queue summary")
+struct ImportStoreSummaryTests {
+    /// A queue not read yet is not a queue without watched folders: the import
+    /// screen would show its add-a-folder page to a library that has some.
+    @Test("the watched folders are unknown until the summary lands")
+    func watchedFoldersAreUnknownBeforeTheSummary() {
+        let store = ImportStore()
+        #expect(store.summary == nil)
+        #expect(store.watchedFolders == nil)
+
+        store.applySummary(ImportListHosting.settledSummary)
+
+        #expect(store.watchedFolders == [])
+    }
+}
