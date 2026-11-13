@@ -36,9 +36,11 @@ struct TrackPlaylistChoices {
     let onNewPlaylist: (_ trackId: String) -> Void
 
     /// No playlists: the menu offers none.
-    static let none = TrackPlaylistChoices(
-        listing: nil,
-        onAdd: { _, _ in },
-        onNewPlaylist: { _ in }
-    )
+    static var none: TrackPlaylistChoices {
+        TrackPlaylistChoices(
+            listing: nil,
+            onAdd: { _, _ in },
+            onNewPlaylist: { _ in }
+        )
+    }
 }
