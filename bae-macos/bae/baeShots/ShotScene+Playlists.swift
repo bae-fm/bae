@@ -52,7 +52,7 @@ extension ShotScene {
         )
         backing.session.selectPlaylist("playlist-late-night")
         let projections = LibraryProjectionStore(library: backing.library)
-        let window = PreviewScenes.libraryWindow(
+        let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (backing.library, backing.session),
             playbackStore: boardPlayback(),
