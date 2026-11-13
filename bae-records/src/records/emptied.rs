@@ -62,6 +62,8 @@ impl Emptiable {
 
     /// Also what rewriting the credits of `album_id` may empty, an album the
     /// write lands a release in or edits beside the releases it removes.
+    /// Only a release edit's save does, and that is desktop's.
+    #[cfg(desktop)]
     pub(super) fn including_album<Q: coven::SqlRead>(
         mut self,
         conn: &Q,
