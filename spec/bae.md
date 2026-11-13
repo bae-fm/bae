@@ -227,10 +227,12 @@ expects, by Unicode collation with that language's tailoring: in Swedish å, ä
 and ö come after z, in Spanish ñ after n, in Russian "я" and "Я" sit together,
 and in the root order accented letters sort with their base letter. Names
 that differ only in case have different places, lowercase first. The device
-holds its language in one local row, set by the app at launch and when its
-language changes, and a collation key of every listed name written in that
+holds its language in one local row, set by the app (macOS: its first
+preferred language, Android: its locale) at launch and when its language
+changes, and a collation key of every listed name written in that
 language beside the name; lists order by the keys. A change of language, or
-of the collation data the keys were written with, rewrites every key and
+of the collation data the keys were written with (checked as the library
+opens, before anything reads it), rewrites every key and
 advances the lists' versions in one write, so a list is in one order or the
 other and never between them. The keys are device-local and are not synced;
 every reader of the library file on the device (the app, MCP and Subsonic)

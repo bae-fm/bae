@@ -57,13 +57,27 @@ impl LibraryViews {
     /// after it failed.
     pub async fn set_sort_language(&self, tag: &str) -> Result<(), SortLanguageError> {
         let language = NameKeys::for_language(tag)?.tag().to_string();
-        Ok(self
-            .store
+        Ok(self.write_sort_language(Some(language)).await?)
+    }
+
+    /// Write every stored name key again, in the language the device already
+    /// orders in, when they were written with other collation data than this
+    /// build's. A library opens through this before anything reads or writes
+    /// it, so no row is ever keyed by data different from the rest.
+    pub async fn settle_name_keys(&self) -> Result<(), DbError> {
+        self.write_sort_language(None).await
+    }
+
+    /// Order in `language` (the stored one when `None`), writing the keys
+    /// again unless they already stand in it with this build's data.
+    async fn write_sort_language(&self, language: Option<String>) -> Result<(), DbError> {
+        self.store
             .call_bulk(move |sql| {
                 let (stored, version): (String, u32) =
                     sql.query_row("SELECT language, data_version FROM name_sort", [], |row| {
                         Ok((row.get(0)?, row.get(1)?))
                     })?;
+                let language = language.unwrap_or_else(|| stored.clone());
                 if stored == language && version == DATA_VERSION {
                     return Ok(());
                 }
@@ -76,7 +90,7 @@ impl LibraryViews {
                 }
                 Ok(())
             })
-            .await?)
+            .await
     }
 
     /// The language this device orders names in: `und`, the root order, until

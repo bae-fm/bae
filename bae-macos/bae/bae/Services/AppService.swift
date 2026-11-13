@@ -39,6 +39,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Construction wires its subscriptions; `wireUp()` starts delivery
     /// after the complete application service has been initialized.
     private let libraryBrowseSession: LibraryBrowseSession
+    /// Tells core the language names are ordered in.
+    private let sortLanguage: SortLanguage
     private let storageManagerStore: StorageManagerStore
     private let settingsNavigation = SettingsNavigation()
     /// The library's name, read while a screen shows it.
@@ -144,6 +146,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             uiStore: uiStore
         )
         self.libraryBrowseSession = libraryBrowseSession
+        sortLanguage = SortLanguage(
+            handle: appHandle,
+            showError: { uiStore.showError($0) }
+        )
         storageManagerStore = StorageManagerStore(
             library: library,
             onError: { uiStore.showError($0) }
@@ -210,6 +216,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// remote-control bindings, and re-check a deferred Discogs token.
     /// Called once after construction; previews skip it.
     func wireUp() {
+        sortLanguage.start()
         libraryBrowseSession.start()
         startCommonSubscriptions()
         desktopSubscriptions.start()

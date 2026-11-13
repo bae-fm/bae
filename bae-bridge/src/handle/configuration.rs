@@ -22,6 +22,18 @@ impl AppHandle {
 // Every setter writes the preferences row, so each is an async call the host
 // awaits off its own thread.
 forward! { async this => {
+    /// Order this device's names (album titles, artists, composers, search
+    /// results) as readers of the language `tag` expect, a language tag such
+    /// as the app's first preferred language ("sv", "en-US"). Every stored
+    /// name key is written again in it, in one write, and the lists show the
+    /// new order; a device already in `tag` writes nothing, so the app calls
+    /// this at launch and whenever its language changes. A `tag` that is not
+    /// a language tag is a `Config` failure and changes nothing.
+    fn set_sort_language(tag: String) -> () {
+        this.services.set_sort_language(&tag).await?;
+        Ok(())
+    }
+
     fn rename_library(name: String) -> () {
         let name = crate::from_app::name(&name)?;
         this.services.rename_library(&name).await?;
@@ -177,3 +189,7 @@ mod config_subscription_tests;
 #[cfg(test)]
 #[path = "device_storage_tests.rs"]
 mod device_storage_tests;
+
+#[cfg(test)]
+#[path = "sort_language_tests.rs"]
+mod sort_language_tests;

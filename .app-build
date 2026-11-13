@@ -12,6 +12,8 @@ step android android-tests ./bae-android/test-unit.sh
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
+step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests
+step android android-sort-language-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *SortLanguageTest
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step mac mac-component-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.component.
@@ -25,6 +27,8 @@ limit android-tests 10m
 limit android-element-list-tests 10m
 limit macos-welcome-library-row-tests 10m
 limit android-welcome-libraries-tests 10m
+limit macos-sort-language-tests 10m
+limit android-sort-language-tests 10m
 limit mac-shots 20m
 limit mac-welcome-shots 20m
 limit mac-component-shots 20m

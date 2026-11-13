@@ -109,3 +109,36 @@ async fn a_language_that_is_not_one_is_refused_and_changes_nothing() {
     ));
     assert_eq!(views.sort_language().await.unwrap(), "und");
 }
+
+#[tokio::test]
+async fn keys_written_with_other_collation_data_are_written_again_when_a_library_opens() {
+    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
+    let views = LibraryViews::new(db.clone());
+    views.settle_name_keys().await.unwrap();
+    // Keys of an earlier build's data: another key, under the data version
+    // that build wrote.
+    db.call_bulk(|sql| {
+        sql.execute("UPDATE name_sort SET data_version = data_version + 1", [])?;
+        sql.execute("UPDATE album_listing SET title_sort_key = x'01'", [])?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+
+    views.settle_name_keys().await.unwrap();
+
+    let (stale, version): (i64, i64) = db
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT (SELECT COUNT(*) FROM album_listing l JOIN albums a ON a.id = l.album_id
+                         WHERE l.title_sort_key IS NOT bae_name_key(a.title, 'und')),
+                        (SELECT data_version FROM name_sort)",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(stale, 0, "every title key is the current data's");
+    assert_eq!(version, i64::from(bae_util::name_key::DATA_VERSION));
+}

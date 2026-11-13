@@ -51,11 +51,14 @@ pub async fn start_library_services(
     playback_clock: bae_playback::PlaybackClockRef,
     playback_output: PlaybackOutput,
 ) -> Result<AppServices, ServicesStartError> {
+    let views = bae_views::LibraryViews::new(store.clone());
+    // Every stored name key is of the collation data this build orders names
+    // by, before anything lists or writes a name.
+    views.settle_name_keys().await?;
     manager.settle_playback_queue(restore_playback).await?;
     let queue_tables = bae_playback::tables::PlaybackQueueTables::new(store.clone());
     let now_row = bae_playback::tables::PlaybackNowRow::new(store.clone());
     let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(store.clone());
-    let views = bae_views::LibraryViews::new(store.clone());
     // No discovery outlives the process that ran it: the cast picker's list
     // starts empty, before anything that writes or reads it can.
     let cast_picker = bae_playback::renderer::CastPicker::new(store.clone());
@@ -149,7 +152,7 @@ pub enum ServicesStartError {
     /// Settling the playback queue failed.
     #[error(transparent)]
     Library(#[from] LibraryError),
-    /// Emptying the cast picker's list failed.
+    /// Settling the name keys or emptying the cast picker's list failed.
     #[error(transparent)]
     Database(#[from] DbError),
     /// The import service did not start.

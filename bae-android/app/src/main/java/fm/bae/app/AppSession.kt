@@ -114,6 +114,7 @@ class OpenLibrary internal constructor(
     val errors: ErrorDisplays get() = runtime.errors
     private var widgetJob: Job? = null
     private var memoryRelease: MemoryRelease? = null
+    private var sortLanguage: SortLanguage? = null
 
     /**
      * How many of this library's screens are composed. Closing waits for none
@@ -149,6 +150,7 @@ class OpenLibrary internal constructor(
         subscribeToValues(scope)
         appHandle.triggerSync()
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
+        sortLanguage = SortLanguage(appContext, scope, appHandle::setSortLanguage).also(SortLanguage::start)
         observeNowPlayingForWidget(scope)
     }
 
@@ -348,6 +350,8 @@ class OpenLibrary internal constructor(
         // Then: a release must never reach the handle once it closes.
         memoryRelease?.stop()
         memoryRelease = null
+        sortLanguage?.stop()
+        sortLanguage = null
         browserPages.cancel()
         libraryQueries.cancel()
         // Detach the audio-focus listener + becoming-noisy receiver: they call

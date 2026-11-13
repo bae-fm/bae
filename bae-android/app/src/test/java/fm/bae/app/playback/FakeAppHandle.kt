@@ -780,6 +780,10 @@ internal open class FakeAppHandle(
         unfaked("reconnectSync")
     }
 
+    override suspend fun setSortLanguage(tag: String) {
+        unfaked("setSortLanguage")
+    }
+
     override suspend fun releaseMemory() {
         unfaked("releaseMemory")
     }

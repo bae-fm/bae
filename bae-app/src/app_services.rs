@@ -520,6 +520,13 @@ impl AppServices {
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_download => retry_download(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), bae_library::LibraryError>);
+    /// Order this device's names in the language `tag` (a language tag, such
+    /// as the app's preferred language), as `LibraryViews::set_sort_language`
+    /// does.
+    pub async fn set_sort_language(&self, tag: &str) -> Result<(), bae_views::SortLanguageError> {
+        self.inner.views.set_sort_language(tag).await
+    }
+
     delegate_view!(get_artist_count => get_artist_count() -> u64);
     delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::DbArtistSummary>);
     delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_views::album_detail::ArtistDetail>);
