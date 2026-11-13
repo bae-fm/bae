@@ -225,6 +225,34 @@
         override var canBecomeKey: Bool { true }
     }
 
+    /// A clear window over all of the window an alert sits on, which takes
+    /// every click aimed at it and does nothing with them. Nearly clear
+    /// rather than clear, since the window server lets a click through a
+    /// window that is fully so.
+    private final class AlertShield: NSWindow {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
+
+        init(over parent: NSWindow) {
+            super
+                .init(
+                    contentRect: parent.frame,
+                    styleMask: [.borderless],
+                    backing: .buffered,
+                    defer: false
+                )
+            isReleasedWhenClosed = false
+            isOpaque = false
+            backgroundColor = NSColor.black.withAlphaComponent(0.01)
+            hasShadow = false
+            animationBehavior = .none
+            ignoresMouseEvents = false
+            setAccessibilityElement(false)
+        }
+
+        override func sendEvent(_ event: NSEvent) {}
+    }
+
     /// The alert's content in its panel: bae's face hung 36 points below the
     /// top of the window it sits on, with room around it for its shadow.
     private struct AlertPanelContent: View {
@@ -244,11 +272,13 @@
         }
     }
 
-    /// Shows alerts. An alert is a sheet of its own kind: a clear panel
-    /// holding bae's face, attached to the window of the view that raised it,
-    /// or to the sheet that is open on that window, so it is over everything the person can see and
-    /// the window below it cannot be reached, by pointer, keyboard or
-    /// VoiceOver, while it is up.
+    /// Shows alerts. An alert is a clear panel holding bae's face, a child of
+    /// the window of the view that raised it, or of the alert or sheet that is
+    /// over that window, hung from the top centre of its parent. A shield
+    /// window between them takes the pointer, the keyboard stays with the
+    /// panel whenever its parent is made key, and the panel is the one
+    /// modal element of the accessibility tree, so the window below it cannot
+    /// be reached by pointer, keyboard or VoiceOver while it is up.
     @MainActor
     public final class AlertWindows {
         public static let shared = AlertWindows()
@@ -256,22 +286,85 @@
         private struct Shown {
             let id: UUID
             let panel: NSPanel
+            let shield: NSWindow
             let parent: NSWindow
+            let observers: [NSObjectProtocol]
         }
 
         private var shown: [Shown] = []
 
         /// The window an alert raised now sits over: `window`, or when the
         /// view that raised it is in none yet the key or main one, under
-        /// whatever sheets are open on it.
-        private static func target(over window: NSWindow?) -> NSWindow? {
+        /// whatever sheets and alerts are open on it.
+        private func target(over window: NSWindow?) -> NSWindow? {
             var window =
                 window ?? NSApp.keyWindow ?? NSApp.mainWindow
                 ?? NSApp.orderedWindows.first { $0.isVisible }
-            while let sheet = window?.attachedSheet {
-                window = sheet
+            while let current = window {
+                if let sheet = current.attachedSheet {
+                    window = sheet
+                }
+                else if let alert = shown.last(where: { $0.parent === current })
+                {
+                    window = alert.panel
+                }
+                else {
+                    break
+                }
             }
             return window
+        }
+
+        /// Whether an alert raised now over `window` has a window to sit on.
+        func canPresent(over window: NSWindow?) -> Bool {
+            target(over: window) != nil
+        }
+
+        /// Places `panel` at the top centre of `parent` and `shield` over it,
+        /// and keeps them there as `parent` moves or resizes. The keyboard
+        /// stays with the alert: whatever makes the window below key hands
+        /// the key straight back. Returns the placing and the observers.
+        private static func keepWith(
+            parent: NSWindow,
+            panel: NSPanel,
+            shield: NSWindow
+        ) -> (@MainActor () -> Void, [NSObjectProtocol]) {
+            let center = NotificationCenter.default
+            let place: @MainActor () -> Void = {
+                [weak panel, weak shield, weak parent] in
+                guard let panel, let shield, let parent else { return }
+                shield.setFrame(parent.frame, display: false)
+                panel.setFrameOrigin(
+                    NSPoint(
+                        x: parent.frame.midX - panel.frame.width / 2,
+                        y: parent.frame.maxY - panel.frame.height
+                    )
+                )
+            }
+            var observers: [NSObjectProtocol] = []
+            for name in [
+                NSWindow.didResizeNotification, NSWindow.didMoveNotification,
+            ] {
+                observers.append(
+                    center.addObserver(
+                        forName: name,
+                        object: parent,
+                        queue: .main
+                    ) { _ in MainActor.assumeIsolated { place() } }
+                )
+            }
+            observers.append(
+                center.addObserver(
+                    forName: NSWindow.didBecomeKeyNotification,
+                    object: parent,
+                    queue: .main
+                ) { [weak panel] _ in
+                    MainActor.assumeIsolated {
+                        if let panel, panel.isVisible { panel.makeKey() }
+                    }
+                }
+            )
+            return (place, observers)
         }
 
         func present(
@@ -281,7 +374,7 @@
             finish: @escaping @MainActor () -> Void
         ) {
             withdraw(id: id)
-            guard let parent = Self.target(over: window) else {
+            guard let parent = target(over: window) else {
                 preconditionFailure("There is no window to show an alert over")
             }
             let host = NSHostingView(
@@ -299,8 +392,29 @@
             panel.hasShadow = false
             panel.animationBehavior = .none
             panel.contentView = host
-            shown.append(Shown(id: id, panel: panel, parent: parent))
-            parent.beginSheet(panel)
+            panel.setAccessibilityModal(true)
+            host.setAccessibilityModal(true)
+            let shield = AlertShield(over: parent)
+
+            let (place, observers) = Self.keepWith(
+                parent: parent,
+                panel: panel,
+                shield: shield
+            )
+
+            shown.append(
+                Shown(
+                    id: id,
+                    panel: panel,
+                    shield: shield,
+                    parent: parent,
+                    observers: observers
+                )
+            )
+            parent.addChildWindow(shield, ordered: .above)
+            parent.addChildWindow(panel, ordered: .above)
+            place()
+            panel.makeKeyAndOrderFront(nil)
         }
 
         func withdraw(id: UUID) {
@@ -308,14 +422,31 @@
                 return
             }
             let alert = shown.remove(at: index)
-            alert.parent.endSheet(alert.panel)
+            alert.observers.forEach(NotificationCenter.default.removeObserver)
+            let hadKey = alert.panel.isKeyWindow
+            alert.parent.removeChildWindow(alert.panel)
+            alert.parent.removeChildWindow(alert.shield)
             alert.panel.orderOut(nil)
+            alert.shield.orderOut(nil)
             // Let go of the face, whose closures hold what presented it.
             alert.panel.contentView = nil
+            // The keyboard goes back to the window the alert was over.
+            if hadKey, alert.parent.isVisible {
+                alert.parent.makeKey()
+            }
         }
 
         /// The panels showing now, the last over the others.
         public var panels: [NSPanel] { shown.map(\.panel) }
+
+        /// The windows that take the pointer for the panels showing now, in
+        /// the same order.
+        public var shields: [NSWindow] { shown.map(\.shield) }
+
+        /// The window each of the panels showing now sits over.
+        public func parent(of panel: NSPanel) -> NSWindow? {
+            shown.first { $0.panel === panel }?.parent
+        }
     }
 
     /// An alert that waits for an answer: `ask` shows the alert and returns the
@@ -367,13 +498,28 @@
     /// The view an alert is raised from, which knows its window.
     private final class WindowAnchor {
         weak var view: NSView?
+        /// What to do once the view is in a window, for an alert asked for
+        /// before there is one to raise it over.
+        var arrived: (@MainActor () -> Void)?
+    }
+
+    private final class AnchorNSView: NSView {
+        weak var anchor: WindowAnchor?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil, let arrived = anchor?.arrived else { return }
+            anchor?.arrived = nil
+            MainActor.assumeIsolated { arrived() }
+        }
     }
 
     private struct WindowAnchorView: NSViewRepresentable {
         let anchor: WindowAnchor
 
         func makeNSView(context: Context) -> NSView {
-            let view = NSView()
+            let view = AnchorNSView()
+            view.anchor = anchor
             // Out of the key-view loop and the view tree's drawing: it only
             // knows its window.
             view.isHidden = true
@@ -404,18 +550,41 @@
                 )
                 .onChange(of: isPresented, initial: true) { _, presented in
                     if presented {
-                        AlertWindows.shared.present(
-                            id: id,
-                            over: anchor.view?.window,
-                            build: build,
-                            finish: finish
-                        )
+                        raise()
                     }
                     else {
+                        anchor.arrived = nil
                         AlertWindows.shared.withdraw(id: id)
                     }
                 }
-                .onDisappear { AlertWindows.shared.withdraw(id: id) }
+                .onDisappear {
+                    anchor.arrived = nil
+                    AlertWindows.shared.withdraw(id: id)
+                }
+        }
+
+        /// Shows the alert over the anchor's window, or when there is none
+        /// yet (an alert asked for as its view is first built), as soon as
+        /// the view is in one.
+        private func raise() {
+            let anchor = anchor
+            let id = id
+            let build = build
+            let finish = finish
+            let show: @MainActor () -> Void = {
+                AlertWindows.shared.present(
+                    id: id,
+                    over: anchor.view?.window,
+                    build: build,
+                    finish: finish
+                )
+            }
+            if AlertWindows.shared.canPresent(over: anchor.view?.window) {
+                show()
+            }
+            else {
+                anchor.arrived = show
+            }
         }
     }
 

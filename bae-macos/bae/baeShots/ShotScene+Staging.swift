@@ -29,19 +29,16 @@ enum OverWindow {
         }
     }
 
-    /// An alert, hung from the top edge as the app's overlay hangs it: bae's
-    /// own face, 20 points rounded, over the window.
+    /// An alert, raised over `window` as the app raises it: `.macAlert`'s
+    /// own panel, attached to the window as a sheet. The shot takes the
+    /// window and the panel from the window server, so a scene showing one
+    /// is shown in its window.
     @MainActor
     static func alert(
         _ alert: (MacAlertWords, [MacAlertButton]),
         over window: some View
     ) -> some View {
-        ZStack(alignment: .top) {
-            window
-            MacAlertView(alert.0, buttons: alert.1)
-                .elevatedFace()
-                .padding(.top, hangs)
-        }
+        window.macAlert(isPresented: .constant(true)) { alert }
     }
 
     /// A popover, its top edge `top` points below the window's top and its

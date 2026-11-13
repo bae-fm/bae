@@ -4,55 +4,83 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Mac's alerts, each over the window it opens on: the album and
-    /// error alerts over the library window, the pane alerts over Settings,
-    /// and the unpin confirmation over the Storage manager.
+    /// The Mac's alerts, each raised over the window it opens on as the app
+    /// raises it, so each is shown in its window: the album and error alerts
+    /// over the library window, the pane alerts over Settings, and the unpin
+    /// confirmation over the Storage manager.
     static let alertScenes: [ShotScene] =
         [
-            overLibrary(
-                "mac.album.delete-album",
-                DeleteAlbumConfirmation.alert {},
-                height: 1_000,
-                openAlbum: true
-            ),
-            overLibrary(
-                "mac.album.delete-release",
-                DeleteReleaseConfirmation.alert {},
-                height: 1_000,
-                openAlbum: true
-            ),
-            overLibrary(
-                "mac.album.storage.unpin",
-                UnpinConfirmation.alert(
-                    for: PendingUnpin(
-                        releaseIds: ["release"],
-                        title: "Low Tide Hours"
-                    ),
-                    dontShowAgain: .constant(false)
-                ) { _ in },
-                height: 1_000,
-                openAlbum: true
-            ),
+            ShotScene(
+                id: "mac.album.delete-album",
+                size: CGSize(width: 1_200, height: 1_000),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                libraryAlertStage(
+                    DeleteAlbumConfirmation.alert {},
+                    height: 1_000,
+                    openAlbum: true
+                )
+            },
+            ShotScene(
+                id: "mac.album.delete-release",
+                size: CGSize(width: 1_200, height: 1_000),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                libraryAlertStage(
+                    DeleteReleaseConfirmation.alert {},
+                    height: 1_000,
+                    openAlbum: true
+                )
+            },
+            ShotScene(
+                id: "mac.album.storage.unpin",
+                size: CGSize(width: 1_200, height: 1_000),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                libraryAlertStage(
+                    UnpinConfirmation.alert(
+                        for: PendingUnpin(
+                            releaseIds: ["release"],
+                            title: "Low Tide Hours"
+                        ),
+                        dontShowAgain: .constant(false)
+                    ) { _ in },
+                    height: 1_000,
+                    openAlbum: true
+                )
+            },
             unpinSeveral(),
-            overLibrary(
-                "mac.errors.alert",
-                ErrorAlertContent.alert(
-                    title: Text("Error"),
-                    error: DisplayError(
-                        line: "Could not reach the cloud.",
-                        detail: "dns error: failed to lookup address"
-                    )
-                ),
-                height: 760
-            ),
-            overLibrary(
-                "mac.errors.alert.play-outcome",
-                ErrorAlertContent.alert(
-                    title: Text("Error"),
-                    error: DisplayError(line: "There are no tracks to play.")
-                ),
-                height: 760
-            ),
+            ShotScene(
+                id: "mac.errors.alert",
+                size: CGSize(width: 1_200, height: 760),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                libraryAlertStage(
+                    ErrorAlertContent.alert(
+                        title: Text("Error"),
+                        error: DisplayError(
+                            line: "Could not reach the cloud.",
+                            detail: "dns error: failed to lookup address"
+                        )
+                    ),
+                    height: 760
+                )
+            },
+            ShotScene(
+                id: "mac.errors.alert.play-outcome",
+                size: CGSize(width: 1_200, height: 760),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                libraryAlertStage(
+                    ErrorAlertContent.alert(
+                        title: Text("Error"),
+                        error: DisplayError(
+                            line: "There are no tracks to play."
+                        )
+                    ),
+                    height: 760
+                )
+            },
         ] + settingsPaneAlertScenes + devicesAlertScenes + overWindowAlertScenes
 
     /// The alerts the Import and Save as panes raise, over the Settings
@@ -182,7 +210,8 @@ extension ShotScene {
     private static let overWindowAlertScenes: [ShotScene] = [
         ShotScene(
             id: "mac.welcome.reset.confirm",
-            size: WelcomeWindow.size
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(
                 OverWindow.alert(
@@ -193,7 +222,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.library.view-failed",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let error = DisplayError(
@@ -239,7 +269,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.activity.panel.problem-open",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let problem = LaunchProblems(
@@ -271,35 +302,31 @@ extension ShotScene {
         },
     ]
 
-    /// An alert hung over the library window as the app shows it, 1200
+    /// An alert raised over the library window as the app raises it, 1200
     /// points wide and `height` tall as the boards draw it.
-    private static func overLibrary(
-        _ id: String,
+    private static func libraryAlertStage(
         _ alert: (MacAlertWords, [MacAlertButton]),
         height: CGFloat,
         openAlbum: Bool = false
-    ) -> ShotScene {
-        let size = CGSize(width: 1_200, height: height)
-        return ShotScene(id: id, size: size) {
-            let uiStore = UiStore()
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                openAlbum: openAlbum
-            )
-            return ShotStage(
-                OverWindow.alert(
-                    alert,
-                    over: ShotScenes.libraryWindow(
-                        uiStore: uiStore,
-                        backing: backing,
-                        syncActivity: SyncActivityStore(),
-                        playbackStore: boardPlayback(),
-                        size: size
-                    )
+    ) -> ShotStage {
+        let uiStore = UiStore()
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            openAlbum: openAlbum
+        )
+        return ShotStage(
+            OverWindow.alert(
+                alert,
+                over: ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    syncActivity: SyncActivityStore(),
+                    playbackStore: boardPlayback(),
+                    size: CGSize(width: 1_200, height: height)
                 )
-            ) {
-                (backing.session.albums.list?.totalCount ?? 0) > 0
-            }
+            )
+        ) {
+            (backing.session.albums.list?.totalCount ?? 0) > 0
         }
     }
 

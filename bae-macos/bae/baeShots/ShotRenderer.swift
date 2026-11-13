@@ -54,6 +54,7 @@ enum ShotRenderer {
             window.orderFront(nil)
             window.makeKey()
         case .window:
+            try place(window, scene: scene)
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.makeMain()
@@ -83,6 +84,7 @@ enum ShotRenderer {
             try await becomeKey(window, scene: scene)
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
+                sheets: try await sheets(of: window, scene: scene),
                 sceneId: scene.id
             )
         }
@@ -99,7 +101,27 @@ enum ShotRenderer {
         )
     }
 
-    /// Wait for `window` to be the key window of the active app, asking for
+    /// Put `window` wholly on the display with the most room, at its top left:
+    /// the screen capture takes only what is on a display, and a window past
+    /// a display's edge, or a title bar pushed up under the menu bar, would
+    /// be cut off or refused.
+    private static func place(_ window: NSWindow, scene: ShotScene) throws {
+        guard
+            let room = NSScreen.screens.map(\.visibleFrame)
+                .max(by: {
+                    $0.height * $0.width < $1.height * $1.width
+                })
+        else { throw ShotError.noScreen(scene.id) }
+        guard
+            window.frame.width <= room.width,
+            window.frame.height <= room.height
+        else { throw ShotError.windowTooLarge(scene.id, window.frame.size) }
+        window.setFrameOrigin(
+            NSPoint(x: room.minX, y: room.maxY - window.frame.height)
+        )
+    }
+
+    /// Wait for `window`, or an alert over it, to be the key window of the active app, asking for
     /// that again whenever the app or the window loses it: the window server
     /// draws a title bar and toolbar as inactive otherwise, which the app
     /// never shows in use. Fails when another app keeps the focus.
@@ -116,7 +138,16 @@ enum ShotRenderer {
         .map { Wait.Notice($0, of: nil) }
         do {
             try await Wait.until(notices: changes) {
-                if NSApp.isActive, window.isKeyWindow { return true }
+                // An alert over the window holds the key, and the window draws
+                // as active under it.
+                if NSApp.isActive,
+                    window.isKeyWindow
+                        || AlertWindows.shared.panels.contains(
+                            where: \.isKeyWindow
+                        )
+                {
+                    return true
+                }
                 NSApp.activate(ignoringOtherApps: true)
                 window.makeKeyAndOrderFront(nil)
                 return false
@@ -128,59 +159,6 @@ enum ShotRenderer {
         // Draw the frame as active and hand it to the window server.
         window.displayIfNeeded()
         CATransaction.flush()
-    }
-
-    /// The whole window as the window server composes it, as PNG bytes: a
-    /// window's toolbar draws its controls on glass, which a view's own
-    /// drawing leaves out, so the window is captured the way the screen
-    /// shows it. A process may capture its own windows without the screen
-    /// recording permission. ScreenCaptureKit's results aren't `Sendable`,
-    /// so the capture runs and encodes off the main actor and hands back
-    /// only the PNG bytes.
-    @concurrent
-    private nonisolated static func windowPNG(
-        _ windowID: CGWindowID,
-        sceneId: String
-    ) async throws -> Data {
-        // The window server lists a window a moment after it is ordered in,
-        // with an empty frame until it is drawn; a capture sized from that
-        // frame is refused as an invalid parameter. Ask again until the
-        // window has a frame.
-        var shared: SCWindow?
-        for _ in 0..<50 {
-            let content = try await SCShareableContent.currentProcess
-            shared = content.windows.first { $0.windowID == windowID }
-            if let shared, !shared.frame.isEmpty, shared.isOnScreen { break }
-            try await Task.sleep(for: .milliseconds(100))
-        }
-        guard let shared else { throw ShotError.windowNotShared(sceneId) }
-        guard !shared.frame.isEmpty, shared.isOnScreen else {
-            throw ShotError.windowNotDrawn(sceneId, shared.frame)
-        }
-        let filter = SCContentFilter(desktopIndependentWindow: shared)
-        let configuration = SCStreamConfiguration()
-        configuration.width = Int(filter.contentRect.width) * scale
-        configuration.height = Int(filter.contentRect.height) * scale
-        configuration.ignoreShadowsSingleWindow = true
-        configuration.showsCursor = false
-        let image = try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: configuration
-        )
-        let rep = NSBitmapImageRep(
-            cgImage: try ShotImage.scaled(
-                image,
-                width: configuration.width,
-                height: configuration.height,
-                sceneId: sceneId
-            )
-        )
-        rep.size = filter.contentRect.size
-        guard let data = rep.representation(using: .png, properties: [:])
-        else {
-            throw ShotError.pngEncodingFailed(sceneId)
-        }
-        return data
     }
 
     /// The window `rootView` is shown in for `scene`, and the view the
@@ -219,6 +197,8 @@ enum ShotRenderer {
             // content holds what a toolbar would.
             hosting.sceneBridgingOptions =
                 titleBar == .shown ? .toolbars : []
+            // The window's size is the scene's, whatever the content asks for.
+            hosting.sizingOptions = []
             let window = ShotWindow(
                 contentRect: bounds,
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -234,7 +214,18 @@ enum ShotRenderer {
             // server's capture can catch partway.
             window.animationBehavior = .none
             window.contentViewController = hosting
-            window.setContentSize(scene.size)
+            if titleBar == .hidden {
+                // The content reaches under the title bar, so the frame is
+                // the scene's size; sizing the content would add the title
+                // bar's height below it, an empty strip in the capture.
+                window.setFrame(
+                    NSRect(origin: window.frame.origin, size: scene.size),
+                    display: false
+                )
+            }
+            else {
+                window.setContentSize(scene.size)
+            }
             window.title = title
             guard let frame = window.contentView?.superview else {
                 preconditionFailure("A titled window has a frame view")
@@ -326,6 +317,8 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotShared(String)
     case windowNotDrawn(String, CGRect)
     case windowNotKey(String)
+    case noScreen(String)
+    case windowTooLarge(String, CGSize)
     case unknownSelection(String, String)
 
     var description: String {
@@ -344,6 +337,10 @@ enum ShotError: Error, CustomStringConvertible {
                 + "\(frame), off the screen or empty"
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
+        case .noScreen(let id):
+            "no display to place scene \(id)'s window against"
+        case .windowTooLarge(let id, let size):
+            "scene \(id)'s window, \(size), is larger than any display's free area"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }

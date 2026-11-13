@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import Foundation
 
 /// Every key of an element but `text` and `placeholder` is written, null when the tree has no
@@ -88,7 +89,16 @@ struct ShotElementList: Encodable {
         size: CGSize,
         scale: Int
     ) throws -> Self {
-        let tree = try AccessibilityTree.read(of: window, subject: board)
+        var tree = try AccessibilityTree.read(of: window, subject: board)
+        // An alert is a window of its own over this one; its elements are
+        // listed where it draws them in this window.
+        for panel in AlertWindows.shared.panels {
+            tree = tree.adding(
+                try AccessibilityTree.read(of: panel, subject: board),
+                atX: panel.frame.minX - window.frame.minX,
+                y: window.frame.maxY - panel.frame.maxY
+            )
+        }
         return Self(
             board: board,
             size: Size(width: size.width, height: size.height),

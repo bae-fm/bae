@@ -117,15 +117,17 @@ struct AccessibilityTree: Sendable {
         guard !list.isEmpty else {
             throw ReadError.listsNoWindow(subject)
         }
-        guard
-            let window = list.first(where: {
-                guard let frame = Reader.frame(of: $0) else { return false }
-                return abs(frame.minX - origin.x) <= 1
-                    && abs(frame.minY - origin.y) <= 1
-                    && abs(frame.width - size.width) <= 1
-                    && abs(frame.height - size.height) <= 1
-            })
-        else {
+        // A window that only takes clicks over another has the same frame
+        // and holds nothing: the one that holds elements is the window.
+        let there = list.filter {
+            guard let frame = Reader.frame(of: $0) else { return false }
+            return abs(frame.minX - origin.x) <= 1
+                && abs(frame.minY - origin.y) <= 1
+                && abs(frame.width - size.width) <= 1
+                && abs(frame.height - size.height) <= 1
+        }
+        let holding = there.first { !Reader.children(of: $0).isEmpty }
+        guard let window = holding ?? there.first else {
             throw ReadError.windowNotListed(
                 subject,
                 wanted: CGRect(origin: origin, size: size),
@@ -302,5 +304,35 @@ extension CGRect {
     fileprivate var isFinite: Bool {
         origin.x.isFinite && origin.y.isFinite && size.width.isFinite
             && size.height.isFinite
+    }
+}
+
+extension AccessibilityTree {
+    /// This tree with `other`'s elements after its own, `other` read from a
+    /// window that sits at `x`, `y` points from this tree's window's top-left.
+    func adding(_ other: Self, atX x: Double, y: Double) -> Self {
+        let base = nodes.count
+        return Self(
+            nodes: nodes
+                + other.nodes.map {
+                    Node(
+                        role: $0.role,
+                        subrole: $0.subrole,
+                        title: $0.title,
+                        description: $0.description,
+                        placeholder: $0.placeholder,
+                        value: $0.value,
+                        x: $0.x + x,
+                        y: $0.y + y,
+                        width: $0.width,
+                        height: $0.height,
+                        enabled: $0.enabled,
+                        selected: $0.selected,
+                        focused: $0.focused,
+                        style: $0.style,
+                        parent: $0.parent.map { $0 + base }
+                    )
+                }
+        )
     }
 }

@@ -31,7 +31,7 @@ step android android-tests ./bae-android/test-unit.sh
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-window-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select mac.welcome. --select mac.settings.
 step android android-shots scripts/cargo.sh run -p bae-shots -- run --platform android
-shots mac scripts/cargo.sh run -p bae-shots -- run --platform mac --select {select}
+shots mac scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select {select}
 shots android scripts/cargo.sh run -p bae-shots -- run --platform android --select {select}
 
 limit macos-tests-run 10m

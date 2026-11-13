@@ -41,16 +41,30 @@ extension ShotScene {
             "mac.welcome.library-details.unsent-changes",
             PreviewData.standingUnsent
         ),
-        removalAlert(
-            "mac.welcome.delete-never-synced",
-            PreviewData.odilesRecords
-        ),
-        removalAlert("mac.welcome.remove", PreviewData.homeMusic),
-        removalAlert(
-            "mac.welcome.remove.unsent-changes",
-            PreviewData.homeMusic,
-            losing: .counted(holdsUnsent: true)
-        ),
+        ShotScene(
+            id: "mac.welcome.delete-never-synced",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            removalAlertStage(PreviewData.odilesRecords)
+        },
+        ShotScene(
+            id: "mac.welcome.remove",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            removalAlertStage(PreviewData.homeMusic)
+        },
+        ShotScene(
+            id: "mac.welcome.remove.unsent-changes",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            removalAlertStage(
+                PreviewData.homeMusic,
+                losing: .counted(holdsUnsent: true)
+            )
+        },
         ShotScene(id: "mac.welcome.remove.removing", size: WelcomeWindow.size) {
             let reads = CountedReads(libraries: PreviewData.boardLibraries)
             let removals = PreviewData.welcomeRemovals(
@@ -72,22 +86,41 @@ extension ShotScene {
                 )
             ) { reads.answered == 2 }
         },
-        overWelcome("mac.welcome.remove.failed") { _, window in
-            OverWindow.alert(
-                LibraryRemovalAlerts.failure(
-                    FailedRemoval(
-                        library: PreviewData.homeMusic,
-                        error: DisplayError(
-                            line:
-                                "Could not reach the cloud. Check your connection and try again."
-                        ),
-                        retry: .ask
-                    )
-                ),
-                over: window
-            )
+        ShotScene(
+            id: "mac.welcome.remove.failed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage { _, window in
+                OverWindow.alert(
+                    LibraryRemovalAlerts.failure(
+                        FailedRemoval(
+                            library: PreviewData.homeMusic,
+                            error: DisplayError(
+                                line:
+                                    "Could not reach the cloud. Check your connection and try again."
+                            ),
+                            retry: .ask
+                        )
+                    ),
+                    over: window
+                )
+            }
         },
-        savedCodeDeletionAlert(),
+        ShotScene(
+            id: "mac.welcome.saved-code.delete",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage(savedCodes: savedCodes) { _, window in
+                OverWindow.alert(
+                    SavedCodeDeletion.alert(
+                        for: SavedRestoreEntry(savedCodes[0])
+                    ) {},
+                    over: window
+                )
+            }
+        },
         ShotScene(
             id: "mac.welcome.opening.finding-libraries",
             size: WelcomeWindow.size
@@ -379,28 +412,47 @@ extension ShotScene {
         laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
     ) -> ShotScene {
         ShotScene(id: id, size: size) {
-            let reads = CountedReads(
+            overWelcomeStage(
+                size: size,
                 libraries: libraries,
                 savedCodes: savedCodes,
-                unreadableInstallation: unreadableInstallation
+                unreadableInstallation: unreadableInstallation,
+                extraReads: extraReads,
+                laid: dialog
             )
-            // `ShotScenes.welcome` at `size`: a board may draw the window
-            // taller than the app's, to fit a popover under its rows.
-            let window = MacWelcomeWindow(size: size) {
-                WelcomeView(
-                    onLibraryReady: { _, _ in },
-                    onOpenLibrary: { _ in },
-                    onFinishReplacement: { _, _ in },
-                    onResetFromCloud: { _ in },
-                    initialMode: .choose,
-                    canDeleteActiveLibrary: true
-                )
-            }
-            .environment(reads.setup)
-            .environment(PreviewData.welcomeRemovals())
-            return ShotStage(dialog(reads, AnyView(window))) {
-                reads.answered == reads.reads + extraReads
-            }
+        }
+    }
+
+    /// What `overWelcome` shows, for a scene shown in its window.
+    private static func overWelcomeStage<Dialog: View>(
+        size: CGSize = WelcomeWindow.size,
+        libraries: [BridgeLibrary] = PreviewData.boardLibraries,
+        savedCodes: [BridgeSavedRestoreEntry] = [],
+        unreadableInstallation: String? = nil,
+        extraReads: Int = 0,
+        laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
+    ) -> ShotStage {
+        let reads = CountedReads(
+            libraries: libraries,
+            savedCodes: savedCodes,
+            unreadableInstallation: unreadableInstallation
+        )
+        // `ShotScenes.welcome` at `size`: a board may draw the window
+        // taller than the app's, to fit a popover under its rows.
+        let window = MacWelcomeWindow(size: size) {
+            WelcomeView(
+                onLibraryReady: { _, _ in },
+                onOpenLibrary: { _ in },
+                onFinishReplacement: { _, _ in },
+                onResetFromCloud: { _ in },
+                initialMode: .choose,
+                canDeleteActiveLibrary: true
+            )
+        }
+        .environment(reads.setup)
+        .environment(PreviewData.welcomeRemovals())
+        return ShotStage(dialog(reads, AnyView(window))) {
+            reads.answered == reads.reads + extraReads
         }
     }
 
@@ -467,32 +519,17 @@ extension ShotScene {
     }
 
     /// The confirmation `library` asks before it is removed, counted as
-    /// `loss`.
-    private static func removalAlert(
-        _ id: String,
+    /// `loss`, over the welcome window.
+    private static func removalAlertStage(
         _ library: BridgeLibrary,
         losing loss: RemovalLoss = .counted(holdsUnsent: false)
-    ) -> ShotScene {
-        overWelcome(id) { _, window in
+    ) -> ShotStage {
+        overWelcomeStage { _, window in
             OverWindow.alert(
                 LibraryRemovalAlerts.confirmation(
                     for: library,
                     losing: loss
                 ),
-                over: window
-            )
-        }
-    }
-
-    /// The confirmation to delete the first saved restore code, as the
-    /// saved-codes section's alert words it (`SavedCodeDeletion`).
-    private static func savedCodeDeletionAlert() -> ShotScene {
-        overWelcome("mac.welcome.saved-code.delete", savedCodes: savedCodes) {
-            _,
-            window in
-            OverWindow.alert(
-                SavedCodeDeletion.alert(for: SavedRestoreEntry(savedCodes[0])) {
-                },
                 over: window
             )
         }
