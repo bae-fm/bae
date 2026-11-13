@@ -11,7 +11,7 @@ fn recorded(page: &str) -> Vec<(&str, &str)> {
 fn the_table_is_discogs_s_list() {
     assert_eq!(
         ROLES.iter().map(|(heading, role, _)| (*heading, *role)).collect::<Vec<_>>(),
-        recorded(include_str!("../../test-fixtures/credit-vocabulary/discogs-credits.txt"))
+        recorded(include_str!("discogs-credits.tsv"))
     );
 }
 
@@ -151,15 +151,15 @@ fn a_discogs_instrument_is_read_onto_musicbrainz_s_list() {
     ] {
         assert_eq!(credits(name), [instrument(listed)], "{name}");
     }
-    for name in ["Orchestra", "Band", "Ensemble", "Soloist"] {
+    for name in ["Orchestra", "Band", "Ensemble"] {
         assert_eq!(credits(name), [named(name)], "{name}");
     }
-    for (_, name, reading) in ROLES {
+    for (_, name, reading) in ROLES.iter() {
         match reading {
             Reading::Instrument(listed) => {
                 assert!(Instrument::from_name(listed).is_some(), "{name} reads onto {listed}");
             }
-            Reading::Voice(listed) => {
+            Reading::Voice(listed, _) => {
                 assert!(Voice::from_name(listed).is_some(), "{name} reads onto {listed}");
             }
             _ => {}
@@ -181,12 +181,103 @@ fn any_other_role_is_credited_as_discogs_writes_it() {
         }]
     );
     assert_eq!(
-        credits("Tin Whistle"),
-        [CreditedAs { role: CreditRole::Stated("Tin Whistle".to_string()), qualifiers: vec![] }]
+        credits("Tin Kettle"),
+        [CreditedAs { role: CreditRole::Stated("Tin Kettle".to_string()), qualifiers: vec![] }]
     );
 }
 
 #[test]
 fn names_compare_with_case_aside() {
     assert_eq!(credits("written-by"), [kind(CreditRoleKind::Writer, vec![])]);
+}
+
+/// A role the capture lists is read as exactly one credit, in the kind of
+/// credit its table row states.
+#[test]
+fn every_captured_role_is_read_or_kept_by_name() {
+    let captured = recorded(include_str!("discogs-credits.tsv"));
+    assert_eq!(captured.len(), 1078);
+    for (heading, role) in captured {
+        let row = ROLES
+            .iter()
+            .find(|(listed_heading, listed, _)| *listed_heading == heading && *listed == role)
+            .unwrap_or_else(|| panic!("{role} under {heading} has a row"));
+        let read = credits(role);
+        assert_eq!(read.len(), 1, "{role}");
+        match (row.2, &read[0].role) {
+            (Reading::Stated, CreditRole::Stated(words)) => assert_eq!(words, role),
+            (Reading::Named, CreditRole::Performer(Some(Part::Words(words)))) => {
+                assert_eq!(words, role)
+            }
+            (Reading::Stated | Reading::Named, other) => {
+                panic!("{role} is kept by name but reads as {other:?}")
+            }
+            (_, CreditRole::Stated(_)) => panic!("{role} has a reading but is kept by name"),
+            _ => {}
+        }
+    }
+}
+
+#[test]
+fn an_instrument_discogs_lists_is_the_one_musicbrainz_lists() {
+    for (name, listed) in [
+        ("Cello", "cello"),
+        ("Acoustic Guitar", "acoustic guitar"),
+        ("Snare", "snare drum"),
+        ("English Horn", "cor anglais"),
+        ("Violoncello", "cello"),
+        ("Tin Whistle", "tin whistle"),
+        ("Ondes Martenot", "ondes Martenot"),
+    ] {
+        assert_eq!(credits(name), [instrument(listed)], "{name}");
+    }
+}
+
+#[test]
+fn a_vocal_role_discogs_lists_is_the_voice_musicbrainz_lists() {
+    for (name, listed) in [
+        ("Lead Vocals", "lead vocals"),
+        ("Soprano Vocals", "soprano vocals"),
+        ("Choir", "choir vocals"),
+        ("Speech", "spoken vocals"),
+        ("Whistling", "whistling"),
+        ("Voice", "vocal"),
+    ] {
+        assert_eq!(credits(name), [voice(listed)], "{name}");
+    }
+    assert_eq!(
+        credits("Solo Vocal"),
+        [qualified(voice("vocal"), vec![RoleQualifier::Kind(QualifierKind::Solo)])]
+    );
+}
+
+#[test]
+fn a_role_that_is_a_modifier_is_a_performer_with_that_qualifier() {
+    let performer = CreditedAs { role: CreditRole::Performer(None), qualifiers: vec![] };
+    assert_eq!(
+        credits("Guest"),
+        [qualified(performer.clone(), vec![RoleQualifier::Kind(QualifierKind::Guest)])]
+    );
+    assert_eq!(
+        credits("Soloist"),
+        [qualified(performer, vec![RoleQualifier::Kind(QualifierKind::Solo)])]
+    );
+}
+
+#[test]
+fn an_instrument_or_voice_bae_has_no_entry_for_keeps_discogs_s_word() {
+    for name in ["Drum Programming", "Harmony Vocals", "Rap", "Hang Drum", "Lead Guitar"] {
+        assert_eq!(credits(name), [named(name)], "{name}");
+    }
+}
+
+#[test]
+fn a_role_bae_has_no_name_for_is_kept_by_name() {
+    for name in ["Hosted By", "Conductor", "Remix", "Design", "Narrator", "Tour Manager"] {
+        assert_eq!(
+            credits(name),
+            [CreditedAs { role: CreditRole::Stated(name.to_string()), qualifiers: vec![] }],
+            "{name}"
+        );
+    }
 }

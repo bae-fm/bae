@@ -6332,14 +6332,19 @@ instrument or voice it names by its id (the `Vocal` attribute itself for a
 `vocal` relation naming none); one the lists do not hold is
 kept as the credit prints it. Each relationship type page MusicBrainz publishes is
 reproduced name for name with its reverse link phrase, which words a role bae
-has no name for. A Discogs role name is read through a table: Written-By,
-Composed By, Lyrics By and the like are the writing roles, Producer,
-Engineer, Mixed By and Mastered By their roles, and the instrument and vocal
-roles performers of the matching instrument or voice (Bass is bass guitar,
-Drums is drums (drum set), Backing Vocals is background vocals), or of
-Discogs's own word where bae's lists hold none (Orchestra, Band, Ensemble,
-Soloist); the table holds the roles of Discogs's list
-named here, and any other Discogs role is kept as Discogs wrote it.
+has no name for. Discogs's credits list is captured whole, and a table reads each of its roles: Written-By, Composed By,
+Lyrics By and the like are the writing roles, Producer, Engineer, Mixed By and
+Mastered By their roles (Co-producer, Executive-Producer and Remastered By with
+the qualifier they state), and an instrument or vocal role a performer of the
+instrument or voice on MusicBrainz's lists it is (Bass is bass guitar, Drums is
+drums (drum set), Violoncello is cello, Backing Vocals is background vocals,
+Choir is choir vocals, Solo Vocal is vocals qualified solo). Guest and Soloist
+are a performer naming no part, qualified guest or solo, as Performer and
+Musician are one with no qualifier. An instrument, voice or ensemble bae's lists
+hold none for (Orchestra, Band, Ensemble, Drum Programming, Harmony Vocals) is
+a performer of Discogs's own word, and every other role (Hosted By, Conductor,
+Remix, Design, Narrator) is kept as Discogs wrote it, as is a role the list
+does not hold.
 
 **Audio codecs.** Lossless, stating a bit depth: FLAC, APE, ALAC, PCM, WavPack,
 DSD. Lossy, stating a bitrate: MP3, AAC, Opus, Vorbis.

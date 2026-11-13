@@ -1,0 +1,1079 @@
+# Source: discogs-credits.tsv (every credit role Discogs lists), read onto bae's roles, instruments and voices. One role per line, in that file's order: its heading, the role, then how bae reads it, then the target and a qualifier where they apply. `kind` is a role bae names (target: its key). `instrument` is a performer of the instrument MusicBrainz lists under the target name; `voice` likewise for a voice; `performer` a performer naming no instrument or voice; `named` a performer of an instrument, voice or ensemble bae's lists do not hold, kept in Discogs's word; `stated` a role bae has no name for, kept in Discogs's word. The qualifier is a modifier the role itself states.
+Unlinked	Artwork By	stated		
+Unlinked	Photography	stated		
+Unlinked	Executive Producer	kind	producer	executive
+Unlinked	Other	stated		
+Unlinked	Written By	kind	writer	
+Writing & Arrangement	Written-By	kind	writer	
+Writing & Arrangement	Adapted By	stated		
+Writing & Arrangement	Arranged By	kind	arranger	
+Writing & Arrangement	Beats	stated		
+Writing & Arrangement	Cadenza	stated		
+Writing & Arrangement	Composed By	kind	composer	
+Writing & Arrangement	Concept By	stated		
+Writing & Arrangement	Copyist	stated		
+Writing & Arrangement	Created By	stated		
+Writing & Arrangement	Instrumentation By	stated		
+Writing & Arrangement	Libretto By	kind	librettist	
+Writing & Arrangement	Lyrics By	kind	lyricist	
+Writing & Arrangement	Music By	kind	composer	
+Writing & Arrangement	Musical Assistance	stated		
+Writing & Arrangement	Orchestrated By	stated		
+Writing & Arrangement	Programmed By	stated		
+Writing & Arrangement	Score	stated		
+Writing & Arrangement	Score Editor	stated		
+Writing & Arrangement	Sequenced By	stated		
+Writing & Arrangement	Songwriter	kind	writer	
+Writing & Arrangement	Sound Designer	stated		
+Writing & Arrangement	Transcription By	stated		
+Writing & Arrangement	Translated By	kind	translator	
+Writing & Arrangement	Words By	kind	lyricist	
+Featuring & Presenting	Featuring	stated		
+Featuring & Presenting	Hosted By	stated		
+Writing & Arrangement	Music Consultant	stated		
+Featuring & Presenting	Presenter	stated		
+Conducting & Leading	Chorus Master	stated		
+Conducting & Leading	Concertmaster	stated		
+Conducting & Leading	Concertmistress	stated		
+Conducting & Leading	Conductor	stated		
+Conducting & Leading	Contractor	stated		
+Conducting & Leading	Directed By	stated		
+Conducting & Leading	Leader	stated		
+Conducting & Leading	Music Director	stated		
+Conducting & Leading	Repetiteur	stated		
+Production	Co-producer	kind	producer	co
+Production	Collected By	stated		
+Production	Commissioned By	stated		
+Production	Compilation Producer	stated		
+Production	Compiled By	stated		
+Production	Curated By	stated		
+Production	Editor	stated		
+Production	Executive-Producer	kind	producer	executive
+Production	Post Production	stated		
+Production	Producer	kind	producer	
+Production	Recording Supervisor	stated		
+Production	Reissue Producer	stated		
+Production	Research	stated		
+Production	Supervised By	stated		
+Remix	Remix	stated		
+DJ Mix	DJ Mix	stated		
+Visual	Animation	stated		
+Visual	Art Direction	stated		
+Visual	Artwork	stated		
+Visual	Assemblage	stated		
+Visual	Calligraphy	stated		
+Visual	Camera Operator	stated		
+Visual	CGI Artist	stated		
+Visual	Cinematographer	stated		
+Visual	Costume Designer	stated		
+Visual	Cover	stated		
+Visual	Creative Director	stated		
+Visual	Design	stated		
+Visual	Design Concept	stated		
+Visual	Director Of Photography	stated		
+Visual	Drawing	stated		
+Visual	Film Director	stated		
+Visual	Film Editor	stated		
+Visual	Film Producer	stated		
+Visual	Film Technician	stated		
+Visual	Filmed By	stated		
+Visual	Footage By	stated		
+Visual	Gaffer	stated		
+Visual	Graphic Design	stated		
+Visual	Graphics	stated		
+Visual	Grip	stated		
+Visual	Hair	stated		
+Visual	Illustration	stated		
+Visual	Image Editor	stated		
+Visual	Layout	stated		
+Visual	Lettering	stated		
+Visual	Lighting	stated		
+Visual	Lighting Director	stated		
+Visual	Lithography	stated		
+Visual	Logo	stated		
+Visual	Make-Up	stated		
+Visual	Model	stated		
+Visual	Painting	stated		
+Visual	Photography By	stated		
+Visual	Production Manager	stated		
+Visual	Realization	stated		
+Visual	Scenographer	stated		
+Visual	Screen Printing	stated		
+Visual	Set Designer	stated		
+Visual	Sleeve	stated		
+Visual	Stage Manager	stated		
+Visual	Stylist	stated		
+Visual	Typography	stated		
+Visual	Video Director	stated		
+Visual	Video Editor	stated		
+Visual	Video Producer	stated		
+Visual	Video Technician	stated		
+Visual	Videography	stated		
+Visual	VJ	stated		
+Acting, Literary & Spoken	Abridged By	stated		
+Acting, Literary & Spoken	Adapted By (Text)	stated		
+Acting, Literary & Spoken	Announcer	stated		
+Acting, Literary & Spoken	Author	stated		
+Acting, Literary & Spoken	Booklet Editor	stated		
+Acting, Literary & Spoken	Choreography	stated		
+Acting, Literary & Spoken	Commentator	stated		
+Acting, Literary & Spoken	Dialog	stated		
+Acting, Literary & Spoken	Interviewee	stated		
+Acting, Literary & Spoken	Interviewer	stated		
+Acting, Literary & Spoken	Liner Notes	stated		
+Acting, Literary & Spoken	Music Librarian	stated		
+Acting, Literary & Spoken	Narrator	stated		
+Acting, Literary & Spoken	Proofreader	stated		
+Acting, Literary & Spoken	Read By	stated		
+Acting, Literary & Spoken	Screenwriter	stated		
+Acting, Literary & Spoken	Script By	kind	scriptwriter	
+Acting, Literary & Spoken	Sleeve Notes	stated		
+Acting, Literary & Spoken	Text By	stated		
+Acting, Literary & Spoken	Voice Actor	stated		
+Management	A&R;	stated		
+Management	Administrator	stated		
+Management	Advisor	stated		
+Management	Booking	stated		
+Management	Consultant	stated		
+Management	Coordinator	stated		
+Management	Legal	stated		
+Management	Management	stated		
+Management	Marketing	stated		
+Management	Merchandising	stated		
+Management	Product Manager	stated		
+Management	Project Manager	stated		
+Management	Promotion	stated		
+Management	Public Relations	stated		
+Management	Tour Manager	stated		
+Management	Vocal Coach	stated		
+Technical	Authoring	stated		
+Technical	Crew	stated		
+Technical	DAW	stated		
+Technical	Direct Metal Mastering By	stated		
+Technical	Edited By	stated		
+Technical	Engineer	kind	engineer	
+Technical	Equipment	stated		
+Technical	Field Recording	stated		
+Technical	Instrument Builder	stated		
+Technical	Lacquer Cut By	stated		
+Technical	Lathe Cut By	stated		
+Technical	Lathe Designer	stated		
+Technical	Luthier	stated		
+Technical	Mastered By	kind	mastering	
+Technical	Mixed By	kind	mixer	
+Technical	Overdubbed By	stated		
+Technical	Plated By	stated		
+Technical	Recorded By	stated		
+Technical	Remastered By	kind	mastering	re
+Technical	Restoration	stated		
+Technical	Tape Op	stated		
+Technical	Technician	stated		
+Technical	Tracking By	stated		
+Technical	Transferred By	stated		
+Technical	Tuner	stated		
+Vocals	Alto Vocals	voice	alto vocals	
+Vocals	Backing Vocals	voice	background vocals	
+Vocals	Baritone Vocals	voice	baritone vocals	
+Vocals	Bass Vocals	voice	bass vocals	
+Vocals	Bass-Baritone Vocals	voice	bass-baritone vocals	
+Vocals	Caller	named		
+Vocals	Cantor	named		
+Vocals	Choir	voice	choir vocals	
+Vocals	Chorus	voice	choir vocals	
+Vocals	Contralto Vocals	voice	contralto vocals	
+Vocals	Coro	voice	choir vocals	
+Vocals	Countertenor Vocals	voice	countertenor vocals	
+Vocals	Eefing	named		
+Vocals	Harmony Vocals	named		
+Vocals	Human Beatbox	named		
+Vocals	Humming	named		
+Vocals	Joik	named		
+Vocals	Kakegoe	named		
+Vocals	Lead Vocals	voice	lead vocals	
+Vocals	MC	named		
+Vocals	Mezzo-soprano Vocals	voice	mezzo-soprano vocals	
+Vocals	Overtone Voice	named		
+Vocals	Rap	named		
+Vocals	Satsuma	named		
+Vocals	Scat	named		
+Vocals	Solo Vocal	voice	vocal	solo
+Vocals	Soprano Vocals	voice	soprano vocals	
+Vocals	Speech	voice	spoken vocals	
+Vocals	Tenor Vocals	voice	tenor vocals	
+Vocals	Toasting	named		
+Vocals	Treble Vocals	voice	treble vocals	
+Vocals	Vocal Percussion	named		
+Vocals	Vocalese	named		
+Vocals	Vocals	voice	vocal	
+Vocals	Voice	voice	vocal	
+Vocals	Whistling	voice	whistling	
+Vocals	Yodeling	named		
+Instruments	Adufe	instrument	adufe	
+Instruments	Afoxé	instrument	afoxé	
+Instruments	Agogô	instrument	agogô	
+Instruments	Alegre	named		
+Instruments	Ashiko	instrument	ashiko	
+Instruments	Atabal	named		
+Instruments	Bapang	named		
+Instruments	Bass Drum	instrument	bass drum	
+Instruments	Bata	named		
+Instruments	Bell Tree	instrument	bell tree	
+Instruments	Bells	instrument	bell	
+Instruments	Bendir	instrument	bendir	
+Instruments	Bodhrán	instrument	bodhrán	
+Instruments	Body Percussion	instrument	body percussion	
+Instruments	Bombo	named		
+Instruments	Bones	instrument	bones	
+Instruments	Bongos	instrument	bongos	
+Instruments	Buhay	named		
+Instruments	Buk	instrument	buk	
+Instruments	Cabasa	instrument	cabasa	
+Instruments	Caixa	instrument	caixa	
+Instruments	Caja Vallenata	named		
+Instruments	Cajón	instrument	cajón	
+Instruments	Calabash	instrument	calabash	
+Instruments	Castanets	instrument	castanets	
+Instruments	Caxixi	instrument	caxixi	
+Instruments	Chácaras	named		
+Instruments	Chak'chas	named		
+Instruments	Chanchiki	named		
+Instruments	Changgo	named		
+Instruments	Chinchín	named		
+Instruments	Ching	instrument	ching	
+Instruments	Ching-Dong	named		
+Instruments	Clap Sticks	instrument	clapstick	
+Instruments	Claves	instrument	claves	
+Instruments	Congas	instrument	congas	
+Instruments	Cowbell	instrument	cowbell	
+Instruments	Cuica	instrument	cuíca	
+Instruments	Cultrun	named		
+Instruments	Cymbal	instrument	cymbal	
+Instruments	Daf	instrument	daf	
+Instruments	Darbouka	instrument	darbuka	
+Instruments	Davul	instrument	davul	
+Instruments	Dhol	instrument	dhol	
+Instruments	Dholak	instrument	dholak	
+Instruments	Dikanza	named		
+Instruments	Djembe	instrument	djembe	
+Instruments	Doira	instrument	doyra	
+Instruments	Doli	named		
+Instruments	Drum	named		
+Instruments	Drum Programming	named		
+Instruments	Drums	instrument	drums (drum set)	
+Instruments	Dunun	instrument	dunun	
+Instruments	Electronic Drums	instrument	electronic drum set	
+Instruments	Finger Cymbals	instrument	finger cymbals	
+Instruments	Finger Snaps	instrument	finger snaps	
+Instruments	Flamenco Dance	named		
+Instruments	Frame Drum	instrument	frame drum	
+Instruments	Friction Drum	instrument	friction drum	
+Instruments	Frottoir	instrument	frottoir	
+Instruments	Ganzá	instrument	ganzá	
+Instruments	Ghatam	instrument	ghatam	
+Instruments	Ghungroo	named		
+Instruments	Goblet Drum	instrument	goblet drum	
+Instruments	Gong	instrument	gong	
+Instruments	Gong Chime	instrument	gong-chime	
+Instruments	Gorosu	named		
+Instruments	Guacharaca	named		
+Instruments	Güira	instrument	güira	
+Instruments	Guiro	instrument	güiro	
+Instruments	Hand Drum	named		
+Instruments	Handbell	instrument	handbell	
+Instruments	Handclaps	instrument	handclaps	
+Instruments	Hang Drum	named		
+Instruments	Hihat	instrument	hi-hat	
+Instruments	Hosho	named		
+Instruments	Hyoshigi	instrument	hyoshigi	
+Instruments	Idiophone	instrument	idiophone	
+Instruments	Jaggo	named		
+Instruments	Janggu	instrument	janggu	
+Instruments	Jing	instrument	jing	
+Instruments	K'kwaengwari	instrument	kkwaenggwari	
+Instruments	Ka	named		
+Instruments	Kagura Suzu	named		
+Instruments	Kanjira	instrument	kanjira	
+Instruments	Karkabas	named		
+Instruments	Kebero	named		
+Instruments	Kendang	instrument	kendang	
+Instruments	Khartal	instrument	kartal	
+Instruments	Khurdak	named		
+Instruments	Kynggari	instrument	kkwaenggwari	
+Instruments	Lagerphone	named		
+Instruments	Lion's Roar	named		
+Instruments	Llamador	named		
+Instruments	Madal	instrument	madal	
+Instruments	Mallets	named		
+Instruments	Maracas	instrument	maracas	
+Instruments	Monkey stick	instrument	monkey stick	
+Instruments	Mridangam	instrument	mridangam	
+Instruments	Naqareh	named		
+Instruments	Narimono	named		
+Instruments	Oodaiko	named		
+Instruments	Pakhavaj	instrument	pakhawaj	
+Instruments	Pandeiro	instrument	pandeiro	
+Instruments	Percussion	instrument	percussion	
+Instruments	Quijada	instrument	quijada	
+Instruments	Rainstick	instrument	rainstick	
+Instruments	Ratchet	instrument	ratchet	
+Instruments	Rattle	named		
+Instruments	Ravanne	named		
+Instruments	Reco-reco	instrument	reco-reco	
+Instruments	Repinique	instrument	repinique	
+Instruments	Rototoms	instrument	rototom	
+Instruments	Sabar	instrument	sabar	
+Instruments	Scraper	named		
+Instruments	Shaker	instrument	shakers	
+Instruments	Shakubyoshi	named		
+Instruments	Shekere	instrument	shekere	
+Instruments	Shuitar	named		
+Instruments	Singing Bowls	instrument	singing bowl	
+Instruments	Sistrum	instrument	sistrum	
+Instruments	Skratjie	named		
+Instruments	Slapstick	instrument	slapstick	
+Instruments	Slit Drum	instrument	slit drum	
+Instruments	Snare	instrument	snare drum	
+Instruments	Spoons	instrument	spoons	
+Instruments	Stomp Box	named		
+Instruments	String Drum	named		
+Instruments	Surdo	instrument	surdo	
+Instruments	Surigane	named		
+Instruments	Suzu	named		
+Instruments	T'rung	named		
+Instruments	Taal	named		
+Instruments	Taarija	named		
+Instruments	Tabl Baladi	named		
+Instruments	Tabla	instrument	tabla	
+Instruments	Taiko	instrument	taiko	
+Instruments	Talking Drum	instrument	talking drum	
+Instruments	Tam-tam	named		
+Instruments	Tambora	named		
+Instruments	Tamboril	named		
+Instruments	Tamborim	instrument	tamborim	
+Instruments	Tambourine	instrument	tambourine	
+Instruments	Tan-Tan	named		
+Instruments	Tap Dance	instrument	tap dance	
+Instruments	Tar (Drum)	named		
+Instruments	Tbal	named		
+Instruments	Temple Bells	named		
+Instruments	Temple Block	instrument	temple blocks	
+Instruments	Thavil	instrument	thavil	
+Instruments	Thunder Sheet	named		
+Instruments	Tifa	named		
+Instruments	Timbales	instrument	timbales	
+Instruments	Timpani	instrument	timpani	
+Instruments	Tingsha	named		
+Instruments	Tom Tom	instrument	tom-tom	
+Instruments	Tombak	named		
+Instruments	Toubeleki	named		
+Instruments	Triangle	instrument	triangle	
+Instruments	Tsuzumi	named		
+Instruments	Tüngür	named		
+Instruments	Udu	instrument	udu	
+Instruments	Vibraslap	instrument	vibraslap	
+Instruments	Wadaiko	named		
+Instruments	Washboard	instrument	washboard	
+Instruments	Waterphone	instrument	waterphone	
+Instruments	Wood Block	instrument	wood block	
+Instruments	Zabumba	instrument	zabumba	
+Instruments	Amadinda	instrument	amadinda	
+Instruments	Angklung	instrument	angklung	
+Instruments	Balafon	instrument	balafon	
+Instruments	Boomwhacker	instrument	boomwhacker	
+Instruments	Carillon	instrument	carillon	
+Instruments	Celesta	instrument	celesta	
+Instruments	Chimes	instrument	chimes	
+Instruments	Crotales	instrument	crotales	
+Instruments	Glockenspiel	instrument	glockenspiel	
+Instruments	Guitaret	instrument	Guitaret	
+Instruments	Hammered Dulcimer	instrument	hammered dulcimer	
+Instruments	Jal Tarang	named		
+Instruments	Kalimba	named		
+Instruments	Lamellophone	instrument	lamellaphone	
+Instruments	Marimba	instrument	marimba	
+Instruments	Marimbula	instrument	marímbula	
+Instruments	Metallophone	instrument	metallophone	
+Instruments	Musical Box	instrument	musical box	
+Instruments	Prempensua	named		
+Instruments	Santoor	instrument	santoor	
+Instruments	Santur	instrument	santur	
+Instruments	Slagbordun	named		
+Instruments	Steel Drums	named		
+Instruments	Thumb Piano	named		
+Instruments	Tubaphone	named		
+Instruments	Tubular Bells	instrument	tubular bells	
+Instruments	Tun	named		
+Instruments	Txalaparta	instrument	txalaparta	
+Instruments	Vibraphone	instrument	vibraphone	
+Instruments	Xylophone	instrument	xylophone	
+Instruments	Xylorimba	instrument	xylorimba	
+Instruments	Baby Grand Piano	named		
+Instruments	Chamberlin	instrument	chamberlin	
+Instruments	Claviorgan	instrument	claviorganum	
+Instruments	Concert Grand Piano	named		
+Instruments	Dulcitone	instrument	dulcitone	
+Instruments	Electric Harmonium	named		
+Instruments	Electric Harpsichord	named		
+Instruments	Electric Organ	named		
+Instruments	Electric Piano	instrument	electric piano	
+Instruments	Fortepiano	instrument	fortepiano	
+Instruments	Grand Piano	instrument	grand piano	
+Instruments	Harmonium	instrument	harmonium	
+Instruments	Harpsichord	instrument	harpsichord	
+Instruments	Keyboards	instrument	keyboard	
+Instruments	Luthéal	instrument	luthéal	
+Instruments	Mellotron	instrument	mellotron	
+Instruments	Melodica	instrument	melodica	
+Instruments	Omnichord	instrument	omnichord	
+Instruments	Ondes Martenot	instrument	ondes Martenot	
+Instruments	Organ	instrument	organ	
+Instruments	Parlour Grand Piano	named		
+Instruments	Pedalboard	named		
+Instruments	Piano	instrument	piano	
+Instruments	Player Piano	named		
+Instruments	Portative Organ	named		
+Instruments	Positive Organ	named		
+Instruments	Pump Organ	named		
+Instruments	Regal	instrument	regal	
+Instruments	Samvadini	named		
+Instruments	Stylophone	instrument	Dubreq Stylophone	
+Instruments	Synth	instrument	synthesizer	
+Instruments	Synth Bass	named		
+Instruments	Synthesizer	instrument	synthesizer	
+Instruments	Tangent Piano	instrument	tangent piano	
+Instruments	Toy Piano	instrument	toy piano	
+Instruments	Upright Piano	instrument	upright piano	
+Instruments	Virginal	instrument	virginal	
+Instruments	12-String Acoustic Guitar	named		
+Instruments	12-String Bass	named		
+Instruments	12-string Electric Guitar	named		
+Instruments	5-String Banjo	instrument	five-string banjo	
+Instruments	5-String Bass	named		
+Instruments	6-String Banjo	named		
+Instruments	6-String Bass	named		
+Instruments	7-string Acoustic Guitar	named		
+Instruments	7-string Electric Guitar	named		
+Instruments	8-string Bass Guitar	named		
+Instruments	Acoustic Bass	named		
+Instruments	Acoustic Guitar	instrument	acoustic guitar	
+Instruments	Acoustic Piccolo Bass	named		
+Instruments	Adungu	named		
+Instruments	Ajaeng	instrument	ajaeng	
+Instruments	Alto Viol	instrument	alto viol	
+Instruments	Angélique	named		
+Instruments	Archlute	instrument	archlute	
+Instruments	Arco Bass	named		
+Instruments	Arpa	named		
+Instruments	Autoharp	instrument	autoharp	
+Instruments	Baglama	instrument	bağlama	
+Instruments	Bajo Quinto	named		
+Instruments	Bajo Sexto	instrument	bajo sexto	
+Instruments	Balalaika	instrument	balalaika	
+Instruments	Bandola	named		
+Instruments	Bandolin	named		
+Instruments	Bandora	instrument	bandora	
+Instruments	Bandura	instrument	bandura	
+Instruments	Bandurria	instrument	bandurria	
+Instruments	Banhu	instrument	banhu	
+Instruments	Banjo	instrument	banjo	
+Instruments	Banjolin	instrument	banjolin	
+Instruments	Baritone Guitar	instrument	baritone guitar	
+Instruments	Baroque Guitar	instrument	baroque guitar	
+Instruments	Baryton	instrument	baryton	
+Instruments	Bass Guitar	instrument	bass guitar	
+Instruments	Bass Viol	instrument	bass viol	
+Instruments	Bass Violin	instrument	bass violin	
+Instruments	Berimbau	instrument	berimbau	
+Instruments	Bhapang	instrument	bhapang	
+Instruments	Biwa	instrument	biwa	
+Instruments	Blaster Beam	instrument	Blaster Beam	
+Instruments	Bolon	instrument	bolon	
+Instruments	Bouzouki	instrument	bouzouki	
+Instruments	Bulbul Tarang	instrument	bulbul tarang	
+Instruments	Buzuq	instrument	buzuq	
+Instruments	Byzaanchi	named		
+Instruments	Cavaquinho	instrument	cavaquinho	
+Instruments	Cello	instrument	cello	
+Instruments	Cello Banjo	named		
+Instruments	Celtic Harp	named		
+Instruments	Cetara	named		
+Instruments	Changi	named		
+Instruments	Chanzy	instrument	chanzy	
+Instruments	Chapman Stick	instrument	Chapman stick	
+Instruments	Charango	instrument	charango	
+Instruments	Chitarra Battente	instrument	chitarra battente	
+Instruments	Chitarrone	named		
+Instruments	Chonguri	named		
+Instruments	Chuniri	named		
+Instruments	Cigar Box Guitar	named		
+Instruments	Cimbalom	instrument	cimbalom	
+Instruments	Citole	instrument	citole	
+Instruments	Cittern	instrument	cittern	
+Instruments	Clàrsach	named		
+Instruments	Classical Guitar	instrument	classical guitar	
+Instruments	Clavichord	instrument	clavichord	
+Instruments	Clavinet	instrument	clavinet	
+Instruments	Cobza	named		
+Instruments	Contrabass	named		
+Instruments	Crwth	instrument	crwth	
+Instruments	Cuatro	instrument	cuatro	
+Instruments	Cümbüş	instrument	cümbüş	
+Instruments	Cura	named		
+Instruments	Deaejeng	named		
+Instruments	Diddley Bow	instrument	diddley bow	
+Instruments	Dilruba	instrument	dilruba	
+Instruments	Dobro	named		
+Instruments	Dojo	named		
+Instruments	Dombra	instrument	dombra	
+Instruments	Domra	instrument	domra	
+Instruments	Doshpuluur	instrument	doshpuluur	
+Instruments	Dotara	named		
+Instruments	Double Bass	instrument	double bass	
+Instruments	Dulcimer	named		
+Instruments	Dutar	instrument	dutar	
+Instruments	Đàn bầu	instrument	đàn bầu	
+Instruments	Đàn Nguyệt	instrument	đàn nguyệt	
+Instruments	Đàn Tranh	instrument	đàn tranh	
+Instruments	Đàn Tỳ Bà	instrument	đàn tỳ bà	
+Instruments	Ektare	named		
+Instruments	Electric Banjo	named		
+Instruments	Electric Bass	instrument	electric bass guitar	
+Instruments	Electric Cello	instrument	electric cello	
+Instruments	Electric Guitar	instrument	electric guitar	
+Instruments	Electric Harp	instrument	electric harp	
+Instruments	Electric Mandolin	named		
+Instruments	Electric Sitar	instrument	electric sitar	
+Instruments	Electric Upright Bass	instrument	electric upright bass	
+Instruments	Electric Viola	instrument	electric viola	
+Instruments	Electric Violin	instrument	electric violin	
+Instruments	Epinette des Vosges	named		
+Instruments	Erhu	instrument	erhu	
+Instruments	Esraj	instrument	esraj	
+Instruments	Fiddle	instrument	fiddle	
+Instruments	Fidel Płocka	named		
+Instruments	Five-String Viola	named		
+Instruments	Five-String Violin	named		
+Instruments	Flamenco Guitar	instrument	flamenco guitar	
+Instruments	Fretless Banjo	named		
+Instruments	Fretless Bass	instrument	fretless bass	
+Instruments	Fretless Guitar	named		
+Instruments	Gadulka	instrument	gadulka	
+Instruments	Gaohu	instrument	gaohu	
+Instruments	Gayageum	instrument	gayageum	
+Instruments	Geomungo	instrument	geomungo	
+Instruments	Ghaychak	instrument	ghaychak	
+Instruments	Ghijak	instrument	ghijak	
+Instruments	Giga	named		
+Instruments	Gittern	instrument	gittern	
+Instruments	Gottuvâdyam	named		
+Instruments	Gravikord	instrument	Gravikord	
+Instruments	Guimbri	instrument	gumbri	
+Instruments	Guitalele	instrument	guitalele	
+Instruments	Guitar	instrument	guitar	
+Instruments	Guitar Banjo	named		
+Instruments	Guitar Synthesizer	instrument	guitar synthesizer	
+Instruments	Guitarra Séptima	named		
+Instruments	Guitarrón	named		
+Instruments	GuitarViol	named		
+Instruments	Guqin	instrument	guqin	
+Instruments	Gusle	named		
+Instruments	Gusli	instrument	gusli	
+Instruments	Guzheng	instrument	guzheng	
+Instruments	Haegum	instrument	haegeum	
+Instruments	Halldorophone	named		
+Instruments	Hardingfele	instrument	hardingfele	
+Instruments	Harp	instrument	harp	
+Instruments	Harp Guitar	instrument	harp guitar	
+Instruments	Hayashi	named		
+Instruments	Hualaycho	instrument	walaycho	
+Instruments	Huapanguera	named		
+Instruments	Hummel	instrument	hummel	
+Instruments	Huqin	instrument	huqin	
+Instruments	Hurdy Gurdy	instrument	hurdy gurdy	
+Instruments	Ichigenkin	named		
+Instruments	Igil	instrument	igil	
+Instruments	Inānga	named		
+Instruments	Irish Bouzouki	instrument	Irish bouzouki	
+Instruments	Jarana	named		
+Instruments	Jinghu	instrument	jinghu	
+Instruments	Jouhikko	instrument	jouhikko	
+Instruments	Kabosy	named		
+Instruments	Kamancha	instrument	kamancheh	
+Instruments	Kanklės	instrument	kanklės	
+Instruments	Kannel	instrument	kannel	
+Instruments	Kantele	instrument	kantele	
+Instruments	Kanun	instrument	kanun	
+Instruments	Kemenche	instrument	kemenche	
+Instruments	Kirar	named		
+Instruments	Kobyz	named		
+Instruments	Kokle	instrument	kokle	
+Instruments	Kokyu	instrument	kokyu	
+Instruments	Komuz	instrument	komuz	
+Instruments	Konghou	named		
+Instruments	Kora	instrument	kora	
+Instruments	Koto	instrument	koto	
+Instruments	Krar	instrument	krar	
+Instruments	Langeleik	instrument	langeleik	
+Instruments	Langspil	named		
+Instruments	Laouto	instrument	laouto	
+Instruments	Lap Steel Guitar	instrument	lap steel guitar	
+Instruments	Laúd	instrument	laúd	
+Instruments	Lavta	instrument	lavta	
+Instruments	Lead Guitar	named		
+Instruments	Lira	named		
+Instruments	Lira da Braccio	instrument	lira da braccio	
+Instruments	Lirone	instrument	lirone	
+Instruments	Liuqin	instrument	liuqin	
+Instruments	Lute	instrument	lute	
+Instruments	Lute Guitar	named		
+Instruments	Lyra Viol	instrument	lyra viol	
+Instruments	Lyre	instrument	lyre	
+Instruments	Mandobass	named		
+Instruments	Mandocello	instrument	mandocello	
+Instruments	Mandoguitar	instrument	mandoguitar	
+Instruments	Mandola	instrument	mandola	
+Instruments	Mandole	named		
+Instruments	Mandolin	instrument	mandolin	
+Instruments	Mandolin Banjo	named		
+Instruments	Mandolincello	named		
+Instruments	Marxophone	instrument	Marxophone	
+Instruments	Masinko	named		
+Instruments	Misolo Guitar	named		
+Instruments	Mohan Veena	named		
+Instruments	Monochord	named		
+Instruments	Morinhoor	instrument	morin khuur	
+Instruments	Mountain Dulcimer	instrument	Appalachian dulcimer	
+Instruments	Musical Bow	instrument	musical bow	
+Instruments	N'vike	named		
+Instruments	Ngoni	instrument	ngɔni	
+Instruments	Nigenkin	named		
+Instruments	Nyckelharpa	instrument	nyckelharpa	
+Instruments	Octave Violin	named		
+Instruments	Octavina	instrument	octavina	
+Instruments	Octophone	named		
+Instruments	Open-Back Banjo	named		
+Instruments	Organistrum	named		
+Instruments	Orpharion	instrument	orpharion	
+Instruments	Oud	instrument	oud	
+Instruments	Outi	named		
+Instruments	Panduri	named		
+Instruments	Pedal Harp	named		
+Instruments	Pedal Steel Guitar	instrument	pedal steel guitar	
+Instruments	Piccolo Banjo	named		
+Instruments	Piccolo Bass Guitar	named		
+Instruments	Pipa	instrument	pipa	
+Instruments	Plectrum Banjo	named		
+Instruments	Portuguese Guitar	instrument	Portuguese guitar	
+Instruments	Psalmodicon	named		
+Instruments	Psaltery	instrument	psaltery	
+Instruments	Rabab	named		
+Instruments	Rabeca	named		
+Instruments	Rabel	named		
+Instruments	Rebab	instrument	rebab	
+Instruments	Rebec	instrument	rebec	
+Instruments	Reikin	named		
+Instruments	Requinto Guitar	named		
+Instruments	Resonator Banjo	named		
+Instruments	Resonator Guitar	instrument	resonator guitar	
+Instruments	Resonator Mandolin	named		
+Instruments	Rhythm Guitar	named		
+Instruments	Ronroco	instrument	ronroco	
+Instruments	Ruan	instrument	ruan	
+Instruments	Rudra Veena	instrument	rudra veena	
+Instruments	Sanshin	instrument	sanshin	
+Instruments	Sanxian	instrument	sanxian	
+Instruments	Sapeh	named		
+Instruments	Sarangi	instrument	sarangi	
+Instruments	Sarod	instrument	sarod	
+Instruments	Sazbus	named		
+Instruments	Selmer-Maccaferri Guitar	named		
+Instruments	Semi-Acoustic Guitar	named		
+Instruments	Semistrunnaya Gitara	named		
+Instruments	Seperewa	named		
+Instruments	Setar	instrument	setar	
+Instruments	Shahi Baaja	named		
+Instruments	Shamisen	instrument	shamisen	
+Instruments	Sintir	named		
+Instruments	Sitar	instrument	sitar	
+Instruments	Slide Guitar	instrument	slide guitar	
+Instruments	Spinet	instrument	spinet	
+Instruments	Steel Guitar	instrument	steel guitar	
+Instruments	Strings	instrument	strings	
+Instruments	Stroh Violin	instrument	Stroh violin	
+Instruments	Strumstick	named		
+Instruments	Suka Biłgorajska	named		
+Instruments	Surbahar	instrument	surbahar	
+Instruments	Svara Mandala	instrument	swarmandal	
+Instruments	Swarmandel	instrument	swarmandal	
+Instruments	Sympitar	named		
+Instruments	SynthAxe	named		
+Instruments	Taishōgoto	instrument	taishogoto	
+Instruments	Talharpa	instrument	talharpa	
+Instruments	Tambura	instrument	tambura	
+Instruments	Tamburitza	named		
+Instruments	Tapboard	named		
+Instruments	Tar (lute)	named		
+Instruments	Tarawangsa	named		
+Instruments	Tea Chest Bass	named		
+Instruments	Tenor Banjo	instrument	tenor banjo	
+Instruments	Tenor Guitar	instrument	tenor guitar	
+Instruments	Tenor Viol	instrument	tenor viol	
+Instruments	Tenor Violin	instrument	tenor violin	
+Instruments	Theorbo	instrument	theorbo	
+Instruments	Timple	named		
+Instruments	Tiple	instrument	tiple	
+Instruments	Tipple	named		
+Instruments	Tololoche	instrument	tololoche	
+Instruments	Tonkori	instrument	tonkori	
+Instruments	Torban	named		
+Instruments	Tovshuur	instrument	topshuur	
+Instruments	Treble Viol	instrument	treble viol	
+Instruments	Tres	instrument	tres	
+Instruments	Tromba Marina	instrument	tromba marina	
+Instruments	Tumbi	instrument	tumbi	
+Instruments	Twelve-String Guitar	instrument	12 string guitar	
+Instruments	Tzouras	instrument	tzoura	
+Instruments	Ukulele	instrument	ukulele	
+Instruments	Ukulele Banjo	named		
+Instruments	Ütőgardon	instrument	ütőgardon	
+Instruments	Valiha	instrument	valiha	
+Instruments	Veena	instrument	veena	
+Instruments	Vielle	instrument	vielle	
+Instruments	Vihuela	instrument	vihuela	
+Instruments	Viol	named		
+Instruments	Viola	instrument	viola	
+Instruments	Viola Braguesa	named		
+Instruments	Viola Caipira	instrument	viola caipira	
+Instruments	Viola d'Amore	instrument	viola d'amore	
+Instruments	Viola da Gamba	instrument	viola da gamba	
+Instruments	Viola da Terra	named		
+Instruments	Viola de Cocho	named		
+Instruments	Viola Kontra	named		
+Instruments	Viola Nordestina	named		
+Instruments	Viola Pomposa	named		
+Instruments	Violão de sete cordas	named		
+Instruments	Violin	instrument	violin	
+Instruments	Violino Piccolo	instrument	violino piccolo	
+Instruments	Violoncello	instrument	cello	
+Instruments	Violone	instrument	violone	
+Instruments	Washtub Bass	instrument	washtub bass	
+Instruments	Xalam	instrument	xalam	
+Instruments	Yang T'Chin	named		
+Instruments	Yanggeum	named		
+Instruments	Yangqin	instrument	yangqin	
+Instruments	Zeze	named		
+Instruments	Zither	instrument	zither	
+Instruments	Zongora	named		
+Instruments	Accordina	instrument	accordina	
+Instruments	Accordion	instrument	accordion	
+Instruments	Aerophone	named		
+Instruments	Algoza	instrument	algozey	
+Instruments	Alphorn	instrument	alphorn	
+Instruments	Alto Clarinet	instrument	alto clarinet	
+Instruments	Alto Flute	instrument	alto flute	
+Instruments	Alto Horn	named		
+Instruments	Alto Recorder	named		
+Instruments	Alto Saxophone	instrument	alto saxophone	
+Instruments	Alto Trombone	named		
+Instruments	Alto Trumpet	named		
+Instruments	Apito	named		
+Instruments	Arghul	instrument	arghul	
+Instruments	Bagpipes	instrument	bagpipe	
+Instruments	Bandoneon	instrument	bandoneón	
+Instruments	Bansuri	instrument	bansuri	
+Instruments	Baritone Clarinet	named		
+Instruments	Baritone Horn	instrument	baritone horn	
+Instruments	Baritone Saxophone	instrument	baritone saxophone	
+Instruments	Barrel Organ	instrument	barrel organ	
+Instruments	Bass Clarinet	instrument	bass clarinet	
+Instruments	Bass Flute	instrument	bass flute	
+Instruments	Bass Harmonica	instrument	bass harmonica	
+Instruments	Bass Recorder	instrument	bass recorder	
+Instruments	Bass Saxophone	instrument	bass saxophone	
+Instruments	Bass Trombone	instrument	bass trombone	
+Instruments	Bass Trumpet	instrument	bass trumpet	
+Instruments	Bass Tuba	named		
+Instruments	Basset Clarinet	instrument	basset clarinet	
+Instruments	Basset Horn	instrument	basset horn	
+Instruments	Bassoon	instrument	bassoon	
+Instruments	Bawu	instrument	bawu	
+Instruments	Bayan	instrument	bayan	
+Instruments	Bellowphone	named		
+Instruments	Beresta	named		
+Instruments	Blues Harp	instrument	harmonica	
+Instruments	Bolivian Flute	named		
+Instruments	Bombarde	instrument	bombarde	
+Instruments	Border Pipes	named		
+Instruments	Brass	instrument	brass	
+Instruments	Brass Bass	named		
+Instruments	Bucium	named		
+Instruments	Bugle	instrument	bugle	
+Instruments	C Melody Saxophone	named		
+Instruments	Cabrette	instrument	cabrette	
+Instruments	Caramusa	named		
+Instruments	Carnyx	named		
+Instruments	Chabrette	named		
+Instruments	Chalumeau	instrument	chalumeau	
+Instruments	Chanter	named		
+Instruments	Charamel	named		
+Instruments	Chirimia	instrument	chirimía	
+Instruments	Clarín Cajamarquino	named		
+Instruments	Clarinet	instrument	clarinet	
+Instruments	Clarion	named		
+Instruments	Claviola	instrument	claviola	
+Instruments	Comb	named		
+Instruments	Concert Flute	instrument	concert flute	
+Instruments	Concertina	instrument	concertina	
+Instruments	Conch	instrument	conch	
+Instruments	Contra-Alto Clarinet	named		
+Instruments	Contrabass Clarinet	instrument	contrabass clarinet	
+Instruments	Contrabass Flute	instrument	contrabass flute	
+Instruments	Contrabass Saxophone	instrument	contrabass saxophone	
+Instruments	Contrabass Trombone	named		
+Instruments	Contrabassoon	instrument	contrabassoon	
+Instruments	Cor Anglais	instrument	cor anglais	
+Instruments	Cornet	instrument	cornet	
+Instruments	Cornett	instrument	cornett	
+Instruments	Couesnophone	named		
+Instruments	Cromorne	named		
+Instruments	Crumhorn	instrument	crumhorn	
+Instruments	Daegeum	instrument	daegeum	
+Instruments	Danso	instrument	danso	
+Instruments	Didgeridoo	instrument	didgeridoo	
+Instruments	Dili Tuiduk	named		
+Instruments	Dizi	instrument	dizi	
+Instruments	Dord	named		
+Instruments	Double Horn	named		
+Instruments	Drone	named		
+Instruments	Duduk	instrument	duduk	
+Instruments	Dulcian	instrument	dulcian	
+Instruments	Dulzaina	instrument	dulzaina	
+Instruments	Dvojačka	named		
+Instruments	Electronic Valve Instrument	named		
+Instruments	Electronic Wind Instrument	named		
+Instruments	English Horn	instrument	cor anglais	
+Instruments	Euphonium	instrument	euphonium	
+Instruments	Fife	instrument	fife	
+Instruments	Flageolet	instrument	flageolet	
+Instruments	Flugabone	named		
+Instruments	Flugelhorn	instrument	flugelhorn	
+Instruments	Fluier	named		
+Instruments	Flumpet	instrument	flumpet	
+Instruments	Flute	instrument	flute	
+Instruments	Flute D'Amour	instrument	flûte d'amour	
+Instruments	Free-reed Flute	named		
+Instruments	French Horn	instrument	French horn	
+Instruments	Friscaletto	named		
+Instruments	Fujara	instrument	fujara	
+Instruments	Gaita	named		
+Instruments	Galoubet	named		
+Instruments	Garklein Recorder	instrument	garklein recorder	
+Instruments	Gemshorn	instrument	gemshorn	
+Instruments	Gralla	instrument	gralla	
+Instruments	Gudastviri	named		
+Instruments	Harmet	named		
+Instruments	Harmonica	instrument	harmonica	
+Instruments	Heckelphone	instrument	heckelphone	
+Instruments	Helicon	instrument	helicon	
+Instruments	Hichiriki	instrument	hichiriki	
+Instruments	Highland Pipes	instrument	Great Highland bagpipe	
+Instruments	Hojok	named		
+Instruments	Horagai	named		
+Instruments	Horn	instrument	horn	
+Instruments	Horns	named		
+Instruments	Hotchiku	instrument	hotchiku	
+Instruments	Hulusi	instrument	hulusi	
+Instruments	Hunting Horn	named		
+Instruments	Irish Flute	instrument	Irish flute	
+Instruments	Jug	instrument	jug	
+Instruments	Kagurabue	instrument	kagurabue	
+Instruments	Kaval	instrument	kaval	
+Instruments	Kawala	named		
+Instruments	Kazoo	instrument	kazoo	
+Instruments	Khene	instrument	khene	
+Instruments	Kortholt	instrument	kortholt	
+Instruments	Launeddas	instrument	launeddas	
+Instruments	Limbe	instrument	limbe	
+Instruments	Liru	named		
+Instruments	Low Whistle	instrument	low whistle	
+Instruments	Lur	named		
+Instruments	Lyricon	instrument	Lyricon	
+Instruments	Mänkeri	named		
+Instruments	Mellophone	instrument	mellophone	
+Instruments	Melodeon	named		
+Instruments	Mey	named		
+Instruments	Mizmar	named		
+Instruments	Mizwad	named		
+Instruments	Moceño	named		
+Instruments	Mouth Organ	instrument	mouth organ	
+Instruments	Murli	named		
+Instruments	Musette	named		
+Instruments	Nadaswaram	instrument	nadaswaram	
+Instruments	Ney	instrument	ney	
+Instruments	Northumbrian Pipes	instrument	Northumbrian pipes	
+Instruments	Nose Flute	instrument	nose flute	
+Instruments	Oboe	instrument	oboe	
+Instruments	Oboe d'Amore	instrument	oboe d'amore	
+Instruments	Oboe Da Caccia	instrument	oboe da caccia	
+Instruments	Ocarina	instrument	ocarina	
+Instruments	Ophicleide	instrument	ophicleide	
+Instruments	Overtone Flute	named		
+Instruments	Panpipes	named		
+Instruments	Piano Accordion	instrument	piano accordion	
+Instruments	Piccolo Flute	named		
+Instruments	Piccolo Trumpet	instrument	piccolo trumpet	
+Instruments	Pifana	named		
+Instruments	Pipe	named		
+Instruments	Piri	instrument	piri	
+Instruments	Pirula	named		
+Instruments	Pito	named		
+Instruments	Pito Herreño	named		
+Instruments	Pixiephone	named		
+Instruments	Pommer	named		
+Instruments	Quena	instrument	quena	
+Instruments	Quenacho	named		
+Instruments	Quray	named		
+Instruments	Rackett	named		
+Instruments	Rauschpfeife	instrument	rauschpfeife	
+Instruments	Recorder	instrument	recorder	
+Instruments	Reeds	instrument	reeds	
+Instruments	Rhaita	named		
+Instruments	Rondador	instrument	rondador	
+Instruments	Rozhok	named		
+Instruments	Ryuteki	instrument	ryuteki	
+Instruments	Sackbut	instrument	sackbut	
+Instruments	Saenghwang	named		
+Instruments	Salamuri	named		
+Instruments	Sampona	named		
+Instruments	Sarrusophone	instrument	sarrusophone	
+Instruments	Saxello	named		
+Instruments	Saxhorn	named		
+Instruments	Saxophone	instrument	saxophone	
+Instruments	Schwyzerörgeli	instrument	Schwyzerörgeli	
+Instruments	Serpent	instrument	serpent	
+Instruments	Shakuhachi	instrument	shakuhachi	
+Instruments	Shanai	instrument	shehnai	
+Instruments	Shawm	instrument	shawm	
+Instruments	Shenai	instrument	shehnai	
+Instruments	Sheng	instrument	sheng	
+Instruments	Shinobue	instrument	shinobue	
+Instruments	Sho	instrument	sho	
+Instruments	Shofar	instrument	shofar	
+Instruments	Shruti Box	instrument	shruti box	
+Instruments	Slide Trumpet	named		
+Instruments	Slide Whistle	instrument	slide whistle	
+Instruments	Smallpipes	named		
+Instruments	Sodina	named		
+Instruments	Sopilka	instrument	sopilka	
+Instruments	Sopranino Recorder	instrument	sopranino recorder	
+Instruments	Sopranino Saxophone	instrument	sopranino saxophone	
+Instruments	Sopranissimo Saxophone	named		
+Instruments	Soprano Clarinet	instrument	soprano clarinet	
+Instruments	Soprano Cornet	named		
+Instruments	Soprano Flute	instrument	soprano flute	
+Instruments	Soprano Recorder	instrument	soprano recorder	
+Instruments	Soprano Saxophone	instrument	soprano saxophone	
+Instruments	Soprano Trombone	named		
+Instruments	Souna	named		
+Instruments	Sousaphone	instrument	sousaphone	
+Instruments	Steirische Harmonika	named		
+Instruments	Subcontrabass Saxophone	named		
+Instruments	Suling	instrument	suling	
+Instruments	Suona	instrument	suona	
+Instruments	Svirel	named		
+Instruments	Taepyungso	instrument	taepyeongso	
+Instruments	Tambin	named		
+Instruments	Tarka	named		
+Instruments	Tárogató	named		
+Instruments	Tenor Flute	named		
+Instruments	Tenor Horn	named		
+Instruments	Tenor Recorder	instrument	tenor recorder	
+Instruments	Tenor Saxophone	instrument	tenor saxophone	
+Instruments	Tenor Trombone	instrument	tenor trombone	
+Instruments	Tenora	instrument	tenora	
+Instruments	Ti-tse	named		
+Instruments	Tible	instrument	tible	
+Instruments	Tin Whistle	instrument	tin whistle	
+Instruments	Tonette	instrument	Tonette	
+Instruments	Traverso	named		
+Instruments	Trombone	instrument	trombone	
+Instruments	Trumpet	instrument	trumpet	
+Instruments	Trutruka	named		
+Instruments	Tsuur	named		
+Instruments	Tuba	instrument	tuba	
+Instruments	Tussefløyte	named		
+Instruments	Txirula	named		
+Instruments	Txistu	instrument	txistu	
+Instruments	Uilleann Pipes	instrument	uilleann pipes	
+Instruments	Valve Trombone	instrument	valve trombone	
+Instruments	Valve Trumpet	named		
+Instruments	Wagner Tuba	instrument	Wagner tuba	
+Instruments	Washint	named		
+Instruments	Whistle	instrument	whistle	
+Instruments	Whistling Water Jar	named		
+Instruments	Wind	named		
+Instruments	Woodwind	instrument	woodwind	
+Instruments	Xiao	instrument	xiao	
+Instruments	Yokobue	named		
+Instruments	Yorgaphone	named		
+Instruments	Zhaleika	instrument	zhaleika	
+Instruments	Zukra	named		
+Instruments	Zurna	instrument	zurna	
+Instruments	Automatic Orchestra	named		
+Instruments	Computer	named		
+Instruments	Drum Machine	instrument	drum machine	
+Instruments	Effects	instrument	effects	
+Instruments	Electronics	named		
+Instruments	Groovebox	named		
+Instruments	Loops	named		
+Instruments	MIDI Controller	named		
+Instruments	Noises	named		
+Instruments	Sampler	instrument	sampler	
+Instruments	Scratches	named		
+Instruments	Sequencer	named		
+Instruments	Software Instrument	named		
+Instruments	Talkbox	instrument	talkbox	
+Instruments	Tannerin	named		
+Instruments	Tape	instrument	tape	
+Instruments	Theremin	instrument	theremin	
+Instruments	Turntables	instrument	turntable	
+Instruments	Vocoder	instrument	vocoder	
+Instruments	Accompanied By	named		
+Instruments	Audio Generator	named		
+Instruments	Backing Band	named		
+Instruments	Band	named		
+Instruments	Bass	instrument	bass guitar	
+Instruments	Basso Continuo	named		
+Instruments	Brass Band	named		
+Instruments	Bullroarer	instrument	bullroarer	
+Instruments	Concert Band	named		
+Instruments	Concertino	named		
+Instruments	Devil's Fiddle	named		
+Instruments	E-Bow	instrument	ebow	
+Instruments	Ensemble	named		
+Instruments	Gamelan	instrument	gamelan	
+Instruments	Gizmotron	named		
+Instruments	Glass Harmonica	instrument	glass harmonica	
+Instruments	Glass Harp	instrument	glass harp	
+Instruments	Guest	performer		guest
+Instruments	Homus	named		
+Instruments	Instruments	performer		
+Instruments	Jew's Harp	named		
+Instruments	Mbira	instrument	mbira	
+Instruments	Morchang	named		
+Instruments	Musician	performer		
+Instruments	Objects	named		
+Instruments	Orchestra	named		
+Instruments	Performer	performer		
+Instruments	Rhythm Section	named		
+Instruments	Samples	named		
+Instruments	Saw	named		
+Instruments	Siren	named		
+Instruments	Soloist	performer		solo
+Instruments	Sounds	named		
+Instruments	Taonga pūoro	instrument	taonga pūoro	
+Instruments	Tifa Totobuang	named		
+Instruments	Toy	named		
+Instruments	Trautonium	instrument	trautonium	
+Instruments	Wind Chimes	instrument	wind chime	
+Instruments	Wobble Board	named		
