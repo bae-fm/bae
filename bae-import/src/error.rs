@@ -64,6 +64,14 @@ pub enum ImportError {
     #[error("{file} could not be read: {error}")]
     DocumentRead { file: String, error: std::io::Error },
 
+    /// A rip log or track sheet that names a disc could not be hashed to its
+    /// Disc ID: a table row that does not read, tracks out of order, audio
+    /// with no measured length, or sectors past the range. The Disc ID is
+    /// unknown, which is not the same as a folder without one.
+    #[cfg(desktop)]
+    #[error("{file} cannot be hashed to a Disc ID: {error}")]
+    DiscIdCalculation { file: String, error: std::io::Error },
+
     /// The downloaded or selected cover cannot be parsed, decoded, or resized.
     #[error("cover art failed: {detail}")]
     CoverArt { detail: String },
@@ -727,6 +735,7 @@ impl ImportError {
             | Self::FileTags { .. }
             | Self::UnusableFile { .. }
             | Self::DocumentRead { .. }
+            | Self::DiscIdCalculation { .. }
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }

@@ -379,3 +379,54 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
     let reading = read(artifacts(&missing)).expect("bytes that read but state nothing do not fail");
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }
+
+/// A rip log whose table of contents has a row that does not read cannot be
+/// hashed: the run fails with that, as a disc ID of a table with a row missing
+/// would look as valid as the real one. A log with no table at all states no
+/// disc and is passed over.
+#[test]
+fn a_rip_log_whose_table_of_contents_does_not_hash_fails_the_reading() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let path = tmp.path().join("Album.log");
+    let mut text = log_text(&[1000, 2000]);
+    text = text.replace("|    1000    |", "|    1O00    |");
+    std::fs::write(&path, text).unwrap();
+
+    let error = read(RipArtifacts {
+        documents: vec![RipDocument {
+            path: &path,
+            file: Some("Album.log"),
+            kind: DocumentKind::RipLog,
+        }],
+        sheets: Vec::new(),
+        audio: Vec::new(),
+    })
+    .expect_err("a table of contents that does not read fails the reading");
+    assert!(
+        matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.log")),
+        "{error:?}"
+    );
+}
+
+/// A sheet naming an audio file nobody measured cannot be laid out as a disc;
+/// that is an error to show, not a folder without a disc ID.
+#[test]
+fn a_sheet_that_cannot_be_laid_out_as_a_disc_fails_the_reading() {
+    let sheet = sheet(None);
+    let format = lossless(44_100, 16, 2);
+    let error = read(RipArtifacts {
+        documents: Vec::new(),
+        sheets: vec![RipSheet {
+            sheet: &sheet,
+            audio: Vec::new(),
+            path: Path::new("/folder/Album.cue"),
+            file: Some("Album.cue"),
+        }],
+        audio: vec![&format],
+    })
+    .expect_err("a sheet over audio with no measured length fails the reading");
+    assert!(
+        matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.cue")),
+        "{error:?}"
+    );
+}

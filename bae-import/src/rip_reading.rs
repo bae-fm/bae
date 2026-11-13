@@ -122,8 +122,9 @@ struct RipArtifacts<'a> {
 /// CD out and nothing proves one — every sheet but one beside a log that
 /// read, which describes the disc that log already hashed. A folder holding
 /// one rip per disc yields one disc ID per disc; one hashed twice is kept
-/// once. A document that cannot be read fails the reading; one that reads but
-/// states no disc is passed over, logged.
+/// once. A document that cannot be read fails the reading, as does a log or
+/// sheet that cannot be hashed to a disc; a log that reads but holds no table
+/// of contents states no disc, and is passed over, logged.
 fn read(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
@@ -133,13 +134,19 @@ fn read(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
         let text = read_document(document.path)?;
         if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
-            match discid_from_log_text(&text) {
-                Ok(disc_id) => {
+            let disc_id = discid_from_log_text(&text).map_err(|error| {
+                ImportError::DiscIdCalculation { file: document.path.display().to_string(), error }
+            })?;
+            match disc_id {
+                Some(disc_id) => {
                     keep_disc(&mut discs, disc_id, document.file);
                     read_logs.push(document);
                     continue;
                 }
-                Err(e) => warn!("DiscID from LOG failed for {:?}: {}", document.path, e),
+                None => warn!(
+                    "LOG {:?} holds no table of contents, so it states no disc",
+                    document.path
+                ),
             }
         }
         if report.is_none() && reports_accuraterip_found(&text) {
@@ -181,9 +188,8 @@ fn read(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
             debug!("not hashing {:?}: a log beside it already hashed its disc", sheet.path);
             continue;
         }
-        if let Some(disc_id) = discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path) {
-            keep_disc(&mut discs, disc_id, sheet.file);
-        }
+        let disc_id = discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path)?;
+        keep_disc(&mut discs, disc_id, sheet.file);
     }
     let disc_id =
         if discs.is_empty() { DiscIdReading::Absent } else { DiscIdReading::Computed(discs) };
@@ -205,20 +211,18 @@ fn keep_disc(discs: &mut Vec<ComputedDiscId>, disc_id: String, file: Option<&str
 }
 
 /// A MusicBrainz DiscID from an already-parsed CUE sheet and the lengths the
-/// authoritative scan retained for the audio it names.
+/// authoritative scan retained for the audio it names. A sheet that cannot be
+/// laid out as a disc fails the reading: its Disc ID is unknown, which is not
+/// a folder without one.
 fn discid_from_cue_audio(
     sheet: &CueSheet,
     audio: &[SheetAudioDuration<'_>],
     cue_path: &Path,
-) -> Option<String> {
+) -> Result<String, ImportError> {
     trace!("Retained audio lengths for {:?}: {:?}", cue_path, audio);
-    match calculate_mb_discid_from_cue(sheet, audio, "CUE/scanned audio") {
-        Ok(id) => Some(id),
-        Err(e) => {
-            warn!("DiscID from CUE+audio failed for {:?}: {}", cue_path, e);
-            None
-        }
-    }
+    calculate_mb_discid_from_cue(sheet, audio, "CUE/scanned audio").map_err(|error| {
+        ImportError::DiscIdCalculation { file: cue_path.display().to_string(), error }
+    })
 }
 
 /// Read already-categorized files, reusing the track sheets the folder scan

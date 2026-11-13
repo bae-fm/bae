@@ -45,9 +45,10 @@ fn parse_log_toc_row(line: &str) -> Option<(u32, i32, i32)> {
 /// Extract raw `(start_sector, end_sector)` pairs from an EAC/XLD LOG TOC table.
 /// Every row of the table must read and the track numbers must run 1, 2, 3 in
 /// order: a row skipped would hash a disc one track short, a wrong DiscID that
-/// looks as valid as the right one.
+/// looks as valid as the right one. `None` when the log holds no table at all,
+/// which is a log that states no disc.
 /// Format: "       10  | 37:42.72 |  4:14.43 |    169722    |   188814"
-fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io::Error> {
+fn extract_log_toc_sectors(log_content: &str) -> Result<Option<Vec<(i32, i32)>>, std::io::Error> {
     trace!("Parsing LOG file TOC");
     let mut in_toc_section = false;
     let mut track_sectors = Vec::new();
@@ -112,10 +113,10 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io
             log_content.lines().take(30).collect::<Vec<_>>().join("\n")
         };
         debug!("LOG content preview (TOC section):\n{}", preview);
-        return Err(invalid_discid_data("No TOC rows found in LOG file"));
+        return Ok(None);
     }
 
-    Ok(track_sectors)
+    Ok(Some(track_sectors))
 }
 
 fn discid_from_raw_offsets(
@@ -159,10 +160,13 @@ fn discid_from_raw_offsets(
 
 /// MusicBrainz DiscID from a rip log's text alone — the most direct method,
 /// since the sector offsets are in the log and neither the CUE nor the audio
-/// is needed.
-pub(crate) fn discid_from_log_text(log_content: &str) -> Result<String, std::io::Error> {
+/// is needed. `None` for a log that holds no table of contents, which states
+/// no disc; a table that is there and cannot be hashed is an error.
+pub(crate) fn discid_from_log_text(log_content: &str) -> Result<Option<String>, std::io::Error> {
     trace!("LOG file decoded, length: {} chars", log_content.len());
-    let toc_sectors = extract_log_toc_sectors(log_content)?;
+    let Some(toc_sectors) = extract_log_toc_sectors(log_content)? else {
+        return Ok(None);
+    };
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
     let last_end_sector = toc_sectors.last().expect("LOG TOC parser returned at least one row").1;
     let raw_leadout_sector = last_end_sector
@@ -170,6 +174,7 @@ pub(crate) fn discid_from_log_text(log_content: &str) -> Result<String, std::io:
         .ok_or_else(|| invalid_discid_data("lead-out sector out of range in LOG TOC"))?;
     debug!("Found {} track(s) in LOG file", raw_track_sectors.len());
     discid_from_raw_offsets("LOG", &raw_track_sectors, raw_leadout_sector, "from LOG lead-out")
+        .map(Some)
 }
 /// The measured length of one audio file a sheet names.
 #[derive(Debug, Clone, Copy)]

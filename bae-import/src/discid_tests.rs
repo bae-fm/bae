@@ -6,7 +6,8 @@ use std::path::Path;
 /// The disc ID one log file hashes to, decoded the way the extraction pass
 /// decodes it.
 fn discid_from_log_file(path: &Path) -> Result<String, std::io::Error> {
-    discid_from_log_text(&bae_util::text_encoding::read_text_file(path)?.text)
+    discid_from_log_text(&bae_util::text_encoding::read_text_file(path)?.text)?
+        .ok_or_else(|| std::io::Error::other("the log holds no table of contents"))
 }
 
 fn assert_invalid_data(result: Result<String, std::io::Error>) {
@@ -51,7 +52,9 @@ fn test_extract_leadout_from_log() {
     let log_content = bae_util::text_encoding::read_text_file(&fixture("logs/test_album.log"))
         .expect("LOG fixture should be readable")
         .text;
-    let toc_sectors = extract_log_toc_sectors(&log_content).expect("LOG TOC should parse");
+    let toc_sectors = extract_log_toc_sectors(&log_content)
+        .expect("LOG TOC should parse")
+        .expect("LOG should hold a TOC");
     let last_end_sector = toc_sectors.last().expect("LOG TOC should include at least one track").1;
     let raw_sector = last_end_sector + 1;
     let final_offset = raw_sector + 150;
@@ -361,10 +364,14 @@ fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
 }
 
 #[test]
-fn extract_log_toc_sectors_errors_without_toc_rows() {
+fn extract_log_toc_sectors_finds_no_disc_without_toc_rows() {
     let log = "Some header line\nRandom prose\nNo TOC table anywhere\n";
-    let err = extract_log_toc_sectors(log).expect_err("a LOG with no TOC rows must error");
-    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert_eq!(
+        extract_log_toc_sectors(log).unwrap(),
+        None,
+        "a LOG with no TOC rows states no disc"
+    );
+    assert_eq!(discid_from_log_text(log).unwrap(), None);
 }
 
 #[test]
@@ -372,7 +379,9 @@ fn extract_log_toc_sectors_parses_headerless_table() {
     // A bare TOC table with no "TOC of the extracted CD" header still parses:
     // the first parseable row opens the section.
     let log = "   1 | 0:00.00 | 1:00.00 | 0 | 100\n   2 | 1:00.00 | 1:00.00 | 100 | 200\n";
-    let rows = extract_log_toc_sectors(log).expect("headerless TOC table should parse");
+    let rows = extract_log_toc_sectors(log)
+        .expect("headerless TOC table should parse")
+        .expect("the table holds rows");
     assert_eq!(rows, vec![(0, 100), (100, 200)]);
 }
 
@@ -391,7 +400,7 @@ fn extract_log_toc_sectors_fails_on_a_damaged_row_or_a_gap_in_track_numbers() {
         )
     };
     let whole = toc("1 | 0:00.00 | 1:00.00 | 0 | 99\n2 | 1:00.00 | 1:00.00 | 100 | 199");
-    assert_eq!(extract_log_toc_sectors(&whole).unwrap(), vec![(0, 99), (100, 199)]);
+    assert_eq!(extract_log_toc_sectors(&whole).unwrap(), Some(vec![(0, 99), (100, 199)]));
 
     // A middle row with an unreadable sector, a last row with an unreadable
     // sector, and a first row with an unreadable track number.
