@@ -87,13 +87,14 @@
   function MacImportTable(props) {
     return h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children);
   }
+  // `start`: a CUE image's track, its source cell where the track starts in the image (the sheet's caption names the image once). `listed`: the length the source lists, after the measured `length` in the warning colour, when the two are over 3 s apart, so the row says what disagrees.
   function MacImportTrackRow(props) {
     return h('div', { className: cx('bae-m-itable-row', 'bae-m-itable-track', props.playing && 'bae-m-itable-playing') },
-      h('span', { className: 'bae-m-isrc' }, h('span', { className: props.playing ? 'bae-accent' : 'bae-muted' }, h(Sym, { name: props.playing ? 'pause' : 'play', size: 10 })), h('span', { className: props.entry ? 'bae-ellipsis' : 'bae-mono bae-ellipsis' }, props.file)),
+      h('span', { className: 'bae-m-isrc' }, h('span', { className: props.playing ? 'bae-accent' : 'bae-muted' }, h(Sym, { name: props.playing ? 'pause' : 'play', size: 10 })), props.start != null ? h('span', { className: 'bae-num bae-muted' }, props.start) : h('span', { className: 'bae-mono bae-ellipsis' }, props.file)),
       h('span', { className: 'bae-num' }, props.position),
       h('span', { className: cx('bae-ellipsis', !props.title && 'bae-m-tertiary') }, props.title || 'Untitled'),
       h('span', { className: cx('bae-ellipsis', props.inherited && 'bae-m-tertiary') }, props.artist || 'Album artist'),
-      h('span', { className: cx('bae-num', props.mismatch && 'bae-warning'), style: { textAlign: 'right' }, title: props.mismatch ? 'Lengths differ' : null }, props.length));
+      h('span', { className: 'bae-num', style: { textAlign: 'right' } }, props.length, props.listed ? h('span', { className: 'bae-warning', title: 'Listed length' }, ' ' + props.listed) : null));
   }
   function MacImportSheetCaption(props) {
     return h('div', { className: 'bae-m-icue' }, h('span', { className: 'bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc || 'Disc 1'), h(Glyph, { set: 'mac', name: 'down', size: 8 })), h(StatusChip, { tone: 'accent' }, 'CUE'), h('span', { className: 'bae-mono' }, props.sheet), h('span', { className: 'bae-m-tertiary' }, '→'), h('span', { className: cx('bae-mono', props.unbound ? 'bae-warning' : 'bae-muted') }, props.bound || 'Choose audio…'));

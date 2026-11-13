@@ -4090,6 +4090,14 @@
    "w": 1200,
    "x": 10316,
    "y": 21244
+  },
+  "mac.album.edit.cue-image.dc.html": {
+   "h": 1120,
+   "page": "home",
+   "title": "macOS: Edit…: a release from a CUE image",
+   "w": 1200,
+   "x": 11612,
+   "y": 21244
   }
  },
  "createdOnFiles": {
@@ -6111,7 +6119,8 @@
   "mac.playlists.track-menu.dc.html",
   "mac.playlists.reordering.dc.html",
   "mac.album.edit.album-picker.dc.html",
-  "mac.album.edit.cover.dc.html"
+  "mac.album.edit.cover.dc.html",
+  "mac.album.edit.cue-image.dc.html"
  ],
  "pages": [
   {

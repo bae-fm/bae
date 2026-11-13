@@ -1672,9 +1672,13 @@ the pane has no reset and no undo: to start over, the person applies a source
 again (a catalog release, or the files' tags) or clears the metadata, and the
 file decisions stay as they are.
 
-The mapping table pairs each unit with its draft track, showing the length the
-track's source listed beside the folder's own, and marking the two when they
-disagree by more than three seconds. Where the draft has several discs or
+The mapping table pairs each unit with its draft track. Each row shows the
+length its audio measures; where the track's source lists a length more than
+three seconds apart, that listed length follows it in the warning colour, so
+the row says what disagrees. A CUE image's track names its image once, in its
+sheet's heading, and its source cell gives where the track starts in the
+image (10:22), in the found table and after import alike; the entry's title is
+in the title column only. Where the draft has several discs or
 record sides, each is headed once, however many runs of rows it holds: the
 loose files on it, and under its name each CUE sheet's entries on it (a sheet
 the release splits across sides names itself again on the next side). For a
@@ -1906,8 +1910,9 @@ One editor edits a library release: the album detail's release menu opens it
 with one *Edit…* item, and the import pane of an imported folder shows the
 same editor for each release the folder became. It has the parts of the
 import pane's draft, laid out the same way: the cover beside the album and
-pressing fields, the album the release files under, the track table, and the
-same *Identify* controls — *Automatic* identifies the release from its files
+pressing fields, the album the release files under, the track table (its
+rows play, and show lengths and a CUE image's starts as the import pane's do,
+§3.6), and the same *Identify* controls — *Automatic* identifies the release from its files
 and *Search* opens the typed search — whose results replace the draft in
 place until a pick applies one, or *Back* returns to it. *Save* writes the
 session; *Cancel*, shown once something changed, discards it. While an apply
