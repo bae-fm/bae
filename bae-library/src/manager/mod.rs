@@ -326,12 +326,10 @@ impl From<coven::CovenError> for LibraryError {
 /// with each failed cleanup after it.
 impl From<bae_records::IdentityWriteError> for LibraryError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
-        use bae_records::IdentityWriteRefusal as R;
         use bae_store::WriteError as E;
         match error {
             E::Database(error) => Self::Database(error),
-            E::Refused(R::Identity(refusal)) => Self::Identity(refusal),
-            E::Refused(R::StoredName(error)) => error.into(),
+            E::Refused(refusal) => Self::Identity(refusal),
             E::Rollback { operation, rollback } => Self::Cleanup {
                 operation: Box::new((*operation).into()),
                 cleanup: Box::new(Self::Database(rollback.into())),
@@ -361,15 +359,6 @@ pub struct UploadBatchFailure {
 pub enum UploadReleasesOutcome {
     Complete { receipt: UploadReceipt },
     Partial { receipt: Option<UploadReceipt>, failure: UploadBatchFailure },
-}
-
-/// A stored name that names no file is a row no writer here produces, and
-/// what needed it does not run.
-impl From<bae_records::stored_name::StoredNameError> for LibraryError {
-    fn from(error: bae_records::stored_name::StoredNameError) -> Self {
-        let what = format!("release {} {}", error.release_id, error.label);
-        Self::Database(bae_store::DbError::unreadable(what, error.value))
-    }
 }
 
 /// A bug a coven call carried back, which its owner reported as it

@@ -23,7 +23,7 @@ pub enum ImportCommitRefusal {
     /// Writing the release's rows was refused as any write that decides which
     /// library artists and labels it names is.
     #[error(transparent)]
-    Write(#[from] IdentityWriteRefusal),
+    Write(#[from] IdentityRefusal),
     /// The library's artists changed between preparing the commit and
     /// writing it in a way that makes what was prepared for them wrong: the
     /// import fetched pictures for artists that are no longer new, or not for

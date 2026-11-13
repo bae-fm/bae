@@ -51,12 +51,7 @@ impl LibraryManager {
         file: &DbFile,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let relative = bae_records::stored_name::file_path(
-            &file.release_id,
-            &file.id,
-            &file.original_filename,
-        )?
-        .local_path();
+        let relative = bae_records::stored_name::file_path(&file.original_filename).local_path();
         let stream = self.records.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
 

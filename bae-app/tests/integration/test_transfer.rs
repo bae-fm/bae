@@ -489,7 +489,6 @@ async fn transition_completions_deliver_storage_values() {
 
     let dest = tmp.path().join("brought-back");
     std::fs::create_dir(&dest).unwrap();
-    mgr.records().set_source_folder_name_for_test(&release_id, "Brought Back").await.unwrap();
     mgr.manager().make_releases_local(vec![release_id.clone()], &dest).await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }

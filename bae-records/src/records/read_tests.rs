@@ -165,6 +165,34 @@ fn only_a_document_has_a_kind_and_every_document_has_one() {
     assert_eq!(log.role, crate::ReleaseFileRole::Document(crate::DocumentKind::RipLog));
 }
 
+/// A file's name in its release and a release's folder name are valid by the
+/// tables' CHECKs, so every read of one finds a name that names a file: no
+/// empty name, and no empty name between `/`s. Anything else is a name, the
+/// escaping and traversal tokens another device's file system can hold
+/// included.
+#[test]
+fn a_stored_name_that_names_no_file_is_refused() {
+    let conn = seeded_conn();
+    for name in ["track.flac", "Disc 1/01.flac", "../escape.flac", r"C:\x.flac", "a\0b", "."] {
+        insert_carried_file(&conn, name, "other", None).unwrap_or_else(|e| panic!("{name:?}: {e}"));
+    }
+    for name in ["", "/absolute.flac", "Disc 1/", "Disc 1//01.flac", "/"] {
+        let error = insert_carried_file(&conn, name, "other", None).expect_err(name);
+        assert!(error.to_string().contains("CHECK constraint failed"), "{name:?}: {error}");
+    }
+    let set_folder = |name: &str| {
+        conn.execute(
+            "UPDATE releases SET source_folder_name = ?1 WHERE id = 'cccb6034-5922-40d2-8d0b-d94619230882'",
+            [name],
+        )
+    };
+    for name in ["Album Title (2020)", "../escape", "a/b"] {
+        set_folder(name).unwrap_or_else(|e| panic!("{name:?}: {e}"));
+    }
+    let error = set_folder("").expect_err("an empty folder name");
+    assert!(error.to_string().contains("CHECK constraint failed"), "{error}");
+}
+
 #[test]
 fn a_negative_file_size_is_an_unreadable_column() {
     let conn = seeded_conn();

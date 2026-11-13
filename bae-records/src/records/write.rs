@@ -114,19 +114,14 @@ pub(super) fn insert_album_artist_row(
     insert_credit_row(conn, "album_artists", "album_id", &aa.album_id, &credit, &created_at)
 }
 
-/// `source_folder_name` names the folder an export writes under the user's
-/// target directory, so, like a file's name (see [`insert_release_file_row`]),
-/// it must name one. The release is ordered after its album's others, so an
-/// album's first release stays its primary one. Its labels name the library
-/// labels `labels` decides.
+/// The release is ordered after its album's others, so an album's first
+/// release stays its primary one. Its labels name the library labels
+/// `labels` decides.
 pub fn insert_release_row(
     conn: &CovenWrite<'_>,
     release: &DbRelease,
     labels: &super::LabelWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
-    if let Some(folder) = &release.source_folder_name {
-        crate::stored_name::folder_path(&release.id, folder)?;
-    }
     let facts = super::pressing_columns::FactColumns::of(&release.pressing.facts);
     conn.execute(
         &format!(
@@ -505,14 +500,13 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 "#;
 
 /// Insert a release file row referencing `coven_file`, the coven file the
-/// write staged for it, once its name is checked to name a file.
+/// write staged for it.
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_release_file_row(
     conn: &CovenWrite<'_>,
     file: &NewReleaseFile,
     coven_file: coven::FileId,
 ) -> Result<(), IdentityWriteError> {
-    crate::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?;
     let source_audio_layout =
         file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {
             crate::source_audio::SourceAudioLayout::File => "file",

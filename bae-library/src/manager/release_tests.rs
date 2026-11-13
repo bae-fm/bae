@@ -326,21 +326,19 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
 
-    // An image file whose stored filename is a traversal token, written
-    // straight onto the row the way coven applies a peer's changeset — the seam
-    // `set_original_filename_for_test` exists for. It drives the gallery's file
-    // resolution and, as the release's representative file, the pinned-cache
-    // check; neither may follow it or panic.
+    // An image file whose stored filename is a traversal token, as a peer's
+    // device can have stored it. It drives the gallery's file resolution and,
+    // as the release's representative file, the pinned-cache check; neither
+    // may follow it or panic.
     let file = NewReleaseFile::new(
         &release.id,
-        "cover.jpg",
+        "../../etc/y",
         bae_util::content_type::ContentType::Jpeg,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         Utc::now(),
     );
     manager.add_file(&file, 5).await.unwrap();
-    manager.records.set_original_filename_for_test(&file.id, "../../etc/y").await.unwrap();
 
     // The resolver that fires when a synced release surfaces in the UI. The
     // name must resolve to "no cover" / "no local gallery path", not a panic.

@@ -48,30 +48,12 @@ pub enum IdentityRefusal {
 }
 
 /// Why a write that decides which library artist each credit and which
-/// library label each release label names was refused. Nothing of the write
-/// landed; the initiator sees this and may retry once the library or the
-/// statement changes.
-#[derive(Debug, thiserror::Error)]
-pub enum IdentityWriteRefusal {
-    #[error(transparent)]
-    Identity(#[from] IdentityRefusal),
-    #[error(transparent)]
-    StoredName(#[from] crate::stored_name::StoredNameError),
-}
-
-/// Why a write that decides which library artist each credit and which
 /// library label each release label names did not commit.
-pub type IdentityWriteError = WriteError<IdentityWriteRefusal>;
+pub type IdentityWriteError = WriteError<IdentityRefusal>;
 
 impl From<IdentityRefusal> for IdentityWriteError {
     fn from(refusal: IdentityRefusal) -> Self {
-        Self::Refused(refusal.into())
-    }
-}
-
-impl From<crate::stored_name::StoredNameError> for IdentityWriteError {
-    fn from(error: crate::stored_name::StoredNameError) -> Self {
-        Self::Refused(error.into())
+        Self::Refused(refusal)
     }
 }
 

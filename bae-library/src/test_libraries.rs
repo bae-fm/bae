@@ -18,7 +18,7 @@ pub use playback::{
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use records::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
-    test_album, test_release,
+    test_album, test_release, TEST_RELEASE_FOLDER,
 };
 pub use storage::{connect_storage, remove_uploaded_file, storage_library, storage_library_of};
 

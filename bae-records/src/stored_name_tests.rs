@@ -1,13 +1,8 @@
 use super::*;
 use std::path::{Path, PathBuf};
 
-const RELEASE: &str = "af63ef4c-8602-4cd5-82c0-3d334b916305";
-const FILE: &str = "0f7d1d5e-55a8-4d49-9a43-5a5c0d4b0f43";
-
 fn written(original_filename: &str) -> PathBuf {
-    file_path(RELEASE, FILE, original_filename)
-        .unwrap_or_else(|error| panic!("{original_filename:?}: {error}"))
-        .local_path()
+    file_path(original_filename).local_path()
 }
 
 #[test]
@@ -37,20 +32,9 @@ fn a_name_is_written_as_coven_writes_it_on_every_platform() {
 
 #[test]
 fn a_folder_name_is_one_name_whatever_it_holds() {
-    let written = |name| folder_path(RELEASE, name).unwrap().local_path();
+    let written = |name| folder_path(name).local_path();
     assert_eq!(written("Album Title (2020)"), Path::new("Album Title (2020)"));
     assert_eq!(written("../escape"), Path::new("..／escape"));
-}
-
-/// A name with no names, or an empty one (which an absolute path's
-/// leading `/` gives), names no file.
-#[test]
-fn an_empty_name_names_no_file() {
-    for bad in ["", "/etc/passwd", "CD1//track.flac", "CD1/"] {
-        let error = file_path(RELEASE, FILE, bad).expect_err(bad);
-        assert_eq!(error.source, RelativePathError::Empty);
-    }
-    folder_path(RELEASE, "").expect_err("an empty folder name");
 }
 
 /// A file's extension is its own name's, whatever dots its folders hold.

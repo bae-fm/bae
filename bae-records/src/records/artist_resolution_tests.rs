@@ -5,7 +5,7 @@
 //! decides.
 
 use super::*;
-use crate::{DbArtist, IdentityWriteError, IdentityWriteRefusal};
+use crate::{DbArtist, IdentityWriteError};
 use bae_store::test_fixtures::temp_db;
 use chrono::Utc;
 
@@ -195,7 +195,7 @@ async fn a_picked_artist_that_is_gone_refuses_the_write() {
         db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked)).await.unwrap_err();
 
     assert!(
-        matches!(&error, IdentityWriteError::Refused(IdentityWriteRefusal::Identity(IdentityRefusal::ArtistGone(id))) if id == "gone"),
+        matches!(&error, IdentityWriteError::Refused(IdentityRefusal::ArtistGone(id)) if id == "gone"),
         "{error}"
     );
 }

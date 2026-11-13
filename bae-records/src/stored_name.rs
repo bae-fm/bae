@@ -16,59 +16,32 @@
 //! names land at the same path on every device: `Caf\xE9.flac` is written as
 //! `Caf＼xE9.flac`, and `..` as `.．`.
 
-use coven::{RelativePath, RelativePathError};
+use coven::RelativePath;
 
-/// A stored name that names no file: it is empty, or one of its names is.
-/// Carries the release and column it came from, because the value is data
-/// another device may have written and the reader needs to know which row to
-/// look at.
-#[derive(Debug, thiserror::Error)]
-#[error("release {release_id} {label} {value:?} names no file: {source}")]
-pub struct StoredNameError {
-    pub release_id: String,
-    pub label: String,
-    pub value: String,
-    pub source: RelativePathError,
-}
+/// What every read of a stored name relies on: the tables refuse a name that
+/// names no file (`release_files.original_filename` and
+/// `releases.source_folder_name` each have a CHECK), so a name a row holds is
+/// one.
+const VALID_BY_CHECK: &str = "a stored name is non-empty by its table's CHECK";
 
 /// The path below a release's folder that a file's name in the release
 /// gives: each of its `/`-separated names, whatever else it holds.
-pub fn file_path(
-    release_id: &str,
-    file_id: &str,
-    original_filename: &str,
-) -> Result<RelativePath, StoredNameError> {
-    RelativePath::new(original_filename.split('/')).map_err(|source| StoredNameError {
-        release_id: release_id.to_string(),
-        label: format!("original_filename for file {file_id}"),
-        value: original_filename.to_string(),
-        source,
-    })
+pub fn file_path(original_filename: &str) -> RelativePath {
+    RelativePath::new(original_filename.split('/')).expect(VALID_BY_CHECK)
 }
 
 /// The path a release's folder name gives: one name, whatever it holds, `/`
 /// included.
-pub fn folder_path(release_id: &str, folder_name: &str) -> Result<RelativePath, StoredNameError> {
-    RelativePath::new([folder_name]).map_err(|source| StoredNameError {
-        release_id: release_id.to_string(),
-        label: "source_folder_name".to_string(),
-        value: folder_name.to_string(),
-        source,
-    })
+pub fn folder_path(folder_name: &str) -> RelativePath {
+    RelativePath::new([folder_name]).expect(VALID_BY_CHECK)
 }
 
 /// The path below a person's folder that a local copy of a release's file
 /// goes to: the release's folder name, then the file's names.
-pub fn copy_path(
-    release_id: &str,
-    folder_name: &str,
-    file_id: &str,
-    original_filename: &str,
-) -> Result<RelativePath, StoredNameError> {
-    let folder = folder_path(release_id, folder_name)?;
-    let file = file_path(release_id, file_id, original_filename)?;
-    Ok(RelativePath::new(folder.names().chain(file.names()))
-        .expect("two paths of non-empty names join to one"))
+pub fn copy_path(folder_name: &str, original_filename: &str) -> RelativePath {
+    let folder = folder_path(folder_name);
+    let file = file_path(original_filename);
+    RelativePath::new(folder.names().chain(file.names())).expect(VALID_BY_CHECK)
 }
 
 /// The extension a file's name in its release ends on, lowercased and

@@ -215,9 +215,8 @@ impl LibraryManager {
                 self.save_folder_name(&release, folder_pattern).await?
             }
         };
-        let final_dir = request
-            .target_dir
-            .join(bae_records::stored_name::folder_path(release_id, &folder)?.local_path());
+        let final_dir =
+            request.target_dir.join(bae_records::stored_name::folder_path(&folder).local_path());
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.

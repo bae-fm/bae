@@ -275,8 +275,9 @@ CREATE TABLE IF NOT EXISTS releases (
     discogs_details    TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
     -- The name of the folder the release was imported from, as
-    -- `coven::path_text` shows it: the folder an export recreates.
-    source_folder_name TEXT,
+    -- `coven::path_text` shows it: the folder an export recreates. One name,
+    -- never empty (a path of no names is no folder), `/` included.
+    source_folder_name TEXT CHECK (source_folder_name <> ''),
     -- EBU R128 integrated loudness over all tracks, in LUFS, measured at import;
     -- NULL when measuring failed. Playback derives the gain from it.
     album_loudness_lufs REAL,
@@ -410,7 +411,14 @@ CREATE INDEX IF NOT EXISTS idx_covers_file ON covers (file);
 CREATE TABLE IF NOT EXISTS release_files (
     id TEXT PRIMARY KEY,
     release_id TEXT NOT NULL,
-    original_filename TEXT NOT NULL,
+    -- The file's names in its release joined by `/`, none of them empty: a
+    -- name, or one that begins, ends or holds a doubled `/`, names no file.
+    original_filename TEXT NOT NULL CHECK (
+        original_filename <> ''
+        AND substr(original_filename, 1, 1) <> '/'
+        AND substr(original_filename, -1) <> '/'
+        AND instr(original_filename, '//') = 0
+    ),
     content_type TEXT NOT NULL,
     created_at TEXT NOT NULL,
     -- The file's coven file (`coven_files`), which holds its size, its hash

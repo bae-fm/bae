@@ -256,12 +256,6 @@ pub enum ImportError {
     #[error(transparent)]
     WatchedFolder(crate::WatchedPathError),
 
-    /// A stored file or folder name of a release that names no file: the row
-    /// an import's write was for is unusable.
-    #[cfg(desktop)]
-    #[error(transparent)]
-    StoredName(bae_records::stored_name::StoredNameError),
-
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
     /// broken invariant.
@@ -396,11 +390,9 @@ impl ImportError {
 #[cfg(desktop)]
 impl From<bae_records::IdentityWriteError> for ImportError {
     fn from(error: bae_records::IdentityWriteError) -> Self {
-        use bae_records::IdentityWriteRefusal as R;
         use bae_store::WriteError as E;
         match error {
-            E::Refused(R::Identity(refusal)) => Self::Identity(refusal),
-            E::Refused(R::StoredName(error)) => Self::StoredName(error),
+            E::Refused(refusal) => Self::Identity(refusal),
             E::Database(error) => Self::Database(error),
             E::Rollback { operation, rollback } => {
                 Self::Rollback { operation: Box::new((*operation).into()), rollback }
@@ -420,7 +412,7 @@ impl From<crate::tables::ImportCommitError> for ImportError {
         use crate::tables::ImportCommitRefusal as R;
         use bae_store::WriteError as E;
         match error {
-            E::Refused(R::Write(refusal)) => E::Refused(refusal).into(),
+            E::Refused(R::Write(refusal)) => Self::Identity(refusal),
             E::Refused(R::LibraryChanged) => Self::LibraryChanged,
             E::Refused(R::FilesAlreadyImported { release_id }) => {
                 Self::FilesAlreadyImported { release_id }
@@ -605,8 +597,6 @@ impl ImportError {
             Self::Identity(bae_records::IdentityRefusal::ArtistGone(_)) => C::ChangedMeanwhile,
             #[cfg(desktop)]
             Self::Database(error) => bae_diagnostics::database_category(error),
-            #[cfg(desktop)]
-            Self::StoredName(_) => C::Database,
             #[cfg(desktop)]
             Self::CatalogSession(crate::CatalogSessionError::Preferences(error)) => {
                 bae_diagnostics::database_category(error)

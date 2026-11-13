@@ -11,9 +11,15 @@ pub fn test_album() -> DbAlbum {
     DbAlbum { year: Some(2024), ..DbAlbum::new_test("Test Album", &coven::UuidIds) }
 }
 
-/// A release of `album_id` with a fresh id and nothing on it.
+/// The folder name of every [`test_release`]: where an export or a made-local
+/// copy of it is placed.
+pub const TEST_RELEASE_FOLDER: &str = "Release Folder";
+
+/// A release of `album_id` with a fresh id, imported from the folder
+/// [`TEST_RELEASE_FOLDER`], and nothing else on it.
 pub fn test_release(album_id: &str) -> DbRelease {
     DbRelease {
+        source_folder_name: Some(TEST_RELEASE_FOLDER.to_string()),
         pressing: bae_types::pressing::Pressing {
             year: Some(2024),
             ..bae_types::pressing::Pressing::blank()

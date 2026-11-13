@@ -455,52 +455,6 @@ impl Records {
         let release_id = release_id.to_string();
         self.store.read(move |sql| find_release_by_id_on(&sql, &release_id)).await
     }
-
-    /// Test-only: write a stored name onto an existing row directly, the way a
-    /// changeset from another device does. coven applies a pulled row straight into
-    /// SQLite, so the check on the row-write never sees it — which is why export
-    /// and audio detachment build each path from the names as they read them, and
-    /// what these seams let a test exercise.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_original_filename_for_test(
-        &self,
-        file_id: &str,
-        original_filename: &str,
-    ) -> Result<(), DbError> {
-        let file_id = file_id.to_string();
-        let original_filename = original_filename.to_string();
-        self.store
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE release_files SET original_filename = ?1 WHERE id = ?2",
-                    params![original_filename, file_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
-    /// Test-only. See [`set_original_filename_for_test`](Self::set_original_filename_for_test).
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_source_folder_name_for_test(
-        &self,
-        release_id: &str,
-        source_folder_name: &str,
-    ) -> Result<(), DbError> {
-        let release_id = release_id.to_string();
-        let source_folder_name = source_folder_name.to_string();
-        self.store
-            .call(move |conn| {
-                conn.execute(
-                    "UPDATE releases SET source_folder_name = ?1 WHERE id = ?2",
-                    params![source_folder_name, release_id],
-                )
-                .map(|_| ())
-                .map_err(DbError::from)
-            })
-            .await
-    }
 }
 
 /// Each of a release's tracks in release order, with how many audio formats

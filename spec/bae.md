@@ -2480,8 +2480,10 @@ control characters their pictures, a last `.` or space its lookalike, a
 Windows device name its letters in full width, and a name too long for a drive
 is cut before its extension. Every name is then one name inside Carol's folder
 on every device, so no row can make a device write outside the folder chosen:
-`Caf\xE9.flac` is written as `Caf＼xE9.flac`, and `..` as `.．`. A name that
-names no file, empty or holding an empty name, copies out nothing at all.
+`Caf\xE9.flac` is written as `Caf＼xE9.flac`, and `..` as `.．`. The tables
+refuse a name that names no file, an empty one or one holding an empty name
+(`a//b`, a leading or trailing `/`), by a CHECK on each column, so every name a
+read finds is one and nothing re-checks it.
 Before anything downloads, coven refuses the whole call when a copy's path
 already holds something, passes through a symbolic link below the folder, or
 is one path with another of the call's once written, or differs from one only
@@ -5702,12 +5704,12 @@ All sync.
 | `works` | MusicBrainz work |
 | `work_artists` | work's credited artist, in order, with the role it holds (a key of bae's list, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `work_parts` | work inside a larger work, in order |
-| `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
+| `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1; never empty), album loudness and peak |
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
 | `release_barcodes` | a release's barcodes: each at its position in the list (§2.1) |
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
-| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
+| `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1; none of its `/`-separated names empty), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
 | `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `performer` with its instrument or voice, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |

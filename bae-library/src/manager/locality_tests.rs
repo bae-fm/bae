@@ -29,7 +29,7 @@ fn making_uploaded_audio_local_keeps_only_this_device_playable() {
 }
 
 /// The folder name the releases made local in these tests are placed in.
-const FOLDER: &str = "Release Folder";
+const FOLDER: &str = crate::test_libraries::TEST_RELEASE_FOLDER;
 
 async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, uploaded: bool) {
     devices.pause().await;
@@ -46,7 +46,6 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         &[("a.flac", b"first audio"), ("b.flac", b"second audio")],
     )
     .await;
-    manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
     store_test_cover(manager, &release.id, b"cover").await;
     let cover = cover_file(manager, &release.id).await.id();
     manager.upload_release(&release.id).await.unwrap();
@@ -465,7 +464,6 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.records.set_source_folder_name_for_test(&release.id, FOLDER).await.unwrap();
     manager.upload_release(&release.id).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let files = release_files(manager, &release.id).await;
@@ -478,13 +476,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
     let paths = files
         .iter()
         .map(|file| {
-            let path = bae_records::stored_name::copy_path(
-                &release.id,
-                FOLDER,
-                &file.id,
-                &file.original_filename,
-            )
-            .unwrap();
+            let path = bae_records::stored_name::copy_path(FOLDER, &file.original_filename);
             (file.file, path)
         })
         .collect();
@@ -561,7 +553,6 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let home = connect_test_cloud(&test).await;
     let release_id =
         uploaded_release(manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
-    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -636,7 +627,6 @@ async fn cancelling_a_make_local_leaves_the_release_in_the_cloud() {
     let home = connect_test_cloud(&test).await;
     let release_id =
         uploaded_release(manager, &temp_dir.path().join("r1"), "Album One", false).await;
-    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -686,7 +676,6 @@ async fn making_a_release_local_replaces_its_failed_pin() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let release_id = insert_pinnable_release(&test).await;
-    manager.records.set_source_folder_name_for_test(&release_id, FOLDER).await.unwrap();
     test.storage.set_online(false);
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     download_queue_until(manager, |queue| {

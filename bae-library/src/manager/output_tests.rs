@@ -117,7 +117,8 @@ async fn make_exportable_release(
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (release, _) = insert_export_release_rows(manager, source_dir, folder_name, files).await;
+    let (release, _) =
+        insert_export_release_rows(manager, source_dir, folder_name, files, str::to_string).await;
     manager.upload_release(&release.id).await.unwrap();
     // The uploads this fixture's tests leave running drain the queue, so
     // wait for the upload to finish rather than counting a drain pass this
@@ -132,6 +133,7 @@ async fn insert_export_release_rows(
     source_dir: &std::path::Path,
     folder_name: &str,
     files: &[(&str, &[u8])],
+    stored_as: impl Fn(&str) -> String,
 ) -> (DbRelease, Vec<NewReleaseFile>) {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
@@ -144,7 +146,7 @@ async fn insert_export_release_rows(
     for (index, (name, bytes)) in files.iter().enumerate() {
         let file = NewReleaseFile::new(
             &release.id,
-            name,
+            &stored_as(name),
             bae_util::content_type::ContentType::Flac,
             bae_records::ReleaseFileRole::Other,
             bae_util::test_ids::test_uuid(&format!("{}-export-file-{index}", release.id)),
@@ -159,28 +161,24 @@ async fn insert_export_release_rows(
     (release, inserted_files)
 }
 
-/// A Local release with one readable source file, whose stored name is then
-/// overwritten with `name` — the shape a row pulled from another device can
-/// have. coven applies a pulled changeset straight into SQLite, so bae's own
-/// row-write never sees it: the export copy-out and audio detachment build each
-/// path from the names as they read them.
+/// A Local release with one readable source file, stored under `name`: a
+/// name another device's file system can hold, and no path on this one. The
+/// export copy-out builds each path from the names as it reads them.
 async fn insert_local_export_release_named(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
     bytes: &[u8],
     name: PeerName<'_>,
 ) -> String {
-    let (release, db_files) =
-        insert_export_release_rows(manager, source_dir, "Album Title", &[("track.flac", bytes)])
-            .await;
-    match name {
-        PeerName::OriginalFilename(value) => {
-            manager.records.set_original_filename_for_test(&db_files[0].id, value).await.unwrap()
-        }
-        PeerName::SourceFolderName(value) => {
-            manager.records.set_source_folder_name_for_test(&release.id, value).await.unwrap()
-        }
-    }
+    let (folder, file_name) = match name {
+        PeerName::OriginalFilename(value) => ("Album Title", value),
+        PeerName::SourceFolderName(value) => (value, "track.flac"),
+    };
+    let (release, _) =
+        insert_export_release_rows(manager, source_dir, folder, &[("track.flac", bytes)], |_| {
+            file_name.to_string()
+        })
+        .await;
     release.id
 }
 
@@ -293,37 +291,6 @@ async fn export_writes_a_parent_name_inside_its_folder() {
     );
     assert!(!target.join("escape.flac").exists());
     assert!(!temp_dir.path().join("escape.flac").exists());
-}
-
-/// An absolute path's leading `/` gives an empty name, which names no file:
-/// the export writes nothing.
-#[tokio::test]
-async fn export_refuses_an_absolute_original_filename() {
-    let (test, temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let release_id = insert_local_export_release_named(
-        manager,
-        &temp_dir.path().join("source"),
-        b"escape-bytes",
-        PeerName::OriginalFilename("/absolute-escape.flac"),
-    )
-    .await;
-
-    let target = temp_dir.path().join("export-out");
-    let error = manager
-        .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
-        .await
-        .expect_err("an absolute original_filename is refused");
-
-    assert!(
-        matches!(
-            &error,
-            LibraryError::Database(bae_store::DbError::Unreadable { stored, .. })
-                if stored.contains("/absolute-escape.flac")
-        ),
-        "a name that names no file is a damaged row: {error}"
-    );
-    assert!(!target.join("Album Title").exists());
 }
 
 /// A folder name is one name, `/` included: coven writes `../escape-folder`

@@ -395,7 +395,6 @@ async fn a_make_local_entry_reaches_the_reads() {
         &[("a.flac", b"audio")],
     )
     .await;
-    manager.records().set_source_folder_name_for_test(&release_id, "Folder").await.unwrap();
     manager.manager().upload_release(&release_id).await.unwrap();
     manager.manager().drain_uploads_expecting_work().await.unwrap();
     let album_id =

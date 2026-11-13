@@ -157,8 +157,7 @@ impl LibraryManager {
     /// another device may have written, so each path is its names, and coven
     /// writes each name through the rule it uses for its own copies (see
     /// [`bae_records::stored_name`]): every name is one name inside the
-    /// person's folder. A release carrying a name that names no file, or no
-    /// folder name, makes no file local.
+    /// person's folder. A release with no folder name makes no file local.
     #[cfg(desktop)]
     async fn local_copy_paths(
         &self,
@@ -176,18 +175,10 @@ impl LibraryManager {
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
-        files
+        Ok(files
             .iter()
-            .map(|f| {
-                let path = bae_records::stored_name::copy_path(
-                    release_id,
-                    &folder,
-                    &f.id,
-                    &f.original_filename,
-                )?;
-                Ok((f.file, path))
-            })
-            .collect()
+            .map(|f| (f.file, bae_records::stored_name::copy_path(&folder, &f.original_filename)))
+            .collect())
     }
 
     /// The bytes of the release's files, as the records hold their sizes.

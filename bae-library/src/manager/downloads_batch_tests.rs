@@ -114,9 +114,6 @@ async fn pins_and_make_locals_are_counted_apart() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let releases = pinnable_releases(&test, 4).await;
-    for release in &releases {
-        manager.records.set_source_folder_name_for_test(release, "Release Folder").await.unwrap();
-    }
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
 
@@ -156,12 +153,9 @@ async fn pins_and_make_locals_are_counted_apart() {
         .iter()
         .map(|file| {
             let path = bae_records::stored_name::copy_path(
-                &releases[2],
-                "Release Folder",
-                &file.id,
+                crate::test_libraries::TEST_RELEASE_FOLDER,
                 &file.original_filename,
-            )
-            .unwrap();
+            );
             (file.file, path)
         })
         .collect();

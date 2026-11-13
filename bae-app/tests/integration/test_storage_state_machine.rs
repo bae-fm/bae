@@ -48,7 +48,27 @@ async fn create_remote_cloud_only_release(
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
-    let (release_id, _named) = crate::create_local_release(mgr, source_dir, files).await;
+    create_remote_cloud_only_release_in_folder(
+        db,
+        mgr,
+        bae_library::test_libraries::TEST_RELEASE_FOLDER,
+        source_dir,
+        files,
+    )
+    .await
+}
+
+/// [`create_remote_cloud_only_release`] for a release imported from the
+/// folder `folder_name`.
+async fn create_remote_cloud_only_release_in_folder(
+    db: &Store,
+    mgr: &LibraryManager,
+    folder_name: &str,
+    source_dir: &std::path::Path,
+    files: &[(&str, &[u8])],
+) -> (String, Vec<(String, String, Vec<u8>)>) {
+    let (release_id, _named) =
+        crate::create_local_release_in_folder(mgr, folder_name, source_dir, files).await;
 
     let mut captured = Vec::new();
     for file in mgr.get_files_for_release(&release_id).await.unwrap() {
@@ -298,7 +318,6 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     )
     .await;
 
-    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
     make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
@@ -310,7 +329,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
         let path = mgr.manager().file_local_path(file_id).await.unwrap().unwrap();
         assert_eq!(
             path,
-            new_path.join("Exported Release").join(name),
+            new_path.join(bae_library::test_libraries::TEST_RELEASE_FOLDER).join(name),
             "device-local path names the new copy"
         );
     }
@@ -325,14 +344,14 @@ async fn making_two_releases_local_puts_each_in_its_own_folder() {
     let db = mgr.store().clone();
     let mut releases = Vec::new();
     for (name, bytes) in [("Name A", b"first".as_slice()), ("Name B", b"second".as_slice())] {
-        let (release_id, _files) = create_remote_cloud_only_release(
+        let (release_id, _files) = create_remote_cloud_only_release_in_folder(
             &db,
             mgr.manager(),
+            name,
             &tmp.path().join(format!("originals-{name}")),
             &[("01.flac", bytes)],
         )
         .await;
-        mgr.records().set_source_folder_name_for_test(&release_id, name).await.unwrap();
         releases.push((release_id, name));
     }
 
@@ -372,7 +391,6 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     // `files` carries `(file_id, original_filename, plaintext)`.
     bae_library::test_libraries::remove_uploaded_file(mgr.manager(), &cloud, &files[1].0).await;
 
-    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
     let result = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
@@ -402,7 +420,6 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     )
     .await;
 
-    mgr.records().set_source_folder_name_for_test(&release_id, "Exported Release").await.unwrap();
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
     let error = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)

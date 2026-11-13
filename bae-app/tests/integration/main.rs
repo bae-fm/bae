@@ -41,6 +41,23 @@ pub(crate) async fn create_local_release(
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, Vec<u8>)>) {
+    create_local_release_in_folder(
+        mgr,
+        bae_library::test_libraries::TEST_RELEASE_FOLDER,
+        source_dir,
+        files,
+    )
+    .await
+}
+
+/// [`create_local_release`] for a release imported from the folder
+/// `folder_name`.
+pub(crate) async fn create_local_release_in_folder(
+    mgr: &bae_library::LibraryManager,
+    folder_name: &str,
+    source_dir: &std::path::Path,
+    files: &[(&str, &[u8])],
+) -> (String, Vec<(String, Vec<u8>)>) {
     let now = chrono::Utc::now();
     // Shared across every release this helper seeds, so only the first call
     // inserts it.
@@ -61,7 +78,10 @@ pub(crate) async fn create_local_release(
         title: "Album Title".to_string(),
         ..bae_library::test_libraries::test_album()
     };
-    let release = bae_library::test_libraries::test_release(&album.id);
+    let release = bae_records::DbRelease {
+        source_folder_name: Some(folder_name.to_string()),
+        ..bae_library::test_libraries::test_release(&album.id)
+    };
     let release_id = release.id.clone();
     let credit = bae_records::DbAlbumArtist::new_test(&album.id, &artist_id);
     mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
