@@ -29,6 +29,7 @@
     <string name="library_load_more_composers_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων συνθετών.</string>
     <string name="library">Βιβλιοθήκη</string>
     <string name="album_not_in_library">Αυτό το άλμπουμ δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
+    <string name="playlist_not_in_library">Αυτή η λίστα αναπαραγωγής δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
     <string name="shuffle">Τυχαία σειρά</string>
     <string name="play_next">Αναπαραγωγή ως επόμενο</string>
     <string name="add_to_queue">Προσθήκη στην ουρά</string>

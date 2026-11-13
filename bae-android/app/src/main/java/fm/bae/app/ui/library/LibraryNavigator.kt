@@ -38,6 +38,10 @@ internal sealed interface LibraryDestination {
         val artistId: String,
     ) : LibraryDestination
 
+    data class Playlist(
+        val playlistId: String,
+    ) : LibraryDestination
+
     /** Settings and the screens it opens. */
     sealed interface Setting : LibraryDestination
 
@@ -148,6 +152,10 @@ internal fun LibraryDestinationScreen(
                 onBack = onBack,
                 onSelectAlbum = { onPush(LibraryDestination.Album(AlbumTarget(it))) },
             )
+        }
+
+        is LibraryDestination.Playlist -> {
+            PlaylistScreen(session = session, playlistId = destination.playlistId, onBack = onBack)
         }
 
         is LibraryDestination.Setting -> {

@@ -29,6 +29,7 @@
     <string name="library_load_more_composers_failed">Não foi possível carregar mais compositores.</string>
     <string name="library">Biblioteca</string>
     <string name="album_not_in_library">Este álbum já não está na sua biblioteca.</string>
+    <string name="playlist_not_in_library">Esta lista de reprodução já não está na sua biblioteca.</string>
     <string name="shuffle">Aleatório</string>
     <string name="play_next">Reproduzir a seguir</string>
     <string name="add_to_queue">Adicionar à fila</string>

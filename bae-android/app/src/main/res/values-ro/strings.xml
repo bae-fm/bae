@@ -29,6 +29,7 @@
     <string name="library_load_more_composers_failed">Nu s-au putut încărca mai mulți compozitori.</string>
     <string name="library">Bibliotecă</string>
     <string name="album_not_in_library">Acest album nu mai este în biblioteca ta.</string>
+    <string name="playlist_not_in_library">Această listă de redare nu mai este în biblioteca ta.</string>
     <string name="shuffle">Aleatoriu</string>
     <string name="play_next">Redă ca următor</string>
     <string name="add_to_queue">Adaugă la coadă</string>

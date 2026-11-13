@@ -37,15 +37,16 @@ internal fun rememberPlaylistListing(session: OpenLibrary): PlaylistListingStore
 }
 
 /**
- * The Playlists view: every playlist this device holds, then a New playlist button where the person
- * can make one. With none, the button stands under the empty line; without a profile there is no
- * button, and the line says playlists wait for one.
+ * The Playlists view: every playlist this device holds, each opening its page, then a New playlist
+ * button where the person can make one. With none, the button stands under the empty line; without
+ * a profile there is no button, and the line says playlists wait for one.
  */
 @Composable
 internal fun PlaylistListContent(
     session: OpenLibrary,
     page: PlaylistListingStore,
     listState: LazyListState,
+    onSelectPlaylist: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val listing = page.listing
@@ -77,6 +78,7 @@ internal fun PlaylistListContent(
                             ),
                         ),
                     playlistCover = playlist.cover,
+                    onClick = { onSelectPlaylist(playlist.id) },
                 )
             }
             if (canCreate) {
@@ -89,6 +91,6 @@ internal fun PlaylistListContent(
         }
     }
     if (creating) {
-        NewPlaylistDialog(session = session, onDismiss = { creating = false })
+        NewPlaylistDialog(session = session, onDismiss = { creating = false }, onCreated = onSelectPlaylist)
     }
 }

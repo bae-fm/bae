@@ -29,6 +29,7 @@
     <string name="library_load_more_composers_failed">Weitere Komponisten konnten nicht geladen werden.</string>
     <string name="library">Mediathek</string>
     <string name="album_not_in_library">Dieses Album ist nicht mehr in deiner Mediathek.</string>
+    <string name="playlist_not_in_library">Diese Wiedergabeliste ist nicht mehr in deiner Mediathek.</string>
     <string name="shuffle">Zufallswiedergabe</string>
     <string name="play_next">Als Nächstes abspielen</string>
     <string name="add_to_queue">Zur Warteschlange hinzufügen</string>

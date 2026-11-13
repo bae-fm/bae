@@ -18,6 +18,7 @@ step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDeb
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
 step android android-playback-service-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaybackServiceTest
 step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest
+step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest --tests *PlaylistScreenTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
 step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests

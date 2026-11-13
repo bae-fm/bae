@@ -40,13 +40,15 @@ private val logger = BaeLogger("bae.NewPlaylistDialog")
 private val SHARING_CHOICES = listOf(BridgeSharing.PRIVATE, BridgeSharing.HOUSEHOLD)
 
 /**
- * Make a playlist: its name and who sees it. Creating it closes the dialog; a failure shows in the
- * dialog. [nameIsBlank] is core's answer to whether a typed name is blank.
+ * Make a playlist: its name and who sees it. Creating it closes the dialog and hands the new
+ * playlist's id to [onCreated]; a failure shows in the dialog. [nameIsBlank] is core's answer to
+ * whether a typed name is blank.
  */
 @Composable
 internal fun NewPlaylistDialog(
     session: OpenLibrary,
     onDismiss: () -> Unit,
+    onCreated: (String) -> Unit,
     nameIsBlank: (String) -> Boolean = ::enteredNameIsBlank,
 ) {
     val scope = rememberScreenScope()
@@ -68,18 +70,20 @@ internal fun NewPlaylistDialog(
                     saving = true
                     error = null
                     scope.launch {
-                        var created = false
+                        var created: String? = null
                         performBridgeAction(
                             logger = logger,
                             operation = "make a playlist",
                             errors = session.errors,
                             showError = { error = it },
                         ) {
-                            session.appHandle.createPlaylist(name, sharing, emptyList())
-                            created = true
+                            created = session.appHandle.createPlaylist(name, sharing, emptyList())
                         }
                         saving = false
-                        if (created) onDismiss()
+                        created?.let {
+                            onDismiss()
+                            onCreated(it)
+                        }
                     }
                 },
                 onDismiss = onDismiss,

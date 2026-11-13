@@ -53,6 +53,7 @@ internal fun LibraryScreen(
                 onSelectComposer = { navigator.push(LibraryDestination.Composer(it)) },
                 onSelectArtist = { navigator.push(LibraryDestination.Artist(it)) },
                 onSelectWork = { navigator.push(LibraryDestination.Work(it)) },
+                onSelectPlaylist = { navigator.push(LibraryDestination.Playlist(it)) },
                 onSettings = { navigator.push(LibraryDestination.Settings) },
                 onDownloads = { navigator.push(LibraryDestination.Downloads) },
                 onSyncStatus = { navigator.push(LibraryDestination.Sync) },

@@ -29,6 +29,8 @@ import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgePlaylistCover
+import uniffi.bae_bridge.BridgePlaylistDetail
+import uniffi.bae_bridge.BridgePlaylistEntryRow
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgePlaylistOwner
 import uniffi.bae_bridge.BridgePlaylistSummary
@@ -199,6 +201,27 @@ object BridgeFixtures {
         listed: List<BridgePlaylistSummary> = listOf(playlistSummary()),
         canCreate: Boolean = true,
     ): BridgePlaylistListing = BridgePlaylistListing(listed = listed, addTargets = listed, canCreate = canCreate)
+
+    fun playlistEntry(
+        positionId: String,
+        title: String,
+    ): BridgePlaylistEntryRow =
+        BridgePlaylistEntryRow(
+            positionId = positionId,
+            trackId = "track-$positionId",
+            title = title,
+            artistNames = "Artist Name",
+            albumId = "album-1",
+            albumTitle = "Album Title",
+            releaseId = "rel-1",
+            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
+            cover = null,
+        )
+
+    fun playlistDetail(
+        summary: BridgePlaylistSummary = playlistSummary(),
+        entries: List<BridgePlaylistEntryRow> = emptyList(),
+    ): BridgePlaylistDetail = BridgePlaylistDetail(summary = summary, entries = entries)
 
     fun composerSummary(
         artistId: String = "artist-1",

@@ -29,6 +29,7 @@
     <string name="library_load_more_composers_failed">Kunne ikke laste inn flere komponister.</string>
     <string name="library">Bibliotek</string>
     <string name="album_not_in_library">Dette albumet er ikke lenger i biblioteket ditt.</string>
+    <string name="playlist_not_in_library">Denne spillelisten er ikke lenger i biblioteket ditt.</string>
     <string name="shuffle">Tilfeldig</string>
     <string name="play_next">Spill av som neste</string>
     <string name="add_to_queue">Legg i kø</string>

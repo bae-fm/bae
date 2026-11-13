@@ -71,6 +71,7 @@ internal fun AndroidLibraryScreenContainer(
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
+    onSelectPlaylist: (String) -> Unit,
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
     onSyncStatus: () -> Unit,
@@ -106,6 +107,7 @@ internal fun AndroidLibraryScreenContainer(
             onSelectComposer = onSelectComposer,
             onSelectArtist = onSelectArtist,
             onSelectWork = onSelectWork,
+            onSelectPlaylist = onSelectPlaylist,
         )
     }
 }
@@ -166,6 +168,7 @@ private fun LibraryBrowserContent(
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
+    onSelectPlaylist: (String) -> Unit,
 ) {
     Box(modifier = modifier) {
         if (state.searchQuery.isNotBlank()) {
@@ -213,6 +216,7 @@ private fun LibraryBrowserContent(
                         session = session,
                         page = rememberPlaylistListing(session),
                         listState = state.playlistListState,
+                        onSelectPlaylist = onSelectPlaylist,
                     )
                 }
             }

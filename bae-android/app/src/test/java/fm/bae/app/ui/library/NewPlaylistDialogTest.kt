@@ -50,13 +50,19 @@ class NewPlaylistDialogTest {
 
     private val handle = MakingHandle()
     private var dismissed = 0
+    private val opened = mutableListOf<String>()
 
     private fun showDialog() {
         val session = openTestLibrary(handle)
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    NewPlaylistDialog(session = session, onDismiss = { dismissed++ }, nameIsBlank = { it.isBlank() })
+                    NewPlaylistDialog(
+                        session = session,
+                        onDismiss = { dismissed++ },
+                        onCreated = { opened += it },
+                        nameIsBlank = { it.isBlank() },
+                    )
                 }
             }
         }
@@ -72,6 +78,7 @@ class NewPlaylistDialogTest {
         compose.waitUntil(HANG_GUARD_MS) { dismissed > 0 }
 
         assertEquals(listOf(Made("Late night", BridgeSharing.PRIVATE, emptyList())), handle.made)
+        assertEquals(listOf("playlist-1"), opened)
     }
 
     @Test
@@ -109,5 +116,6 @@ class NewPlaylistDialogTest {
 
         assertEquals(1, dismissed)
         assertEquals(emptyList<Made>(), handle.made)
+        assertEquals(emptyList<String>(), opened)
     }
 }
