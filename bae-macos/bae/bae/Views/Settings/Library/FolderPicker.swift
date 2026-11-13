@@ -120,20 +120,23 @@
             }
             if browser.takenName != nil {
                 Section {
-                    Text(words.nameTaken)
-                        .themeText(.body)
-                        .foregroundStyle(Theme.danger)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Notice(
+                        title: String(localized: words.nameTaken),
+                        advice: nil,
+                        error: nil
+                    )
                 }
             }
-            if let taken = browser.notEmpty {
+            if browser.notEmpty != nil {
                 Section {
-                    Text(
-                        "This folder is not empty. Choose an empty folder, or make a new one."
+                    Notice(
+                        title: String(
+                            localized:
+                                "This folder is not empty. Choose an empty folder, or make a new one."
+                        ),
+                        advice: nil,
+                        error: nil
                     )
-                    .themeText(.body)
-                    .foregroundStyle(Theme.danger)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
