@@ -62,8 +62,9 @@ pub(crate) enum TimingProtocol {
 }
 
 impl TimingProtocol {
-    /// Bit 42 of the features value marks a receiver that requires PTP timing.
-    const SUPPORTS_PTP: u64 = 1 << 42;
+    /// Bit 41 of the features value (`SupportsPTP`) marks a receiver that uses
+    /// PTP timing. Bit 42 is the screen multi-codec bit.
+    const SUPPORTS_PTP: u64 = 1 << 41;
 
     /// Decide the timing protocol from a receiver's features value.
     pub(crate) fn from_features(features: u64) -> Self {
