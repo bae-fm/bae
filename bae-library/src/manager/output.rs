@@ -315,11 +315,12 @@ impl LibraryManager {
             album_year: album.year,
             release_year: release.shown_year(album.year),
             album: album.title,
-            label: labels.iter().find_map(|label| label.name()).map(str::to_string),
-            catalog_number: labels
+            labels: labels.iter().filter_map(|label| label.name()).map(str::to_string).collect(),
+            catalog_numbers: labels
                 .iter()
-                .find_map(|label| label.catalog_number())
-                .map(str::to_string),
+                .filter_map(|label| label.catalog_number())
+                .map(str::to_string)
+                .collect(),
         };
         crate::save::render_save_folder_name(pattern, &tags).map_err(LibraryError::FolderPattern)
     }

@@ -2550,6 +2550,11 @@ Two ways put a release back on disk, from desktop:
   named by the folder pattern, written the same way. The album year is the
   year the album first came out; the release year is the year this release
   came out, or the album's year when the release states none.
+  A release with several labels or catalog numbers names its folder by every
+  one, in the order the release lists them, a repeat (a label on two of its
+  catalog-number rows) named once at its first place, joined with ", ": the label value
+  of a pattern renders `Harbor Records, Tide Pool`, the catalog number value
+  `HR-1042, TP-7`.
   A release save creates each track's file new, like export, so two names a
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single

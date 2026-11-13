@@ -68,10 +68,12 @@ pub struct SaveFolderTags {
     pub album_year: Option<i32>,
     /// The year this release came out, else the album's.
     pub release_year: Option<i32>,
-    /// The first label the pressing states a name for.
-    pub label: Option<String>,
-    /// The first catalog number the pressing states.
-    pub catalog_number: Option<String>,
+    /// The name of every label the pressing states one for, in the order the
+    /// release lists them (a label on several rows appears once per row).
+    pub labels: Vec<String>,
+    /// Every catalog number the pressing states, in the order the release
+    /// lists them.
+    pub catalog_numbers: Vec<String>,
 }
 
 /// Render the folder name (one name, no extension) a release save writes into
@@ -95,8 +97,8 @@ pub fn render_save_folder_name(
         SaveFolderValue::ReleaseYear => {
             tags.release_year.map(|year| year.to_string()).unwrap_or_default()
         }
-        SaveFolderValue::Label => tags.label.clone().unwrap_or_default(),
-        SaveFolderValue::CatalogNumber => tags.catalog_number.clone().unwrap_or_default(),
+        SaveFolderValue::Label => joined_unique(&tags.labels),
+        SaveFolderValue::CatalogNumber => joined_unique(&tags.catalog_numbers),
     })?;
     if !name.is_empty() {
         return Ok(name);
@@ -108,6 +110,19 @@ pub fn render_save_folder_name(
     }
     debug!("folder name pattern and album both empty; using \"release\"");
     Ok("release".to_string())
+}
+
+/// `values` joined with ", ", each once: a repeat (a label on two of the
+/// release's catalog-number rows) is dropped, the first appearance keeps its
+/// place.
+fn joined_unique(values: &[String]) -> String {
+    let mut seen = Vec::new();
+    for value in values {
+        if !seen.contains(&value) {
+            seen.push(value);
+        }
+    }
+    seen.into_iter().map(String::as_str).collect::<Vec<_>>().join(", ")
 }
 
 /// What `pattern` makes of the values `value_of` fills in: its text as typed,

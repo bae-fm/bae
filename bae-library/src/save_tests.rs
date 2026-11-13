@@ -373,8 +373,8 @@ fn folder_tags() -> SaveFolderTags {
         album: "Low Tide Hours".to_string(),
         album_year: Some(1992),
         release_year: Some(2004),
-        label: Some("Harbor Records".to_string()),
-        catalog_number: Some("HR-1042".to_string()),
+        labels: vec!["Harbor Records".to_string()],
+        catalog_numbers: vec!["HR-1042".to_string()],
     }
 }
 
@@ -406,7 +406,8 @@ fn a_folder_name_fills_the_values_its_pattern_names() {
         .unwrap(),
         "1992  2004 [Harbor Records] HR-1042 Low Tide Hours"
     );
-    let unstated = SaveFolderTags { release_year: None, label: None, catalog_number: None, ..tags };
+    let unstated =
+        SaveFolderTags { release_year: None, labels: vec![], catalog_numbers: vec![], ..tags };
     assert_eq!(
         render_save_folder_name(
             &folder_pattern(&[value(Artist), text(" - "), value(Label), text(" - "), value(Album)]),
@@ -414,6 +415,46 @@ fn a_folder_name_fills_the_values_its_pattern_names() {
         )
         .unwrap(),
         "Mara Quill -  - Low Tide Hours"
+    );
+}
+
+/// A pressing with several labels or catalog numbers names its folder by all
+/// of them, in the order the release lists them, joined with ", ".
+#[test]
+fn a_folder_name_lists_every_label_and_catalog_number() {
+    use SaveFolderValue::*;
+    let tags = SaveFolderTags {
+        labels: vec!["Harbor Records".to_string(), "Tide Pool".to_string()],
+        catalog_numbers: vec!["HR-1042".to_string(), "TP-7".to_string()],
+        ..folder_tags()
+    };
+    assert_eq!(
+        render_save_folder_name(
+            &folder_pattern(&[value(Label), text(" - "), value(CatalogNumber)]),
+            &tags
+        )
+        .unwrap(),
+        "Harbor Records, Tide Pool - HR-1042, TP-7"
+    );
+}
+
+/// A label on two catalog-number rows, or a repeated catalog number, is named
+/// once, at its first place.
+#[test]
+fn a_folder_name_names_a_repeated_label_and_catalog_number_once() {
+    use SaveFolderValue::*;
+    let tags = SaveFolderTags {
+        labels: ["Harbor Records", "Tide Pool", "Harbor Records"].map(String::from).to_vec(),
+        catalog_numbers: ["HR-1042", "HR-1043", "HR-1042"].map(String::from).to_vec(),
+        ..folder_tags()
+    };
+    assert_eq!(
+        render_save_folder_name(
+            &folder_pattern(&[value(Label), text(" - "), value(CatalogNumber)]),
+            &tags
+        )
+        .unwrap(),
+        "Harbor Records, Tide Pool - HR-1042, HR-1043"
     );
 }
 
@@ -426,7 +467,7 @@ fn an_empty_folder_name_falls_back_to_the_album() {
     assert_eq!(
         render_save_folder_name(
             &folder_pattern(&[value(Label)]),
-            &SaveFolderTags { label: None, ..tags }
+            &SaveFolderTags { labels: vec![], ..tags }
         )
         .unwrap(),
         "Low Tide Hours"
@@ -436,8 +477,8 @@ fn an_empty_folder_name_falls_back_to_the_album() {
         album: String::new(),
         album_year: None,
         release_year: None,
-        label: None,
-        catalog_number: None,
+        labels: vec![],
+        catalog_numbers: vec![],
     };
     assert_eq!(
         render_save_folder_name(&folder_pattern(&[value(Artist)]), &nothing).unwrap(),
