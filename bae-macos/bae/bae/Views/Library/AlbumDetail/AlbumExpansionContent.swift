@@ -102,6 +102,10 @@ struct AlbumExpansionContent: View {
                         playlists: playlists
                     )
                     .padding(.top, ThemeSpace.edge)
+                    if !selectedRelease.credits.isEmpty {
+                        AlbumCreditsView(credits: selectedRelease.credits)
+                            .padding(.top, ThemeSpace.edge)
+                    }
                 }
             }
         }
