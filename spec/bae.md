@@ -5641,8 +5641,8 @@ boundaries; the string catalogs; the linters of each language). It runs
 no tests, the tests of bae's own checkers included, and finishes within 45
 seconds. CI runs, on macOS, iOS, Android, Linux and Windows, every one of those
 checks over the whole tree, and in addition: the crates that depend on a
-changed crate, the crates' libraries without test features, rustdoc, the iOS
-build's dead-code check, the crates' dependency order, clippy for each feature
+changed crate, the crates' libraries without test features, rustdoc, clippy
+for the iOS target, the crates' dependency order, clippy for each feature
 set, dead-code and unused-dependency checks, cargo deny, every crate's tests,
 the Avalonia smoke test, the macOS builds and tests and the iOS builds for both
 editions, and Swift lint and format. A push also runs the tests of the

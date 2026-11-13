@@ -4,17 +4,23 @@
 # (`test-utils`, `test-instrumentation`) and every feature bae-bridge declares
 # (the set the macOS Debug app builds it with, bae-bridge/build-macos.sh), so
 # the tests and the desktop code are compiled. Runs as the pre-commit hook's
-# compile check.
+# compile check. `--workspace` checks every workspace crate in one run, with the
+# features of all of them (one feature resolution), as CI does.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 crates=()
-while [ "$#" -gt 0 ]; do
-    [ "$1" = "-p" ] && [ "$#" -ge 2 ] || { echo "usage: $0 [-p <crate>]..." >&2; exit 2; }
-    crates+=("$2")
-    shift 2
-done
-[ "${#crates[@]}" -gt 0 ] || exit 0
+workspace=0
+if [ "$#" -eq 1 ] && [ "$1" = "--workspace" ]; then
+    workspace=1
+else
+    while [ "$#" -gt 0 ]; do
+        [ "$1" = "-p" ] && [ "$#" -ge 2 ] || { echo "usage: $0 [--workspace | -p <crate>...]" >&2; exit 2; }
+        crates+=("$2")
+        shift 2
+    done
+    [ "${#crates[@]}" -gt 0 ] || exit 0
+fi
 
 features=$(
     cargo metadata --format-version 1 --offline --no-deps | python3 -c '
@@ -23,18 +29,21 @@ metadata = json.load(sys.stdin)
 wanted = set(sys.argv[1:])
 for package in metadata["packages"]:
     name = package["name"]
-    if name not in wanted:
+    if wanted and name not in wanted:
         continue
     for feature in sorted(package["features"]):
         if feature in ("test-utils", "test-instrumentation") or (
             name == "bae-bridge" and feature != "default"
         ):
             print(f"{name}/{feature}")
-' "${crates[@]}"
+' "${crates[@]+"${crates[@]}"}"
 )
 
 args=(clippy --all-targets)
-for crate in "${crates[@]}"; do
+if [ "$workspace" -eq 1 ]; then
+    args+=(--workspace)
+fi
+for crate in "${crates[@]+"${crates[@]}"}"; do
     args+=(-p "$crate")
 done
 while IFS= read -r feature; do

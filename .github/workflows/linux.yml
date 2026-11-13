@@ -123,8 +123,9 @@ jobs:
 
     - name: Run Clippy on every target of every crate
       # The crates a change reaches are the crates that depend on it, tests
-      # included: this builds them all.
-      run: cargo clippy --workspace --all-targets -- -D warnings
+      # included: this builds them all, with the test features each declares
+      # (and every bae-bridge feature), as the pre-commit hook's clippy does.
+      run: scripts/clippy-crates.sh --workspace
 
     - name: Check the libraries without test features
       # The apps and bridges build the crates without `test-utils`; code only a

@@ -13,9 +13,13 @@
 # Rust
 fix rustfmt *.rs rustfmt {files}
 check source-size *.astro,*.c,*.cc,*.cpp,*.cs,*.css,*.gradle,*.h,*.hpp,*.html,*.java,*.js,*.kt,*.kts,*.mjs,*.ps1,*.py,*.rb,*.rs,*.scss,*.sh,*.swift,*.ts,*.tsx,*.xaml scripts/check-source-file-size.py {files}
+check source-size-all scripts/check-source-file-size.py scripts/check-source-file-size.py
 check rust-visibility *.rs scripts/check-rust-visibility.sh {files}
+check rust-visibility-all scripts/check-rust-visibility.sh scripts/check-rust-visibility.sh
 check reqwest-errors *.rs scripts/check-reqwest-error-display.py {files}
+check reqwest-errors-all scripts/check-reqwest-error-display.py scripts/check-reqwest-error-display.py
 check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {crates}
+check rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
 check ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
 check coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
 check machete *.rs,Cargo.toml cargo machete
@@ -28,9 +32,12 @@ check screen-pulls bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/ba
 check swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,scripts/swift-owner-dependency-boundary.py python3 scripts/swift-owner-dependency-boundary.py
 check ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
 check keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
-check test-keychain *.rs,*.swift,*.kt,*.cs,project.yml,*.csproj,scripts/check-test-keychain.py,scripts/source_tokens.py,scripts/rust_modules.py python3 scripts/check-test-keychain.py {files}
-check no-ide-previews *.swift,*.kt,scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py {files}
+check test-keychain *.rs,*.swift,*.kt,*.cs python3 scripts/check-test-keychain.py {files}
+check test-keychain-all project.yml,*.csproj,scripts/check-test-keychain.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-test-keychain.py
+check no-ide-previews *.swift,*.kt python3 scripts/check-no-previews.py {files}
+check no-ide-previews-all scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py
 check xcode-trees * python3 scripts/check-xcode-trees.py {files}
+check xcode-trees-all scripts/check-xcode-trees.py,scripts/xcode-trees.sh python3 scripts/check-xcode-trees.py
 
 # Swift
 fix swift-format *.swift xcrun swift-format format -i -p {files}
@@ -41,7 +48,8 @@ check swiftlint *.swift swiftlint lint --quiet --strict --config .swiftlint.yml 
 fix ktlint-format bae-android/**/*.kt ktlint -F {files}
 check ktlint bae-android/**/*.kt ktlint {files}
 check ktlint-all .editorconfig ktlint bae-android/app/src/**/*.kt bae-android/fastvalues/src/**/*.kt bae-android/screensubscription/src/**/*.kt
-check detekt bae-android/**/*.kt scripts/detekt-staged.sh {files}
+check detekt bae-android/**/*.kt scripts/detekt-sources.sh {files}
+check detekt-all bae-android/detekt.yml,bae-android/detekt-type-resolved.yml,scripts/detekt-sources.sh scripts/detekt-sources.sh --all
 
 # C#
 fix dotnet-format bae-avalonia/**/*.cs dotnet format whitespace bae-avalonia/bae-avalonia.csproj --include {files}

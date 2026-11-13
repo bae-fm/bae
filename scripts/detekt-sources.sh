@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # Runs detekt's two passes (the default-config rules, then the type-resolved
 # rules) over the hand-written Kotlin files named as arguments: the ones under
-# a module's src/main/java. With no such file it runs nothing.
+# a module's src/main/java. With no such file it runs nothing. `--all` runs
+# them over every module's src/main/java.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+modules=(bae-android/app/src/main/java bae-android/fastvalues/src/main/java
+    bae-android/screensubscription/src/main/java)
 inputs=()
-for file in "$@"; do
+if [ "${1:-}" = "--all" ]; then
+    inputs=("${modules[@]}")
+fi
+for file in "${@}"; do
+    [ "$file" = "--all" ] && continue
     case "$file" in
         bae-android/app/src/main/java/* | bae-android/fastvalues/src/main/java/* \
             | bae-android/screensubscription/src/main/java/*)

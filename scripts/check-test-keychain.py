@@ -222,8 +222,11 @@ def check_apps(root: Path, files: list[str], names: set[str] | None) -> list[str
 
 def check(root: Path, names: list[str] | None = None) -> list[str]:
     """The violations in the whole repository, or in the files `names` alone
-    when it is not empty. Which files are test code, and which module files a
-    test target reaches, is read from the whole repository either way."""
+    when it is not empty. With `names`, the Rust read is limited to the targets
+    of the crates holding a named file (a crate's modules are files of its own
+    directory), and the Rust files are read only when a named file is Rust. The
+    test source folders of Swift, the test source sets of Kotlin and the test
+    projects of C# are found from every tracked file either way."""
     only = set(names) if names else None
     rust = [] if only is not None and not any(n.endswith(".rs") for n in only) else check_rust(root, only)
     return rust + check_apps(root, listed_files(root), only)
