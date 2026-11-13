@@ -89,8 +89,8 @@ CREATE TABLE IF NOT EXISTS source_release_work (
     CHECK ((parent IS NULL) = (direction IS NULL))
 ) STRICT;
 
--- A work's composers, at their positions among the work's relations.
-CREATE TABLE IF NOT EXISTS source_release_work_composer (
+-- A work's credits, at their positions among the work's relations.
+CREATE TABLE IF NOT EXISTS source_release_work_credit (
     catalog               TEXT NOT NULL,
     release_id            TEXT NOT NULL,
     node                  INTEGER NOT NULL,
@@ -102,6 +102,13 @@ CREATE TABLE IF NOT EXISTS source_release_work_composer (
     -- The name the catalog prints for the artist where it is another than the
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key, or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'stated')),
+    role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
+    CHECK ((role = 'stated') = (role_words IS NOT NULL)),
     PRIMARY KEY (catalog, release_id, node, position),
     FOREIGN KEY (catalog, release_id, node)
         REFERENCES source_release_work (catalog, release_id, node) ON DELETE CASCADE

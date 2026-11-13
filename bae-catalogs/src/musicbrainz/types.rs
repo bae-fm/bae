@@ -24,6 +24,16 @@ pub struct MbRelation {
     pub direction: Option<String>,
     pub artist: Option<MbArtistRef>,
     pub work: Option<MbWork>,
+    /// The attributes qualifying the relation (modifiers, a task, the
+    /// instruments or vocal kinds), by name, in MusicBrainz's order.
+    #[serde(default)]
+    pub attributes: Vec<String>,
+    /// The name a credit prints an attribute with, by attribute name.
+    #[serde(rename = "attribute-credits", default)]
+    pub attribute_credits: HashMap<String, String>,
+    /// A free-text attribute's value, by attribute name.
+    #[serde(rename = "attribute-values", default)]
+    pub attribute_values: HashMap<String, String>,
     #[serde(
         rename = "target-credit",
         default,

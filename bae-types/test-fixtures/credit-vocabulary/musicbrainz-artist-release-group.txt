@@ -1,0 +1,6 @@
+# Source: https://musicbrainz.org/relationships/artist-release_group, captured 2026-11-12. One relationship type per line in the page's order: its name, its reverse link phrase, and its parent type (empty for a top-level type), tab-separated.
+tribute	tribute to	
+dedicated to	dedicated to	
+artists and repertoire	artist & repertoire support	
+creative direction	{additional} creative direction	
+named after release group	inspired the name of artist	

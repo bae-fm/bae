@@ -152,12 +152,14 @@ fn insert_work(
     )?;
     for (event_position, event) in work.events.iter().enumerate() {
         match event {
-            SourceWorkEvent::Composer(artist) => {
+            SourceWorkEvent::Credit { artist, role } => {
+                let role = role.columns();
                 sql.execute(
-                    "INSERT INTO source_release_work_composer \
+                    "INSERT INTO source_release_work_credit \
                          (catalog, release_id, node, position, name, sort_name, \
-                          musicbrainz_artist_id, discogs_artist_id, credited_as) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                          musicbrainz_artist_id, discogs_artist_id, credited_as, role, \
+                          role_words, qualifiers) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     params![
                         catalog,
                         key,
@@ -168,6 +170,9 @@ fn insert_work(
                         artist.musicbrainz_artist_id,
                         artist.discogs_artist_id,
                         artist.credited_as,
+                        role.role,
+                        role.role_words,
+                        role.qualifiers,
                     ],
                 )?;
             }
@@ -443,12 +448,21 @@ struct WorkRow {
     events: Vec<StoredEvent>,
 }
 
+/// One credit of a work as its node's `events` column holds it.
+#[derive(serde::Deserialize)]
+struct StoredWorkCredit {
+    artist: StoredArtist,
+    role: String,
+    role_words: Option<String>,
+    qualifiers: String,
+}
+
 /// One relation of a work as its node's `events` column holds it, in the
-/// order of their positions: a composer, or the node of a part.
+/// order of their positions: a credit, or the node of a part.
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum StoredEvent {
-    Composer(StoredArtist),
+    Credit(StoredWorkCredit),
     Part(i64),
 }
 
@@ -464,12 +478,15 @@ fn load_works<S: coven::SqlRead>(
             "SELECT work.node, work.entry, work.parent, work.position, work.direction, \
                     work.musicbrainz_work_id, work.title, work.disambiguation, work.work_type, \
                     (SELECT json_group_array(json(event.value) ORDER BY event.position) \
-                     FROM (SELECT composer.position AS position, \
-                                  json_object('composer', json({composer})) AS value \
-                           FROM source_release_work_composer AS composer \
-                           WHERE composer.catalog = work.catalog \
-                             AND composer.release_id = work.release_id \
-                             AND composer.node = work.node \
+                     FROM (SELECT credit.position AS position, \
+                                  json_object('credit', json_object( \
+                                      'artist', json({credit_artist}), 'role', credit.role, \
+                                      'role_words', credit.role_words, \
+                                      'qualifiers', credit.qualifiers)) AS value \
+                           FROM source_release_work_credit AS credit \
+                           WHERE credit.catalog = work.catalog \
+                             AND credit.release_id = work.release_id \
+                             AND credit.node = work.node \
                            UNION ALL \
                            SELECT part.position, json_object('part', part.node) \
                            FROM source_release_work AS part \
@@ -478,7 +495,7 @@ fn load_works<S: coven::SqlRead>(
                              AND part.parent = work.node) AS event) AS events \
              FROM source_release_work AS work \
              WHERE work.catalog = ? AND work.release_id = ? ORDER BY work.node",
-            composer = printed_artist_json("composer"),
+            credit_artist = printed_artist_json("credit"),
         ),
         params![catalog, key],
         |row| {
@@ -534,7 +551,15 @@ fn load_works<S: coven::SqlRead>(
         work.events = std::mem::take(&mut row.events)
             .into_iter()
             .map(|event| match event {
-                StoredEvent::Composer(artist) => Ok(SourceWorkEvent::Composer(artist.artist())),
+                StoredEvent::Credit(credit) => Ok(SourceWorkEvent::Credit {
+                    artist: credit.artist.artist(),
+                    role: bae_types::credit_role::CreditedAs::from_columns(
+                        &credit.role,
+                        credit.role_words,
+                        &credit.qualifiers,
+                    )
+                    .map_err(|error| DbError::unreadable("a stored work credit's role", error))?,
+                }),
                 StoredEvent::Part(node) => {
                     let part_index = *index_of.get(&node).ok_or_else(|| {
                         DbError::unreadable(

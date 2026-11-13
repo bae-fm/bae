@@ -9,7 +9,8 @@ pub(super) const SQL: &str = include_str!("values.sql");
 
 use super::*;
 use bae_catalogs::credits::CreditedRole;
-use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
+use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
+use bae_types::credit_role::CreditedAs;
 
 /// Write the values `draft` holds beside its rows besides its tracks': the
 /// works and the roles on the release. The draft row is already written.
@@ -32,21 +33,26 @@ pub(super) fn insert_draft_values(
                 work.work_type,
             ],
         )?;
-        for (position, composer) in work.composers.iter().enumerate() {
+        for (position, credit) in work.credits.iter().enumerate() {
+            let role = credit.role.columns();
             sql.execute(
-                "INSERT INTO import_candidate_work_composer \
+                "INSERT INTO import_candidate_work_credit \
                  (content_hash, musicbrainz_work_id, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credited_as) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                  musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
+                  qualifiers) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     content_hash,
                     work.musicbrainz_work_id,
                     position as i64,
-                    composer.name,
-                    composer.sort_name,
-                    composer.musicbrainz_artist_id,
-                    composer.discogs_artist_id,
-                    composer.credited_as,
+                    credit.artist.name,
+                    credit.artist.sort_name,
+                    credit.artist.musicbrainz_artist_id,
+                    credit.artist.discogs_artist_id,
+                    credit.artist.credited_as,
+                    role.role,
+                    role.role_words,
+                    role.qualifiers,
                 ],
             )?;
         }
@@ -118,19 +124,21 @@ pub(super) fn insert_track_values(
     Ok(())
 }
 
-/// The works the draft `edit` holds, each with its composers, as a JSON array
+/// The works the draft `edit` holds, each with its credits, as a JSON array
 /// in the draft's order; decoded by [`works_of`].
 pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
          'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
          'disambiguation', work.disambiguation, 'work_type', work.work_type, \
-         'composers', json((SELECT json_group_array(json_object( \
-                 'name', composer.name, 'sort_name', composer.sort_name, \
-                 'musicbrainz_artist_id', composer.musicbrainz_artist_id, \
-                  'discogs_artist_id', composer.discogs_artist_id, \
-                 'credited_as', composer.credited_as) ORDER BY composer.position) \
-             FROM import_candidate_work_composer AS composer \
-             WHERE composer.content_hash = work.content_hash \
-               AND composer.musicbrainz_work_id = work.musicbrainz_work_id))) \
+         'credits', json((SELECT json_group_array(json_object( \
+                 'name', credit.name, 'sort_name', credit.sort_name, \
+                 'musicbrainz_artist_id', credit.musicbrainz_artist_id, \
+                 'discogs_artist_id', credit.discogs_artist_id, \
+                 'credited_as', credit.credited_as, 'role', credit.role, \
+                 'role_words', credit.role_words, 'qualifiers', credit.qualifiers) \
+                 ORDER BY credit.position) \
+             FROM import_candidate_work_credit AS credit \
+             WHERE credit.content_hash = work.content_hash \
+               AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
          ORDER BY work.position) \
      FROM import_candidate_work AS work WHERE work.content_hash = edit.content_hash)";
 
@@ -175,7 +183,20 @@ pub(super) struct StoredWork {
     title: String,
     disambiguation: Option<String>,
     work_type: Option<String>,
-    composers: Vec<ArtistCredit>,
+    credits: Vec<StoredWorkCredit>,
+}
+
+/// One stored work credit as [`WORKS_JSON`] holds it.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredWorkCredit {
+    name: String,
+    sort_name: Option<String>,
+    musicbrainz_artist_id: Option<String>,
+    discogs_artist_id: Option<String>,
+    credited_as: Option<String>,
+    role: String,
+    role_words: Option<String>,
+    qualifiers: String,
 }
 
 /// One stored part as [`WORK_PARTS_JSON`] holds it.
@@ -186,23 +207,50 @@ pub(super) struct StoredPart {
 }
 
 /// The work graph [`WORKS_JSON`] and [`WORK_PARTS_JSON`] hold.
-pub(super) fn works_of(works: Vec<StoredWork>, parts: Vec<StoredPart>) -> WorkGraph {
-    WorkGraph {
+pub(super) fn works_of(
+    works: Vec<StoredWork>,
+    parts: Vec<StoredPart>,
+) -> Result<WorkGraph, DbError> {
+    Ok(WorkGraph {
         works: works
             .into_iter()
-            .map(|work| GraphWork {
-                musicbrainz_work_id: work.musicbrainz_work_id,
-                title: work.title,
-                disambiguation: work.disambiguation,
-                work_type: work.work_type,
-                composers: work.composers,
+            .map(|work| {
+                Ok(GraphWork {
+                    musicbrainz_work_id: work.musicbrainz_work_id,
+                    title: work.title,
+                    disambiguation: work.disambiguation,
+                    work_type: work.work_type,
+                    credits: work
+                        .credits
+                        .into_iter()
+                        .map(|credit| {
+                            Ok(WorkCredit {
+                                artist: ArtistCredit {
+                                    name: credit.name,
+                                    sort_name: credit.sort_name,
+                                    musicbrainz_artist_id: credit.musicbrainz_artist_id,
+                                    discogs_artist_id: credit.discogs_artist_id,
+                                    credited_as: credit.credited_as,
+                                },
+                                role: CreditedAs::from_columns(
+                                    &credit.role,
+                                    credit.role_words,
+                                    &credit.qualifiers,
+                                )
+                                .map_err(|error| {
+                                    DbError::unreadable("a draft work credit's role", error)
+                                })?,
+                            })
+                        })
+                        .collect::<Result<_, DbError>>()?,
+                })
             })
-            .collect(),
+            .collect::<Result<_, DbError>>()?,
         parts: parts
             .into_iter()
             .map(|part| WorkPart { parent: part.parent, child: part.child })
             .collect(),
-    }
+    })
 }
 
 /// One stored role as [`RELEASE_ROLES_JSON`] and [`TRACK_ROLES_JSON`] hold

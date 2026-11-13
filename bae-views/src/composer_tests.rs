@@ -810,3 +810,36 @@ async fn a_works_page_lists_its_albums_by_title_without_case_each_album_whole() 
         in_order
     );
 }
+
+/// Only the writing credits of a work make an artist its composer: an artist
+/// the work credits as its arranger is no composer, counts for no work, and
+/// does not name the work.
+#[tokio::test]
+async fn composer_list_counts_the_writing_credits_of_a_work_only() {
+    use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs, RoleQualifier};
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    listed_releases()
+        .artist(LISTED_SURVIVOR, "Composer Name Writer")
+        .artist(LISTED_ABSORBED, "Composer Name Arranger")
+        .work(LISTED_WORK_ONE, "Work Title One")
+        .work_credit(LISTED_WORK_ONE, LISTED_SURVIVOR, CreditedAs::of(CreditRoleKind::Writer))
+        .work_credit(
+            LISTED_WORK_ONE,
+            LISTED_ABSORBED,
+            CreditedAs {
+                role: CreditRole::Kind(CreditRoleKind::Arranger),
+                qualifiers: vec![RoleQualifier::Stated("lead vocals".to_string())],
+            },
+        )
+        .performs(LISTED_TRACK_ONE, LISTED_WORK_ONE)
+        .write(&test_records(&db))
+        .await;
+
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_SURVIVOR.to_string(), 1, 1, 0)]);
+    let results =
+        crate::LibraryViews::new(db.clone()).search_rows("Work Title One", 10).await.unwrap();
+    assert_eq!(
+        results.works.first().expect("the work").composer_names.as_deref(),
+        Some("Composer Name Writer")
+    );
+}

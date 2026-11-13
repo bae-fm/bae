@@ -102,6 +102,9 @@ pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Ident
             &artist,
             0,
             Catalog::MusicBrainz,
+            bae_types::credit_role::CreditedAs::of(
+                bae_types::credit_role::CreditRoleKind::Composer,
+            ),
             None,
             at,
         ));

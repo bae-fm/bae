@@ -1,6 +1,7 @@
 //! The works a release's tracks perform, as MusicBrainz relates them.
 
 use crate::credits::ArtistCredit;
+use bae_types::credit_role::CreditedAs;
 
 /// The works a release's tracks perform, and how they nest. Works come from
 /// MusicBrainz, which names them; each is held once.
@@ -18,8 +19,15 @@ pub struct GraphWork {
     pub title: String,
     pub disambiguation: Option<String>,
     pub work_type: Option<String>,
-    /// Its composers, in the work's order.
-    pub composers: Vec<ArtistCredit>,
+    /// Its credits, in the work's order.
+    pub credits: Vec<WorkCredit>,
+}
+
+/// One artist credited on a work, and what the artist did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkCredit {
+    pub artist: ArtistCredit,
+    pub role: CreditedAs,
 }
 
 /// One work that is part of another, both named by their MusicBrainz ids.

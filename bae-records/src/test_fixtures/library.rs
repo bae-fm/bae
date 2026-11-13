@@ -8,6 +8,7 @@ use crate::{
     DbTrackArtist, DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, Records,
 };
 use bae_catalogs::catalog::Catalog;
+use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 use chrono::{DateTime, Utc};
 
 /// The rows of a test library, each kind inserted in this order.
@@ -169,14 +170,22 @@ impl RecordsFixture {
         self
     }
 
-    /// `artist` credited on `work` from MusicBrainz, after its others.
-    pub fn composer(mut self, work: &str, artist: &str) -> Self {
+    /// `artist` credited on `work` from MusicBrainz as its composer, after
+    /// its others.
+    pub fn composer(self, work: &str, artist: &str) -> Self {
+        self.work_credit(work, artist, CreditedAs::of(CreditRoleKind::Composer))
+    }
+
+    /// `artist` credited on `work` from MusicBrainz in `role`, after its
+    /// others.
+    pub fn work_credit(mut self, work: &str, artist: &str, role: CreditedAs) -> Self {
         let position = self.rows.work_artists.iter().filter(|link| link.work_id == work).count();
         self.rows.work_artists.push(DbWorkArtist::new(
             work,
             artist,
             position as i32,
             Catalog::MusicBrainz,
+            role,
             None,
             self.at,
         ));

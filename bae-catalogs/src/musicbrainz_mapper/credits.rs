@@ -2,6 +2,7 @@
 //! release credit, and the composed works a recording performs.
 
 use super::*;
+use bae_types::credit_role::musicbrainz::{work_credit, Attributes, WorkReading};
 
 pub(super) fn mb_relation_is(
     relation: &MbRelation,
@@ -60,37 +61,68 @@ pub(super) fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> Sour
     let mut events = Vec::new();
     for relation in &work.relations {
         if relation.target_type.as_deref() == Some("artist") {
-            if mb_relation_is_composer(relation) {
-                let Some(artist_ref) = relation.artist.as_ref() else {
-                    if report {
-                        warn!(
+            let Some(artist_ref) = relation.artist.as_ref() else {
+                if report {
+                    warn!(
                         work_id = %work.id,
                         relation_type = ?relation.relation_type,
                         "Skipping MusicBrainz work artist relation without artist payload"
-                        );
-                    }
-                    continue;
-                };
-                let Some(artist) = mb_relation_artist(relation, artist_ref) else {
+                    );
+                }
+                continue;
+            };
+            let Some(relation_type) = relation.relation_type.as_deref() else {
+                if report {
+                    warn!(
+                        work_id = %work.id,
+                        musicbrainz_artist_id = ?artist_ref.id,
+                        "Skipping MusicBrainz work artist relation without a type"
+                    );
+                }
+                continue;
+            };
+            let Some(artist) = mb_relation_artist(relation, artist_ref) else {
+                if report {
+                    warn!(
+                        work_id = %work.id,
+                        musicbrainz_artist_id = ?artist_ref.id,
+                        "Skipping MusicBrainz work artist relation with unresolved artist"
+                    );
+                }
+                continue;
+            };
+            let role = match work_credit(
+                relation_type,
+                Attributes {
+                    names: &relation.attributes,
+                    credits: &relation.attribute_credits,
+                    values: &relation.attribute_values,
+                },
+            ) {
+                WorkReading::Credit(role) => role,
+                WorkReading::Unlisted(role) => {
                     if report {
                         warn!(
                             work_id = %work.id,
-                            musicbrainz_artist_id = ?artist_ref.id,
-                            "Skipping MusicBrainz work artist relation with unresolved artist"
+                            relation_type,
+                            "MusicBrainz work artist relation of a type bae's list does not hold; credited in the type's own name"
+                        );
+                    }
+                    role
+                }
+                WorkReading::NotACredit => {
+                    if report {
+                        debug!(
+                            work_id = %work.id,
+                            relation_type,
+                            target_credit = ?relation.target_credit,
+                            "Skipping MusicBrainz work artist relation that credits no work"
                         );
                     }
                     continue;
-                };
-                events.push(SourceWorkEvent::Composer(artist));
-            } else if report {
-                debug!(
-                    work_id = %work.id,
-                    relation_type = ?relation.relation_type,
-                    target_type = ?relation.target_type,
-                    target_credit = ?relation.target_credit,
-                    "Skipping MusicBrainz work artist relation with non-composer relation type"
-                );
-            }
+                }
+            };
+            events.push(SourceWorkEvent::Credit { artist, role });
         } else if mb_relation_is(relation, "work", "parts") {
             let Some(child_or_parent) = relation.work.as_ref() else {
                 if report {

@@ -17,6 +17,16 @@ fn artist(name: &str, musicbrainz: Option<&str>, discogs: Option<&str>) -> Artis
     }
 }
 
+/// `artist` credited on a work as its composer.
+fn composed(artist: ArtistCredit) -> bae_catalogs::works::WorkCredit {
+    bae_catalogs::works::WorkCredit {
+        artist,
+        role: bae_types::credit_role::CreditedAs::of(
+            bae_types::credit_role::CreditRoleKind::Composer,
+        ),
+    }
+}
+
 /// `artist` credited by `source` in `role`.
 fn role(artist: ArtistCredit, source: Catalog, role: &str) -> CreditedRole {
     CreditedRole { artist, source, role: Some(role.to_string()) }
@@ -137,7 +147,7 @@ fn role_and_work_credits_link_the_names_their_catalogs_printed() {
             title: "Work Title".to_string(),
             disambiguation: None,
             work_type: None,
-            composers: vec![printed("Composer Name", "Composer Printed")],
+            credits: vec![composed(printed("Composer Name", "Composer Printed"))],
         }],
         parts: Vec::new(),
     };
@@ -387,7 +397,7 @@ async fn one_composer_of_a_work_and_its_part_commits_as_one_artist() {
         title: title.to_string(),
         disambiguation: None,
         work_type: None,
-        composers: vec![composer.clone()],
+        credits: vec![composed(composer.clone())],
     };
     let mut values = reading(
         artist("Artist Name A", Some("artist-1"), None),

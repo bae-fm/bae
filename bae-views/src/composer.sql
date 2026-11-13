@@ -4,20 +4,22 @@
 -- kept in a table of its own by the triggers below; the list's counts follow
 -- those tables.
 
--- Each work and each artist shown credited on it.
+-- Each work and each artist shown credited on it in a writing role.
 CREATE VIEW IF NOT EXISTS work_composers AS
 SELECT DISTINCT shown.shown_artist_id AS artist_id, wa.work_id
 FROM work_artists wa
-JOIN artist_shown_as shown ON shown.artist_id = wa.artist_id;
+JOIN artist_shown_as shown ON shown.artist_id = wa.artist_id
+WHERE wa.role IN (SELECT role FROM writing_credit_roles);
 
--- Each release and each artist shown credited on a work one of its tracks
--- performs.
+-- Each release and each artist shown credited in a writing role on a work one
+-- of its tracks performs.
 CREATE VIEW IF NOT EXISTS release_work_composers AS
 SELECT DISTINCT shown.shown_artist_id AS artist_id, t.release_id
 FROM tracks t
 JOIN track_works tw ON tw.track_id = t.id
 JOIN work_artists wa ON wa.work_id = tw.work_id
-JOIN artist_shown_as shown ON shown.artist_id = wa.artist_id;
+JOIN artist_shown_as shown ON shown.artist_id = wa.artist_id
+WHERE wa.role IN (SELECT role FROM writing_credit_roles);
 
 -- Each catalog role credit no work of its artist links, with the artist it
 -- shows as and the release it is on: a release's credit when no track of the
@@ -32,6 +34,7 @@ WHERE NOT EXISTS (
     JOIN track_works tw ON tw.track_id = t.id
     JOIN work_artists wa ON wa.work_id = tw.work_id
     WHERE t.release_id = rar.release_id
+      AND wa.role IN (SELECT role FROM writing_credit_roles)
       AND (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = wa.artist_id)
           = credited.shown_artist_id
 )
@@ -44,6 +47,7 @@ WHERE NOT EXISTS (
     SELECT 1 FROM track_works tw
     JOIN work_artists wa ON wa.work_id = tw.work_id
     WHERE tw.track_id = tar.track_id
+      AND wa.role IN (SELECT role FROM writing_credit_roles)
       AND (SELECT shown_artist_id FROM artist_shown_as WHERE artist_id = wa.artist_id)
           = credited.shown_artist_id
 );

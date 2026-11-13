@@ -3,6 +3,7 @@ use crate::musicbrainz_mapper::tests::{
     credit, discogs_artist_document, make_mb_track, make_response, map, own_credits, work,
 };
 use crate::musicbrainz_mapper::*;
+use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs, RoleQualifier};
 
 #[test]
 fn nested_recording_work_imports_composer_work_graph() {
@@ -88,12 +89,17 @@ fn nested_recording_work_imports_composer_work_graph() {
         child: "mb-work-child-a".to_string(),
     }));
 
-    // Each work credits the composer, and no work credits the lyricist.
+    // Each work credits the composer in that role; the parent also credits
+    // the lyricist, in its own.
     let composer = Some("composer-artist-a");
-    for id in ["mb-work-parent-a", "mb-work-child-a"] {
-        let composers = &work(&values, id).composers;
-        assert_eq!(composers.len(), 1, "{id} credits one composer");
-        assert_eq!(composers[0].musicbrainz_artist_id.as_deref(), composer);
+    for (id, roles) in [
+        ("mb-work-parent-a", vec![CreditRoleKind::Composer, CreditRoleKind::Lyricist]),
+        ("mb-work-child-a", vec![CreditRoleKind::Composer]),
+    ] {
+        let credits = &work(&values, id).credits;
+        let held: Vec<_> = credits.iter().map(|credit| credit.role.clone()).collect();
+        assert_eq!(held, roles.into_iter().map(CreditedAs::of).collect::<Vec<_>>(), "{id}");
+        assert_eq!(credits[0].artist.musicbrainz_artist_id.as_deref(), composer);
     }
     // The composer is no album or track artist.
     assert!(values.album_credits.iter().all(|credit| credit
@@ -453,7 +459,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
         values.works.works[0].musicbrainz_work_id, "mb-work-a",
         "the work reads; only its malformed composer relation is dropped",
     );
-    assert!(values.works.works[0].composers.is_empty());
+    assert!(values.works.works[0].credits.is_empty());
     assert!(
         logs.contains("work artist relation without artist payload"),
         "expected a skip warning, got: {logs}"
@@ -681,9 +687,115 @@ fn role_credits_name_the_artist_and_print_the_relation_s_credit() {
 
     let values = map(&response, vec![]).unwrap();
 
-    let composers = &work(&values, "mb-work-a").composers;
+    let composers: Vec<_> =
+        work(&values, "mb-work-a").credits.iter().map(|credit| credit.artist.clone()).collect();
     assert_eq!(composers[0].name, "Composer Name A");
     assert_eq!(composers[0].credited_as.as_deref(), Some("Composer Printed Name"));
     assert_eq!(composers[1].name, "Composer Name B");
     assert_eq!(composers[1].credited_as, None);
+}
+
+/// A work keeps every artist MusicBrainz credits on it, each with its role: a
+/// `writer` and a `vocal arranger` are two credits, the arranger naming the
+/// vocals it arranged for.
+#[test]
+fn a_work_keeps_every_credit_with_its_role() {
+    let artist = |id: &str, name: &str| MbArtistRef {
+        id: Some(id.to_string()),
+        name: Some(name.to_string()),
+        sort_name: Some(name.to_string()),
+    };
+    let relation = |relation_type: &str, artist: MbArtistRef, attributes: &[&str]| MbRelation {
+        target_type: Some("artist".to_string()),
+        relation_type: Some(relation_type.to_string()),
+        artist: Some(artist),
+        attributes: attributes.iter().map(|attribute| attribute.to_string()).collect(),
+        ..MbRelation::default()
+    };
+    let credited_work = MbWork {
+        id: "mb-work-a".to_string(),
+        title: "Work Title A".to_string(),
+        disambiguation: None,
+        work_type: None,
+        relations: vec![
+            relation("writer", artist("writer-artist-a", "Writer Name A"), &[]),
+            relation(
+                "vocal arranger",
+                artist("arranger-artist-a", "Arranger Name A"),
+                &["lead vocals"],
+            ),
+            relation("named after artist", artist("named-artist-a", "Named Name A"), &[]),
+        ],
+    };
+    let mut track = make_mb_track("1", "Track Title 1");
+    track.recording.as_mut().unwrap().relations = vec![MbRelation {
+        target_type: Some("work".to_string()),
+        relation_type: Some("performance".to_string()),
+        work: Some(credited_work),
+        ..MbRelation::default()
+    }];
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![track],
+    }]);
+
+    let values = map(&response, vec![]).unwrap();
+
+    let credits = &work(&values, "mb-work-a").credits;
+    assert_eq!(credits.len(), 2, "{credits:?}");
+    assert_eq!(credits[0].artist.name, "Writer Name A");
+    assert_eq!(credits[0].role, CreditedAs::of(CreditRoleKind::Writer));
+    assert_eq!(credits[1].artist.name, "Arranger Name A");
+    assert_eq!(
+        credits[1].role,
+        CreditedAs {
+            role: CreditRole::Kind(CreditRoleKind::Arranger),
+            qualifiers: vec![RoleQualifier::Stated("lead vocals".to_string())]
+        }
+    );
+}
+
+/// One artist in two roles is two credits; the same role twice is one.
+#[test]
+fn one_artist_in_two_roles_is_two_credits() {
+    let artist = MbArtistRef {
+        id: Some("composer-artist-a".to_string()),
+        name: Some("Composer Name A".to_string()),
+        sort_name: Some("Composer Name A".to_string()),
+    };
+    let relation = |relation_type: &str| MbRelation {
+        target_type: Some("artist".to_string()),
+        relation_type: Some(relation_type.to_string()),
+        artist: Some(artist.clone()),
+        ..MbRelation::default()
+    };
+    let credited_work = MbWork {
+        id: "mb-work-a".to_string(),
+        title: "Work Title A".to_string(),
+        disambiguation: None,
+        work_type: None,
+        relations: vec![relation("composer"), relation("lyricist"), relation("composer")],
+    };
+    let mut track = make_mb_track("1", "Track Title 1");
+    track.recording.as_mut().unwrap().relations = vec![MbRelation {
+        target_type: Some("work".to_string()),
+        relation_type: Some("performance".to_string()),
+        work: Some(credited_work),
+        ..MbRelation::default()
+    }];
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![track],
+    }]);
+
+    let values = map(&response, vec![]).unwrap();
+
+    let roles: Vec<_> =
+        work(&values, "mb-work-a").credits.iter().map(|credit| credit.role.clone()).collect();
+    assert_eq!(
+        roles,
+        [CreditedAs::of(CreditRoleKind::Composer), CreditedAs::of(CreditRoleKind::Lyricist)]
+    );
 }

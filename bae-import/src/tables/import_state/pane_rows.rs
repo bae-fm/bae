@@ -498,7 +498,7 @@ impl StoredDraftRow {
             works: values::works_of(
                 decoded(&self.works, "works")?,
                 decoded(&self.parts, "work parts")?,
-            ),
+            )?,
         })
     }
 }

@@ -39,7 +39,7 @@ pub fn shown_artist_id(artist_id: &str) -> String {
 }
 
 /// The names of the artists credited on the work `work_id` (an SQL
-/// expression), each once as the artist it shows after merges, joined by ", "
+/// expression) in a writing role, each once as the artist it shows after merges, joined by ", "
 /// in credit order; NULL when the work has no artists.
 pub fn work_composer_names_sql(work_id: &str) -> String {
     format!(
@@ -49,6 +49,7 @@ pub fn work_composer_names_sql(work_id: &str) -> String {
                         SELECT {work_artist} AS artist_id, MIN(wa.position) AS position
                         FROM work_artists wa
                         WHERE wa.work_id = {work_id}
+                          AND wa.role IN (SELECT role FROM writing_credit_roles)
                         GROUP BY 1
                     ) credit
                     JOIN artists composer ON composer.id = credit.artist_id

@@ -131,6 +131,8 @@ pub struct DbWorkArtist {
     pub artist_id: String,
     pub position: i32,
     pub source: Catalog,
+    /// What the artist did on the work.
+    pub role: bae_types::credit_role::CreditedAs,
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
@@ -712,6 +714,7 @@ impl DbWorkArtist {
         artist_id: &str,
         position: i32,
         source: Catalog,
+        role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
         now: DateTime<Utc>,
     ) -> Self {
@@ -720,6 +723,7 @@ impl DbWorkArtist {
             artist_id: artist_id.to_string(),
             position,
             source,
+            role,
             credit,
             created_at: now,
         }

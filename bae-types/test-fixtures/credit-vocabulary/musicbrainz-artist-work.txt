@@ -1,0 +1,24 @@
+# Source: https://musicbrainz.org/relationships/artist-work, captured 2026-11-12. One relationship type per line in the page's order: its name, its reverse link phrase, and its parent type (empty for a top-level type), tab-separated.
+authorship	authorship	
+writer	{additional} writer	authorship
+composer	{additional} composer	writer
+lyricist	{additional} lyricist	writer
+librettist	{additional} librettist	writer
+revised by	revised by	writer
+scriptwriter	{additional} scriptwriter	writer
+translator	{additional} translator	writer
+reconstructed by	reconstructed by	writer
+arranger	{additional} {associate} {co:co-}arranger	authorship
+instrument arranger	{additional} {associate} {instrument:%|instruments} {co:co-}arranger	arranger
+orchestrator	{additional} orchestrator	instrument arranger
+vocal arranger	{additional} {associate} {vocal:%|vocals} {co:co-}arranger	arranger
+adapter	{additional} adapter	authorship
+previous attribution	previously attributed to	authorship
+choreographer	{assistant} choreographer	authorship
+misc	miscellaneous support	
+commissioned	was commissioned by	misc
+dedication	dedicated to	misc
+premiere	premiered by	misc
+publishing	{sub:sub-}publisher	misc
+named after artist	named after artist	misc
+named after work	inspired the name of artist	misc

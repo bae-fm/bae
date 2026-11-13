@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_work (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- A draft work's composers, in the work's order.
-CREATE TABLE IF NOT EXISTS import_candidate_work_composer (
+-- A draft work's credits, in the work's order.
+CREATE TABLE IF NOT EXISTS import_candidate_work_credit (
     content_hash          TEXT NOT NULL,
     musicbrainz_work_id   TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
@@ -62,6 +62,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_work_composer (
     -- The name the catalog prints for the artist where it is another than the
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
+    -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key, or
+    -- 'stated' for the catalog's own words (`role_words`), with the role's
+    -- qualifiers as a JSON list.
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'stated')),
+    role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
+    CHECK ((role = 'stated') = (role_words IS NOT NULL)),
     PRIMARY KEY (content_hash, musicbrainz_work_id, position),
     FOREIGN KEY (content_hash, musicbrainz_work_id)
         REFERENCES import_candidate_work (content_hash, musicbrainz_work_id) ON DELETE CASCADE

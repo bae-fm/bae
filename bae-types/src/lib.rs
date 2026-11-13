@@ -8,6 +8,7 @@ pub mod audio_format;
 #[cfg(desktop)]
 pub mod barcode;
 pub mod count_label;
+pub mod credit_role;
 pub mod credits;
 pub mod edit_validation;
 pub mod mediums;

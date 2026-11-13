@@ -270,7 +270,7 @@ impl<'a> ArtistRows<'a> {
         id
     }
 
-    /// The row a role or a composer credit links.
+    /// The row a role or a work credit links.
     fn credited(&mut self, credit: &bae_catalogs::credits::ArtistCredit) -> String {
         let row = bae_records::DbArtist::of_credit(credit, self.ids, self.now);
         let id = row.id.clone();
@@ -288,9 +288,9 @@ struct WorkRows {
     ids: HashMap<String, String>,
 }
 
-/// Each work's composers are numbered in the work's order, and each part in
-/// its parent's: one composer credit or one part of one work is the same row
-/// on every device that imports it.
+/// Each work's credits are numbered in the work's order, and each part in
+/// its parent's: one credit or one part of one work is the same row on every
+/// device that imports it.
 fn work_rows<Binding>(
     draft: &ReleaseDraft<Binding>,
     artists: &mut ArtistRows<'_>,
@@ -305,13 +305,14 @@ fn work_rows<Binding>(
     for work in &draft.works.works {
         let work_id = bae_records::identity::work_id(&work.musicbrainz_work_id);
         rows.ids.insert(work.musicbrainz_work_id.clone(), work_id.clone());
-        for (position, composer) in work.composers.iter().enumerate() {
+        for (position, credit) in work.credits.iter().enumerate() {
             rows.work_artists.push(DbWorkArtist::new(
                 &work_id,
-                &artists.credited(composer),
+                &artists.credited(&credit.artist),
                 position as i32,
                 Catalog::MusicBrainz,
-                printed_name(composer),
+                credit.role.clone(),
+                printed_name(&credit.artist),
                 now,
             ));
         }

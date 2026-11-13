@@ -39,14 +39,24 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
                 title: "Movement".to_string(),
                 disambiguation: None,
                 work_type: Some("Song".to_string()),
-                composers: vec![credit("Composer Name", None)],
+                credits: vec![bae_catalogs::works::WorkCredit {
+                    artist: credit("Composer Name", None),
+                    role: bae_types::credit_role::CreditedAs {
+                        role: bae_types::credit_role::CreditRole::Kind(
+                            bae_types::credit_role::CreditRoleKind::Arranger,
+                        ),
+                        qualifiers: vec![bae_types::credit_role::RoleQualifier::Stated(
+                            "lead vocals".to_string(),
+                        )],
+                    },
+                }],
             },
             bae_catalogs::works::GraphWork {
                 musicbrainz_work_id: "mb-work-parent".to_string(),
                 title: "Suite".to_string(),
                 disambiguation: Some("whole".to_string()),
                 work_type: None,
-                composers: Vec::new(),
+                credits: Vec::new(),
             },
         ],
         parts: vec![bae_catalogs::works::WorkPart {

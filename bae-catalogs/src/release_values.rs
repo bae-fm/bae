@@ -7,7 +7,8 @@
 
 use crate::credits::{ArtistCredit, CreditedRole, SourceCredit};
 use crate::source_release::{PartDirection, SourceWork, SourceWorkEvent};
-use crate::works::{GraphWork, WorkGraph, WorkPart};
+use crate::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
+use bae_types::credit_role::CreditedAs;
 use bae_types::pressing::Pressing;
 use std::collections::HashSet;
 
@@ -138,7 +139,7 @@ impl WorkGraphBuilder {
                 title: work.title.clone(),
                 disambiguation: work.disambiguation.clone(),
                 work_type: work.work_type.clone(),
-                composers: Vec::new(),
+                credits: Vec::new(),
             });
         }
         if let Some(parent) = parent {
@@ -149,7 +150,7 @@ impl WorkGraphBuilder {
         }
         for event in &work.events {
             match event {
-                SourceWorkEvent::Composer(composer) => self.compose(&id, composer),
+                SourceWorkEvent::Credit { artist, role } => self.credit(&id, artist, role),
                 SourceWorkEvent::Part { direction: PartDirection::Backward, work: parent } => {
                     let parent = self.add(parent, None);
                     self.link(&parent, &id);
@@ -169,26 +170,29 @@ impl WorkGraphBuilder {
         self.graph.parts.push(WorkPart { parent: parent.to_string(), child: child.to_string() });
     }
 
-    /// Credit `composer` on the work once. An id-less MusicBrainz credit is
-    /// the same composer as an id-less one of the same name only.
-    fn compose(&mut self, work_id: &str, composer: &ArtistCredit) {
+    /// Credit `artist` on the work in `role` once. An id-less MusicBrainz
+    /// credit is the same artist as an id-less one of the same name only; one
+    /// artist in two roles is two credits, and the qualifiers of a role
+    /// credited twice are the first's.
+    fn credit(&mut self, work_id: &str, artist: &ArtistCredit, role: &CreditedAs) {
         let work = self
             .graph
             .works
             .iter_mut()
             .find(|work| work.musicbrainz_work_id == work_id)
             .expect("a work is held before its relations are read");
-        let held = work.composers.iter().any(|known| {
-            match (&known.musicbrainz_artist_id, &composer.musicbrainz_artist_id) {
-                (Some(known), Some(composer)) => known == composer,
-                (None, None) => {
-                    bae_types::text_match::same_artist_name(&known.name, &composer.name)
+        let held = work.credits.iter().any(|known| {
+            known.role.role == role.role
+                && match (&known.artist.musicbrainz_artist_id, &artist.musicbrainz_artist_id) {
+                    (Some(known), Some(artist)) => known == artist,
+                    (None, None) => {
+                        bae_types::text_match::same_artist_name(&known.artist.name, &artist.name)
+                    }
+                    (Some(_), None) | (None, Some(_)) => false,
                 }
-                (Some(_), None) | (None, Some(_)) => false,
-            }
         });
         if !held {
-            work.composers.push(composer.clone());
+            work.credits.push(WorkCredit { artist: artist.clone(), role: role.clone() });
         }
     }
 }

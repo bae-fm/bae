@@ -1,0 +1,60 @@
+# Source: https://musicbrainz.org/relationships/artist-release, captured 2026-11-12. One relationship type per line in the page's order: its name, its reverse link phrase, and its parent type (empty for a top-level type), tab-separated.
+performance	performance	
+performer	{additional} {guest} {solo} performer	performance
+instrument	{additional} {guest} {solo} {instrument:%|instruments}	performer
+vocal	{additional} {guest} {solo} {vocal:%|vocals}	performer
+performing orchestra	{additional} orchestra	performance
+conductor	{additional} {assistant} conductor	performance
+chorus master	{additional} {assistant} chorus master	performance
+concertmaster	{guest} concertmaster	performance
+audio director	{assistant} audio director	performance
+remixes and compilations	remixes and compilations	
+compiler	compiler	remixes and compilations
+mix-DJ	DJ-mixer {medium}	remixes and compilations
+remixer	{additional} {assistant} remixer	remixes and compilations
+samples from artist	contains {additional} samples by	remixes and compilations
+authorship	authorship	
+writer	{additional} writer	authorship
+composer	{additional} composer	writer
+lyricist	{additional} lyricist	writer
+librettist	{additional} librettist	writer
+translator	{additional} translator	writer
+arranger	{additional} {associate} {co:co-}arranger	authorship
+instrument arranger	{additional} {associate} {instrument:%|instruments} {co:co-}arranger	arranger
+orchestrator	{additional} orchestrator	instrument arranger
+vocal arranger	{additional} {associate} {vocal:%|vocals} {co:co-}arranger	arranger
+video	video	
+video director	{assistant} video director	video
+production	production	
+producer	{additional} {assistant} {associate} {co:co-}{executive:executive }producer	production
+engineer	{additional} {assistant} {associate} {co:co-}{executive:executive }engineer	production
+audio	{additional} {assistant} {associate} {co:co-}audio engineer	engineer
+mastering	{additional} {assistant} {associate} {co:co-}{pre:pre-}{re}mastering	engineer
+lacquer cut	lacquer cut	mastering
+sound	{additional} {assistant} {associate} {co:co-}sound engineer	engineer
+mix	{additional} {assistant} {associate} {co:co-}mixer	engineer
+recording	{additional} {assistant} {associate} {co:co-}recording engineer	engineer
+field recordist	field recordings	recording
+programming	{additional} {assistant} {associate} {instrument} programming	engineer
+editor	{additional} {assistant} {associate} {co:co-}editor	engineer
+balance	{additional} {assistant} {associate} {co:co-}balance engineer	engineer
+transfer	{additional} {assistant} {associate} {co:co-}transferrer	engineer
+sound effects	sound effects	production
+misc	miscellaneous support	production
+copyright	copyrighted (©) by	misc
+phonographic copyright	phonographic copyright (℗) by	misc
+booking	booking	misc
+legal representation	{additional} legal representation	misc
+licensor	licensed from	misc
+production coordinator	production coordinator	misc
+art direction	{additional} {assistant} art direction	misc
+artwork	{additional} artwork	misc
+design	{additional} {assistant} design	artwork
+graphic design	{additional} graphic design	design
+illustration	{additional} illustration	artwork
+design/illustration	{additional} design/illustration	artwork
+booklet editor	booklet editor	misc
+photography	{additional} photography	misc
+instrument technician	{instrument:%|instruments} technician	misc
+publishing	{sub:sub-}publisher	misc
+liner notes	{additional} liner notes {translator}	misc

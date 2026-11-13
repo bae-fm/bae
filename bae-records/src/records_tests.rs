@@ -286,3 +286,70 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     let moved = next_run_is_only_the_request(&mut live, 1).await;
     assert_eq!(moved.result.unwrap(), "Album Title");
 }
+
+/// A work's credit keeps its role: every role bae names is one the table
+/// accepts, a role in the catalog's words and the qualifiers read back as they
+/// were written.
+#[tokio::test]
+async fn a_work_credit_reads_back_with_its_role_and_qualifiers() {
+    use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs, RoleQualifier};
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let records = crate::test_fixtures::test_records(&db);
+    let stated = CreditedAs {
+        role: CreditRole::Stated("adapter".to_string()),
+        qualifiers: vec![RoleQualifier::Stated("lead vocals".to_string())],
+    };
+    let mut library = crate::test_fixtures::library::RecordsFixture::new()
+        .work(WORK_A, "Work Title")
+        .artist(ARTIST_COMPOSER, "Composer Name");
+    for kind in CreditRoleKind::ALL {
+        library = library.work_credit(WORK_A, ARTIST_COMPOSER, CreditedAs::of(*kind));
+    }
+    library.work_credit(WORK_A, ARTIST_COMPOSER, stated.clone()).write(&records).await;
+
+    let stored = records
+        .store
+        .read(|sql| {
+            sql.query(
+                "SELECT role, role_words, qualifiers FROM work_artists ORDER BY position",
+                [],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                },
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+
+    let credits: Vec<CreditedAs> = stored
+        .into_iter()
+        .map(|(role, words, qualifiers)| {
+            CreditedAs::from_columns(&role, words, &qualifiers).unwrap()
+        })
+        .collect();
+    let mut expected: Vec<CreditedAs> =
+        CreditRoleKind::ALL.iter().map(|kind| CreditedAs::of(*kind)).collect();
+    expected.push(stated);
+    assert_eq!(credits, expected);
+}
+
+/// The view naming the writing roles holds exactly the roles bae calls writing.
+#[tokio::test]
+async fn the_writing_roles_view_is_the_vocabularys_writing_roles() {
+    let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let stored: Vec<String> = db
+        .read(|sql| {
+            sql.query("SELECT role FROM writing_credit_roles", [], |row| row.get::<_, String>(0))
+                .map_err(bae_store::DbError::from)
+        })
+        .await
+        .unwrap();
+    let expected: Vec<&str> =
+        bae_types::credit_role::CreditRoleKind::writing().map(|kind| kind.key()).collect();
+    assert_eq!(stored, expected);
+}

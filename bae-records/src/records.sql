@@ -197,10 +197,17 @@ CREATE TABLE IF NOT EXISTS work_artists (
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
+    -- What the artist did on the work: a `bae_types::credit_role::CreditRoleKind`
+    -- key, or 'stated' for a role in the catalog's own words (`role_words`).
+    role TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'stated')),
+    role_words TEXT CHECK (role_words IS NULL OR role_words <> ''),
+    -- The role's qualifiers, a JSON list (`bae_types::credit_role::RoleQualifier`).
+    qualifiers TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
     -- One of the artist's other printed names (`artist_credits`) this credit
     -- prints; NULL prints the artist's own.
     credit_key TEXT,
     created_at TEXT NOT NULL,
+    CHECK ((role = 'stated') = (role_words IS NOT NULL)),
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
@@ -208,6 +215,19 @@ CREATE TABLE IF NOT EXISTS work_artists (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_work_artists_credit ON work_artists (artist_id, credit_key);
+
+-- The roles that make an artist a composer of a work: the writing roles
+-- (`bae_types::credit_role::CreditRoleKind::is_writing`), as `work_artists.role`
+-- holds them.
+CREATE VIEW IF NOT EXISTS writing_credit_roles AS
+SELECT 'writer' AS role
+UNION ALL SELECT 'composer'
+UNION ALL SELECT 'lyricist'
+UNION ALL SELECT 'librettist'
+UNION ALL SELECT 'translator'
+UNION ALL SELECT 'reviser'
+UNION ALL SELECT 'scriptwriter'
+UNION ALL SELECT 'reconstructor';
 
 CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
 

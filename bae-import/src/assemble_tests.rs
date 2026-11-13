@@ -170,7 +170,7 @@ fn roles_and_works_are_written_from_the_draft() {
         title: id.to_string(),
         disambiguation: None,
         work_type: None,
-        composers,
+        credits: composers.into_iter().map(composed).collect(),
     };
     draft.works = WorkGraph {
         works: vec![
@@ -256,7 +256,7 @@ fn a_draft_keeps_only_the_works_its_tracks_perform() {
         title: id.to_string(),
         disambiguation: None,
         work_type: None,
-        composers: vec![credit(&format!("Composer of {id}"))],
+        credits: vec![composed(credit(&format!("Composer of {id}")))],
     };
     let part = |parent: &str, child: &str| WorkPart {
         parent: parent.to_string(),
@@ -299,4 +299,14 @@ fn each_track_row_sits_on_the_medium_row_its_place_names() {
     assert_eq!(parsed.tracks[0].medium_id, parsed.mediums[0].id);
     assert_eq!(parsed.tracks[1].medium_id, parsed.mediums[1].id);
     assert_eq!(crate::reading_draft::row_labels(&parsed), ["1-1", "2-1"]);
+}
+
+/// `artist` credited on a work as its composer.
+fn composed(artist: ArtistCredit) -> bae_catalogs::works::WorkCredit {
+    bae_catalogs::works::WorkCredit {
+        artist,
+        role: bae_types::credit_role::CreditedAs::of(
+            bae_types::credit_role::CreditRoleKind::Composer,
+        ),
+    }
 }

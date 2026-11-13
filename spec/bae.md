@@ -339,7 +339,7 @@ Artists credit albums, releases, tracks and works:
 | A track's artists | `track_artists` | who the track is by, in credit order; a track with none is by the album's artists |
 | A release's roles | `release_artist_roles` | who did what on the release, as the catalog stated it |
 | A track's roles | `track_artist_roles` | who did what on the track, as the catalog stated it |
-| A work's artists | `work_artists` | who wrote or arranged the work |
+| A work's artists | `work_artists` | who is credited on the work, and in what role: one of bae's roles (Appendix H) or the catalog's own words, with their qualifiers |
 
 An artist row holds a name, a sort name, and the artist's MusicBrainz and
 Discogs ids where known. It may carry one picture, bae's own copy (§4.1).
@@ -530,12 +530,14 @@ label the write merges away is not that label.
 
 Works are compositions. Tracks link to them, in the order a track performs
 them, and they nest: a movement is part of a symphony, in the symphony's order.
-Works come from MusicBrainz, which names them; a work's artists come with it.
+Works come from MusicBrainz, which names them; a work's artists come with it,
+every one the work's relations state, each with its role (§3.4).
 No write deletes a work: one no track performs any more stays, as an album
 with no release does (§2.1). A release's detail names the works each of its
 tracks performs, in the track's order, each with its composers.
 
-**The composer list** shows every artist credited on a work, and every artist
+**The composer list** shows every artist credited on a work in a writing role
+(Appendix H), and every artist
 holding a catalog role credit that none of their works links: a release's
 credit is linked when a track of the release performs one of their works, a
 track's when the track performs one. A merged artist's works and credits count
@@ -1392,7 +1394,11 @@ sub-tracks are part of it. An item that names no row is skipped, and a credit
 none of whose items names a row is dropped, each with a warning naming the
 release. A collapsed index takes the credit once however many of its
 sub-tracks the credit names, and a credit on tracks of a medium the folder
-doesn't hold reaches no track.
+doesn't hold reaches no track. A MusicBrainz work's artist relations are all
+read, in the relation's order: each is a credit in the role its type and
+attributes state (Appendix H), printing the name the relation credits as one
+of the artist's other names (§2.3). One artist in two roles is two credits,
+and a role stated twice for an artist is one.
 
 **Which of its mediums the folder holds.** A release is read against the
 folder's audio once, and the run's documents, a pick, the draft it writes, the
@@ -5583,7 +5589,7 @@ All sync.
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
-| `work_artists` | work's credited artist, in order, with the other name it prints (none: the artist's own) |
+| `work_artists` | work's credited artist, in order, with the role it holds (a key of bae's list, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `work_parts` | work inside a larger work, in order |
 | `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
@@ -5714,7 +5720,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
 | `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). No row: a folder this device did not import holds its files' blank draft and the folder's own cover; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
-| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with the name its catalog printed |
+| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with the name its catalog printed |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes, which the slot fetches when it draws |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
@@ -5781,7 +5787,7 @@ write commits, so the release and the row naming it land in either order.
 | `source_release_label`, `source_release_barcode` | its labels, each with its catalog number and the label's catalog ids, and its barcodes, in order |
 | `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits, each with the name its catalog printed |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
-| `source_release_work`, `source_release_work_composer` | its MusicBrainz works, each composer with the name MusicBrainz printed |
+| `source_release_work`, `source_release_work_credit` | its MusicBrainz works, each credit with its role and the name MusicBrainz printed |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
 | `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, its catalog was not asked (switched off, or Discogs had no key), or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
@@ -6163,6 +6169,22 @@ MusicBrainz covers come from the Cover Art Archive.
 - **Area:** an ISO 3166-1 country code, or a named region no code covers.
 - **Discogs details:** what Discogs states about a pressing that no other
   field holds.
+
+**Credit roles.** What an artist did on a work, release or track is one of
+bae's roles or the catalog's own words, with the qualifiers the catalog states
+beside it, in the order it states them. The roles bae names are a closed list,
+keyed as stored: the *writing* roles writer, composer, lyricist, librettist,
+translator, reviser, scriptwriter and reconstructor (MusicBrainz's `writer`
+family, which make an artist a composer of a work), and arranger. A qualifier
+bae names is additional, associate or co-credit. Every other role, and every
+qualifier bae has no name for, is kept as the catalog wrote it. MusicBrainz's
+`vocal arranger` is an arranger qualified by the vocals it arranged for
+(`vocals` where it names none), an `instrument arranger` by its instruments,
+and a `task` by its free text. A MusicBrainz relation that names an artist
+without crediting work on the thing (a dedication, a commission, a premiere,
+being named after the artist, a previous attribution) is not a credit.
+Each relationship type page MusicBrainz publishes is reproduced name for name
+with its reverse link phrase, which words a role bae has no name for.
 
 **Audio codecs.** Lossless, stating a bit depth: FLAC, APE, ALAC, PCM, WavPack,
 DSD. Lossy, stating a bitrate: MP3, AAC, Opus, Vorbis.

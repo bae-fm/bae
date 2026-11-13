@@ -1442,7 +1442,7 @@ tables = [
     "import_candidate_track_role",
     "import_candidate_release_role",
     "import_candidate_work",
-    "import_candidate_work_composer",
+    "import_candidate_work_credit",
     "import_candidate_work_part",
     "import_candidate_track_work",
     "import_candidate_sheet_disc",
@@ -1514,7 +1514,7 @@ tables = [
     "source_release_entry_credit",
     "source_release_entry_role",
     "source_release_work",
-    "source_release_work_composer",
+    "source_release_work_credit",
     "source_release_unfetched",
 ]
 

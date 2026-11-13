@@ -350,11 +350,13 @@ pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbErr
 pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
     let created_at = link.created_at.to_rfc3339();
     let credit_key = settle_credit_name(conn, &link.artist_id, link.credit.as_ref(), &created_at)?;
+    let columns = link.role.columns();
     conn.execute(
         r#"
         INSERT OR IGNORE INTO work_artists (
-            id, work_id, artist_id, position, source, credit_key, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, work_id, artist_id, position, source, role, role_words, qualifiers, credit_key,
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             link.id(),
@@ -362,6 +364,9 @@ pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Res
             link.artist_id,
             link.position,
             link.source.as_str(),
+            columns.role,
+            columns.role_words,
+            columns.qualifiers,
             credit_key,
             created_at
         ],

@@ -271,13 +271,13 @@ pub struct SourceWork {
     pub title: String,
     pub disambiguation: Option<String>,
     pub work_type: Option<String>,
-    /// Composer credits and part relations, in relation order.
+    /// Credits and part relations, in relation order.
     pub events: Vec<SourceWorkEvent>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SourceWorkEvent {
-    Composer(ArtistCredit),
+    Credit { artist: ArtistCredit, role: bae_types::credit_role::CreditedAs },
     Part { direction: PartDirection, work: SourceWork },
 }
 

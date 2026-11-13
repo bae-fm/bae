@@ -298,6 +298,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &composer.id,
         0,
         bae_catalogs::catalog::Catalog::MusicBrainz,
+        bae_types::credit_role::CreditedAs::of(bae_types::credit_role::CreditRoleKind::Composer),
         None,
         now,
     )];
