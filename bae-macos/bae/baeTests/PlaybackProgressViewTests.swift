@@ -42,7 +42,7 @@ struct PlaybackProgressViewTests {
                 descendants.compactMap { $0 as? SeekSlider }.first
             )
             let labels = descendants.compactMap { $0 as? NSTextField }
-            #expect(labels.map(\.stringValue) == ["", ""])
+            #expect(labels.map(\.stringValue) == ["0:00", "0:00"])
 
             positions.set(
                 position(45_000, of: 180_000, progress: 0.25),
@@ -135,10 +135,10 @@ struct PlaybackProgressViewTests {
             )
 
             positions.remove("track")
-            try await Wait.untilText(of: labels, is: ["", ""])
+            try await Wait.untilText(of: labels, is: ["0:00", "0:00"])
             host.rootView = content(showRemaining: false)
             try await SnapshotTestSupport.settle(host)
-            #expect(labels.map(\.stringValue) == ["", ""])
+            #expect(labels.map(\.stringValue) == ["0:00", "0:00"])
 
             positions.set(
                 position(120_000, of: 240_000, progress: 0.5),
