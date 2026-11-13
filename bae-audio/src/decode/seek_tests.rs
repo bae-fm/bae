@@ -595,3 +595,79 @@ fn a_sample_seek_into_a_one_frame_flac_plays_from_the_sample() {
         );
     }
 }
+
+/// What a streaming decode of `bytes` (stereo, 44.1 kHz) plays from `start`,
+/// trimmed to `trim`. The decode runs on its own thread under a time limit, so
+/// a seek that never returns fails the test instead of hanging it.
+fn play_from(
+    bytes: &[u8],
+    start: DecodeStart,
+    trim: Option<u64>,
+) -> Result<Vec<f32>, crate::DecodeError> {
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+
+    let buffer = filled_sparse_buffer(bytes);
+    // Room for the whole 20 s track, which nothing drains until the decode ends.
+    let (mut sink, mut source, _ready) =
+        create_track_stream_pair_with_capacity(44100, 2, 4_410_000);
+    let (done, result) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let result = decode_audio_streaming(
+            buffer,
+            &mut sink,
+            start,
+            trim,
+            None,
+            None,
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        );
+        sink.mark_finished();
+        done.send(result).ok();
+    });
+    let result = result
+        .recv_timeout(std::time::Duration::from_secs(60))
+        .expect("the decode did not finish in 60 s");
+    let mut played = Vec::new();
+    let mut chunk = [0.0f32; 4096];
+    loop {
+        let n = source.pull_samples(&mut chunk);
+        if n == 0 && source.is_finished() {
+            break;
+        }
+        played.extend_from_slice(&chunk[..n]);
+    }
+    result.map(|_| played)
+}
+
+/// A seek to a recorded MP3 frame that FFmpeg can't make (here a byte the
+/// index can't hold) left the decode reading on from wherever the search last
+/// moved the reader: it played 765,454 samples, not the 882,000 from sample
+/// 441,000, and reported success. The decode fails instead.
+#[test]
+fn a_failed_indexed_frame_seek_fails_the_decode() {
+    init();
+    let bytes = lossy_sweep(EncodeFormat::Mp3 { bitrate_kbps: 192 });
+    let start = DecodeStart::Frame { byte: u64::MAX, sample: 441_000 };
+    let played = play_from(&bytes, start, Some(441_000));
+    assert!(
+        played.is_err(),
+        "the seek failed, yet the decode played {} samples",
+        played.as_ref().map_or(0, Vec::len),
+    );
+}
+
+/// An MP4 can't be jumped into by byte: FFmpeg declines before it moves the
+/// reader, which stays where opening left it. A decode started at a byte
+/// without a trim to a sample then played the whole file from its start,
+/// as a success. The decode fails instead.
+#[test]
+fn a_failed_byte_seek_fails_the_decode() {
+    init();
+    let bytes = lossy_sweep(EncodeFormat::Aac { bitrate_kbps: 192 });
+    let played = play_from(&bytes, DecodeStart::Byte(5000), None);
+    assert!(
+        played.is_err(),
+        "the byte seek failed, yet the decode played {} samples",
+        played.as_ref().map_or(0, Vec::len),
+    );
+}

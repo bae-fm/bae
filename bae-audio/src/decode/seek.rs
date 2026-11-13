@@ -52,7 +52,7 @@ pub enum DecodeStart {
 /// it holds nothing to drop, and a flush does not return every decoder to the
 /// state it opened in -- AAC's decodes its next frames differently from a
 /// freshly opened one.
-pub(super) unsafe fn seek_input_or_warn(
+pub(super) unsafe fn seek_input(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     codec_ctx: *const ffmpeg_sys_next::AVCodecContext,
     audio: &AudioStreamInfo,
@@ -64,12 +64,12 @@ pub(super) unsafe fn seek_input_or_warn(
     let content_type = crate::probe::content_type_from_codec_id((*codec_ctx).codec_id);
     match start {
         DecodeStart::StreamStart => {}
-        DecodeStart::Byte(byte) => seek_to_byte_or_warn(fmt_ctx, audio.stream_index, byte),
+        DecodeStart::Byte(byte) => seek_to_byte(fmt_ctx, audio.stream_index, byte)?,
         DecodeStart::Frame { byte, .. } if byte_jump_keeps_place(&content_type) => {
-            seek_to_byte_or_warn(fmt_ctx, audio.stream_index, byte)
+            seek_to_byte(fmt_ctx, audio.stream_index, byte)?
         }
         DecodeStart::Frame { byte, sample } if content_type == ContentType::Mp3 => {
-            seek_to_indexed_frame_or_warn(fmt_ctx, audio, sample_clock, byte, sample)
+            seek_to_indexed_frame(fmt_ctx, audio, sample_clock, byte, sample)?
         }
         // Import records frames only for FLAC and MP3.
         DecodeStart::Frame { byte, sample } => error!(
@@ -118,20 +118,22 @@ unsafe fn seek_preroll(codec_ctx: *const ffmpeg_sys_next::AVCodecContext) -> u64
 /// sample, so the caller's `start_at_sample` trim still reaches the exact
 /// sample -- except a FLAC's last frame, which FFmpeg's FLAC parser gives no
 /// timestamp, though its header carries its frame number. Import never
-/// records a track start or a scrub point there. A failure is not fatal — the
-/// caller decodes from the start instead, which is correct but reads more of
-/// the file than it needs.
-unsafe fn seek_to_byte_or_warn(
+/// records a track start or a scrub point there. A failure leaves the reader
+/// where it was (a demuxer that can't seek by byte, an MP4's, declines before
+/// it moves anything; a reader whose buffer has stopped fails the jump), which
+/// is not where the caller asked, so the decode fails.
+unsafe fn seek_to_byte(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     byte_pos: u64,
-) {
+) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
     let ret = av_seek_frame(fmt_ctx, stream_index, byte_pos as i64, AVSEEK_FLAG_BYTE as c_int);
     if ret < 0 {
-        warn!("byte seek to {byte_pos} failed ({}); decoding from the start", av_err_str(ret));
+        return Err(format!("byte seek to {byte_pos} failed ({})", av_err_str(ret)));
     }
+    Ok(())
 }
 
 /// Start an MP3 decode at a recorded frame: the frame at `byte`, whose first
@@ -141,32 +143,37 @@ unsafe fn seek_to_byte_or_warn(
 /// no estimate to seek by instead): it reads from the frame's byte and dates
 /// the frames from its timestamp on, as a decode from the stream's start
 /// dates them, so it drops the encoder delay only at the stream's first frame
-/// and the end padding at its last. A failure is logged: an entry that can't
-/// be added leaves the decode reading from the start, and a failed seek
-/// leaves it reading on from wherever the demuxer left its reader.
-unsafe fn seek_to_indexed_frame_or_warn(
+/// and the end padding at its last. A failure fails the decode: a failed seek
+/// leaves the reader wherever the demuxer's search last moved it (measured: an
+/// entry at a byte the reader can't jump to left an MP3 decode playing 116,546
+/// samples short of the 882,000 it should), and an entry that can't be added
+/// leaves no frame to seek to.
+unsafe fn seek_to_indexed_frame(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     audio: &AudioStreamInfo,
     sample_clock: &SampleClock,
     byte: u64,
     sample: u64,
-) {
+) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
     let timestamp = sample_clock.timestamp_of(sample as i64);
     let ret =
         av_add_index_entry(audio.stream, byte as i64, timestamp, 0, 0, AVINDEX_KEYFRAME as c_int);
     if ret < 0 {
-        warn!(
-            "indexing the frame at byte {byte} (sample {sample}) failed ({}); decoding from the start",
+        return Err(format!(
+            "indexing the frame at byte {byte} (sample {sample}) failed ({})",
             av_err_str(ret)
-        );
-        return;
+        ));
     }
     let ret = avformat_seek_file(fmt_ctx, audio.stream_index, i64::MIN, timestamp, timestamp, 0);
     if ret < 0 {
-        warn!("seek to the frame at byte {byte} (sample {sample}) failed ({})", av_err_str(ret));
+        return Err(format!(
+            "seek to the frame at byte {byte} (sample {sample}) failed ({})",
+            av_err_str(ret)
+        ));
     }
+    Ok(())
 }
 
 /// Seek to the frame at or before `sample_pos`. With `AVFMT_FLAG_FAST_SEEK`

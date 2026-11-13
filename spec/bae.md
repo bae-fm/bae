@@ -4435,6 +4435,9 @@ A FLAC with neither, such as an unimported file's preview, is searched by
 bisection, which can't place a sample in its last frames or in a FLAC of one
 frame: a seek it can't place decodes from where the audio begins and plays from
 the sample asked for, and one that can't even do that fails the playback.
+Any other seek FFmpeg can't make (a jump to a recorded byte, or to a recorded
+MP3 frame) fails the playback too: bae never plays from wherever the failed
+seek left the reader.
 An MP3 has no index FFmpeg seeks by both exactly and directly: with fast seek
 or `usetoc` it places the seek from the file's bitrate or its table of
 contents, an estimate, and without them, as bae opens an MP3, it reads forward

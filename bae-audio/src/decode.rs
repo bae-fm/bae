@@ -695,7 +695,7 @@ unsafe fn decode_buffer_to_sink_impl(
 
     let sample_clock = SampleClock::of_stream(audio.stream, sample_rate);
 
-    if let Err(e) = seek_input_or_warn(fmt_ctx, codec_ctx, &audio, &sample_clock, start) {
+    if let Err(e) = seek_input(fmt_ctx, codec_ctx, &audio, &sample_clock, start) {
         avcodec_free_context(&mut (codec_ctx as *mut _));
         swr_free(&mut swr_ctx);
         let read_failure = release_buffer_input(&mut fmt_ctx, avio, avio_ctx_ptr);
