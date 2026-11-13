@@ -157,7 +157,7 @@ extension ShotScene {
                         positionId: "position-\(index)",
                         trackId: "track-\(index)",
                         title: entry.title,
-                        artistNames: entry.artists,
+                        artistLine: .named(entry.artists),
                         albumId: "album-\(index)",
                         albumTitle: entry.album,
                         releaseId: "release-\(index)",

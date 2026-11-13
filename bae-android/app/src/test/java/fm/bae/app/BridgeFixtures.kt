@@ -210,7 +210,7 @@ object BridgeFixtures {
             positionId = positionId,
             trackId = "track-$positionId",
             title = title,
-            artistNames = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             albumId = "album-1",
             albumTitle = "Album Title",
             releaseId = "rel-1",

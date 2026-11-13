@@ -115,7 +115,8 @@ private struct PlaylistEntryRow: View {
             lead: String(number),
             cover: entry.cover,
             title: entry.title,
-            subtitle: FactList.joined([entry.artistNames, entry.albumTitle]),
+            subtitle: FactList.joined([entry.artistLine.text, entry.albumTitle]
+            ),
             duration: DurationClock.label(entry.durationClock),
             hover: hovering
         )

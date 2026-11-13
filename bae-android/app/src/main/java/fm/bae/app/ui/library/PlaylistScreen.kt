@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.creditLineText
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
@@ -164,7 +165,7 @@ internal fun PlaylistContent(
         items(detail.entries, key = { it.positionId }) { entry ->
             AndroidLibraryRow(
                 title = entry.title,
-                subtitle = context.factsLine(listOf(entry.artistNames, entry.albumTitle)),
+                subtitle = context.factsLine(listOf(context.creditLineText(entry.artistLine), entry.albumTitle)),
                 trailing = context.durationClockLabel(entry.durationClock),
                 art = entry.cover,
                 onClick = { onPlay(entry.positionId, false) },
