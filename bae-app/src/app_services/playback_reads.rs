@@ -56,7 +56,9 @@ impl AppServices {
     pub fn subscribe_cast_receivers(
         &self,
     ) -> bae_store::live_query::LiveValues<bae_playback::renderer::CastReceiverList> {
-        self.inner.manager.values_until_closed(self.inner.cast_picker.subscribe())
+        self.inner
+            .manager
+            .values_until_closed(self.inner.cast_picker.subscribe(bae_views::sort_language_on))
     }
 
     /// List `receivers` as the cast picker's receivers in place of the last

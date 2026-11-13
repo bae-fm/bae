@@ -1,8 +1,8 @@
-//! The personal lists come back in the order their statements state, read
-//! along an index rather than sorted after the read.
+//! The personal lists: a playlist's entries come back in the order their
+//! statement states, read along an index rather than sorted after the read,
+//! and playlists and profiles list by name in the language they are asked in.
 
-use crate::people::collections::{PLAYLISTS_SQL, PLAYLIST_ENTRIES_SQL};
-use crate::people::profiles::profiles_sql;
+use crate::people::collections::PLAYLIST_ENTRIES_SQL;
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -24,13 +24,11 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn personal_lists_read_in_order_without_a_sort() {
+async fn a_playlists_entries_read_in_order_without_a_sort() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    for statement in [PLAYLISTS_SQL.to_string(), PLAYLIST_ENTRIES_SQL.to_string(), profiles_sql()] {
-        let plan = plan(&db, statement.clone()).await;
-        assert!(
-            !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-            "{statement} sorts after reading: {plan:?}"
-        );
-    }
+    let plan = plan(&db, PLAYLIST_ENTRIES_SQL.to_string()).await;
+    assert!(
+        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+        "{PLAYLIST_ENTRIES_SQL} sorts after reading: {plan:?}"
+    );
 }

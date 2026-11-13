@@ -14,8 +14,12 @@ mod profile_request;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 
+/// The SQL functions the people's reads name: the key lists of names order by.
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
+
 /// People's part of the schema: `people.sql`.
 pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_str!("people.sql")])
+    .functions(SQL_FUNCTIONS)
     .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
 struct PeopleInner {

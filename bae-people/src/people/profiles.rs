@@ -5,6 +5,8 @@ use super::profile_request::{
 use super::*;
 use crate::membership::{member_columns, member_row, SELF_IS_ADMIN};
 use crate::people::{Avatar, HistorySharing, Person, PersonProfile, ProfileError};
+use bae_store::read::SortLanguageRead;
+use bae_util::name_key::SortLanguage;
 
 /// The columns [`profile_row`] reads of the `people` row `p`: its own, and
 /// its avatar's version; [`PROFILE_COLUMN_COUNT`] of them.
@@ -35,8 +37,10 @@ impl People {
         Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
     }
 
-    pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
-        self.inner.store.read(|sql| Ok(profile_rows(&sql)?)).await
+    /// Every profile, ordered by name in `language`.
+    pub async fn profiles(&self, language: &SortLanguage) -> Result<Vec<PersonProfile>, DbError> {
+        let language = language.clone();
+        self.inner.store.read(move |sql| Ok(profile_rows(&sql, &language)?)).await
     }
 
     /// Everyone in the library, in member-id order: each member, with
@@ -45,8 +49,16 @@ impl People {
         self.inner.store.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
-        self.inner.store.subscribe(|sql| Ok(profile_rows(&sql)?))
+    /// Follow every profile, ordered by name in the language `language`
+    /// reads: a change of the language lists them again.
+    pub fn subscribe_profiles(
+        &self,
+        language: SortLanguageRead,
+    ) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
+        self.inner.store.subscribe(move |sql| {
+            let language = language(&sql)?;
+            Ok(profile_rows(&sql, &language)?)
+        })
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
@@ -573,13 +585,16 @@ fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<
     })
 }
 
-/// Every profile, by name; `people_name` serves the order.
+/// Every profile, by name in the language bound to `?1`, then id.
 pub(super) fn profiles_sql() -> String {
-    format!("SELECT {} FROM people AS p ORDER BY p.name, p.id", profile_columns())
+    format!("SELECT {} FROM people AS p ORDER BY bae_name_key(p.name, ?1), p.id", profile_columns())
 }
 
-fn profile_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<PersonProfile>> {
-    sql.query(&profiles_sql(), [], profile_row)
+fn profile_rows(
+    sql: &SqlReadContext<'_>,
+    language: &SortLanguage,
+) -> rusqlite::Result<Vec<PersonProfile>> {
+    sql.query(&profiles_sql(), [language.as_str()], profile_row)
 }
 
 fn update_profile(

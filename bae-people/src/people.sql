@@ -11,8 +11,6 @@ CREATE TABLE people (
     history_sharing TEXT NOT NULL CHECK (history_sharing IN ('off', 'private', 'household')),
     avatar_id TEXT
 ) STRICT;
--- Profiles list by name.
-CREATE INDEX people_name ON people(name, id);
 -- A profile by its picture's file, which coven's pending records name.
 CREATE INDEX people_avatar ON people(avatar_id);
 
@@ -34,8 +32,6 @@ CREATE TABLE playlists (
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),
     audience TEXT NOT NULL
 ) STRICT;
--- Playlists list by name.
-CREATE INDEX playlists_name ON playlists(name, id);
 
 -- The position id distinguishes repeated tracks and concurrent insertions.
 -- Integer order is not unique: ties retain both entries, ordered by position id.

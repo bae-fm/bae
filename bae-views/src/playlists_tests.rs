@@ -22,14 +22,9 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn each_playlist_read_follows_its_index_without_a_sort() {
+async fn the_entry_reads_follow_their_index_without_a_sort() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
-    for statement in [
-        playlists_sql(""),
-        playlists_sql(" WHERE pl.id = ?1"),
-        entry_stats_sql(),
-        playlist_entries_sql(),
-    ] {
+    for statement in [entry_stats_sql(), playlist_entries_sql()] {
         let plan = plan(&db, statement.clone()).await;
         assert!(
             !plan

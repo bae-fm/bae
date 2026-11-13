@@ -43,7 +43,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     assert!(people.record_play(&played).await.unwrap());
 
     library.people().create_profile("Robin").await.unwrap();
-    assert!(people.profiles().await.unwrap().is_empty());
+    assert!(people.profiles(&bae_util::name_key::SortLanguage::root()).await.unwrap().is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
     let running = db

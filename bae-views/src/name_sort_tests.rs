@@ -42,7 +42,7 @@ async fn a_language_change_reorders_the_window_a_list_shows() {
         "the root order puts å and ö with a and o"
     );
     views.set_sort_language("sv").await.unwrap();
-    assert_eq!(views.sort_language().await.unwrap(), "sv");
+    assert_eq!(views.sort_language().await.unwrap().as_str(), "sv");
     assert_eq!(
         album_titles_next(&mut live).await,
         ["Zebra", "Åke", "Öl"],
@@ -107,7 +107,7 @@ async fn a_language_that_is_not_one_is_refused_and_changes_nothing() {
         views.set_sort_language("not a language").await,
         Err(SortLanguageError::Invalid(_))
     ));
-    assert_eq!(views.sort_language().await.unwrap(), "und");
+    assert_eq!(views.sort_language().await.unwrap().as_str(), "und");
 }
 
 #[tokio::test]

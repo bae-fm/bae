@@ -74,14 +74,14 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     assert_eq!(entries[0].track_id, first);
     people.set_playlist_sharing(id, Sharing::Household).await.unwrap();
     people.rename_playlist(id, "Gathering").await.unwrap();
-    let playlists = people.playlists().await.unwrap();
+    let playlists = people.playlists(&bae_util::name_key::SortLanguage::root()).await.unwrap();
     assert_eq!(playlists[0].audience, coven::Audience::Store);
     assert_eq!(playlists[0].name, "Gathering");
     assert_eq!(people.playlist_entries(id).await.unwrap(), entries);
     people.remove_playlist_entry(id, b).await.unwrap();
     assert_eq!(people.playlist_entries(id).await.unwrap().len(), 2);
     people.delete_playlist(id).await.unwrap();
-    assert!(people.playlists().await.unwrap().is_empty());
+    assert!(people.playlists(&bae_util::name_key::SortLanguage::root()).await.unwrap().is_empty());
     assert!(people.playlist_entries(id).await.unwrap().is_empty());
     library.manager().close().await.unwrap();
 }
@@ -126,8 +126,13 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
     let refused =
         library.manager().create_playlist("Morning", Sharing::Private, vec![first, unknown]).await;
     assert!(refused.is_err());
-    let names: Vec<String> =
-        people.playlists().await.unwrap().into_iter().map(|p| p.name).collect();
+    let names: Vec<String> = people
+        .playlists(&bae_util::name_key::SortLanguage::root())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|p| p.name)
+        .collect();
     assert_eq!(names, vec!["Evening".to_string()]);
     library.manager().close().await.unwrap();
 }
@@ -240,5 +245,47 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     detail_matching(&mut detail, |detail| detail.is_none()).await;
     let gone = value_matching(&mut listing, |listing| listing.listed.is_empty()).await;
     assert!(gone.add_targets.is_empty());
+    library.manager().close().await.unwrap();
+}
+
+/// Playlists list by name in the device's language, and the live listing
+/// lists them again when the language changes: Swedish puts å and ä after z,
+/// the root order puts them with a, and the byte order after every ASCII
+/// letter.
+#[tokio::test]
+async fn playlists_list_by_name_in_the_devices_language() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let people = bae_people::People::new(library.store().clone());
+    let views = bae_views::LibraryViews::new(library.store().clone());
+    for name in ["Ängel", "Zebra", "Apa"] {
+        library.manager().create_playlist(name, Sharing::Private, Vec::new()).await.unwrap();
+    }
+    let names = |listing: &bae_views::playlists::PlaylistListing| -> Vec<String> {
+        listing.listed.iter().map(|playlist| playlist.name.clone()).collect()
+    };
+
+    let mut listing = views.subscribe_playlists();
+    let root = value_matching(&mut listing, |listing| listing.listed.len() == 3).await;
+    assert_eq!(names(&root), ["Ängel", "Apa", "Zebra"]);
+
+    views.set_sort_language("sv").await.unwrap();
+    let swedish = value_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;
+    assert_eq!(names(&swedish), ["Apa", "Zebra", "Ängel"]);
+    let listed: Vec<String> = people
+        .playlists(&bae_util::name_key::SortLanguage::parse("sv").unwrap())
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|playlist| playlist.name)
+        .collect();
+    assert_eq!(listed, ["Apa", "Zebra", "Ängel"]);
     library.manager().close().await.unwrap();
 }

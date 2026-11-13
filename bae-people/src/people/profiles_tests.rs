@@ -23,5 +23,40 @@ async fn a_request_no_longer_stored_is_not_written_as_a_profile() {
         matches!(refused, Err(ProfileRequestError::Changed(refused)) if refused == operation),
         "{refused:?}"
     );
-    assert!(people.profiles().await.unwrap().is_empty());
+    assert!(people.profiles(&SortLanguage::root()).await.unwrap().is_empty());
+}
+
+/// Profiles list by name in the language asked: Swedish puts ö after z, the
+/// root order puts it with o, and the byte order puts it after every ASCII
+/// letter.
+#[tokio::test]
+async fn profiles_list_by_name_in_the_language_asked() {
+    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    db.call(|sql| {
+        for (id, name) in [
+            ("00000000-0000-0000-0000-000000000001", "Östen"),
+            ("00000000-0000-0000-0000-000000000002", "Zoe"),
+            ("00000000-0000-0000-0000-000000000003", "Olle"),
+        ] {
+            sql.execute(
+                "INSERT INTO people (id, name, private_circle, history_sharing) \
+                 VALUES (?1, ?2, '0c1c0000-0000-4000-8000-000000000001', 'off')",
+                [id, name],
+            )?;
+        }
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let people = People::new(db);
+    let names = |profiles: Vec<PersonProfile>| -> Vec<String> {
+        profiles.into_iter().map(|profile| profile.name).collect()
+    };
+
+    let sv = SortLanguage::parse("sv").unwrap();
+    assert_eq!(names(people.profiles(&sv).await.unwrap()), ["Olle", "Zoe", "Östen"]);
+    assert_eq!(
+        names(people.profiles(&SortLanguage::root()).await.unwrap()),
+        ["Olle", "Östen", "Zoe"]
+    );
 }

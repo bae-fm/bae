@@ -68,7 +68,7 @@ pub async fn requested_profile_on(
         .expect("asking for a profile needs a registered person")
         .membership
         .id;
-    let mut profiles = people.subscribe_profiles();
+    let mut profiles = people.subscribe_profiles(bae_views::sort_language_on);
     handle.start_sync().await.unwrap();
     let written = value_matching(&mut profiles, |profiles| {
         profiles.iter().any(|profile| profile.id == member)

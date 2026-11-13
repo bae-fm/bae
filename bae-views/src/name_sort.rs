@@ -5,7 +5,7 @@
 //! triggers write (`album/listing.sql`, `artist.sql`, `storage.sql`).
 
 use super::*;
-use bae_util::name_key::{InvalidLanguage, NameKeys, DATA_VERSION};
+use bae_util::name_key::{InvalidLanguage, SortLanguage, DATA_VERSION};
 
 /// The SQL creating this part's table.
 pub(crate) const SQL: &str = include_str!("name_sort.sql");
@@ -56,8 +56,8 @@ impl LibraryViews {
     /// nothing, so this is safe to call at every start, and to call again
     /// after it failed.
     pub async fn set_sort_language(&self, tag: &str) -> Result<(), SortLanguageError> {
-        let language = NameKeys::for_language(tag)?.tag().to_string();
-        Ok(self.write_sort_language(Some(language)).await?)
+        let language = SortLanguage::parse(tag)?;
+        Ok(self.write_sort_language(Some(language.as_str().to_string())).await?)
     }
 
     /// Write every stored name key again, in the language the device already
@@ -95,11 +95,24 @@ impl LibraryViews {
 
     /// The language this device orders names in: `und`, the root order, until
     /// it is set.
-    pub async fn sort_language(&self) -> Result<String, DbError> {
-        self.store
-            .read(|sql| Ok(sql.query_row("SELECT language FROM name_sort", [], |row| row.get(0))?))
-            .await
+    pub async fn sort_language(&self) -> Result<SortLanguage, DbError> {
+        self.store.read(|sql| sort_language_on(&sql)).await
     }
+}
+
+/// The language this device orders names in, read in the caller's own read:
+/// a live list that reads it reruns when the language changes. It is a
+/// [`bae_store::read::SortLanguageRead`], for the reads of the crates below
+/// this one that order names.
+pub fn sort_language_on(sql: &SqlReadContext<'_>) -> Result<SortLanguage, DbError> {
+    let tag: String = sql.query_row("SELECT language FROM name_sort", [], |row| row.get(0))?;
+    SortLanguage::parse(&tag).map_err(|error| {
+        DbError::from(rusqlite::Error::FromSqlConversionFailure(
+            0,
+            rusqlite::types::Type::Text,
+            Box::new(error),
+        ))
+    })
 }
 
 #[cfg(test)]

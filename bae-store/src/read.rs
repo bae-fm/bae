@@ -4,6 +4,12 @@
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 
+/// A read of the device's sort language from the library an ordered list is
+/// read in. A live list takes it where it is subscribed, so reading the
+/// language is part of the list's own read and a change of language reruns it.
+pub type SortLanguageRead =
+    fn(&coven::SqlReadContext<'_>) -> Result<bae_util::name_key::SortLanguage, crate::DbError>;
+
 /// The error of reading column `column` (its name or index) of `row`, whose
 /// stored value the mapper could not turn into its typed value, `cause`
 /// saying why: it names the column's index and the type its value is stored

@@ -89,14 +89,15 @@ pub struct PlaylistDetail {
 }
 
 /// The playlists, with the columns [`summary_of`] reads, over `playlists pl`
-/// and its owner's profile, `narrowing` narrowing them, by name then id.
-/// `playlists_name` serves the order.
+/// and its owner's profile, `narrowing` narrowing them, by name in the
+/// device's language, then id.
 pub(crate) fn playlists_sql(narrowing: &str) -> String {
     format!(
         "SELECT pl.id, pl.name, pl.audience, pl.person_id, owner.name, {avatar}, \
                 COALESCE(pl.person_id = {own}, 0) AS yours \
          FROM playlists AS pl JOIN people AS owner ON owner.id = pl.person_id{narrowing} \
-         ORDER BY pl.name, pl.id",
+         ORDER BY {name_key}, pl.id",
+        name_key = crate::name_sort::sort_key_sql("pl.name"),
         avatar = bae_store::file_version_sql("owner.avatar_id"),
         own = OWN_MEMBER,
     )

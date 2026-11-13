@@ -222,7 +222,7 @@ language.
 (album titles and artists in the grid, the artist and composer lists, a
 composer's page, the Storage manager's album and artist columns, and the
 order of library search's results and of an artist's albums and other printed
-names) orders them as a reader of the device's language
+names, the playlists, the people and the cast picker's receivers) orders them as a reader of the device's language
 expects, by Unicode collation with that language's tailoring: in Swedish å, ä
 and ö come after z, in Spanish ñ after n, in Russian "я" and "Я" sit together,
 and in the root order accented letters sort with their base letter. Names
@@ -230,7 +230,10 @@ that differ only in case have different places, lowercase first. The device
 holds its language in one local row, set by the app (macOS: its first
 preferred language, Android: its locale) at launch and when its language
 changes, and a collation key of every listed name written in that
-language beside the name; lists order by the keys. A change of language, or
+language beside the name; lists order by the keys. The few short lists that
+keep no key column (playlists, people, cast receivers) compute the same key in
+the query, from the same language row, so a change of language reorders them
+too. A change of language, or
 of the collation data the keys were written with (checked as the library
 opens, before anything reads it), rewrites every key and
 advances the lists' versions in one write, so a list is in one order or the

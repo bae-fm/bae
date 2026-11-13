@@ -34,7 +34,7 @@ pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
 mod name_sort;
 pub mod playlists;
-pub use name_sort::SortLanguageError;
+pub use name_sort::{sort_language_on, SortLanguageError};
 pub mod release;
 #[cfg(desktop)]
 mod release_files;

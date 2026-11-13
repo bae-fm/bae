@@ -47,6 +47,28 @@ pub struct NameKeys {
 /// set.
 pub const ROOT_LANGUAGE: &str = "und";
 
+/// A language tag checked to be one, in its canonical form: what a read that
+/// orders names takes to order them in the device's language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SortLanguage(String);
+
+impl SortLanguage {
+    /// The language `tag` names.
+    pub fn parse(tag: &str) -> Result<Self, InvalidLanguage> {
+        Ok(Self(NameKeys::for_language(tag)?.tag().to_string()))
+    }
+
+    /// The root order, the language of a device with none set.
+    pub fn root() -> Self {
+        Self(ROOT_LANGUAGE.to_string())
+    }
+
+    /// The canonical tag.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// The collators made so far, by the language tag they were asked for as.
 static COLLATORS: Mutex<Option<HashMap<String, Arc<NameKeys>>>> = Mutex::new(None);
 

@@ -25,7 +25,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
         library.people().create_profile("Robin").await,
         Err(ProfileError::NotRegistered)
     ));
-    assert!(people.profiles().await.unwrap().is_empty());
+    assert!(people.profiles(&bae_util::name_key::SortLanguage::root()).await.unwrap().is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
     assert_eq!(profile.history_sharing, HistorySharing::Private);
@@ -59,7 +59,12 @@ async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
         Some("Robin"),
     )
     .await;
-    assert!(library.people().profiles().await.unwrap().is_empty());
+    assert!(library
+        .people()
+        .profiles(&bae_util::name_key::SortLanguage::root())
+        .await
+        .unwrap()
+        .is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
