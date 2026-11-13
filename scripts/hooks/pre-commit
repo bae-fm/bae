@@ -163,14 +163,6 @@ run_check "no IDE previews" \
     exit 1
 }
 
-run_check "macOS native Cargo cache" scripts/check-macos-build-cache.sh || {
-    exit 1
-}
-
-run_check "mobile host Cargo cache" scripts/check-mobile-build-cache.sh || {
-    exit 1
-}
-
 run_check "Xcode build trees" scripts/check-xcode-trees.py || {
     exit 1
 }

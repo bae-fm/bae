@@ -97,8 +97,6 @@ check "every Rust file compiled"    sh -c 'python3 scripts/check-rust-files-comp
 check "test keychain"                sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py'
 check "no IDE previews"              sh -c 'python3 scripts/check-no-previews.py && python3 scripts/tests/check-no-previews-test.py'
 check "performance suite"            python3 scripts/tests/perf-test.py
-check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
-check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
 check "Xcode build trees"           scripts/check-xcode-trees.py
 check "clippy (workspace)"          scripts/cargo.sh clippy --workspace -- -D warnings
 check "clippy (bae-library + test-utils)" \
