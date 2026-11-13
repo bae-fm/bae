@@ -116,8 +116,10 @@
       h('div', { className: 'bae-m-np-right' },
         h(MacIconButton, { icon: 'cast', label: props.casting ? 'Casting to ' + props.casting : 'Cast', active: !!props.casting }),
         h(MacIconButton, { icon: 'queue', label: 'Queue', active: props.queueOpen }),
-        h(MacIconButton, { icon: 'speaker', label: 'Mute' }),
-        h('div', { className: 'bae-m-volume' }, h('div', { style: { width: ((props.volume != null ? Number(props.volume) : 0.7) * 100) + '%' } }))));
+        // `noVolume`: casting to a receiver that takes no volume from bae (a UPnP renderer with no volume control): no Mute and no slider, and a line naming where the volume is set.
+        props.noVolume ? h('span', { className: 'bae-m-np-novolume' }, 'Volume is set on ' + props.noVolume) : [
+          h(MacIconButton, { key: 'm', icon: 'speaker', label: 'Mute' }),
+          h('div', { key: 'v', className: 'bae-m-volume' }, h('div', { style: { width: ((props.volume != null ? Number(props.volume) : 0.7) * 100) + '%' } }))]));
   }
 
   function MacMainWindow(props) {
@@ -136,7 +138,7 @@
           props.sync === 'paused' ? h(MacIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
-      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, queueOpen: props.queueOpen }));
+      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
   }
 
   function MacLibraryHeading(props) {

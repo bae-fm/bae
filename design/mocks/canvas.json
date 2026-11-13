@@ -4114,6 +4114,22 @@
    "w": 1400,
    "x": 1496,
    "y": 4700
+  },
+  "mac.playback.casting.no-volume.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: casting, receiver with no volume control",
+   "w": 1200,
+   "x": 0,
+   "y": 5432
+  },
+  "android.playback.full-player.no-volume.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The full player, casting to a receiver with no volume control",
+   "w": 412,
+   "x": 1296,
+   "y": 5432
   }
  },
  "createdOnFiles": {
@@ -6138,7 +6154,9 @@
   "mac.album.edit.cover.dc.html",
   "mac.album.edit.cue-image.dc.html",
   "mac.import.identify.records-differ.dc.html",
-  "mac.import.list.folder-not-watched.dc.html"
+  "mac.import.list.folder-not-watched.dc.html",
+  "mac.playback.casting.no-volume.dc.html",
+  "android.playback.full-player.no-volume.dc.html"
  ],
  "pages": [
   {
