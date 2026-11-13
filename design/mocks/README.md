@@ -20,10 +20,18 @@ draws boards with the same one.
 
 Yellow notes beside a row name what the code needs.
 
-The canvas is published at https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ.
-These files are its source and the published canvas is a copy: an edit made
-on the published page is not kept, and the next publish overwrites it with
-these files.
+A canvas holds at most 512 files, so the boards are published as two
+canvases, split by page:
+
+- https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ: the welcome, settings,
+  library, logo and shared pages.
+- https://claude.ai/artifact/DEfNCUJAz5wp9vmdqJ4h7R: the home, loading,
+  search, import, storage and explore pages.
+
+Each gets the boards on its pages and the part of `canvas.json` that places
+them; no board mounts a part from the other canvas. These files are their
+source and the published canvases are copies: an edit made on a published
+page is not kept, and the next publish overwrites it with these files.
 
 Boards mount the design system in `../system/` from a copy under `ds/bae/`,
 which publishing builds from `../system/` and git doesn't hold.
