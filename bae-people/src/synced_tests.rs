@@ -11,7 +11,7 @@ fn people_declarations_match_the_store_audience_and_file_contract() {
         BTreeSet::from(["people", "history", "ratings", "playlists", "playlist_entries"])
     );
     for table in &tables {
-        let shared = matches!(table.name(), "people" | "ratings" | "playlist_entries");
+        let shared = matches!(table.name(), "people" | "ratings");
         assert_eq!(
             table.identity(),
             if shared { &RowIdentity::SharedKey } else { &RowIdentity::IndependentUuid }

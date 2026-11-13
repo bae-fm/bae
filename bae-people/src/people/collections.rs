@@ -141,18 +141,24 @@ impl People {
         .await
     }
 
-    /// A stale reorder cannot silently drop entries added since it read the list.
+    /// Renumbers the playlist's entries from 0 in `order`; entries `order`
+    /// does not name follow, in the order they were in.
     pub async fn reorder_playlist(
         &self,
         playlist: uuid::Uuid,
         order: Vec<uuid::Uuid>,
     ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql| {
-            let current: HashSet<String> = sql.query("SELECT position_id FROM playlist_entries WHERE playlist_id = ?", [playlist.to_string()], |row| row.get(0))?.into_iter().collect();
-            let wanted: HashSet<String> = order.iter().map(ToString::to_string).collect();
-            if order.len() != wanted.len() || wanted != current { return Ok(Err(CollectionError::OrderChanged)); }
-            for (index, position) in order.iter().enumerate() {
-                sql.execute("UPDATE playlist_entries SET position = ? WHERE playlist_id = ? AND position_id = ?", params![index as i64, playlist.to_string(), position.to_string()])?;
+            let current: Vec<String> = sql.query("SELECT position_id FROM playlist_entries WHERE playlist_id = ? ORDER BY position", [playlist.to_string()], |row| row.get(0))?;
+            let named: Vec<String> = order.iter().map(ToString::to_string).collect();
+            let mut renumbered: Vec<&String> = Vec::with_capacity(current.len());
+            for position in named.iter().chain(&current) {
+                if current.contains(position) && !renumbered.contains(&position) {
+                    renumbered.push(position);
+                }
+            }
+            for (index, position) in renumbered.into_iter().enumerate() {
+                sql.execute("UPDATE playlist_entries SET position = ? WHERE playlist_id = ? AND position_id = ?", params![index as i64, playlist.to_string(), position])?;
             }
             Ok(Ok(()))
         }).await
@@ -205,7 +211,7 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
 /// One playlist's entries, in order; `playlist_entries_position` serves the
 /// lookup and the order.
 pub(super) const PLAYLIST_ENTRIES_SQL: &str = "SELECT position_id, track_id FROM playlist_entries \
-     WHERE playlist_id = ? ORDER BY position, position_id";
+     WHERE playlist_id = ? ORDER BY position";
 
 fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<Vec<PlaylistEntry>> {
     sql.query(PLAYLIST_ENTRIES_SQL, [playlist.to_string()], |row| {

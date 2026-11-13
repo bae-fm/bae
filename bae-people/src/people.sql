@@ -36,8 +36,9 @@ CREATE TABLE playlists (
     audience TEXT NOT NULL
 ) STRICT;
 
--- The position id distinguishes repeated tracks and concurrent insertions.
--- Integer order is not unique: ties retain both entries, ordered by position id.
+-- The position id is the entry's own id, so the same track can sit in a
+-- playlist twice. `position` orders the entries: an append takes the next
+-- number and a reorder renumbers them from 0.
 CREATE TABLE playlist_entries (
     playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
     position_id TEXT NOT NULL,
@@ -47,7 +48,7 @@ CREATE TABLE playlist_entries (
 ) STRICT;
 -- A playlist's entries read in order, and its last position found for an
 -- append, along the playlist's own run of this index.
-CREATE INDEX playlist_entries_position ON playlist_entries(playlist_id, position, position_id);
+CREATE INDEX playlist_entries_position ON playlist_entries(playlist_id, position);
 
 CREATE TABLE history (
     id TEXT PRIMARY KEY NOT NULL,

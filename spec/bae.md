@@ -2758,7 +2758,8 @@ them.
 **Playlists.** A playlist belongs to the person who made it, and is private or
 household, each playlist on its own. Its entries are rows keyed by the playlist
 and a *position id*, a fresh id per entry, so the same track can sit in a
-playlist twice. Each entry also has a position number that orders it.
+playlist twice. Each entry also has a position number that orders it: an
+append takes the next number, and a reorder renumbers every entry from 0.
 Playlists list by name, and profiles list by name too. A name a person gives
 a library, a profile, a playlist or another printed name of an artist is kept
 without its leading and trailing spaces, and a blank one is refused; core
@@ -2800,9 +2801,11 @@ playlists: a submenu of their own playlists by name, which adds the track to the
 end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
-Ben adds a track to his party playlist: it takes the next position, 7. A
-reorder names every entry it read, and is refused if an entry arrived or went
-in between, so it never drops an entry it didn't see.
+Ben adds a track to his party playlist, which holds seven entries: the new
+entry takes position 7. He drags it to the top: the reorder names the entries
+in their new order and each takes its place in it, from 0. A reorder that
+names only some entries puts them first, in its order, and the rest follow as
+they were.
 
 ### 5.4 Profiles
 

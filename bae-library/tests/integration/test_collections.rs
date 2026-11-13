@@ -1,6 +1,6 @@
 use bae_library::followed::value_matching;
 use bae_library::test_libraries::{connect_storage, made_profile, storage_library};
-use bae_people::collections::{CollectionError, RatingTarget, Stars};
+use bae_people::collections::{RatingTarget, Stars};
 use bae_people::people::Sharing;
 use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_ids::test_uuid;
@@ -57,24 +57,17 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     people.append_playlist_entry(id, a, first.clone()).await.unwrap();
     people.append_playlist_entry(id, b, second).await.unwrap();
     people.append_playlist_entry(id, c, first.clone()).await.unwrap();
-    assert!(matches!(
-        people.reorder_playlist(id, vec![b, a]).await,
-        Err(CollectionError::OrderChanged)
-    ));
-    assert!(matches!(
-        people.reorder_playlist(id, vec![a, a, c]).await,
-        Err(CollectionError::OrderChanged)
-    ));
-    assert_eq!(
-        people
-            .playlist_entries(id)
-            .await
-            .unwrap()
-            .iter()
-            .map(|entry| entry.position_id)
-            .collect::<Vec<_>>(),
-        vec![a, b, c]
-    );
+    let order = |entries: Vec<bae_people::collections::PlaylistEntry>| {
+        entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>()
+    };
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, b, c]);
+    // A reorder that names some entries puts them first, in its order, and
+    // the rest follow as they were; one that names an entry twice or one the
+    // playlist lacks renumbers by the first mention.
+    people.reorder_playlist(id, vec![b, a]).await.unwrap();
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![b, a, c]);
+    people.reorder_playlist(id, vec![a, a, uuid::Uuid::nil(), c]).await.unwrap();
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
     people.reorder_playlist(id, vec![c, b, a]).await.unwrap();
     let entries = people.playlist_entries(id).await.unwrap();
     assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);

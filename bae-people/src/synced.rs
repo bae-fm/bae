@@ -27,7 +27,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         SyncedTable::new("playlists", RowIdentity::IndependentUuid)
             .owner_only()
             .audience_column("audience"),
-        SyncedTable::new("playlist_entries", RowIdentity::SharedKey)
+        SyncedTable::new("playlist_entries", RowIdentity::IndependentUuid)
             .key_columns(["playlist_id", "position_id"])
             .owner_only()
             .audience_from("playlist_id"),

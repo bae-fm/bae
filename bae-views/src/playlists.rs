@@ -112,7 +112,7 @@ pub(crate) fn entry_stats_sql() -> String {
     format!(
         "SELECT e.playlist_id, t.release_id, t.duration_ms, {cover} \
          FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
-         ORDER BY e.playlist_id, e.position, e.position_id",
+         ORDER BY e.playlist_id, e.position",
         cover = cover_version_sql("t.release_id"),
     )
 }
@@ -124,7 +124,7 @@ pub(crate) fn playlist_entries_sql() -> String {
                 r.album_id, a.title, t.release_id, t.duration_ms, {cover} \
          FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
               JOIN releases AS r ON r.id = t.release_id JOIN albums AS a ON a.id = r.album_id \
-         WHERE e.playlist_id = ?1 ORDER BY e.position, e.position_id",
+         WHERE e.playlist_id = ?1 ORDER BY e.position",
         credits = track_credits_json_sql("t"),
         cover = cover_version_sql("t.release_id"),
     )

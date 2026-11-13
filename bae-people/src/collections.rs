@@ -76,8 +76,6 @@ pub enum CollectionError {
     Missing,
     #[error("only the playlist's author can change it")]
     NotOwner,
-    #[error("the playlist changed; read its entries before reordering it")]
-    OrderChanged,
     #[error(transparent)]
     Profile(#[from] crate::people::ProfileError),
     #[error(transparent)]
@@ -94,7 +92,7 @@ impl CollectionError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::EmptyName | Self::Missing | Self::OrderChanged => C::Config,
+            Self::EmptyName | Self::Missing => C::Config,
             Self::NotOwner => C::Membership,
             Self::Profile(error) => error.category(),
             Self::Database(error) => bae_diagnostics::database_category(error),

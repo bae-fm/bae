@@ -5,7 +5,6 @@ use bae_store::{DbError, Store};
 use chrono::{DateTime, Utc};
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Params, Row};
-use std::collections::HashSet;
 use std::sync::Arc;
 
 mod collections;
