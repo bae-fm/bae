@@ -23,6 +23,7 @@ step mac macos-credit-row-tests ./bae-macos/test.sh --run-only CreditRowTextTest
 step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests
 step mac macos-folder-picker-notice-tests ./bae-macos/test.sh --run-only FolderPickerNoticeTests
 step android android-library-browse-tree-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *LibraryBrowseTreeTest
+step android android-credit-role-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *CreditRoleTextTest
 step android android-sort-language-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *SortLanguageTest
 step mac macos-screen-subscription-tests ./bae-macos/test.sh --run-only ScreenSubscriptionTests
 step android android-screen-subscription-tests ./bae-android/gradle.sh :screensubscription:testFullDebugUnitTest --tests *ScreenSubscriptionTest
@@ -58,6 +59,7 @@ limit macos-credit-row-tests 10m
 limit macos-sort-language-tests 10m
 limit macos-folder-picker-notice-tests 10m
 limit android-library-browse-tree-tests 10m
+limit android-credit-role-tests 10m
 limit android-sort-language-tests 10m
 limit macos-screen-subscription-tests 10m
 limit android-screen-subscription-tests 10m

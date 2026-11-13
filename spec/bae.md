@@ -558,7 +558,7 @@ and one artist in two roles is two rows. A row covering every track names no
 tracks. Rows go in the order of their first credit: the release's credits in
 the catalog's order, then each track's by track, then by the credit's order. A
 release with no credit has no row. On macOS the Credits are listed above the
-Works; on Android they follow the tracks, without the tracks each covers.
+Works; on Android they follow the tracks, each row a role at the start and its artists at the end, without the tracks each covers.
 
 **The composer list** shows every artist credited on a work in a writing role
 (Appendix H), and every artist holding a catalog role credit in a writing role

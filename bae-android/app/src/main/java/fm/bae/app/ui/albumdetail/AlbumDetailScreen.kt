@@ -358,6 +358,7 @@ internal fun AlbumDetailContent(
         block { releaseDownloadControl(selectedRelease) }
         block { AlbumActionButtons(callbacks) }
         albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
+        albumCredits(selectedRelease, context)
     }
 }
 
