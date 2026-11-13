@@ -64,18 +64,17 @@ extension ShotScene {
         )
     }
 
-    nonisolated(unsafe) static let boardPlaylistListing:
-        [BridgePlaylistSummary] = [
-            summary("Late night", tracks: 12, sharing: .household, minutes: 54),
-            summary(
-                "Kitchen radio",
-                tracks: 40,
-                sharing: .household,
-                minutes: 168
-            ),
-            summary("Running", tracks: 18, sharing: .private, minutes: 72),
-            summary("For Ana", tracks: 9, sharing: .private, minutes: 38),
-        ]
+    static let boardPlaylistListing: [BridgePlaylistSummary] = [
+        summary("Late night", tracks: 12, sharing: .household, minutes: 54),
+        summary(
+            "Kitchen radio",
+            tracks: 40,
+            sharing: .household,
+            minutes: 168
+        ),
+        summary("Running", tracks: 18, sharing: .private, minutes: 72),
+        summary("For Ana", tracks: 9, sharing: .private, minutes: 38),
+    ]
 
     /// A track of the board's playlist: its title, artists, album and
     /// length.
@@ -119,24 +118,23 @@ extension ShotScene {
         BoardEntry("Slow Morning", "Mara Quill", "Low Tide Hours", 10, 22),
     ]
 
-    nonisolated(unsafe) static let boardPlaylistDetails:
-        [String: BridgePlaylistDetail] = [
-            "playlist-late-night": BridgePlaylistDetail(
-                summary: boardPlaylistListing[0],
-                entries: boardEntries.enumerated()
-                    .map { index, entry in
-                        BridgePlaylistEntryRow(
-                            positionId: "position-\(index)",
-                            trackId: "track-\(index)",
-                            title: entry.title,
-                            artistNames: entry.artists,
-                            albumId: "album-\(index)",
-                            albumTitle: entry.album,
-                            releaseId: "release-\(index)",
-                            durationClock: entry.clock,
-                            cover: nil
-                        )
-                    }
-            )
-        ]
+    static let boardPlaylistDetails: [String: BridgePlaylistDetail] = [
+        "playlist-late-night": BridgePlaylistDetail(
+            summary: boardPlaylistListing[0],
+            entries: boardEntries.enumerated()
+                .map { index, entry in
+                    BridgePlaylistEntryRow(
+                        positionId: "position-\(index)",
+                        trackId: "track-\(index)",
+                        title: entry.title,
+                        artistNames: entry.artists,
+                        albumId: "album-\(index)",
+                        albumTitle: entry.album,
+                        releaseId: "release-\(index)",
+                        durationClock: entry.clock,
+                        cover: nil
+                    )
+                }
+        )
+    ]
 }
