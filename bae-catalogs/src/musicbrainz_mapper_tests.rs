@@ -594,3 +594,50 @@ fn vinyl_sub_track_position_names_its_side() {
     assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A2", "B1"]);
     assert_eq!(parsed.mediums[0].sides.get(), 2);
 }
+
+/// MusicBrainz's "[no label]" label (157afde4-4bf5-4039-8ad2-5a15acc85176)
+/// says the release has no label: no label is read, a catalog number given
+/// with it stays, and a release whose only label is it states none.
+#[test]
+fn musicbrainz_no_label_is_no_label() {
+    let no_label = || {
+        Some(crate::musicbrainz::MbLabel {
+            id: Some("157afde4-4bf5-4039-8ad2-5a15acc85176".to_string()),
+            name: Some("[no label]".to_string()),
+        })
+    };
+    let mut response = make_response(vec![]);
+    response.label_info = vec![
+        crate::musicbrainz::MbLabelInfo {
+            label: no_label(),
+            catalog_number: Some("NONE 1".into()),
+        },
+        crate::musicbrainz::MbLabelInfo {
+            label: Some(crate::musicbrainz::MbLabel {
+                id: None,
+                name: Some("Label A".to_string()),
+            }),
+            catalog_number: Some("AB 100".to_string()),
+        },
+    ];
+    assert_eq!(
+        pressing(&response).0.labels,
+        vec![
+            bae_types::pressing::ReleaseLabel::of(None, Some("NONE 1")),
+            bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+        ]
+    );
+
+    response.label_info =
+        vec![crate::musicbrainz::MbLabelInfo { label: no_label(), catalog_number: None }];
+    assert!(pressing(&response).0.labels.is_empty());
+    // Under the placeholder's id alone, whatever name it is given.
+    response.label_info = vec![crate::musicbrainz::MbLabelInfo {
+        label: Some(crate::musicbrainz::MbLabel {
+            id: Some("157afde4-4bf5-4039-8ad2-5a15acc85176".to_string()),
+            name: Some("Placeholder".to_string()),
+        }),
+        catalog_number: None,
+    }];
+    assert!(pressing(&response).0.labels.is_empty());
+}

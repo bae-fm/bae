@@ -826,3 +826,36 @@ fn a_release_credit_naming_no_track_of_the_tracklist_is_dropped() {
     assert!(values.release_roles.is_empty());
     assert!(values.tracks[0].roles.is_empty());
 }
+
+/// Discogs' "Not On Label" entries (id 1818, and the per-artist "Not On Label
+/// (Name Self-released)" forms) say the release has no label: no label is
+/// read, its catalog number stays, and a release whose only label is one
+/// states none.
+#[test]
+fn discogs_not_on_label_is_no_label() {
+    use bae_types::pressing::ReleaseLabel;
+    let raw = serde_json::json!({
+        "id": 123, "title": "Album",
+        "labels": [
+            {"id": 1818, "name": "Not On Label", "catno": "NONE 1"},
+            {"name": "Not On Label (Artist Name Self-released)", "catno": ""},
+            {"name": "Label A", "catno": "AB 100"}
+        ]
+    })
+    .to_string();
+    let release = crate::discogs::documents::parse_discogs_release_json(&raw).unwrap();
+    let expected = vec![
+        ReleaseLabel::of(None, Some("NONE 1")),
+        ReleaseLabel::of(Some("Label A"), Some("AB 100")),
+    ];
+    assert_eq!(release.labels, expected);
+    assert_eq!(pressing(&release).0.labels, expected);
+
+    let only = serde_json::json!({
+        "id": 124, "title": "Album",
+        "labels": [{"id": 1818, "name": "Not On Label", "catno": "none"}]
+    })
+    .to_string();
+    let only = crate::discogs::documents::parse_discogs_release_json(&only).unwrap();
+    assert!(only.labels.is_empty());
+}

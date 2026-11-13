@@ -288,8 +288,11 @@ pub fn discogs_search_result_to_metadata(
     };
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());
     let cover_art = r.remote_cover();
-    let labels =
-        ReleaseLabel::list([(r.label.and_then(|names| names.into_iter().next()), r.catno)]);
+    let first_label = r
+        .label
+        .and_then(|names| names.into_iter().next())
+        .filter(|name| !crate::discogs::documents::is_not_on_label(name));
+    let labels = ReleaseLabel::list([(first_label, r.catno)]);
     let release_id = r.id.to_string();
     let notes = discogs_notes(&r.formats);
     let formats = crate::discogs::formats::read(&release_id, &r.formats);

@@ -941,3 +941,20 @@ fn a_discogs_note_reads_without_markup() {
         vec!["Mixed by Artist Name.".to_string(), "Pressed by Label Name.".to_string()]
     );
 }
+
+/// A Discogs search result whose label is "Not On Label" has no label, and
+/// keeps the catalog number it gives.
+#[test]
+fn discogs_search_result_not_on_label_is_no_label() {
+    let mut result = result_with_title("Artist Name - Album Title");
+    result.label = Some(vec!["Not On Label (Artist Name Self-released)".to_string()]);
+    result.catno = Some("NONE 1".to_string());
+    assert_eq!(
+        discogs_search_result_to_metadata(result).labels,
+        vec![bae_types::pressing::ReleaseLabel::of(None, Some("NONE 1"))]
+    );
+
+    let mut result = result_with_title("Artist Name - Album Title");
+    result.label = Some(vec!["Not On Label".to_string()]);
+    assert!(discogs_search_result_to_metadata(result).labels.is_empty());
+}

@@ -164,6 +164,16 @@ pub(crate) fn without_suffix(name: &str) -> String {
     trimmed.to_string()
 }
 
+/// Discogs' "Not On Label" label, and the id it holds.
+const NOT_ON_LABEL_ID: u64 = 1818;
+
+/// Whether a Discogs label says its release has no label: "Not On Label", or
+/// its per-artist form "Not On Label (Name Self-released)".
+pub(crate) fn is_not_on_label(name: &str) -> bool {
+    let name = name.trim();
+    name.strip_prefix("Not On Label").is_some_and(|rest| rest.is_empty() || rest.starts_with(" ("))
+}
+
 /// A list of Discogs names, each [`without_suffix`].
 pub(crate) fn names_without_suffix<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
 where
@@ -220,11 +230,11 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
     let master_id = release.master_id.map(|id| id.to_string());
     let labels = bae_types::pressing::ReleaseLabel::each_once(
         release.labels.into_iter().flatten().filter_map(|label| {
-            bae_types::pressing::ReleaseLabel::new(
-                label.name.as_deref().map(without_suffix),
-                label.catno,
-            )
-            .map(|stated| stated.with_ids(None, label.id.map(|id| id.to_string())))
+            let no_label = label.id == Some(NOT_ON_LABEL_ID)
+                || label.name.as_deref().is_some_and(is_not_on_label);
+            let name = label.name.as_deref().map(without_suffix).filter(|_| !no_label);
+            bae_types::pressing::ReleaseLabel::new(name, label.catno)
+                .map(|stated| stated.with_ids(None, label.id.map(|id| id.to_string())))
         }),
     );
     let formats = release.formats.unwrap_or_default();

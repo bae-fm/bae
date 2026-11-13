@@ -485,7 +485,11 @@ name.
 
 **Record labels.** A label row holds a name, its name key, and the label's
 MusicBrainz and Discogs ids where known. A release's label row names one, or
-none when it states only a catalog number. Which label it names is decided by
+none when it states only a catalog number. A catalog's entry for "no label" is
+no label: MusicBrainz's "[no label]" (157afde4-4bf5-4039-8ad2-5a15acc85176)
+and Discogs' "Not On Label" (1818) with its "Not On Label (… Self-released)"
+forms are read as a release with no label, keeping the catalog number given with
+them, and a release whose only label is one states no label. Which label it names is decided by
 one rule, inside the transaction that writes the release's labels, an
 import's or an edit's save:
 

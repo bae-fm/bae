@@ -86,11 +86,15 @@ pub struct MbLabel {
     pub name: Option<String>,
 }
 
+/// MusicBrainz's "[no label]" label: a release pressed on no label.
+const NO_LABEL_ID: &str = "157afde4-4bf5-4039-8ad2-5a15acc85176";
+
 /// Every label a release is pressed under, with its catalog number, in
-/// MusicBrainz's order.
+/// MusicBrainz's order. The "[no label]" label states no label, and a
+/// catalog number given with it stays.
 pub fn release_labels(label_info: &[MbLabelInfo]) -> Vec<bae_types::pressing::ReleaseLabel> {
     bae_types::pressing::ReleaseLabel::each_once(label_info.iter().filter_map(|info| {
-        let label = info.label.as_ref();
+        let label = info.label.as_ref().filter(|label| label.id.as_deref() != Some(NO_LABEL_ID));
         bae_types::pressing::ReleaseLabel::new(
             label.and_then(|label| label.name.clone()),
             info.catalog_number.clone(),
