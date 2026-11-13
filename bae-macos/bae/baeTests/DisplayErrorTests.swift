@@ -43,6 +43,18 @@ struct DisplayErrorTests {
         #expect(BridgeError.Cancelled.unreadableInstallationLibraryId == nil)
     }
 
+    /// The line for a receiver that asks to wait carries the wait it asked for,
+    /// written as a length of time in the current locale, never as the
+    /// catalog's unfilled placeholder.
+    @Test("an AirPlay back-off line names the wait the receiver asked for")
+    func backOffLineNamesTheWait() {
+        let line = BridgeErrorCategory.airPlayBackOff(seconds: 30).localizedLine
+
+        #expect(line.contains("30"))
+        #expect(!line.contains("%"))
+        #expect(!line.contains("{"))
+    }
+
     /// Core says this category's line names the whole fault, so its detail,
     /// the same sentence again in English, is not shown or offered.
     @Test("a category whose line says it all shows the line alone")

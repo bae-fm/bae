@@ -103,6 +103,13 @@ impl FailureColumns {
             | K::Renderer
             | K::AirPlayUnsupported
             | K::AirPlayUnreadableSettings
+            | K::AirPlayPairingFailed
+            | K::AirPlayLockedOut
+            | K::AirPlayBusy
+            | K::AirPlayBackOff
+            | K::AirPlayNotPairing
+            | K::AirPlayFull
+            | K::AirPlayUnreachable
             | K::AirPlayHomeOnly
             | K::AirPlayAdminsOnly
             | K::AirPlayOwnerOnly

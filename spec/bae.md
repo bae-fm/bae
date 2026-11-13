@@ -4587,6 +4587,15 @@ whose AirPlay advertisement says it plays only from people in its home, only
 from its home's admins, or only from its owner's account; an AirPlay 1 receiver
 takes that from its AirPlay advertisement too.
 
+bae pairs with an AirPlay 2 receiver when the cast starts, before playback
+moves, so a receiver that refuses says why where the cast was asked for: it is
+locked after too many wrong PINs, busy pairing with another device, asking to
+wait a stated time (bae doesn't wait or try again itself), not accepting new
+pairings, or paired with as many devices as it allows; a reply that doesn't
+check out fails the pairing, and a receiver that can't be reached says so, apart
+from a refusal. A receiver whose first pairing step is answered with HTTP 470 is
+one that asks for a PIN.
+
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
 The position shown, the play recorded in history, and the end of each track
@@ -6266,7 +6275,10 @@ with one of these categories and a detail:
 | `SavedRestoreCodesFull`, `SavedRestoreCodeTooLarge` | on Android, learns the library's restore code couldn't be saved on the phone: Block Store already keeps as many entries as Android gives an app, or the code doesn't fit in one ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) |
 | `Membership` | retries the membership step, with the advice it carries |
 | `InviteJoining` | leaves the invite: cancelling it came after the inviting device began letting its person in, or after the invite ended (§5.6) |
-| `AirPlayUnsupported`, `AirPlayHomeOnly`, `AirPlayAdminsOnly`, `AirPlayOwnerOnly`, `AirPlayUnreadableSettings` | uses another receiver |
+| `AirPlayUnsupported`, `AirPlayHomeOnly`, `AirPlayAdminsOnly`, `AirPlayOwnerOnly`, `AirPlayUnreadableSettings`, `AirPlayNotPairing`, `AirPlayFull` | uses another receiver |
+| `AirPlayPairingFailed` | reads the detail |
+| `AirPlayLockedOut` | resets the receiver |
+| `AirPlayBusy`, `AirPlayBackOff`, `AirPlayUnreachable` | retries, once the receiver is done pairing, the stated wait has passed, or the receiver can be reached |
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |

@@ -43,7 +43,12 @@ impl UiErrorCategory {
             | Self::Network
             | Self::KeyringLocked
             | Self::Credentials
-            | Self::Membership => true,
+            | Self::Membership
+            // A receiver done pairing with another device, one whose asked
+            // wait has passed, or one that can be reached again.
+            | Self::AirPlayBusy
+            | Self::AirPlayBackOff { .. }
+            | Self::AirPlayUnreachable => true,
             // Refused, damaged, or a bug: the same call fails the same way.
             Self::Database
             | Self::DatabaseDamaged
@@ -86,6 +91,10 @@ impl UiErrorCategory {
             | Self::Renderer
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
+            | Self::AirPlayPairingFailed
+            | Self::AirPlayLockedOut
+            | Self::AirPlayNotPairing
+            | Self::AirPlayFull
             | Self::AirPlayHomeOnly
             | Self::AirPlayAdminsOnly
             | Self::AirPlayOwnerOnly

@@ -2,7 +2,10 @@ package fm.bae.app
 
 import android.content.Context
 import android.icu.text.ListFormatter
+import android.icu.text.MeasureFormat
 import android.icu.text.NumberFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -17,7 +20,9 @@ import uniffi.bae_bridge.bridgePlayOutcomeKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
 import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
 import java.text.DateFormat
+import java.time.Duration
 import java.util.Date
+import java.util.Locale
 
 // Renders bae's typed error events for the current locale. The locale never
 // crosses the bridge: core emits the typed reason plus a stable `core.*` catalog
@@ -56,11 +61,37 @@ fun Context.localizedLine(error: BridgeException): String? =
                 coreString(key, mapOf("discs" to ListFormatter.getInstance(currentLocale()).format(discs)))
             }
 
+            is BridgeErrorCategory.AirPlayBackOff -> {
+                coreString(key, mapOf("duration" to waitText(category.seconds.toLong(), currentLocale())))
+            }
+
             else -> {
                 coreString(key)
             }
         }
     }
+
+/**
+ * A wait of [seconds] as a length of time in [locale]: hours, minutes and
+ * seconds, each named in full ("1 hour, 2 minutes"), or "0 seconds" for none.
+ */
+@Suppress("SpreadOperator") // MeasureFormat takes its measures as varargs; there are at most three.
+internal fun waitText(
+    seconds: Long,
+    locale: Locale,
+): String {
+    val wait = Duration.ofSeconds(seconds)
+    val parts =
+        listOf(
+            Measure(wait.toHours(), MeasureUnit.HOUR),
+            Measure(wait.toMinutesPart(), MeasureUnit.MINUTE),
+            Measure(wait.toSecondsPart(), MeasureUnit.SECOND),
+        ).filter { it.number.toLong() != 0L }
+    val shown = parts.ifEmpty { listOf(Measure(0, MeasureUnit.SECOND)) }
+    return MeasureFormat
+        .getInstance(locale, MeasureFormat.FormatWidth.WIDE)
+        .formatMeasures(*shown.toTypedArray())
+}
 
 /**
  * The localized, user-facing line for a [BridgePlaybackErrorReason]. The

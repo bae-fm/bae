@@ -27,7 +27,7 @@ pub(crate) mod capabilities;
 pub(crate) mod crypto;
 pub(crate) mod discovery;
 #[cfg(test)]
-mod fake_receiver;
+pub(crate) mod fake_receiver;
 pub(crate) mod pairing;
 pub(crate) mod rtp;
 pub(crate) mod rtsp;
@@ -38,17 +38,20 @@ pub(crate) mod srp;
 pub(crate) mod stream;
 pub(crate) mod tlv8;
 
-use pairing::PairingError;
+use pairing::{HomeKitError, PairingError};
 use tlv8::{tlv_type, Tlv8};
 
 pub(crate) use capabilities::{AirPlayCapabilities, UnreadableSetting};
 pub(crate) use discovery::AirPlayDiscovery;
 
 /// The receiver's Error TLV, if it sent one: pairing stops on any nonzero
-/// code. Both dialects' pairing steps check this before reading anything else.
+/// code, which reaches the caller as the HomeKit error it names. Pairing steps
+/// check this before reading anything else.
 fn check_no_error(tlv: &Tlv8) -> Result<(), PairingError> {
     match tlv.get_u8(tlv_type::ERROR) {
-        Some(code) if code != 0 => Err(PairingError::Rejected(code)),
+        Some(code) if code != 0 => {
+            Err(PairingError::Receiver(HomeKitError::from_reply(code, tlv)?))
+        }
         _ => Ok(()),
     }
 }

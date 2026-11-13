@@ -17,7 +17,9 @@
 //! builds one [`CastController`].
 
 mod airplay;
+mod airplay_cast;
 mod cast;
+mod cast_error;
 mod dlna;
 pub mod renderer;
 #[cfg(test)]
@@ -35,7 +37,6 @@ use std::time::Duration;
 
 use bae_app::AppServices;
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask, Unfinished};
-use bae_playback::airplay_output::AirPlaySink;
 use bae_playback::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererFlavor, RendererLink, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
@@ -48,151 +49,13 @@ use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
-use airplay::airplay2::TimingProtocol;
-use airplay::capabilities::{Ap2Pairing, Dialect, RaopAuth, RaopEncryption, ReceiverAccess};
-use airplay::sink::{Ap2Sink, RaopSink};
-use airplay::{AirPlayCapabilities, UnreadableSetting};
+use airplay_cast::{airplay_pairing_failure, build_airplay_sink, CastPairing};
 use cast::{CastChannel, CastClient};
+pub use cast_error::CastError;
 use dlna::DlnaChannel;
 use renderer::{
     RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType, ReportedRenderer,
 };
-
-/// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
-/// when it can't be driven: one advertising a setting bae can't read, one that
-/// plays only from people in its home, its home's admins or its owner, one that
-/// asks for a PIN, a password or device verification, or one offering only
-/// encryption the sender can't provide. An AirPlay 2 receiver that asks for
-/// nothing pairs transiently, whatever its feature bits. RAOP receivers pick
-/// unencrypted when offered, else RSA-AES.
-fn build_airplay_sink(
-    ids: &coven::IdSourceRef,
-    diagnostics: &Diagnostics,
-    addr: std::net::IpAddr,
-    port: u16,
-    capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
-) -> Result<Box<dyn AirPlaySink>, CastError> {
-    let capabilities = capabilities
-        .as_ref()
-        .map_err(|unreadable| CastError::AirPlayUnreadableSettings(unreadable.clone()))?;
-    match capabilities.access {
-        ReceiverAccess::Anyone => {}
-        ReceiverAccess::HomeMembers => return Err(CastError::AirPlayHomeOnly),
-        ReceiverAccess::Admins => return Err(CastError::AirPlayAdminsOnly),
-        ReceiverAccess::Owner => return Err(CastError::AirPlayOwnerOnly),
-    }
-    match &capabilities.dialect {
-        Dialect::AirPlay2 { pairing: Ap2Pairing::Transient } => Ok(Box::new(Ap2Sink::new(
-            addr,
-            port,
-            // The receiver's features decide whether it requires PTP or accepts NTP.
-            TimingProtocol::from_features(capabilities.features),
-            ids.clone(),
-            diagnostics.clone(),
-        ))),
-        Dialect::AirPlay2 { pairing: Ap2Pairing::PinOnce }
-        | Dialect::AirPlay2 { pairing: Ap2Pairing::PinEveryCast }
-        | Dialect::AirPlay2 { pairing: Ap2Pairing::Password }
-        | Dialect::Raop { auth: RaopAuth { device_verification: true, .. }, .. }
-        | Dialect::Raop { auth: RaopAuth { password: true, .. }, .. } => {
-            Err(CastError::AirPlayPinRequired)
-        }
-        Dialect::Raop {
-            encryption: offered,
-            auth: RaopAuth { device_verification: false, password: false },
-        } => {
-            let encryption = if offered.contains(&RaopEncryption::None) {
-                RaopEncryption::None
-            } else if offered.contains(&RaopEncryption::RsaAes) {
-                RaopEncryption::RsaAes
-            } else {
-                return Err(CastError::AirPlayEncryptionUnsupported);
-            };
-            Ok(Box::new(RaopSink::new(
-                addr,
-                port,
-                encryption,
-                // The receiver plays at its hardware volume; bae attenuates locally
-                // in the output drain, so seed the session at full.
-                bae_playback::Volume::FULL,
-                diagnostics.clone(),
-            )))
-        }
-    }
-}
-
-/// A failure starting a cast session.
-#[derive(Debug, thiserror::Error)]
-pub enum CastError {
-    /// Casting is turned off in settings, so no session may be started.
-    #[error("casting is turned off in settings")]
-    Disabled,
-    /// No discovered device matches the requested id.
-    #[error("no such Cast device")]
-    DeviceNotFound,
-    /// The control channel to the device couldn't be opened.
-    #[error("couldn't connect to the Cast device: {0}")]
-    Connect(String),
-    /// The ephemeral serving couldn't be started (bind / no LAN address).
-    #[error("couldn't start serving audio to the Cast device: {0}")]
-    Serving(String),
-    /// The AirPlay receiver asks for a PIN, a password or device verification,
-    /// which the sender doesn't do.
-    #[error("this AirPlay receiver needs a PIN, which isn't supported")]
-    AirPlayPinRequired,
-    /// The AirPlay receiver plays only from people in its home.
-    #[error("this AirPlay receiver plays only from people in its home")]
-    AirPlayHomeOnly,
-    /// The AirPlay receiver plays only from its home's admins.
-    #[error("this AirPlay receiver plays only from its home's admins")]
-    AirPlayAdminsOnly,
-    /// The AirPlay receiver plays only from the account it is set up with.
-    #[error("this AirPlay receiver plays only from the account it is set up with")]
-    AirPlayOwnerOnly,
-    /// The RAOP receiver only offers audio encryption the sender can't provide.
-    #[error("this AirPlay receiver requires an encryption the sender can't provide")]
-    AirPlayEncryptionUnsupported,
-    /// The AirPlay receiver advertises a setting bae can't read, so how to
-    /// connect to it can't be decided.
-    #[error("this AirPlay receiver advertises settings bae can't read: {0}")]
-    AirPlayUnreadableSettings(UnreadableSetting),
-    /// Starting the session failed in bae itself: work it ran panicked, a bug
-    /// reported where it was caught.
-    #[error("{0}")]
-    Internal(TaskFailed),
-    /// Whether casting is on couldn't be read.
-    #[error("couldn't read whether casting is on: {0}")]
-    Setting(bae_store::DbError),
-    /// Casting stopped, or was turned off, or another cast started, while
-    /// this one connected. Playback stayed where it was.
-    #[error("the cast was called off before it started")]
-    CalledOff,
-}
-
-impl CastError {
-    /// The class a surface words this failure in. An AirPlay receiver the
-    /// sender can't drive, that plays only from some people, or whose settings
-    /// can't be read, has its own line;
-    /// a setting that couldn't be read is the library's database; anything
-    /// else is a fault the person can only report.
-    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
-        use bae_diagnostics::UiErrorCategory as C;
-        match self {
-            Self::AirPlayPinRequired | Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
-            Self::AirPlayHomeOnly => C::AirPlayHomeOnly,
-            Self::AirPlayAdminsOnly => C::AirPlayAdminsOnly,
-            Self::AirPlayOwnerOnly => C::AirPlayOwnerOnly,
-            Self::AirPlayUnreadableSettings(_) => C::AirPlayUnreadableSettings,
-            Self::Setting(error) => bae_diagnostics::database_category(error),
-            Self::Disabled
-            | Self::DeviceNotFound
-            | Self::Connect(_)
-            | Self::Serving(_)
-            | Self::Internal(_)
-            | Self::CalledOff => C::Internal,
-        }
-    }
-}
 
 /// Where the ephemeral server listens, and the address its URLs name.
 #[derive(Debug, Clone, Copy)]
@@ -726,14 +589,32 @@ impl CastController {
         // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
         // it to playback, which keeps decoding locally. No ephemeral server needed.
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
-            let sink =
+            let (sink, pairing) =
                 build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
+            match pairing {
+                CastPairing::Transient => self.pair_with_airplay2(*addr, *port).await?,
+                CastPairing::Nothing => {}
+            }
             return self.hand_over(number, || {
                 self.services.playback_play_on_airplay(sink, device.receiver());
             });
         }
 
         self.start_fetch_renderer(device, number).await
+    }
+
+    /// Pair with an AirPlay 2 receiver once, off the runtime, before playback
+    /// moves to it. The pairing runs to its end even when this cast is called
+    /// off meanwhile; its connection closes either way.
+    async fn pair_with_airplay2(&self, addr: std::net::IpAddr, port: u16) -> Result<(), CastError> {
+        let paired = self
+            .diagnostics
+            .blocking("pair with an AirPlay 2 receiver", move || {
+                airplay::ap2_session::pair_once(addr, port)
+            })
+            .await
+            .map_err(CastError::Internal)?;
+        paired.map_err(airplay_pairing_failure)
     }
 
     /// Build the control channel for a device, and name its flavor, which

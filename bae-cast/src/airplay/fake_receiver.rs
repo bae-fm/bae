@@ -7,6 +7,11 @@
 //! receivers refuse: a transient `/pair-setup` without `X-Apple-HKP: 4`
 //! (pyatv's fake answers 501, shairport-sync cannot read the request).
 
+#![expect(
+    clippy::disallowed_methods,
+    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
+)]
+
 use std::io::Write;
 use std::net::TcpStream;
 
@@ -21,7 +26,7 @@ const USERNAME: &[u8] = b"Pair-Setup";
 const TRANSIENT_PIN: &[u8] = b"3939";
 
 /// The SRP server half of a transient pair-setup.
-pub(super) struct SrpServer {
+pub(crate) struct SrpServer {
     group: SrpGroup,
     salt: Vec<u8>,
     b: BigUint,
@@ -51,7 +56,7 @@ fn pad(width: usize, v: &BigUint) -> Vec<u8> {
 }
 
 impl SrpServer {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let group = SrpGroup::rfc5054_3072();
         let salt = vec![0xA5u8; 16];
         // x = H(s | H(I | ":" | P)); v = g^x.
@@ -67,7 +72,7 @@ impl SrpServer {
     }
 
     /// The M2 body: salt + B.
-    pub(super) fn m2(&self) -> Vec<u8> {
+    pub(crate) fn m2(&self) -> Vec<u8> {
         Tlv8::new()
             .push_u8(tlv_type::STATE, state::M2)
             .push(tlv_type::SALT, self.salt.clone())
@@ -76,7 +81,7 @@ impl SrpServer {
     }
 
     /// Verify the sender's M3 (A + M1) and produce M4 (server proof M2).
-    pub(super) fn m4(&mut self, m3_body: &[u8]) -> Vec<u8> {
+    pub(crate) fn m4(&mut self, m3_body: &[u8]) -> Vec<u8> {
         let tlv = Tlv8::decode(m3_body).unwrap();
         assert_eq!(tlv.get_u8(tlv_type::STATE), Some(state::M3));
         let a_bytes = tlv.get(tlv_type::PUBLIC_KEY).unwrap().to_vec();
@@ -109,13 +114,13 @@ impl SrpServer {
         Tlv8::new().push_u8(tlv_type::STATE, state::M4).push(tlv_type::PROOF, m2).encode()
     }
 
-    pub(super) fn shared_key(&self) -> &[u8] {
+    pub(crate) fn shared_key(&self) -> &[u8] {
         &self.session.as_ref().unwrap().0
     }
 }
 
 /// Write one RTSP reply with `status_line` (`200 OK`) and `body`.
-pub(super) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, body: &[u8]) {
+pub(crate) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, body: &[u8]) {
     let mut out =
         format!("RTSP/1.0 {status_line}\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n", body.len())
             .into_bytes();
@@ -128,7 +133,7 @@ pub(super) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, bod
 /// shairport-sync does: each POST must carry `X-Apple-HKP: 4`, else the
 /// receiver answers 501 and the pairing fails here. Returns the SRP key both
 /// sides now hold.
-pub(super) fn serve_transient_pair_setup(
+pub(crate) fn serve_transient_pair_setup(
     reader: &mut impl std::io::BufRead,
     writer: &mut TcpStream,
 ) -> Result<Vec<u8>, String> {
@@ -146,4 +151,54 @@ pub(super) fn serve_transient_pair_setup(
         respond(writer, "200 OK", &cseq, &reply);
     }
     Ok(srp.shared_key().to_vec())
+}
+
+/// What a scripted receiver does when a sender pairs with it.
+pub(crate) enum PairSetupScript {
+    /// Run the whole transient pair-setup, then hold the connection until the
+    /// sender closes it.
+    Complete,
+    /// Answer M1 with HTTP 470, as receivers that want a PIN do.
+    RefuseM1With470,
+    /// Answer M1 with HTTP 200 and this Error TLV code.
+    ErrorInM2(u8),
+    /// Answer M1 with M2, then close the connection when M3 arrives.
+    DropAfterM2,
+}
+
+/// Listen on a loopback port and run `script` for the first connection, on
+/// its own thread. Returns the port.
+pub(crate) fn listen_for_pair_setup(script: PairSetupScript) -> u16 {
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
+    let port = listener.local_addr().expect("read the bound port").port();
+    std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("the sender connects");
+        let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+        match script {
+            PairSetupScript::Complete => {
+                serve_transient_pair_setup(&mut reader, &mut stream)
+                    .expect("the sender pairs the way a receiver reads it");
+                let mut rest = Vec::new();
+                std::io::Read::read_to_end(&mut reader, &mut rest).ok();
+            }
+            PairSetupScript::RefuseM1With470 => {
+                let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
+                respond(&mut stream, "470 Connection Authorization Required", m1.cseq(), &[]);
+            }
+            PairSetupScript::ErrorInM2(code) => {
+                let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
+                let body = Tlv8::new()
+                    .push_u8(tlv_type::STATE, state::M2)
+                    .push_u8(tlv_type::ERROR, code)
+                    .encode();
+                respond(&mut stream, "200 OK", m1.cseq(), &body);
+            }
+            PairSetupScript::DropAfterM2 => {
+                let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
+                respond(&mut stream, "200 OK", m1.cseq(), &SrpServer::new().m2());
+                read_request(&mut reader).unwrap().expect("M3 arrives");
+            }
+        }
+    });
+    port
 }

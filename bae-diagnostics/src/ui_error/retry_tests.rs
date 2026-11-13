@@ -35,3 +35,26 @@ fn a_grouping_block_is_worth_retrying_only_while_a_download_runs() {
         .retry_can_help());
     assert!(!UiErrorCategory::GroupingBlocked(GroupingBlockReason::SourceGone).retry_can_help());
 }
+
+/// An AirPlay receiver that is busy pairing, asks to wait, or couldn't be
+/// reached passes when asked again; one that is locked, full or not
+/// accepting pairings, or whose pairing failed, answers the same way, and one
+/// that plays only from some people never changes who that is.
+#[test]
+fn an_airplay_receiver_is_worth_retrying_only_when_the_cause_ends_by_itself() {
+    use UiErrorCategory as C;
+    for category in [C::AirPlayBusy, C::AirPlayBackOff { seconds: 30 }, C::AirPlayUnreachable] {
+        assert!(category.retry_can_help(), "{category:?}");
+    }
+    for category in [
+        C::AirPlayPairingFailed,
+        C::AirPlayLockedOut,
+        C::AirPlayNotPairing,
+        C::AirPlayFull,
+        C::AirPlayHomeOnly,
+        C::AirPlayAdminsOnly,
+        C::AirPlayOwnerOnly,
+    ] {
+        assert!(!category.retry_can_help(), "{category:?}");
+    }
+}

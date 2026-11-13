@@ -117,6 +117,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::TiedMediums { mediums } => {
             format!("{class}.{}", mediums.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
         }
+        C::AirPlayBackOff { seconds } => format!("{class}.{seconds}"),
         C::GroupingBlocked(reason) => format!("{class}.{}", block_column(reason)),
         C::InvalidEdit(reason) => format!("{class}.{}", edit_column(reason)),
         C::Storage(failure) | C::S3VersioningUnknown(failure) => {
@@ -253,6 +254,9 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
                 .split('.')
                 .map(|medium| medium.parse().map_err(|error| unreadable_because(&error)))
                 .collect::<Result<_, _>>()?,
+        },
+        K::AirPlayBackOff => C::AirPlayBackOff {
+            seconds: stored.parse().map_err(|error| unreadable_because(&error))?,
         },
         K::MetadataTrackCount => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;

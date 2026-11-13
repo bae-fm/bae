@@ -4,6 +4,7 @@
 )]
 
 use super::*;
+use crate::airplay::{AirPlayCapabilities, UnreadableSetting};
 use bae_util::audio_container::AudioContainer;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -507,6 +508,131 @@ fn a_restricted_receiver_is_refused_without_connecting() {
         let error =
             runtime.block_on(controller.cast_to(id)).expect_err("a restricted receiver is refused");
         assert_eq!(error.to_string(), expected);
+    }
+}
+
+/// An AirPlay 2 service a host browser reports at `127.0.0.1:port`, asking for
+/// nothing before pairing.
+fn reported_airplay2_service(id: &str, port: u16) -> ReportedRenderer {
+    ReportedRenderer {
+        service_type: RendererServiceType::AirPlay,
+        instance_name: id.to_string(),
+        addr: "127.0.0.1".to_string(),
+        port,
+        txt: [("deviceid", id), ("features", "0x0,0x10000")]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+    }
+}
+
+/// Cast to a scripted AirPlay 2 receiver `AA01` on loopback, with casting on.
+/// Returns what the cast ended with, and the progress feed it was subscribed
+/// to before it started.
+fn cast_to_scripted_airplay2(
+    script: airplay::fake_receiver::PairSetupScript,
+) -> (Result<(), CastError>, bae_playback::PlaybackProgressFeed, tokio::runtime::Runtime) {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery(&runtime, &controller);
+    let port = airplay::fake_receiver::listen_for_pair_setup(script);
+    controller.renderer_found(reported_airplay2_service("AA01", port));
+    let progress = services.subscribe_playback_progress();
+    let cast = runtime.block_on(controller.cast_to("AA01"));
+    (cast, progress, runtime)
+}
+
+/// A 470 to the first pair-setup step is a receiver asking for a PIN, said
+/// where the cast was asked for and not as a playback failure later.
+#[test]
+fn a_470_to_the_first_pairing_step_is_a_receiver_that_needs_a_pin() {
+    let (cast, _, _runtime) =
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::RefuseM1With470);
+    assert!(matches!(cast, Err(CastError::AirPlayPinRequired)), "{cast:?}");
+}
+
+/// A receiver pairing with another device says so.
+#[test]
+fn a_receiver_busy_pairing_with_another_device_says_it_is_busy() {
+    let (cast, _, _runtime) =
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::ErrorInM2(0x07));
+    assert!(matches!(cast, Err(CastError::AirPlayBusy)), "{cast:?}");
+}
+
+/// A receiver that takes the connection and closes it mid-pairing is one bae
+/// couldn't reach, not one that refused.
+#[test]
+fn a_receiver_that_closes_the_connection_mid_pairing_is_unreachable() {
+    let (cast, _, _runtime) =
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::DropAfterM2);
+    assert!(matches!(cast, Err(CastError::AirPlayUnreachable(_))), "{cast:?}");
+}
+
+/// A receiver that answers every pairing step is handed to playback.
+#[test]
+fn a_receiver_that_pairs_is_handed_to_playback() {
+    let (cast, mut progress, runtime) =
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::Complete);
+    cast.expect("the receiver paired");
+    runtime.block_on(async {
+        tokio::time::timeout(HANG_GUARD, async {
+            while let Some(event) = progress.recv().await {
+                if matches!(
+                    event,
+                    PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::On(_) }
+                ) {
+                    return;
+                }
+            }
+            panic!("the progress feed ended before playback moved to the receiver");
+        })
+        .await
+        .expect("playback moves to the receiver");
+    });
+}
+
+/// Each way a receiver can refuse pair-setup reaches the person as its own
+/// error, so no HomeKit code is lost between the receiver and the cast.
+#[test]
+fn every_pairing_refusal_has_its_own_cast_error() {
+    use crate::airplay::ap2_session::Ap2Error;
+    use crate::airplay::pairing::{HomeKitError, PairingError};
+    let refused = |error: HomeKitError| {
+        airplay_pairing_failure(Ap2Error::Pairing(PairingError::Receiver(error)))
+    };
+    assert!(matches!(refused(HomeKitError::MaxTries), CastError::AirPlayLockedOut));
+    assert!(matches!(refused(HomeKitError::Busy), CastError::AirPlayBusy));
+    assert!(matches!(
+        refused(HomeKitError::BackOff { seconds: 30 }),
+        CastError::AirPlayBackOff { seconds: 30 }
+    ));
+    assert!(matches!(refused(HomeKitError::Unavailable), CastError::AirPlayNotPairing));
+    assert!(matches!(refused(HomeKitError::MaxPeers), CastError::AirPlayFull));
+    for error in [HomeKitError::Unknown, HomeKitError::Authentication, HomeKitError::Other(9)] {
+        assert!(matches!(refused(error), CastError::AirPlayPairingFailed(_)), "{error:?}");
+    }
+
+    // A reply that doesn't check out is a failed pairing.
+    let malformed =
+        airplay_pairing_failure(Ap2Error::Pairing(PairingError::InvalidField("salt length")));
+    assert!(matches!(malformed, CastError::AirPlayPairingFailed(_)), "{malformed:?}");
+
+    // A step refused with a status and no HomeKit error names the POST.
+    let rejected =
+        airplay_pairing_failure(Ap2Error::Rejected { step: "/pair-setup M3", status: 500 });
+    assert!(
+        matches!(&rejected, CastError::AirPlayPairingFailed(detail) if detail.contains("/pair-setup M3") && detail.contains("500")),
+        "{rejected:?}"
+    );
+
+    // A connection that fails or times out is unreachable, whatever it was doing.
+    for kind in [
+        std::io::ErrorKind::ConnectionRefused,
+        std::io::ErrorKind::TimedOut,
+        std::io::ErrorKind::UnexpectedEof,
+    ] {
+        let unreachable = airplay_pairing_failure(Ap2Error::Io(std::io::Error::from(kind)));
+        assert!(matches!(unreachable, CastError::AirPlayUnreachable(_)), "{kind:?}");
     }
 }
 

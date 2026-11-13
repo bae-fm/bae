@@ -136,6 +136,25 @@ pub enum UiErrorCategory {
     /// An AirPlay receiver can't be driven: it asks for a PIN or a password, or
     /// offers audio encryption the sender doesn't implement.
     AirPlayUnsupported,
+    /// An AirPlay receiver refused to pair, for a reason it gave or a reply
+    /// that didn't check out.
+    AirPlayPairingFailed,
+    /// An AirPlay receiver saw too many failed pairing attempts and refuses
+    /// more until it is reset.
+    AirPlayLockedOut,
+    /// An AirPlay receiver is pairing with another device.
+    AirPlayBusy,
+    /// An AirPlay receiver asks to wait this many seconds before another try.
+    AirPlayBackOff {
+        seconds: u64,
+    },
+    /// An AirPlay receiver isn't accepting new pairings.
+    AirPlayNotPairing,
+    /// An AirPlay receiver is paired with as many devices as it allows.
+    AirPlayFull,
+    /// An AirPlay receiver couldn't be reached: the connection failed, timed
+    /// out, or dropped while pairing.
+    AirPlayUnreachable,
     /// An AirPlay receiver plays only from people in its home.
     AirPlayHomeOnly,
     /// An AirPlay receiver plays only from its home's admins.

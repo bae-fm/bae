@@ -23,6 +23,7 @@ use tracing::warn;
 use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
 use super::bplist::{self, Plist};
+use super::check_no_error;
 use super::pairing::{PairingError, TransientPairing, TRANSIENT_HKP};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
@@ -30,8 +31,17 @@ use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
     RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
+use super::tlv8::Tlv8;
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
+
+/// The `User-Agent` of an AirPlay 2 session's connections.
+const AP2_USER_AGENT: &str = "bae/1 (AirPlay 2)";
+
+/// The `step` of the rejection of the first transient pair-setup POST: a
+/// receiver that answers it with 470 wants a PIN.
+pub(crate) const PAIR_SETUP_M1: &str = "/pair-setup M1";
+const PAIR_SETUP_M3: &str = "/pair-setup M3";
 
 /// The SETUP session (step 1) body: the timing protocol and session identity the
 /// receiver keys its session on. NTP mode omits the PTP `timingPeerInfo`.
@@ -352,24 +362,42 @@ pub(crate) struct Ap2SetupParams {
 pub(crate) fn run_pair_setup(conn: &mut RtspConnection) -> Result<Vec<u8>, Ap2Error> {
     let mut pairing = TransientPairing::new();
     let m1 = pairing.start()?;
-    let m2 = pair_post(conn, "/pair-setup", m1)?;
+    let m2 = pair_post(conn, PAIR_SETUP_M1, m1)?;
     let m3 = pairing.handle_m2(&m2)?;
-    let m4 = pair_post(conn, "/pair-setup", m3)?;
+    let m4 = pair_post(conn, PAIR_SETUP_M3, m3)?;
     Ok(pairing.handle_m4(&m4)?)
 }
 
-/// POST a transient pair-setup body, marked `X-Apple-HKP: 4` as receivers
-/// require, and return the response body, or an error on a non-2xx status.
-fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec<u8>, Ap2Error> {
+/// Pair with the receiver once on a connection of its own, which closes when
+/// this returns: what a cast learns about the receiver before playback moves.
+/// Every session start pairs again on its own connection.
+pub(crate) fn pair_once(receiver: IpAddr, airplay_port: u16) -> Result<(), Ap2Error> {
+    let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
+    run_pair_setup(&mut conn)?;
+    Ok(())
+}
+
+/// POST a body of the pair-setup named `step`, marked `X-Apple-HKP: 4` as
+/// receivers require, and return the response body. A refused step is the
+/// HomeKit error the body names, since a receiver may answer a refusal with a
+/// non-2xx status and an Error TLV (shairport-sync does); with no readable
+/// error it is the status, naming the POST.
+fn pair_post(
+    conn: &mut RtspConnection,
+    step: &'static str,
+    body: Vec<u8>,
+) -> Result<Vec<u8>, Ap2Error> {
     let response = conn.request(
-        &RtspRequest::with_body(Method::Post, path, "application/octet-stream", body)
+        &RtspRequest::with_body(Method::Post, "/pair-setup", "application/octet-stream", body)
             .header("X-Apple-HKP", TRANSIENT_HKP),
     )?;
     if response.is_success() {
-        Ok(response.body)
-    } else {
-        Err(Ap2Error::Rejected { step: "pairing", status: response.status })
+        return Ok(response.body);
     }
+    if let Ok(tlv) = Tlv8::decode(&response.body) {
+        check_no_error(&tlv)?;
+    }
+    Err(Ap2Error::Rejected { step, status: response.status })
 }
 
 /// A cloneable handle to a running AirPlay 2 session's controls, matching the
@@ -428,7 +456,7 @@ impl Ap2Session {
     ) -> Result<Self, Ap2Error> {
         use super::airplay2::TimingProtocol;
 
-        let mut conn = RtspConnection::connect(receiver, airplay_port, "bae/1 (AirPlay 2)")?;
+        let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
         let local_ip = conn.local_addr();
 
         let shared = run_pair_setup(&mut conn)?;
@@ -455,7 +483,7 @@ impl Ap2Session {
             TimingProtocol::Ntp => ("NTP".to_string(), None),
         };
 
-        let mut control = Ap2Control::new(conn.into_stream(), &shared, uri, "bae/1 (AirPlay 2)")?;
+        let mut control = Ap2Control::new(conn.into_stream(), &shared, uri, AP2_USER_AGENT)?;
         let params = Ap2SetupParams {
             timing_protocol,
             group_uuid,

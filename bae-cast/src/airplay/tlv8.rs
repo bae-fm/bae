@@ -26,6 +26,9 @@ pub(crate) mod tlv_type {
     pub(crate) const STATE: u8 = 0x06;
     /// A receiver-reported error (`kTLVType_Error`).
     pub(crate) const ERROR: u8 = 0x07;
+    /// The seconds a receiver asks the sender to wait after a BackOff error,
+    /// little-endian (`kTLVType_RetryDelay`).
+    pub(crate) const RETRY_DELAY: u8 = 0x08;
     /// Apple's pairing flags (`kTLVType_Flags`), carrying the transient-pairing
     /// bit.
     pub(crate) const FLAGS: u8 = 0x13;

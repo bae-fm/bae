@@ -49,6 +49,13 @@ pub enum UiErrorClass {
     StoreOwnerAccount,
     Renderer,
     AirPlayUnsupported,
+    AirPlayPairingFailed,
+    AirPlayLockedOut,
+    AirPlayBusy,
+    AirPlayBackOff,
+    AirPlayNotPairing,
+    AirPlayFull,
+    AirPlayUnreachable,
     AirPlayHomeOnly,
     AirPlayAdminsOnly,
     AirPlayOwnerOnly,
@@ -65,7 +72,7 @@ pub enum UiErrorClass {
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 54] = [
+    const ALL: [Self; 61] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -108,6 +115,13 @@ impl UiErrorClass {
         Self::StoreOwnerAccount,
         Self::Renderer,
         Self::AirPlayUnsupported,
+        Self::AirPlayPairingFailed,
+        Self::AirPlayLockedOut,
+        Self::AirPlayBusy,
+        Self::AirPlayBackOff,
+        Self::AirPlayNotPairing,
+        Self::AirPlayFull,
+        Self::AirPlayUnreachable,
         Self::AirPlayHomeOnly,
         Self::AirPlayAdminsOnly,
         Self::AirPlayOwnerOnly,
@@ -167,6 +181,13 @@ impl UiErrorClass {
             Self::StoreOwnerAccount => "store_owner_account",
             Self::Renderer => "renderer",
             Self::AirPlayUnsupported => "airplay_unsupported",
+            Self::AirPlayPairingFailed => "airplay_pairing_failed",
+            Self::AirPlayLockedOut => "airplay_locked_out",
+            Self::AirPlayBusy => "airplay_busy",
+            Self::AirPlayBackOff => "airplay_back_off",
+            Self::AirPlayNotPairing => "airplay_not_pairing",
+            Self::AirPlayFull => "airplay_full",
+            Self::AirPlayUnreachable => "airplay_unreachable",
             Self::AirPlayHomeOnly => "airplay_home_only",
             Self::AirPlayAdminsOnly => "airplay_admins_only",
             Self::AirPlayOwnerOnly => "airplay_owner_only",
@@ -222,6 +243,10 @@ impl UiErrorClass {
             // advertises that can't be read.
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
+            // Why a pairing failed: the receiver's refusal or the reply that
+            // didn't check out, and what stopped bae reaching it.
+            | Self::AirPlayPairingFailed
+            | Self::AirPlayUnreachable
             // The cause the line leaves out: why the device must be reset (a
             // damaged database, another copy using its id), why the keychain
             // refused this second, whether the invite's person is joining or
@@ -261,6 +286,11 @@ impl UiErrorClass {
             | Self::SavedRestoreCodesFull
             | Self::SavedRestoreCodeTooLarge
             | Self::StoreOwnerAccount
+            | Self::AirPlayLockedOut
+            | Self::AirPlayBusy
+            | Self::AirPlayBackOff
+            | Self::AirPlayNotPairing
+            | Self::AirPlayFull
             | Self::AirPlayHomeOnly
             | Self::AirPlayAdminsOnly
             | Self::AirPlayOwnerOnly
@@ -321,6 +351,13 @@ impl UiErrorCategory {
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
+            Self::AirPlayPairingFailed => K::AirPlayPairingFailed,
+            Self::AirPlayLockedOut => K::AirPlayLockedOut,
+            Self::AirPlayBusy => K::AirPlayBusy,
+            Self::AirPlayBackOff { .. } => K::AirPlayBackOff,
+            Self::AirPlayNotPairing => K::AirPlayNotPairing,
+            Self::AirPlayFull => K::AirPlayFull,
+            Self::AirPlayUnreachable => K::AirPlayUnreachable,
             Self::AirPlayHomeOnly => K::AirPlayHomeOnly,
             Self::AirPlayAdminsOnly => K::AirPlayAdminsOnly,
             Self::AirPlayOwnerOnly => K::AirPlayOwnerOnly,
@@ -375,6 +412,12 @@ impl UiErrorCategory {
             K::StoreOwnerAccount => Self::StoreOwnerAccount,
             K::Renderer => Self::Renderer,
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
+            K::AirPlayPairingFailed => Self::AirPlayPairingFailed,
+            K::AirPlayLockedOut => Self::AirPlayLockedOut,
+            K::AirPlayBusy => Self::AirPlayBusy,
+            K::AirPlayNotPairing => Self::AirPlayNotPairing,
+            K::AirPlayFull => Self::AirPlayFull,
+            K::AirPlayUnreachable => Self::AirPlayUnreachable,
             K::AirPlayHomeOnly => Self::AirPlayHomeOnly,
             K::AirPlayAdminsOnly => Self::AirPlayAdminsOnly,
             K::AirPlayOwnerOnly => Self::AirPlayOwnerOnly,
@@ -393,6 +436,7 @@ impl UiErrorCategory {
             | K::StorageCheck
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
+            | K::AirPlayBackOff
             | K::ReplacementUnfinished
             | K::UnfinishedInstallationUnreadable => return None,
         })
