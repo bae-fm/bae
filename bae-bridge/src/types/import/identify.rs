@@ -267,9 +267,11 @@ pub struct BridgeAgreements {
     pub label: bool,
     pub year: bool,
     pub country: bool,
-    /// The note of the row's records the folder names it by, where the
-    /// ranking's notes point went to it: the Notes badge and its tooltip.
-    pub notes: Option<String>,
+    /// The note of each of the row's records the folder names it by, where
+    /// the ranking's notes point went to it, each with its catalogs where the
+    /// notes differ: the Notes badge and the row's note line. Empty where it
+    /// did not.
+    pub notes: Vec<BridgeTextStatement>,
 }
 
 /// One candidate's identify state. A settled state carries the run it settled

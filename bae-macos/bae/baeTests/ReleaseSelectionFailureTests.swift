@@ -250,7 +250,12 @@ extension ReleaseSelectionFailureTests {
                 bridge: BridgePressing(
                     releases: offered.releases,
                     sources: offered.sources,
-                    labels: offered.labels,
+                    labels: offered.labels.map { line in
+                        BridgeLabelLine(
+                            names: line.names,
+                            catalogNumbers: line.catalogNumbers.map(\.text)
+                        )
+                    },
                     documentFailure: .timeout,
                     pick: offered.link
                 )

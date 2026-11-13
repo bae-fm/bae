@@ -388,10 +388,11 @@ struct LookupReleaseLine: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            if let year = pressing.lead.year {
-                Text(PressingText.year(year))
+            if !pressing.years.isEmpty {
+                Text(PressingText.alternatives(pressing.years))
                     .themeText(.strong)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
@@ -412,7 +413,7 @@ struct LookupReleaseLine: View {
                     Array(label.catalogNumbers.enumerated()),
                     id: \.offset
                 ) { _, catalogNumber in
-                    StatusChip(verbatim: catalogNumber)
+                    StatusChip(verbatim: catalogNumber.stated.text)
                 }
             }
             if !pressed.isEmpty {

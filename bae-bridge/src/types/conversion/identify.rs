@@ -299,20 +299,81 @@ mirror_struct! {
 
 impl BridgePressing {
     fn from_core(pressing: bae_identify::release_group::Pressing) -> Self {
-        // The row's summary is what a pick applies: its lead record's facts.
-        // Each record's own facts stay on it, in `releases`.
+        // The row's details are what its lead record states beyond the facts
+        // every record is listed for. Each record's own facts stay on it, in
+        // `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());
+        let bae_identify::release_group::Statements { years, labels, barcodes, areas, media } =
+            pressing.statements();
         BridgePressing {
             document_failure: pressing
                 .document_failure()
                 .cloned()
                 .map(BridgeLookupFailure::from_core),
-            labels: pressing.label_lines().into_iter().map(BridgeLabelLine::from_core).collect(),
+            labels: labels.into_iter().map(BridgeStatedLabelLine::from_core).collect(),
+            years: years.into_iter().map(BridgeYearStatement::from_core).collect(),
+            barcodes: barcodes.into_iter().map(BridgeTextStatement::from_core).collect(),
+            areas: areas.into_iter().map(BridgeTermsStatement::from_area).collect(),
+            media: media.into_iter().map(BridgeTermsStatement::from_media).collect(),
             pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
             sources: pressing.sources().into_iter().map(BridgeLookupCatalog::from_core).collect(),
-            summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
             releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),
+        }
+    }
+}
+
+fn bridge_catalogs(
+    catalogs: Vec<bae_catalogs::catalog::LookupCatalog>,
+) -> Vec<BridgeLookupCatalog> {
+    catalogs.into_iter().map(BridgeLookupCatalog::from_core).collect()
+}
+
+impl BridgeStatedLabelLine {
+    fn from_core(line: bae_identify::release_group::StatedLabelLine) -> Self {
+        Self {
+            names: line.names,
+            catalog_numbers: line
+                .catalog_numbers
+                .into_iter()
+                .map(BridgeTextStatement::from_core)
+                .collect(),
+        }
+    }
+}
+
+impl BridgeYearStatement {
+    fn from_core(statement: bae_identify::release_group::Statement<i32>) -> Self {
+        Self { year: statement.value, catalogs: bridge_catalogs(statement.catalogs) }
+    }
+}
+
+impl BridgeTextStatement {
+    pub(crate) fn from_core(statement: bae_identify::release_group::Statement<String>) -> Self {
+        Self { text: statement.value, catalogs: bridge_catalogs(statement.catalogs) }
+    }
+}
+
+impl BridgeTermsStatement {
+    fn from_area(
+        statement: bae_identify::release_group::Statement<bae_types::pressing::ReleaseArea>,
+    ) -> Self {
+        Self {
+            terms: vec![crate::types::bridge_area_term(BridgeReleaseArea::from_core(
+                statement.value,
+            ))],
+            catalogs: bridge_catalogs(statement.catalogs),
+        }
+    }
+
+    fn from_media(
+        statement: bae_identify::release_group::Statement<Vec<bae_types::pressing::MediaCount>>,
+    ) -> Self {
+        Self {
+            terms: crate::types::bridge_media_terms(
+                statement.value.into_iter().map(BridgeMediaCount::from_core).collect(),
+            ),
+            catalogs: bridge_catalogs(statement.catalogs),
         }
     }
 }
@@ -349,6 +410,7 @@ impl BridgeAgreements {
     /// artist rank the rows but are no badge.
     fn from_core(agreements: bae_identify::RowAgreements) -> Self {
         let bae_identify::RowAgreements { fields, notes } = agreements;
+        let notes = notes.into_iter().map(BridgeTextStatement::from_core).collect();
         let bae_identify::Agreements {
             disc_id,
             barcode,

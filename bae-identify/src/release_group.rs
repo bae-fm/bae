@@ -36,6 +36,7 @@ use bae_catalogs::remote_image::RemoteCover;
 use bae_catalogs::search::MetadataResult;
 pub use pressing::{Judgements, Pressing, PressingLink};
 use pressing_sets::{formed_pressings, gather_pressings};
+pub use statements::{StatedLabelLine, Statement, Statements};
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it.
@@ -623,3 +624,4 @@ mod pressing_sets;
 #[cfg(test)]
 #[path = "release_group_tests.rs"]
 mod tests;
+mod statements;

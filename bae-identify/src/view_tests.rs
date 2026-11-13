@@ -764,8 +764,14 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
             .map(|(_, row)| row.notes.clone())
             .expect("every row is badged")
     };
-    assert_eq!(notes("mb-beta").as_deref(), Some("Made In Nordland By Plant Beta"));
-    assert_eq!(notes("mb-alpha"), None);
+    assert_eq!(
+        notes("mb-beta"),
+        vec![crate::release_group::Statement {
+            value: "Made In Nordland By Plant Beta".to_string(),
+            catalogs: Vec::new(),
+        }]
+    );
+    assert!(notes("mb-alpha").is_empty());
 }
 
 /// The badge says what the ranking weighed: a word a look-alike's notes
@@ -801,5 +807,5 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
     else {
         panic!("the disc ID found every pressing");
     };
-    assert!(agreements.iter().all(|(_, row)| row.notes.is_none()));
+    assert!(agreements.iter().all(|(_, row)| row.notes.is_empty()));
 }

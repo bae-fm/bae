@@ -63,6 +63,7 @@ struct ImportSearchResultRow: View {
                         signalBadges
                     }
                     summaryLine
+                    noteLine
                 }
                 .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
@@ -159,15 +160,16 @@ struct ImportSearchResultRow: View {
 
     private var facts: some View {
         HStack(spacing: ThemeSpace.related) {
-            if let year = pressing.lead.year {
-                Text(PressingText.year(year))
-                    .themeText(.strong)
-                    .monospacedDigit()
-            }
-            else {
+            if pressing.years.isEmpty {
                 Text("Year unknown")
                     .themeText(.body)
                     .foregroundStyle(.tertiary)
+            }
+            else {
+                StatedValuesText(pressing.years)
+                    .themeText(.strong)
+                    .monospacedDigit()
+                    .lineLimit(1)
             }
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
@@ -189,8 +191,15 @@ struct ImportSearchResultRow: View {
                     Array(label.catalogNumbers.enumerated()),
                     id: \.offset
                 ) { _, catalogNumber in
-                    StatusChip(verbatim: catalogNumber)
+                    StatusChip(verbatim: catalogNumber.stated.text)
                 }
+            }
+            if !pressing.barcodes.isEmpty {
+                StatedValuesText(pressing.barcodes)
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
             }
         }
     }
@@ -209,11 +218,15 @@ struct ImportSearchResultRow: View {
                 agreementBadge(.label, on: agreements.label)
                 agreementBadge(.year, on: agreements.year)
                 agreementBadge(.country, on: agreements.country)
-                if let note = agreements.notes {
-                    // Takes the pointer so its note shows on hover; a click
+                if !agreements.notes.isEmpty {
+                    // Takes the pointer so its notes show on hover; a click
                     // on it picks the row like a click anywhere else on it.
                     agreementChip(.notes)
-                        .help(note)
+                        .help(
+                            PressingText.alternatives(
+                                agreements.notes.map(\.stated)
+                            )
+                        )
                         .onTapGesture {
                             if isPickable {
                                 onSelect(pressing)
@@ -296,12 +309,13 @@ extension ImportSearchResultRow {
     /// The pressing's format and country, and its details, under the facts.
     @ViewBuilder
     private var summaryLine: some View {
-        let summary = pressing.summaryText
         let details = pressing.detailsText
-        if !summary.isEmpty || !details.isEmpty {
+        if !pressing.areas.isEmpty || !pressing.media.isEmpty
+            || !details.isEmpty
+        {
             HStack(spacing: ThemeSpace.related) {
-                if !summary.isEmpty {
-                    Text(summary)
+                if !pressing.areas.isEmpty || !pressing.media.isEmpty {
+                    StatedValuesText(parts: [pressing.media, pressing.areas])
                         .themeText(.detail)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
@@ -315,6 +329,20 @@ extension ImportSearchResultRow {
                         .truncationMode(.tail)
                 }
             }
+        }
+    }
+
+    /// The notes of the pressing's records the folder names it by, each
+    /// followed by its catalog where they differ.
+    @ViewBuilder
+    private var noteLine: some View {
+        if let notes = agreements?.notes, !notes.isEmpty {
+            StatedValuesText(notes.map(\.stated))
+                .themeText(.detail)
+                .italic()
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 }

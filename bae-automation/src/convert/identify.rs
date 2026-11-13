@@ -200,6 +200,17 @@ fn automation_agreements(
         .into_iter()
         .map(|(release_id, agreements)| {
             let bae_identify::RowAgreements { fields, notes } = agreements;
+            let notes = notes
+                .into_iter()
+                .map(|statement| AutomationNote {
+                    note: statement.value,
+                    catalogs: statement
+                        .catalogs
+                        .into_iter()
+                        .map(AutomationLookupCatalog::from_core)
+                        .collect(),
+                })
+                .collect();
             let bae_identify::Agreements {
                 disc_id,
                 barcode,

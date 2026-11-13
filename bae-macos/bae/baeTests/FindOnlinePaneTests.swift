@@ -198,7 +198,7 @@ struct NarrowedOutDisclosureTests {
             .shownSections
             .flatMap(\.rows)
             .flatMap(\.labels)
-            .flatMap(\.catalogNumbers)
+            .flatMap { $0.catalogNumbers.map(\.text) }
         }
     }
 }

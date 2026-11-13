@@ -193,3 +193,43 @@ fn a_run_bae_broke_crosses_as_an_error_with_its_text() {
         failure.detail
     );
 }
+
+/// A pressing row crosses with every record's year, each naming the catalog
+/// that states it, and every record's country.
+#[test]
+fn a_pressing_row_crosses_with_every_record_s_values() {
+    use bae_catalogs::search::MetadataResult;
+    use bae_types::pressing::{Country, ReleaseArea};
+
+    let record = |source, year, country: &str| MetadataResult {
+        year: Some(year),
+        area: Some(ReleaseArea::Country(Country::from_code(country).expect("a country"))),
+        ..MetadataResult::for_test(source, "id", None)
+    };
+    let row = BridgePressing::from_core(bae_identify::release_group::Pressing {
+        releases: vec![
+            record(LookupCatalog::MusicBrainz, 1992, "US"),
+            record(LookupCatalog::Discogs, 1993, "DE"),
+        ],
+    });
+    assert_eq!(
+        row.years,
+        vec![
+            BridgeYearStatement { year: 1992, catalogs: vec![BridgeLookupCatalog::MusicBrainz] },
+            BridgeYearStatement { year: 1993, catalogs: vec![BridgeLookupCatalog::Discogs] },
+        ]
+    );
+    assert_eq!(
+        row.areas,
+        vec![
+            BridgeTermsStatement {
+                terms: vec![BridgeFactTerm::Country { code: "US".to_string() }],
+                catalogs: vec![BridgeLookupCatalog::MusicBrainz],
+            },
+            BridgeTermsStatement {
+                terms: vec![BridgeFactTerm::Country { code: "DE".to_string() }],
+                catalogs: vec![BridgeLookupCatalog::Discogs],
+            },
+        ]
+    );
+}

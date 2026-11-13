@@ -32,8 +32,8 @@ extension PreviewData {
     }
 }
 extension BridgePressing {
-    /// A fixture's pressing row, stating what its lead record states —
-    /// what core's own rows state where the other records add nothing.
+    /// A fixture's pressing row, stating what its lead record states: its
+    /// records agree, so no value names a catalog.
     init(
         releases: [BridgeMetadataResult],
         sources: [BridgeLookupCatalog],
@@ -41,14 +41,43 @@ extension BridgePressing {
         documentFailure: BridgeLookupFailure? = nil,
         pick: BridgePressingLink
     ) {
-        let facts = releases.first?.facts ?? PreviewData.pressingFacts()
+        let lead = releases.first
+        let facts = lead?.facts ?? PreviewData.pressingFacts()
+        let area = bridgePressingSummary(
+            facts: BridgePressingFacts(
+                area: facts.area,
+                media: [],
+                status: nil,
+                packaging: nil,
+                discogsDetails: []
+            )
+        )
+        let media = bridgeMediaTerms(media: facts.media)
         self.init(
             releases: releases,
             sources: sources,
-            labels: labels,
+            labels: labels.map { line in
+                BridgeStatedLabelLine(
+                    names: line.names,
+                    catalogNumbers: line.catalogNumbers.map {
+                        BridgeTextStatement(text: $0, catalogs: [])
+                    }
+                )
+            },
+            years: (lead?.year)
+                .map {
+                    [BridgeYearStatement(year: $0, catalogs: [])]
+                } ?? [],
+            barcodes: (lead?.barcodes ?? [])
+                .map {
+                    BridgeTextStatement(text: $0, catalogs: [])
+                },
             documentFailure: documentFailure,
             pick: pick,
-            summary: bridgePressingSummary(facts: facts),
+            areas: area.isEmpty
+                ? [] : [BridgeTermsStatement(terms: area, catalogs: [])],
+            media: media.isEmpty
+                ? [] : [BridgeTermsStatement(terms: media, catalogs: [])],
             details: bridgePressingDetails(facts: facts)
         )
     }

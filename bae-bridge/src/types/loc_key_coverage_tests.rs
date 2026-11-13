@@ -97,6 +97,8 @@ const DIRECT_KEYS: &[&str] = &[
     // A `BridgeFactTerm::Counted` part: the UI words the count and the
     // medium's label through it.
     "core.pressing.media_count",
+    // Between the values of one fact a pressing's records state differently.
+    "core.pressing.alternatives_separator",
     // `BridgeReleaseName::Numbered`: the UI words the number through it.
     "core.release.numbered",
 ];

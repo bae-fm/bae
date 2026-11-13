@@ -5,9 +5,11 @@
 //! one is kept and the rest are left out — not grouped under a count, which
 //! would need explaining. Rows are compared only on one album's card — rows
 //! sharing an album a catalog files them under. What counts is what a row
-//! shows: its year, its labels and catalog numbers, where it was released and
-//! what it is made of, the details beside those (packaging, status, format
-//! descriptions), its badges and the note its Notes badge shows, and whether
+//! shows: its year, its labels and catalog numbers, its barcodes, where it was
+//! released and what it is made of, each as every record of the row states it
+//! (a fact the records state differently is every record's value, with its
+//! catalog), the details beside those (packaging, status, format descriptions)
+//! of its lead record, its badges and the notes its records show, and whether
 //! its document could not be read. Catalog ids, notes no badge shows, entry
 //! dates and which catalog lists a row are not shown, so they do not count.
 //! Whether a row is already in the library shows too, but it is read live
@@ -24,9 +26,9 @@
 //! would compare that detail too.
 
 use super::agreements::Agreements;
-use crate::release_group::{Judgements, Pressing};
+use crate::release_group::{Judgements, Pressing, Statement, Statements};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_types::pressing::{LabelLine, PressingFacts};
+use bae_types::pressing::{DiscogsDetail, Packaging, ReleaseStatus};
 use std::collections::{HashMap, HashSet};
 
 type ReleaseKey = (LookupCatalog, String);
@@ -58,12 +60,17 @@ struct Shown {
     /// The albums its records' catalogs file them under. A record filed
     /// under none shares a card with no other row.
     albums: Vec<(LookupCatalog, String)>,
-    year: Option<i32>,
-    labels: Vec<LabelLine>,
-    facts: PressingFacts,
+    /// Every fact the row's records state, as the row lists it: each
+    /// record's year, catalog numbers, barcodes, country and format where
+    /// they differ.
+    stated: Statements,
+    /// What the lead record states beyond those.
+    status: Option<ReleaseStatus>,
+    packaging: Option<Packaging>,
+    discogs_details: Vec<DiscogsDetail>,
     /// The badges: the album's title and artist rank rows but are none.
     badges: Agreements,
-    note: Option<String>,
+    notes: Vec<Statement<String>>,
     unread: bool,
 }
 
@@ -80,11 +87,12 @@ impl Shown {
                     release.source_group_id.clone().map(|group| (release.source, group))
                 })
                 .collect(),
-            year: row.lead().year,
-            labels: row.label_lines(),
-            facts: row.lead().facts(),
+            stated: row.statements(),
+            status: row.lead().status,
+            packaging: row.lead().packaging,
+            discogs_details: row.lead().discogs_details.clone(),
             badges: Agreements { title: false, artist: false, ..row.agreements(judgements) },
-            note: row.releases.iter().find_map(|release| notes.get(&key(release)).cloned()),
+            notes: row.noted(|release| notes.get(&key(release)).cloned()),
             unread: row.document_failure().is_some(),
         }
     }
@@ -95,11 +103,12 @@ impl Shown {
     /// shows the same.
     fn looks_like(&self, other: &Shown) -> bool {
         self.albums.iter().any(|album| other.albums.contains(album))
-            && self.year == other.year
-            && self.labels == other.labels
-            && self.facts == other.facts
+            && self.stated == other.stated
+            && self.status == other.status
+            && self.packaging == other.packaging
+            && self.discogs_details == other.discogs_details
             && self.badges == other.badges
-            && self.note == other.note
+            && self.notes == other.notes
             && self.unread == other.unread
     }
 }

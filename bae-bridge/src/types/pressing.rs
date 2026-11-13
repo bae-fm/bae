@@ -628,20 +628,21 @@ pub fn bridge_discogs_detail_label(detail: BridgeDiscogsDetail) -> BridgeTermLab
     }
 }
 
+/// Where a pressing was released, as one part of a line.
+pub(crate) fn bridge_area_term(area: BridgeReleaseArea) -> BridgeFactTerm {
+    match area {
+        BridgeReleaseArea::Country { code } => BridgeFactTerm::Country { code },
+        BridgeReleaseArea::Region { region } => {
+            BridgeFactTerm::Worded { label: localized(&bridge_region_key(region)) }
+        }
+    }
+}
+
 /// A pressing's first line: where it was released, then what it is made of —
 /// "Japan · 2×CD".
 #[uniffi::export]
 pub fn bridge_pressing_summary(facts: BridgePressingFacts) -> Vec<BridgeFactTerm> {
-    let mut terms: Vec<BridgeFactTerm> = facts
-        .area
-        .map(|area| match area {
-            BridgeReleaseArea::Country { code } => BridgeFactTerm::Country { code },
-            BridgeReleaseArea::Region { region } => {
-                BridgeFactTerm::Worded { label: localized(&bridge_region_key(region)) }
-            }
-        })
-        .into_iter()
-        .collect();
+    let mut terms: Vec<BridgeFactTerm> = facts.area.map(bridge_area_term).into_iter().collect();
     terms.extend(bridge_media_terms(facts.media));
     terms
 }

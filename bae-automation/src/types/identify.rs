@@ -156,7 +156,17 @@ pub struct AutomationAgreements {
     pub country: bool,
     pub title: bool,
     pub artist: bool,
-    pub notes: Option<String>,
+    /// The note of each of the row's records the folder names it by, each
+    /// naming its catalogs where the notes differ.
+    pub notes: Vec<AutomationNote>,
+}
+
+/// A note of a pressing's record, with the catalogs that state it where the
+/// pressing's records state different notes.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationNote {
+    pub note: String,
+    pub catalogs: Vec<AutomationLookupCatalog>,
 }
 
 #[derive(Debug, Clone, Serialize)]

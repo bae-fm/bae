@@ -132,7 +132,7 @@ extension PreviewData {
             label: true,
             year: true,
             country: false,
-            notes: nil
+            notes: []
         ),
         "rel-456": BridgeAgreements(
             discId: false,
@@ -141,7 +141,7 @@ extension PreviewData {
             label: false,
             year: false,
             country: false,
-            notes: nil
+            notes: []
         ),
     ]
 
@@ -429,7 +429,7 @@ extension PreviewData {
             label: false,
             year: true,
             country: false,
-            notes: nil
+            notes: []
         ),
         "rel-bar-1": BridgeAgreements(
             discId: false,
@@ -438,7 +438,7 @@ extension PreviewData {
             label: false,
             year: false,
             country: false,
-            notes: nil
+            notes: []
         ),
     ]
 

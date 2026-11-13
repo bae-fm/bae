@@ -15,7 +15,9 @@ use super::state::{
     LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
-use crate::release_group::{group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup};
+use crate::release_group::{
+    group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup, Statement,
+};
 use crate::signals::{ArtworkScan, DiscIdSignal};
 use crate::SharedAlbum;
 use bae_catalogs::catalog::LookupCatalog;
@@ -309,9 +311,10 @@ impl From<IdentifyState> for IdentifyStateView {
 pub struct RowAgreements {
     /// The fields of its pressing the text states.
     pub fields: Agreements,
-    /// The note of its records the ranking's notes point went to it for —
-    /// see [`Findings::named_notes`]. Never stated of a row set aside.
-    pub notes: Option<String>,
+    /// The note of each of its records the ranking's notes point went to it
+    /// for — see [`Findings::named_notes`] — each naming its catalog where
+    /// the notes differ. Never stated of a row set aside.
+    pub notes: Vec<Statement<String>>,
 }
 
 /// A state's answers as cards, with every row's badges.
@@ -389,8 +392,8 @@ fn fold(
 ) -> Folded {
     let Cards { groups: cards, judgements, named_notes } =
         cards(findings, ledger, text, track_count);
-    let named_note = |pressing: &Pressing| {
-        pressing.releases.iter().find_map(|release| {
+    let named_notes = |pressing: &Pressing| {
+        pressing.noted(|release| {
             named_notes
                 .iter()
                 .find(|named| named.release == release.release())
@@ -403,7 +406,7 @@ fn fold(
         .flat_map(|pressing| {
             let agreements = RowAgreements {
                 fields: pressing.agreements(&judgements),
-                notes: named_note(pressing),
+                notes: named_notes(pressing),
             };
             pressing
                 .releases

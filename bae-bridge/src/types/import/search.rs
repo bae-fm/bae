@@ -157,23 +157,63 @@ pub struct BridgePressing {
     pub sources: Vec<BridgeLookupCatalog>,
     /// Every label the records state, in the order of the record the row
     /// leads with, each name once with its catalog numbers after it.
-    pub labels: Vec<BridgeLabelLine>,
+    pub labels: Vec<BridgeStatedLabelLine>,
+    /// The years the records state: one where they agree or one states it
+    /// alone, each with its catalogs where they differ, none where no record
+    /// states one.
+    pub years: Vec<BridgeYearStatement>,
+    /// The barcodes the records state, listed as `years` are.
+    pub barcodes: Vec<BridgeTextStatement>,
     /// Why a record's full document could not be read when identification
     /// offered the row, which then shows what its search result said.
     pub document_failure: Option<BridgeLookupFailure>,
     pub pick: crate::types::BridgePressingLink,
-    /// Where the pressing was released and what it is made of, as its lead
-    /// record states it: what a pick applies. Each record keeps its own facts,
-    /// in `releases`. Worded as `bridge_pressing_summary` words them.
-    pub summary: Vec<crate::types::BridgeFactTerm>,
-    /// What sets it apart beyond that, worded as `bridge_pressing_details`
-    /// words it.
+    /// Where the pressing was released, as the records state it, listed as
+    /// `years` are. Each record keeps its own facts, in `releases`.
+    pub areas: Vec<BridgeTermsStatement>,
+    /// What the pressing is made of, as the records state it, listed as
+    /// `years` are.
+    pub media: Vec<BridgeTermsStatement>,
+    /// What sets it apart beyond that, as its lead record states it, worded as
+    /// `bridge_pressing_details` words it.
     pub details: Vec<crate::types::BridgeFactTerm>,
 }
 
 /// One provider's part of a candidate's manual search. Mirrors
 /// `bae_import::SourceSearch`; the results themselves reach a surface
 /// through the search's `groups`, so a source reports only how many it found.
+/// A label line of a pressing with each catalog number as the records state
+/// it. Mirrors `bae_identify::release_group::StatedLabelLine`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeStatedLabelLine {
+    pub names: Vec<String>,
+    pub catalog_numbers: Vec<BridgeTextStatement>,
+}
+
+/// A year the records of a pressing state, with the catalogs that state it
+/// where the records state different years: empty where they agree.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeYearStatement {
+    pub year: i32,
+    pub catalogs: Vec<BridgeLookupCatalog>,
+}
+
+/// A value printed as it is, which the records of a pressing state: a catalog
+/// number, a barcode, a note. `catalogs` is as for `BridgeYearStatement`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTextStatement {
+    pub text: String,
+    pub catalogs: Vec<BridgeLookupCatalog>,
+}
+
+/// A value the surface words, which the records of a pressing state: a
+/// country, a format. `catalogs` is as for `BridgeYearStatement`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTermsStatement {
+    pub terms: Vec<crate::types::BridgeFactTerm>,
+    pub catalogs: Vec<BridgeLookupCatalog>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
     /// Switched off: the person is not asking this source.
