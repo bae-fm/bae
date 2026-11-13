@@ -5724,8 +5724,8 @@ files, the pins `coven_pins` lists as kept and coven's upload queue the same
 way, in the transaction that changes one of them, whether this device's own
 write, another device's applied, or coven's as a file is pinned, downloads,
 uploads or is unpinned, and its listing row copies what it sorts by in that
-write. A write applied from another device can hold a row before a row it
-references; the triggers count a row once what it references is there. An
+write. Coven applies a write's rows parents first, so a row is never there before a
+row it references and no trigger waits for one. An
 album's listing row is written only when one of its values changes, and its
 releases' rows only when its title or credits do, so a release added to an
 album, even a box set of thousands, rewrites no other release's row.

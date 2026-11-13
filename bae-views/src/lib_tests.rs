@@ -718,3 +718,26 @@ mod window_cost {
         .await;
     }
 }
+
+/// Coven applies a write's rows parents first, so a row is never there before
+/// a row it references and no trigger of the views waits for a parent: none
+/// gives an arriving artist the listing row or the album refresh that links
+/// to it made earlier, or an arriving track the rewrite of a release whose
+/// links came first.
+#[tokio::test]
+async fn no_trigger_of_the_views_waits_for_a_parent_row() {
+    let (db, _dir) = temp_db(crate::TEST_SCHEMA).await;
+    let waiting: Vec<String> = db
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT name FROM sqlite_master WHERE type = 'trigger' \
+                 AND name IN ('artist_listing_added', 'album_credit_shown_added', 'track_added') \
+                 ORDER BY name",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert!(waiting.is_empty(), "triggers waiting for a parent: {waiting:?}");
+}

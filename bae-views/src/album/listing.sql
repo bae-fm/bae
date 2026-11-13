@@ -161,17 +161,7 @@ BEGIN
     INSERT INTO album_listing_refresh (album_id) VALUES (OLD.album_id);
 END;
 
--- An artist arriving moves every album it is credited on, and every album
--- crediting an artist that shows as it, which waited for its name. An
--- artist's shown artist changing moves every album it is credited on.
-CREATE TRIGGER IF NOT EXISTS album_credit_shown_added AFTER INSERT ON artist_shown_as
-BEGIN
-    INSERT INTO album_listing_refresh (album_id)
-    SELECT DISTINCT credit.album_id FROM album_artists credit
-    WHERE credit.artist_id = NEW.artist_id
-       OR credit.artist_id IN (SELECT artist_id FROM artist_shown_as WHERE shown_artist_id = NEW.artist_id);
-END;
-
+-- An artist's shown artist changing moves every album it is credited on.
 CREATE TRIGGER IF NOT EXISTS album_credit_shown_changed AFTER UPDATE OF shown_artist_id ON artist_shown_as
 BEGIN
     INSERT INTO album_listing_refresh (album_id)

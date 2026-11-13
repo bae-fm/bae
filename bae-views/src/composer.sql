@@ -112,8 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count ON composer_listin
 CREATE INDEX IF NOT EXISTS idx_composer_listing_release_count_desc ON composer_listing (linked_release_count DESC, name_sort_key, artist_id);
 
 -- Each row added to or removed from the three tables counts in or out of its
--- artist's listing row. The artist a row counts under is held: it is shown
--- for an artist the row's credit names, and a credit arrives after its artist.
+-- artist's listing row, named by the artist the row's credit names.
 CREATE TRIGGER IF NOT EXISTS composer_work_added AFTER INSERT ON composer_work
 BEGIN
     INSERT INTO composer_listing (artist_id, name, name_sort_key, work_count, linked_release_count, unlinked_credit_count)
@@ -243,15 +242,6 @@ END;
 CREATE TRIGGER IF NOT EXISTS track_work_removed AFTER DELETE ON track_works
 BEGIN
     INSERT INTO composer_release_refresh (release_id) SELECT release_id FROM tracks WHERE id = OLD.track_id;
-END;
-
--- A track arriving changes its release's rows only when a link or a credit of
--- it arrived first.
-CREATE TRIGGER IF NOT EXISTS track_added AFTER INSERT ON tracks
-WHEN EXISTS (SELECT 1 FROM track_works WHERE track_id = NEW.id)
-  OR EXISTS (SELECT 1 FROM track_artist_roles WHERE track_id = NEW.id)
-BEGIN
-    INSERT INTO composer_release_refresh (release_id) VALUES (NEW.release_id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_removed AFTER DELETE ON tracks

@@ -29,8 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artist_listing_sort_name_key ON artist_listing (sort_name_sort_key DESC, artist_id DESC);
 
 -- Each link added to or removed from `album_artist_link` counts in or out of
--- its artist's listing row. An artist whose own row has not arrived yet gets
--- its listing row when it does (`artist_listing_added`).
+-- its artist's listing row.
 CREATE TRIGGER IF NOT EXISTS album_artist_link_added AFTER INSERT ON album_artist_link
 BEGIN
     INSERT INTO artist_listing (artist_id, name, name_sort_key, sort_name_sort_key, album_count)
@@ -43,19 +42,6 @@ CREATE TRIGGER IF NOT EXISTS album_artist_link_removed AFTER DELETE ON album_art
 BEGIN
     DELETE FROM artist_listing WHERE artist_id = OLD.artist_id AND album_count = 1;
     UPDATE artist_listing SET album_count = album_count - 1 WHERE artist_id = OLD.artist_id;
-END;
-
--- An artist arriving takes a listing row for the links already counted under
--- it, however many of its own links have counted in by then.
-CREATE TRIGGER IF NOT EXISTS artist_listing_added AFTER INSERT ON artists
-WHEN EXISTS (SELECT 1 FROM album_artist_link WHERE artist_id = NEW.id)
-BEGIN
-    INSERT INTO artist_listing (artist_id, name, name_sort_key, sort_name_sort_key, album_count)
-    SELECT NEW.id, NEW.name, bae_name_key(NEW.name, language),
-           bae_name_key(COALESCE(NEW.sort_name, NEW.name), language),
-           (SELECT COUNT(*) FROM album_artist_link WHERE artist_id = NEW.id)
-    FROM name_sort WHERE true
-    ON CONFLICT (artist_id) DO UPDATE SET album_count = excluded.album_count;
 END;
 
 -- A renamed artist moves in the artist list.
