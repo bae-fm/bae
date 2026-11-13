@@ -36,6 +36,8 @@ struct ExtraArtistCredit {
     role: Option<String>,
     #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     anv: Option<String>,
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
+    tracks: Option<String>,
 }
 #[derive(Debug, Deserialize)]
 struct ReleaseResponse {
@@ -185,6 +187,7 @@ fn extra_artist_to_model(a: ExtraArtistCredit) -> Option<DiscogsRoleArtist> {
         name: a.name,
         role,
         credited_name: a.anv,
+        tracks: a.tracks,
     })
 }
 

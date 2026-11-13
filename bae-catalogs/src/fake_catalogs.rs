@@ -146,6 +146,7 @@ impl FakeCatalogs {
                 "name": artist.name,
                 "role": artist.role,
                 "anv": artist.credited_name,
+                "tracks": artist.tracks,
             })
         };
         let master_id = release.master_id.as_deref().map(numeric);

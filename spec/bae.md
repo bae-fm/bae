@@ -1383,6 +1383,17 @@ sided formats (vinyl, cassette, shellac) in format order, and the other discs
 the remaining units in order. Where a group's mediums and units don't count
 alike, the group takes the one carrier its units name, else none.
 
+**A release's credits.** A Discogs release credit that states `tracks` is a
+credit of each track it names, not of the release. The text is a comma list
+of items, each a position (`3`, `A1`, `50-1`) or `X to Y`, the rows from X
+through Y in tracklist order, across sides and discs; positions compare as
+written with case aside, spaces and empty items are ignored, and a row's
+sub-tracks are part of it. An item that names no row is skipped, and a credit
+none of whose items names a row is dropped, each with a warning naming the
+release. A collapsed index takes the credit once however many of its
+sub-tracks the credit names, and a credit on tracks of a medium the folder
+doesn't hold reaches no track.
+
 **Which of its mediums the folder holds.** A release is read against the
 folder's audio once, and the run's documents, a pick, the draft it writes, the
 shared album and a library re-identify all read that one reading. The mediums

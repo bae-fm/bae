@@ -129,9 +129,9 @@ pub(crate) fn area(release_id: &str, name: &str) -> Option<ReleaseArea> {
     area
 }
 
-/// The composer credits a Discogs release states for itself rather than for
-/// one track. Positions come from source order, and non-composer roles are
-/// skipped — so the positions keep holes.
+/// The credits a Discogs release states for itself rather than for tracks.
+/// A credit that names tracks is those tracks' ([`mediums`]). Positions come
+/// from source order, so the positions keep holes where one was scoped.
 pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
     let Some(extraartists) = release.extraartists.as_ref() else {
         return Vec::new();
@@ -140,7 +140,9 @@ pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
         .iter()
         .enumerate()
         .filter_map(|(position, credit)| {
-            if discogs_role_is_composer(&credit.role) {
+            if credit.tracks.is_some() {
+                None
+            } else if discogs_role_is_composer(&credit.role) {
                 Some(RoleCredit {
                     position: position as i32,
                     artist: discogs_role_artist_ref(credit),
@@ -163,7 +165,12 @@ pub(crate) fn release_roles(release: &DiscogsRelease) -> Vec<RoleCredit> {
 /// mediums its positions name, each with the carrier the release's formats
 /// give it (`media`), every row with its sub-tracks.
 pub(crate) fn mediums(release: &DiscogsRelease, media: &StatedMedia) -> Vec<SourceMedium> {
-    crate::discogs_mediums::split(&release.id, &release.tracklist, media)
+    let tracklist = crate::discogs_track_scope::scoped(
+        &release.id,
+        &release.tracklist,
+        release.extraartists.as_deref().unwrap_or_default(),
+    );
+    crate::discogs_mediums::split(&release.id, &tracklist, media)
         .into_iter()
         .map(|medium| SourceMedium {
             medium: medium.medium,
@@ -385,11 +392,18 @@ fn discogs_track_values(pt: &ProcessedTrack, place: bae_types::mediums::TrackPla
     let mut credits: Vec<crate::credits::SourceCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
     for discogs_track in &pt.source_tracks {
-        roles.extend(discogs_track.roles.iter().map(|role| CreditedRole {
-            artist: role.artist.clone(),
-            source: Catalog::Discogs,
-            role: role.role.clone(),
-        }));
+        // A credit naming several sub-tracks of one collapsed track reaches
+        // it once.
+        for role in &discogs_track.roles {
+            let role = CreditedRole {
+                artist: role.artist.clone(),
+                source: Catalog::Discogs,
+                role: role.role.clone(),
+            };
+            if !roles.contains(&role) {
+                roles.push(role);
+            }
+        }
         for stated in crate::source_release::stated_credits(&discogs_track.credits) {
             if seen_credit_ids.insert(stated.credit.discogs_artist_id.clone()) {
                 credits.push(stated);

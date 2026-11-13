@@ -160,12 +160,14 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
             name: "Composer Name A".to_string(),
             role: "Composed By".to_string(),
             credited_name: Some("Composer Credit A".to_string()),
+            tracks: None,
         },
         DiscogsRoleArtist {
             id: Some("discogs-producer-a".to_string()),
             name: "Producer Name A".to_string(),
             role: "Producer".to_string(),
             credited_name: Some("Producer Credit A".to_string()),
+            tracks: None,
         },
     ]);
     release.tracklist[0].extraartists = Some(vec![
@@ -174,12 +176,14 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
             name: "Composer Name A".to_string(),
             role: "Written-By".to_string(),
             credited_name: Some("Composer Credit A".to_string()),
+            tracks: None,
         },
         DiscogsRoleArtist {
             id: Some("discogs-engineer-a".to_string()),
             name: "Engineer Name A".to_string(),
             role: "Engineer".to_string(),
             credited_name: Some("Engineer Credit A".to_string()),
+            tracks: None,
         },
     ]);
 
@@ -470,12 +474,14 @@ fn role_credit_names_its_artist_and_prints_the_release_s_variation() {
             name: "Composer Canonical Name (2)".to_string(),
             role: "Composed By".to_string(),
             credited_name: Some("Composer Printed Name".to_string()),
+            tracks: None,
         },
         DiscogsRoleArtist {
             id: Some("discogs-composer-b".to_string()),
             name: "Composer Name B".to_string(),
             role: "Composed By".to_string(),
             credited_name: None,
+            tracks: None,
         },
     ]);
     release.tracklist[0].extraartists = Some(vec![DiscogsRoleArtist {
@@ -483,6 +489,7 @@ fn role_credit_names_its_artist_and_prints_the_release_s_variation() {
         name: "Composer Canonical Name (2)".to_string(),
         role: "Written-By".to_string(),
         credited_name: Some("Composer Printed Name".to_string()),
+        tracks: None,
     }]);
 
     let values = map(&release).unwrap();
@@ -509,6 +516,7 @@ fn id_less_role_credit_keeps_its_name_and_no_id() {
         name: "ARTIST NAME A".to_string(),
         role: "Composed By".to_string(),
         credited_name: None,
+        tracks: None,
     }]);
 
     let values = map(&release).unwrap();
@@ -528,6 +536,7 @@ fn id_less_role_credit_keeps_its_name_as_printed() {
         name: "Ärtist  Name A".to_string(),
         role: "Composed By".to_string(),
         credited_name: None,
+        tracks: None,
     }]);
 
     let values = map(&release).unwrap();
@@ -548,12 +557,14 @@ fn id_less_role_credits_keep_their_own_names_apart() {
             name: "Canonical One".to_string(),
             role: "Composed By".to_string(),
             credited_name: Some("Shared Printed Name".to_string()),
+            tracks: None,
         },
         DiscogsRoleArtist {
             id: None,
             name: "Canonical Two".to_string(),
             role: "Written-By".to_string(),
             credited_name: Some("Shared Printed Name".to_string()),
+            tracks: None,
         },
     ]);
 
@@ -731,4 +742,87 @@ fn a_name_variation_printing_the_artist_s_own_name_is_not_kept() {
     assert_eq!(credit("Artist Name ", "Artist Name"), None);
     assert_eq!(credit("Artist Name", " Artist Name "), None);
     assert_eq!(credit("Artist Name", " Other Name "), Some("Other Name".to_string()));
+}
+
+/// A release-level credit naming tracks is those tracks' credit, not the
+/// release's.
+#[test]
+fn a_release_credit_naming_tracks_is_those_tracks_credit() {
+    let mut release = make_release(vec![
+        make_track("1", "Track 1"),
+        make_track("2", "Track 2"),
+        make_track("3", "Track 3"),
+        make_track("4", "Track 4"),
+        make_track("5", "Track 5"),
+    ]);
+    release.extraartists = Some(vec![
+        DiscogsRoleArtist {
+            id: Some("discogs-composer-a".to_string()),
+            name: "Composer Name A".to_string(),
+            role: "Written-By".to_string(),
+            credited_name: None,
+            tracks: Some("2, 5".to_string()),
+        },
+        DiscogsRoleArtist {
+            id: Some("discogs-composer-b".to_string()),
+            name: "Composer Name B".to_string(),
+            role: "Composed By".to_string(),
+            credited_name: None,
+            tracks: None,
+        },
+    ]);
+
+    let values = map(&release).unwrap();
+
+    let release_names: Vec<_> =
+        values.release_roles.iter().map(|role| role.artist.name.as_str()).collect();
+    assert_eq!(release_names, ["Composer Name B"], "the unscoped credit stays the release's");
+    for (index, track) in values.tracks.iter().enumerate() {
+        let names: Vec<_> = track.roles.iter().map(|role| role.artist.name.as_str()).collect();
+        let expected: &[&str] = if index == 1 || index == 4 { &["Composer Name A"] } else { &[] };
+        assert_eq!(names, expected, "track {}", index + 1);
+    }
+}
+
+/// A credit naming the sub-tracks of a collapsed index reaches the collapsed
+/// track once, however many sub-tracks it names.
+#[test]
+fn a_credit_on_the_sub_tracks_of_a_collapsed_index_reaches_the_collapsed_track_once() {
+    let mut release = make_release(vec![
+        make_track("A1", "Normal Track"),
+        make_heading("Suite"),
+        make_track("B1i", "Movement 1"),
+        make_track("B1ii", "Movement 2"),
+    ]);
+    release.extraartists = Some(vec![DiscogsRoleArtist {
+        id: Some("discogs-composer-a".to_string()),
+        name: "Composer Name A".to_string(),
+        role: "Written-By".to_string(),
+        credited_name: None,
+        tracks: Some("B1i to B1ii".to_string()),
+    }]);
+
+    let values = map_for_audio(&release, &[1; 2]).unwrap();
+
+    assert_eq!(values.tracks.len(), 2);
+    assert!(values.tracks[0].roles.is_empty());
+    assert_eq!(values.tracks[1].roles.len(), 1, "{:?}", values.tracks[1].roles);
+}
+
+/// A credit naming only tracks the tracklist does not hold is dropped.
+#[test]
+fn a_release_credit_naming_no_track_of_the_tracklist_is_dropped() {
+    let mut release = make_release(vec![make_track("1", "Track 1")]);
+    release.extraartists = Some(vec![DiscogsRoleArtist {
+        id: Some("discogs-composer-a".to_string()),
+        name: "Composer Name A".to_string(),
+        role: "Written-By".to_string(),
+        credited_name: None,
+        tracks: Some("7".to_string()),
+    }]);
+
+    let values = map(&release).unwrap();
+
+    assert!(values.release_roles.is_empty());
+    assert!(values.tracks[0].roles.is_empty());
 }

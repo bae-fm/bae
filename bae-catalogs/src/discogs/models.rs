@@ -19,6 +19,9 @@ pub struct DiscogsRoleArtist {
     pub name: String,
     pub role: String,
     pub credited_name: Option<String>,
+    /// The tracks a release-level credit covers, as Discogs writes them
+    /// (`3, 9`, `A1 to B2`); absent where the credit is the release's own.
+    pub tracks: Option<String>,
 }
 /// The release-endpoint response, projected to the fields bae uses.
 #[derive(Debug, Clone, PartialEq)]
