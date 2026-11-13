@@ -244,6 +244,7 @@
     <string name="cast">Μετάδοση</string>
     <string name="cast_receiver_casting">Μεταδίδεται</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
+    <string name="volume_set_on_receiver">Η ένταση ρυθμίζεται στη συσκευή %1$s</string>
     <string name="cast_receiver_type">Τύπος</string>
     <string name="cast_receiver_model">Μοντέλο</string>
     <string name="cast_receiver_address">Διεύθυνση</string>

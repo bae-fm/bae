@@ -246,6 +246,7 @@
     <string name="cast">Übertragen</string>
     <string name="cast_receiver_casting">Wird übertragen</string>
     <string name="cast_disconnect">Trennen</string>
+    <string name="volume_set_on_receiver">Die Lautstärke wird an %1$s eingestellt</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Modell</string>
     <string name="cast_receiver_address">Adresse</string>

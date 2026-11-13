@@ -252,6 +252,7 @@
     <string name="cast">Trasmetti</string>
     <string name="cast_receiver_casting">In trasmissione</string>
     <string name="cast_disconnect">Disconnetti</string>
+    <string name="volume_set_on_receiver">Il volume si regola su %1$s</string>
     <string name="cast_receiver_type">Tipo</string>
     <string name="cast_receiver_model">Modello</string>
     <string name="cast_receiver_address">Indirizzo</string>

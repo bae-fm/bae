@@ -60,7 +60,8 @@ extension ShotScene {
             name: name,
             kind: kind,
             model: nil,
-            address: "192.168.1.41"
+            address: "192.168.1.41",
+            takesVolume: true
         )
     }
 

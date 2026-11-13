@@ -185,10 +185,10 @@ private fun Casting(
 /** Living Room cast to, then the rest as core lists them. */
 private fun receivers() =
     BridgeCastReceiverList(
-        casting = BridgeCastReceiver("cast-living-room", "Living Room", BridgeRendererKind.CAST, "Google Nest Audio", "192.168.1.42"),
+        casting = BridgeCastReceiver("cast-living-room", "Living Room", BridgeRendererKind.CAST, "Google Nest Audio", "192.168.1.42", true),
         found =
             listOf(
-                BridgeCastReceiver("cast-kitchen", "Kitchen", BridgeRendererKind.AIR_PLAY, "HomePod mini", "192.168.1.63"),
-                BridgeCastReceiver("cast-den", "Den receiver", BridgeRendererKind.DLNA, null, "192.168.1.57"),
+                BridgeCastReceiver("cast-kitchen", "Kitchen", BridgeRendererKind.AIR_PLAY, "HomePod mini", "192.168.1.63", true),
+                BridgeCastReceiver("cast-den", "Den receiver", BridgeRendererKind.DLNA, null, "192.168.1.57", true),
             ),
     )

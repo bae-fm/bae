@@ -258,6 +258,7 @@
     <string name="cast">Prenášať</string>
     <string name="cast_receiver_casting">Prenáša sa</string>
     <string name="cast_disconnect">Odpojiť</string>
+    <string name="volume_set_on_receiver">Hlasitosť sa nastavuje na zariadení %1$s</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresa</string>

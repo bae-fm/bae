@@ -18,7 +18,8 @@ extension PreviewData {
                     name: "Living Room Speaker",
                     kind: .cast,
                     model: nil,
-                    address: "192.168.1.41"
+                    address: "192.168.1.41",
+                    takesVolume: true
                 )
             )
         )

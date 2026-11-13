@@ -239,6 +239,7 @@
     <string name="cast">キャスト</string>
     <string name="cast_receiver_casting">キャスト中</string>
     <string name="cast_disconnect">切断</string>
+    <string name="volume_set_on_receiver">音量は %1$s で設定します</string>
     <string name="cast_receiver_type">種類</string>
     <string name="cast_receiver_model">モデル</string>
     <string name="cast_receiver_address">アドレス</string>

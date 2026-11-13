@@ -1,6 +1,7 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -42,11 +44,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.receiverWithoutVolume
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -141,6 +145,7 @@ private fun ExpandedPlayer(
     val repeatMode by player.repeatMode.collectAsState()
     val volume by player.volume.collectAsState()
     val isMuted by player.isMuted.collectAsState()
+    val castStatus by session.castStore.status.collectAsState()
     AndroidFullPlayer(
         track = track,
         failure = failure,
@@ -168,6 +173,7 @@ private fun ExpandedPlayer(
                 onSetMuted = { session.appHandle.setMuted(it) },
                 onDragVolume = { session.appHandle.setVolumeLive(it) },
                 onSetVolume = { session.appHandle.setVolume(it) },
+                receiverWithoutVolume = receiverWithoutVolume(castStatus),
             )
         },
     )
@@ -345,7 +351,21 @@ internal fun ExpandedVolumeRow(
     onSetMuted: (Boolean) -> Unit,
     onDragVolume: (Float) -> Unit,
     onSetVolume: (Float) -> Unit,
+    receiverWithoutVolume: String? = null,
 ) {
+    // A receiver that takes no volume from bae keeps its volume itself: no mute
+    // and no slider, which could only be refused, and a line saying where it is set.
+    if (receiverWithoutVolume != null) {
+        Box(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = stringResource(R.string.volume_set_on_receiver, receiverWithoutVolume),
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        return
+    }
     // Follow the finger from a local value while dragging, moving the output
     // as it goes; the level the drag ends on is set once, where it is stored,
     // and stays shown until the stored volume changes.

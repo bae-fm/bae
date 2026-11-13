@@ -679,6 +679,7 @@ pub(super) fn test_device() -> crate::renderer::CastReceiver {
         kind: crate::renderer::RendererKind::Cast,
         model: None,
         address: "192.168.1.20".to_string(),
+        takes_volume: true,
     }
 }
 

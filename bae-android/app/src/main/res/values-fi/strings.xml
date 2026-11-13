@@ -244,6 +244,7 @@
     <string name="cast">Suoratoista</string>
     <string name="cast_receiver_casting">Suoratoistetaan</string>
     <string name="cast_disconnect">Katkaise yhteys</string>
+    <string name="volume_set_on_receiver">Äänenvoimakkuus säädetään laitteella %1$s</string>
     <string name="cast_receiver_type">Tyyppi</string>
     <string name="cast_receiver_model">Malli</string>
     <string name="cast_receiver_address">Osoite</string>

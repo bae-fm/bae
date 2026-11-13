@@ -246,6 +246,7 @@
     <string name="cast">Yayınla</string>
     <string name="cast_receiver_casting">Yayınlanıyor</string>
     <string name="cast_disconnect">Bağlantıyı kes</string>
+    <string name="volume_set_on_receiver">Ses düzeyi %1$s üzerinde ayarlanır</string>
     <string name="cast_receiver_type">Tür</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adres</string>

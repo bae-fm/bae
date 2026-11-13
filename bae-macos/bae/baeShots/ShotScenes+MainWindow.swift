@@ -13,6 +13,7 @@ extension ShotScenes {
         backing: (library: Library, session: LibraryBrowseSession),
         needsAttention: Bool = true,
         playbackStore: PlaybackStore = PlaybackStore(),
+        castStore: CastStore = CastStore(),
         importListSlot: ImportListSlot? = nil,
         projections: LibraryProjectionStore? = nil,
         size: CGSize = CGSize(width: 1280, height: 800)
@@ -39,7 +40,7 @@ extension ShotScenes {
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
             .environment(CastStart.stub())
-            .environment(CastStore())
+            .environment(castStore)
             .environment(
                 SyncActivityStore.preview(needsAttention: needsAttention)
             )

@@ -408,6 +408,7 @@ fn the_picker_lists_the_devices_from_the_library() {
             kind: bae_playback::renderer::RendererKind::Cast,
             model: Some("Chromecast".to_string()),
             address: "127.0.0.1".to_string(),
+            takes_volume: true,
         }
     );
 

@@ -239,6 +239,7 @@
     <string name="cast">캐스트</string>
     <string name="cast_receiver_casting">캐스트 중</string>
     <string name="cast_disconnect">연결 해제</string>
+    <string name="volume_set_on_receiver">음량은 %1$s에서 설정합니다</string>
     <string name="cast_receiver_type">유형</string>
     <string name="cast_receiver_model">모델</string>
     <string name="cast_receiver_address">주소</string>

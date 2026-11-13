@@ -17,6 +17,7 @@ fn receiver(id: &str, name: &str, kind: RendererKind) -> CastReceiver {
         kind,
         model: None,
         address: format!("10.0.0.{}", id.len()),
+        takes_volume: true,
     }
 }
 
@@ -59,10 +60,10 @@ async fn each_write_lists_the_whole_picker_by_name() {
     );
 }
 
-/// A receiver's model and address read back as written, whether it is listed
+/// A receiver's model, address and whether it takes a volume read back as written, whether it is listed
 /// among those found or as the one cast to; no stated model reads back as none.
 #[tokio::test]
-async fn model_and_address_read_back() {
+async fn model_address_and_volume_read_back() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let picker = CastPicker::new(db.clone());
     let modelled = CastReceiver {
@@ -72,6 +73,7 @@ async fn model_and_address_read_back() {
     };
     let bare = CastReceiver {
         address: "192.168.1.41".to_string(),
+        takes_volume: false,
         ..receiver("uuid:den", "Den", RendererKind::Dlna)
     };
     picker.show(vec![modelled.clone(), bare.clone()]).await.unwrap();

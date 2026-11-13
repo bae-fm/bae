@@ -303,7 +303,8 @@ object BridgeFixtures {
         id: String = "cast-1",
         name: String = "Kitchen",
         kind: BridgeRendererKind = BridgeRendererKind.CAST,
-    ): BridgeCastReceiver = BridgeCastReceiver(id = id, name = name, kind = kind, model = null, address = "192.168.1.40")
+    ): BridgeCastReceiver =
+        BridgeCastReceiver(id = id, name = name, kind = kind, model = null, address = "192.168.1.40", takesVolume = true)
 
     fun library(
         id: String,

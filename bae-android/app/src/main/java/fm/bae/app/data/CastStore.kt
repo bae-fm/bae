@@ -51,6 +51,15 @@ fun castingDevice(status: BridgeRemotePlayback): BridgeCastReceiver? =
     }
 
 /**
+ * The name of the receiver playback is on when it takes no volume from bae, else
+ * null: the volume controls then give way to a line saying where it is set.
+ */
+fun receiverWithoutVolume(status: BridgeRemotePlayback): String? {
+    val device = castingDevice(status) ?: return null
+    return if (device.takesVolume) null else device.name
+}
+
+/**
  * The casting device's name — what drives the cast button's active state, the
  * "Casting to …" row, and the settings confirmation.
  */

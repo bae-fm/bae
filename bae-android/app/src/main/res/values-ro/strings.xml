@@ -251,6 +251,7 @@
     <string name="cast">Transmite</string>
     <string name="cast_receiver_casting">Se transmite</string>
     <string name="cast_disconnect">Deconectează</string>
+    <string name="volume_set_on_receiver">Volumul se reglează pe %1$s</string>
     <string name="cast_receiver_type">Tip</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresă</string>

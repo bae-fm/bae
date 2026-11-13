@@ -91,6 +91,7 @@ struct NowPlayingStorageWaitTests {
                 isMuted: false,
                 repeatMode: .off
             ),
+            receiverWithoutVolume: nil,
             shuffled: false,
             showQueue: false,
             onPlayPause: {},

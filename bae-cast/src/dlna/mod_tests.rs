@@ -875,3 +875,41 @@ fn a_poll_states_the_renderers_speed_or_none_when_it_is_unreadable() {
     state.lock().unwrap().speed = Some("fast".to_string());
     assert_eq!(channel.poll_status().unwrap().rate, None);
 }
+
+/// A description with no RenderingControl service yields a receiver that
+/// takes no volume; one with it takes a volume.
+#[test]
+fn a_description_without_rendering_control_yields_a_receiver_that_takes_no_volume() {
+    let description = |rendering_control: &str| {
+        format!(
+            r#"<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+  <device>
+    <friendlyName>Den</friendlyName>
+    <UDN>uuid:den</UDN>
+    <serviceList>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:AVTransport:1</serviceType>
+        <controlURL>/AVTransport/control</controlURL>
+      </service>{rendering_control}
+    </serviceList>
+  </device>
+</root>"#
+        )
+    };
+    let without = only_device(parse_device_description(
+        &description(""),
+        "http://192.168.1.50:8080/description.xml",
+    ));
+    assert!(!without.receiver().takes_volume);
+    let with = only_device(parse_device_description(
+        &description(
+            r#"<service>
+        <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
+        <controlURL>/RenderingControl/control</controlURL>
+      </service>"#,
+        ),
+        "http://192.168.1.50:8080/description.xml",
+    ));
+    assert!(with.receiver().takes_volume);
+}

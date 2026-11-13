@@ -370,6 +370,9 @@ pub struct BridgeCastReceiver {
     pub model: Option<String>,
     /// The host the receiver was found at, as text.
     pub address: String,
+    /// Whether the receiver takes a volume set. When it does not, the apps
+    /// offer no volume control and say the volume is set on the receiver.
+    pub takes_volume: bool,
 }
 
 /// What the cast picker and the Casting page list: the receiver playback is
@@ -401,7 +404,7 @@ mirror_enum! {
 mirror_struct! {
     BridgeCastReceiver = bae_playback::renderer::CastReceiver,
     from_core: pub(crate) fn,
-    fields: { id, name, kind: (BridgeRendererKind), model, address },
+    fields: { id, name, kind: (BridgeRendererKind), model, address, takes_volume },
 }
 
 mirror_struct! {

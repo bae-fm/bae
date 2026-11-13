@@ -260,6 +260,7 @@
     <string name="cast">Odesílat</string>
     <string name="cast_receiver_casting">Odesílá se</string>
     <string name="cast_disconnect">Odpojit</string>
+    <string name="volume_set_on_receiver">Hlasitost se nastavuje na zařízení %1$s</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresa</string>

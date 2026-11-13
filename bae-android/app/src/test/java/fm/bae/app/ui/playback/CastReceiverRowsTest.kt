@@ -32,9 +32,23 @@ class CastReceiverRowsTest {
     val compose = createComposeRule()
 
     private val livingRoom =
-        BridgeCastReceiver(id = "living-room", name = "Living Room", kind = BridgeRendererKind.CAST, model = null, address = "192.168.1.40")
+        BridgeCastReceiver(
+            id = "living-room",
+            name = "Living Room",
+            kind = BridgeRendererKind.CAST,
+            model = null,
+            address = "192.168.1.40",
+            takesVolume = true,
+        )
     private val kitchen =
-        BridgeCastReceiver(id = "kitchen", name = "Kitchen", kind = BridgeRendererKind.AIR_PLAY, model = null, address = "192.168.1.40")
+        BridgeCastReceiver(
+            id = "kitchen",
+            name = "Kitchen",
+            kind = BridgeRendererKind.AIR_PLAY,
+            model = null,
+            address = "192.168.1.40",
+            takesVolume = true,
+        )
 
     private fun found(vararg receivers: BridgeCastReceiver) = BridgeCastReceiverList(casting = null, found = receivers.toList())
 

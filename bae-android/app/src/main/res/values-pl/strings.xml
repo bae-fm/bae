@@ -260,6 +260,7 @@
     <string name="cast">Przesyłaj</string>
     <string name="cast_receiver_casting">Trwa przesyłanie</string>
     <string name="cast_disconnect">Rozłącz</string>
+    <string name="volume_set_on_receiver">Głośność ustawia się na urządzeniu %1$s</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adres</string>

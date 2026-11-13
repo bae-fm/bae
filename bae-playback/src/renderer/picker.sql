@@ -9,5 +9,7 @@ CREATE TABLE IF NOT EXISTS cast_receiver (
     -- What the receiver states of itself; NULL when it states no model.
     model TEXT,
     -- The host discovery found it at.
-    address TEXT NOT NULL
+    address TEXT NOT NULL,
+    -- Whether it takes a volume set (0 or 1).
+    takes_volume INTEGER NOT NULL CHECK (takes_volume IN (0, 1))
 ) STRICT;

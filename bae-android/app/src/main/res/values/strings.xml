@@ -293,6 +293,7 @@
     <string name="cast">Cast</string>
     <string name="cast_receiver_casting">Casting</string>
     <string name="cast_disconnect">Disconnect</string>
+    <string name="volume_set_on_receiver">Volume is set on %1$s</string>
     <string name="cast_receiver_type">Type</string>
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Address</string>

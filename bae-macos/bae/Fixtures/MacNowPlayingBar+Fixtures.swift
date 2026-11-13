@@ -21,6 +21,8 @@ struct NowPlayingBarPreview: View {
     /// The seek bar's position: how far through a track, or none.
     var hasPosition = true
     var progress = 0.25
+    /// The receiver playback is on when it takes no volume from bae.
+    var receiverWithoutVolume: String?
 
     @State
     private var showQueue = false
@@ -60,6 +62,7 @@ struct NowPlayingBarPreview: View {
                 isMuted: isMuted,
                 repeatMode: repeatMode
             ),
+            receiverWithoutVolume: receiverWithoutVolume,
             shuffled: shuffled,
             showQueue: showQueue,
             onPlayPause: {},

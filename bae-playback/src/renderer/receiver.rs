@@ -16,7 +16,7 @@ pub enum RendererKind {
 
 /// A receiver: its stable id, which casting to it is asked by, its name,
 /// which the picker and the cast surfaces show, its kind, the model it states
-/// of itself, and the address discovery found it at. Names need not be unique
+/// of itself, the address discovery found it at, and whether it takes a volume. Names need not be unique
 /// across receivers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CastReceiver {
@@ -30,4 +30,8 @@ pub struct CastReceiver {
     /// The host discovery found the receiver at, as text: an IP address, or
     /// the host of a UPnP device's description.
     pub address: String,
+    /// Whether the receiver takes a volume set. `false` for a UPnP renderer
+    /// that describes no RenderingControl service; the volume then stays on
+    /// the receiver and bae offers no control for it.
+    pub takes_volume: bool,
 }

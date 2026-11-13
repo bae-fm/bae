@@ -22,6 +22,10 @@ struct MacNowPlayingBar: View {
     /// The volume, mute and repeat mode; `nil` until core says them, when
     /// their controls keep their place and show nothing.
     let settings: PlaybackSettings?
+    /// The name of the receiver playback is on when it takes no volume from
+    /// bae; mute and the slider then give way to a line saying where the
+    /// volume is set.
+    let receiverWithoutVolume: String?
     /// Whether shuffle is on, with or without a playing context.
     let shuffled: Bool
     let showQueue: Bool
@@ -267,7 +271,13 @@ extension MacNowPlayingBar {
 
             queueButton
 
-            if let settings {
+            switch volumeControls {
+            case .setOnReceiver(let name):
+                Text("Volume is set on \(name)")
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            case .controls(let settings):
                 muteButton(settings)
 
                 SlimSlider(
@@ -277,8 +287,7 @@ extension MacNowPlayingBar {
                 )
                 .frame(width: volumeWidth)
                 .accessibilityLabel("Volume")
-            }
-            else {
+            case .waitingForCore:
                 controlSpace
 
                 Color.clear.frame(width: volumeWidth, height: 1)
@@ -331,6 +340,26 @@ extension MacNowPlayingBar {
                 )
             )
         }
+    }
+
+    /// What the bar's right edge offers for the volume.
+    enum VolumeControls: Equatable {
+        /// The receiver playback is on keeps its own volume: a line names it
+        /// in place of mute and the slider, which could only be refused.
+        case setOnReceiver(String)
+        case controls(PlaybackSettings)
+        /// Core has not said the settings yet: the controls keep their place.
+        case waitingForCore
+    }
+
+    var volumeControls: VolumeControls {
+        if let receiverWithoutVolume {
+            return .setOnReceiver(receiverWithoutVolume)
+        }
+        if let settings {
+            return .controls(settings)
+        }
+        return .waitingForCore
     }
 
     fileprivate var volumeWidth: CGFloat { 96 }

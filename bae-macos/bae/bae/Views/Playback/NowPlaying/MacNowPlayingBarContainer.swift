@@ -17,6 +17,8 @@ struct MacNowPlayingBarContainer: View {
     var uiStore
     @Environment(ConfigStore.self)
     var configStore
+    @Environment(CastStore.self)
+    var castStore
     let onDropToQueue: ([String]) -> Void
 
     var body: some View {
@@ -46,6 +48,7 @@ struct MacNowPlayingBarContainer: View {
             ),
             showRemainingTime: configStore.config.showRemainingTime,
             settings: playbackStore.settings,
+            receiverWithoutVolume: castStore.receiverWithoutVolume,
             shuffled: playbackStore.shuffled,
             showQueue: uiStore.showQueue,
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },

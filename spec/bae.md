@@ -4569,7 +4569,12 @@ hold the same level. A volume slider moves this device and the receiver as it
 is dragged; the stored row and the other screens take the level the drag ends
 on, in one write. A UPnP renderer that describes no volume control can't take
 a level: the set fails and is told to the person as a command the receiver
-refused, not taken as done.
+refused, not taken as done. Each receiver says whether it takes a volume: a
+Chromecast and an AirPlay receiver do, a UPnP renderer does when its description
+has a RenderingControl service. For one that does not, the now-playing bar on
+macOS and the full player on Android show no mute and no slider, and say
+"Volume is set on" the receiver's name in their place, so the refusal is never
+reached from the screen.
 
 **Fetching receivers.** A Chromecast or UPnP renderer fetches each track from
 a small HTTP server bae runs for the session, on the local network, with a
@@ -5153,7 +5158,7 @@ a media key never starts a paused preview. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
 phase, volume, mute, where playback is going (a receiver by its id, name,
-kind, model and address), the preview, and why playback last failed, numbered,
+kind, model, address and whether it takes a volume), the preview, and why playback last failed, numbered,
 until it next plays. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a
 live query of that row joined with the playing track's display and the
@@ -5890,7 +5895,7 @@ membership's (`membership.sql`).
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, last failure and the count of failures (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
-| `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name and kind (Cast, UPnP or AirPlay) |
+| `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 
 A play's fill, Clear up next, Clear playing from and the emptying as a library
 opens without resuming are bulk writes: plain SQLite on these device-local

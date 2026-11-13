@@ -22,6 +22,16 @@ public final class CastStore {
         return nil
     }
 
+    /// The name of the receiver playback is on when it takes no volume from
+    /// bae, else `nil`: the volume controls then give way to a line saying
+    /// where the volume is set.
+    public var receiverWithoutVolume: String? {
+        guard let device = castingDevice, !device.takesVolume else {
+            return nil
+        }
+        return device.name
+    }
+
     /// The casting device's name, for the cast button's active state and the
     /// "Casting to …" row.
     public var castingDeviceName: String? {

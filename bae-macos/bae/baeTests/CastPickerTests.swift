@@ -27,7 +27,8 @@ struct CastPickerTests {
                             name: "Kitchen",
                             kind: .cast,
                             model: nil,
-                            address: "192.168.1.41"
+                            address: "192.168.1.41",
+                            takesVolume: true
                         )
                     ]
                 ),

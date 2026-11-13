@@ -274,6 +274,7 @@
     <string name="cast">إرسال</string>
     <string name="cast_receiver_casting">جارٍ الإرسال</string>
     <string name="cast_disconnect">قطع الاتصال</string>
+    <string name="volume_set_on_receiver">يتم ضبط مستوى الصوت على %1$s</string>
     <string name="cast_receiver_type">النوع</string>
     <string name="cast_receiver_model">الطراز</string>
     <string name="cast_receiver_address">العنوان</string>

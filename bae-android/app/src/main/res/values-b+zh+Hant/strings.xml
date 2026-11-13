@@ -239,6 +239,7 @@
     <string name="cast">投放</string>
     <string name="cast_receiver_casting">正在投放</string>
     <string name="cast_disconnect">中斷連線</string>
+    <string name="volume_set_on_receiver">音量在 %1$s 上設定</string>
     <string name="cast_receiver_type">類型</string>
     <string name="cast_receiver_model">型號</string>
     <string name="cast_receiver_address">位址</string>

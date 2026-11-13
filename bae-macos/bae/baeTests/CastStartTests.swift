@@ -16,7 +16,8 @@ struct CastStartTests {
             name: id,
             kind: .cast,
             model: nil,
-            address: "192.168.1.40"
+            address: "192.168.1.40",
+            takesVolume: true
         )
     }
 

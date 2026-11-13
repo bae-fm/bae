@@ -57,6 +57,7 @@ async fn each_change_reads_back_as_written() {
         kind,
         model: Some("Audio Pro".to_string()),
         address: "192.168.1.9".to_string(),
+        takes_volume: true,
     };
     for remote in [
         RemotePlayback::On(device(RendererKind::Cast)),

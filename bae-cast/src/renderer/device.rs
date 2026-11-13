@@ -47,6 +47,7 @@ impl RendererDevice {
             kind: self.kind(),
             model: self.model.clone(),
             address: self.connection.address(),
+            takes_volume: self.connection.takes_volume(),
         }
     }
 }
@@ -77,6 +78,16 @@ pub enum RendererConnection {
 }
 
 impl RendererConnection {
+    /// Whether the receiver takes a volume set. Cast and AirPlay carry a
+    /// volume in their protocols; a UPnP renderer takes one only through a
+    /// RenderingControl service.
+    pub fn takes_volume(&self) -> bool {
+        match self {
+            Self::Cast { .. } | Self::AirPlay { .. } => true,
+            Self::Dlna { rendering_control_url, .. } => rendering_control_url.is_some(),
+        }
+    }
+
     /// The host discovery found the device at, as text.
     pub fn address(&self) -> String {
         match self {

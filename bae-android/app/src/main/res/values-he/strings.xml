@@ -253,6 +253,7 @@
     <string name="cast">שידור</string>
     <string name="cast_receiver_casting">משדר כעת</string>
     <string name="cast_disconnect">התנתק</string>
+    <string name="volume_set_on_receiver">עוצמת הקול נקבעת ב־%1$s</string>
     <string name="cast_receiver_type">סוג</string>
     <string name="cast_receiver_model">דגם</string>
     <string name="cast_receiver_address">כתובת</string>

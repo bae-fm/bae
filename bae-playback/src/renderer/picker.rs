@@ -68,14 +68,15 @@ fn cast_receivers_on(
     let casting = sql
         .query_row(
             "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind, \
-                    cast_receiver_model, cast_receiver_address \
+                    cast_receiver_model, cast_receiver_address, \
+                    cast_receiver_takes_volume \
                FROM playback_now WHERE remote = 'on'",
             [],
             remote_receiver_from_row,
         )
         .optional()?;
     let found = sql.query(
-        "SELECT id, name, kind, model, address FROM cast_receiver \
+        "SELECT id, name, kind, model, address, takes_volume FROM cast_receiver \
            WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
          ORDER BY bae_name_key(name, ?1), id",
         [language.as_str()],
@@ -86,6 +87,7 @@ fn cast_receivers_on(
                 kind: kind_from_column(row, "kind")?,
                 model: row.get("model")?,
                 address: row.get("address")?,
+                takes_volume: row.get("takes_volume")?,
             })
         },
     )?;
@@ -112,14 +114,15 @@ impl CastPicker {
                 sql.execute("DELETE FROM cast_receiver", [])?;
                 for receiver in &receivers {
                     sql.execute(
-                        "INSERT INTO cast_receiver (id, name, kind, model, address) \
-                         VALUES (?1, ?2, ?3, ?4, ?5)",
+                        "INSERT INTO cast_receiver (id, name, kind, model, address, takes_volume) \
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                         params![
                             receiver.id,
                             receiver.name,
                             kind_column(receiver.kind),
                             receiver.model,
                             receiver.address,
+                            receiver.takes_volume,
                         ],
                     )?;
                 }

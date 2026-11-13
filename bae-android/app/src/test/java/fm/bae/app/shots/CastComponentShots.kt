@@ -14,7 +14,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 private fun receiver(
     name: String,
     kind: BridgeRendererKind,
-) = BridgeCastReceiver(id = "id-$name", name = name, kind = kind, model = null, address = "192.168.1.42")
+) = BridgeCastReceiver(id = "id-$name", name = name, kind = kind, model = null, address = "192.168.1.42", takesVolume = true)
 
 /** The component shots of a cast receiver's row, as the cast picker lists it. */
 class CastComponentShots : BoardShot() {
