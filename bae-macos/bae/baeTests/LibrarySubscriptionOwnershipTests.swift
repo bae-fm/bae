@@ -67,7 +67,7 @@ private final class AlbumBrowseProbe: @unchecked Sendable {
 /// at and each time it is opened, and answers with whatever a test emits.
 private final class SearchProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var recordedQueries: [String] = []
+    private var recordedQueries: [String?] = []
     private var opened = 0
     private var askedCount = 0
     private var pending: [Result<BridgeLibrarySearchSnapshot, BridgeError>] = []
@@ -85,14 +85,16 @@ private final class SearchProbe: @unchecked Sendable {
     }
 
     var openCount: Int { lock.withLock { opened } }
-    var lastQuery: String? { lock.withLock { recordedQueries.last } }
-    var queries: [String] { lock.withLock { recordedQueries } }
+    var lastQuery: String? {
+        lock.withLock { recordedQueries.last.flatMap { $0 } }
+    }
+    var queries: [String?] { lock.withLock { recordedQueries } }
     /// How many times the search has been asked for a value. The store takes
     /// one value at a time and applies it before asking again, so an ask past
     /// a delivered value means that value has been handled, applied or not.
     var asks: Int { lock.withLock { askedCount } }
 
-    func emitValue(query: String) {
+    func emitValue(query: String?) {
         deliver(
             .success(
                 BridgeLibrarySearchSnapshot(
@@ -219,6 +221,26 @@ extension LibraryProjectionStoreSearchTests {
         try await Wait.until { probe.lastQuery == "query" }
 
         #expect(probe.queries == ["query"])
+    }
+
+    @MainActor
+    @Test("clearing the field moves the search to no query, not to empty text")
+    func clearingTheFieldIsNoQuery() async throws {
+        let probe = SearchProbe()
+        let clock = ManualClock()
+        let store = LibraryProjectionStore(
+            library: Library(librarySearch: { probe.open() }),
+            clock: clock
+        )
+
+        store.activateSearch("query")
+        await clock.untilSleeps(begun: 1)
+        clock.advance(by: .milliseconds(300))
+        try await Wait.until { probe.lastQuery == "query" }
+
+        store.activateSearch("  ")
+
+        #expect(probe.queries == ["query", nil])
     }
 }
 

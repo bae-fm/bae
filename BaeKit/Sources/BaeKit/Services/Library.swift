@@ -450,14 +450,15 @@ public struct AlbumSelectionQuery: Sendable {
     }
 }
 
-/// A live library search whose query changes in place: set the text, and
-/// take each value it delivers, which names the query it answers.
+/// A live library search whose query changes in place: set the text, or
+/// `nil` for no search, and take each value it delivers, which names the query
+/// it answers.
 public struct LibrarySearch: Sendable {
-    public let setQuery: @Sendable (String) throws -> Void
+    public let setQuery: @Sendable (String?) throws -> Void
     public let values: PulledValues<BridgeLibrarySearchSnapshot>
 
     public init(
-        setQuery: @escaping @Sendable (String) throws -> Void,
+        setQuery: @escaping @Sendable (String?) throws -> Void,
         values: PulledValues<BridgeLibrarySearchSnapshot>
     ) {
         self.setQuery = setQuery

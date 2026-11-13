@@ -339,7 +339,7 @@ internal class FakeLibrarySearchSubscription(
     private val answer: (String) -> Result<BridgeSearchResults>?,
 ) : LibrarySearchSubscription(NoHandle) {
     private val events = Channel<Result<BridgeLibrarySearchSnapshot>>(Channel.UNLIMITED)
-    private var query = ""
+    private var query: String? = null
     private var revision = 0uL
     var cancelled = false
         private set
@@ -347,14 +347,14 @@ internal class FakeLibrarySearchSubscription(
         private set
 
     init {
-        events.trySend(Result.success(BridgeLibrarySearchSnapshot("", BridgeFixtures.searchResults(), revision)))
+        events.trySend(Result.success(BridgeLibrarySearchSnapshot(null, BridgeFixtures.searchResults(), revision)))
     }
 
-    override fun setQuery(query: String): ULong {
+    override fun setQuery(query: String?): ULong {
         if (cancelled) throw BridgeException.Cancelled()
-        this.query = query.trim()
+        this.query = query?.trim()?.takeIf { it.isNotEmpty() }
         revision++
-        answer(this.query)?.let(::emit)
+        this.query?.let { answer(it)?.let(::emit) }
         return revision
     }
 

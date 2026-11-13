@@ -250,8 +250,11 @@ internal typealias DownloadBrowseQuery = CollectionBrowseQuery<BridgeDownloadBro
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */
 internal interface LibrarySearch : PulledSubscription<BridgeLibrarySearchSnapshot> {
-    /** Search for [query] from now on; returns the request revision its answers will carry. */
-    fun setQuery(query: String): ULong
+    /**
+     * Search for [query] from now on, or for nothing when it is null; returns the request revision
+     * its answers will carry.
+     */
+    fun setQuery(query: String?): ULong
 
     /** Free the search without waiting, from a scope that is already ending. */
     fun release()
@@ -261,7 +264,7 @@ private class BridgeLibrarySearch(
     private val subscription: LibrarySearchSubscription,
 ) : LibrarySearch,
     PulledSubscription<BridgeLibrarySearchSnapshot> by pulled(subscription::next, subscription::cancel) {
-    override fun setQuery(query: String): ULong = subscription.setQuery(query)
+    override fun setQuery(query: String?): ULong = subscription.setQuery(query)
 
     override fun release() = subscription.close()
 }

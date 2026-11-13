@@ -130,7 +130,7 @@ internal class SearchQueryStore(
         mutableState.value = LiveQueryState()
         debounce?.cancel()
         if (trimmed.isEmpty()) {
-            search?.let { setQuery(it, "") }
+            search?.let { setQuery(it, null) }
             return
         }
         val live = open()
@@ -169,7 +169,7 @@ internal class SearchQueryStore(
                 scope,
                 onValue = { snapshot ->
                     // Only a value answering the query standing now is shown.
-                    if (snapshot.query.isNotEmpty() && snapshot.query == query) {
+                    if (snapshot.query != null && snapshot.query == query) {
                         mutableState.value = LiveQueryState(value = snapshot.results, delivered = true)
                     }
                 },
@@ -180,7 +180,7 @@ internal class SearchQueryStore(
 
     private fun setQuery(
         live: LibrarySearch,
-        text: String,
+        text: String?,
     ) {
         runCatching { live.setQuery(text) }
             .onFailure { error ->

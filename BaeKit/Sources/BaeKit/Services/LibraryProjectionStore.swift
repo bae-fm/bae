@@ -191,7 +191,7 @@ public final class LibraryProjectionStore {
         searchDebounce?.cancel()
         searchDebounce = nil
         if query.isEmpty {
-            if let liveSearch { setSearchQuery("", on: liveSearch) }
+            if let liveSearch { setSearchQuery(nil, on: liveSearch) }
             return
         }
         let live = openSearch()
@@ -224,13 +224,13 @@ public final class LibraryProjectionStore {
     }
 
     private func applySearch(_ snapshot: BridgeLibrarySearchSnapshot) {
-        guard !snapshot.query.isEmpty, searchQuery == snapshot.query else {
+        guard let answered = snapshot.query, searchQuery == answered else {
             return
         }
         search = LibraryProjectionState(
             value: SearchResults(
                 bridge: snapshot.results,
-                query: snapshot.query
+                query: answered
             ),
             delivered: true
         )
@@ -244,7 +244,7 @@ public final class LibraryProjectionStore {
         )
     }
 
-    private func setSearchQuery(_ query: String, on live: LibrarySearch) {
+    private func setSearchQuery(_ query: String?, on live: LibrarySearch) {
         do {
             try live.setQuery(query)
         }
