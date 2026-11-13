@@ -8,10 +8,13 @@ struct NowPlayingNavigationAction {
     let playbackStore: PlaybackStore
     let uiStore: UiStore
 
-    var isEnabled: Bool { playbackStore.nowPlaying.track != nil }
+    /// Enabled once core has said which track is current; while the next
+    /// track is only an id, the bar still shows the one before it, and
+    /// revealing that one would be revealing the wrong track.
+    var isEnabled: Bool { playbackStore.nowPlaying.current != nil }
 
     func perform() {
-        guard let track = playbackStore.nowPlaying.track else {
+        guard let track = playbackStore.nowPlaying.current else {
             preconditionFailure(
                 "Go to Now Playing is disabled without a playing track"
             )

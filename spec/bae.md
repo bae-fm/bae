@@ -4130,7 +4130,11 @@ playing from  Album Title, tracks 4–11
 ```
 
 When track 3 ends, Up next drains first, then the release continues at track
-4.
+4. While the next track loads, the Mac's now-playing bar keeps showing the
+track before it so the bar does not close on every change, but nothing that
+marks or opens the current track follows it: the speaker mark on an album's
+track list is on the track loading, and Go to Now Playing waits until that
+track's details have arrived.
 
 What's playing from is a release, several releases in the order chosen, a
 list of tracks in the order it was sent, or the whole library. The queue's

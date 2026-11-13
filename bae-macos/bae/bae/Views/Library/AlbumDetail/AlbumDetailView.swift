@@ -71,8 +71,7 @@ struct AlbumDetailView: View {
                         presentImages(release: selectedDetail)
                     },
                     releaseCursor: releaseCursorBinding(detail: detail),
-                    currentTrackId: playbackStore.nowPlaying.track?.track
-                        .trackId,
+                    currentTrackId: playbackStore.nowPlaying.currentTrackId,
                     isPlaying: playbackStore.nowPlaying.isPlaying,
                     onClose: { uiStore.closeAlbumDetail() },
                     onPlay: {

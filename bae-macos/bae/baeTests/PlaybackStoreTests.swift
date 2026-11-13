@@ -429,6 +429,30 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.loadingTrackId == nil)
         #expect(store.nowPlaying.track?.track.trackId == "a")
     }
+
+    /// The bar keeps the track before until the next one's metadata lands, but
+    /// what marks or opens the current track must not point at that one.
+    @MainActor
+    @Test("the current track is the loading one, never the one before it")
+    func currentTrackIsTheLoadingOne() {
+        let store = PlaybackStore()
+        store.play(track: makeTrack("a"))
+        #expect(store.nowPlaying.current?.track.trackId == "a")
+        #expect(store.nowPlaying.currentTrackId == "a")
+
+        store.beginLoading(trackId: "b")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
+        #expect(store.nowPlaying.current == nil)
+        #expect(store.nowPlaying.currentTrackId == "b")
+
+        store.setLoadingTarget(makeTrack("b"))
+        #expect(store.nowPlaying.current?.track.trackId == "b")
+        #expect(store.nowPlaying.currentTrackId == "b")
+
+        store.stop()
+        #expect(store.nowPlaying.current == nil)
+        #expect(store.nowPlaying.currentTrackId == nil)
+    }
 }
 
 @Suite("NowPlaying state")

@@ -455,6 +455,29 @@ public enum NowPlaying {
         }
     }
 
+    /// The track core says is current: the one playing or paused, or the
+    /// loading one once core has prepared it. `nil` while the next track is
+    /// only an id, when `track` still shows the one before it so the bar does
+    /// not close on every track change; what marks or opens the current track
+    /// reads this, not `track`.
+    public var current: BridgeNowPlayingTrack? {
+        switch self {
+        case .playing(let t), .paused(let t, _): t
+        case .loading(let loading, _): loading.prepared
+        case .stopped: nil
+        }
+    }
+
+    /// The id of the current track, the loading one included before core has
+    /// prepared it.
+    public var currentTrackId: String? {
+        switch self {
+        case .playing(let t), .paused(let t, _): t.track.trackId
+        case .loading(let loading, _): loading.trackId
+        case .stopped: nil
+        }
+    }
+
     public var secondaryLine: String? {
         switch self {
         case .paused(let track, let reason):
