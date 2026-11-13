@@ -3842,6 +3842,22 @@
    "w": 412,
    "x": 1968,
    "y": 2876
+  },
+  "mac.welcome.libraries.unreadable.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: a library that cannot be read",
+   "w": 690,
+   "x": 0,
+   "y": 15556
+  },
+  "android.welcome.libraries.unreadable.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: a library that cannot be read",
+   "w": 412,
+   "x": 786,
+   "y": 15556
   }
  },
  "createdOnFiles": {
@@ -5832,7 +5848,9 @@
   "android.settings.sync.pending.dc.html",
   "mac.settings.person.s3.dc.html",
   "android.settings.person.s3.dc.html",
-  "android.parts.restore-code.dc.html"
+  "android.parts.restore-code.dc.html",
+  "mac.welcome.libraries.unreadable.dc.html",
+  "android.welcome.libraries.unreadable.dc.html"
  ],
  "pages": [
   {
