@@ -4374,6 +4374,10 @@ its target, so the seek jumps to the last point at or before the new
 position and decodes forward to it: one window fetched from the point,
 instead of a search across the file with one fetch per step, or a decode of
 everything from a seektable point minutes earlier.
+A FLAC with neither, such as an unimported file's preview, is searched by
+bisection, which can't place a sample in its last frames or in a FLAC of one
+frame: a seek it can't place decodes from where the audio begins and plays from
+the sample asked for, and one that can't even do that fails the playback.
 An MP3 has no index FFmpeg seeks by both exactly and directly: with fast seek
 or `usetoc` it places the seek from the file's bitrate or its table of
 contents, an estimate, and without them, as bae opens an MP3, it reads forward

@@ -58,7 +58,7 @@ pub(super) unsafe fn seek_input_or_warn(
     audio: &AudioStreamInfo,
     sample_clock: &SampleClock,
     start: DecodeStart,
-) {
+) -> Result<(), String> {
     use bae_util::content_type::ContentType;
 
     let content_type = crate::probe::content_type_from_codec_id((*codec_ctx).codec_id);
@@ -84,13 +84,16 @@ pub(super) unsafe fn seek_input_or_warn(
         DecodeStart::Sample(sample) if content_type == ContentType::Mp3 => {
             debug!("an MP3 seeks no sample: decoding from the start to sample {sample}")
         }
-        DecodeStart::Sample(sample) => seek_to_sample_or_warn(
-            fmt_ctx,
-            audio.stream_index,
-            sample_clock,
-            sample as i64 - seek_preroll(codec_ctx) as i64,
-        ),
+        DecodeStart::Sample(sample) => {
+            return seek_to_sample(
+                fmt_ctx,
+                audio.stream_index,
+                sample_clock,
+                sample as i64 - seek_preroll(codec_ctx) as i64,
+            )
+        }
     }
+    Ok(())
 }
 
 /// How far before its target a sample seek lands, so a lossy decoder has
@@ -169,29 +172,42 @@ unsafe fn seek_to_indexed_frame_or_warn(
 /// Seek to the frame at or before `sample_pos`. With `AVFMT_FLAG_FAST_SEEK`
 /// set, a seektable-bearing FLAC (and APE/MP4) costs one jump. A FLAC with no
 /// seektable and no stored scrub points binary-searches the file: its read of
-/// the file's end waits for the fill like any other read, one fetch per step,
-/// though the search can't place a sample in the stream's final frames. A seek
-/// that fails is logged, and the decode reads on from wherever the failed
-/// search left the reader: the start when the demuxer didn't move it, the
-/// file's end after a FLAC search that read to it, where the decode finds no
-/// packets.
-pub(super) unsafe fn seek_to_sample_or_warn(
+/// the file's end waits for the fill like any other read, one fetch per step.
+/// The search fails for some samples near the stream's end (in the tests'
+/// 41,960-sample FLAC, those in its 8th and 9th of 11 frames) and for every
+/// sample of a FLAC of one frame, and a search that fails leaves the reader
+/// wherever it last read, usually the file's end. So a failed search is followed by a seek to where the stream's
+/// audio begins, from which the caller's `start_at_sample` trim reaches the target
+/// exactly as a decode from the start does. Only when that fails too is the
+/// reader's place unknown, and the decode fails.
+pub(super) unsafe fn seek_to_sample(
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     sample_clock: &SampleClock,
     sample_pos: i64,
-) {
+) -> Result<(), String> {
     use ffmpeg_sys_next::*;
 
     let target_ts = sample_clock.timestamp_of(sample_pos);
     let ret = avformat_seek_file(fmt_ctx, stream_index, i64::MIN, target_ts, target_ts, 0);
-    if ret < 0 {
-        warn!(
-            "seek to sample {sample_pos} failed ({}); decoding from the start \
-             (file has no usable seektable?)",
-            av_err_str(ret)
-        );
+    if ret >= 0 {
+        return Ok(());
     }
+    warn!(
+        "seek to sample {sample_pos} failed ({}); decoding from the stream's first sample",
+        av_err_str(ret)
+    );
+    // A byte seek to the file's start, which FFmpeg clamps to where the
+    // audio begins: it needs no timestamp, which a one-frame FLAC's search
+    // can't find either.
+    let ret = av_seek_frame(fmt_ctx, stream_index, 0, AVSEEK_FLAG_BYTE as c_int);
+    if ret < 0 {
+        return Err(format!(
+            "seek to sample {sample_pos} failed, and so did the seek to the stream's start ({})",
+            av_err_str(ret)
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

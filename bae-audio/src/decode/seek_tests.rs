@@ -511,3 +511,87 @@ fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
         assert!(from == whole[2..], "{name} from 1: the samples differ from the whole decode's");
     }
 }
+
+/// A FLAC of `total` mono samples at 44.1 kHz, encoded in 4096-sample frames
+/// with no seektable (FFmpeg's FLAC muxer writes none), with the samples it
+/// decodes to.
+fn seektable_less_flac(total: usize) -> (Vec<u8>, Vec<f32>) {
+    init();
+    let original: Vec<i32> =
+        (0..total).map(|i| ((i as i64 * 7919 % 2_000_000) as i32 - 1_000_000) * 1000).collect();
+    let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 24 }, &original, 44100, 1).unwrap();
+    let ground = decode_audio(filled_sparse_buffer(&flac), None, None).unwrap();
+    let samples = ground.samples.iter().map(|&s| s as f32 / i32::MAX as f32).collect();
+    (flac, samples)
+}
+
+/// What a streaming decode of `flac` plays when it seeks to `target` and trims
+/// to it.
+fn play_from_sample(flac: &[u8], target: u64) -> Result<Vec<f32>, crate::DecodeError> {
+    use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
+
+    let buffer = create_sparse_buffer(flac.len() as u64);
+    buffer.append_at(0, flac);
+    let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 500_000);
+    let result = decode_audio_streaming(
+        buffer,
+        &mut sink,
+        DecodeStart::Sample(target),
+        Some(target),
+        None,
+        None,
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    sink.mark_finished();
+    let mut played = Vec::new();
+    let mut chunk = [0.0f32; 1024];
+    loop {
+        let n = source.pull_samples(&mut chunk);
+        if n == 0 && source.is_finished() {
+            break;
+        }
+        played.extend_from_slice(&chunk[..n]);
+    }
+    result.map(|_| played)
+}
+
+/// FFmpeg's binary search, a seektable-less FLAC's only way to seek by sample,
+/// can't place a sample in the stream's last frames: it fails and leaves the
+/// reader at the file's end, where the decode found no packets and ended with
+/// no samples, as a success. A seek to any sample plays from that sample.
+#[test]
+fn a_sample_seek_near_a_seektable_less_flacs_end_plays_from_the_sample() {
+    let total = 4096 * 10 + 1000;
+    let (flac, ground) = seektable_less_flac(total);
+    for target in (0..total).step_by(1021).chain([total - 1]) {
+        let played = play_from_sample(&flac, target as u64)
+            .unwrap_or_else(|e| panic!("seek to {target} failed: {e}"));
+        assert!(
+            played.len() == total - target
+                && played.iter().zip(&ground[target..]).all(|(a, b)| (a - b).abs() < 1e-6),
+            "seek to {target} of {total} played {} samples, not the {} from it",
+            played.len(),
+            total - target,
+        );
+    }
+}
+
+/// A FLAC of one frame gets no scrub points (its last frame is never a point),
+/// so every seek into it is a sample seek.
+#[test]
+fn a_sample_seek_into_a_one_frame_flac_plays_from_the_sample() {
+    let total = 3000;
+    let (flac, ground) = seektable_less_flac(total);
+    for target in [1, 1500, total - 1] {
+        let played = play_from_sample(&flac, target as u64)
+            .unwrap_or_else(|e| panic!("seek to {target} failed: {e}"));
+        assert!(
+            played.len() == total - target
+                && played.iter().zip(&ground[target..]).all(|(a, b)| (a - b).abs() < 1e-6),
+            "seek to {target} of {total} played {} samples, not the {} from it",
+            played.len(),
+            total - target,
+        );
+    }
+}

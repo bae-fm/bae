@@ -438,7 +438,7 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
     let sample_clock = SampleClock::of_stream(stream, sample_rate);
     // Raw packets, no decoder: nothing to flush after the seek.
     if let Some(sample_pos) = start_sample {
-        seek_to_sample_or_warn(fmt_ctx, stream_index, &sample_clock, sample_pos as i64);
+        seek_to_sample(fmt_ctx, stream_index, &sample_clock, sample_pos as i64)?;
     }
 
     let packet = av_packet_alloc();
