@@ -42,7 +42,9 @@ fun <Value, Mapped> PulledSubscription<Value>.map(transform: (Value) -> Mapped):
 
 /**
  * Pull each value and hand it to [onValue] in the calling coroutine, until that coroutine is
- * cancelled or the subscription ends (a pull answers [BridgeException.Cancelled]). A failed read
+ * cancelled or the subscription ends (a pull answers [BridgeException.Cancelled], or
+ * [BridgeException.ShuttingDown] once the runtime is ending with the process: neither clears, so
+ * pulling on would spin on the answer). A failed read
  * is handed to [onError] and the pulls go on: the next value answers the next read that succeeds.
  */
 suspend fun <Value> PulledSubscription<Value>.pullEach(
@@ -53,6 +55,8 @@ suspend fun <Value> PulledSubscription<Value>.pullEach(
         try {
             onValue(next())
         } catch (_: BridgeException.Cancelled) {
+            return
+        } catch (_: BridgeException.ShuttingDown) {
             return
         } catch (error: BridgeException) {
             onError(error)

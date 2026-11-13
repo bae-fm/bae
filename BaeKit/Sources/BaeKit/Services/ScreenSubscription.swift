@@ -13,9 +13,12 @@ public protocol PulledSubscription: Sendable {
 
 /// The one way a screen reads a subscription: pull each value and hand it to
 /// the screen on the main actor, until `stop()` or until the subscription
-/// ends. A failed read is handed to `onError` and the pulls go on: the next
-/// value answers the next read that succeeds. Once stopped, nothing more is
-/// handed on, even a value whose pull was already under way.
+/// ends, which it does when a pull answers cancelled or answers that the
+/// runtime is shutting down: neither clears, and a reader that pulled on
+/// would spin on the answer until the process ended. A failed read is handed
+/// to `onError` and the pulls go on: the next value answers the next read that
+/// succeeds. Once stopped, nothing more is handed on, even a value whose pull
+/// was already under way.
 public final class ScreenSubscription<Source: PulledSubscription>: Sendable {
     private let source: Source
     private let pulls: Task<Void, Never>
@@ -34,6 +37,9 @@ public final class ScreenSubscription<Source: PulledSubscription>: Sendable {
                     onValue(value)
                 }
                 catch BridgeError.Cancelled {
+                    return
+                }
+                catch BridgeError.ShuttingDown {
                     return
                 }
                 catch is CancellationError {
