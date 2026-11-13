@@ -101,6 +101,9 @@ pub struct PlaybackPositions {
     pub playing: bool,
     /// `None` while no preview is loaded.
     pub preview: Option<PreviewPosition>,
+    /// Monotonic acknowledgement of an applied preview seek, kept like
+    /// [`Self::seek_revision`] across ordinary preview ticks and across clips.
+    pub preview_seek_revision: u64,
 }
 
 /// Where playback is going, for the cast surfaces: the speaker button's state,
@@ -167,6 +170,7 @@ impl PlaybackValues {
             PlaybackProgress::PositionUpdate { .. }
             | PlaybackProgress::Seeked { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
+            | PlaybackProgress::PreviewSeeked { .. }
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. }
             | PlaybackProgress::ServiceEnded => None,
@@ -189,7 +193,13 @@ impl PlaybackValues {
 
 impl PlaybackPositions {
     pub(super) fn initial() -> Self {
-        Self { library: None, seek_revision: 0, playing: false, preview: None }
+        Self {
+            library: None,
+            seek_revision: 0,
+            playing: false,
+            preview: None,
+            preview_seek_revision: 0,
+        }
     }
 
     /// These positions after `event`, or `None` when `event` is not about
@@ -255,6 +265,20 @@ impl PlaybackPositions {
                 };
                 preview.position_ms = *position_ms;
                 preview.progress = *progress;
+            }
+            PlaybackProgress::PreviewSeeked { position_ms, progress } => {
+                let Some(preview) = next.preview.as_mut() else {
+                    tracing::debug!(
+                        "preview seek to {position_ms} ms arrived with no preview loaded; dropped"
+                    );
+                    return None;
+                };
+                preview.position_ms = *position_ms;
+                preview.progress = *progress;
+                next.preview_seek_revision = next
+                    .preview_seek_revision
+                    .checked_add(1)
+                    .expect("preview seek revision overflow");
             }
             PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }
@@ -372,6 +396,12 @@ pub enum PlaybackProgress {
         position_ms: u64,
         progress: f64,
     },
+    /// The preview's stream was rebuilt at a new position, by a seek: the
+    /// position moved, and the seek is applied.
+    PreviewSeeked {
+        position_ms: u64,
+        progress: f64,
+    },
     /// A service ended and its end has been told: nothing of it follows, and
     /// whatever comes next is another service's.
     ServiceEnded,
@@ -410,6 +440,14 @@ impl PlaybackProgress {
     /// The preview tick at `position` of a preview on `timeline`.
     pub(crate) fn preview_position(timeline: TrackTimeline, position: StreamPosition) -> Self {
         Self::PreviewPositionUpdate {
+            position_ms: position.as_millis(),
+            progress: timeline.progress(position),
+        }
+    }
+
+    /// The preview's stream rebuilt at `position` of a preview on `timeline`.
+    pub(crate) fn preview_seeked(timeline: TrackTimeline, position: StreamPosition) -> Self {
+        Self::PreviewSeeked {
             position_ms: position.as_millis(),
             progress: timeline.progress(position),
         }

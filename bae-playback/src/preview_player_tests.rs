@@ -153,7 +153,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
-    let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+    let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player = PreviewPlayer::new(
         tokio::runtime::Handle::current(),
@@ -169,7 +169,19 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     player.toggle_pause();
     let _initial_capture = capture_rx.recv().await.expect("initial preview capture");
 
+    while progress_rx.try_recv().is_ok() {}
     player.seek_by_ratio(0.5, &device).await;
+    let mut told = Vec::new();
+    while let Ok(event) = progress_rx.try_recv() {
+        told.push(event);
+    }
+    assert!(
+        told.iter().any(|event| matches!(
+            event,
+            PlaybackProgress::PreviewSeeked { position_ms: 500, progress } if (progress - 0.5).abs() < 0.01
+        )),
+        "the applied seek is told at its position: {told:?}"
+    );
     let mut seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
     player.toggle_pause();
     let captured = seeked_capture.wait_for_samples(1_000).await;

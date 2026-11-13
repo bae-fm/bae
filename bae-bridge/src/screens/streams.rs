@@ -413,10 +413,13 @@ pub(crate) fn preview_position(
         let mut positions = services.subscribe_playback_positions();
         async move {
             loop {
-                let preview = positions.positions().preview;
-                match preview {
+                let held = positions.positions();
+                match held.preview {
                     Some(position) => writer.set_only(BridgeFastValue::PreviewPosition {
-                        position: crate::types::BridgePreviewPosition::from_core(position),
+                        position: crate::types::BridgePreviewPosition::from_core(
+                            position,
+                            held.preview_seek_revision,
+                        ),
                     }),
                     None => writer.remove_only(),
                 }

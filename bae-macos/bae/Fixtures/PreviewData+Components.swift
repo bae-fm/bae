@@ -66,7 +66,8 @@ extension PreviewData {
                 ),
                 durationMs: durationMs,
                 positionMs: positionMs,
-                progress: Double(positionMs) / Double(durationMs)
+                progress: Double(positionMs) / Double(durationMs),
+                seekRevision: 0
             )
         )
         .only

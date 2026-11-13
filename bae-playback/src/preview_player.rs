@@ -339,15 +339,10 @@ impl PreviewPlayer {
             return;
         }
 
-        // When seeking while paused, no tick will fire to carry the new position —
-        // emit explicitly so the NSView updates. When seeking while playing, the
-        // event listener picks up from the new offset on its next tick.
-        if was_paused {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::preview_position(timeline, position),
-            );
-        }
+        // The seek is applied: tell where, so the bar that held the person's
+        // drop shows it from core now. A paused preview fires no tick to carry
+        // the position, and a playing one's listener ticks on from here.
+        emit_progress(&self.progress_tx, PlaybackProgress::preview_seeked(timeline, position));
     }
 
     /// The active preview's output stream's report, if its device made one,

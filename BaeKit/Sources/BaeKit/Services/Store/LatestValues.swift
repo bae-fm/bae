@@ -812,6 +812,33 @@ extension LatestStream where Value == BridgePreviewPosition {
             fed { appHandle.feedPreviewPosition() }
         }
     #endif
+
+    /// Show `key` at `progress` of its length, as the seek the person just
+    /// made there, until a position of a later applied seek arrives.
+    /// Nothing while the key holds no position.
+    fileprivate func holdSeek(_ key: Data, at progress: Double) {
+        guard let current = own(for: key) else { return }
+        let progress = max(0, min(1, progress))
+        let seekRevision = current.seekRevision
+        hold(
+            BridgePreviewPosition(
+                target: current.target,
+                durationMs: current.durationMs,
+                positionMs: UInt64(progress * Double(current.durationMs)),
+                progress: progress,
+                seekRevision: seekRevision
+            ),
+            for: key
+        ) { $0.seekRevision == seekRevision }
+    }
+}
+
+extension LatestSource where Value == BridgePreviewPosition {
+    /// Show this preview at `progress` of its length, as the seek the person
+    /// just made, until core has applied it.
+    public func holdSeek(at progress: Double) {
+        stream.holdSeek(key, at: progress)
+    }
 }
 
 /// One key of a fast stream, which a view hands to the native view that

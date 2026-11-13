@@ -4481,10 +4481,8 @@ shows follows the dragged position: the elapsed time, and the remaining time
 where the bar counts down. The playing position, which keeps arriving while
 they drag, doesn't move the time, and neither the time nor the fill steps
 back to it between the drop and the seek landing. On release the player
-seeks there; on a track's bar the dropped position stays (§9.4) until core
-has applied the seek, and then the time is the playing position again (the
-import preview's bar, whose position carries no count of applied seeks,
-shows the playing position from the release). A seek that fails
+seeks there; the dropped position stays (§9.4) until core has applied the
+seek, and then the time is the playing position again. A seek that fails
 ends playback with its error, as any failure of the player does (§7.6), and
 the bar then shows no time, as it does when nothing plays: the dropped
 position is never left standing.
@@ -5143,12 +5141,13 @@ a preview's, which move as audio plays, a value each time the output has
 played as much audio as the interval the app opened the library with, however
 fast the device takes it, reach an app only in a
 `KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
-so far. So do the parts of the playing track its buffer holds (§7.6), as
+so far, and the preview's, with the preview's seeks applied so far. So do the parts of the playing track its buffer holds (§7.6), as
 fractions of its length under its id, and the playing track's wait on
 storage, under its id while the person waits on its load and it reads from
 storage. A seek the person
-drops is held in front of the track's position until core has applied it, so every view drawing that track — the seek bar,
-the queue's strip — shows where they dropped it meanwhile.
+drops is held in front of the track's position, or the preview's, until core has applied it (a
+preview's seek is applied when its stream is rebuilt at the new position), so every view drawing that
+track — the seek bar, the queue's strip — or that preview shows where they dropped it meanwhile.
 
 Playback's thread outlives the service it runs. A service that ends on a bug
 of its own, or because the audio output won't open as it starts, is told once:

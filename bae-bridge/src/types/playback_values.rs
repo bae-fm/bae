@@ -242,6 +242,9 @@ pub struct BridgePreviewPosition {
     pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
+    /// The applied preview seeks so far, so a bar that projected a seek
+    /// knows when core applied it.
+    pub seek_revision: u64,
 }
 
 /// What the operating-system media surface shows. Mirrors
@@ -378,10 +381,19 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgePreviewPosition = bae_playback::PreviewPosition,
-    from_core: pub(crate) fn,
-    fields: { target: (BridgePreviewTarget), duration_ms, position_ms, progress },
+#[cfg(desktop)]
+impl BridgePreviewPosition {
+    /// The preview's position, with the preview seeks applied so far.
+    pub(crate) fn from_core(position: bae_playback::PreviewPosition, seek_revision: u64) -> Self {
+        let bae_playback::PreviewPosition { target, duration_ms, position_ms, progress } = position;
+        Self {
+            target: BridgePreviewTarget::from_core(target),
+            duration_ms,
+            position_ms,
+            progress,
+            seek_revision,
+        }
+    }
 }
 
 mirror_struct! {
