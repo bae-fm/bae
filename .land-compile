@@ -5,7 +5,8 @@
 # denied.
 # Then the same crates' libraries and binaries without test features, which
 # the apps and bridges build them with (a test-only `pub use` without its
-# `#[cfg]` gate compiles with `test-utils` and breaks every app build).
+# `#[cfg]` gate compiles with `test-utils` and breaks every app build), with
+# warnings denied: an import only test code uses is a warning there.
 # Two commits that each pass the hook can break each other's tests; this is
 # where that shows.
 set -euo pipefail
@@ -42,4 +43,6 @@ else
     exit 0
 fi
 scripts/cargo.sh "${ARGS[@]}" -- -D warnings
-scripts/cargo.sh "${LIBRARY_ARGS[@]}"
+# clippy, not check: `cargo check` takes no `-- -D warnings`, and RUSTFLAGS would
+# change every crate's cache key.
+scripts/cargo.sh clippy "${LIBRARY_ARGS[@]:1}" -- -D warnings
