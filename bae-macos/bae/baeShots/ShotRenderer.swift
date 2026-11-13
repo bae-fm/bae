@@ -322,10 +322,6 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotShared(String)
     case windowNotDrawn(String, CGRect)
     case windowNotKey(String)
-    case noScreen(String)
-    case accessibilityUnavailable(String, Int32)
-    case accessibilityListsNoWindow(String)
-    case windowNotInAccessibilityTree(String, wanted: CGRect, listed: [CGRect])
     case unknownSelection(String, String)
 
     var description: String {
@@ -344,17 +340,6 @@ enum ShotError: Error, CustomStringConvertible {
                 + "\(frame), off the screen or empty"
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
-        case .noScreen(let id):
-            "no display to place scene \(id)'s window against"
-        case .accessibilityUnavailable(let id, let status):
-            "the accessibility API listed no windows of this process for "
-                + "scene \(id) (error \(status))"
-        case .accessibilityListsNoWindow(let id):
-            "the accessibility API lists no window of this process for scene "
-                + "\(id); it lists none while the screen is locked"
-        case .windowNotInAccessibilityTree(let id, let wanted, let listed):
-            "the accessibility tree has no window where scene \(id)'s is, "
-                + "at \(wanted); it lists \(listed)"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }

@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationServices
 import CoreGraphics
 import Foundation
@@ -12,7 +13,31 @@ import Foundation
 /// request on the calling thread, so the read runs on the main actor, where
 /// SwiftUI evaluates view bodies (a body that is main-actor isolated traps
 /// when evaluated anywhere else).
-struct ShotAccessibilityTree: Sendable {
+struct AccessibilityTree: Sendable {
+    /// Why a tree could not be read; `subject` names what it was read for.
+    enum ReadError: Error, CustomStringConvertible {
+        case noScreen(String)
+        case unavailable(String, Int32)
+        case listsNoWindow(String)
+        case windowNotListed(String, wanted: CGRect, listed: [CGRect])
+
+        var description: String {
+            switch self {
+            case .noScreen(let subject):
+                "no display to place \(subject)'s window against"
+            case .unavailable(let subject, let status):
+                "the accessibility API listed no windows of this process for "
+                    + "\(subject) (error \(status))"
+            case .listsNoWindow(let subject):
+                "the accessibility API lists no window of this process for "
+                    + "\(subject); it lists none while the screen is locked"
+            case .windowNotListed(let subject, let wanted, let listed):
+                "the accessibility tree has no window where \(subject)'s is, "
+                    + "at \(wanted); it lists \(listed)"
+            }
+        }
+    }
+
     /// The words' look as the tree gives it: the font's name (whose last part
     /// is the weight), its size in points and the colour as sRGB, 0 to 1.
     struct TextStyle: Sendable {
@@ -53,6 +78,21 @@ struct ShotAccessibilityTree: Sendable {
     /// order. The window itself is not one.
     let nodes: [Node]
 
+    /// The tree of `window`. The accessibility API places a window by its
+    /// top-left from the top of the main display.
+    @MainActor
+    static func read(of window: NSWindow, subject: String) throws -> Self {
+        guard let main = NSScreen.screens.first else {
+            throw ReadError.noScreen(subject)
+        }
+        let frame = window.frame
+        return try read(
+            windowAt: CGPoint(x: frame.minX, y: main.frame.maxY - frame.maxY),
+            size: frame.size,
+            subject: subject
+        )
+    }
+
     /// The tree of the window whose frame, in the accessibility API's
     /// coordinates (points from the top-left of the main display), is
     /// `origin` and `size`.
@@ -60,7 +100,7 @@ struct ShotAccessibilityTree: Sendable {
     static func read(
         windowAt origin: CGPoint,
         size: CGSize,
-        sceneId: String
+        subject: String
     ) throws -> Self {
         let application = AXUIElementCreateApplication(getpid())
         AXUIElementSetMessagingTimeout(application, 10)
@@ -71,11 +111,11 @@ struct ShotAccessibilityTree: Sendable {
             &windows
         )
         guard status == .success, let list = windows as? [AXUIElement] else {
-            throw ShotError.accessibilityUnavailable(sceneId, status.rawValue)
+            throw ReadError.unavailable(subject, status.rawValue)
         }
         // A locked screen lists no window of any app.
         guard !list.isEmpty else {
-            throw ShotError.accessibilityListsNoWindow(sceneId)
+            throw ReadError.listsNoWindow(subject)
         }
         guard
             let window = list.first(where: {
@@ -86,8 +126,8 @@ struct ShotAccessibilityTree: Sendable {
                     && abs(frame.height - size.height) <= 1
             })
         else {
-            throw ShotError.windowNotInAccessibilityTree(
-                sceneId,
+            throw ReadError.windowNotListed(
+                subject,
                 wanted: CGRect(origin: origin, size: size),
                 listed: list.compactMap(Reader.frame(of:))
             )

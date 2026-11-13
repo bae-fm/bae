@@ -48,6 +48,7 @@ struct QueueRow<Content: View, Below: View>: View {
                     }
                     .buttonStyle(.accentPlain)
                     .help(cancel.help)
+                    .accessibilityLabel(Text(cancel.help))
                 }
             }
 

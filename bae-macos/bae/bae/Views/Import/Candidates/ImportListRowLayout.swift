@@ -53,6 +53,7 @@ struct ImportFolderNameLine<Accessory: View>: View {
             Image(systemName: "folder")
                 .themeIcon(.medium)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Text(folderName)
                 .themeText(.mono)
                 .foregroundStyle(.primary)

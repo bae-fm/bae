@@ -29,6 +29,7 @@ struct PreviewOverlay: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.accentPlain)
+                        .accessibilityLabel("Close")
                     }
                     HStack {
                         Button {

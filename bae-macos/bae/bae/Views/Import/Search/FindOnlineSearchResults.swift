@@ -21,12 +21,16 @@ struct FindOnlineSearchResults: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let unusable = search.unusableBarcode {
-                Label(
-                    localizedCoreString(
-                        bridgeUnusableBarcodeKey(reason: unusable)
-                    ),
-                    systemImage: "info.circle"
-                )
+                Label {
+                    Text(
+                        verbatim: localizedCoreString(
+                            bridgeUnusableBarcodeKey(reason: unusable)
+                        )
+                    )
+                } icon: {
+                    Image(systemName: "info.circle")
+                        .accessibilityHidden(true)
+                }
                 .themeText(.body)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, ThemeSpace.group)
@@ -103,6 +107,7 @@ struct FindOnlineSearchResults: View {
         HStack(spacing: ThemeSpace.compact) {
             Image(systemName: "exclamationmark.circle")
                 .foregroundStyle(Theme.warning)
+                .accessibilityLabel("Failed")
             Text(name)
                 .foregroundStyle(.tertiary)
                 .help(reason)

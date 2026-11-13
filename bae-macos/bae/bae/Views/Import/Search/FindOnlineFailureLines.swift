@@ -13,6 +13,7 @@ struct FindOnlineFailureLines: View {
                 HStack(alignment: .top, spacing: ThemeSpace.related) {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundStyle(Theme.warning)
+                        .accessibilityHidden(true)
                     Text(failure.badgeLine)
                     Spacer(minLength: 0)
                 }

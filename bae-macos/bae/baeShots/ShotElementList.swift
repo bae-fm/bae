@@ -88,20 +88,7 @@ struct ShotElementList: Encodable {
         size: CGSize,
         scale: Int
     ) throws -> Self {
-        // The accessibility API places a window by its top-left from the
-        // top of the main display.
-        guard let main = NSScreen.screens.first else {
-            throw ShotError.noScreen(board)
-        }
-        let frame = window.frame
-        let tree = try ShotAccessibilityTree.read(
-            windowAt: CGPoint(
-                x: frame.minX,
-                y: main.frame.maxY - frame.maxY
-            ),
-            size: frame.size,
-            sceneId: board
-        )
+        let tree = try AccessibilityTree.read(of: window, subject: board)
         return Self(
             board: board,
             size: Size(width: size.width, height: size.height),
@@ -121,7 +108,7 @@ struct ShotElementList: Encodable {
 extension ShotElementList.Element {
     /// The element a tree node is: its role from the platform's own, its
     /// words, value and look as the tree gives them.
-    init(node: ShotAccessibilityTree.Node) {
+    init(node: AccessibilityTree.Node) {
         let role = Self.role(native: node.role, subrole: node.subrole)
         self.init(
             role: role,
@@ -145,8 +132,7 @@ extension ShotElementList.Element {
         )
     }
 
-    private static func words(_ value: ShotAccessibilityTree.Value?) -> String?
-    {
+    private static func words(_ value: AccessibilityTree.Value?) -> String? {
         guard case .text(let text)? = value, !text.isEmpty else { return nil }
         return text
     }
@@ -154,7 +140,7 @@ extension ShotElementList.Element {
     /// A toggle's value is `"on"` or `"off"`; any other number is written as
     /// the tree gives it.
     private static func valueText(
-        _ value: ShotAccessibilityTree.Value?,
+        _ value: AccessibilityTree.Value?,
         role: String
     ) -> String? {
         switch value {
@@ -194,7 +180,7 @@ extension ShotElementList.Element {
     /// The look the tree reports, nil when its font's weight is not one of
     /// the nine named weights.
     private static func textStyle(
-        _ style: ShotAccessibilityTree.TextStyle
+        _ style: AccessibilityTree.TextStyle
     ) -> ShotElementList.TextStyle? {
         let part = style.fontName.split(separator: "-").last.map(String.init)
         let named = (part ?? "").replacingOccurrences(of: "Italic", with: "")

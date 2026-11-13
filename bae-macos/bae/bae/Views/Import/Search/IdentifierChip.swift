@@ -176,6 +176,7 @@ struct IdentifierWarning: View {
         Image(systemName: "exclamationmark.circle")
             .themeIcon(.small)
             .foregroundStyle(Theme.warning)
+            .accessibilityLabel("Failed")
     }
 }
 

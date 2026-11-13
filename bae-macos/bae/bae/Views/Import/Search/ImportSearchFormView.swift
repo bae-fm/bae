@@ -131,10 +131,12 @@ struct ImportSearchFormView: View {
                     .foregroundStyle(.tertiary)
             }
             if let signalFailure {
-                Label(
-                    signalFailure.detail,
-                    systemImage: "exclamationmark.circle.fill"
-                )
+                Label {
+                    Text(verbatim: signalFailure.detail)
+                } icon: {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .accessibilityHidden(true)
+                }
                 .themeText(.body)
                 .foregroundStyle(Theme.warning)
             }

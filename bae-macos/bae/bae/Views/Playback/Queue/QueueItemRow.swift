@@ -58,6 +58,7 @@ struct QueueItemRow: View {
                 }
                 .buttonStyle(PressableIconButtonStyle().accentFocus())
                 .help("Remove from queue")
+                .accessibilityLabel("Remove from queue")
                 .opacity(isHovered ? 1 : 0)
                 .allowsHitTesting(isHovered)
             }

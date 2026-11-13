@@ -49,6 +49,8 @@ struct MacTrackRow: View {
                     .themeIcon(.small)
                     .foregroundStyle(Theme.accent)
                     .opacity(isCurrent && !hover ? 1 : 0)
+                    .accessibilityLabel("Now playing")
+                    .accessibilityHidden(!isCurrent)
             }
             .frame(width: max(positionWidth, Self.leadingSlotMinWidth))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {

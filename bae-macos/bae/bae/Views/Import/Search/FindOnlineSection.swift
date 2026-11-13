@@ -131,6 +131,7 @@ struct FindOnlineSectionGlyphView: View {
                 Image(systemName: "exclamationmark.circle")
                     .themeIcon(.small)
                     .foregroundStyle(Theme.warning)
+                    .accessibilityLabel("Failed")
             case .nothing:
                 IdentifierDash()
             }

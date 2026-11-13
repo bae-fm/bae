@@ -6190,7 +6190,11 @@ Those menus open over or under what opened them, or at the click for a context
 menu; the arrows, Return, Escape and typed letters move through them, a click
 outside closes them, and VoiceOver reads them as menus. The Mac's popovers (the
 cast picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
-colour with a hairline edge and macOS's arrow. The parts macOS draws itself,
+colour with a hairline edge and macOS's arrow. On the Mac a symbol
+that a control or the words beside it already name (the ⓘ, a close or remove
+cross, the folder, speaker or arrow beside a name) is hidden from VoiceOver; a
+symbol that says something nothing else says is read as that: the speaker on the
+playing track as Now playing, a failed lookup's mark as Failed. The parts macOS draws itself,
 such as the menu bar's menus and the save panel's Format pop-up, take
 the Pink accent the app declares, as long as the Mac's own accent is
 Multicolor, and the person's Mac accent otherwise; they do not follow the

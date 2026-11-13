@@ -32,6 +32,7 @@ struct CandidateFolderLine: View {
                 Image(systemName: "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
             Button {
                 for path in folderPaths {
@@ -44,6 +45,7 @@ struct CandidateFolderLine: View {
             }
             .buttonStyle(.accentPlain)
             .help("Reveal in Finder")
+            .accessibilityLabel("Reveal in Finder")
             Text(folderName)
                 .themeText(.heading)
                 .textSelection(.enabled)
