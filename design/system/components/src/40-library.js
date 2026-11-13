@@ -13,6 +13,15 @@
     return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 
+  // A playlist's picture: the covers of its first four different releases in a 2×2 square, as playlists show on both platforms; with fewer than four, its first entry's cover; empty, the missing tile. `covers` lists the releases' titles in the playlist's order, each once. One cover alone would make a playlist look like that album, and two playlists that start on one album alike.
+  function PlaylistPicture(props) {
+    var covers = String(props.covers || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var size = Number(props.size || 48), radius = props.radius != null ? Number(props.radius) : 6;
+    if (covers.length < 4) return h(Artwork, { title: covers[0], size: size, radius: radius, missing: !covers.length });
+    return h('div', { className: 'bae-playlist-pic', style: { width: size, height: size, borderRadius: radius }, 'aria-hidden': true },
+      covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, size: size / 2, radius: 0 }); }));
+  }
+
   var SF = {
     play: 'M8 5v14l11-7z', pause: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z',
     previous: 'M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z', next: 'M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z',

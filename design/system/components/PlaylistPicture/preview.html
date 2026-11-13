@@ -1,0 +1,13 @@
+<!-- @dsCard group="Both platforms" height=230 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>PlaylistPicture</title></head>
+<body class="bae-preview" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Four releases', h(B.PlaylistPicture, { covers: 'Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns', size: 120 })), N('Fewer than four', h(B.PlaylistPicture, { covers: 'Copper Sky,Small Hours', size: 120 })), N('Empty', h(B.PlaylistPicture, { size: 120 }))));
+</script>
+</body>
+</html>

@@ -14,7 +14,7 @@
     if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h('div', { className: 'bae-ph', style: { width: 44, height: 44, borderRadius: 6, flex: 'none' } }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-ph', style: { width: 140, height: 11 } }), h('div', { className: 'bae-ph', style: { width: 80, height: 10 } })));
     return h('div', { className: cx('bae-m-librow', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
-      props.credit ? null : h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.missing }),
+      props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 44 }) : h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.missing }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-m-librow-title' }, props.title), h('div', { className: 'bae-m-librow-sub' }, props.subtitle || ' ')),
       props.trailing ? h('span', { className: 'bae-m-librow-trail' }, props.trailing) : null);
   }
@@ -22,7 +22,7 @@
   // One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows.
   function AndroidLibraryRow(props) {
     return h('div', { className: cx('bae-a-librow', props.part && 'bae-a-librow-part', props.inset && 'bae-a-librow-inset') },
-      props.noArt ? null : h(Artwork, { title: props.art || props.title, size: 48, radius: 6, missing: props.missing }),
+      props.noArt ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 48 }) : h(Artwork, { title: props.art || props.title, size: 48, radius: 6, missing: props.missing }),
       h('div', { className: 'bae-a-librow-text' }, h('div', { className: 'bae-a-librow-title' }, props.title), props.subtitle ? h('div', { className: 'bae-a-librow-sub' }, props.subtitle) : null),
       props.trailing ? h('span', { className: 'bae-a-librow-trail' }, props.trailing) : null);
   }

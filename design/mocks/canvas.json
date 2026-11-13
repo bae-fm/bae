@@ -549,7 +549,7 @@
   "mac.playlists.new-playlist.dc.html": {
    "h": 760,
    "page": "explore",
-   "title": "Exploration: macOS: New Playlist",
+   "title": "Exploration: macOS: New playlist",
    "w": 1200,
    "x": 2560,
    "y": 1720
@@ -3970,6 +3970,110 @@
    "w": 1200,
    "x": 7724,
    "y": 21244
+  },
+  "mac.playlists.new-playlist.everyone.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: New playlist: for everyone",
+   "w": 1200,
+   "x": 0,
+   "y": 11864
+  },
+  "android.playlists.new-playlist.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: New playlist",
+   "w": 412,
+   "x": 1296,
+   "y": 11864
+  },
+  "android.playlists.menu.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: A playlist’s options",
+   "w": 412,
+   "x": 1804,
+   "y": 11864
+  },
+  "android.playlists.edit.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Edit playlist",
+   "w": 412,
+   "x": 2312,
+   "y": 11864
+  },
+  "android.playlists.delete.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Delete a playlist",
+   "w": 412,
+   "x": 2820,
+   "y": 11864
+  },
+  "android.playlists.track-menu.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: A playlist’s track menu",
+   "w": 412,
+   "x": 3328,
+   "y": 11864
+  },
+  "android.playlists.reordering.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Reordering a playlist",
+   "w": 412,
+   "x": 3836,
+   "y": 11864
+  },
+  "android.playlists.add-to-playlist.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: Add a track to a playlist",
+   "w": 412,
+   "x": 4344,
+   "y": 11864
+  },
+  "mac.playlists.options.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: A playlist’s options",
+   "w": 1200,
+   "x": 4852,
+   "y": 11864
+  },
+  "mac.playlists.edit.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: Edit playlist",
+   "w": 1200,
+   "x": 6148,
+   "y": 11864
+  },
+  "mac.playlists.delete.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: Delete a playlist",
+   "w": 1200,
+   "x": 7444,
+   "y": 11864
+  },
+  "mac.playlists.track-menu.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: A playlist’s track menu",
+   "w": 1200,
+   "x": 8740,
+   "y": 11864
+  },
+  "mac.playlists.reordering.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: Reordering a playlist",
+   "w": 1200,
+   "x": 10036,
+   "y": 11864
   }
  },
  "createdOnFiles": {
@@ -5976,7 +6080,20 @@
   "mac.library.artist.menu.dc.html",
   "mac.library.artist.edit.dc.html",
   "mac.library.artist.merge.dc.html",
-  "mac.library.artist.merge.confirm.dc.html"
+  "mac.library.artist.merge.confirm.dc.html",
+  "mac.playlists.new-playlist.everyone.dc.html",
+  "android.playlists.new-playlist.dc.html",
+  "android.playlists.menu.dc.html",
+  "android.playlists.edit.dc.html",
+  "android.playlists.delete.dc.html",
+  "android.playlists.track-menu.dc.html",
+  "android.playlists.reordering.dc.html",
+  "android.playlists.add-to-playlist.dc.html",
+  "mac.playlists.options.dc.html",
+  "mac.playlists.edit.dc.html",
+  "mac.playlists.delete.dc.html",
+  "mac.playlists.track-menu.dc.html",
+  "mac.playlists.reordering.dc.html"
  ],
  "pages": [
   {

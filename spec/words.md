@@ -84,8 +84,9 @@ the macOS, Android and core catalogs.
   "restore code", in the apps and in bae's spec, as coven names it
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
   An invite is another person's code, never a restore code.
-- **Everyone.** The listening-history choice that shares your plays with the
-  library's people. Not "Household", not "Members".
+- **Only me** and **Everyone.** Who sees a person's plays (the listening-history
+  choice) or one of their playlists: only them, or the library's people. Not
+  "Private", not "Household", not "Members". A new playlist starts on Only me.
 
 ## Removing and deleting
 

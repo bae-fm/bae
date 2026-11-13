@@ -1,6 +1,7 @@
 /* ---- Library and playback ---- */
 .bae-art { position: relative; flex: none; width: 100%; aspect-ratio: 1; overflow: hidden; background-color: var(--placeholder); background-size: cover; }
 .bae-art-missing { background-image: none !important; }
+.bae-playlist-pic { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; flex: none; }
 .bae-art-shadow-tile { box-shadow: 0 9px 14px var(--shadow); }
 .bae-art-shadow-bar { box-shadow: 0 4px 8px var(--shadow); }
 /* ring: the open tile's accent ring, a gap of the window's background between it and the cover. */

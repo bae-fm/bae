@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exploration: New playlist</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<div style="position:relative"><x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Playlists" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.34" held="0.6" elapsed="1:42" duration="5:03"><x-import component-from-global-scope="Bae.AndroidLibraryRow" title="Late night" covers="Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns" subtitle="12 tracks · Everyone"></x-import><x-import component-from-global-scope="Bae.AndroidLibraryRow" title="Kitchen radio" covers="Copper Sky,Winter Kitchen,Glass Harbor,Field Recordings" subtitle="40 tracks · Everyone"></x-import><x-import component-from-global-scope="Bae.AndroidLibraryRow" title="Running" covers="Small Hours,Northbound" subtitle="18 tracks · Only me"></x-import><x-import component-from-global-scope="Bae.AndroidLibraryRow" title="For Ana" covers="Glass Harbor,Salt and Cedar" subtitle="9 tracks · Only me"></x-import><div style="padding:8px 16px"><x-import component-from-global-scope="Bae.AndroidButton" kind="tonal">New playlist</x-import></div></x-import><x-import component-from-global-scope="Bae.AndroidDialog" title="New playlist" width="340"><x-import component-from-global-scope="Bae.AndroidTextField" label="Name" value="Late night"></x-import><div style="padding:16px 0 8px"><x-import component-from-global-scope="Bae.AndroidSegmentedButtons" label="Who sees it" options="Only me,Everyone" selected="Only me"></x-import></div><div class="bae-muted" style="font:400 14px/20px var(--font-android)">Only you see this playlist.</div><x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Cancel</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Create</x-import></x-import></x-import></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>
