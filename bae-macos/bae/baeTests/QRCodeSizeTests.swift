@@ -1,3 +1,4 @@
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -37,5 +38,13 @@ struct QRCodeSizeTests {
     @Test("every module is drawn the minimum module side or more")
     func moduleSideHolds() {
         #expect(QRCode.minimumModuleSide * 105 == 360)
+    }
+}
+
+extension QRCode {
+    /// How wide `text` is drawn, in points, or nil when no code can be made
+    /// for it.
+    static func side(for text: String) -> CGFloat? {
+        image(for: text).map { $0.size.width * minimumModuleSide }
     }
 }

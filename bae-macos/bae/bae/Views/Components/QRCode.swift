@@ -37,19 +37,13 @@ struct QRCode: View {
         }
     }
 
-    /// How wide `text` is drawn, in points, or nil when no code can be made
-    /// for it.
-    static func side(for text: String) -> CGFloat? {
-        image(for: text).map { $0.size.width * minimumModuleSide }
-    }
-
     private static let context = CIContext()
 
     /// The generator's own quiet zone is one module wide.
     private static let generatorQuietZone = 1
     private static let quietZone = 4
 
-    private static func image(for text: String) -> NSImage? {
+    static func image(for text: String) -> NSImage? {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(text.utf8)
         filter.correctionLevel = "L"
