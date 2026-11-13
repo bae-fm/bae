@@ -88,7 +88,6 @@ section "Rust"
 
 check "cargo fmt"                   cargo fmt --all -- --check
 check "source file layout"          scripts/check-source-file-size.py
-check "sheep parts"                  design/system/split-sheep.py --check
 check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "reqwest error causes"       scripts/check-reqwest-error-display.py
 check "bundled-library checker"     python3 scripts/tests/check-bundled-libraries-test.py

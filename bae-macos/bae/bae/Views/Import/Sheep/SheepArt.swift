@@ -2,9 +2,8 @@ import SwiftUI
 
 /// The logo's drawing cut into the parts the sheep moves, one vector image
 /// each in the asset catalog's `SheepParts` folder. They come from
-/// `design/system/assets/Logos/sheep-parts`, which
-/// `design/system/split-sheep.py` writes from `icon-source.svg`, and all
-/// share the logo's 584 by 545 box, so drawn at its origin they stack in place.
+/// `design/system/assets/Logos/sheep-parts`, and all share the logo's 584 by
+/// 545 box, so drawn at its origin they stack in place.
 enum SheepArt: String, CaseIterable {
     case headband
     case earcupLeft = "earcup-left"
