@@ -1,5 +1,5 @@
 use super::*;
-use crate::airplay::capabilities::ReceiverAccess;
+use crate::airplay::capabilities::{RaopEncryption, ReceiverAccess};
 use crate::test_support::{txt, v4};
 
 /// A features string with bit 48 (CoreUtils pairing/encryption) set — the
@@ -241,4 +241,53 @@ fn an_airplay_advertisements_access_holds_for_its_raop_twin() {
             "the receiver keeps the restriction its AirPlay advertisement states"
         );
     }
+}
+
+/// An AirPlay 1 receiver advertises its RAOP port and the encryption it offers
+/// on `_raop._tcp` only; its `_airplay._tcp` advertisement states neither. The
+/// receiver is connected to at the RAOP advertisement's port with its
+/// encryption, whichever advertisement mDNS delivered first.
+#[test]
+fn an_airplay1_receiver_connects_at_its_raop_advertisement_in_either_order() {
+    let raop = map_device(
+        AirPlayService::Raop,
+        "AABBCCDDEEFF@Den",
+        5000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("et", "1")]),
+    )
+    .unwrap();
+    let airplay = map_device(
+        AirPlayService::AirPlay,
+        "Den",
+        7000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("deviceid", "AABBCCDDEEFF"), ("features", "0x39f7")]),
+    )
+    .unwrap();
+
+    for devices in [[&raop, &airplay], [&airplay, &raop]] {
+        let snap = dedupe_by_id(devices.into_iter());
+        assert_eq!(snap.len(), 1, "one entry per receiver");
+        assert_eq!(snap[0].port, 5000);
+        assert!(matches!(
+            &snap[0].capabilities.as_ref().unwrap().dialect,
+            Dialect::Raop { encryption, .. } if encryption == &[RaopEncryption::RsaAes]
+        ));
+    }
+}
+
+/// An `_airplay._tcp` advertisement without an AirPlay 2 bit has no RAOP port
+/// or encryption to connect with, so a receiver seen only there is not offered.
+#[test]
+fn an_airplay1_advertisement_alone_is_not_a_connectable_receiver() {
+    let airplay = map_device(
+        AirPlayService::AirPlay,
+        "Den",
+        7000,
+        [v4(10, 0, 0, 7)].into_iter(),
+        &txt(&[("deviceid", "AABBCCDDEEFF"), ("features", "0x39f7")]),
+    )
+    .unwrap();
+    assert!(dedupe_by_id([&airplay].into_iter()).is_empty());
 }

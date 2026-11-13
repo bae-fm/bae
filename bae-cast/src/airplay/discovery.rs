@@ -7,8 +7,8 @@
 //! discovery.
 //!
 //! A single receiver often advertises both service types; the browse keys entries
-//! by device id and prefers the AirPlay 2 advertisement, so the picker shows one
-//! entry per receiver at the dialect it will actually be driven with. Turning the
+//! by device id and merges them by rule ([`dedupe_by_id`]), so the picker shows
+//! one entry per receiver at the dialect and port it will actually be driven with. Turning the
 //! [`AirPlayDevice`]s into the merged renderer-device list is the picker's job,
 //! not this module's.
 
@@ -71,6 +71,8 @@ pub(crate) struct AirPlayDevice {
     pub name: String,
     /// The model it states of itself, or `None`.
     pub model: Option<String>,
+    /// The service type this advertisement came from.
+    pub service: AirPlayService,
     /// The receiver's RTSP control address.
     pub addr: IpAddr,
     pub port: u16,
@@ -80,6 +82,35 @@ pub(crate) struct AirPlayDevice {
 }
 
 impl AirPlayDevice {
+    /// Whether this advertisement states what a connection needs. An
+    /// `_airplay._tcp` advertisement without an AirPlay 2 bit is an AirPlay 1
+    /// receiver's second advertisement: it states neither the RAOP port nor the
+    /// encryption, which only `_raop._tcp` does.
+    fn connects_alone(&self) -> bool {
+        match &self.capabilities {
+            Err(_) => true,
+            Ok(capabilities) => match capabilities.dialect {
+                Dialect::AirPlay2 { .. } => true,
+                Dialect::Raop { .. } => self.service == AirPlayService::Raop,
+            },
+        }
+    }
+
+    /// How well this advertisement says how to connect, for choosing among a
+    /// receiver's advertisements. Equal advertisements are told apart by
+    /// address and port, so the choice never depends on arrival order.
+    fn connection_order(&self) -> (u8, IpAddr, u16) {
+        let rank = match &self.capabilities {
+            Err(_) => 3,
+            Ok(_) if !self.connects_alone() => 0,
+            Ok(capabilities) => match capabilities.dialect {
+                Dialect::AirPlay2 { .. } => 2,
+                Dialect::Raop { .. } => 1,
+            },
+        };
+        (rank, self.addr, self.port)
+    }
+
     /// Project into the merged renderer-device list the picker shows across
     /// flavors, carrying what the sender needs to open the connection.
     pub(crate) fn to_renderer_device(&self) -> RendererDevice {
@@ -250,18 +281,25 @@ fn table_change(service: AirPlayService, event: ServiceEvent) -> Option<TableCha
     }
 }
 
-/// One entry per device id, preferring the AirPlay 2 advertisement when a
-/// receiver is seen on both service types.
+/// One entry per device id; see [`dedupe_by_id`].
 fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
     dedupe_by_id(table.by_fullname.values())
 }
 
-/// One entry per receiver id, preferring the AirPlay 2 advertisement when a
-/// receiver is seen on both service types — the same receiver reached the better
-/// way, not two picker rows. An advertisement bae can't read wins over a
-/// readable one: without it bae can't tell which dialect the receiver speaks
-/// best, so the receiver shows as one it can't connect to. Whichever is chosen,
-/// the receiver keeps the strictest access its advertisements state. Shared with the
+/// One entry per receiver id, merging a receiver's advertisements by rule, not
+/// by arrival order. The entry is the advertisement the receiver is connected
+/// at, the first of these that exists:
+///
+/// 1. One bae can't read: without it bae can't tell which dialect the receiver
+///    speaks best, so the receiver shows as one it can't connect to.
+/// 2. The `_airplay._tcp` advertisement of an AirPlay 2 receiver.
+/// 3. The `_raop._tcp` advertisement, which states an AirPlay 1 receiver's RAOP
+///    port and the encryption it offers.
+///
+/// A receiver seen only on `_airplay._tcp` without an AirPlay 2 bit states no
+/// RAOP port or encryption, so it is not offered. Whichever is chosen, the
+/// receiver keeps the strictest access its advertisements state, since `acl`
+/// and `act` are stated on the AirPlay advertisement only. Shared with the
 /// reported-discovery path, which merges services the host's browser found the
 /// same way.
 pub(crate) fn dedupe_by_id<'a>(
@@ -273,15 +311,7 @@ pub(crate) fn dedupe_by_id<'a>(
         by_id
             .entry(&device.id)
             .and_modify(|existing| {
-                let replaces = match (&device.capabilities, &existing.capabilities) {
-                    (Err(_), Ok(_)) => true,
-                    (Ok(new), Ok(old)) => {
-                        matches!(new.dialect, Dialect::AirPlay2 { .. })
-                            && matches!(old.dialect, Dialect::Raop { .. })
-                    }
-                    (Ok(_), Err(_)) | (Err(_), Err(_)) => false,
-                };
-                if replaces {
+                if device.connection_order() > existing.connection_order() {
                     *existing = device;
                 }
             })
@@ -289,11 +319,9 @@ pub(crate) fn dedupe_by_id<'a>(
     }
     by_id
         .into_values()
+        .filter(|chosen| chosen.connects_alone())
         .map(|chosen| {
             let mut chosen = chosen.clone();
-            // `acl` and `act` are stated on the AirPlay advertisement only, so
-            // the receiver keeps the strictest access any advertisement of it
-            // states, whichever one is chosen.
             if let Ok(capabilities) = &mut chosen.capabilities {
                 let strictest = devices
                     .iter()
@@ -366,7 +394,7 @@ pub(crate) fn map_device(
     }
     // `_airplay._tcp` states the model as `model`, `_raop._tcp` as `am`.
     let model = stated(txt.get(service.model_record()).map(String::as_str));
-    Some(AirPlayDevice { id, name, model, addr, port, capabilities })
+    Some(AirPlayDevice { id, name, model, service, addr, port, capabilities })
 }
 
 /// A MAC as one id however it was written: `_airplay._tcp` states `deviceid` as

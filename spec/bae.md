@@ -4587,6 +4587,11 @@ whose AirPlay advertisement says it plays only from people in its home, only
 from its home's admins, or only from its owner's account; an AirPlay 1 receiver
 takes that from its AirPlay advertisement too.
 
+A receiver that advertises on both AirPlay service types is one entry, whichever
+advertisement arrives first. An AirPlay 1 receiver is connected at the port and
+with the encryption its RAOP advertisement states; its AirPlay advertisement
+states neither, so a receiver seen only there is not offered.
+
 bae pairs with an AirPlay 2 receiver when the cast starts, before playback
 moves, so a receiver that refuses says why where the cast was asked for: it is
 locked after too many wrong PINs, busy pairing with another device, asking to
