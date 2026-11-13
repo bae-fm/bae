@@ -895,7 +895,9 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     // The cancel reaches the pin when its held body read next yields, so the
     // body is let go; a body held for good leaves the pin waiting on it. The
     // body may be gone already, when the cancel reached it first.
-    let _ = resume.send(());
+    if resume.send(()).is_err() {
+        // The cancel reached the body first and dropped it.
+    }
     pin.await.unwrap().expect_err("the cancel ended the download the pin waited on");
     let local = manager.store.local_bytes().await.unwrap();
     let audio = local
