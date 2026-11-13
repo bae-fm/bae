@@ -21,8 +21,9 @@ draws boards with the same one.
 Yellow notes beside a row name what the code needs.
 
 The canvas is published at https://claude.ai/artifact/9geFwGqEzevbvbh22NqZzJ.
-These files are its source: an edit made on the published page is copied back
-here and committed before the canvas is published again.
+These files are its source and the published canvas is a copy: an edit made
+on the published page is not kept, and the next publish overwrites it with
+these files.
 
 Boards mount the design system in `../system/` from a copy under `ds/bae/`,
 which publishing builds from `../system/` and git doesn't hold.
