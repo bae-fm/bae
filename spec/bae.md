@@ -1540,7 +1540,9 @@ suggests to.
 
 The pane's identifier chips list every value they hold: the ISRC chip writes
 every code the files' tags carry, separated by " · " and wrapping inside the
-chip, and its accessibility label reads them all.
+chip, and its accessibility label reads them all. Catalog numbers the folder's
+text offers that no release confirms are one chip listing every one, each a
+button that puts that number into the run; none is folded behind a count.
 
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, or a tracklist that couldn't be

@@ -27,6 +27,9 @@ struct IdentifierChip<Trailing: View>: View {
     /// Takes the place of `value`.
     var values: [String] = []
     var style: IdentifierChipStyle = .filled
+    /// Where each of `values` is a button, what it does: the value written
+    /// in the list, separated and wrapping as the values of a chip are.
+    var onValue: ((String) -> Void)?
     @ViewBuilder
     let trailing: Trailing
 
@@ -36,7 +39,31 @@ struct IdentifierChip<Trailing: View>: View {
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
-            if !values.isEmpty {
+            if !values.isEmpty, let onValue {
+                FlowLayout(spacing: ThemeSpace.line) {
+                    ForEach(Array(values.enumerated()), id: \.offset) {
+                        index,
+                        value in
+                        HStack(spacing: ThemeSpace.line) {
+                            Button {
+                                onValue(value)
+                            } label: {
+                                Text(value)
+                                    .themeText(.mono)
+                                    .foregroundStyle(valueStyle)
+                            }
+                            .buttonStyle(.accentPlain)
+                            if index < values.count - 1 {
+                                Text(verbatim: FactList.glyph)
+                                    .themeText(.mono)
+                                    .foregroundStyle(valueStyle)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: identifierListWidth, alignment: .leading)
+            }
+            else if !values.isEmpty {
                 Text(IdentifierChipValues.text(values))
                     .themeText(.mono)
                     .foregroundStyle(valueStyle)
