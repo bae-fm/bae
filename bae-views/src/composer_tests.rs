@@ -351,10 +351,10 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         "linked credits leave the page: {rows:?}"
     );
 
-    // Deleting the release takes its track, credits and links with it; the
-    // work stays.
+    // Deleting the release takes its track, credits and links with it, the
+    // work no track performs any more and the composer nothing credits.
     delete_release(&records, LISTED_RELEASE_ONE).await;
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 0, 0)]);
+    assert_eq!(listed_composers(&db).await, vec![]);
 }
 
 /// A catalog credit in a role other than a writing one makes no composer: an
@@ -915,4 +915,32 @@ async fn composer_list_counts_the_writing_credits_of_a_work_only() {
         results.works.first().expect("the work").composer_names.as_deref(),
         Some("Composer Name Writer")
     );
+}
+
+/// A composer's one work is performed by one release's track; deleting that
+/// release deletes the work and, credited nowhere else, the composer, and the
+/// composer list follows. The other release's composer stays.
+#[tokio::test]
+async fn deleting_the_release_performing_a_composers_work_removes_the_composer() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = test_records(&db);
+    listed_releases()
+        .artist(LISTED_SURVIVOR, "Composer Name One")
+        .artist(LISTED_ABSORBED, "Composer Name Two")
+        .work(LISTED_WORK_ONE, "Work Title One")
+        .composer(LISTED_WORK_ONE, LISTED_SURVIVOR)
+        .work(LISTED_WORK_TWO, "Work Title Two")
+        .composer(LISTED_WORK_TWO, LISTED_ABSORBED)
+        .performs(LISTED_TRACK_ONE, LISTED_WORK_ONE)
+        .performs(LISTED_TRACK_TWO, LISTED_WORK_TWO)
+        .write(&records)
+        .await;
+    assert_eq!(listed_composers(&db).await.len(), 2);
+
+    delete_release(&records, LISTED_RELEASE_ONE).await;
+
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_ABSORBED.to_string(), 1, 1, 0)]);
+    let views = crate::LibraryViews::new(db.clone());
+    assert!(views.find_composer_detail(LISTED_SURVIVOR).await.unwrap().is_none());
+    assert!(views.get_work_detail(LISTED_WORK_ONE).await.unwrap().is_none());
 }

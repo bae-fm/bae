@@ -13,7 +13,7 @@ use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::{
     credit, delete_release, test_records, ARTIST_A, ARTIST_B, ARTIST_C,
 };
-use bae_records::{DbArtist, DbRelease};
+use bae_records::DbArtist;
 use bae_store::test_fixtures::temp_db;
 use bae_store::{LibraryPageWindow, LibraryPageWindows};
 use bae_util::test_channels::HANG_GUARD;
@@ -131,13 +131,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 1)]);
     assert_eq!(crate::LibraryViews::new(db.clone()).get_artist_count().await.unwrap(), 2);
 
-    // A release arriving under the album lists it again.
-    test_records(&db)
-        .insert_release(&DbRelease::new_test(ALBUM_ONE, "24b929ff-1f01-4621-9891-81abea7fbe87"))
-        .await
-        .unwrap();
-    assert_eq!(crate::LibraryViews::new(db.clone()).get_album_count().await.unwrap(), 3);
-    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
+    assert!(test_records(&db).find_album_by_id(ALBUM_ONE).await.unwrap().is_none());
 }
 
 /// Alpha and Bravo each take one Discogs id on a device of their own, as two

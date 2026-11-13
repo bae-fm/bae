@@ -1,7 +1,6 @@
 -- The library album the person picked for a candidate to join, over the one
 -- its records name. No row: the import files under the album the records name,
--- or a new one. No write deletes an album: one emptied while picked stays
--- picked, and the import fills it again.
+-- or a new one. An album deleted while picked takes its pick with it.
 CREATE TABLE IF NOT EXISTS import_candidate_album_pick (
     content_hash TEXT PRIMARY KEY,
     album_id     TEXT NOT NULL,

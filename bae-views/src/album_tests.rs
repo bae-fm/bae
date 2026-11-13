@@ -673,12 +673,12 @@ async fn search_library_follows_the_names_credits_print() {
         .unwrap();
     assert_eq!(found(&db, "printed näme").await[0], vec![SEARCHED_ALBUM.to_string()]);
 
-    // Deleting the album's one release takes its track; the album, empty, and
-    // the work stay, and search finds no album that holds no release.
+    // Deleting the album's one release takes its track, the album and the work
+    // no track performs, and search finds none of them.
     delete_release(&test_records(&db), SEARCHED_RELEASE).await;
     let after = found(&db, "title").await;
     assert!(after[0].is_empty() && after[1].is_empty());
-    assert_eq!(after[4], vec![SEARCHED_WORK.to_string()]);
+    assert!(after[4].is_empty());
 }
 
 /// Two devices apart each name one MusicBrainz artist, so one artist row,

@@ -12,9 +12,9 @@ impl LibraryManager {
 
     /// Delete an album: every release it holds goes, with what each owns, in
     /// one transaction, as [`Self::delete_release`] deletes one. Each coven
-    /// file of theirs goes with its last reference; the album row stays,
-    /// empty, for the reason in `vacate_album_on`. An album holding no
-    /// release is not in the library, and deleting it is refused.
+    /// file of theirs goes with its last reference, and the album goes with
+    /// its last release. An album holding no release is not in the library,
+    /// and deleting it is refused.
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.records.get_releases_for_album(album_id).await?;
         if releases.is_empty() {

@@ -188,9 +188,12 @@ Deleting a release deletes, in one write, its tracks and their places in the
 queue, its files and its cover (§4.2), and is refused for a release the library
 doesn't hold. Deleting an album deletes every release
 it holds in one write, and is refused for an album holding none. An album
-left with no release is never deleted itself: another device may have added a
-release to it while apart. It is inert, since every listing shows only albums
-holding a release, and a release that lands in it later fills it again. Both
+whose last release goes, by a delete or by moving to another album, is deleted
+in the same write, with its credits and ratings; so is a work no track performs
+any more (§2.4) and an artist nothing credits any more (§2.3), each with what
+hangs on it. The write reads what it may empty before it changes anything and
+deletes those that nothing references at its end, so a save that takes a credit
+out and writes it again deletes nothing. Both
 deletes ask first, saying that the release, or every release of the album, will be
 permanently deleted from the person's devices and the cloud, and that the
 original files in their folders won't be touched. On macOS the
@@ -203,7 +206,7 @@ its tracks show their own artists. The flag is decided from the album's
 credits at every write of them, an import's or an edit's, so it never outlives
 an edit of the artists.
 
-**The album grid** shows every album holding a release, newest first unless
+**The album grid** shows every album, newest first unless
 the person sorts it by title, artist (§2.3), year or date
 added, either way; an album of unknown year sorts after every year ascending
 and before them descending, and albums the sort ties go by id. Grouped by
@@ -426,8 +429,10 @@ shows the survivor. A chain of merges shows its last artist, and a loop, left by
 two devices merging a pair in opposite directions, shows the artist with the
 smallest id. The artist each artist shows as is kept on the device
 (`artist_shown_as`), written in the same write as the artist or the merge that
-decides it, whichever device made that write. No write deletes an artist or a
-merge.
+decides it, whichever device made that write. No write deletes a merge; an
+artist a merge names stays while the merge does, and any other artist is
+deleted by the write that leaves nothing crediting it (§2.1), with its other
+printed names and its picture.
 
 **Which artist a credit names.** One rule decides, inside the transaction that
 writes the credit, so nothing landing in between can make it wrong:
@@ -538,8 +543,9 @@ Works are compositions. Tracks link to them, in the order a track performs
 them, and they nest: a movement is part of a symphony, in the symphony's order.
 Works come from MusicBrainz, which names them; a work's artists come with it,
 every one the work's relations state, each with its role (§3.4).
-No write deletes a work: one no track performs any more stays, as an album
-with no release does (§2.1). A release's detail names the works each of its
+A work no track performs any more is deleted by the write that leaves it so,
+with its credits and parts (§2.1); a work whose part a track performs is
+performed through it. A release's detail names the works each of its
 tracks performs, in the track's order, each with its composers.
 
 **The composer list** shows every artist credited on a work in a writing role
@@ -1777,8 +1783,9 @@ Ana clicks Import. bae:
    library holds it, else the oldest. With neither, the album is new and
    takes its id from its group (§2.6). The pane shows which: "New album", the
    album the records name, or the one picked, and its album picker lists any
-   library album to pick instead; a picked album emptied meanwhile stays
-   picked, and the import fills it again (§2.1). Re-identifying a library
+   library album to pick instead; a picked album deleted meanwhile (§2.1)
+   is no longer picked, and the import files under the album the records name
+   or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
    names every album holding the release, or another release of its album:
    those holding the release first, then oldest first. One read answers it
@@ -5700,7 +5707,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `upload_batch_number` | one row: how many upload batches have begun, the number of the one `upload_batch` holds, advanced as its first release joins, by which the Uploading line's bar tells a new batch from the one whose bytes it held (§6.4) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
-| `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
+| `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed or deleted an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

@@ -178,15 +178,13 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>, bae_store::DbError> {
         self.store.subscribe_reconfigurable(initial, move |requested, sql| {
             let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
-            let query = format!(
+            Ok(sql.query(
                 "SELECT requested.value FROM json_each(?1) requested \
-                     WHERE NOT EXISTS ( \
-                         SELECT 1 FROM albums a \
-                         WHERE a.id = requested.value AND {ALBUM_A_IS_SHOWN} \
-                     ) \
-                     ORDER BY requested.value"
-            );
-            Ok(sql.query(&query, [requested], |row| row.get::<_, String>(0))?)
+                 WHERE NOT EXISTS (SELECT 1 FROM albums a WHERE a.id = requested.value) \
+                 ORDER BY requested.value",
+                [requested],
+                |row| row.get::<_, String>(0),
+            )?)
         })
     }
 
@@ -392,7 +390,6 @@ fn search_library_on(
             FROM (
                 SELECT a.id, a.title, a.year FROM albums a
                 WHERE {album_matches}
-                  AND {ALBUM_A_IS_SHOWN}
                 ORDER BY {title_key}, a.id
                 LIMIT ?2
             ) a

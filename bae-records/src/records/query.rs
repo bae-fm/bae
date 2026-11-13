@@ -10,28 +10,6 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
-/// After a release has left `album_id` inside the current transaction: whether
-/// the album is now empty. Its primary release is whichever of the releases
-/// left is ordered lowest, so nothing else follows the one that left.
-///
-/// An emptied album is never deleted. Another device may have added a release
-/// to it while apart, and a delete wins over that release in the merge and
-/// leaves it without a parent, so the pull that carries it could never apply.
-/// An empty album is inert instead: every listing shows only albums with a
-/// release.
-/// A release that later lands in it, from any device, fills it again.
-///
-/// Precondition: the release row must already be deleted or repointed away from
-/// `album_id`, since this counts what remains.
-pub(super) fn vacate_album_on(conn: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
-    let remaining: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM releases WHERE album_id = ?",
-        params![album_id],
-        |row| row.get(0),
-    )?;
-    Ok(remaining == 0)
-}
-
 /// The id of the artist `artist_id` (an SQL expression) shows as: the survivor
 /// of its merges, or itself (`artist_shown_as`).
 pub fn shown_artist_id(artist_id: &str) -> String {
@@ -66,11 +44,6 @@ pub fn artist_is_shown(alias: &str) -> String {
          WHERE shown_as.artist_id = {alias}.id AND shown_as.shown_artist_id = {alias}.id)"
     )
 }
-
-/// Whether the album aliased `a` (every album listing's alias) holds a release,
-/// so listings include it. See `vacate_album_on`.
-pub const ALBUM_A_IS_SHOWN: &str =
-    "EXISTS (SELECT 1 FROM releases shown_release WHERE shown_release.album_id = a.id)";
 
 /// Build a `DbLibraryImage` from a `covers`/`artist_images` row. The table is the
 /// type, so `image_type` is supplied by the caller rather than read from a column.
@@ -164,7 +137,7 @@ pub(crate) fn album_release_ids_json_sql() -> &'static str {
 
 /// The album `a`'s primary release: its lowest-ordered release, ties broken
 /// by release id, so every device that holds the same rows names the same
-/// one. NULL only for an emptied album, which no listing shows.
+/// one.
 pub fn album_primary_release_sql() -> &'static str {
     "(SELECT album_release.id FROM releases album_release \
       WHERE album_release.album_id = a.id \

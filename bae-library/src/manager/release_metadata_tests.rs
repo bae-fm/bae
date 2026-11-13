@@ -260,7 +260,11 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .filter(|row| row.starts_with("album_artists") || row.starts_with("track_artists"))
         .collect::<Vec<_>>();
     assert_eq!(credit_rows, ["track_artists"], "the one place whose artist changed");
-    assert_eq!(rows[writes].iter().filter(|row| *row == "artists").count(), 1, "the new artist");
+    assert_eq!(
+        rows[writes].iter().filter(|row| *row == "artists").count(),
+        2,
+        "the new artist, and the one nothing credits any more"
+    );
     let first_track =
         &manager.library.records().get_tracks_for_release(&release.id).await.unwrap()[0];
     assert_eq!(

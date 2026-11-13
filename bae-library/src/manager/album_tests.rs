@@ -47,6 +47,7 @@ async fn test_delete_album_deletes_all_releases() {
 
     let album_result = views(manager).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
+    assert!(manager.get_album_by_id(&album.id).await.unwrap().is_none(), "the album row goes");
     let releases = album_releases(manager, &album.id).await;
     assert!(releases.is_empty());
 }

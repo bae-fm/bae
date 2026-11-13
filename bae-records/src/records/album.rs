@@ -106,7 +106,7 @@ impl Records {
     /// Delete every release of `album_id` in one write, each as `releases`
     /// planned it. Refuse if the album's releases or any of theirs changed
     /// since planning; each coven file of theirs goes with its last
-    /// reference.
+    /// reference, and the album with its last release.
     pub async fn delete_album_with_cleanup(
         &self,
         album_id: &str,
@@ -115,6 +115,9 @@ impl Records {
         let album_id = album_id.to_string();
         self.store
             .write(move |sql| {
+                let release_ids: Vec<&str> =
+                    releases.iter().map(|release| release.release_id()).collect();
+                let emptiable = Emptiable::of_releases(&sql, &release_ids)?;
                 let mut current: Vec<String> = sql.query(
                     "SELECT id FROM releases WHERE album_id = ? ORDER BY id",
                     params![album_id],
@@ -135,10 +138,8 @@ impl Records {
                 for release in &releases {
                     release.apply_on(&sql)?;
                 }
-                // The releases go; the album row stays, empty, for the reason in
-                // `vacate_album_on`.
                 sql.execute("DELETE FROM releases WHERE album_id = ?", params![album_id])?;
-                Ok(())
+                Ok(emptiable.remove_emptied(&sql)?)
             })
             .await
     }

@@ -63,6 +63,8 @@ mod release_edit_save;
 pub use release::AlbumFields;
 #[cfg(desktop)]
 pub use release_edit_save::{ReleaseEditSaveError, ReleaseEditWrite};
+mod emptied;
+use emptied::Emptiable;
 mod release_deletion;
 mod release_detail;
 pub use release_detail::{

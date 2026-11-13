@@ -231,13 +231,15 @@ impl Records {
             LabelParts::new(&*self.ids, self.store.now_utc(), &metadata.release.pressing.labels);
         let now = self.store.now_utc().to_rfc3339();
         artist_resolution::write_resolving_identities(&self.store, move |sql| {
+            let emptiable = Emptiable::of_releases(&sql, &[metadata.release.id.as_str()])?;
             write_release_metadata_on(
                 &sql,
                 &metadata,
                 AlbumFields::Written,
                 &now,
                 &label_write(&labels),
-            )
+            )?;
+            Ok(emptiable.remove_emptied(&sql)?)
         })
         .await
     }
@@ -419,19 +421,21 @@ impl Records {
     }
 
     /// Delete a release in one write. Its album's next release in album order
-    /// is then the primary; nothing else is written for that.
-    /// Shared artists and works remain available to other releases and devices.
+    /// is then the primary; nothing else is written for that. The album, a
+    /// work no track performs any more and an artist nothing credits any more
+    /// are deleted in the same write (see `Emptiable`).
     /// Each coven file of the release goes with its last reference, and an
     /// upload of one this device still has queued is retired.
     pub async fn delete_release_with_cleanup(
         &self,
         plan: ReleaseDeletion,
-    ) -> Result<bool, DeletionError> {
+    ) -> Result<(), DeletionError> {
         self.store
             .write(move |sql| {
+                let emptiable = Emptiable::of_releases(&sql, &[plan.release_id()])?;
                 plan.apply_on(&sql)?;
                 sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
-                Ok(vacate_album_on(&sql, plan.album_id())?)
+                Ok(emptiable.remove_emptied(&sql)?)
             })
             .await
     }

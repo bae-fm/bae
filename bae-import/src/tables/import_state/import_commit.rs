@@ -371,8 +371,9 @@ impl ImportTables {
                     });
 
                     // A new album for a release group carries the group's id, so
-                    // its row can be here already, emptied by an earlier delete
-                    // or move: the import writes it whole either way.
+                    // its row can be here already, written by an import of the
+                    // group that committed since this one chose its album: the
+                    // import writes it whole either way.
                     if let Some(album) = &album {
                         upsert_album_row(tx, album)?;
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;

@@ -172,7 +172,8 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'release_listing';
 END;
 
--- What library search finds of albums (`search.sql`) moves with an album's title,
+-- What library search finds of albums (`search.sql`) moves with an album's title
+-- and its deletion,
 -- an artist's name, an artist's other printed names, an album's credits and
 -- the artist each credit shows as: every write changing one of them advances
 -- `library_search` in `library_list_versions`, so a list narrowed to what it
@@ -187,12 +188,22 @@ BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
+CREATE TRIGGER IF NOT EXISTS library_search_album_removed AFTER DELETE ON albums
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
 CREATE TRIGGER IF NOT EXISTS library_search_artist_added AFTER INSERT ON artists
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;
 
 CREATE TRIGGER IF NOT EXISTS library_search_artist_changed AFTER UPDATE OF name ON artists
+BEGIN
+    UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_search_artist_removed AFTER DELETE ON artists
 BEGIN
     UPDATE library_list_versions SET version = version + 1 WHERE source = 'library_search';
 END;

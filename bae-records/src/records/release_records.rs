@@ -79,14 +79,14 @@ impl Records {
             .await
     }
 
-    /// Whether the album `album_id` holds any release, by the albums'
-    /// releases index.
-    pub async fn album_holds_releases(&self, album_id: &str) -> Result<bool, DbError> {
+    /// Whether the library holds the album `album_id`; an album is deleted
+    /// with its last release, so it holds a release.
+    pub async fn album_exists(&self, album_id: &str) -> Result<bool, DbError> {
         let album_id = album_id.to_string();
         self.store
             .read(move |sql| {
                 Ok(sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?1)",
+                    "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?1)",
                     [album_id],
                     |row| row.get(0),
                 )?)
@@ -100,7 +100,13 @@ impl Records {
     #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = self.store.now_utc();
-        self.store.call_sql(move |sql| set_records_on(&sql, &change, now)).await
+        self.store
+            .call_sql(move |sql| {
+                let emptiable = Emptiable::of_releases(&sql, &[change.release_id.as_str()])?;
+                set_records_on(&sql, &change, now)?;
+                emptiable.remove_emptied(&sql)
+            })
+            .await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
@@ -151,15 +157,16 @@ pub struct RecordsChange {
 
 /// Write `change`:
 ///
-/// 1. Write the destination album when `new_album` is `Some` and that album
-///    holds no release, with a copy of `current_album_id`'s credit list (so it
+/// 1. Write the destination album when `new_album` is `Some` and the library
+///    does not hold it, with a copy of `current_album_id`'s credit list (so it
 ///    lands credited as the source was, not a bare row with no artist).
 /// 2. Replace the release's records.
 /// 3. UPDATE the release's `album_id`; a release that moves is ordered after
 ///    the destination album's others.
-/// 4. If the release vacated `current_album_id` (the source), the source's
-///    primary release is whichever release left there is ordered lowest. An
-///    emptied source stays.
+///
+/// The source album, emptied by the move, is deleted by the caller's
+/// `Emptiable::remove_emptied` at the end of its write, once the rest of the
+/// write has had its say.
 ///
 /// Metadata columns (pressing fields, album fields, tracks) are deliberately
 /// untouched. Caller decides whether to reseed the metadata.
@@ -178,20 +185,19 @@ pub(super) fn set_records_on(
     let RecordsChange { release_id, records, current_album_id, target_album_id, new_album } =
         change;
 
-    // 1. Write the destination album when it is new to this release's
-    //    history: absent, or here but empty (a group's album another release
-    //    vacated). Must come before the release UPDATE so the FK on
-    //    `releases.album_id` points at an existing row. The album takes the
-    //    source's fields and credits; one that holds releases by the time this
-    //    transaction runs is left as it is.
+    // 1. Write the destination album when the library does not hold it yet.
+    //    Must come before the release UPDATE so the FK on `releases.album_id`
+    //    points at an existing row. The album takes the source's fields and
+    //    credits; one the library holds by the time this transaction runs is
+    //    left as it is.
     if let Some(album) = new_album {
-        let holds_releases: bool = tx.query_row(
-            "SELECT EXISTS (SELECT 1 FROM releases WHERE album_id = ?)",
+        let held: bool = tx.query_row(
+            "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)",
             params![album.id],
             |row| row.get(0),
         )?;
-        if !holds_releases {
-            upsert_album_row(tx, album)?;
+        if !held {
+            insert_album_row(tx, album)?;
             let source_artists: Vec<DbAlbumArtist> = tx.query(
                 &format!(
                     "SELECT aa.artist_id, aa.position, aa.join_phrase, ac.name_key, ac.name \
@@ -235,14 +241,6 @@ pub(super) fn set_records_on(
         "UPDATE releases SET album_id = ? WHERE id = ?",
         params![target_album_id, release_id],
     )?;
-
-    // 4. Source-album cleanup. Only runs when the release actually moved;
-    //    same-album updates don't vacate anything. Recheck inside the
-    //    transaction (TOCTOU: a writer may have added a release to the source
-    //    since the manager's pre-flight read).
-    if target_album_id != current_album_id {
-        vacate_album_on(tx, current_album_id)?;
-    }
 
     Ok(())
 }

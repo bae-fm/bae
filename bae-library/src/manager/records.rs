@@ -31,8 +31,8 @@ impl LibraryManager {
     /// merge candidate, a release alone in its album moves to its group's own
     /// album (`bae_records::identity::album_id_for_records`); one with siblings stays put
     /// if no sibling disagrees on a shared catalog, and moves to its group's
-    /// album (or a fresh one, with no group) if one does. A vacated album stays,
-    /// empty (see `vacate_album_on`).
+    /// album (or a fresh one, with no group) if one does. A vacated album is
+    /// deleted with its last release.
     ///
     /// **Album/release/track row data is not touched** — pressing fields, album
     /// fields, and tracks stay as they are. The caller decides whether to reseed
@@ -155,15 +155,14 @@ impl LibraryManager {
         }
     }
 
-    /// The group's album as the target: the row already here holding
-    /// releases, or one written under the group's id from the current album
-    /// (new, or here but emptied).
+    /// The group's album as the target: the row already here, or one written
+    /// under the group's id from the current album.
     async fn group_album(
         &self,
         current_album_id: &str,
         group_album_id: String,
     ) -> Result<RecordsTargetAlbum, LibraryError> {
-        if self.records.album_holds_releases(&group_album_id).await? {
+        if self.records.album_exists(&group_album_id).await? {
             return Ok(RecordsTargetAlbum { album_id: group_album_id, new_album: None });
         }
         let new_album =

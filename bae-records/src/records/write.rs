@@ -72,8 +72,7 @@ pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result
 }
 
 /// Write `album` whether or not its row is here: a group's album (whose id is
-/// the group's) can be here already, emptied, when a release is filed under it
-/// again.
+/// the group's) can be here already, written by another import of the group.
 #[cfg(desktop)]
 pub fn upsert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(

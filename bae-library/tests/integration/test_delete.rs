@@ -93,7 +93,7 @@ async fn test_delete_release_integration() {
 }
 
 #[tokio::test]
-async fn test_delete_last_release_empties_album() {
+async fn test_delete_last_release_deletes_album() {
     let (library, _temp_dir) = bae_library::test_libraries::setup_test_library().await;
     let db = library.store().clone();
     let records = library.records().clone();
@@ -112,6 +112,7 @@ async fn test_delete_last_release_empties_album() {
     let album_result =
         bae_views::LibraryViews::new(db.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
+    assert!(library.manager().get_album_by_id(&album.id).await.unwrap().is_none());
 
     let releases = library.records().get_releases_for_album(&album.id).await.unwrap();
     assert!(releases.is_empty());

@@ -82,7 +82,14 @@ impl Records {
             ReleaseEditWrite::Fields(metadata) => metadata.release.id.clone(),
             ReleaseEditWrite::Applied { rows, .. } => rows.release.id.clone(),
         };
+        let release_id_written = release_id.clone();
+        let album_id_written = match &write {
+            ReleaseEditWrite::Fields(metadata) => metadata.album.id.clone(),
+            ReleaseEditWrite::Applied { rows, .. } => rows.album.id.clone(),
+        };
         let gone = artist_resolution::write_resolving_identities(&self.store, move |sql| {
+            let emptiable = Emptiable::of_releases(&sql, &[release_id_written.as_str()])?
+                .including_album(&sql, &album_id_written)?;
             if let ReleaseEditWrite::Applied { rows, .. } = &write {
                 if let Some(track_id) = track_gone_on(&sql, rows)? {
                     return Ok(Some(track_id));
@@ -109,6 +116,7 @@ impl Records {
                     &label_write(&labels),
                 ),
             }?;
+            emptiable.remove_emptied(&sql)?;
             Ok(None)
         })
         .await?;
