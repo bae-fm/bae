@@ -222,8 +222,13 @@ struct ImportSettingsTabTests {
             ) { _, host in
                 try await SnapshotTestSupport.settle(host)
 
+                // The pop-up is the one control taller than the 15 point info
+                // buttons beside the switches above it.
+                let popUp = HostedMenus.controls(in: host)
+                    .first { $0.bounds.height > 20 }
                 #expect(
-                    popUps(in: host).first?.isEnabled == importTo.popUpEnabled
+                    try popUp.map { try HostedMenus.opens($0) }
+                        == importTo.popUpEnabled
                 )
             }
         }
@@ -268,11 +273,6 @@ struct ImportSettingsTabTests {
     /// one the key unlocks.
     private func discogsSwitch(in host: NSView) -> NSSwitch? {
         switches(in: host).dropLast().last
-    }
-
-    private func popUps(in host: NSView) -> [NSPopUpButton] {
-        SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
     }
 
     private func keyField(in host: NSView) -> NSTextField? {

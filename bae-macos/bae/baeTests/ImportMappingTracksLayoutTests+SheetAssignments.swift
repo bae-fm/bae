@@ -49,8 +49,7 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(sheet, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let menus = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSPopUpButton }
+            let menus = HostedMenus.controls(in: host)
             #expect(menus.count == 2, "the summary, then the missing reference")
         }
         let references = sheet.referenceOptions
@@ -165,10 +164,9 @@ extension ImportMappingTracksLayoutTests {
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(group, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let menus = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSPopUpButton }
+            let menus = HostedMenus.controls(in: host)
             try #require(menus.count == 1, "the summary is the one menu")
-            #expect(menus[0].isEnabled)
+            #expect(try HostedMenus.opens(menus[0]))
         }
         let layout = ImportSheetBindingLayout(sheet: group)
         #expect(layout.summary == .submenus(references))

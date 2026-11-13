@@ -65,9 +65,8 @@ struct SortCriteriaRowTests {
         }
     }
 
-    /// The field name is a menu label. An AppKit menu button renders a label
-    /// as its title and can drop the rest, so assert the pill's menu button
-    /// still carries its field.
+    /// The pill's field is drawn as its menu button's label and listed in the
+    /// menu it opens, so assert that menu still lists its field.
     @MainActor
     @Test("the pill draws its field")
     func thePillDrawsItsField() async throws {
@@ -89,16 +88,10 @@ struct SortCriteriaRowTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let menu = try #require(
-                SnapshotTestSupport.descendants(of: host)
-                    .compactMap { $0 as? NSPopUpButton }
-                    .first
-            )
+            let menu = try #require(HostedMenus.controls(in: host).first)
             let field = String(localized: BridgeSortField.dateAdded.displayName)
-            #expect(
-                menu.attributedTitle.string.contains(field),
-                "the menu reads \(menu.attributedTitle.string)"
-            )
+            let titles = try #require(try HostedMenus.titles(of: menu))
+            #expect(titles.contains(field), "the menu lists \(titles)")
         }
     }
 }

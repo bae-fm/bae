@@ -15,15 +15,17 @@
         }
     }
 
+    /// The anchor's own view, which takes no clicks and is the one thing in
+    /// the AppKit tree that marks where a menu control sits.
+    final class MacMenuAnchorNSView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
     struct MacMenuAnchorView: NSViewRepresentable {
         let anchor: MacMenuAnchor
 
-        private final class Passive: NSView {
-            override func hitTest(_ point: NSPoint) -> NSView? { nil }
-        }
-
         func makeNSView(context: Context) -> NSView {
-            let view = Passive()
+            let view = MacMenuAnchorNSView()
             anchor.view = view
             return view
         }

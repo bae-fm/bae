@@ -16,9 +16,8 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// axes, so a pane far wider than the card doesn't strand it in a corner.
     @Test("the card is centered in the pane at its own width")
     func theCardIsCenteredInThePane() async throws {
-        // The destination pop-up is a real AppKit control, so where it lands in
-        // the pane, less where it sits inside the card, is the card's own
-        // origin.
+        // Where the destination pop-up lands in the pane, less where it sits
+        // inside the card, is the card's own origin.
         let cardSize = Self.cardSize(showsStorageChoices: true)
         let inCard = try await SnapshotTestSupport.withHostedWindow(
             Self.card(showsStorageChoices: true),
@@ -142,13 +141,8 @@ struct ImportCandidateBulkSelectionPaneTests {
             let popUps = Self.popUps(in: host)
             #expect(popUps.count == 1)
             let popUp = try #require(popUps.first)
-            let center = popUp.convert(
-                NSPoint(x: popUp.bounds.midX, y: popUp.bounds.midY),
-                to: host
-            )
-            let hit = host.hitTest(host.convert(center, to: host.superview))
             #expect(
-                hit === popUp || hit?.isDescendant(of: popUp) == true,
+                try HostedMenus.opens(popUp),
                 "a click on the pop-up reaches it, not the row around it"
             )
         }
@@ -239,11 +233,9 @@ struct ImportCandidateBulkSelectionPaneTests {
             .fittingSize
     }
 
-    /// SwiftUI's pop-up picker is an AppKit pop-up button, so the destination
-    /// choice is the pop-up the hosted tree holds.
-    private static func popUps(in host: NSView) -> [NSPopUpButton] {
-        SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
+    /// The destination choice is the pop-up the hosted tree holds.
+    private static func popUps(in host: NSView) -> [NSView] {
+        HostedMenus.controls(in: host)
     }
 
     /// Where the destination pop-up sits in `host`.

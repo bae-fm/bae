@@ -23,7 +23,7 @@ struct TransfersSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            #expect(pickers(in: host).count == 2)
+            #expect(HostedMenus.controls(in: host).count == 2)
         }
     }
 
@@ -38,11 +38,15 @@ struct TransfersSettingsTabTests {
 
             // Uploads first, downloads second, in the order the tab lists them.
             // Item n stands for n + 1 simultaneous transfers.
-            let controls = pickers(in: host)
+            let controls = HostedMenus.controls(in: host)
             try #require(controls.count == 2)
-            select(item: 4, in: controls[0])
+            try #require(
+                try HostedMenus.choose(5.formatted(), from: controls[0])
+            )
             try await Wait.until { !recorder.uploadWrites.isEmpty }
-            select(item: 0, in: controls[1])
+            try #require(
+                try HostedMenus.choose(1.formatted(), from: controls[1])
+            )
             try await Wait.until { !recorder.downloadWrites.isEmpty }
 
             #expect(recorder.uploadWrites == [5])
@@ -99,16 +103,6 @@ struct TransfersSettingsTabTests {
             .environment(UiStore())
     }
 
-    private func pickers(in host: NSView) -> [NSPopUpButton] {
-        SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
-    }
-
-    /// Chooses the item the way a click on it does: the menu runs the item's
-    /// action, which selects it and tells SwiftUI.
-    private func select(item: Int, in control: NSPopUpButton) {
-        control.menu?.performActionForItem(at: item)
-    }
 }
 
 @MainActor

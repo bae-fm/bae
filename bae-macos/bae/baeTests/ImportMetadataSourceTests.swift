@@ -546,8 +546,15 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     private func releaseEntryFrames(
         in host: NSView
     ) throws -> (identify: NSRect, search: NSRect) {
+        let menus = HostedMenus.controls(in: host)
+            .map { $0.convert($0.bounds, to: host) }
         let controls = focusFrames(in: host)
-            .filter { $0.height >= 20 }
+            .filter { frame in
+                frame.height >= 20
+                    && !menus.contains {
+                        $0.insetBy(dx: -2, dy: -2).contains(frame)
+                    }
+            }
             .sorted { $0.minX < $1.minX }
         XCTAssertEqual(controls.count, 2)
         return (try XCTUnwrap(controls.first), try XCTUnwrap(controls.last))
@@ -561,10 +568,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 
     /// The card's own menu, told apart from the release grid's fact menus by
     /// where it sits: in the action row, level with the identify buttons.
-    private func sourceMenuButton(in host: NSView) throws -> NSPopUpButton {
+    private func sourceMenuButton(in host: NSView) throws -> NSView {
         let (_, search) = try releaseEntryFrames(in: host)
-        let menus = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSPopUpButton }
+        let menus = HostedMenus.controls(in: host)
             .filter { button in
                 let frame = button.convert(button.bounds, to: host)
                 return frame.minY < search.maxY && frame.maxY > search.minY
@@ -700,10 +706,7 @@ extension ImportMetadataCardLayoutTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            XCTAssertEqual(
-                focusFrames(in: host).filter { $0.height >= 20 }.count,
-                2
-            )
+            XCTAssertNoThrow(try releaseEntryFrames(in: host))
             XCTAssertNoThrow(try menuFrame(in: host))
         }
     }

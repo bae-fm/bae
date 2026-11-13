@@ -242,7 +242,7 @@ extension ImportMappingTracksLayoutTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            let controls = buttons(in: host)
+            let controls = HostedMenus.controls(in: host)
                 .sorted {
                     $0.convert($0.bounds, to: host).minX
                         < $1.convert($1.bounds, to: host).minX
@@ -280,7 +280,7 @@ extension ImportMappingTracksLayoutTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            #expect(buttons(in: host).count == 1)
+            #expect(HostedMenus.controls(in: host).count == 1)
         }
     }
 }
@@ -510,11 +510,6 @@ extension ImportMappingTracksLayoutTests {
             .frame(width: 180, alignment: .leading)
         )
         return host.fittingSize.height
-    }
-
-    @MainActor
-    private func buttons(in host: NSView) -> [NSButton] {
-        SnapshotTestSupport.descendants(of: host).compactMap { $0 as? NSButton }
     }
 
     func actions(
