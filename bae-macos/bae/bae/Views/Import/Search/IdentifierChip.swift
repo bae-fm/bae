@@ -14,10 +14,18 @@ enum IdentifierChipStyle {
 /// The widest a chip's value is drawn before it truncates in the middle.
 private let identifierValueWidth: CGFloat = 92
 
+/// The widest a chip holding several values grows before its values wrap onto
+/// another line.
+private let identifierListWidth: CGFloat = 280
+
 /// One identifier in the band: its kind, its value, and the providers' answers.
 struct IdentifierChip<Trailing: View>: View {
     let label: String
     var value: String?
+    /// Every value the chip holds, where it holds several: all of them,
+    /// separated by " · " and wrapping inside the chip, never the first alone.
+    /// Takes the place of `value`.
+    var values: [String] = []
     var style: IdentifierChipStyle = .filled
     @ViewBuilder
     let trailing: Trailing
@@ -28,7 +36,16 @@ struct IdentifierChip<Trailing: View>: View {
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
-            if let value {
+            if !values.isEmpty {
+                Text(IdentifierChipValues.text(values))
+                    .themeText(.mono)
+                    .foregroundStyle(valueStyle)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: identifierListWidth, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(IdentifierChipValues.spoken(values))
+            }
+            else if let value {
                 Text(value)
                     .themeText(.mono)
                     .strikethrough(style == .struck)
@@ -66,6 +83,20 @@ struct IdentifierChip<Trailing: View>: View {
 
     private var border: Color {
         isHovered ? Theme.hairlineStrong : Theme.hairline
+    }
+}
+
+/// How a chip that holds several values writes them.
+enum IdentifierChipValues {
+    /// Every value, separated by " · ".
+    static func text(_ values: [String]) -> String {
+        values.joined(separator: " · ")
+    }
+
+    /// Every value as accessibility reads them: a list in the viewer's
+    /// language.
+    static func spoken(_ values: [String]) -> String {
+        values.formatted(.list(type: .and, width: .standard))
     }
 }
 

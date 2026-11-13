@@ -1545,6 +1545,10 @@ still being read, which can add barcodes and catalog numbers. The search
 form says the artwork is still being read under the fields its text
 suggests to.
 
+The pane's identifier chips list every value they hold: the ISRC chip writes
+every code the files' tags carry, separated by " · " and wrapping inside the
+chip, and its accessibility label reads them all.
+
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, or a tracklist that couldn't be
 checked. A folder whose files rule out every release found (§3.3) counts as

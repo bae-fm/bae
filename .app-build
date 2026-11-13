@@ -72,3 +72,4 @@ limit mac-playlist-shots 20m
 limit android-shots 20m
 limit android-welcome-shots 20m
 limit android-component-shots 20m
+step mac identifier-chip-values-tests ./bae-macos/test.sh --run-only IdentifierChipValuesTests

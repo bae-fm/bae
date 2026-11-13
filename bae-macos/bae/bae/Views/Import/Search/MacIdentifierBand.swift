@@ -212,8 +212,8 @@ struct MacIdentifierBand: View {
     // MARK: - ISRC
 
     /// One chip with MusicBrainz's capsule, the only catalog asked about
-    /// ISRCs: every code the files' tags carry, asked in one search. It shows
-    /// the first code and lists every one on hover.
+    /// ISRCs: every code the files' tags carry, asked in one search. It lists
+    /// every code, wrapping inside the chip.
     @ViewBuilder
     private var isrcChip: some View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.isrc)
@@ -225,19 +225,17 @@ struct MacIdentifierBand: View {
                 .help("No ISRC in the files’ tags")
         // Only Settings can switch on the catalog that answers ISRCs.
         case .read(let isrcs, .notAsked(reason: _)):
-            IdentifierChip(label: label, value: isrcs.first ?? "") {
+            IdentifierChip(label: label, values: isrcs) {
                 IdentifierDash()
             }
-            .help(isrcs.joined(separator: "\n"))
         case .read(let isrcs, let lookup):
-            IdentifierChip(label: label, value: isrcs.first ?? "") {
+            IdentifierChip(label: label, values: isrcs) {
                 ProviderCapsule(
                     source: .musicBrainz,
                     lookup: lookup,
                     onRetry: onRetryFailed
                 )
             }
-            .help(isrcs.joined(separator: "\n"))
         }
     }
 
