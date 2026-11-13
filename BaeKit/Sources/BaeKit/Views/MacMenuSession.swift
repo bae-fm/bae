@@ -136,6 +136,14 @@
             parent.addChildWindow(level.panel, ordered: .above)
             level.panel.makeKeyAndOrderFront(nil)
             listen()
+            // Assistive technologies and UI tests wait for this to know a
+            // menu opened, as they do for an NSMenu.
+            if let content = level.panel.contentView {
+                NSAccessibility.post(
+                    element: content,
+                    notification: .init(rawValue: "AXMenuOpened")
+                )
+            }
         }
 
         private func makeLevel(
@@ -603,6 +611,12 @@
             }
             observers = []
             let hadKey = levels.contains { $0.panel.isKeyWindow }
+            if let content = levels.first?.panel.contentView {
+                NSAccessibility.post(
+                    element: content,
+                    notification: .init(rawValue: "AXMenuClosed")
+                )
+            }
             for level in levels.reversed() { dismiss(level) }
             levels = []
             if hadKey, parent.isVisible, NSApp.isActive {
