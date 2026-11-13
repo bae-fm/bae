@@ -422,3 +422,29 @@ fn stated_years_name_the_album_and_the_pressing() {
     assert_eq!(years(&[2005], None), (Some(2005), None));
     assert_eq!(years(&[], None), (None, None));
 }
+
+/// A year read out of text lies in 1900 to 2099; four digits outside it, and
+/// digits inside a longer run, are no year.
+#[test]
+fn a_year_read_from_a_word_lies_within_1900_to_2099() {
+    for (word, year) in [("1900", Some(1900)), ("2099", Some(2099)), ("1963", Some(1963))] {
+        assert_eq!(year_of(word), year, "{word}");
+    }
+    for word in ["1899", "2100", "0000", "0999", "9999", "19630", "196", "+196"] {
+        assert_eq!(year_of(word), None, "{word}");
+    }
+}
+
+/// The years a folder's name writes keep the range too.
+#[test]
+fn the_years_a_folder_name_writes_lie_within_1900_to_2099() {
+    let folder = text(&["1850 Album 2100 1999", "0000 Other 2099"]);
+    assert_eq!(folder.years(), [1999, 2099]);
+}
+
+/// The years a title writes keep the range, so an out-of-range number in a
+/// title is no year to set against the folder's.
+#[test]
+fn the_years_a_title_writes_lie_within_1900_to_2099() {
+    assert_eq!(title_years("Album 1850 2100 1990 2000"), [1990, 2000]);
+}

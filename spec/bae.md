@@ -1338,7 +1338,7 @@ belongs to is the two records', so either's album documents speak for its
 title, artists and year. Within one record, its album's year and the year the
 album first came out are its own album page's (its release group or master);
 the other catalog's release it links as itself gives them only where that page
-states none. The folder's years are read against every record of a row: a
+states none. A year identification guesses from text (a folder's name, a title) is four digits from 1900 to 2099; a year a source states outright (a tag's date, a catalog's release year) takes any value. The folder's years are read against every record of a row: a
 year any of them says the album first came out confirms the album, and the
 folder names the pressing only by a year after all of them. An album card names the label every pressing
 naming one agrees on, and none where they name different labels.
