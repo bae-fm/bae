@@ -26,7 +26,7 @@ bae-util = { workspace = true }
 # bae-playback, which must not depend on bae-subsonic (see
 # bae-playback/src/renderer).
 bae-subsonic = { workspace = true }
-tokio = { workspace = true, features = ["rt", "sync", "net", "io-util"] }
+tokio = { workspace = true, features = ["rt", "sync", "net", "io-util", "time"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 # axum 0.8 matches the router bae-subsonic returns.
@@ -49,6 +49,10 @@ rust_cast = { workspace = true, features = ["thread_safe"] }
 prost = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+# The TLS to a receiver (src/cast/connection.rs): rustls with the aws-lc-rs
+# provider named explicitly, over tokio.
+rustls = { workspace = true }
+tokio-rustls = { workspace = true }
 mdns-sd = { workspace = true }
 # UPnP/DLNA control point (src/dlna/): parses device-description and SOAP
 # response XML. Read-only DOM, pure Rust (builds on every platform). Outgoing
@@ -97,7 +101,9 @@ coven = { workspace = true }
 
 [dev-dependencies]
 # The async tests of bae's Cast client.
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "test-util"] }
+# The self-signed certificate the fake receiver serves TLS with.
+rcgen = { workspace = true }
 # The deterministic id source the sessions' tests use.
 coven = { workspace = true, features = ["test-utils"] }
 # The test libraries the session tests open and play.
