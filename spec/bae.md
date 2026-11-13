@@ -5630,15 +5630,21 @@ and bae-cast connects each device and hands playback the channel or sink.
 
 ### 11.3 Checks
 
-A pre-commit hook formats and lints the changed crates and the crates that
-depend on them, their tests included, bae-bridge with every feature the
-macOS app builds it with. CI runs, on macOS, iOS, Android, Linux
-and Windows: formatting, the file-size limit, visibility and ownership
-boundaries, test, bench and example code kept off the person's keychain and
-home, every Rust file in a crate compiled, the crates' dependency order, clippy for each feature set,
-dead-code and unused-dependency checks, cargo deny, docs, every crate's tests,
-the string catalogs, the Avalonia smoke test, the macOS builds and tests and
-the iOS builds for both editions, and Swift lint and format.
+A pre-commit hook runs the checks `.checks` declares for the staged files, and
+no others: the formatters of the staged files' languages, and static checks
+that read only what changed (clippy over the changed crates with their tests
+and, for bae-bridge, every feature the macOS app builds it with; the
+file-size limit; visibility, error-printing, keychain, preview and ownership
+boundaries; the string catalogs; the linters of each language). It runs
+no tests, the tests of bae's own checkers included, and finishes within 45
+seconds. CI runs, on macOS, iOS, Android, Linux and Windows, every one of those
+checks over the whole tree, and in addition: the crates that depend on a
+changed crate, the crates' libraries without test features, rustdoc, the iOS
+build's dead-code check, the crates' dependency order, clippy for each feature
+set, dead-code and unused-dependency checks, cargo deny, every crate's tests,
+the Avalonia smoke test, the macOS builds and tests and the iOS builds for both
+editions, and Swift lint and format. A push also runs the tests of the
+checkers it touched, as `.checks` lists them.
 
 ---
 ## Appendix A. Schema

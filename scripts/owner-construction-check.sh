@@ -26,11 +26,3 @@ if [ ! -x "$checker_install/bin/owner-construction-check" ]; then
 fi
 
 "$checker_install/bin/owner-construction-check"
-
-python3 scripts/swift-owner-dependency-boundary.py
-python3 scripts/ui-projection-boundary.py
-python3 scripts/tests/ui-projection-boundary-test.py
-python3 scripts/coven-builder-boundary.py
-python3 scripts/tests/coven-builder-boundary-test.py
-python3 scripts/keyed-value-stream-boundary.py
-python3 scripts/tests/keyed-value-stream-boundary-test.py

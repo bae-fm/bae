@@ -90,12 +90,19 @@ check "cargo fmt"                   cargo fmt --all -- --check
 check "source file layout"          scripts/check-source-file-size.py
 check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "reqwest error causes"       scripts/check-reqwest-error-display.py
-check "bundled-library checker"     python3 scripts/tests/check-bundled-libraries-test.py
 check "owner construction check"   scripts/owner-construction-check.sh
+check "coven builder boundary"       python3 scripts/coven-builder-boundary.py
+check "Swift owner dependency boundary" python3 scripts/swift-owner-dependency-boundary.py
+check "UI projection boundary"       python3 scripts/ui-projection-boundary.py
+check "keyed-value stream boundary"  python3 scripts/keyed-value-stream-boundary.py
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
-check "every Rust file compiled"    sh -c 'python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py'
-check "test keychain"                sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py'
-check "no IDE previews"              sh -c 'python3 scripts/check-no-previews.py && python3 scripts/tests/check-no-previews-test.py'
+check "screen pulls"                 python3 scripts/check-screen-pulls.py
+check "every Rust file compiled"    python3 scripts/check-rust-files-compiled.py
+check "test keychain"                python3 scripts/check-test-keychain.py
+check "no IDE previews"              python3 scripts/check-no-previews.py
+# Every checker's own test: the .checks `test` lines, which CI runs for the
+# checkers a push touched. Since the first commit, every file counts as changed.
+check "checker tests"                builds checks tests --since "$(git rev-list --max-parents=0 HEAD | tail -1)" --run
 check "performance suite"            python3 scripts/tests/perf-test.py
 check "Xcode build trees"           scripts/check-xcode-trees.py
 check "clippy (workspace)"          scripts/cargo.sh clippy --workspace -- -D warnings
@@ -246,7 +253,6 @@ check "cargo test (bae-desktop)"       scripts/cargo.sh test -p bae-desktop
 check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
 check "loc words"                      python3 scripts/loc-words.py
-check "loc words tests"                python3 scripts/tests/loc-words-test.py
 check "reset-bae exit wait tests"        python3 scripts/tests/reset-bae-test.py
 
 # ── Avalonia skeleton ─────────────────────────────────────────────────────────
@@ -295,7 +301,6 @@ check "localizable strings" python3 scripts/check_localizable_strings.py
 
 check "xcodebuild test (baeTests)" \
   env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,cast bae-macos/test.sh
-check "test-filter checker" python3 scripts/tests/xcresult-tests-ran-test.py
 
 # The Screenshots workflow compiles the scene registry in baeShots, which no
 # other macOS gate builds.

@@ -53,34 +53,33 @@ jobs:
     - name: Check reqwest error causes
       run: scripts/check-reqwest-error-display.py
 
-    - name: Test the bundled-library checker
-      run: python3 scripts/tests/check-bundled-libraries-test.py
-
     - name: Check owner dependency boundaries
       run: scripts/owner-construction-check.sh
+
+    - name: Check the boundaries between owners, the apps and the bridge
+      run: |
+        python3 scripts/coven-builder-boundary.py
+        python3 scripts/swift-owner-dependency-boundary.py
+        python3 scripts/ui-projection-boundary.py
+        python3 scripts/keyed-value-stream-boundary.py
 
     - name: Check UniFFI runtime boundaries
       run: scripts/check-uniffi-runtime-boundary.py
 
     - name: Check that screens get their values only by pull
-      run: |
-        python3 scripts/check-screen-pulls.py
-        python3 scripts/tests/check-screen-pulls-test.py
+      run: python3 scripts/check-screen-pulls.py
 
     - name: Check that every Rust file in a crate is compiled
-      run: |
-        python3 scripts/check-rust-files-compiled.py
-        python3 scripts/tests/check-rust-files-compiled-test.py
+      run: python3 scripts/check-rust-files-compiled.py
 
     - name: Check that test code never reaches the person's keychain
-      run: |
-        python3 scripts/check-test-keychain.py
-        python3 scripts/tests/check-test-keychain-test.py
+      run: python3 scripts/check-test-keychain.py
 
     - name: Check that the apps carry no IDE previews
-      run: |
-        python3 scripts/check-no-previews.py
-        python3 scripts/tests/check-no-previews-test.py
+      run: python3 scripts/check-no-previews.py
+
+    - name: Check that Xcode build folders are named in one place
+      run: python3 scripts/check-xcode-trees.py
 
     - name: Test the performance suite's comparison
       run: python3 scripts/tests/perf-test.py
@@ -121,6 +120,20 @@ jobs:
         cargo clippy -p bae-import --tests --features bae-import/test-utils -- -D warnings
         cargo clippy -p bae-app --tests --features bae-app/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
+
+    - name: Run Clippy on every target of every crate
+      # The crates a change reaches are the crates that depend on it, tests
+      # included: this builds them all.
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: Check the libraries without test features
+      # The apps and bridges build the crates without `test-utils`; code only a
+      # test feature compiles (an ungated `pub use` of a test helper) passes
+      # the clippy runs above, which turn it on. The features are the ones a
+      # shipping app turns on.
+      run: >
+        cargo check --workspace --lib --bins
+        --features bae-bridge/oauth-providers,bae-bridge/cloudkit,bae-bridge/cast
 
     - name: Dead-code (bae-app, bae-library, the crates below them and bae-cast, lib only)
       # Each crate's production code alone, so an item only its tests use fails
@@ -205,7 +218,6 @@ jobs:
         # spec/words.md: sentence case outside the macOS menu bar, title case
         # in it.
         python3 scripts/loc-words.py || status=1
-        python3 scripts/tests/loc-words-test.py || status=1
         exit $status
 
     - name: Check Rust documentation
@@ -222,6 +234,46 @@ jobs:
       if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
         cargo nextest run --no-fail-fast -p bae-library --features bae-library/test-utils
+
+  checker-tests:
+    # The tests of bae's own checkers: the `test` lines of .checks whose paths a
+    # push touched since the last passing run of this workflow on main. One job,
+    # since starting a job is slow.
+    name: Checker tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # The agent-instructions commit builds is installed from.
+      BUILDS_REV: 19345a95436a261971ca3e2be6c58e18421dcd7d
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+        fetch-depth: 0
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Install builds
+      run: >
+        cargo install --locked --root "$RUNNER_TEMP/builds"
+        --git https://github.com/hideselfview/agent-instructions
+        --rev "$BUILDS_REV" builds
+
+    - name: Run the tests of the checkers this push touched
+      run: |
+        since=$(gh run list --workflow build.yml --branch main --status success \
+          --limit 1 --json headSha --jq '.[0].headSha // ""')
+        # No passing run, or one outside this history: every test runs.
+        if [ -z "$since" ] || ! git cat-file -e "$since^{commit}" 2>/dev/null; then
+          since=$(git rev-list --max-parents=0 HEAD | tail -1)
+        fi
+        "$RUNNER_TEMP/builds/bin/builds" checks tests --since "$since" --run
 
   avalonia:
     # The Avalonia skeleton on Linux, in its own job for the disk, and the

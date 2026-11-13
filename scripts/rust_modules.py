@@ -227,9 +227,10 @@ def module_file(declaring: Path, owns_directory: bool, declaration: ModDeclarati
     raise ValueError(f"{declaring}: no file for mod {declaration.name}")
 
 
-def workspace_targets(root: Path) -> list[tuple[Path, bool]]:
+def workspace_targets(root: Path, crates: set[Path] | None = None) -> list[tuple[Path, bool]]:
     """Every workspace target's root file, and whether it is a test, a bench
-    or an example: code that never ships."""
+    or an example: code that never ships. `crates`, the resolved directories
+    of some workspace crates, limits it to their targets."""
     metadata = json.loads(
         subprocess.run(
             ["cargo", "metadata", "--no-deps", "--format-version", "1"],
@@ -240,6 +241,8 @@ def workspace_targets(root: Path) -> list[tuple[Path, bool]]:
     )
     targets = []
     for package in metadata["packages"]:
+        if crates is not None and Path(package["manifest_path"]).parent.resolve() not in crates:
+            continue
         for target in package["targets"]:
             test = any(kind in ("test", "bench", "example") for kind in target["kind"])
             targets.append((Path(target["src_path"]), test))
@@ -263,14 +266,16 @@ class ReachedFile:
         )
 
 
-def reached_files(root: Path) -> dict[Path, ReachedFile]:
-    """Every file the workspace's targets compile, by its resolved path: test
+def reached_files(root: Path, crates: set[Path] | None = None) -> dict[Path, ReachedFile]:
+    """Every file the workspace's targets compile (those of `crates`, the
+    resolved directories of some workspace crates, when given: a crate's
+    modules are files of its own directory), by its resolved path: test
     code throughout when any test code declares or includes it. A target's
     root owns its directory, as a mod.rs does. An included file is read as
     its own: it may declare no module, whose file would depend on the file
     including it."""
     reached: dict[Path, ReachedFile] = {}
-    pending = [(path, True, test, False) for path, test in workspace_targets(root)]
+    pending = [(path, True, test, False) for path, test in workspace_targets(root, crates)]
     while pending:
         path, owns_directory, test, included = pending.pop()
         path = path.resolve()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fails when a tracked file passes -derivedDataPath anywhere but
 scripts/xcode-trees.sh, the one definition of the apps' Xcode build trees.
+Reads the files named as arguments, or every tracked file with none.
 
 A second spelling of a tree is how a build lands in a folder nothing else knows
 about and goes stale unseen.
@@ -17,9 +18,12 @@ ALLOWED = {"scripts/xcode-trees.sh", "scripts/check-xcode-trees.py"}
 
 
 def main() -> int:
-    tracked = subprocess.run(
-        ["git", "ls-files", "-z"], cwd=REPO, check=True, capture_output=True
-    ).stdout.decode().split("\0")
+    if len(sys.argv) > 1:
+        tracked = sys.argv[1:]
+    else:
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z"], cwd=REPO, check=True, capture_output=True
+        ).stdout.decode().split("\0")
     found = []
     for name in tracked:
         if not name or name in ALLOWED:

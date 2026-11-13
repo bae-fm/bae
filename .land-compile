@@ -1,9 +1,8 @@
 #!/bin/bash
 # Compile check that land.sh runs on a cherry-picked result before pushing it
-# (see .land-checks for the static ones). Builds what the pre-commit hook
-# builds, with its feature set and crate selection, so the landing worktree
-# reuses the hook's warm build: clippy with --all-targets over the crates the
-# landed commits touch and the crates that depend on them, warnings denied.
+# (see .land-checks for the static ones): clippy with --all-targets over the
+# crates the landed commits touch and the crates that depend on them, warnings
+# denied.
 # Then the same crates' libraries and binaries without test features, which
 # the apps and bridges build them with (a test-only `pub use` without its
 # `#[cfg]` gate compiles with `test-utils` and breaks every app build).
@@ -11,7 +10,7 @@
 # where that shows.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-source scripts/hooks/lib/file-list.sh
+source scripts/crate-check-plan.sh
 
 CHANGED_FILES=$(git --no-pager diff --name-only origin/main HEAD)
 scripts/build-layout.sh

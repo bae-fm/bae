@@ -24,7 +24,10 @@ RAW_STRING = re.compile(r'(?<!\w)b?r(?P<hashes>#*)"(?P<body>.*?)"(?P=hashes)', r
 CHAR_LITERAL = re.compile(r"'(?:\\.|[^\\'\n])'")
 
 
-def tracked_rust_files() -> list[Path]:
+def rust_files() -> list[Path]:
+    """The Rust files named as arguments, or every Rust file in the repository."""
+    if len(sys.argv) > 1:
+        return [ROOT / name for name in sys.argv[1:]]
     listed = subprocess.run(
         ["git", "ls-files", "-co", "--exclude-standard", "-z", "--", "*.rs"],
         cwd=ROOT,
@@ -129,7 +132,7 @@ def held_fields(source: str, masked: str, after: int) -> str | None:
 
 def main() -> int:
     violations: list[str] = []
-    for path in tracked_rust_files():
+    for path in rust_files():
         if not path.is_file():
             continue
         source = path.read_text()

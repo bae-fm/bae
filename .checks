@@ -1,0 +1,68 @@
+# The checks `builds checks run` runs on a commit's staged files, and the tests
+# of the checkers `builds checks tests` runs in CI.
+#
+#   <kind> <name> <paths> <program> [args...]
+#
+# kind: `check` (static check), `fix` (formatter; builds re-stages what it
+# changed) or `test` (a checker's own test: never run by the hook). paths: the
+# files the line reads, as comma-separated globs. `{files}` is the staged files
+# that match; `{crates}` is `-p <crate>` for each workspace crate holding one.
+# A line with neither runs once, on everything it reads. Formatting and static
+# analysis only; the tests are the `test` lines.
+
+# Rust
+fix rustfmt *.rs rustfmt {files}
+check source-size *.astro,*.c,*.cc,*.cpp,*.cs,*.css,*.gradle,*.h,*.hpp,*.html,*.java,*.js,*.kt,*.kts,*.mjs,*.ps1,*.py,*.rb,*.rs,*.scss,*.sh,*.swift,*.ts,*.tsx,*.xaml scripts/check-source-file-size.py {files}
+check rust-visibility *.rs scripts/check-rust-visibility.sh {files}
+check reqwest-errors *.rs scripts/check-reqwest-error-display.py {files}
+check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {crates}
+check ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
+check coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
+check machete *.rs,Cargo.toml cargo machete
+check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
+check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
+
+# The apps' sources and the bridge they call
+check uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
+check screen-pulls bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-android/screensubscription/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/check-screen-pulls.py,scripts/source_tokens.py python3 scripts/check-screen-pulls.py
+check swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,scripts/swift-owner-dependency-boundary.py python3 scripts/swift-owner-dependency-boundary.py
+check ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
+check keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
+check test-keychain *.rs,*.swift,*.kt,*.cs,project.yml,*.csproj,scripts/check-test-keychain.py,scripts/source_tokens.py,scripts/rust_modules.py python3 scripts/check-test-keychain.py {files}
+check no-ide-previews *.swift,*.kt,scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py {files}
+check xcode-trees * python3 scripts/check-xcode-trees.py {files}
+
+# Swift
+fix swift-format *.swift xcrun swift-format format -i -p {files}
+check swift-format-lint *.swift xcrun swift-format lint -s {files}
+check swiftlint *.swift swiftlint lint --quiet --strict --config .swiftlint.yml {files}
+
+# Kotlin
+fix ktlint-format bae-android/**/*.kt ktlint -F {files}
+check ktlint bae-android/**/*.kt ktlint {files}
+check ktlint-all .editorconfig ktlint bae-android/app/src/**/*.kt bae-android/fastvalues/src/**/*.kt bae-android/screensubscription/src/**/*.kt
+check detekt bae-android/**/*.kt scripts/detekt-staged.sh {files}
+
+# C#
+fix dotnet-format bae-avalonia/**/*.cs dotnet format whitespace bae-avalonia/bae-avalonia.csproj --include {files}
+check dotnet-format-config .editorconfig,bae-avalonia/bae-avalonia.csproj dotnet format whitespace bae-avalonia/bae-avalonia.csproj --verify-no-changes
+
+# Localization
+check loc-orphans *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-macos/bae/bae/**/*.swift,BaeKit/Sources/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/app/src/main/**/*.xml,scripts/loc-chrome-orphans.py,scripts/loc-orphans-allowlist.txt python3 scripts/loc-chrome-orphans.py
+check loc-english-skeleton *.xcstrings,bae-android/app/src/main/res/**/strings.xml,scripts/loc-english-skeleton.py,scripts/loc-skeleton-allowlist.txt python3 scripts/loc-english-skeleton.py
+check loc-words *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-bridge/loc/catalog.toml,spec/words.md,bae-macos/bae/bae/Shell/*Menu*.swift,scripts/loc-words.py python3 scripts/loc-words.py
+
+# Boards and workflows
+check shots-without-boards design/mocks/**,design/system/components/**,bae-android/app/src/test/java/fm/bae/app/shots/**,bae-macos/bae/baeShots/**,design/shots.toml scripts/cargo.sh run -q -p bae-shots -- lint
+check actionlint .github/workflows/**,.github/actions/** env SHELLCHECK_OPTS=--severity=error actionlint -color
+
+# Checker tests, run in CI when a push touches a checker or its test
+test ui-projection-boundary-test scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py,scripts/tests/ui-projection-boundary-test.py python3 scripts/tests/ui-projection-boundary-test.py
+test coven-builder-boundary-test scripts/coven-builder-boundary.py,scripts/tests/coven-builder-boundary-test.py python3 scripts/tests/coven-builder-boundary-test.py
+test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scripts/tests/keyed-value-stream-boundary-test.py python3 scripts/tests/keyed-value-stream-boundary-test.py
+test screen-pulls-test scripts/check-screen-pulls.py,scripts/source_tokens.py,scripts/tests/check-screen-pulls-test.py python3 scripts/tests/check-screen-pulls-test.py
+test no-ide-previews-test scripts/check-no-previews.py,scripts/source_tokens.py,scripts/tests/check-no-previews-test.py python3 scripts/tests/check-no-previews-test.py
+test loc-words-test scripts/loc-words.py,scripts/tests/loc-words-test.py python3 scripts/tests/loc-words-test.py
+test bundled-libraries-test scripts/check-bundled-libraries.py,scripts/tests/check-bundled-libraries-test.py python3 scripts/tests/check-bundled-libraries-test.py
+test xcresult-tests-ran-test scripts/xcresult-tests-ran.py,scripts/tests/xcresult-tests-ran-test.py python3 scripts/tests/xcresult-tests-ran-test.py
+test xcframework-test bae-bridge/xcframework.py,scripts/tests/xcframework-test.py python3 scripts/tests/xcframework-test.py

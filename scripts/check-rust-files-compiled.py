@@ -19,8 +19,9 @@ from pathlib import Path
 from rust_modules import reached_files
 
 
-def crate_directories(root: Path) -> list[Path]:
-    """The directory of each workspace crate."""
+def crate_directories(root: Path, names: list[str]) -> list[Path]:
+    """The directory of each workspace crate, or of the crates in `names` alone
+    when it is not empty."""
     metadata = json.loads(
         subprocess.run(
             ["cargo", "metadata", "--no-deps", "--format-version", "1"],
@@ -29,7 +30,11 @@ def crate_directories(root: Path) -> list[Path]:
             capture_output=True,
         ).stdout
     )
-    return [Path(package["manifest_path"]).parent.resolve() for package in metadata["packages"]]
+    return [
+        Path(package["manifest_path"]).parent.resolve()
+        for package in metadata["packages"]
+        if not names or package["name"] in names
+    ]
 
 
 def tracked_rust_files(root: Path) -> list[Path]:
@@ -42,10 +47,10 @@ def tracked_rust_files(root: Path) -> list[Path]:
     return [(root / name).resolve() for name in listed.split("\0") if name]
 
 
-def check(root: Path) -> list[str]:
+def check(root: Path, names: list[str] | None = None) -> list[str]:
     root = root.resolve()
-    crates = crate_directories(root)
-    reached = reached_files(root)
+    crates = crate_directories(root, names or [])
+    reached = reached_files(root, set(crates) if names else None)
     return sorted(
         str(path.relative_to(root))
         for path in tracked_rust_files(root)
@@ -63,8 +68,15 @@ def main() -> int:
         default=Path(__file__).resolve().parent.parent,
         help="repository root",
     )
+    parser.add_argument(
+        "-p",
+        dest="crates",
+        action="append",
+        default=[],
+        help="a workspace crate to check; every crate when none is named",
+    )
     args = parser.parse_args()
-    violations = check(args.root)
+    violations = check(args.root, args.crates)
     for violation in violations:
         print(f"{violation}: no target compiles it")
     if violations:

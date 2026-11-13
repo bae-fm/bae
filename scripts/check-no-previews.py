@@ -73,9 +73,10 @@ def imported(tokens: list[Token], index: int) -> bool:
     return tokens[index].text == "import"
 
 
-def check(root: Path) -> list[str]:
+def check(root: Path, names: list[str] | None = None) -> list[str]:
+    """The previews in the tracked Swift and Kotlin files, or in `names` alone."""
     violations = []
-    for relative in listed_files(root):
+    for relative in names if names else listed_files(root):
         language = LANGUAGES.get(Path(relative).suffix)
         if language is None or relative in ALLOWED:
             continue
@@ -98,8 +99,13 @@ def main() -> int:
         default=Path(__file__).resolve().parent.parent,
         help="repository root",
     )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="repo-relative files to check; every tracked file when none",
+    )
     args = parser.parse_args()
-    violations = check(args.root)
+    violations = check(args.root, args.files)
     for violation in violations:
         print(violation)
     return 1 if violations else 0

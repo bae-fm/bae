@@ -29,6 +29,7 @@ Code is read as tokens: a name in a comment or a string is not a use.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -88,10 +89,31 @@ def rust_uses(tokens: list[Token]) -> list[tuple[int, str]]:
     return uses
 
 
-def check_rust(root: Path) -> list[str]:
+def staged_crate_directories(root: Path, names: set[str]) -> set[Path]:
+    """The directories of the workspace crates that hold one of `names`."""
+    metadata = json.loads(
+        subprocess.run(
+            ["cargo", "metadata", "--no-deps", "--format-version", "1"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        ).stdout
+    )
+    directories = {Path(package["manifest_path"]).parent.resolve() for package in metadata["packages"]}
+    return {
+        directory
+        for directory in directories
+        for name in names
+        if (root / name).resolve().is_relative_to(directory)
+    }
+
+
+def check_rust(root: Path, names: set[str] | None) -> list[str]:
+    crates = None if names is None else staged_crate_directories(root, names)
     violations = [
         f"{path.relative_to(root.resolve()).as_posix()}:{file.tokens[position].line}: {name}"
-        for path, file in reached_files(root).items()
+        for path, file in reached_files(root, crates).items()
+        if names is None or path.relative_to(root.resolve()).as_posix() in names
         for position, name in rust_uses(file.tokens)
         if file.in_test(position)
     ]
@@ -155,7 +177,7 @@ def constructor_calls(tokens: list[Token], allowed_first: set[str]) -> list[Toke
     return calls
 
 
-def check_apps(root: Path, files: list[str]) -> list[str]:
+def check_apps(root: Path, files: list[str], names: set[str] | None) -> list[str]:
     violations: list[str] = []
     swift_roots = [
         source
@@ -170,6 +192,8 @@ def check_apps(root: Path, files: list[str]) -> list[str]:
         and "Microsoft.NET.Test.Sdk" in (root / project).read_text()
     ]
     for relative in files:
+        if names is not None and relative not in names:
+            continue
         path = root / relative
         if not path.is_file():
             continue
@@ -196,8 +220,13 @@ def check_apps(root: Path, files: list[str]) -> list[str]:
     return violations
 
 
-def check(root: Path) -> list[str]:
-    return check_rust(root) + check_apps(root, listed_files(root))
+def check(root: Path, names: list[str] | None = None) -> list[str]:
+    """The violations in the whole repository, or in the files `names` alone
+    when it is not empty. Which files are test code, and which module files a
+    test target reaches, is read from the whole repository either way."""
+    only = set(names) if names else None
+    rust = [] if only is not None and not any(n.endswith(".rs") for n in only) else check_rust(root, only)
+    return rust + check_apps(root, listed_files(root), only)
 
 
 def main() -> int:
@@ -208,8 +237,13 @@ def main() -> int:
         default=Path(__file__).resolve().parent.parent,
         help="repository root",
     )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="repo-relative files to check; every tracked file when none",
+    )
     args = parser.parse_args()
-    violations = check(args.root)
+    violations = check(args.root, args.files)
     for violation in violations:
         print(violation)
     if violations:

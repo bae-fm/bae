@@ -79,7 +79,7 @@ jobs:
         FFMPEG_DIR="$FFMPEG_PREFIX" \
         BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_PREFIX/include" \
         CARGO_TARGET_DIR="target-ios" \
-        cargo clippy --target aarch64-apple-ios -p bae-bridge "${FEATURES_ARG[@]}" -- -D warnings
+        cargo clippy --target aarch64-apple-ios -p bae-library -p bae-app -p bae-bridge "${FEATURES_ARG[@]}" -- -D warnings
 
     - name: Install xcodegen
       run: brew install xcodegen
