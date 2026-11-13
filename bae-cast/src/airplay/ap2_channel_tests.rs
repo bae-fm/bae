@@ -54,6 +54,47 @@ fn partial_frame_waits_for_more() {
     assert_eq!(receiver.next_block().unwrap().unwrap(), b"hello world");
 }
 
+/// A message over 1024 bytes is sealed in blocks of at most 1024 bytes, as
+/// HomeKit specifies, and reads back whole with the receiver's keys.
+#[test]
+fn a_long_message_seals_in_blocks_of_at_most_1024_bytes() {
+    let (write, read) = control_keys(&[3u8; 32]);
+    let mut sender = HapChannel::from_keys(&write, &read);
+    let mut receiver = HapChannel::from_keys(&read, &write);
+
+    let msg: Vec<u8> = (0..3000u32).map(|i| (i % 251) as u8).collect();
+    let sealed = sender.seal(&msg);
+
+    let mut lengths = Vec::new();
+    let mut at = 0;
+    while at < sealed.len() {
+        let len = u16::from_le_bytes([sealed[at], sealed[at + 1]]) as usize;
+        lengths.push(len);
+        at += 2 + len + 16;
+    }
+    assert_eq!(lengths, vec![1024, 1024, 952]);
+
+    receiver.feed(&sealed);
+    let mut recovered = Vec::new();
+    while let Some(block) = receiver.next_block().unwrap() {
+        recovered.extend_from_slice(&block);
+    }
+    assert_eq!(recovered, msg);
+}
+
+/// A block altered in transit fails to decrypt instead of reading as other data.
+#[test]
+fn a_tampered_block_fails_closed() {
+    let (write, read) = control_keys(&[5u8; 32]);
+    let mut sender = HapChannel::from_keys(&write, &read);
+    let mut receiver = HapChannel::from_keys(&read, &write);
+
+    let mut sealed = sender.seal(b"SETUP rtsp://x/1 RTSP/1.0\r\n\r\n");
+    sealed[4] ^= 0x01;
+    receiver.feed(&sealed);
+    assert_eq!(receiver.next_block(), Err(ChannelError::Decrypt));
+}
+
 /// The HKDF primitive matches RFC 5869's published Test Case 1 (SHA-256), so
 /// the derivation the control/audio keys ride on is validated against the
 /// standard, not only against itself.

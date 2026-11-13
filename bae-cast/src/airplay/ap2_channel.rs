@@ -15,8 +15,9 @@ use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use hkdf::Hkdf;
 use sha2::Sha512;
 
-/// A HAP block carries at most a `u16` length of plaintext.
-const MAX_BLOCK: usize = u16::MAX as usize;
+/// The most plaintext one HAP block carries (HomeKit section 5.2.2). Reading
+/// accepts any length the 2-byte header states.
+const MAX_BLOCK: usize = 1024;
 
 /// HKDF-SHA512 expand of `ikm` under `salt`/`info` to a 32-byte key.
 pub(crate) fn hkdf32(salt: &[u8], ikm: &[u8], info: &[u8]) -> [u8; 32] {
