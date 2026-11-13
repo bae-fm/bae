@@ -39,10 +39,10 @@ must be mode 600; this script never prints them. Its fields:
 
 import argparse
 import pathlib
+import select
 import stat
 import subprocess
 import sys
-import time
 import tomllib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -171,18 +171,47 @@ def read_profile(path: pathlib.Path) -> dict:
         fail(f"{path} is not valid TOML: {error}")
 
 
-def running() -> bool:
-    script = f'application id "{BUNDLE_ID}" is running'
+def bae_pids() -> list[int]:
+    """The process ids of the running bae (none when it isn't running)."""
+    script = (
+        'tell application "System Events" to get the unix id of every '
+        f'process whose bundle identifier is "{BUNDLE_ID}"'
+    )
     result = subprocess.run(
         ["osascript", "-e", script], capture_output=True, text=True, check=True
     )
-    return result.stdout.strip() == "true"
+    return [int(pid) for pid in result.stdout.split(",") if pid.strip()]
+
+
+QUIT_TIMEOUT = 30
+
+
+def wait_for_exit(pid: int, timeout: float) -> None:
+    """Return when process `pid` has exited, by kqueue's exit notification;
+    fail naming the pid if it is still running after `timeout` seconds."""
+    kq = select.kqueue()
+    try:
+        event = select.kevent(
+            pid,
+            filter=select.KQ_FILTER_PROC,
+            flags=select.KQ_EV_ADD | select.KQ_EV_ONESHOT,
+            fflags=select.KQ_NOTE_EXIT,
+        )
+        try:
+            fired = kq.control([event], 1, timeout)
+        except ProcessLookupError:
+            return  # gone before we registered
+        if not fired:
+            fail(f"bae (pid {pid}) is still running {timeout:g} seconds after being asked to quit")
+    finally:
+        kq.close()
 
 
 def quit_bae() -> None:
-    if not running():
+    pids = bae_pids()
+    if not pids:
         return
-    print(f"Quitting the running bae ({BUNDLE_ID})...")
+    print(f"Quitting the running bae ({BUNDLE_ID}, pid {', '.join(map(str, pids))})...")
     asked = subprocess.run(
         ["osascript", "-e", f'tell application id "{BUNDLE_ID}" to quit'],
         capture_output=True, text=True,
@@ -194,11 +223,8 @@ def quit_bae() -> None:
             f"bae didn't quit ({asked.stderr.strip()}); quit it yourself, "
             "after reading what it shows, and run this again"
         )
-    deadline = time.monotonic() + 30
-    while running():
-        if time.monotonic() > deadline:
-            fail("bae is still running 30 seconds after being asked to quit")
-        time.sleep(0.5)
+    for pid in pids:
+        wait_for_exit(pid, QUIT_TIMEOUT)
 
 
 def main() -> None:

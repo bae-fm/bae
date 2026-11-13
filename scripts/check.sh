@@ -250,6 +250,7 @@ check "loc chrome orphans"             python3 scripts/loc-chrome-orphans.py
 check "loc english skeleton"           python3 scripts/loc-english-skeleton.py
 check "loc words"                      python3 scripts/loc-words.py
 check "loc words tests"                python3 scripts/tests/loc-words-test.py
+check "reset-bae exit wait tests"        python3 scripts/tests/reset-bae-test.py
 
 # ── Avalonia skeleton ─────────────────────────────────────────────────────────
 section "Avalonia skeleton"
