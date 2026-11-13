@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Sync: pending</title>
+<title>Sync: needs attention</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -28,7 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <dc-import name="android.parts.sync-status" status="Waiting to sync" tone="" cause="" fix="" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
+  <dc-import name="android.parts.sync-status" status="Waiting to sync" tone="warning" cause="The cover of Low Tide Hours could not upload. Changes from this phone wait for it." fix="Retry" last-synced="2 hours ago" hint-size="100%,140px"></dc-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Cloud home"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="Dropbox"></x-import>
@@ -36,12 +36,8 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     <x-import component-from-global-scope="Bae.AndroidRow" title="Folder" subtitle="Music"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Open in browser" button="{{yes}}"></x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.AndroidSection" title="Pending"></x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="A file from another device" subtitle="Missing from the cloud"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Edits made on this device" subtitle="Cloud request failed"><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Retry</x-import></x-import>
-  </x-import>
-  <x-import component-from-global-scope="Bae.AndroidNote">Tap a row to see what happened.</x-import>
+  <x-import component-from-global-scope="Bae.AndroidSection" title="Needs attention"></x-import>
+  <div style="display:flex;flex-direction:column;gap:8px;padding:0 16px"><x-import component-from-global-scope="Bae.AndroidNotice" quiet="{{yes}}" tone="warning" title="Library changes from the cloud" subtitle="Decryption key unavailable. Changes from other devices wait for it." secondary="Details" action="Restore with code" buttons="below"></x-import><x-import component-from-global-scope="Bae.AndroidNotice" quiet="{{yes}}" tone="warning" title="Removing a person" subtitle="Cloud request failed" secondary="Details" action="Retry" buttons="below"></x-import></div>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

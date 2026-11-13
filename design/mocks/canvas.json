@@ -3724,9 +3724,9 @@
    "y": 14240
   },
   "mac.settings.sync.pending.dc.html": {
-   "h": 600,
+   "h": 820,
    "page": "library",
-   "title": "macOS: Sync: pending",
+   "title": "macOS: Sync: needs attention",
    "w": 690,
    "x": 0,
    "y": 25888
@@ -3750,7 +3750,7 @@
   "android.settings.sync.pending.dc.html": {
    "h": 916,
    "page": "library",
-   "title": "Sync: pending",
+   "title": "Sync: needs attention",
    "w": 412,
    "x": 2850,
    "y": 25888
@@ -5684,7 +5684,7 @@
    "page": "library",
    "x": 0,
    "y": 25748,
-   "text": "Sync page: pending, undone setup, unreadable cloud home (macOS)",
+   "text": "Sync page: needs attention, undone setup, unreadable cloud home (macOS)",
    "kind": "title1",
    "w": 240,
    "maxW": 3200
@@ -5695,7 +5695,7 @@
    "w": 460,
    "x": 2310,
    "y": 25888,
-   "text": "What the code needs for these boards:\n- Pending: one row per record, its subject over its reason, Details and the record's action at the right, in the box like every other Settings row. Today each record is its subject over a neutral notice holding the reason and the action (PendingRecordsView.swift). The status above says Waiting to sync while anything is pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again.\n- Android: the same Pending rows, the action as a text button at the right where the phone can act; tapping a row opens its details. A phone uploads no release files, so it never lists one of their records; an action only the Mac can take (Restore source file) has no button there. bae change if SyncScreen.kt draws them otherwise."
+   "text": "What the code needs for these boards:\n- Needs attention: the status names the first thing that stops sync and what waits on it (\"The cover of Low Tide Hours could not upload. Changes from this Mac wait for it.\"), with its action, and that record is not listed again. The list below, titled Needs attention, holds only records whose action is the person's: each a quiet warning notice, the subject as its title, the reason under it, Details and the action. A record whose only action is to wait is not listed; coven retries it and the status says Waiting to sync. A record that holds up more than itself says what waits on it after its reason. Today PendingRecordsView.swift lists every record under Pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again.\n- Android: the same list, the notice's buttons under its text. A phone uploads no release files, so it never lists one of their records; an action only the Mac can take (Restore source file) has no button there. bae change if SyncScreen.kt draws them otherwise."
   },
   "code-welcome-damaged-join": {
    "page": "welcome",

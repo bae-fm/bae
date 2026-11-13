@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>macOS settings: Sync: pending</title>
+<title>macOS settings: Sync: needs attention</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -24,8 +24,8 @@ body{margin:0}
 .foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
-  <dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="" cause="" fix="" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library" height="820">
+  <dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="warning" cause="The cover of Low Tide Hours could not upload. Changes from this Mac wait for it." fix="Retry" last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Cloud home">
     <x-import component-from-global-scope="Bae.MacBox">
       <x-import component-from-global-scope="Bae.MacRow" label="Provider" value="Dropbox"></x-import>
@@ -37,12 +37,12 @@ body{margin:0}
     </x-import>
   </x-import>
 <x-import component-from-global-scope="Bae.MacSection" title="Restore code"><dc-import name="mac.parts.restore-code" hint-size="100%,150px"></dc-import></x-import>
-<x-import component-from-global-scope="Bae.MacSection" title="Pending"><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacRow" label="03 Second Floor.flac from Paper Lanterns" strong="{{yes}}" note="Source file changed"><x-import component-from-global-scope="Bae.MacButton" kind="borderless">Details</x-import><x-import component-from-global-scope="Bae.MacButton">Restore source file</x-import></x-import><x-import component-from-global-scope="Bae.MacRow" label="The cover of Low Tide Hours" strong="{{yes}}" note="Cloud request failed"><x-import component-from-global-scope="Bae.MacButton" kind="borderless">Details</x-import><x-import component-from-global-scope="Bae.MacButton">Retry</x-import></x-import></x-import></x-import>
+<x-import component-from-global-scope="Bae.MacSection" title="Needs attention"><div style="display:flex;flex-direction:column;gap:8px"><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="warning" title="Library changes from the cloud" subtitle="Decryption key unavailable. Changes from other devices wait for it." secondary="Details" action="Restore with code"></x-import><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="warning" title="03 Second Floor.flac from Paper Lanterns" subtitle="Source file changed" secondary="Details" action="Restore source file"></x-import><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="warning" title="Removing a person" subtitle="Cloud request failed" secondary="Details" action="Retry"></x-import></div></x-import>
 </x-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":820}}'>
 class Component extends DCLogic {
-  renderVals() { return {}; }
+  renderVals() { return { yes: true }; }
 }
 </script>
 </body>
