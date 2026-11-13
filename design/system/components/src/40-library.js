@@ -68,7 +68,7 @@
 
   // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer; `off` dims it while none of its actions can run.
   function MacMoreMenu(props) {
-    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: 'More', active: props.open, menu: true, off: props.off });
+    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: props.label || 'More', active: props.open, menu: true, off: props.off });
     if (!props.open) return btn;
     return h('span', { className: 'bae-m-moremenu' }, btn, h('div', { className: 'bae-m-moremenu-pop' }, h(MacMenu, null, list(props.items).map(function (t, i) {
       return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
@@ -167,10 +167,12 @@
 
   function MacEyebrow(props) { return h('div', { className: 'bae-m-eyebrow' }, props.children); }
 
+  // `options`: the page's ⋯ button at the right with these actions in its menu, as an album's options button; `optionsOpen` draws the menu open, `highlighted` the item under the pointer.
   function MacDetailHeader(props) {
     return h('div', { className: 'bae-m-dethead' },
       h(Artwork, { title: props.name, size: 72, radius: 10, missing: props.noImage }),
-      h('div', null, h('div', { className: 'bae-m-dethead-name' }, props.name), h('div', { className: 'bae-m-dethead-count' }, props.count)));
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-m-dethead-name' }, props.name), h('div', { className: 'bae-m-dethead-count' }, props.count)),
+      props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
   function MacQueueRow(props) {

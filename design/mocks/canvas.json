@@ -3906,6 +3906,70 @@
    "w": 690,
    "x": 508,
    "y": 27204
+  },
+  "android.library.artist.menu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Artist: the menu",
+   "w": 412,
+   "x": 1804,
+   "y": 21244
+  },
+  "android.library.artist.edit.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Artist: edit",
+   "w": 412,
+   "x": 2312,
+   "y": 21244
+  },
+  "android.library.artist.merge.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Artist: merge, pick the other artist",
+   "w": 412,
+   "x": 2820,
+   "y": 21244
+  },
+  "android.library.artist.merge.confirm.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Artist: merge, which name stays",
+   "w": 412,
+   "x": 3328,
+   "y": 21244
+  },
+  "mac.library.artist.menu.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: An artist’s options",
+   "w": 1200,
+   "x": 3836,
+   "y": 21244
+  },
+  "mac.library.artist.edit.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Edit artist",
+   "w": 1200,
+   "x": 5132,
+   "y": 21244
+  },
+  "mac.library.artist.merge.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Merge an artist: pick the other",
+   "w": 1200,
+   "x": 6428,
+   "y": 21244
+  },
+  "mac.library.artist.merge.confirm.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Merge an artist: which name stays",
+   "w": 1200,
+   "x": 7724,
+   "y": 21244
   }
  },
  "createdOnFiles": {
@@ -5904,7 +5968,15 @@
   "mac.settings.your-plays.dc.html",
   "mac.settings.person.plays.dc.html",
   "android.settings.person.add-device.dc.html",
-  "mac.settings.person.add-device.dc.html"
+  "mac.settings.person.add-device.dc.html",
+  "android.library.artist.menu.dc.html",
+  "android.library.artist.edit.dc.html",
+  "android.library.artist.merge.dc.html",
+  "android.library.artist.merge.confirm.dc.html",
+  "mac.library.artist.menu.dc.html",
+  "mac.library.artist.edit.dc.html",
+  "mac.library.artist.merge.dc.html",
+  "mac.library.artist.merge.confirm.dc.html"
  ],
  "pages": [
   {

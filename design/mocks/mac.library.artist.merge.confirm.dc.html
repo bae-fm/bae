@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: Merge an artist: which name stays</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:var(--background)}
+
+</style>
+</helmet>
+<div style="position:relative"><x-import component-from-global-scope="Bae.MacMainWindow" track-title="Low Tide Hours" track-artist="Mara Quill" track-album="Low Tide Hours" playing="{{yes}}" position="0.34" held="0.6" elapsed="1:42" duration="5:03"><div style="display:flex;flex-direction:column;height:100%"><x-import component-from-global-scope="Bae.MacLibraryHeading" view="Artists" collapsed="{{yes}}"><x-import component-from-global-scope="Bae.MacSortCriteria" criteria="Name:up"></x-import></x-import><div style="flex:1;min-height:0"><x-import component-from-global-scope="Bae.MacBrowseSplit"><div><x-import component-from-global-scope="Bae.MacLibraryRow" title="Ada Lindqvist" subtitle="1 album"></x-import><x-import component-from-global-scope="Bae.MacLibraryRow" title="Tomas Brell" subtitle="1 album"></x-import><x-import component-from-global-scope="Bae.MacLibraryRow" title="The Slow Orchards" subtitle="3 albums"></x-import><x-import component-from-global-scope="Bae.MacLibraryRow" title="Ines Varga Trio" subtitle="1 album"></x-import><x-import component-from-global-scope="Bae.MacLibraryRow" title="Mara Quill" subtitle="3 albums" selected="{{yes}}"></x-import><x-import component-from-global-scope="Bae.MacLibraryRow" title="Odile Fen" subtitle="3 albums"></x-import></div><x-import component-from-global-scope="Bae.MacDetailHeader" name="Mara Quill" count="3 albums" options="Edit artist…,Merge artist…" options-label="Artist options"></x-import><div style="display:flex;flex-direction:column;gap:8px"><div style="font:400 11.5px var(--font-sans);color:var(--text-secondary)">Also credited as</div><div style="display:flex;gap:8px;max-width:320px"><x-import component-from-global-scope="Bae.MacTextField" placeholder="Another name"></x-import><x-import component-from-global-scope="Bae.MacButton" off="{{yes}}">Add</x-import></div></div><div class="bae-m-artistgrid"><x-import component-from-global-scope="Bae.MacArtistAlbumTile" title="Low Tide Hours" year="1992"></x-import><x-import component-from-global-scope="Bae.MacArtistAlbumTile" title="Field Recordings" year="1979"></x-import><x-import component-from-global-scope="Bae.MacArtistAlbumTile" title="Northbound" year="1974"></x-import></div></x-import></div></div></x-import><x-import component-from-global-scope="Bae.MacSheet" overlay="{{yes}}" title="Merge Mara Quill and Mara Quil?" width="420"><div class="bae-muted" style="font-size:13px">Their albums, tracks and credits show under one artist. Choose the name it keeps.</div><div style="display:flex;flex-direction:column;gap:6px"><x-import component-from-global-scope="Bae.MacRadio" label="Mara Quill" checked="{{yes}}"></x-import><x-import component-from-global-scope="Bae.MacRadio" label="Mara Quil"></x-import></div><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary">Merge</x-import></x-import></x-import></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>
