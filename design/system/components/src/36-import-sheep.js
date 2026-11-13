@@ -243,7 +243,7 @@
   }
 
   // bop: the heart on its player starts to pulse and the sheep bops to the music in its headphones: nods, sways, two little hops,
-  // ears flapping, with notes rising from the headphones. No release.
+  // ears flapping. No release.
   function bopMoment() {
     var dur = 7, t = {}, beat = 0.42, first = 0.9, beats = [];
     for (var b = 0; b < 8; b++) beats.push(first + b * beat);
@@ -265,11 +265,6 @@
     t.mouth = [[0, REST], [first - 0.2, REST, 'o'], [first + 0.1, at(0, 0, 0, 1.25, 1.4)], [end, at(0, 0, 0, 1.25, 1.4)], [end + 0.3, REST]];
     t.eyes = [[0, REST], [first, REST], [first + 0.15, at(0, 3, 0, 1.05, 0.78)], [end, at(0, 3, 0, 1.05, 0.78)], [end + 0.3, REST]];
     t.cheekL = t.cheekR = [[0, REST], [first, REST], [first + 0.3, at(0, 0, 0, 1.2)], [end, at(0, 0, 0, 1.2)], [end + 0.3, REST]];
-    [[first + 0.3, 1], [first + 1.3, -1], [first + 2.3, 1]].forEach(function (n, i) {
-      var s = n[0], k = n[1];
-      function float(u) { return [470 + 50 * u + 16 * Math.sin(u * Math.PI * 2) * k, 130 - 200 * u, 12 * Math.sin(u * Math.PI * 2) * k, 0.6 + 0.4 * Math.min(1, u * 4)]; }
-      t['note-' + (i + 1)] = [[0, { transform: at(470, 130, 0, 0.6), opacity: 0 }]].concat(along(float, s, s + 1.6, 0.1, function (u) { return { opacity: Math.min(1, u * 6) * (u < 0.6 ? 1 : (1 - u) / 0.4) }; }));
-    });
     return { dur: dur, tracks: t, releases: [] };
   }
 
@@ -307,7 +302,7 @@
   var RELEASE_SIZE = { gobble: 44, catch: 50, inhale: 54 };
   // What each moving part looks like at rest, for the moments that leave it alone.
   function restOf(part) {
-    if (/^item-/.test(part) || /^(flash|blush|rise|wind-|note-|marks-)/.test(part)) return { opacity: 0 };
+    if (/^item-/.test(part) || /^(flash|blush|rise|wind-|marks-)/.test(part)) return { opacity: 0 };
     if (/^star-/.test(part)) return { transform: at(0, 0, 0, 0) };
     return { transform: REST };
   }
@@ -404,9 +399,5 @@
         h('g', Object.assign({ key: 'mt', className: 'bae-isheep-marks-top' }, accentLine), h('path', { d: 'M180 -20l-14-40M240 -30v-44M300 -20l14-40' })),
         // Stars that burst out after a catch, and the heart that floats up.
         h('g', { key: 'stars' }, [[500, 110, 1.5], [-30, 40, 1.2], [590, 330, 1.1], [-70, 310, 1.35], [250, -150, 1]].map(function (p, i) { return star(i, p, i % 2 ? 'var(--accent-gold-fill)' : 'var(--accent-pink-fill)'); })),
-        h('g', { key: 'rise', className: 'bae-isheep-rise' }, h('path', { d: 'M0 14C-14 2-26-8-26-20C-26-34-8-38 0-24C8-38 26-34 26-20C26-8 14 2 0 14Z', strokeWidth: 8, style: { fill: 'var(--accent-pink-fill)' } })),
-        // Notes rising from the headphones while it bops.
-        [1, 2, 3].map(function (i) {
-          return h('g', { key: 'note' + i, className: 'bae-isheep-note-' + i }, h('path', { d: 'M-4 18a14 11-20 1 1-2-1V-34l34 10v12l-28-8V17Z', transform: 'scale(1.9)', strokeWidth: 4, style: { fill: i === 2 ? 'var(--accent-gold-fill)' : 'var(--accent-pink-fill)' } }));
-        })));
+        h('g', { key: 'rise', className: 'bae-isheep-rise' }, h('path', { d: 'M0 14C-14 2-26-8-26-20C-26-34-8-38 0-24C8-38 26-34 26-20C26-8 14 2 0 14Z', strokeWidth: 8, style: { fill: 'var(--accent-pink-fill)' } }))));
   }

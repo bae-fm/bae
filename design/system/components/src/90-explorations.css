@@ -50,7 +50,7 @@
 .bae-isheep-marks-top { transform-origin: 240px -40px; }
 .bae-isheep-blush { transform-origin: 230px 275px; }
 .bae-isheep-flash path { fill: #ffffff; stroke: none; }
-.bae-isheep-munch, .bae-isheep-gape, .bae-isheep-blush, .bae-isheep-rise, .bae-isheep-flash, [class^="bae-isheep-marks-"], [class^="bae-isheep-item-"], [class^="bae-isheep-wind-"], [class^="bae-isheep-note-"] { opacity: 0; }
+.bae-isheep-munch, .bae-isheep-gape, .bae-isheep-blush, .bae-isheep-rise, .bae-isheep-flash, [class^="bae-isheep-marks-"], [class^="bae-isheep-item-"], [class^="bae-isheep-wind-"] { opacity: 0; }
 [class^="bae-isheep-star-"] { transform: scale(0); }
 /* Still: the sheep at rest with the sequence's first release beside it. */
 .bae-isheep-still .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
