@@ -288,6 +288,18 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         }
     fi
 
+    # The same crates without the test features clippy turned on: the apps and
+    # bridges build them that way, and code only a test feature compiles
+    # (an ungated `pub use` of a test helper) passes the check above.
+    LIBRARY_ARGS=()
+    while IFS= read -r argument; do
+        LIBRARY_ARGS+=("$argument")
+    done < <(library_check_args <<< "$CHECK_PLAN")
+    run_check "cargo check (those crates' libraries without test features)" scripts/cargo.sh "${LIBRARY_ARGS[@]}" || {
+        echo "Gate code only test features compile with the same cfg and try again"
+        exit 1
+    }
+
     if [ "$MODE" = strict ]; then
         # CI documents the workspace with warnings as errors; clippy does not see
         # doc links, so a link to a private item only failed there. Only the

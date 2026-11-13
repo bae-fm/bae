@@ -64,6 +64,9 @@ for package in metadata["packages"]:
 #   set the macOS Debug app builds it with (bae-bridge/build-macos.sh), so the
 #   hook builds its desktop code. Other crates' app features reach them through
 #   bae-bridge's in the same clippy run (one feature resolution).
+# - "app-feature bae-bridge/<feature>" for each bridge feature a shipping app
+#   build turns on that is not test support (`test-keyring` is), the set the
+#   check of the libraries without test features builds with.
 # - "mobile <crate>" for each covered crate the mobile apps build: bae-library,
 #   bae-app and bae-bridge, and the workspace crates they depend on for iOS.
 crate_check_plan() {
@@ -121,9 +124,29 @@ for member in sorted(covered, key=lambda member: packages[member]["name"]):
         for feature in sorted(packages[member]["features"]):
             if feature != "default":
                 print("feature", f"{name}/{feature}")
+            if feature not in ("default", "test-keyring"):
+                print("app-feature", f"{name}/{feature}")
     if member in mobile:
         print("mobile", name)
 PLAN
+}
+
+# The cargo arguments (one per line) that check the libraries and binaries of
+# the crates of a crate_check_plan on stdin without the test features the
+# clippy over --all-targets turns on. The bridges and apps build the crates
+# that way, and a `pub use` of a test-only item without its `#[cfg]` gate
+# compiles in a build with `test-utils` and fails in theirs.
+library_check_args() {
+    echo check
+    echo --lib
+    echo --bins
+    local kind value
+    while read -r kind value; do
+        case "$kind" in
+            crate) printf '%s\n' -p "$value" ;;
+            app-feature) printf '%s\n' --features "$value" ;;
+        esac
+    done
 }
 
 # The packages, of the "<package> <directory>" lines on stdin, with a staged

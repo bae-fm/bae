@@ -98,10 +98,16 @@ if ! plan=$(cd "$plan_workspace" && crate_check_plan base); then
     exit 1
 fi
 rm -rf "$plan_workspace"
-expected_plan=$'crate bae-app\nmobile bae-app\ncrate bae-bridge\nfeature bae-bridge/cast\nfeature bae-bridge/cloudkit\nmobile bae-bridge\ncrate bae-library\nmobile bae-library\ncrate base\nfeature base/test-utils\nmobile base\ncrate desktop-only\ncrate tester'
+expected_plan=$'crate bae-app\nmobile bae-app\ncrate bae-bridge\nfeature bae-bridge/cast\napp-feature bae-bridge/cast\nfeature bae-bridge/cloudkit\napp-feature bae-bridge/cloudkit\nmobile bae-bridge\ncrate bae-library\nmobile bae-library\ncrate base\nfeature base/test-utils\nmobile base\ncrate desktop-only\ncrate tester'
 if [ "$plan" != "$expected_plan" ]; then
     echo "the crates a change to base reaches were planned incorrectly:"
     echo "$plan"
+    exit 1
+fi
+library_args=$(library_check_args <<< "$plan" | tr '\n' ' ')
+expected_library_args='check --lib --bins -p bae-app -p bae-bridge --features bae-bridge/cast --features bae-bridge/cloudkit -p bae-library -p base -p desktop-only -p tester '
+if [ "$library_args" != "$expected_library_args" ]; then
+    echo "the check without test features was built incorrectly: $library_args"
     exit 1
 fi
 

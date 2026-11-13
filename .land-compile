@@ -4,6 +4,9 @@
 # builds, with its feature set and crate selection, so the landing worktree
 # reuses the hook's warm build: clippy with --all-targets over the crates the
 # landed commits touch and the crates that depend on them, warnings denied.
+# Then the same crates' libraries and binaries without test features, which
+# the apps and bridges build them with (a test-only `pub use` without its
+# `#[cfg]` gate compiles with `test-utils` and breaks every app build).
 # Two commits that each pass the hook can break each other's tests; this is
 # where that shows.
 set -euo pipefail
@@ -20,6 +23,7 @@ while IFS= read -r crate; do
 done < <(changed_workspace_crates <<< "$CRATES")
 
 ARGS=(clippy --all-targets)
+LIBRARY_ARGS=()
 if [ "${#DIRECT[@]}" -gt 0 ]; then
     while read -r kind value; do
         case "$kind" in
@@ -27,11 +31,16 @@ if [ "${#DIRECT[@]}" -gt 0 ]; then
             feature) ARGS+=(--features "$value") ;;
         esac
     done < <(crate_check_plan "${DIRECT[@]}")
+    while IFS= read -r argument; do
+        LIBRARY_ARGS+=("$argument")
+    done < <(library_check_args < <(crate_check_plan "${DIRECT[@]}"))
 elif grep -qxE 'Cargo\.toml|Cargo\.lock' <<< "$CHANGED_FILES"; then
     # A change to the workspace manifest or lockfile reaches every crate.
     ARGS+=(--workspace)
+    LIBRARY_ARGS=(check --workspace --lib --bins)
 else
     echo "no Rust crate changed; nothing to compile"
     exit 0
 fi
 scripts/cargo.sh "${ARGS[@]}" -- -D warnings
+scripts/cargo.sh "${LIBRARY_ARGS[@]}"
