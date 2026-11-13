@@ -6,9 +6,12 @@ step mac macos ./bae-macos/run.sh --no-open
 step mac macos-tests ./bae-macos/test.sh --build-only
 step mac macos-tests-run ./bae-macos/test.sh --run-only
 step mac macos-tests-all ./bae-macos/test.sh
+step mac macos-track-tests ./bae-macos/test.sh --run-only TrackTests
+step mac macos-detail-tests ./bae-macos/test.sh --run-only ReleaseDetailTests
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
+step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AlbumDetailPlaceholderTest
 step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
 step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
 step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
@@ -25,6 +28,9 @@ step android android-component-shots scripts/cargo.sh run -p bae-shots -- run --
 limit macos-tests-run 10m
 limit android-tests 10m
 limit android-element-list-tests 10m
+limit macos-track-tests 10m
+limit macos-detail-tests 10m
+limit android-album-detail-tests 10m
 limit macos-welcome-library-row-tests 10m
 limit android-welcome-libraries-tests 10m
 limit macos-sort-language-tests 10m

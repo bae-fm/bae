@@ -334,6 +334,24 @@ struct ReleaseDetailTests {
     }
 
     @MainActor
+    @Test("an album detail carries who rated it and whether this person can")
+    func albumDetailCarriesItsRating() {
+        let rating = BridgeAlbumRating(
+            canRate: true,
+            mine: .four,
+            raters: [.you, .person(name: "Rowan", stars: .two)]
+        )
+        var bridge = makeBridgeAlbumDetail()
+        bridge.rating = rating
+
+        let detail = AlbumDetail(bridge: bridge)
+
+        #expect(detail.rating.canRate)
+        #expect(detail.rating.mine == .four)
+        #expect(detail.rating.raters.count == 2)
+    }
+
+    @MainActor
     @Test("an album detail holds the album and each release in album order")
     func albumDetailHoldsItsReleases() {
         let detail = AlbumDetail(
