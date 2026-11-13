@@ -2189,7 +2189,7 @@
   "android.welcome.opening.failed.dc.html": {
    "h": 916,
    "page": "welcome",
-   "title": "The library didn’t open: no way out",
+   "title": "The library did not open",
    "w": 412,
    "x": 984,
    "y": 5844
@@ -4130,6 +4130,62 @@
    "w": 412,
    "x": 1296,
    "y": 5432
+  },
+  "android.welcome.open-failed.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: a library failed to open",
+   "w": 412,
+   "x": 1294,
+   "y": 15556
+  },
+  "mac.welcome.libraries.damaged-join.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: an unfinished join that cannot be read",
+   "w": 690,
+   "x": 1802,
+   "y": 15556
+  },
+  "mac.welcome.libraries.damaged-join.discard.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: Welcome: discard an unfinished join that cannot be read",
+   "w": 690,
+   "x": 2588,
+   "y": 15556
+  },
+  "android.welcome.libraries.damaged-join.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: an unfinished join that cannot be read",
+   "w": 412,
+   "x": 3374,
+   "y": 15556
+  },
+  "android.welcome.libraries.damaged-join.discard.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Welcome: discard an unfinished join that cannot be read",
+   "w": 412,
+   "x": 3882,
+   "y": 15556
+  },
+  "mac.welcome.opening.uncounted.dc.html": {
+   "h": 600,
+   "page": "welcome",
+   "title": "macOS: opening: a step that counts nothing",
+   "w": 900,
+   "x": 4390,
+   "y": 15556
+  },
+  "android.welcome.opening.uncounted.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "Opening: a step that counts nothing",
+   "w": 412,
+   "x": 5386,
+   "y": 15556
   }
  },
  "createdOnFiles": {
@@ -4293,7 +4349,8 @@
   "row-set-storage",
   "code-set-storage",
   "row-welcome-create",
-  "code-welcome-create"
+  "code-welcome-create",
+  "code-welcome-damaged-join"
  ],
  "notes": {
   "canvas-key-library": {
@@ -5639,6 +5696,14 @@
    "x": 2310,
    "y": 25888,
    "text": "What the code needs for these boards:\n- Pending: one row per record, its subject over its reason, Details and the record's action at the right, in the box like every other Settings row. Today each record is its subject over a neutral notice holding the reason and the action (PendingRecordsView.swift). The status above says Waiting to sync while anything is pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again.\n- Android: the same Pending rows, the action as a text button at the right where the phone can act; tapping a row opens its details. A phone uploads no release files, so it never lists one of their records; an action only the Mac can take (Restore source file) has no button there. bae change if SyncScreen.kt draws them otherwise."
+  },
+  "code-welcome-damaged-join": {
+   "page": "welcome",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- An unfinished join whose saved state cannot be read: its row, titled \"Unfinished join that cannot be read\" with the library’s id under it, and Discard…, which asks first and then discards it (coven discard_unfinished_installation) and lists the libraries again. An unfinished restore is the same with \"Unfinished restore that cannot be read\" and \"Discard the unfinished restore?\". Today coven’s listing fails naming the store and the apps show nothing. bae change, every locale.\n- Android: a library that failed to open shows Could not open under its row, with Details and Reset from cloud…, as the Mac’s list does.",
+   "w": 420,
+   "x": 5894,
+   "y": 15556
   }
  },
  "order": [
@@ -6156,7 +6221,14 @@
   "mac.import.identify.records-differ.dc.html",
   "mac.import.list.folder-not-watched.dc.html",
   "mac.playback.casting.no-volume.dc.html",
-  "android.playback.full-player.no-volume.dc.html"
+  "android.playback.full-player.no-volume.dc.html",
+  "android.welcome.open-failed.dc.html",
+  "mac.welcome.libraries.damaged-join.dc.html",
+  "mac.welcome.libraries.damaged-join.discard.dc.html",
+  "android.welcome.libraries.damaged-join.dc.html",
+  "android.welcome.libraries.damaged-join.discard.dc.html",
+  "mac.welcome.opening.uncounted.dc.html",
+  "android.welcome.opening.uncounted.dc.html"
  ],
  "pages": [
   {

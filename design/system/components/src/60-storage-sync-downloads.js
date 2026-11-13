@@ -153,12 +153,14 @@
     var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
     var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless' }, props.secondary) : null;
     var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
+    // `leave`: the label of the button that leaves a screen the notice fills (Cancel), first in the row, where it is the screen's only way back.
+    var leave = centered && props.leave ? h(MacButton, { key: 'l', muted: true }, props.leave) : null;
     if (centered) {
       // The glyph sits beside the title only; a subtitle is its own smaller, grey line under them, so the two lines read as a heading and what to do.
       var title = h(React.Fragment, null,
         h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
         props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary || leave ? h('div', { className: 'bae-notice-centered-row' }, leave, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
     }
     // The buttons sit on the text's line at the right, secondary first; `buttons: 'below'` puts them on a line of their own under the text.
     var below = props.buttons === 'below';

@@ -19,17 +19,19 @@ body{margin:0;background:var(--background)}
 </helmet>
 <div style="font-family: var(--font-android)"><x-import component-from-global-scope="Bae.AndroidSection" title="Your libraries"></x-import><x-import component-from-global-scope="Bae.AndroidCard">
   <sc-if value="{{resting}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Home music" button="{{yes}}"><x-import component-from-global-scope="Bae.AndroidMoreMenu"></x-import></x-import></sc-if>
+  <sc-if value="{{openFailed}}" hint-placeholder-val="{{ false }}"><div style="padding: 0 16px 12px"><x-import component-from-global-scope="Bae.AndroidNotice" tone="danger" title="Could not open" subtitle="Something is wrong with this library’s data." secondary="Details" action="Reset from cloud…" buttons="below"></x-import></div></sc-if>
   <sc-if value="{{removing}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Home music" subtitle="Leaving the library…"><div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center"><x-import component-from-global-scope="Bae.AndroidSpinner"></x-import></div></x-import></sc-if>
   <x-import component-from-global-scope="Bae.AndroidRow" title="Odile’s records" button="{{yes}}" off="{{removing}}"><x-import component-from-global-scope="Bae.AndroidMoreMenu" off="{{removing}}"></x-import></x-import>
+  <sc-if value="{{damagedJoin}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Unfinished join that cannot be read" subtitle="3b9e07d4-51a2…0f2d9a7c4e81"><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Discard…</x-import></x-import></sc-if>
   <sc-if value="{{unreadable}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidRow" title="Library that cannot be read" subtitle="6f1c2a9e-4b7d…3d5e8b2f7c14"><x-import component-from-global-scope="Bae.AndroidButton" kind="text">Remove…</x-import></x-import></sc-if>
   <x-import component-from-global-scope="Bae.AndroidRow" title="Add library" action="{{yes}}" leading-icon="add" off="{{removing}}"></x-import>
 </x-import></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","options":["","removing","unreadable"],"default":""},"$preview":{"width":412,"height":290}}'>
+<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","options":["","removing","open-failed","unreadable","damaged-join"],"default":""},"$preview":{"width":412,"height":290}}'>
 class Component extends DCLogic {
   renderVals() {
     const s = (this.props || {}).state || '';
-    return { yes: true, resting: s === '' || s === 'unreadable', removing: s === 'removing', unreadable: s === 'unreadable' };
+    return { yes: true, resting: s === '' || s === 'open-failed' || s === 'unreadable' || s === 'damaged-join', removing: s === 'removing', unreadable: s === 'unreadable', damagedJoin: s === 'damaged-join', openFailed: s === 'open-failed' };
   }
 }
 </script>
