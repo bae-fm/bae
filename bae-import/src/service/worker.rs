@@ -103,6 +103,9 @@ impl ImportService {
                 run_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx);
             });
 
+        let release_reads =
+            crate::ReleaseReads::new(services.tables.clone(), services.catalogs.clone());
+        let release_reads_for_worker = release_reads.clone();
         let worker = WorkerThread::spawn("import worker thread", bugs, move |_, commands_rx| {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -115,6 +118,7 @@ impl ImportService {
                     records,
                     tables,
                     catalogs,
+                    release_reads: release_reads_for_worker,
                     remote_images,
                     clock,
                     ids,
@@ -137,8 +141,6 @@ impl ImportService {
             });
         });
 
-        let release_reads =
-            crate::ReleaseReads::new(services.tables.clone(), services.catalogs.clone());
         let identify = crate::IdentifyService::new(
             services.store.clone(),
             services.tables.clone(),

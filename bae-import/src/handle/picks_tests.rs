@@ -727,8 +727,15 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
 
     let scratch = Fixture::new("disc-id-complete").await;
     route_two_pressings(&scratch, fixture.probed_total_ms(&dir));
-    let (complete, _) =
-        scratch.import.read_pick(&release, &[], CallClass::REQUESTED).await.unwrap();
+    let (complete, _) = scratch
+        .import
+        .release_reads
+        .claimed(
+            &bae_identify::PressingLink { record: release.clone(), partners: vec![] },
+            CallClass::REQUESTED,
+        )
+        .await
+        .unwrap();
     assert_eq!(picked, complete.release);
 }
 

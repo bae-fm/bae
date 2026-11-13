@@ -63,14 +63,18 @@ const RECORDING_SEARCH_PAGE: usize = 100;
 
 /// Where a Disc ID's releases are looked up. The endpoint takes these
 /// includes and refuses `annotation`, `discids`, `media` and the recording-
-/// and work-level relations; it would also take `artist-rels`, which bae
-/// leaves to the release lookup. Every release in its answer lists all its
+/// and work-level relations. `artist-rels` is asked for, so a release read
+/// from the answer states the artists it credits as roles, which the draft of
+/// an unattended pick is read from. Every release in its answer lists all its
 /// media, each with its tracks and the Disc IDs registered against it,
-/// whatever is asked. Its releases lack the annotation and the relations the
-/// release lookup states. Neither endpoint states a release group's own
-/// links, `release-group-rels` included: those are on the group's page.
+/// whatever is asked. Its releases lack the annotation and the recording- and
+/// work-level relations the release lookup states. Neither endpoint states a
+/// release group's own links, `release-group-rels` included: those are on the
+/// group's page.
 fn discid_url(discid: &str) -> String {
-    ws2(&format!("discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"))
+    ws2(&format!(
+        "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels+artist-rels"
+    ))
 }
 
 /// The Discogs pages one URL lookup asks about, in the order the request

@@ -336,31 +336,6 @@ impl ImportServiceHandle {
             )
             .await
     }
-
-    /// Every release a pick claims, read whole: `primary`, and its
-    /// `partners` on other catalogs, from storage or fetched now.
-    pub(crate) async fn read_pick(
-        &self,
-        primary: &bae_catalogs::records::LookupRef,
-        partners: &[bae_catalogs::records::LookupRef],
-        class: bae_catalogs::rate_limiter::CallClass,
-    ) -> Result<
-        (
-            bae_catalogs::source_release::PreparedRelease,
-            Vec<bae_catalogs::source_release::PreparedRelease>,
-        ),
-        crate::ImportError,
-    > {
-        let release = self
-            .release_reads
-            .release(primary, bae_catalogs::payloads::ReadDepth::Complete, class)
-            .await?;
-        let partners = self
-            .release_reads
-            .partners(primary, partners, class, &crate::CatalogApplySteps::unread())
-            .await?;
-        Ok((release, partners))
-    }
 }
 
 /// A fetch of an external release's cover that failed, naming the catalog

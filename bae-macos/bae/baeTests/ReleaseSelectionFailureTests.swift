@@ -261,8 +261,7 @@ extension ReleaseSelectionFailureTests {
                 )
             )
         )
-        let message = BridgeIdentifyFailure.releaseDetails(failure: .timeout)
-            .badgeLine
+        let message = BridgeLookupFailure.timeout.unreadDocumentLine
         var retried = false
         var selected: Pressing?
         let shown = try #require(

@@ -456,11 +456,12 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
         200,
         mb_release_json("mb-settling", "rg-settling", &[probed, 0]),
     );
-    fixture.provider.hold("/release/mb-settling?");
+    // The settle is in flight while it fetches the pick's cover.
+    fixture.provider.hold("/release-group/rg-settling/front");
     fixture.scan(1).await;
 
     let pass = fixture.drain_automatic_task();
-    fixture.provider.wait_for_request("/release/mb-settling?", 1).await;
+    fixture.provider.wait_for_request("/release-group/rg-settling/front", 1).await;
 
     fixture.set_identify_automatically(false).await;
 
@@ -658,7 +659,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
 }
 
 /// With every slot's run going but one, a run that answers and is reading its
-/// pick lets the job waiting behind it start: the read holds no slot.
+/// pick lets the job waiting behind it start: the settle holds no slot.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settle_reading_its_pick_holds_no_slot() {
     let fixture = Fixture::new("settle-holds-no-slot").await;
@@ -674,8 +675,9 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
         running.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
-    // Both the barcode searches and the settle's read of the pick wait here.
-    fixture.provider.hold_each(&["query=barcode", "/release/mb-slot?"]);
+    // Both the barcode searches and the settle's fetch of the pick's cover wait
+    // here.
+    fixture.provider.hold_each(&["query=barcode", "/release-group/rg-slot/front"]);
     fixture.scan(MAX_IN_FLIGHT + 1).await;
 
     fixture.start_explicit_lookup(&settling);
@@ -691,12 +693,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
 
     // The settle's read and every slot's lookup are out at once.
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
-    assert_eq!(
-        fixture.count_release_lookups("mb-slot"),
-        1,
-        "the settle is still reading the pick: {:?}",
-        fixture.provider.requests()
-    );
+    fixture.provider.wait_for_request("/release-group/rg-slot/front", 1).await;
     assert_eq!(
         fixture.identification_status(&settling_key).await,
         Some(crate::IdentificationStatus::ReadingPick { import_asked: false })

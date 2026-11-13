@@ -104,6 +104,20 @@ impl ReleaseReads {
         Ok(prepared)
     }
 
+    /// Every release `link` claims, read whole: its primary, and its partners
+    /// on other catalogs, from storage or fetched now.
+    pub(crate) async fn claimed(
+        &self,
+        link: &bae_identify::PressingLink,
+        class: CallClass,
+    ) -> Result<(PreparedRelease, Vec<PreparedRelease>), ImportError> {
+        let primary = self.release(&link.record, ReadDepth::Complete, class).await?;
+        let partners = self
+            .partners(&link.record, &link.partners, class, &CatalogApplySteps::unread())
+            .await?;
+        Ok((primary, partners))
+    }
+
     /// `release` fetched from its catalog to `depth`.
     async fn fetch(
         &self,

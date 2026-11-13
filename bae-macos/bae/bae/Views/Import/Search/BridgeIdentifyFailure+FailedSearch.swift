@@ -35,7 +35,7 @@ extension BridgeIdentifyFailure {
             FailedSearch(source: source, step: .titleSearch)
         case .pressing(let source, _):
             FailedSearch(source: source, step: .pressing)
-        case .releaseDetails, .cover: nil
+        case .cover: nil
         }
     }
 }

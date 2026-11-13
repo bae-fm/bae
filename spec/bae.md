@@ -999,10 +999,11 @@ Each Pending row is in exactly one state. The first that applies wins:
 1. **Importing**: an import is queued or running.
 2. **Identifying**: a lookup is queued, running, or writing an answer that
    picks nothing unattended. A lookup that picked its pressing unattended
-   (§3.5) puts the row in **Identified** while bae reads that pressing in
-   full; the row offers Import then too (§3.7). A row shows a lookup at
-   work, waiting for its run or running, only while it is Identifying, so
-   one whose pick is being read shows none, as Identified counts it.
+   (§3.5) puts the row in **Identified** while bae drafts from it and
+   fetches its cover; the row offers Import then too (§3.7). A row shows a
+   lookup at work, waiting for its run or running, only while it is
+   Identifying, so one whose pick is being drafted shows none, as Identified
+   counts it.
 3. **Error**: bae could not store a lookup's answer, or could not read what a
    lookup starts from or whether an answer is stored already.
 4. **Import error**: the last import failed, or the release can't be worked on
@@ -1013,8 +1014,8 @@ Each Pending row is in exactly one state. The first that applies wins:
 7. **Unmatched**: the person kept their own draft over what the lookup offered.
 8. **Error**: bae broke on its own side and the stored lookup ended there,
    such as when it could not keep the albums the run read.
-9. **Lookup error**: a catalog could not answer, or could not hand over a
-   release it found in full.
+9. **Lookup error**: a catalog could not answer, or could not hand over the
+   cover of the release the lookup picked.
 10. **Unmatched**: the lookup took its release for the folder and the person
     set it aside.
 11. **Needs you**: the lookup left the answer to the person.
@@ -1308,10 +1309,13 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    but not its annotation: until a pick reads it, its notes are its
    disambiguation alone. The release is read naming every other document
    its pages link as one the read stopped short of, and its own page too
-   where the read took it from a Disc ID answer; a pick, an unattended pick
-   included, reads the rest, that page included, before it applies anything.
-   Runs go four at a time. An unattended pick's read goes beside them, not in
-   a run's place, so the next folder's run starts as soon as one picks.
+   where the read took it from a Disc ID answer. A person's pick reads the
+   rest, that page included, before it applies anything. An unattended pick
+   reads nothing more: its draft is read from what its run read, and the
+   import reads every release the candidate is linked to in full before it
+   writes anything, so an import whose read fails fails. The Disc ID lookup
+   asks for the release's artist relations, so the release read from its
+   answer states the artists it credits as roles. Runs go four at a time.
    That complete read of a Discogs release asks MusicBrainz in one request
    which of its releases links the release's page and which of its release
    groups links the master's, since the release's page names its master; a
@@ -1520,14 +1524,14 @@ A run *picks unattended* only when all of these hold:
 
 - the folder's own files rule out none of the pressings found;
 - it found exactly one pressing, two catalogs' records of it counting once;
-- every record of that pressing was read in full;
+- the run read every record of that pressing;
 - its tracklist lists as many tracks as the folder holds.
 
 Ana's run finds one pressing, on both catalogs, read in full, eleven tracks.
-bae picks it, and her row reads Identified at once. bae reads the pressing in
-full beside the runs still going, then writes its metadata into her draft.
-Until that read ends, her pane shows the pressing selected and being read; an
-answer that picks nothing reads no pressing, and the pane shows none. A
+bae picks it, and her row reads Identified at once. bae writes the metadata
+of the releases her run read into her draft, with the cover it fetches. Until
+that write ends, her pane shows the pressing selected and being drafted; an
+answer that picks nothing drafts no pressing, and the pane shows none. A
 Disc ID often returns several pressings of one album: an exact clue is not a
 unique answer, and choosing between them is the person's.
 
@@ -1582,8 +1586,8 @@ picked. The person then:
 - **keeps their own draft**, from the folder's tags or typed by hand.
 
 A pick applies its release to the draft at once (§3.6), an unattended one as
-soon as its read in full ends. Nothing previews the release's tracklist first:
-the draft the pick writes is what the pane shows. While a person's pick waits
+soon as its draft is read from what its run read. Nothing previews the
+release's tracklist first: the draft the pick writes is what the pane shows. While a person's pick waits
 on the network, the row it was made on names what it waits on: reading the
 release, and then each other catalog's release of the pressing, from its
 catalog, or fetching the cover from the catalog that offers it. A release the
@@ -1915,11 +1919,11 @@ no failure to record: that is logged, not reported as a bug.
 It records nothing when another import already holds the release, when this
 device already imported its files, or when the library is closing.
 
-Import asked for while bae reads a run's unattended pick, from the row, the
-pane or a selection, leaves the read going and doesn't import the draft as it
+Import asked for while bae drafts a run's unattended pick, from the row, the
+pane or a selection, leaves the draft going and doesn't import the draft as it
 stands: it waits for the pick to be stored and then imports, as automatic
 import does, with the setting on or off. The row then no longer offers Import.
-A read that stores no pick, because it failed or was cancelled, imports
+A draft that stores no pick, because it failed or was cancelled, imports
 nothing.
 
 A run whose step or lookup panics ends as bae's own error (§3.2),
@@ -5938,7 +5942,7 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (reading the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it or to start (what a run starts from, or whether an answer is stored already, could not be read), for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, each step of the import, written before the worker starts it — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far through its step an import is, is not stored; what each run published is `import_identify_run`'s. No row outlives the process: the table is emptied as the library opens |
+| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (drafting the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it or to start (what a run starts from, or whether an answer is stored already, could not be read), for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, each step of the import, written before the worker starts it — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far through its step an import is, is not stored; what each run published is `import_identify_run`'s. No row outlives the process: the table is emptied as the library opens |
 | `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
 | `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, each stored in the write of the state the run reached from them. Its pane and the release editor's search draw the run from these rows, its rows judged against the text of those signals. A folder candidate's run has its rows only while its standing names the run: its first state is written in the write that starts it, a later one only while the standing still names it, and the write that moves the standing off the run deletes them, so no read finds a run the standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. Every row a run owns goes with its row here, and the table is emptied as the library opens |
 | `import_candidate_search`, `import_candidate_search_source` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). The cards the pane draws are folded from the answered parts as the search is read, never stored. Each catalog's answer is a write of its own that lands only on a part still searching, of the search it was asked for: a new search for the key replaces the row on a run number never used again, so an answer to the replaced search, a second answer, or one for a part switched off lands nowhere. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list marks its rows picked, with what its documents state its album is; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |

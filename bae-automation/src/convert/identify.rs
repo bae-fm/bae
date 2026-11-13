@@ -180,9 +180,6 @@ impl AutomationIdentifyFailure {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
             },
-            IdentifyFailure::ReleaseDetails(failure) => {
-                Self::ReleaseDetails { failure: AutomationLookupFailure::from_core(failure) }
-            }
             IdentifyFailure::Cover(failure) => Self::Cover {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),

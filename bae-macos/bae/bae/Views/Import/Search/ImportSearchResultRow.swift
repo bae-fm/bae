@@ -117,9 +117,9 @@ struct ImportSearchResultRow: View {
             return (failure.error, { onSelect(pressing) })
         }
         if let unread = pressing.documentFailure, let onRetryUnread {
-            let line = BridgeIdentifyFailure.releaseDetails(failure: unread)
-                .badgeLine
-            return (DisplayError(line: line), onRetryUnread)
+            return (
+                DisplayError(line: unread.unreadDocumentLine), onRetryUnread
+            )
         }
         return nil
     }

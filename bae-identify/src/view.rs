@@ -215,9 +215,7 @@ impl IdentifyRunView {
                 &self.search,
                 SearchStepView::Searched { cells, .. } if in_cells(cells, failed)
             ),
-            IdentifyFailure::Pressing(_)
-            | IdentifyFailure::ReleaseDetails(_)
-            | IdentifyFailure::Cover(_) => false,
+            IdentifyFailure::Pressing(_) | IdentifyFailure::Cover(_) => false,
         }
     }
 }

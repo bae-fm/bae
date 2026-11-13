@@ -37,8 +37,8 @@ pub enum ReadDepth {
     /// [`DiscIdRelease`]), and records the page as stopped short of too.
     Identification,
     /// Every document its links reach: what anything that applies the
-    /// release reads — a pick, an unattended pick, a pick's partners, a
-    /// re-identify, a shared-album offer.
+    /// release reads — a pick, a pick's partners, an import of a pressing,
+    /// a re-identify, a shared-album offer.
     Complete,
 }
 

@@ -12,6 +12,12 @@ extension BridgeLookupFailure {
         }
         return format
     }
+
+    /// The line a pressing row shows when its release document could not be
+    /// read.
+    var unreadDocumentLine: String {
+        String(localized: "Failed to load release details: \(badgeLine)")
+    }
 }
 
 extension BridgeIdentifyFailure {
@@ -39,11 +45,6 @@ extension BridgeIdentifyFailure {
                 String(localized: "Same pressing"),
                 source,
                 failure
-            )
-        case .releaseDetails(let failure):
-            return String(
-                localized:
-                    "Failed to load release details: \(failure.badgeLine)"
             )
         case .cover(let source, let failure):
             let catalog = bridgeCatalogName(catalog: source)

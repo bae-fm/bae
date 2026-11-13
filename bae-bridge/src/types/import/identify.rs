@@ -375,9 +375,6 @@ pub enum BridgeIdentifyFailure {
         source: BridgeCatalog,
         failure: BridgeLookupFailure,
     },
-    ReleaseDetails {
-        failure: BridgeLookupFailure,
-    },
     /// The catalog offering the cover of the release a run picked could not
     /// give it, so the pick was not applied.
     Cover {

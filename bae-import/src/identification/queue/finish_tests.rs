@@ -54,8 +54,8 @@ async fn await_import_ending(
 
 impl Fixture {
     /// A disc-ID candidate whose one release `release_id` the run picks
-    /// unattended, with the settle's read of that release held, and its run
-    /// asked for and reading the pick. Returns its folder and key.
+    /// unattended, with the settle's fetch of its cover held, and its run
+    /// asked for and drafting the pick. Returns its folder and key.
     async fn reading_its_pick(
         &self,
         release_id: &str,
@@ -65,7 +65,7 @@ impl Fixture {
         let dir = self.disc_id_candidate("Album");
         let key = crate::CandidateKey::folder(&dir);
         self.route_disc_id_match(&dir, release_id, group_id, 2);
-        self.provider.hold(&format!("/release/{release_id}?"));
+        self.provider.hold(&format!("/release-group/{group_id}/front"));
         self.scan(1).await;
         self.start_explicit_lookup(&dir);
         self.await_identification_status(
@@ -97,6 +97,36 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
     assert_no_import(&fixture, &mut events, &key, "the watched folder was read again").await;
+}
+
+/// An unattended pick drafts from its run's read, and the import reads the
+/// release in full before it writes: a catalog that refuses that read fails
+/// the import and nothing is written.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_import_whose_full_read_of_its_release_fails_fails() {
+    let fixture = Fixture::importing("import-full-read-fails").await;
+    fixture.set_import_when_identified(true).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    fixture.provider.route("/release/mb-full?", 400, "{}");
+    fixture.route_disc_id_match(&dir, "mb-full", "rg-full", 2);
+    fixture.scan(1).await;
+    let mut events = fixture.import.every_event();
+
+    fixture.drain_automatic().await;
+
+    let (_, failure) = await_import_ending(&mut events, &key).await;
+    assert!(failure.is_some(), "the import fails: {:?}", fixture.provider.requests());
+    assert_eq!(fixture.count_release_lookups("mb-full"), 1, "{:?}", fixture.provider.requests());
+    assert_eq!(
+        fixture
+            .db
+            .query_texts_for_test("SELECT catalog || ' ' || key FROM release_records")
+            .await
+            .unwrap(),
+        Vec::<String>::new(),
+        "nothing was written"
+    );
 }
 
 /// With the setting off, an auto-importable verdict waits for a person.
@@ -274,19 +304,18 @@ async fn importing_a_selection_while_the_pick_is_read_imports_it_once_stored() {
     assert_no_import(&fixture, &mut events, &key, "the asked-for import ended").await;
 }
 
-/// A read that fails stores no pick, so the Import asked for while it ran
-/// imports nothing.
+/// A cover fetch that fails stores no pick, so the Import asked for while it
+/// ran imports nothing.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
+async fn a_cover_that_fails_after_import_was_asked_imports_nothing() {
     let fixture = Fixture::importing("import-asked-read-fails").await;
     fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::CandidateKey::folder(&dir);
-    // The run reads its release from the Disc ID answer; the pick's read of
-    // the release itself is refused.
-    fixture.provider.route("/release/mb-fails?", 400, "{}");
+    // The pick's cover is refused.
+    fixture.provider.route("/release-group/rg-fails/front", 500, "server error");
     fixture.route_disc_id_match(&dir, "mb-fails", "rg-fails", 2);
-    fixture.provider.hold("/release/mb-fails?");
+    fixture.provider.hold("/release-group/rg-fails/front");
     fixture.scan(1).await;
     fixture.start_explicit_lookup(&dir);
     fixture
@@ -308,7 +337,7 @@ async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
         Some(crate::MetadataAuthor::Identification),
         "no pick was stored"
     );
-    assert_no_import(&fixture, &mut events, &key, "the pick's read failed").await;
+    assert_no_import(&fixture, &mut events, &key, "the pick's cover failed").await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

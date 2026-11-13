@@ -533,11 +533,6 @@ fn identify_failure(failure: bae_identify::IdentifyFailure) -> crate::types::Bri
             source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),
         },
-        IdentifyFailure::ReleaseDetails(failure) => {
-            crate::types::BridgeIdentifyFailure::ReleaseDetails {
-                failure: BridgeLookupFailure::from_core(failure),
-            }
-        }
         IdentifyFailure::Cover(failure) => crate::types::BridgeIdentifyFailure::Cover {
             source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),

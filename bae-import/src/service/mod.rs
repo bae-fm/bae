@@ -192,6 +192,8 @@ pub struct ImportService {
     tables: crate::tables::ImportTables,
     /// The catalogs an import asks for its new artists' pictures.
     catalogs: crate::CatalogSessions,
+    /// Where an import reads the releases its candidate is linked to.
+    release_reads: crate::ReleaseReads,
     /// Where those pictures are fetched through.
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
     clock: coven::ClockRef,

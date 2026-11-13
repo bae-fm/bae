@@ -130,6 +130,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             event_tx,
             runtime,
             records: bae_records::test_fixtures::test_records(&db),
+            release_reads: crate::ReleaseReads::new(tables.clone(), catalogs.clone()),
             tables,
             catalogs,
             remote_images: bae_catalogs::remote_image::RemoteImageCache::for_test(

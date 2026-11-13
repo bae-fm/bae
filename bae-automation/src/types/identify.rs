@@ -178,7 +178,6 @@ pub enum AutomationIdentifyFailure {
     Search { source: AutomationCatalog, failure: AutomationLookupFailure },
     Isrc { failure: AutomationLookupFailure },
     Pressing { source: AutomationCatalog, failure: AutomationLookupFailure },
-    ReleaseDetails { failure: AutomationLookupFailure },
     Cover { source: AutomationCatalog, failure: AutomationLookupFailure },
 }
 

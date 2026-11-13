@@ -84,11 +84,10 @@ pub(super) async fn settle_answer(
     candidate: FolderCandidate,
     run: IdentifyRunId,
     state: IdentifyState,
-    class: CallClass,
     token: CancellationToken,
 ) -> Finished {
     let representative_key = candidate.key();
-    let settled = settle_verdict(&context, &candidate, run, state, class, &token).await;
+    let settled = settle_verdict(&context, &candidate, run, state, &token).await;
     let files = CandidateFiles::of(&candidate);
     let ended = match &settled {
         // A write that ran ended its own pending save.
@@ -133,7 +132,6 @@ async fn settle_verdict(
     candidate: &FolderCandidate,
     run: IdentifyRunId,
     state: IdentifyState,
-    class: CallClass,
     token: &CancellationToken,
 ) -> Settled {
     let audio = state.read_audio();
@@ -155,7 +153,7 @@ async fn settle_verdict(
         }
         Err(error) => return Settled::Unwritable { error: error.to_string() },
     };
-    let settled_lead = match settle_lead(context, &mut verdict, &text, class, token).await {
+    let settled_lead = match settle_lead(context, &verdict, &releases, &text).await {
         Ok(settled_lead) => settled_lead,
         Err(settled) => return settled,
     };
@@ -316,19 +314,39 @@ pub(super) async fn save(
     }
 }
 
+/// `release` as the run read it, which the verdict names: no catalog is asked.
+/// A pick of the verdict's that its run did not read is a bug.
+async fn prepared_by_run(
+    context: &Context,
+    run_reads: &[bae_catalogs::source_release::SourceRelease],
+    release: &bae_catalogs::records::LookupRef,
+) -> Result<bae_catalogs::source_release::PreparedRelease, Settled> {
+    let Some(read) = run_reads.iter().find(|read| read.release == *release) else {
+        return Err(Settled::Unwritable {
+            error: format!(
+                "the verdict picks {} release {} its run did not read",
+                release.catalog.as_str(),
+                release.key
+            ),
+        });
+    };
+    context
+        .tables
+        .prepared_release(read.clone())
+        .await
+        .map_err(|error| Settled::Unwritable { error: error.to_string() })
+}
+
 /// Settle a candidate's lead: the releases of the pressing the verdict picks
-/// unattended, primary and partners, read in full. A verdict that picks none stands as the run found it, for the
-/// person to pick from or not. A provider that fails to answer for the lead
-/// fails the verdict as a lookup; anything else that stops the settle is what
-/// becomes of the answer.
+/// unattended, primary and partners, as the run read them. A verdict that
+/// picks none stands as the run found it, for the person to pick from or not.
 async fn settle_lead(
     context: &Context,
-    verdict: &mut TerminalVerdict,
+    verdict: &TerminalVerdict,
+    run_reads: &[bae_catalogs::source_release::SourceRelease],
     text: &bae_identify::CandidateText,
-    class: CallClass,
-    token: &CancellationToken,
 ) -> Result<SettledLead, Settled> {
-    let TerminalVerdict::Found { findings, track_count, .. } = &*verdict else {
+    let TerminalVerdict::Found { findings, track_count, .. } = verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
     let Ok(pick) = bae_identify::unattended_pick(
@@ -343,29 +361,13 @@ async fn settle_lead(
     let (primary, partners) = pressing.claims();
     let pressing_year = bae_identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
-    let settle = context.import.read_pick(&primary, &partners, class);
-    let prepared = tokio::select! {
-        biased;
-        // Shutdown is not a provider answer and writes nothing.
-        _ = token.cancelled() => return Err(Settled::Abandoned),
-        prepared = settle => prepared,
-    };
-    let (release, prepared_partners) = match prepared {
-        Ok(prepared) => prepared,
-        Err(error) => {
-            let Some(failure) = error.provider_failure() else {
-                return Err(Settled::Unwritable {
-                    error: format!("could not settle {}: {error}", primary.key),
-                });
-            };
-            warn!(
-                "identification: could not settle {} ({error}); storing the failure",
-                primary.key
-            );
-            verdict.fail(bae_identify::IdentifyFailure::ReleaseDetails(failure));
-            return Ok(SettledLead::NoExternalRelease);
-        }
-    };
+    // The run's own reads: an unattended pick drafts from what identification
+    // read, and the import reads the rest in full before it writes.
+    let release = prepared_by_run(context, run_reads, &primary).await?;
+    let mut prepared_partners = Vec::with_capacity(partners.len());
+    for partner in &partners {
+        prepared_partners.push(prepared_by_run(context, run_reads, partner).await?);
+    }
     let stored = std::iter::once(release.stored)
         .chain(prepared_partners.iter().map(|partner| partner.stored.clone()))
         .collect();

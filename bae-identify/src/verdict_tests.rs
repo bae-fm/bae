@@ -431,12 +431,12 @@ fn chosen_catalog_failure_derives_to_failed() {
     ));
 }
 
-/// A later failure, such as fetching release details, keeps the findings,
+/// A later failure, such as the cover's, keeps the findings,
 /// and a second one joins the first.
 #[test]
 fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     let details = |detail: &str| {
-        IdentifyFailure::ReleaseDetails(bae_catalogs::LookupFailure::Provider {
+        IdentifyFailure::Isrc(bae_catalogs::LookupFailure::Provider {
             status: Some(match detail {
                 "first" => 500,
                 _ => 503,

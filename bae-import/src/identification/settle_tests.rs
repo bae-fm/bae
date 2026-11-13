@@ -117,23 +117,20 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     );
 }
 
-/// One release lookup per settled lead, whichever signal found it.
-///
-/// The Disc ID answer is what the run reads a release it found from, but it
-/// lacks what applying the release needs — the annotation, and the recording,
-/// work and artist relations the commit maps. A lead is settled by fetching
-/// the release itself, once, and both candidates in this pass cost exactly
-/// that: the search lead's read by the run, the Disc ID lead's by its pick.
+/// An unattended pick drafts from what its run read: once the verdicts are
+/// stored, nothing has asked MusicBrainz for a release again. Each
+/// document is requested once, for a Disc ID lead and a search lead alike, and
+/// the Disc ID lead's release is never looked up at all, since the answer that
+/// returned it listed everything the draft reads.
 #[tokio::test(flavor = "multi_thread")]
-async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
-    let fixture = Fixture::new("settle-lead").await;
+async fn an_unattended_pick_asks_the_catalogs_nothing_after_its_verdict() {
+    let fixture = Fixture::new("settle-no-rereads").await;
     fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
         barcode: "0123456789012".to_string(),
     }));
     let disc_dir = fixture.disc_id_candidate("From Disc Id");
     let barcode_dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&disc_dir);
-
     for (id, group) in [("mb-disc-1", "rg-disc-1"), ("mb-barcode-1", "rg-barcode-1")] {
         fixture.provider.route(
             &format!("/release/{id}?"),
@@ -147,20 +144,31 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
 
     fixture.drain_automatic().await;
 
+    assert_eq!(fixture.judgement_for(&disc_dir).await, (true, None));
+    assert_eq!(fixture.judgement_for(&barcode_dir).await, (true, None));
+    let requests: Vec<String> = fixture
+        .provider
+        .requests()
+        .into_iter()
+        .filter(|target| target.starts_with("/ws/2/"))
+        .collect();
+    let mut distinct = requests.clone();
+    distinct.sort();
+    distinct.dedup();
+    assert_eq!(distinct.len(), requests.len(), "no document is requested twice: {requests:?}");
     assert_eq!(
         fixture.count_release_lookups("mb-disc-1"),
-        1,
-        "the disc-ID lead is settled once: {:?}",
-        fixture.provider.requests()
+        0,
+        "the Disc ID lead is drafted from the answer that returned it: {requests:?}"
     );
     assert_eq!(
         fixture.count_release_lookups("mb-barcode-1"),
         1,
-        "and so is the search lead: {:?}",
-        fixture.provider.requests()
+        "the search lead's one lookup is its run's: {requests:?}"
     );
-    assert_eq!(fixture.judgement_for(&disc_dir).await, (true, None));
-    assert_eq!(fixture.judgement_for(&barcode_dir).await, (true, None));
+    // The search, the Disc ID lookup, the two releases' groups and the search
+    // lead's release: what the runs read, and nothing after their verdicts.
+    assert_eq!(requests.len(), 5, "{requests:?}");
 }
 
 /// A lead whose document cannot be read is stored as its lookup returned it,
@@ -509,13 +517,13 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
 }
 
 /// A lead a Disc ID found is read from that answer, so the run offers it
-/// read and picks it unattended. The pick's complete read is the first to ask
-/// for the release itself; where that fails, the verdict fails with it and
-/// nothing is applied. The release stays stored as the run read it, its own
-/// page among what that read stopped short of.
+/// read and picks it unattended, and the pick drafts from that answer without
+/// asking for the release itself: where that would fail, the pick still
+/// applies. The release stays stored as the run read it, its own page among
+/// what that read stopped short of.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
-    let fixture = Fixture::new("settle-disc-id-unreadable").await;
+async fn a_disc_id_lead_is_applied_from_its_answer_without_asking_for_the_release() {
+    let fixture = Fixture::new("settle-disc-id-answer").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route("/discid/", 200, discid_json("mb-short-1", "rg-short-1", &[probed, 0]));
@@ -525,30 +533,19 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
     fixture.drain_automatic().await;
 
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
-    let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Failed { failures, findings, .. } = &verdict else {
-        panic!("the pick's failed read fails the verdict, got {verdict:?}");
-    };
     assert!(
-        matches!(
-            failures.as_slice(),
-            [bae_identify::IdentifyFailure::ReleaseDetails(
-                bae_catalogs::LookupFailure::Provider { status: Some(400) }
-            )]
-        ),
-        "{failures:?}"
+        matches!(identify_result(&row).verdict, TerminalVerdict::Found { .. }),
+        "{:?}",
+        identify_result(&row).verdict
     );
-    assert_eq!(
-        findings.matches[0].document_failure, None,
-        "the run read the release from the Disc ID answer"
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
+    assert_eq!(row.metadata_author, crate::MetadataAuthor::Identification, "the pick applied");
     assert_eq!(
         fixture.count_release_lookups("mb-short-1"),
-        1,
-        "only the pick asked for the release: {:?}",
+        0,
+        "nothing asked for the release: {:?}",
         fixture.provider.requests()
     );
-    assert_ne!(row.metadata_author, crate::MetadataAuthor::Identification, "nothing was applied");
     let stored = fixture.stored_release("mb-short-1").await.expect("the run's read is stored");
     assert!(
         stored.unfetched.contains(&bae_catalogs::source_release::UnfetchedDocument {
@@ -897,7 +894,6 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
             &bae_identify::LookupChoices::default(),
             bae_identify::signals::AudioFacts::default(),
         ),
-        CallClass::BACKGROUND,
         CancellationToken::new(),
     )
     .await;

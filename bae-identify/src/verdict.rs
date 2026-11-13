@@ -66,7 +66,6 @@ pub enum IdentifyFailure {
     /// One catalog could not answer the lookup of an offered row's pressing
     /// on it, so that row may be missing its record there.
     Pressing(SourceFailure),
-    ReleaseDetails(LookupFailure),
     /// The catalog offering the picked release's cover could not give it.
     Cover(SourceFailure),
 }

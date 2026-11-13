@@ -438,11 +438,11 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     fixture.provider.route("/release/mb-1?", 200, mb_release_json("mb-1", "rg-1", &[probed, 0]));
     fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
-    fixture.provider.hold("/release/mb-1?");
+    fixture.provider.hold("/release-group/rg-1/front");
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
-    fixture.provider.wait_for_request("/release/mb-1?", 1).await;
+    fixture.provider.wait_for_request("/release-group/rg-1/front", 1).await;
     fixture
         .import
         .set_candidate_edit_field(
