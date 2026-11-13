@@ -25,7 +25,7 @@ sys.modules[SPEC.name] = CHECK
 SPEC.loader.exec_module(CHECK)
 
 PLANTED = {
-    "Cargo.toml": '[workspace]\nmembers = ["planted", "bae-library"]\nresolver = "2"\n',
+    "Cargo.toml": '[workspace]\nmembers = ["planted"]\nresolver = "2"\n',
     "planted/Cargo.toml": (
         '[package]\nname = "planted"\nversion = "0.1.0"\nedition = "2024"\n\n'
         '[features]\ntest-utils = []\n'
@@ -115,18 +115,6 @@ fn home() { let _ = dirs::home_dir(); }
     "planted/examples/probe.rs": """
 fn main() { let _ = planted::Coven::new(); }
 """,
-    # The one example allowed to read the person's keychain and home, by its
-    # path in bae; another example in its crate is not.
-    "bae-library/Cargo.toml": (
-        '[package]\nname = "bae-library"\nversion = "0.1.0"\nedition = "2024"\n'
-    ),
-    "bae-library/src/lib.rs": "",
-    "bae-library/examples/restore_code.rs": """
-fn main() { let home = dirs::home_dir(); let _ = coven::Coven::new(dir(home), "bae", bugs()); }
-""",
-    "bae-library/examples/sync_bench.rs": """
-fn main() { let _ = dirs::home_dir(); }
-""",
     "app/mac/project.yml": """
 name: app
 targets:
@@ -186,7 +174,6 @@ class TestKeychainCheckTests(unittest.TestCase):
             self.assertEqual(
                 CHECK.check(root),
                 [
-                    "bae-library/examples/sync_bench.rs:2: dirs::home_dir",
                     "planted/benches/cost.rs:2: BridgeHost::new",
                     "planted/benches/cost.rs:3: Coven::new",
                     "planted/benches/cost.rs:4: dirs::home_dir",

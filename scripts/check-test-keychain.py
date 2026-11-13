@@ -44,10 +44,6 @@ RUST_NAMES = {
     ("BridgeHost", "new"),
     ("dirs", "home_dir"),
 }
-# Test code allowed to name them. restore_code is a tool the person runs, when
-# they ask for it, to print their own active library's restore code: it must
-# read their keychain and their `~/.bae`.
-RUST_ALLOWED = {"bae-library/examples/restore_code.rs"}
 # What a fake host is made from in each app's bindings: no keychain behind it.
 SWIFT_HANDLE_LABELS = {"unsafeFromHandle", "noHandle"}
 KOTLIN_HANDLE_ARGUMENTS = {"NoHandle"}
@@ -94,9 +90,8 @@ def rust_uses(tokens: list[Token]) -> list[tuple[int, str]]:
 
 def check_rust(root: Path) -> list[str]:
     violations = [
-        f"{relative}:{file.tokens[position].line}: {name}"
+        f"{path.relative_to(root.resolve()).as_posix()}:{file.tokens[position].line}: {name}"
         for path, file in reached_files(root).items()
-        if (relative := path.relative_to(root.resolve()).as_posix()) not in RUST_ALLOWED
         for position, name in rust_uses(file.tokens)
         if file.in_test(position)
     ]

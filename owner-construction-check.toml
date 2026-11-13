@@ -693,8 +693,6 @@ OpenCalls = "LibrarySessions"
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-import/src/watching/folder_watcher.rs" = ["FolderWatcher::new"]
-# An example's runtime, run to the end of main.
-"bae-library/examples/restore_code.rs" = ["main"]
 # Opens the library manager over the store, building its transfer queues once.
 "bae-library/src/assembly.rs" = ["open_library_manager"]
 # The UI-test fixture seeds the library through the tables of the store it was

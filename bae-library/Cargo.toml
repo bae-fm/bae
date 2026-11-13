@@ -117,9 +117,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 serial_test = { workspace = true }
 # The local HTTP servers tests stand in for catalogs and cover archives with.
 axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
-# The examples resolve the running user's home once, at the top, to build the
-# app directory they read.
-dirs = { workspace = true }
 # coven's deterministic clock/id fakes for bae's tests (off in production
 # builds), and the S3 prefix emptying the bench examples delete their library
 # from storage with.
