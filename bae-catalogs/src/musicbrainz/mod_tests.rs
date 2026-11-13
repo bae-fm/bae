@@ -343,8 +343,8 @@ fn release_labels_leaves_out_empty_and_repeated_entries() {
 /// assertion instead of hanging until the request timeout.
 ///
 /// One connection per response: the stream is dropped once the body is written,
-/// so the client opens a fresh connection for its next request and the accept
-/// count is the request count.
+/// and the response says `Connection: close`, so the client opens a fresh
+/// connection for its next request and the accept count is the request count.
 pub(super) async fn mb_response_server(
     responses: Vec<(u16, String)>,
 ) -> (String, Arc<AtomicUsize>) {
@@ -403,7 +403,7 @@ pub(super) async fn mb_raw_server(
                 clippy::let_underscore_must_use,
                 reason = "a client that stopped reading needs no answer"
             )]
-            let _ = stream.write_all(raw.as_bytes()).await;
+            let _ = stream.write_all(crate::test_fixtures::closing(&raw).as_bytes()).await;
         }
     });
     (url, request_count, paths)

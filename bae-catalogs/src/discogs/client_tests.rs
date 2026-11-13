@@ -43,7 +43,10 @@ async fn discogs_response_server(responses: Vec<&'static str>) -> (String, Arc<A
             counted_requests.fetch_add(1, Ordering::SeqCst);
             let mut buffer = [0; 4096];
             let _ = stream.read(&mut buffer).await.expect("test request should be readable");
-            stream.write_all(response.as_bytes()).await.expect("test response should write");
+            stream
+                .write_all(crate::test_fixtures::closing(response).as_bytes())
+                .await
+                .expect("test response should write");
         }
     });
     (url, request_count)
@@ -609,8 +612,8 @@ async fn search_observer_records_one_signal_after_internal_retry() {
 /// assertion instead of hanging until the request timeout.
 ///
 /// One connection per response: the stream is dropped once the body is written,
-/// so the client opens a fresh connection for its next request and the accept
-/// count is the request count.
+/// and the response says `Connection: close`, so the client opens a fresh
+/// connection for its next request and the accept count is the request count.
 async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
     let listener =
         tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
@@ -642,7 +645,7 @@ async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUs
                 clippy::let_underscore_must_use,
                 reason = "a client that stopped reading needs no answer"
             )]
-            let _ = stream.write_all(raw.as_bytes()).await;
+            let _ = stream.write_all(crate::test_fixtures::closing(&raw).as_bytes()).await;
         }
     });
     (url, request_count)
