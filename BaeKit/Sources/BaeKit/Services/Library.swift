@@ -45,6 +45,11 @@ public final class Library: Sendable, Observable {
         @Sendable (_ artistId: String)
             -> LibraryBrowseQuery<BridgeComposerDetailRow>
     public let workDetail: @Sendable () -> DetailQuery<BridgeWorkDetail>
+    /// Open the live read of every playlist this device holds.
+    public let playlists: @Sendable () -> PulledValues<BridgePlaylistListing>
+    /// Open the playlist page's live read, pointed at each playlist it shows
+    /// in place.
+    public let playlistDetail: @Sendable () -> DetailQuery<BridgePlaylistDetail>
     /// One live read of the album grid's multi-selection, pointed at each new
     /// selection in place.
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
@@ -122,6 +127,14 @@ public final class Library: Sendable, Observable {
         workDetail: @escaping @Sendable () -> DetailQuery<BridgeWorkDetail> = {
             fatalError("Library work detail is not installed")
         },
+        playlists:
+            @escaping @Sendable () -> PulledValues<BridgePlaylistListing> = {
+                fatalError("Library playlists are not installed")
+            },
+        playlistDetail:
+            @escaping @Sendable () -> DetailQuery<BridgePlaylistDetail> = {
+                fatalError("Library playlist detail is not installed")
+            },
         albumSelection: @escaping @Sendable () -> AlbumSelectionQuery = {
             fatalError("Library album selection is not installed")
         },
@@ -160,6 +173,8 @@ public final class Library: Sendable, Observable {
         self.composerDetail = composerDetail
         self.composerDetailRows = composerDetailRows
         self.workDetail = workDetail
+        self.playlists = playlists
+        self.playlistDetail = playlistDetail
         self.albumSelection = albumSelection
         self.artistSearch = artistSearch
         self.storageBrowse = storageBrowse
@@ -211,6 +226,10 @@ extension Library {
                     )
                 },
                 workDetail: { DetailQuery(handle.subscribeWorkDetail()) },
+                playlists: { PulledValues(handle.subscribePlaylists()) },
+                playlistDetail: {
+                    DetailQuery(handle.subscribePlaylistDetail())
+                },
                 albumSelection: {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
@@ -392,6 +411,17 @@ extension KeyedDetailQuery where Id == String, Value == BridgeArtistDetail {
 
 extension KeyedDetailQuery where Id == String, Value == BridgeComposerDetail {
     init(_ subscription: ComposerDetailSubscription) {
+        self.init(
+            setId: { try subscription.setId(id: $0) },
+            values: PulledValues(subscription) {
+                DetailDelivery(id: $0.id, value: $0.value)
+            }
+        )
+    }
+}
+
+extension KeyedDetailQuery where Id == String, Value == BridgePlaylistDetail {
+    init(_ subscription: PlaylistDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
             values: PulledValues(subscription) {

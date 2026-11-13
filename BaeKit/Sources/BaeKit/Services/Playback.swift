@@ -34,6 +34,12 @@ public final class Playback: Sendable, Observable {
     /// A single release behaves exactly like `playRelease`; core leaves out
     /// any release without tracks, and the line says how many.
     public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
+    /// Play a playlist's tracks in its order, from the entry `startPositionId`
+    /// names or from the first. What the play did shows on the app's error
+    /// surface when it has a line: the playlist holds nothing, or the entry
+    /// to start from is gone.
+    public let playPlaylist:
+        @Sendable (_ playlistId: String, _ startPositionId: String?) -> Void
     /// Play the whole library in a freshly seeded shuffle. An empty library
     /// plays nothing, and the line says so.
     public let playLibraryShuffled: @Sendable () -> Void
@@ -67,6 +73,10 @@ public final class Playback: Sendable, Observable {
             _ in
         },
         playReleases: @escaping @Sendable ([String]) -> Void = { _ in },
+        playPlaylist: @escaping @Sendable (String, String?) -> Void = {
+            _,
+            _ in
+        },
         playLibraryShuffled: @escaping @Sendable () -> Void = {},
         setPauseBetweenSides: @escaping @Sendable (Bool) async throws -> Void =
             {
@@ -94,6 +104,7 @@ public final class Playback: Sendable, Observable {
         self.setRepeatMode = setRepeatMode
         self.playRelease = playRelease
         self.playReleases = playReleases
+        self.playPlaylist = playPlaylist
         self.playLibraryShuffled = playLibraryShuffled
         self.setPauseBetweenSides = setPauseBetweenSides
         self.setSidePauseCountdown = setSidePauseCountdown
@@ -133,6 +144,14 @@ public final class Playback: Sendable, Observable {
             playReleases: { releaseIds in
                 Self.answer(show) {
                     try await handle.playReleases(releaseIds: releaseIds)
+                }
+            },
+            playPlaylist: { playlistId, startPositionId in
+                Self.answer(show) {
+                    try await handle.playPlaylist(
+                        playlistId: playlistId,
+                        startPositionId: startPositionId
+                    )
                 }
             },
             playLibraryShuffled: {

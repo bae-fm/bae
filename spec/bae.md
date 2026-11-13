@@ -241,8 +241,10 @@ other and never between them. The keys are device-local and are not synced;
 every reader of the library file on the device (the app, MCP and Subsonic)
 sees the one order.
 
-**Browsing.** The library shows one view at a time: albums, artists or
-composers. The view's name heads the page, and its menu switches views. At the
+**Browsing.** The library shows one view at a time: albums, artists,
+composers or playlists. The view's name heads the page, and its menu switches
+views. On macOS the artists, composers and playlists views list their rows
+beside the open one's page. At the
 top of the list the heading is full size; as the list scrolls it shrinks into a
 slim bar pinned above it, and a scroll that stops part way leaves it at the
 nearer size. On Android, the heading's end holds Search, the Activity

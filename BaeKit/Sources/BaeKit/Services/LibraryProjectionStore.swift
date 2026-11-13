@@ -36,9 +36,16 @@ public final class LibraryProjectionStore {
         LibraryProjectionState<BridgeArtistDetail>()
     public private(set) var work = LibraryProjectionState<BridgeWorkDetail>()
     public private(set) var search = LibraryProjectionState<SearchResults>()
+    /// Every playlist this device holds, read from the first
+    /// `activatePlaylists()` until the library closes: the Playlists view and
+    /// a track's Add to playlist menu both read it.
+    public internal(set) var playlists =
+        LibraryProjectionState<BridgePlaylistListing>()
+    public internal(set) var playlist =
+        LibraryProjectionState<BridgePlaylistDetail>()
 
     @ObservationIgnored
-    private let library: Library
+    let library: Library
     /// Each detail pane's one read, moved to the item the pane shows while it
     /// shows one and closed when it stops.
     @ObservationIgnored
@@ -53,6 +60,13 @@ public final class LibraryProjectionStore {
     private var artistReader: DetailReader<BridgeArtistDetail>?
     @ObservationIgnored
     private var workReader: DetailReader<BridgeWorkDetail>?
+    /// The playlist page's read and the pulls of the playlists, which
+    /// `LibraryProjectionStore+Playlists.swift` drives.
+    @ObservationIgnored
+    var playlistReader: DetailReader<BridgePlaylistDetail>?
+    @ObservationIgnored
+    var playlistDeliveries:
+        ScreenSubscription<PulledValues<BridgePlaylistListing>>?
     /// The one live search the search field drives while it is open, and
     /// the pulls taking its values.
     @ObservationIgnored
@@ -155,7 +169,7 @@ public final class LibraryProjectionStore {
 
     /// A detail pane's read, writing each value it delivers — and each
     /// failure, over the value already shown — into `state`.
-    private func detailReader<Value: Sendable>(
+    func detailReader<Value: Sendable>(
         open: @escaping @Sendable () -> DetailQuery<Value>,
         state: ReferenceWritableKeyPath<
             LibraryProjectionStore, LibraryProjectionState<Value>

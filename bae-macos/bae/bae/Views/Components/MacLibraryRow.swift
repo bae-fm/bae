@@ -13,6 +13,8 @@ import SwiftUI
 /// the list, and `loading` is the row before it has arrived.
 struct MacLibraryRow: View {
     var picture: BridgeImageRef?
+    /// A playlist's picture, in place of `picture`.
+    var playlistCover: BridgePlaylistCover?
     var title: String?
     var subtitle: String?
     var trailing: String?
@@ -66,6 +68,10 @@ struct MacLibraryRow: View {
                     width: ThemeSize.rowArtwork,
                     height: ThemeSize.rowArtwork
                 )
+        }
+        else if let playlistCover {
+            PlaylistPicture(cover: playlistCover, size: ThemeSize.rowArtwork)
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         }
         else {
             ImageView(imageRef: picture, pointSize: ThemeSize.rowArtwork)
@@ -126,6 +132,7 @@ struct MacLibraryRow: View {
 /// A loading row cannot be pressed.
 struct MacLibraryRowButton: View {
     var picture: BridgeImageRef?
+    var playlistCover: BridgePlaylistCover?
     var title: String?
     var subtitle: String?
     var trailing: String?
@@ -142,6 +149,7 @@ struct MacLibraryRowButton: View {
         Button(action: action) {
             MacLibraryRow(
                 picture: picture,
+                playlistCover: playlistCover,
                 title: title,
                 subtitle: subtitle,
                 trailing: trailing,

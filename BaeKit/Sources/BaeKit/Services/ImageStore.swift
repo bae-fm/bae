@@ -44,6 +44,9 @@ public enum ImageContent: Equatable, Hashable, Sendable {
         candidateKey: Data,
         sourceFileId: String
     )
+    /// A person's avatar, at the version their profile names: a new picture
+    /// is a new version, so it is new content.
+    case avatar(person: String, version: String)
 
     /// The render content for a cover the import flow draws: a candidate file
     /// on disk, artwork its tags carry, provider art at a URL, or the cover of
@@ -78,6 +81,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             return "image at path: \(file.url.path)"
         case .embeddedCover(let source, _, _):
             return "image embedded in: \(source.url.path)"
+        case .avatar(let person, _):
+            return "avatar of: \(person)"
         }
     }
 }
@@ -149,6 +154,9 @@ public final class ImageStore: Sendable, Observable {
     private let fetchEmbeddedCover:
         @Sendable (_ candidateKey: Data, _ sourceFileId: String)
             async throws -> Data
+    /// Bytes of a person's avatar, or nil when they have none.
+    private let fetchAvatarBytes:
+        @Sendable (_ person: String) async throws -> Data?
 
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
@@ -182,12 +190,15 @@ public final class ImageStore: Sendable, Observable {
             @escaping @Sendable (Data, String) async throws -> Data = { _, _ in
                 throw ImageStoreUnavailable()
             },
+        fetchAvatarBytes:
+            @escaping @Sendable (String) async throws -> Data? = { _ in nil },
         budgets: ImageStoreBudgets = .default
     ) {
         self.fetchLibraryImageBytes = fetchLibraryImageBytes
         self.fetchReleaseImageBytes = fetchReleaseImageBytes
         self.fetchRemoteImage = fetchRemoteImage
         self.fetchEmbeddedCover = fetchEmbeddedCover
+        self.fetchAvatarBytes = fetchAvatarBytes
         buckets = Buckets(budgets: budgets)
     }
 
@@ -222,6 +233,9 @@ public final class ImageStore: Sendable, Observable {
                             sourceFileId: $1
                         )
                     )
+                },
+                fetchAvatarBytes: {
+                    try await handle.avatar(person: $0).map { Data($0) }
                 }
             )
         }
@@ -409,6 +423,11 @@ public final class ImageStore: Sendable, Observable {
             return .data(
                 try await fetchEmbeddedCover(candidateKey, sourceFileId)
             )
+        case .avatar(let person, _):
+            guard let bytes = try await fetchAvatarBytes(person) else {
+                return nil
+            }
+            return .data(bytes)
         }
     }
 }
@@ -451,6 +470,8 @@ extension ImageStore {
             return "local:\(Self.versionToken(file))"
         case .embeddedCover(let source, _, _):
             return "embedded:\(Self.versionToken(source))"
+        case .avatar(let person, let version):
+            return "avatar:\(person):\(version)"
         }
     }
 
@@ -491,6 +512,7 @@ extension ImageContent {
         case .remote: .remote
         case .localFile: .localFile
         case .embeddedCover: .embeddedCover
+        case .avatar: .libraryImage
         }
     }
 }

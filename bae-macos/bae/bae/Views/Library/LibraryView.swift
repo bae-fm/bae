@@ -37,6 +37,8 @@ struct LibraryView: View {
                     composerContent
                 case .artists:
                     artistContent
+                case .playlists:
+                    playlistContent
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -51,8 +53,11 @@ struct LibraryView: View {
                 await session.composers.ensureLoaded()
             case .artists:
                 await session.artists.ensureLoaded()
+            case .playlists:
+                break
             }
         }
+        .task { libraryProjections.activatePlaylists() }
         .onChange(of: libraryProjections.composer.value) { _, detail in
             guard let detail,
                 case .composer(let artistId, nil) = session.detailSelection,
@@ -156,6 +161,8 @@ extension LibraryView {
                 sortControls(session.composers)
             case .artists:
                 sortControls(session.artists)
+            case .playlists:
+                EmptyView()
             }
         }
     }
@@ -321,6 +328,28 @@ extension LibraryView {
                 Color.clear
             }
         }
+    }
+
+    private var playlistContent: some View {
+        PlaylistsContent(
+            listing: libraryProjections.playlists.value,
+            error: libraryProjections.playlists.error,
+            detail: selectedPlaylistDetail,
+            fullWidth: fullWidth
+        )
+        .detailRead(
+            id: session.selectedPlaylistId,
+            activate: libraryProjections.activatePlaylist,
+            deactivate: libraryProjections.deactivatePlaylist
+        )
+    }
+
+    private var selectedPlaylistDetail: BridgePlaylistDetail? {
+        let playlistDetail = libraryProjections.playlist.value
+        guard
+            playlistDetail?.summary.id == session.selectedPlaylistId
+        else { return nil }
+        return playlistDetail
     }
 
     private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {

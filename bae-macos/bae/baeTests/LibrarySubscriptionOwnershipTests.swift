@@ -292,6 +292,79 @@ struct LibraryProjectionStoreDetailTests {
     }
 }
 
+extension LibraryProjectionStoreDetailTests {
+    @MainActor
+    @Test(
+        "the playlists are read once, whoever asks, and the page moves one read"
+    )
+    func playlistsAreReadOnceAndThePageMovesOneRead() async throws {
+        let listings = PlaylistListingFeed()
+        let feed = DetailFeed<BridgePlaylistDetail>()
+        let store = LibraryProjectionStore(
+            library: Library(
+                playlists: { listings.open() },
+                playlistDetail: { feed.query() }
+            )
+        )
+
+        store.activatePlaylists()
+        store.activatePlaylists()
+        try await Wait.until { store.playlists.delivered }
+        #expect(store.playlists.value?.canCreate == true)
+        #expect(listings.opened == 1)
+
+        store.activatePlaylist("playlist-1")
+        store.activatePlaylist("playlist-2")
+        feed.emit(id: "playlist-2", value: nil)
+        try await Wait.until { store.playlist.delivered }
+        #expect(feed.opened == 1)
+        #expect(feed.requested == ["playlist-1", "playlist-2"])
+
+        store.deactivatePlaylist("playlist-1")
+        #expect(!feed.isCancelled(read: 0))
+        store.deactivatePlaylist("playlist-2")
+        try await Wait.until { feed.isCancelled(read: 0) }
+    }
+}
+
+/// Stands in for the playlists read: answers once with an empty listing a
+/// person can add to, then waits, and counts the times it was opened.
+private final class PlaylistListingFeed: @unchecked Sendable {
+    private let lock = NSLock()
+    private var opens = 0
+
+    var opened: Int { lock.withLock { opens } }
+
+    func open() -> PulledValues<BridgePlaylistListing> {
+        lock.recording { opens += 1 }
+        let answered = AnsweredOnce()
+        return PulledValues(read: {
+            if answered.take() {
+                return BridgePlaylistListing(
+                    listed: [],
+                    addTargets: [],
+                    canCreate: true
+                )
+            }
+            try await Task.sleep(for: .seconds(3600))
+            throw CancellationError()
+        })
+    }
+}
+
+private final class AnsweredOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var answered = false
+
+    /// True the first time it is asked.
+    func take() -> Bool {
+        lock.withLock {
+            defer { answered = true }
+            return !answered
+        }
+    }
+}
+
 /// The composers whose page rows a store opened, in order.
 private final class ComposerRowReads: @unchecked Sendable {
     private let lock = NSLock()

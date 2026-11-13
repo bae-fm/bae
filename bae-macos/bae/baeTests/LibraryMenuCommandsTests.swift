@@ -95,7 +95,7 @@ struct LibraryMenuCommandsTests {
         for item in modes {
             #expect(controller.validateMenuItem(item))
         }
-        #expect(modes.map(\.state) == [.off, .on, .off])
+        #expect(modes.map(\.state) == [.off, .on, .off, .off])
 
         // The title bar's search field shows only with the library.
         delegate.screen = .loading(.opening)

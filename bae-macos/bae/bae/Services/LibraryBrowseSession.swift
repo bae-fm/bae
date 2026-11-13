@@ -127,6 +127,9 @@ final class LibraryBrowseSession {
     /// The selected artist in the artists browser, or `nil` before any
     /// selection. Views read it and call `selectArtist(_:)`.
     private(set) var selectedArtistId: String?
+    /// The selected playlist in the playlists browser, or `nil` before any
+    /// selection. Views read it and call `selectPlaylist(_:)`.
+    private(set) var selectedPlaylistId: String?
 
     init(
         library: Library,
@@ -231,6 +234,10 @@ final class LibraryBrowseSession {
     }
 
     /// Select an artist in the artists browser.
+    func selectPlaylist(_ playlistId: String?) {
+        selectedPlaylistId = playlistId
+    }
+
     func selectArtist(_ artistId: String) {
         selectedArtistId = artistId
     }

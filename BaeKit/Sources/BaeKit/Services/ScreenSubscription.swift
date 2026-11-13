@@ -172,6 +172,8 @@ extension InvitesSubscription: PulledSubscription {}
 extension AdminChangesSubscription: PulledSubscription {}
 extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
+extension PlaylistsSubscription: PulledSubscription {}
+extension PlaylistDetailSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
 extension DeviceStorageSubscription: PulledSubscription {}

@@ -12,12 +12,14 @@ enum LibraryBrowserMode: CaseIterable {
     case albums
     case artists
     case composers
+    case playlists
 
     var displayName: String {
         switch self {
         case .albums: String(localized: "Albums")
         case .artists: String(localized: "Artists")
         case .composers: String(localized: "Composers")
+        case .playlists: String(localized: "Playlists")
         }
     }
 }
