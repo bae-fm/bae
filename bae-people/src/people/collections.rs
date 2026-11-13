@@ -1,7 +1,8 @@
 use super::*;
+#[cfg(any(test, feature = "test-utils"))]
+use crate::collections::Rating;
 use crate::collections::{
-    AlbumRatings, CollectionError, OtherRating, Playlist, PlaylistEntry, Rating, RatingTarget,
-    Stars,
+    AlbumRatings, CollectionError, OtherRating, Playlist, PlaylistEntry, RatingTarget, Stars,
 };
 use crate::people::Sharing;
 
