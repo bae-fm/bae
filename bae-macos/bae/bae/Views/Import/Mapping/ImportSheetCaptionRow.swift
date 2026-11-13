@@ -99,8 +99,9 @@ struct ImportSheetCaptionRow: View {
                     hoveringBound ? Theme.hover : Color.clear,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
+                .frame(minWidth: ThemeSize.hitTarget)
+                .contentShape(Rectangle())
         }
-        .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hoveringBound = $0 }
     }
 

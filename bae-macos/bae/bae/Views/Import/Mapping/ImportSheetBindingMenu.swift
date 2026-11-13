@@ -41,8 +41,9 @@ struct ImportSheetUnboundMenu: View {
                     hovering ? Theme.hover : Color.clear,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
+                .frame(minWidth: ThemeSize.hitTarget)
+                .contentShape(Rectangle())
         }
-        .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hovering = $0 }
     }
 }
