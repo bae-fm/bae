@@ -6,40 +6,9 @@ step mac macos ./bae-macos/run.sh --no-open
 step mac macos-tests ./bae-macos/test.sh --build-only
 step mac macos-tests-run ./bae-macos/test.sh --run-only
 step mac macos-tests-all ./bae-macos/test.sh
-step mac macos-track-tests ./bae-macos/test.sh --run-only TrackTests
-step mac macos-detail-tests ./bae-macos/test.sh --run-only ReleaseDetailTests
-step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests UiStoreNewPlaylistSheetTests AddToPlaylistMenuTests
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
-step android android-album-detail-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AlbumDetailPlaceholderTest
-step android android-element-list-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *ElementListTest
-step android android-playback-service-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaybackServiceTest
-step android android-playlist-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *PlaylistListingStoreTest --tests *NewPlaylistDialogTest --tests *LibraryHeaderTest --tests *PlaylistScreenTest
-step android android-welcome-libraries-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *WelcomeLibrariesTest
-step mac macos-welcome-library-row-tests ./bae-macos/test.sh --run-only WelcomeLibraryRowTests
-step mac macos-credit-role-tests ./bae-macos/test.sh --run-only CreditRoleTextTests
-step mac macos-credit-row-tests ./bae-macos/test.sh --run-only CreditRowTextTests
-step mac macos-sort-language-tests ./bae-macos/test.sh --run-only SortLanguageTests
-step mac macos-folder-picker-notice-tests ./bae-macos/test.sh --run-only FolderPickerNoticeTests
-step android android-library-browse-tree-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *LibraryBrowseTreeTest
-step android android-credit-role-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *CreditRoleTextTest
-step mac macos-add-device-tests ./bae-macos/test.sh --run-only AddDeviceSheetTests
-step mac macos-bootstrap-code-form-tests ./bae-macos/test.sh --run-only BootstrapCodeFormTests
-step android android-add-device-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *AddDeviceDialogTest
-step android android-onboarding-flow-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *OnboardingFlowTest
-step android android-sort-language-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *SortLanguageTest
-step mac macos-screen-subscription-tests ./bae-macos/test.sh --run-only ScreenSubscriptionTests
-step android android-screen-subscription-tests ./bae-android/gradle.sh :screensubscription:testFullDebugUnitTest --tests *ScreenSubscriptionTest
-step mac media-control-service-tests ./bae-macos/test.sh --run-only MediaControlServiceTests
-step mac library-projection-store-search-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreSearchTests
-step mac import-search-flow-library-status-tests ./bae-macos/test.sh --run-only ImportSearchFlowLibraryStatusTests
-step mac import-store-summary-tests ./bae-macos/test.sh --run-only ImportStoreSummaryTests
-step mac import-list-selection-tests ./bae-macos/test.sh --run-only ImportListSelectionTests
-step mac import-list-same-view-value-tests ./bae-macos/test.sh --run-only ImportListSameViewValueTests
-step mac import-candidate-table-place-tests ./bae-macos/test.sh --run-only ImportCandidateTablePlaceTests
-step mac playback-store-begin-loading-tests ./bae-macos/test.sh --run-only PlaybackStoreBeginLoadingTests
-step android android-browse-playback-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *BrowsePlaybackTest
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step mac mac-component-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.component.
@@ -51,27 +20,6 @@ step android android-component-shots scripts/cargo.sh run -p bae-shots -- run --
 
 limit macos-tests-run 10m
 limit android-tests 10m
-limit android-element-list-tests 10m
-limit macos-track-tests 10m
-limit macos-detail-tests 10m
-limit android-album-detail-tests 10m
-limit macos-welcome-library-row-tests 10m
-limit android-playlist-tests 10m
-limit android-welcome-libraries-tests 10m
-limit macos-credit-role-tests 10m
-limit macos-credit-row-tests 10m
-limit macos-add-device-tests 10m
-limit macos-bootstrap-code-form-tests 10m
-limit android-add-device-tests 10m
-limit android-onboarding-flow-tests 10m
-limit macos-sort-language-tests 10m
-limit macos-folder-picker-notice-tests 10m
-limit android-library-browse-tree-tests 10m
-limit android-credit-role-tests 10m
-limit android-sort-language-tests 10m
-limit macos-screen-subscription-tests 10m
-limit android-screen-subscription-tests 10m
-limit android-browse-playback-tests 10m
 limit mac-shots 20m
 limit mac-welcome-shots 20m
 limit mac-component-shots 20m
@@ -80,4 +28,6 @@ limit mac-playlist-shots 20m
 limit android-shots 20m
 limit android-welcome-shots 20m
 limit android-component-shots 20m
-step mac identifier-chip-values-tests ./bae-macos/test.sh --run-only IdentifierChipValuesTests
+
+test mac ./bae-macos/test.sh --run-only {class}
+test android ./bae-android/test-class.sh {class}
