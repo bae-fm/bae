@@ -5347,7 +5347,7 @@ dependencies = [
 [[package]]
 name = "rustls-platform-verifier"
 version = "0.7.1"
-source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=47a4336458b70db9c92a40ba8e0e30ca5fef0b29#47a4336458b70db9c92a40ba8e0e30ca5fef0b29"
+source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=538b00da17df8cd3351a844968e30777f40b6286#538b00da17df8cd3351a844968e30777f40b6286"
 dependencies = [
  "core-foundation 0.10.1",
  "core-foundation-sys",
@@ -5367,7 +5367,7 @@ dependencies = [
 [[package]]
 name = "rustls-platform-verifier-android"
 version = "0.2.0"
-source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=47a4336458b70db9c92a40ba8e0e30ca5fef0b29#47a4336458b70db9c92a40ba8e0e30ca5fef0b29"
+source = "git+https://github.com/bae-fm/rustls-platform-verifier?rev=538b00da17df8cd3351a844968e30777f40b6286#538b00da17df8cd3351a844968e30777f40b6286"
 
 [[package]]
 name = "rustls-webpki"
