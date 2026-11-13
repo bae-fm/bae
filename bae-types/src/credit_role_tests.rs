@@ -65,20 +65,50 @@ fn a_credit_is_what_its_columns_hold() {
 }
 
 #[test]
-fn a_performer_holds_its_part_in_the_words_column() {
-    for part in [Some("bass guitar".to_string()), None] {
+fn a_performer_holds_its_part_in_the_columns() {
+    let bass = Instrument::from_name("bass guitar").unwrap();
+    for (part, role, words) in [
+        (None, "performer", None),
+        (Some(Part::Words("tin whistle".to_string())), "performer", Some("tin whistle")),
+        (Some(Part::Instrument(bass)), "instrument", Some(bass.id())),
+        (
+            Some(Part::Voice(Voice::from_name("lead vocals").unwrap())),
+            "voice",
+            Some("8e2a3255-87c2-4809-a174-98cb3704f1a5"),
+        ),
+    ] {
         let performer = CreditedAs {
-            role: CreditRole::Performer(part.clone()),
+            role: CreditRole::Performer(part),
             qualifiers: vec![RoleQualifier::Kind(QualifierKind::Guest)],
         };
         let columns = performer.columns();
-        assert_eq!((columns.role, columns.role_words.clone()), ("performer", part));
+        assert_eq!((columns.role, columns.role_words.as_deref()), (role, words));
         assert_eq!(
             CreditedAs::from_columns(columns.role, columns.role_words, &columns.qualifiers)
                 .unwrap(),
             performer
         );
     }
+}
+
+#[test]
+fn a_part_the_lists_do_not_hold_is_refused() {
+    assert!(matches!(
+        CreditedAs::from_columns("instrument", Some("not-an-id".to_string()), "[]"),
+        Err(CreditColumnsError::UnknownInstrument(_))
+    ));
+    assert!(matches!(
+        CreditedAs::from_columns("voice", Some("falsetto".to_string()), "[]"),
+        Err(CreditColumnsError::UnknownVoice(_))
+    ));
+    assert!(matches!(
+        CreditedAs::from_columns("instrument", None, "[]"),
+        Err(CreditColumnsError::PartWithoutKey(_))
+    ));
+    assert!(matches!(
+        CreditedAs::from_columns("voice", None, "[]"),
+        Err(CreditColumnsError::PartWithoutKey(_))
+    ));
 }
 
 #[test]

@@ -9,6 +9,7 @@
 //! with the heading Discogs lists them under, and a test compares them with
 //! the captured list under `test-fixtures/credit-vocabulary/`.
 
+use super::part::{Instrument, Part, Voice};
 use super::{CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier};
 
 /// What bae makes of a name on Discogs's list.
@@ -16,8 +17,15 @@ use super::{CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier
 enum Reading {
     /// A role bae names, with the qualifier the name itself states.
     Kind(CreditRoleKind, Option<QualifierKind>),
-    /// A performer of the instrument or voice the name is.
-    Part,
+    /// A performer of the instrument on MusicBrainz's list the name is
+    /// (given by its MusicBrainz name).
+    Instrument(&'static str),
+    /// A performer of the voice on MusicBrainz's list the name is (given by
+    /// its MusicBrainz name).
+    Voice(&'static str),
+    /// A performer of the instrument, voice or ensemble the name is, in
+    /// Discogs's own word: bae's lists do not hold it.
+    Named,
     /// A performer with no part: the name states none.
     Performer,
     /// A role bae has no name for, credited as Discogs writes it.
@@ -25,7 +33,7 @@ enum Reading {
 }
 
 use CreditRoleKind as R;
-use Reading::{Kind, Part, Performer, Stated};
+use Reading::{Instrument as Plays, Kind, Named, Performer, Stated, Voice as Sings};
 
 /// The names bae reads, each under the heading Discogs lists it under.
 const ROLES: &[(&str, &str, Reading)] = &[
@@ -98,22 +106,22 @@ const ROLES: &[(&str, &str, Reading)] = &[
     ("Acting, Literary & Spoken", "Liner Notes", Stated),
     ("Instruments", "Performer", Performer),
     ("Instruments", "Musician", Performer),
-    ("Instruments", "Orchestra", Part),
-    ("Instruments", "Band", Part),
-    ("Instruments", "Ensemble", Part),
-    ("Instruments", "Soloist", Part),
-    ("Instruments", "Bass", Part),
-    ("Instruments", "Drums", Part),
-    ("Instruments", "Percussion", Part),
-    ("Instruments", "Guitar", Part),
-    ("Instruments", "Keyboards", Part),
-    ("Instruments", "Strings", Part),
-    ("Instruments", "Violin", Part),
-    ("Instruments", "Piano", Part),
-    ("Instruments", "Electric Piano", Part),
-    ("Instruments", "Organ", Part),
-    ("Vocals", "Vocals", Part),
-    ("Vocals", "Backing Vocals", Part),
+    ("Instruments", "Orchestra", Named),
+    ("Instruments", "Band", Named),
+    ("Instruments", "Ensemble", Named),
+    ("Instruments", "Soloist", Named),
+    ("Instruments", "Bass", Plays("bass guitar")),
+    ("Instruments", "Drums", Plays("drums (drum set)")),
+    ("Instruments", "Percussion", Plays("percussion")),
+    ("Instruments", "Guitar", Plays("guitar")),
+    ("Instruments", "Keyboards", Plays("keyboard")),
+    ("Instruments", "Strings", Plays("strings")),
+    ("Instruments", "Violin", Plays("violin")),
+    ("Instruments", "Piano", Plays("piano")),
+    ("Instruments", "Electric Piano", Plays("electric piano")),
+    ("Instruments", "Organ", Plays("organ")),
+    ("Vocals", "Vocals", Sings("vocal")),
+    ("Vocals", "Backing Vocals", Sings("background vocals")),
     ("Unlinked", "Artwork By", Stated),
     ("Unlinked", "Photography", Stated),
     ("Unlinked", "Executive Producer", Kind(R::Producer, Some(QualifierKind::Executive))),
@@ -166,7 +174,22 @@ fn credit(item: &str) -> CreditedAs {
     {
         Some((_, Kind(kind, qualifier))) => (CreditRole::Kind(kind), qualifier),
         Some((_, Performer)) => (CreditRole::Performer(None), None),
-        Some((listed, Part)) => (CreditRole::Performer(Some(listed.to_string())), None),
+        Some((listed, Plays(name))) => (
+            CreditRole::Performer(Some(
+                Instrument::from_name(name)
+                    .map_or_else(|| Part::Words(listed.to_string()), Part::Instrument),
+            )),
+            None,
+        ),
+        Some((listed, Sings(name))) => (
+            CreditRole::Performer(Some(
+                Voice::from_name(name).map_or_else(|| Part::Words(listed.to_string()), Part::Voice),
+            )),
+            None,
+        ),
+        Some((listed, Named)) => {
+            (CreditRole::Performer(Some(Part::Words(listed.to_string()))), None)
+        }
         Some((listed, Stated)) => (CreditRole::Stated(listed.to_string()), None),
         None => (CreditRole::Stated(name.to_string()), None),
     };

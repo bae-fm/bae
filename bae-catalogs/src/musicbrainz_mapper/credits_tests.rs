@@ -3,6 +3,7 @@ use crate::musicbrainz_mapper::tests::{
     credit, discogs_artist_document, make_mb_track, make_response, map, own_credits, work,
 };
 use crate::musicbrainz_mapper::*;
+use bae_types::credit_role::part::{Instrument, Part, Voice};
 use bae_types::credit_role::{
     CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
 };
@@ -810,8 +811,13 @@ fn roles_of(entry: &TracklistEntry) -> Vec<(&str, &CreditedAs)> {
     entry.roles.iter().map(|role| (role.artist.name.as_str(), &role.role)).collect()
 }
 
-fn performer(part: &str) -> CreditedAs {
-    CreditedAs { role: CreditRole::Performer(Some(part.to_string())), qualifiers: vec![] }
+/// A performer of the voice or the instrument on MusicBrainz's list `name`.
+fn performer(name: &str) -> CreditedAs {
+    let part = Voice::from_name(name)
+        .map(Part::Voice)
+        .or_else(|| Instrument::from_name(name).map(Part::Instrument))
+        .expect("a voice or an instrument on the list");
+    CreditedAs { role: CreditRole::Performer(Some(part)), qualifiers: vec![] }
 }
 
 /// A track keeps every artist relation its recording states, in the relation's
@@ -834,9 +840,9 @@ fn a_track_keeps_every_credit_its_recording_states() {
         )
     );
     assert_eq!(first[1], ("Artist Name 3", &performer("guitar")));
-    // A relation naming two instruments is a credit for each; the printed
-    // name of an instrument is the one kept.
-    assert_eq!(first[2], ("Artist Name 4", &performer("drums")));
+    // A relation naming two instruments is a credit for each, each the
+    // instrument on MusicBrainz's list, whatever name the credit printed.
+    assert_eq!(first[2], ("Artist Name 4", &performer("drums (drum set)")));
     assert_eq!(first[3], ("Artist Name 4", &performer("percussion")));
     // The same artist stated again in the same role is one credit.
     let percussion = first
@@ -860,7 +866,7 @@ fn a_track_keeps_every_credit_its_recording_states() {
             qualifiers: vec![]
         }
     )));
-    assert!(first.contains(&("Artist Name 9", &performer("vocals"))));
+    assert!(first.contains(&("Artist Name 9", &performer("vocal"))));
     // The credit stays on the row it was stated on.
     assert!(roles_of(&mediums[0].entries[2]).is_empty());
 }

@@ -93,6 +93,7 @@ pub(super) fn artist_relation_credits(
         relation_type,
         Attributes {
             names: &relation.attributes,
+            ids: &relation.attribute_ids,
             credits: &relation.attribute_credits,
             values: &relation.attribute_values,
         },

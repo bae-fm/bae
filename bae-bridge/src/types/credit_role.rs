@@ -4,6 +4,7 @@
 
 use super::pressing::{localized, verbatim};
 use super::BridgeTermLabel;
+use bae_types::credit_role::part::{Instrument, Part, Voice};
 use bae_types::credit_role::{
     CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
 };
@@ -50,6 +51,16 @@ pub(crate) fn credit_qualifier_key(kind: QualifierKind) -> String {
     format!("core.credit.qualifier.{}", kind.key())
 }
 
+/// The catalog key naming an instrument on MusicBrainz's list.
+pub(crate) fn credit_instrument_key(instrument: Instrument) -> String {
+    format!("core.credit.instrument.{}", instrument.id())
+}
+
+/// The catalog key naming a voice on MusicBrainz's list.
+pub(crate) fn credit_voice_key(voice: Voice) -> String {
+    format!("core.credit.voice.{}", voice.id())
+}
+
 /// The catalog key naming a performer of no part the catalog names.
 pub(crate) const PERFORMER_KEY: &str = "core.credit.role.performer";
 
@@ -60,7 +71,13 @@ impl BridgeCreditRole {
             role: match role {
                 CreditRole::Kind(kind) => localized(&credit_role_key(kind)),
                 CreditRole::Performer(None) => localized(PERFORMER_KEY),
-                CreditRole::Performer(Some(part)) => verbatim(&part),
+                CreditRole::Performer(Some(Part::Instrument(instrument))) => {
+                    localized(&credit_instrument_key(instrument))
+                }
+                CreditRole::Performer(Some(Part::Voice(voice))) => {
+                    localized(&credit_voice_key(voice))
+                }
+                CreditRole::Performer(Some(Part::Words(words))) => verbatim(&words),
                 CreditRole::Stated(words) => verbatim(&words),
             },
             qualifiers: qualifiers

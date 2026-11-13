@@ -3,6 +3,7 @@ use crate::catalog::LookupCatalog;
 use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use crate::records::LookupRef;
 use crate::source_release::{CatalogFacts, SourceRelease};
+use bae_types::credit_role::part::{Instrument, Part, Voice};
 use bae_types::credit_role::{
     CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier,
 };
@@ -235,11 +236,13 @@ fn a_role_string_of_several_roles_is_a_credit_for_each() {
         values.release_roles.iter().map(|role| role.role.clone()).collect::<Vec<_>>(),
         [
             CreditedAs {
-                role: CreditRole::Performer(Some("Guitar".to_string())),
+                role: CreditRole::Performer(Some(Part::Instrument(
+                    Instrument::from_name("guitar").unwrap()
+                ))),
                 qualifiers: vec![]
             },
             CreditedAs {
-                role: CreditRole::Performer(Some("Vocals".to_string())),
+                role: CreditRole::Performer(Some(Part::Voice(Voice::general()))),
                 qualifiers: vec![]
             },
             CreditedAs {

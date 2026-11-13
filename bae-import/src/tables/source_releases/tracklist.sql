@@ -60,13 +60,15 @@ CREATE TABLE IF NOT EXISTS source_release_entry_role (
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
     -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
-    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'performer' (its part in the catalog's words, if the catalog names one
+    -- bae's lists lack, in `role_words`), 'instrument' (the id of an instrument on
+    -- MusicBrainz's list in `role_words`), 'voice' (the id of a voice on MusicBrainz's list in `role_words`), or
     -- 'stated' for the catalog's own words (`role_words`), with the role's
     -- qualifiers as a JSON list.
-    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'instrument', 'voice', 'stated')),
     role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
     qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
-    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'instrument' THEN role_words IS NOT NULL WHEN 'voice' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (catalog, release_id, entry, position),
     FOREIGN KEY (catalog, release_id, entry)
         REFERENCES source_release_entry (catalog, release_id, entry) ON DELETE CASCADE
@@ -110,13 +112,15 @@ CREATE TABLE IF NOT EXISTS source_release_work_credit (
     -- artist's own.
     credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
     -- What the artist did: a `bae_types::credit_role::CreditRoleKind` key,
-    -- 'performer' (its part, if the catalog names one, in `role_words`), or
+    -- 'performer' (its part in the catalog's words, if the catalog names one
+    -- bae's lists lack, in `role_words`), 'instrument' (the id of an instrument on
+    -- MusicBrainz's list in `role_words`), 'voice' (the id of a voice on MusicBrainz's list in `role_words`), or
     -- 'stated' for the catalog's own words (`role_words`), with the role's
     -- qualifiers as a JSON list.
-    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'stated')),
+    role                  TEXT NOT NULL CHECK (role IN ('writer', 'composer', 'lyricist', 'librettist', 'translator', 'reviser', 'scriptwriter', 'reconstructor', 'arranger', 'producer', 'engineer', 'mixer', 'mastering', 'performer', 'instrument', 'voice', 'stated')),
     role_words            TEXT CHECK (role_words IS NULL OR role_words <> ''),
     qualifiers            TEXT NOT NULL CHECK (json_valid(qualifiers) AND json_type(qualifiers) = 'array'),
-    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
+    CHECK (CASE role WHEN 'stated' THEN role_words IS NOT NULL WHEN 'instrument' THEN role_words IS NOT NULL WHEN 'voice' THEN role_words IS NOT NULL WHEN 'performer' THEN 1 ELSE role_words IS NULL END),
     PRIMARY KEY (catalog, release_id, node, position),
     FOREIGN KEY (catalog, release_id, node)
         REFERENCES source_release_work (catalog, release_id, node) ON DELETE CASCADE

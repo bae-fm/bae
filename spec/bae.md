@@ -5710,7 +5710,7 @@ All sync.
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1; none of its `/`-separated names empty), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
-| `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `performer` with its instrument or voice, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
+| `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `instrument` with an instrument's id, `voice` with a voice's id, `performer` with the catalog's words for its part, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
@@ -6293,26 +6293,35 @@ keyed as stored: the *writing* roles writer, composer, lyricist, librettist,
 translator, reviser, scriptwriter and reconstructor (MusicBrainz's `writer`
 family, which make an artist a composer of a work), and arranger, producer,
 engineer, mixer and mastering; and *performer*, which holds the instrument or
-voice the catalog names (none for a bare performer). A qualifier bae names is
+voice the catalog names (none for a bare performer). The instruments are
+MusicBrainz's list of 1,062, each held by the id its relations carry, and the
+voices are the 18 of MusicBrainz's `Vocal` attribute (the attribute itself, for
+vocals of no stated kind, and lead, alto, soprano, choir, background, spoken
+and the other kinds), held the same way; bae words each of them in every
+language it ships. An instrument or voice neither list
+holds is kept as the catalog wrote it. A qualifier bae names is
 additional, assistant, associate, co-credit, executive, guest, solo,
 pre-mastering or remastering. Every other role, and every qualifier bae has no
 name for, is kept as the catalog wrote it. bae words the roles and qualifiers
 it names in the viewer's language, a role followed by its qualifiers in
-parentheses; the catalog's own words, an instrument or voice among them, are
-shown as written. MusicBrainz's
+parentheses; the catalog's own words are shown as written. MusicBrainz's
 `vocal arranger` is an arranger qualified by the vocals it arranged for
 (`vocals` where it names none), an `instrument arranger` by its instruments,
 and a `task` by its free text. A MusicBrainz relation that names an artist
 without crediting work on the thing (a dedication, a commission, a premiere,
 being named after the artist, a previous attribution) is not a credit.
 A MusicBrainz `instrument` or `vocal` relation is a performer of each
-instrument or voice it names, as the credit prints it (`vocals` for a `vocal`
-relation naming none). Each relationship type page MusicBrainz publishes is
+instrument or voice it names by its id (the `Vocal` attribute itself for a
+`vocal` relation naming none); one the lists do not hold is
+kept as the credit prints it. Each relationship type page MusicBrainz publishes is
 reproduced name for name with its reverse link phrase, which words a role bae
 has no name for. A Discogs role name is read through a table: Written-By,
 Composed By, Lyrics By and the like are the writing roles, Producer,
 Engineer, Mixed By and Mastered By their roles, and the instrument and vocal
-roles performers of that part; the table holds the roles of Discogs's list
+roles performers of the matching instrument or voice (Bass is bass guitar,
+Drums is drums (drum set), Backing Vocals is background vocals), or of
+Discogs's own word where bae's lists hold none (Orchestra, Band, Ensemble,
+Soloist); the table holds the roles of Discogs's list
 named here, and any other Discogs role is kept as Discogs wrote it.
 
 **Audio codecs.** Lossless, stating a bit depth: FLAC, APE, ALAC, PCM, WavPack,

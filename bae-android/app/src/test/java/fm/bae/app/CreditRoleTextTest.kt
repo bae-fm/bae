@@ -50,4 +50,37 @@ class CreditRoleTextTest {
 
         assertEquals("Engineer (assistant)", context.creditRoleText(role))
     }
+
+    @Test
+    fun anInstrumentOnMusicBrainzsListIsWordedFromTheCatalog() {
+        val role =
+            BridgeCreditRole(
+                BridgeTermLabel.Localized("core.credit.instrument.17f9f065-2312-4a24-8309-6f6dd63e2e33"),
+                listOf(BridgeTermLabel.Localized("core.credit.qualifier.guest")),
+            )
+
+        assertEquals("Bass guitar (guest)", context.creditRoleText(role))
+    }
+
+    @Test
+    @Config(qualifiers = "de")
+    fun anInstrumentIsWordedInThePersonsLanguage() {
+        val role =
+            BridgeCreditRole(
+                BridgeTermLabel.Localized("core.credit.instrument.17f9f065-2312-4a24-8309-6f6dd63e2e33"),
+                emptyList(),
+            )
+        val voice =
+            BridgeCreditRole(
+                BridgeTermLabel.Localized("core.credit.voice.8e2a3255-87c2-4809-a174-98cb3704f1a5"),
+                emptyList(),
+            )
+
+        assertEquals(DE_BASS_GUITAR, context.creditRoleText(role))
+        assertEquals("Hauptgesang", context.creditRoleText(voice))
+    }
+
+    private companion object {
+        const val DE_BASS_GUITAR = "Bassgitarre"
+    }
 }

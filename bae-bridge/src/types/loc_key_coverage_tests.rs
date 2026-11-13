@@ -7,6 +7,7 @@
 //! left off an array shows up as an orphan catalog key.
 
 use super::*;
+use bae_types::credit_role::part::{Instrument, Voice};
 use bae_types::credit_role::{CreditRoleKind, QualifierKind};
 
 /// `core.*` keys the UI names directly rather than through a `bridge_*_key`
@@ -222,6 +223,13 @@ fn produced_keys() -> Vec<String> {
     keys.push(PERFORMER_KEY.to_string());
     for kind in QualifierKind::ALL {
         keys.push(credit_qualifier_key(*kind));
+    }
+    // Every instrument on MusicBrainz's list and every voice bae names.
+    for instrument in Instrument::all() {
+        keys.push(credit_instrument_key(instrument));
+    }
+    for voice in Voice::all() {
+        keys.push(credit_voice_key(voice));
     }
 
     // bridge_cloud_provider_label_key — None (local-only) and S3 carry keys.
@@ -835,6 +843,43 @@ fn every_produced_key_exists_in_catalog() {
         assert!(
             cat.messages.contains_key(key),
             "catalog missing `{key}` — a key fn or DIRECT_KEYS produces it but the entry is gone"
+        );
+    }
+}
+
+/// A voice's English wording is MusicBrainz's name for it with the first letter
+/// capitalised, but for the general voice, which reads "Vocals".
+#[test]
+fn a_voice_is_worded_in_english_as_musicbrainz_names_it() {
+    let cat = catalog();
+    for voice in Voice::all() {
+        let name = voice.name();
+        let expected = if voice == Voice::general() {
+            "Vocals".to_string()
+        } else {
+            let mut letters = name.chars();
+            let first = letters.next().expect("a voice has a name");
+            format!("{}{}", first.to_uppercase(), letters.as_str())
+        };
+        assert_eq!(cat.messages[&credit_voice_key(voice)].value, expected, "{}", voice.id());
+    }
+}
+
+/// An instrument's English wording is MusicBrainz's name for it with the first
+/// letter capitalised, so the catalog and the list stay one set of names.
+#[test]
+fn an_instrument_is_worded_in_english_as_musicbrainz_names_it() {
+    let cat = catalog();
+    for instrument in Instrument::all() {
+        let name = instrument.name();
+        let mut letters = name.chars();
+        let first = letters.next().expect("an instrument has a name");
+        let expected = format!("{}{}", first.to_uppercase(), letters.as_str()).replace('\'', "’");
+        assert_eq!(
+            cat.messages[&credit_instrument_key(instrument)].value,
+            expected,
+            "{}",
+            instrument.id()
         );
     }
 }

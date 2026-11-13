@@ -10,6 +10,7 @@
 //! other credit is stated in its phrase, and a type that names an artist
 //! without crediting work on the thing is not a credit.
 
+use super::part::{Instrument, Part, Voice};
 use super::{CreditRole, CreditRoleKind, CreditedAs, QualifierKind, RoleQualifier};
 use std::collections::HashMap;
 
@@ -27,7 +28,7 @@ enum Treatment {
     /// A performer with no instrument or voice of their own to name.
     Performance,
     /// A performer of each instrument the relation names.
-    Instrument,
+    Plays,
     /// A performer of each voice the relation names.
     Vocal,
 }
@@ -37,7 +38,7 @@ enum Treatment {
 type TypeRow = (&'static str, &'static str, Treatment);
 
 use CreditRoleKind as R;
-use Treatment::{Heading, Instrument, Kind, NotACredit, Performance, Stated, Vocal};
+use Treatment::{Heading, Kind, NotACredit, Performance, Plays, Stated, Vocal};
 
 /// The artist-work relationship types, in the page's order.
 const ARTIST_WORK: &[TypeRow] = &[
@@ -78,7 +79,7 @@ const ARTIST_WORK: &[TypeRow] = &[
 const ARTIST_RECORDING: &[TypeRow] = &[
     ("performance", "performance", Heading),
     ("performer", "{additional} {guest} {solo} performer", Performance),
-    ("instrument", "{additional} {guest} {solo} {instrument:%|instruments}", Instrument),
+    ("instrument", "{additional} {guest} {solo} {instrument:%|instruments}", Plays),
     ("vocal", "{additional} {guest} {solo} {vocal:%|vocals}", Vocal),
     ("performing orchestra", "{additional} orchestra", Stated),
     ("conductor", "{additional} {assistant} conductor", Stated),
@@ -152,7 +153,7 @@ const ARTIST_RECORDING: &[TypeRow] = &[
 const ARTIST_RELEASE: &[TypeRow] = &[
     ("performance", "performance", Heading),
     ("performer", "{additional} {guest} {solo} performer", Performance),
-    ("instrument", "{additional} {guest} {solo} {instrument:%|instruments}", Instrument),
+    ("instrument", "{additional} {guest} {solo} {instrument:%|instruments}", Plays),
     ("vocal", "{additional} {guest} {solo} {vocal:%|vocals}", Vocal),
     ("performing orchestra", "{additional} orchestra", Stated),
     ("conductor", "{additional} {assistant} conductor", Stated),
@@ -236,6 +237,8 @@ const ARTIST_RELEASE: &[TypeRow] = &[
 pub struct Attributes<'a> {
     /// `attributes`: each attribute's name, in the relation's order.
     pub names: &'a [String],
+    /// `attribute-ids`: each attribute's MusicBrainz id.
+    pub ids: &'a HashMap<String, String>,
     /// `attribute-credits`: the name a credit prints an attribute with.
     pub credits: &'a HashMap<String, String>,
     /// `attribute-values`: a free-text attribute's value.
@@ -289,16 +292,17 @@ pub fn credits(subject: Subject, relation_type: &str, attributes: Attributes<'_>
         Stated => CreditRole::Stated(phrase_words(phrase)),
         NotACredit => return Reading::NotACredit,
         Performance => CreditRole::Performer(None),
-        Instrument | Vocal => return Reading::Credits(performers(treatment, attributes)),
+        Plays | Vocal => return Reading::Credits(performers(treatment, attributes)),
         Heading => unreachable!("a heading is unlisted above"),
     };
     Reading::Credits(vec![CreditedAs { role, qualifiers: qualifiers(relation_type, attributes) }])
 }
 
-/// A performer of each instrument or voice a relation's attributes name
-/// (the printed name where a credit prints one), each with the modifiers
-/// the relation states. A relation naming none is a performer of no
-/// instrument, and one of voices a performer of "vocals".
+/// A performer of each instrument or voice a relation's attributes name, each
+/// with the modifiers the relation states: an instrument or voice on
+/// MusicBrainz's lists by its id, any other as the credit prints it. A
+/// relation naming none is a performer of no instrument, and one of
+/// voices a performer of "vocals".
 fn performers(treatment: Treatment, attributes: Attributes<'_>) -> Vec<CreditedAs> {
     let modifiers: Vec<RoleQualifier> = attributes
         .names
@@ -308,16 +312,28 @@ fn performers(treatment: Treatment, attributes: Attributes<'_>) -> Vec<CreditedA
     let parts: Vec<&String> =
         attributes.names.iter().filter(|name| QualifierKind::from_key(name).is_none()).collect();
     if parts.is_empty() {
-        let part = (treatment == Vocal).then(|| "vocals".to_string());
+        let part = (treatment == Vocal).then(|| Part::Voice(Voice::general()));
         return vec![CreditedAs { role: CreditRole::Performer(part), qualifiers: modifiers }];
     }
     parts
         .into_iter()
         .map(|name| CreditedAs {
-            role: CreditRole::Performer(Some(attributes.credits.get(name).unwrap_or(name).clone())),
+            role: CreditRole::Performer(Some(part(treatment, name, attributes))),
             qualifiers: modifiers.clone(),
         })
         .collect()
+}
+
+/// What the attribute `name` of an instrument or voice relation performs.
+fn part(treatment: Treatment, name: &str, attributes: Attributes<'_>) -> Part {
+    let id = attributes.ids.get(name);
+    let listed = match treatment {
+        Vocal => id.and_then(|id| Voice::from_id(id)).map(Part::Voice),
+        _ => id.and_then(|id| Instrument::from_id(id)).map(Part::Instrument),
+    };
+    listed.unwrap_or_else(|| {
+        Part::Words(attributes.credits.get(name).map_or(name, String::as_str).to_string())
+    })
 }
 
 /// The qualifiers a relation's attributes state, in their order: the

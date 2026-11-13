@@ -28,6 +28,9 @@ pub struct MbRelation {
     /// instruments or vocal kinds), by name, in MusicBrainz's order.
     #[serde(default)]
     pub attributes: Vec<String>,
+    /// Each attribute's MusicBrainz id, by attribute name.
+    #[serde(rename = "attribute-ids", default)]
+    pub attribute_ids: HashMap<String, String>,
     /// The name a credit prints an attribute with, by attribute name.
     #[serde(rename = "attribute-credits", default)]
     pub attribute_credits: HashMap<String, String>,

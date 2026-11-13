@@ -1,0 +1,19 @@
+# Source: https://musicbrainz.org/relationship-attributes (the values of its Vocal attribute, with the id its relations carry in `attribute-ids`; the first line is the Vocal attribute itself), captured 2026-11-13. One voice per line: id, a tab, the name as MusicBrainz states it.
+d92884b7-ee0c-46d5-96f3-918196ba8c5b	vocal
+8e2a3255-87c2-4809-a174-98cb3704f1a5	lead vocals
+9f63c4ba-b76f-40d5-9e99-2fb08bd4c286	alto vocals
+629763ee-3dc7-4225-b209-0ebb6d49bfab	bass-baritone vocals
+80d94f2e-e38f-4561-add2-c866f083d276	contralto vocals
+433631a2-68b7-49e6-90b4-5af19e26fc75	treble vocals
+a40b43ed-2722-4b4a-98a5-478283cdf8df	baritone vocals
+1bfdb77e-f339-4e8e-9627-331ca9d9e920	bass vocals
+435a19f5-55dc-4a08-8c59-4257680b4217	countertenor vocals
+f81325d7-593c-4197-b776-4f8a62c67a8e	mezzo-soprano vocals
+e88f0be8-a07e-4c0d-bd06-e938eea4d5f6	soprano vocals
+122c11da-651f-46cc-9118-c523a14afa1d	tenor vocals
+a31bdea5-7ef5-4a35-81c9-2abed9850d6d	meane vocals
+43427f08-837b-46b8-bc77-483453af6a7b	choir vocals
+75052401-7340-4e5b-a71d-ea024a128849	background vocals
+c359be96-620a-435c-bd25-2eb0ce81a22e	other vocals
+d3a36e62-a7c4-4eb9-839f-adfebe87ac12	spoken vocals
+ed220196-6250-456d-ab7b-465bee605b16	whistling

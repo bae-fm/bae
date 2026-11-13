@@ -27,11 +27,25 @@ fn a_role_bae_names_is_worded_from_the_catalog_and_the_catalog_s_words_are_shown
 
 #[test]
 fn a_performer_is_worded_by_its_part_or_as_a_performer() {
+    let bass = Instrument::from_name("bass guitar").unwrap();
     let guitar = BridgeCreditRole::from_core(CreditedAs {
-        role: CreditRole::Performer(Some("bass guitar".to_string())),
+        role: CreditRole::Performer(Some(Part::Instrument(bass))),
         qualifiers: vec![],
     });
-    assert_eq!(guitar.role, verbatim("bass guitar"));
+    assert_eq!(
+        guitar.role,
+        localized("core.credit.instrument.17f9f065-2312-4a24-8309-6f6dd63e2e33")
+    );
+    let lead = BridgeCreditRole::from_core(CreditedAs {
+        role: CreditRole::Performer(Some(Part::Voice(Voice::from_name("lead vocals").unwrap()))),
+        qualifiers: vec![],
+    });
+    assert_eq!(lead.role, localized("core.credit.voice.8e2a3255-87c2-4809-a174-98cb3704f1a5"));
+    let words = BridgeCreditRole::from_core(CreditedAs {
+        role: CreditRole::Performer(Some(Part::Words("tin whistle".to_string()))),
+        qualifiers: vec![],
+    });
+    assert_eq!(words.role, verbatim("tin whistle"));
     let bare = BridgeCreditRole::from_core(CreditedAs {
         role: CreditRole::Performer(None),
         qualifiers: vec![],

@@ -12,8 +12,11 @@
 
 pub mod discogs;
 pub mod musicbrainz;
+pub mod part;
+mod table;
 
 use crate::pressing::vocabulary;
+use part::{Instrument, Part, Voice};
 
 vocabulary! {
     /// A role bae names. The first eight are the writing roles: MusicBrainz's
@@ -85,7 +88,7 @@ pub enum CreditRole {
     Kind(CreditRoleKind),
     /// A performer, with the instrument or voice the catalog names; `None`
     /// where it names none.
-    Performer(Option<String>),
+    Performer(Option<Part>),
     Stated(String),
 }
 
@@ -108,16 +111,26 @@ pub struct CreditedAs {
 pub const STATED_ROLE_KEY: &str = "stated";
 
 /// The key a stored role column holds for a performer; its words are the
-/// instrument or voice, if the catalog names one.
+/// instrument or voice in the catalog's own words, if the catalog names one
+/// bae's lists do not hold.
 pub const PERFORMER_ROLE_KEY: &str = "performer";
+
+/// The key a stored role column holds for a performer of an instrument on
+/// MusicBrainz's list; its words are the instrument's id.
+pub const INSTRUMENT_ROLE_KEY: &str = "instrument";
+
+/// The key a stored role column holds for a performer of a voice on
+/// MusicBrainz's list; its words are the voice's id.
+pub const VOICE_ROLE_KEY: &str = "voice";
 
 /// A [`CreditedAs`] as the three columns of a credit's row hold it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreditColumns {
-    /// A [`CreditRoleKind`] key, or [`STATED_ROLE_KEY`].
+    /// A [`CreditRoleKind`] key, [`PERFORMER_ROLE_KEY`],
+    /// [`INSTRUMENT_ROLE_KEY`], [`VOICE_ROLE_KEY`] or [`STATED_ROLE_KEY`].
     pub role: &'static str,
-    /// The catalog's words, for a stated role, and for a performer the
-    /// instrument or voice it names.
+    /// The catalog's words, for a stated role and for a performer of words;
+    /// a listed instrument's id or a voice's key.
     pub role_words: Option<String>,
     /// The qualifiers as a JSON array.
     pub qualifiers: String,
@@ -130,6 +143,12 @@ pub enum CreditColumnsError {
     UnknownRole(String),
     #[error("a stated credit role holds no words")]
     StatedWithoutWords,
+    #[error("a credit role {0:?} holds no instrument or voice")]
+    PartWithoutKey(&'static str),
+    #[error("{0:?} is not an instrument on the list")]
+    UnknownInstrument(String),
+    #[error("{0:?} is not a voice on the list")]
+    UnknownVoice(String),
     #[error("a credit role named by key {0:?} holds words")]
     WordsWithKey(String),
     #[error("the qualifiers {0:?} are not a list of qualifiers: {1}")]
@@ -146,7 +165,16 @@ impl CreditedAs {
     pub fn columns(&self) -> CreditColumns {
         let (role, role_words) = match &self.role {
             CreditRole::Kind(kind) => (kind.key(), None),
-            CreditRole::Performer(part) => (PERFORMER_ROLE_KEY, part.clone()),
+            CreditRole::Performer(None) => (PERFORMER_ROLE_KEY, None),
+            CreditRole::Performer(Some(Part::Words(words))) => {
+                (PERFORMER_ROLE_KEY, Some(words.clone()))
+            }
+            CreditRole::Performer(Some(Part::Instrument(instrument))) => {
+                (INSTRUMENT_ROLE_KEY, Some(instrument.id().to_string()))
+            }
+            CreditRole::Performer(Some(Part::Voice(voice))) => {
+                (VOICE_ROLE_KEY, Some(voice.id().to_string()))
+            }
             CreditRole::Stated(words) => (STATED_ROLE_KEY, Some(words.clone())),
         };
         CreditColumns {
@@ -166,7 +194,19 @@ impl CreditedAs {
         let role = match (role, role_words) {
             (STATED_ROLE_KEY, Some(words)) => CreditRole::Stated(words),
             (STATED_ROLE_KEY, None) => return Err(CreditColumnsError::StatedWithoutWords),
-            (PERFORMER_ROLE_KEY, part) => CreditRole::Performer(part),
+            (PERFORMER_ROLE_KEY, words) => CreditRole::Performer(words.map(Part::Words)),
+            (INSTRUMENT_ROLE_KEY, Some(id)) => CreditRole::Performer(Some(Part::Instrument(
+                Instrument::from_id(&id).ok_or(CreditColumnsError::UnknownInstrument(id))?,
+            ))),
+            (VOICE_ROLE_KEY, Some(id)) => CreditRole::Performer(Some(Part::Voice(
+                Voice::from_id(&id).ok_or(CreditColumnsError::UnknownVoice(id))?,
+            ))),
+            (INSTRUMENT_ROLE_KEY, None) => {
+                return Err(CreditColumnsError::PartWithoutKey(INSTRUMENT_ROLE_KEY))
+            }
+            (VOICE_ROLE_KEY, None) => {
+                return Err(CreditColumnsError::PartWithoutKey(VOICE_ROLE_KEY))
+            }
             (key, None) => CreditRole::Kind(
                 CreditRoleKind::from_key(key)
                     .ok_or_else(|| CreditColumnsError::UnknownRole(key.to_string()))?,

@@ -13,6 +13,7 @@ use bae_records::test_fixtures::live_query::*;
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::live_query::*;
 use bae_store::test_fixtures::*;
+use bae_types::credit_role::part::{Instrument, Part};
 use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
@@ -385,7 +386,9 @@ async fn composer_list_counts_writing_role_credits_and_the_page_lists_every_role
                 (
                     Catalog::MusicBrainz,
                     CreditedAs {
-                        role: CreditRole::Performer(Some("guitar".to_string())),
+                        role: CreditRole::Performer(Some(Part::Instrument(
+                            Instrument::from_name("guitar").unwrap(),
+                        ))),
                         qualifiers: vec![],
                     },
                 ),

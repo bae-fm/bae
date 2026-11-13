@@ -81,8 +81,10 @@ HEADING_REFERENCES = {
     "queue_clear_playing_from",
 }
 
-# core's pressing regions are place names.
-CORE_PLACE_NAMES = "core.pressing.region."
+# core's pressing regions are place names, and an instrument's name holds the
+# proper names of its maker, builder or place ("Blaster Beam", "Wiener Horn"):
+# neither is checked for capitals.
+CORE_PLACE_NAMES = ("core.pressing.region.", "core.credit.instrument.")
 
 # Short words a title keeps lowercase inside it (Apple's style).
 TITLE_SMALL_WORDS = {
@@ -246,7 +248,7 @@ def main():
     core = tomllib.loads(CORE_CATALOG.read_text())["messages"]
 
     # (where, key, English value) and, per locale, (where, key, value): every
-    # string but the menu bar's and core's place names.
+    # string but the menu bar's and core's place and instrument names.
     english = []
     translated = {}
     for key, entry in mac.items():

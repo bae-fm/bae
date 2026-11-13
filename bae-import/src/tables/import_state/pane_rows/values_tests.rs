@@ -33,7 +33,9 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         artist: credit("Release Composer", None),
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: bae_types::credit_role::CreditedAs {
-            role: bae_types::credit_role::CreditRole::Performer(Some("bass guitar".to_string())),
+            role: bae_types::credit_role::CreditRole::Performer(Some(
+                bae_types::credit_role::part::Part::Words("bass guitar".to_string()),
+            )),
             qualifiers: vec![bae_types::credit_role::RoleQualifier::Kind(
                 bae_types::credit_role::QualifierKind::Guest,
             )],
