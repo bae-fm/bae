@@ -2076,7 +2076,9 @@ Opening a library that has storage starts sync before the app can ask for
 anything, so coven's storage is connecting from the first screen: a cover that
 is not on this device waits for the connection and then shows, instead of
 failing as a library with no storage does. Starting sync does not wait for the
-network, so a library opened offline still opens.
+network, so a library opened offline still opens. The Mac cancels an image's
+read when the last view that wants it goes away, so a tile scrolled off screen
+does not keep its read waiting in core until storage connects.
 
 ### 4.2 Local and uploaded releases
 

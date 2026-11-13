@@ -295,7 +295,7 @@ public final class ImageStore: Sendable, Observable {
             bucket: content.bucket,
             cacheKey: key
         )
-        let load = inFlightLoads.load(for: loadKey) { [self] in
+        let waiter = inFlightLoads.join(loadKey) { [self] in
             if let cached = buckets[content.bucket].image(for: key) {
                 return cached
             }
@@ -306,14 +306,18 @@ public final class ImageStore: Sendable, Observable {
                 displayScale: displayScale
             )
         }
-        do {
-            let image = try await load.task.value
-            inFlightLoads.finish(load, for: loadKey)
-            return image
-        }
-        catch {
-            inFlightLoads.finish(load, for: loadKey)
-            throw error
+        return try await withTaskCancellationHandler {
+            do {
+                let image = try await waiter.load.task.value
+                inFlightLoads.finish(waiter)
+                return image
+            }
+            catch {
+                inFlightLoads.finish(waiter)
+                throw error
+            }
+        } onCancel: {
+            inFlightLoads.leave(waiter)
         }
     }
 
@@ -561,6 +565,9 @@ private struct InFlightImageLoadKey: Hashable, Sendable {
 
 private final class InFlightImageLoad: @unchecked Sendable {
     let task: Task<PlatformImage?, Error>
+    /// The requests still waiting on this load. Guarded by the owning
+    /// `InFlightImageLoads`' lock.
+    fileprivate var waiters = 0
 
     init(
         operation: @escaping @Sendable () async throws -> PlatformImage?
@@ -569,33 +576,81 @@ private final class InFlightImageLoad: @unchecked Sendable {
     }
 }
 
+/// One request's place among those sharing a load. It leaves the load once,
+/// whether its request finishes or is cancelled.
+private final class InFlightImageWaiter: @unchecked Sendable {
+    let load: InFlightImageLoad
+    let key: InFlightImageLoadKey
+    fileprivate var left = false
+
+    init(load: InFlightImageLoad, key: InFlightImageLoadKey) {
+        self.load = load
+        self.key = key
+    }
+}
+
 /// Requests for one decoded cache entry share the same fetch and decode. The
 /// first waiter that observes completion removes the task; reference equality
-/// prevents an older completion from removing a replacement.
+/// prevents an older completion from removing a replacement. The load runs
+/// while some request still wants it: when the last waiting request is
+/// cancelled, the load is cancelled and removed, so a tile scrolled away does
+/// not keep its read waiting in core.
 private final class InFlightImageLoads: @unchecked Sendable {
     private let lock = NSLock()
     private var loads: [InFlightImageLoadKey: InFlightImageLoad] = [:]
 
-    func load(
-        for key: InFlightImageLoadKey,
+    func join(
+        _ key: InFlightImageLoadKey,
         operation: @escaping @Sendable () async throws -> PlatformImage?
-    ) -> InFlightImageLoad {
+    ) -> InFlightImageWaiter {
         lock.lock()
         defer { lock.unlock() }
-        if let load = loads[key] {
-            return load
+        let load: InFlightImageLoad
+        if let existing = loads[key] {
+            load = existing
         }
-        let load = InFlightImageLoad(operation: operation)
-        loads[key] = load
-        return load
+        else {
+            load = InFlightImageLoad(operation: operation)
+            loads[key] = load
+        }
+        load.waiters += 1
+        return InFlightImageWaiter(load: load, key: key)
     }
 
-    func finish(_ load: InFlightImageLoad, for key: InFlightImageLoadKey) {
+    /// The waiter's load ended: it is no longer shared with later requests.
+    func finish(_ waiter: InFlightImageWaiter) {
         lock.lock()
         defer { lock.unlock() }
-        if loads[key] === load {
-            loads.removeValue(forKey: key)
+        remove(waiter)
+        departed(waiter)
+    }
+
+    /// The waiter's request was cancelled. The last one to go cancels the
+    /// load.
+    func leave(_ waiter: InFlightImageWaiter) {
+        lock.lock()
+        defer { lock.unlock() }
+        if departed(waiter), waiter.load.waiters == 0 {
+            remove(waiter)
+            waiter.load.task.cancel()
         }
+    }
+
+    private func remove(_ waiter: InFlightImageWaiter) {
+        if loads[waiter.key] === waiter.load {
+            loads.removeValue(forKey: waiter.key)
+        }
+    }
+
+    /// Counts the waiter out of its load once; false when it already was.
+    @discardableResult
+    private func departed(_ waiter: InFlightImageWaiter) -> Bool {
+        if waiter.left {
+            return false
+        }
+        waiter.left = true
+        waiter.load.waiters -= 1
+        return true
     }
 }
 

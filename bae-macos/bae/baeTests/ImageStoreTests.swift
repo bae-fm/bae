@@ -86,6 +86,33 @@ private actor FetchGate {
     }
 }
 
+/// A fetch that waits until it is cancelled, announcing its start and its
+/// cancellation.
+private final class CancellableFetch: Sendable {
+    enum Event: Sendable {
+        case started
+        case cancelled
+    }
+
+    let events: AsyncStream<Event>
+    private let continuation: AsyncStream<Event>.Continuation
+
+    init() {
+        (events, continuation) = AsyncStream.makeStream()
+    }
+
+    func wait() async throws {
+        continuation.yield(.started)
+        do {
+            try await Task.sleep(for: .seconds(600))
+        }
+        catch {
+            continuation.yield(.cancelled)
+            throw error
+        }
+    }
+}
+
 /// Runs its jobs one at a time, in the order they were enqueued.
 private final class SerialTaskExecutor: TaskExecutor {
     private let queue = DispatchQueue(
@@ -219,6 +246,71 @@ struct ImageStoreCacheTests {
         }
         #expect(images[0] === images[1])
         #expect(await fetchCount.read() == 1)
+    }
+
+    /// A tile scrolled away stops wanting its cover. The read it started
+    /// waits in core until storage connects, so it is cancelled with its last
+    /// request rather than left waiting.
+    @Test("cancelling the last request for a load cancels its fetch")
+    func lastCancelledRequestCancelsTheFetch() async throws {
+        let fetch = CancellableFetch()
+        let store = ImageStore(fetchLibraryImageBytes: { _ in
+            try await fetch.wait()
+            return nil
+        })
+        let content = ImageContent.libraryImage(coverRef(version: "1"))
+        let executor = SerialTaskExecutor()
+
+        // Both requests join the one load before either is cancelled.
+        let (first, second) = await withTaskExecutorPreference(executor) {
+            let first = Task(executorPreference: executor) {
+                try await store.image(content, pointSize: 56, displayScale: 2)
+            }
+            let second = Task(executorPreference: executor) {
+                try await store.image(content, pointSize: 56, displayScale: 2)
+            }
+            await Task.yield()
+            return (first, second)
+        }
+        var events = fetch.events.makeAsyncIterator()
+        #expect(await events.next() == .started)
+
+        first.cancel()
+        second.cancel()
+        #expect(await events.next() == .cancelled)
+        await #expect(throws: CancellationError.self) {
+            try await second.value
+        }
+        _ = try? await first.value
+    }
+
+    @Test("cancelling one of two requests for a load leaves the load running")
+    func cancelledRequestLeavesTheSharedFetchRunning() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let gate = FetchGate()
+        let store = ImageStore(fetchLibraryImageBytes: { _ in
+            await gate.pass()
+            try Task.checkCancellation()
+            return bytes
+        })
+        let content = ImageContent.libraryImage(coverRef(version: "1"))
+        let executor = SerialTaskExecutor()
+
+        let (first, second) = await withTaskExecutorPreference(executor) {
+            let first = Task(executorPreference: executor) {
+                try await store.image(content, pointSize: 56, displayScale: 2)
+            }
+            let second = Task(executorPreference: executor) {
+                try await store.image(content, pointSize: 56, displayScale: 2)
+            }
+            await Task.yield()
+            return (first, second)
+        }
+
+        first.cancel()
+        await gate.open()
+        #expect(try await second.value != nil)
+        _ = try? await first.value
     }
 
     /// A failed fetch leaves nothing behind — no cached failure, no load still
