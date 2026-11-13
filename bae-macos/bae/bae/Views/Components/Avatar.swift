@@ -38,15 +38,3 @@ struct Avatar: View {
             .joined()
     }
 }
-
-#if DEBUG
-    #Preview("Avatar") {
-        HStack {
-            Avatar(name: "Mara Quill", size: 16)
-            Avatar(name: "Mara Quill", size: 32)
-            Avatar(name: "ana", size: 32)
-        }
-        .padding()
-        .environment(ImageStore.stub())
-    }
-#endif

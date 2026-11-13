@@ -51,26 +51,3 @@ struct MacListRow: View {
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
     }
 }
-
-#if DEBUG
-    #Preview("Mac List Row") {
-        VStack(spacing: 0) {
-            MacListRow(
-                lead: "1",
-                title: "Harbor Lights",
-                subtitle: "Mara Quill · Low Tide Hours",
-                duration: "4:32"
-            )
-            MacListRow(
-                lead: "2",
-                title: "Copper Sky",
-                subtitle: "Odile Fen · Copper Sky",
-                duration: "3:58",
-                hover: true
-            )
-        }
-        .padding()
-        .frame(width: 520)
-        .environment(ImageStore.stub())
-    }
-#endif

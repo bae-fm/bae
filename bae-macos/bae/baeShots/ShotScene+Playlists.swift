@@ -11,28 +11,58 @@ extension ShotScene {
             id: "mac.playlists.list",
             size: CGSize(width: 1200, height: 760)
         ) {
-            let uiStore = UiStore()
-            uiStore.setLibraryBrowserMode(.playlists)
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                playlists: boardPlaylistListing,
-                playlistDetails: boardPlaylistDetails
-            )
-            backing.session.selectPlaylist("playlist-late-night")
-            let projections = LibraryProjectionStore(library: backing.library)
-            return ShotStage(
-                PreviewScenes.libraryWindow(
-                    uiStore: uiStore,
-                    backing: (backing.library, backing.session),
-                    playbackStore: boardPlayback(),
-                    projections: projections,
-                    size: CGSize(width: 1200, height: 760)
+            playlistsWindow()
+        },
+        ShotScene(
+            id: "mac.playlists.new-playlist",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            playlistsWindow { window in
+                AnyView(
+                    OverWindow.sheet(
+                        NewPlaylistSheet(
+                            state: .constant(
+                                NewPlaylistSheetState(
+                                    name: "Late night",
+                                    sharing: .household,
+                                    trackIds: []
+                                )
+                            ),
+                            onCancel: {},
+                            onCreate: { _ in }
+                        ),
+                        over: window
+                    )
                 )
-            ) {
-                projections.playlist.delivered
             }
-        }
+        },
     ]
+
+    /// The window in the Playlists view with the first playlist open,
+    /// `dressed` as the scene needs: an overlay over it, or as it is.
+    private static func playlistsWindow(
+        dressed: (AnyView) -> AnyView = { $0 }
+    ) -> ShotStage {
+        let uiStore = UiStore()
+        uiStore.setLibraryBrowserMode(.playlists)
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            playlists: boardPlaylistListing,
+            playlistDetails: boardPlaylistDetails
+        )
+        backing.session.selectPlaylist("playlist-late-night")
+        let projections = LibraryProjectionStore(library: backing.library)
+        let window = PreviewScenes.libraryWindow(
+            uiStore: uiStore,
+            backing: (backing.library, backing.session),
+            playbackStore: boardPlayback(),
+            projections: projections,
+            size: CGSize(width: 1200, height: 760)
+        )
+        return ShotStage(dressed(AnyView(window))) {
+            projections.playlist.delivered
+        }
+    }
 
     private static func owner(_ name: String) -> BridgePlaylistOwner {
         BridgePlaylistOwner(

@@ -73,27 +73,3 @@ struct NewPlaylistSheet: View {
         }
     }
 }
-
-#if DEBUG
-    #Preview("New playlist") {
-        @Previewable
-        @State
-        var state = NewPlaylistSheetState(trackIds: [])
-        NewPlaylistSheet(state: $state, onCancel: {}, onCreate: { _ in })
-    }
-
-    #Preview("New playlist \u{2014} Everyone, failed") {
-        @Previewable
-        @State
-        var state = NewPlaylistSheetState(
-            name: "Late night",
-            sharing: .household,
-            trackIds: [],
-            error: DisplayError(
-                line: "Could not make the playlist",
-                detail: "playlist error: the store is closed"
-            )
-        )
-        NewPlaylistSheet(state: $state, onCancel: {}, onCreate: { _ in })
-    }
-#endif
