@@ -397,7 +397,7 @@ async fn open_to(
 
 #[tokio::test]
 async fn a_connection_over_tls_to_a_self_signed_receiver_carries_messages_both_ways() {
-    let (mut fake, port) = FakeReceiver::serve_tls().await;
+    let (mut fake, port) = FakeReceiver::serve_tls(false).await;
     let ends = Arc::new(Mutex::new(Vec::new()));
     let (opened, mut messages) = open_to(port, &ends).await;
     let connection = opened.expect("the receiver's self-signed certificate is accepted");

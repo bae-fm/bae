@@ -162,8 +162,10 @@ fn load_media(media: &RendererMedia) -> Value {
 pub(crate) enum Inbound {
     Ping,
     Pong,
-    /// The receiver closed the virtual connection the frame came on.
-    Close,
+    /// The sender of the frame closed its virtual connection to bae.
+    Close {
+        source_id: String,
+    },
     ReceiverStatus {
         request_id: u32,
         status: ReceiverStatusBody,
@@ -354,7 +356,9 @@ impl Inbound {
         Ok(match (namespace, kind.as_str()) {
             (NAMESPACE_HEARTBEAT, "PING") => Inbound::Ping,
             (NAMESPACE_HEARTBEAT, "PONG") => Inbound::Pong,
-            (NAMESPACE_CONNECTION, "CLOSE") => Inbound::Close,
+            (NAMESPACE_CONNECTION, "CLOSE") => {
+                Inbound::Close { source_id: frame.source_id.clone() }
+            }
             (NAMESPACE_RECEIVER, "RECEIVER_STATUS") => {
                 let status = payload.get("status").cloned().unwrap_or_else(|| json!({}));
                 Inbound::ReceiverStatus {

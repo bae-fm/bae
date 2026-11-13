@@ -125,6 +125,6 @@ fn resolved_service_without_address_is_unusable() {
 fn a_receiver_time_that_is_not_a_time_is_none() {
     assert_eq!(receiver_time(12.5), Some(std::time::Duration::from_millis(12_500)));
     for seconds in [f32::INFINITY, f32::NEG_INFINITY, f32::NAN, -1.0, 1e30, 1e12] {
-        assert_eq!(receiver_time(seconds), None, "{seconds}");
+        assert_eq!(receiver_time(f64::from(seconds)), None, "{seconds}");
     }
 }

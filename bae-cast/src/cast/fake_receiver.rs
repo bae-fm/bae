@@ -4,6 +4,10 @@
 //! through the same [`wire`](super::wire) and [`messages`](super::messages)
 //! the client uses. It answers a PING with a PONG, records every message it
 //! receives in order, and does what its test handles tell it to.
+//!
+//! Served with [`FakeReceiver::serve_receiver`], it also plays a Default
+//! Media Receiver (see [`receiver_model`]): it launches the app, loads,
+//! plays, pauses, seeks and stops, answering each request as a receiver does.
 
 use std::sync::Arc;
 
@@ -17,6 +21,11 @@ use tokio::sync::mpsc;
 
 use super::messages::{Request, NAMESPACE_HEARTBEAT};
 use super::wire::{encode_frame, CastMessage, FrameReader};
+
+mod receiver_model;
+
+use receiver_model::{Model, Outgoing};
+pub(crate) use receiver_model::{Reply, Script};
 
 /// A message the fake received from the client.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +48,19 @@ enum Control {
     SendRaw(Vec<u8>),
     GoSilent,
     DropConnection,
+    Event(Event),
+}
+
+/// Something the receiver's model does on its own.
+enum Event {
+    Script(String, Script),
+    PushMediaStatus(Value),
+    FinishTrack,
+    PauseByAnotherSender,
+    LoadByAnotherSender,
+    StopApp,
+    ReplaceAppKeepingTransport,
+    CloseTransport,
 }
 
 pub(crate) struct FakeReceiver {
@@ -54,12 +76,28 @@ impl FakeReceiver {
     where
         S: AsyncRead + AsyncWrite + Send + 'static,
     {
+        Self::serve_with(stream, None)
+    }
+
+    /// Serve the client at the other end of `stream` as a Default Media
+    /// Receiver.
+    pub(crate) fn serve_receiver<S>(stream: S) -> Self
+    where
+        S: AsyncRead + AsyncWrite + Send + 'static,
+    {
+        Self::serve_with(stream, Some(Model::new()))
+    }
+
+    fn serve_with<S>(stream: S, model: Option<Model>) -> Self
+    where
+        S: AsyncRead + AsyncWrite + Send + 'static,
+    {
         let (control, commands) = mpsc::unbounded_channel();
         let (record, received) = mpsc::unbounded_channel();
         let task = Diagnostics::noop().spawn_reported(
             &tokio::runtime::Handle::current(),
             "fake cast receiver",
-            serve(stream, commands, record),
+            serve(stream, commands, record, model),
             |bug| panic!("the fake receiver panicked: {bug}"),
         );
         Self { control, received, _task: task }
@@ -67,7 +105,8 @@ impl FakeReceiver {
 
     /// Listen on `127.0.0.1:0`, take one connection and serve it over TLS with
     /// a certificate made for the test. Returns the fake and its port.
-    pub(crate) async fn serve_tls() -> (Self, u16) {
+    /// With `as_receiver`, it plays a Default Media Receiver.
+    pub(crate) async fn serve_tls(as_receiver: bool) -> (Self, u16) {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind a local port");
         let port = listener.local_addr().expect("a bound address").port();
         let rcgen::CertifiedKey { cert, signing_key } =
@@ -92,7 +131,7 @@ impl FakeReceiver {
             async move {
                 let (tcp, _) = listener.accept().await.expect("the client connects");
                 let tls = acceptor.accept(tcp).await.expect("the TLS handshake");
-                serve(tls, commands, record).await;
+                serve(tls, commands, record, as_receiver.then(Model::new)).await;
             },
             |bug| panic!("the fake receiver panicked: {bug}"),
         );
@@ -130,6 +169,50 @@ impl FakeReceiver {
         self.control.send(Control::DropConnection).expect("the fake receiver is serving");
     }
 
+    fn event(&self, event: Event) {
+        self.control.send(Control::Event(event)).expect("the fake receiver is serving");
+    }
+
+    /// The next request of this `type` is answered as `script` says.
+    pub(crate) fn answer_next(&self, kind: &str, script: Script) {
+        self.event(Event::Script(kind.to_string(), script));
+    }
+
+    /// Send a MEDIA_STATUS nobody asked for, carrying this one entry.
+    pub(crate) fn push_media_status(&self, entry: Value) {
+        self.event(Event::PushMediaStatus(entry));
+    }
+
+    /// The track plays to its end.
+    pub(crate) fn finish_track(&self) {
+        self.event(Event::FinishTrack);
+    }
+
+    /// The device's buttons, or another sender, pause the player.
+    pub(crate) fn another_sender_pauses(&self) {
+        self.event(Event::PauseByAnotherSender);
+    }
+
+    /// Another sender loads its own media.
+    pub(crate) fn another_sender_loads(&self) {
+        self.event(Event::LoadByAnotherSender);
+    }
+
+    /// The app ends: a RECEIVER_STATUS with no applications.
+    pub(crate) fn stop_app(&self) {
+        self.event(Event::StopApp);
+    }
+
+    /// Another app takes the receiver over on the same transport id.
+    pub(crate) fn replace_app_keeping_transport(&self) {
+        self.event(Event::ReplaceAppKeepingTransport);
+    }
+
+    /// The app's transport closes its connection.
+    pub(crate) fn close_transport(&self) {
+        self.event(Event::CloseTransport);
+    }
+
     /// A message the client already sent and nobody has taken yet.
     pub(crate) fn try_received(&mut self) -> Option<Received> {
         self.received.try_recv().ok()
@@ -152,10 +235,21 @@ impl FakeReceiver {
     }
 }
 
+async fn write_all<W: AsyncWrite + Unpin>(write_half: &mut W, out: Outgoing) -> bool {
+    let frame = CastMessage::text(
+        &out.source_id,
+        &out.destination_id,
+        out.namespace,
+        out.payload.to_string(),
+    );
+    write_half.write_all(&encode_frame(&frame).expect("a test frame fits")).await.is_ok()
+}
+
 async fn serve<S>(
     stream: S,
     mut commands: mpsc::UnboundedReceiver<Control>,
     record: mpsc::UnboundedSender<Received>,
+    mut model: Option<Model>,
 ) where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
@@ -163,26 +257,10 @@ async fn serve<S>(
     let mut frames = FrameReader::new(read_half);
     let mut silent = false;
     loop {
+        // Handles are served before frames, so a script a test set before it
+        // sent a request is in place when the request arrives.
         tokio::select! {
-            frame = frames.next() => {
-                let Ok(Some(frame)) = frame else { return };
-                let payload: Value = serde_json::from_str(frame.payload_utf8.as_deref().unwrap_or("{}"))
-                    .expect("the client sends JSON");
-                let received = Received {
-                    source_id: frame.source_id,
-                    destination_id: frame.destination_id,
-                    namespace: frame.namespace,
-                    payload,
-                };
-                let is_ping = received.namespace == NAMESPACE_HEARTBEAT && received.kind() == "PING";
-                let _recorded = record.send(received);
-                if is_ping && !silent {
-                    let pong = Request::Pong.into_frame("receiver-0", "sender-0");
-                    if write_half.write_all(&encode_frame(&pong).expect("a PONG fits")).await.is_err() {
-                        return;
-                    }
-                }
-            }
+            biased;
             command = commands.recv() => {
                 let Some(command) = command else { return };
                 match command {
@@ -199,6 +277,59 @@ async fn serve<S>(
                     }
                     Control::GoSilent => silent = true,
                     Control::DropConnection => return,
+                    Control::Event(event) => {
+                        let model = model.as_mut().expect("model events need serve_receiver");
+                        let outgoing = match event {
+                            Event::Script(kind, script) => {
+                                model.script(&kind, script);
+                                vec![]
+                            }
+                            Event::PushMediaStatus(entry) => {
+                                vec![model.push_media_status(entry)]
+                            }
+                            Event::FinishTrack => vec![model.finish_track()],
+                            Event::PauseByAnotherSender => vec![model.pause_by_another_sender()],
+                            Event::LoadByAnotherSender => model.load_by_another_sender(),
+                            Event::StopApp => vec![model.stop_app()],
+                            Event::ReplaceAppKeepingTransport => {
+                                vec![model.replace_app_keeping_transport()]
+                            }
+                            Event::CloseTransport => vec![model.close_transport()],
+                        };
+                        for out in outgoing {
+                            if !write_all(&mut write_half, out).await {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            frame = frames.next() => {
+                let Ok(Some(frame)) = frame else { return };
+                let payload: Value = serde_json::from_str(frame.payload_utf8.as_deref().unwrap_or("{}"))
+                    .expect("the client sends JSON");
+                let received = Received {
+                    source_id: frame.source_id,
+                    destination_id: frame.destination_id,
+                    namespace: frame.namespace,
+                    payload,
+                };
+                let is_ping = received.namespace == NAMESPACE_HEARTBEAT && received.kind() == "PING";
+                let answers = match (&mut model, is_ping || silent) {
+                    (Some(model), false) => model.handle(&received.namespace, &received.payload),
+                    _ => vec![],
+                };
+                let _recorded = record.send(received);
+                if is_ping && !silent {
+                    let pong = Request::Pong.into_frame("receiver-0", "sender-0");
+                    if write_half.write_all(&encode_frame(&pong).expect("a PONG fits")).await.is_err() {
+                        return;
+                    }
+                }
+                for answer in answers {
+                    if !write_all(&mut write_half, answer).await {
+                        return;
+                    }
                 }
             }
         }

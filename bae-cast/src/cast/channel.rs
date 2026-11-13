@@ -213,8 +213,12 @@ impl RendererChannel for RustCastChannel {
 
         Ok(ReceiverStatus {
             player_state: player_state_from(entry),
-            position: entry.current_time.and_then(receiver_time),
-            duration: entry.media.as_ref().and_then(|m| m.duration).and_then(receiver_time),
+            position: entry.current_time.and_then(|time| receiver_time(f64::from(time))),
+            duration: entry
+                .media
+                .as_ref()
+                .and_then(|m| m.duration)
+                .and_then(|time| receiver_time(f64::from(time))),
             volume,
         })
     }
@@ -222,8 +226,8 @@ impl RendererChannel for RustCastChannel {
 
 /// A time in seconds a receiver stated, when it is a time: finite, not
 /// negative and no longer than [`LONGEST_RECEIVER_TIME`].
-pub(super) fn receiver_time(seconds: f32) -> Option<Duration> {
-    Duration::try_from_secs_f32(seconds).ok().filter(|time| *time <= LONGEST_RECEIVER_TIME)
+pub(super) fn receiver_time(seconds: f64) -> Option<Duration> {
+    Duration::try_from_secs_f64(seconds).ok().filter(|time| *time <= LONGEST_RECEIVER_TIME)
 }
 
 /// Map a receiver media-status entry to our player state. An IDLE entry whose

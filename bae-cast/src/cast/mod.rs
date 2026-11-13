@@ -13,6 +13,10 @@ pub(crate) mod discovery;
 // Test-only until the Cast renderer moves onto this client (the commit that
 // drops RustCastChannel).
 #[cfg(test)]
+mod client;
+// Test-only until the Cast renderer moves onto this client (the commit that
+// drops RustCastChannel).
+#[cfg(test)]
 mod connection;
 // Test-only until the Cast renderer moves onto this client (the commit that
 // drops RustCastChannel).

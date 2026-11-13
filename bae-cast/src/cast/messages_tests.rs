@@ -144,7 +144,10 @@ fn media_entries(status: Value) -> Vec<MediaStatusEntry> {
 fn the_heartbeat_and_connection_messages_are_read() {
     assert_eq!(read(NAMESPACE_HEARTBEAT, json!({"type": "PING"})), Inbound::Ping);
     assert_eq!(read(NAMESPACE_HEARTBEAT, json!({"type": "PONG"})), Inbound::Pong);
-    assert_eq!(read(NAMESPACE_CONNECTION, json!({"type": "CLOSE"})), Inbound::Close);
+    assert_eq!(
+        read(NAMESPACE_CONNECTION, json!({"type": "CLOSE"})),
+        Inbound::Close { source_id: "receiver-0".to_string() }
+    );
 }
 
 #[test]
