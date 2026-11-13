@@ -201,7 +201,10 @@ extension ShotScene {
     /// `DownloadRow` after a pin or a make-local failed.
     private static let downloadRowScenes: [ShotScene] = [
         downloadRow("mac.component.download-row.pin", kind: .pin),
-        downloadRow("mac.component.download-row.make-local", kind: .makeLocal),
+        downloadRow(
+            "mac.component.download-row.move-to-this-mac",
+            kind: .makeLocal
+        ),
     ]
 
     private static func downloadRow(

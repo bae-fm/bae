@@ -5586,7 +5586,7 @@
    "w": 520,
    "x": 6400,
    "y": 2520,
-   "text": "How a transfer line counts (macOS and Android):\n- The count is releases done of the batch: “1 of 3 releases”. A release counts as done once all its files are.\n- The bar is bytes, not releases: the bytes done of the whole batch’s bytes. It moves while a release’s files transfer, even while the count stays put.\n- Uploads count the bytes the provider confirmed (coven’s upload progress); pins and make-locals count the bytes downloaded and verified.\n- A batch is everything the queue has held since it was last empty, so both the count’s total and the bar’s total only grow, and start over once the queue empties.\n- Syncing changes has no count, so its bar moves."
+   "text": "How a transfer line counts (macOS and Android):\n- The count is releases done of the batch: “1 of 3 releases”. A release counts as done once all its files are.\n- The bar is bytes, not releases: the bytes done of the whole batch’s bytes. It moves while a release’s files transfer, even while the count stays put.\n- Uploads count the bytes the provider confirmed (coven’s upload progress); pins and moves to This Mac count the bytes downloaded and verified.\n- A batch is everything the queue has held since it was last empty, so both the count’s total and the bar’s total only grow, and start over once the queue empties.\n- Syncing changes has no count, so its bar moves."
   },
   "code-release-files": {
    "page": "import",

@@ -2305,8 +2305,8 @@ Each row's storage state is the place it sorts by, which core reads with the
 row: Could not pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
 original changed since import, first; Uploading, its chip filled as far
 as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
-as its download has come once it starts, or Queued to pin before; making local, Making local… filled as far as its copies have downloaded
-(§4.4), or Queued to make local before, or Could not make local, its error behind *Details*, in the first place with
+as its download has come once it starts, or Queued to pin before; making local, Moving to This Mac… filled as far as its copies have downloaded
+(§4.4), or Queued to move to This Mac before, or Could not move to This Mac, its error behind *Details*, in the first place with
 Could not pin; Local, Pinned or
 In cloud at rest. No rate shows beside it, nor how many entries wait ahead
 of it or what holds the queue back: a row's storage is its state and at most
@@ -2376,7 +2376,7 @@ usable network, as coven's network watch says, and goes on when it returns; a
 platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
 its rate under the Storage manager's list, on the Activity panel's Pinning
-and Making local lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
+and Moving to This Mac lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
 nothing of it pinned, and its row sorts first, reading Could not pin; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
@@ -2427,6 +2427,8 @@ queued; the person sees the error and the failure is reported as a bug.
 
 Making an uploaded release local again brings its files into a folder the
 person picks, and leaves them on this device only. Only the desktop apps offer it.
+In the apps' words the move names the device as the import's destination
+does (This Mac or Cloud): on the Mac it is Move to This Mac, never "make local".
 
 Carol wants her box set out of storage. She picks a folder on her drive. Each
 release she selects goes in a folder of its own below it, named for the
@@ -2440,15 +2442,15 @@ pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
 the entry that was running starts again. A queued make-local reads Queued to
-make local; one that fails stays with its error, reading
-Could not make local, until retried or cancelled. A cancel takes the entry out
+move to This Mac; one that fails stays with its error, reading
+Could not move to This Mac, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
 paths below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 coven downloads every file, checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
 is whole and synced. While it downloads, the release's Storage manager row and
-its storage band fill Making local… as far as its copies have downloaded, and
+its storage band fill Moving to This Mac… as far as its copies have downloaded, and
 the inspector shows the bytes of the whole release and of the file being
 downloaded. coven reports both as each file's
 bytes arrive, a few times a second; they are kept only in memory, keyed by
@@ -3688,7 +3690,7 @@ thing moving, each its words, how far it has got and a bar, with no icon:
 Syncing changes, while coven's sync state says so (a pass moving, or a file
 being sent or downloaded), with no count, so its bar moves; Uploading
 ("1 of 2 releases"); Pinning ("1 of 3 releases"), which on the phones opens
-the Pinning screen; and on the desktop Making local on a line of its own ("0 of
+the Pinning screen; and on the desktop Moving to This Mac on a line of its own ("0 of
 1 release"): a make-local changes where files live for every device, while a
 pin only keeps a copy on this one. Every count is in releases, a release done
 once all its files are, and every bar is filled by the bytes of the batch done
@@ -3700,7 +3702,7 @@ its line reads it done keeps the bytes it reached, and one removed from the
 library keeps what it had counted. A bar moves while a release's files transfer
 and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
-over once the queue empties. Pinning and Making local share the download
+over once the queue empties. Pinning and Moving to This Mac share the download
 queue but each counts its own batch: the releases queued to pin, or to make
 local, since none of that kind waited or downloaded. Uploading counts the
 releases with files queued to upload; a cover or picture on its way counts in
@@ -5938,8 +5940,8 @@ write commits, so the release and the row naming it land in either order.
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
-| `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Making local lines count (§6.4) |
-| `download_batch_number` | kind (pin or make local): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Making local lines' bars tell a new batch from the one whose bytes they held (§6.4) |
+| `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Moving to This Mac lines count (§6.4) |
+| `download_batch_number` | kind (pin or make local): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Moving to This Mac lines' bars tell a new batch from the one whose bytes they held (§6.4) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with its format and save settings captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export

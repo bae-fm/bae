@@ -210,7 +210,7 @@ extension ShotScene {
                 status: .moveFailed(fileName: "01 Harbor Lights.flac")
             )
         },
-        storageChip("mac.component.storage-chip.could-not-make-local") {
+        storageChip("mac.component.storage-chip.could-not-move-to-this-mac") {
             MacStorageChip(
                 release: PreviewData.storageRelease(),
                 status: .makeLocalFailed(
@@ -221,7 +221,7 @@ extension ShotScene {
         storageChip("mac.component.storage-chip.queued") {
             QueuedUploadChip()
         },
-        storageChip("mac.component.storage-chip.queued-to-make-local") {
+        storageChip("mac.component.storage-chip.queued-to-move-to-this-mac") {
             MacStorageChip(
                 release: PreviewData.storageRelease(),
                 status: .makingLocal(step: .queued)
