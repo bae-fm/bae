@@ -9,6 +9,7 @@ step mac macos-tests-all ./bae-macos/test.sh
 step mac macos-track-tests ./bae-macos/test.sh --run-only TrackTests
 step mac macos-detail-tests ./bae-macos/test.sh --run-only ReleaseDetailTests
 step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests
+step mac macos-projection-tests ./bae-macos/test.sh --run-only LibraryProjectionStoreDetailTests UiStoreNewPlaylistSheetTests
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
