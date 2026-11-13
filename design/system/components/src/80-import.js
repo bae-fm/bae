@@ -118,7 +118,7 @@
   function MacIdentifierBand(props) {
     return h('div', { className: 'bae-m-band' }, list(props.chips).map(function (c, i) {
       var p = c.split('|'); var lab = p[0], val = p[1] || '', st = p[2] || 'filled', cap = p[3];
-      return h('span', { key: i, className: cx('bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 10.5, fontWeight: 600 } }, lab), st === 'dash' ? h('span', { className: 'bae-m-idchip-dash' }) : h('span', { className: 'bae-mono' }, val),
+      return h('span', { key: i, className: cx('bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 10.5, fontWeight: 600 } }, lab), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : h('span', { className: 'bae-mono' }, val),
         cap ? cap.split('+').map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
     }));
   }
@@ -131,11 +131,22 @@
       h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), h(MacRecordLinks, { records: props.sources || 'MusicBrainz,Discogs' })),
       h('div', { className: 'bae-m-rcard-rows' }, props.children));
   }
+  // A fact the pressing's records state differently is every record's value, each followed by its catalog's name: "1992 MusicBrainz / 1993 Discogs". Written "1992:MusicBrainz|1993:Discogs"; in `summary`, one of its " · " parts. A fact one record states alone is shown as stated.
+  function pressingValues(text) {
+    if (String(text).indexOf('|') < 0) return text;
+    return String(text).split('|').map(function (v, i) {
+      var at = v.lastIndexOf(':');
+      return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-m-tertiary' }, ' / ') : null, v.slice(0, at), h('span', { className: 'bae-m-tertiary bae-m-prow-catalog' }, ' ' + v.slice(at + 1)));
+    });
+  }
   function MacPressingRow(props) {
+    var summary = props.summary ? String(props.summary).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, pressingValues(part)); }) : null;
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 } },
-        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, props.year) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, props.catalog) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); })),
-        props.summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.summary) : null),
+        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, pressingValues(props.year)) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, pressingValues(props.catalog)) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, pressingValues(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); })),
+        summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, summary) : null,
+        // `note`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ.
+        props.note ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5, fontStyle: 'italic' } }, pressingValues(props.note)) : null),
       h('span', { style: { display: 'flex', alignItems: 'center', gap: 4, opacity: props.inLibrary ? 1 : 0, fontSize: 11.5 }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library'),
       h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.sources || 'MusicBrainz · Discogs'),
       h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
