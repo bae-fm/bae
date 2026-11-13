@@ -101,7 +101,7 @@
   "mac.album.change-cover.dc.html": {
    "h": 1000,
    "page": "home",
-   "title": "macOS: Change Cover",
+   "title": "macOS: Change cover",
    "w": 1200,
    "x": 7680,
    "y": 15812
@@ -109,7 +109,7 @@
   "mac.album.change-cover.no-linked-release.dc.html": {
    "h": 1000,
    "page": "home",
-   "title": "macOS: Change Cover, no linked release",
+   "title": "macOS: Change cover, no linked release",
    "w": 1200,
    "x": 8960,
    "y": 15812
@@ -4074,6 +4074,22 @@
    "w": 1200,
    "x": 10036,
    "y": 11864
+  },
+  "mac.album.edit.album-picker.dc.html": {
+   "h": 1120,
+   "page": "home",
+   "title": "macOS: Edit…: the album picker",
+   "w": 1200,
+   "x": 9020,
+   "y": 21244
+  },
+  "mac.album.edit.cover.dc.html": {
+   "h": 1120,
+   "page": "home",
+   "title": "macOS: Edit…: its cover",
+   "w": 1200,
+   "x": 10316,
+   "y": 21244
   }
  },
  "createdOnFiles": {
@@ -5478,7 +5494,7 @@
   "code-release-files": {
    "page": "import",
    "size": 24,
-   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit Release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit Release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
+   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
    "w": 460,
    "x": 4440,
    "y": 4340
@@ -5486,7 +5502,7 @@
   "code-release-files-edit": {
    "page": "home",
    "size": 24,
-   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit Release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit Release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
+   "text": "What the code needs: one Files view.\n- A release's files that are no track (a rip log, a cover image) show the same way in three places: a Found folder's pane, an imported release's pane, and the album's Edit release sheet. One view draws them in all three (the design system's MacReleaseFiles): a ruled Files heading, a line per file with its size, a document opening on click.\n- Today these are three separate views: Found draws file rows inside its track table (ImportMappingTable), Imported has its own list (ImportedReleasePane.filesSection), and Edit release lists no files. Replace all three with the one view; don't add a fourth.\n- Queued as #512.",
    "w": 460,
    "x": -560,
    "y": 15812
@@ -6093,7 +6109,9 @@
   "mac.playlists.edit.dc.html",
   "mac.playlists.delete.dc.html",
   "mac.playlists.track-menu.dc.html",
-  "mac.playlists.reordering.dc.html"
+  "mac.playlists.reordering.dc.html",
+  "mac.album.edit.album-picker.dc.html",
+  "mac.album.edit.cover.dc.html"
  ],
  "pages": [
   {

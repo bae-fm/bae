@@ -80,3 +80,4 @@
 .bae-m-bulkgrp + .bae-m-bulkgrp { border-top: 1px solid var(--hairline); }
 .bae-m-bulkrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .bae-m-bulkrow-off { opacity: 0.4; }
+.bae-m-idraft-album { display: flex; align-items: center; gap: 8px; margin-top: 6px; }

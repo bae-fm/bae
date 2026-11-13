@@ -1692,7 +1692,7 @@ and elsewhere, is in decimal units with at most one decimal and none when whole
 ("3.9 GB", "420 MB", "1 GB"), the number and the unit in the person's language.
 A document opens in the
 viewer when clicked, over whatever else is open. A library release's editor
-(§3.8), on an imported folder's pane and in the album's *Edit Release* sheet,
+(§3.8), on an imported folder's pane and in the album's *Edit release* sheet,
 lists the release's files, images included, the same way, under its tracks, and
 an imported folder's pane puts the folder's images above its tracks; one view draws
 the files in all three, so a release's files never show two ways.

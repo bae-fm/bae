@@ -66,7 +66,9 @@
           h('div', { className: cx('bae-m-idraft-title', !props.title && 'bae-m-tertiary') }, props.title || 'Album title'),
           h('div', { className: 'bae-muted', style: { display: 'flex', gap: 6, alignItems: 'center' } }, props.artist || 'Album artist', props.artistChip ? h(StatusChip, { tone: props.artistChip === 'New' ? 'accent' : 'neutral' }, props.artistChip) : null),
           h('div', { className: 'bae-m-tertiary' }, props.year || 'Album year'),
-          h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.audio || 'FLAC · 16-bit · 44.1 kHz · 10 files'))),
+          h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.audio || 'FLAC · 16-bit · 44.1 kHz · 10 files'),
+          // The album the release files under (spec §3.7 step 6, §3.8): New album, the library album its records name, or one picked; the pop-up is the album picker.
+          props.blank ? null : h('div', { className: 'bae-m-idraft-album' }, h('span', { className: 'bae-muted' }, 'Album'), h(MacPopUpButton, { value: props.album || 'New album', label: 'Album', open: props.albumOpen, items: props.albumItems })))),
       h('div', { className: 'bae-m-formhead' }, 'Release'),
       h('div', { className: 'bae-m-idraft-grid' }, rows.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: r[1] === '—' ? 'bae-m-tertiary' : null }, r[1])]; })),
       props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('span', { className: 'bae-accent' }, 'Unlink')) : null);
