@@ -55,7 +55,7 @@
                         title: "Album Title \(index + 1)",
                         year: 1970 + Int32(index % 50),
                         isCompilation: false,
-                        artistNames: "Artist Name \(index % 7 + 1)",
+                        artistLine: .named("Artist Name \(index % 7 + 1)"),
                         releaseIds: ["rel-grid-\(index)"],
                         primaryReleaseId: "rel-grid-\(index)",
                         cover: nil,

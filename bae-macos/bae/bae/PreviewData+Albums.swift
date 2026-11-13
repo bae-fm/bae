@@ -21,7 +21,7 @@
                         title: name,
                         durationMs: durationMs,
                         durationClock: bridgeLengthClock(ms: durationMs),
-                        artistNames: artist,
+                        artistLine: .named(artist),
                         displayArtist: nil,
                         positionText: positionText(index),
                     )
@@ -226,7 +226,7 @@
                     title: album.title,
                     year: album.year,
                     isCompilation: false,
-                    artistNames: album.artist,
+                    artistLine: .named(album.artist),
                     releaseIds: releaseIds,
                     primaryReleaseId: releaseIds[0],
                     cover: nil,

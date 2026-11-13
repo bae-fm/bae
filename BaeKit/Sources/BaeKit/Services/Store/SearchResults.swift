@@ -22,14 +22,14 @@ public struct AlbumSearchResult: Equatable, Identifiable, Sendable {
     public let id: String
     public let title: String
     public let year: Int32?
-    public let artistName: String
+    public let artistLine: BridgeCreditLine
     public let cover: BridgeImageRef?
 
     public init(bridge: BridgeAlbumSearchResult) {
         id = bridge.id
         title = bridge.title
         year = bridge.year
-        artistName = bridge.artistName
+        artistLine = bridge.artistLine
         cover = bridge.cover
     }
 }
@@ -42,7 +42,7 @@ public struct TrackSearchResult: Equatable, Identifiable, Sendable {
     public let releaseId: String
     public let albumId: String
     public let albumTitle: String
-    public let artistName: String
+    public let artistLine: BridgeCreditLine
     public let cover: BridgeImageRef?
 
     public var durationLabel: String { DurationClock.label(durationClock) }
@@ -54,7 +54,7 @@ public struct TrackSearchResult: Equatable, Identifiable, Sendable {
         releaseId = bridge.releaseId
         albumId = bridge.albumId
         albumTitle = bridge.albumTitle
-        artistName = bridge.artistName
+        artistLine = bridge.artistLine
         cover = bridge.cover
     }
 }

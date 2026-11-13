@@ -123,7 +123,7 @@ private struct AlbumCardStack<Art: View>: View {
         HStack(spacing: ThemeSpace.section) {
             MacAlbumTile(
                 title: album.title,
-                artistNames: album.artistNames,
+                artistNames: album.artistLine.text,
                 year: album.year,
                 cover: nil,
                 isExpanded: false,
@@ -133,7 +133,7 @@ private struct AlbumCardStack<Art: View>: View {
             )
             MacAlbumTile(
                 title: selected.title,
-                artistNames: selected.artistNames,
+                artistNames: selected.artistLine.text,
                 year: selected.year,
                 cover: nil,
                 isExpanded: false,

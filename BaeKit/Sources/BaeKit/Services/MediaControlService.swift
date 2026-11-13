@@ -255,7 +255,7 @@ public final class MediaControlService: @unchecked Sendable {
         shown = .library(trackId: metadata.track.track.trackId)
         let display = metadata.track.display
         info[MPMediaItemPropertyTitle] = display.title
-        info[MPMediaItemPropertyArtist] = display.artistNames
+        info[MPMediaItemPropertyArtist] = display.artistLine.text
         info[MPMediaItemPropertyAlbumTitle] = display.albumTitle
         trackDuration(metadata.track.track.durationMs, into: &info)
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadata.playbackRate

@@ -509,7 +509,7 @@ struct ArtistAssignmentsSummary: Equatable {
         resolutions: [BridgeResolvedCredit]
     ) {
         guard !assignments.isEmpty else { return nil }
-        names = bridgeCreditLine(credits: assignments)
+        names = bridgeCreditLine(credits: assignments).text
         identityLabel =
             bridgeArtistsStanding(
                 assignments: assignments.map(\.artist),

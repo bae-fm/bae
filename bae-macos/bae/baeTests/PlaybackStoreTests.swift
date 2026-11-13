@@ -12,7 +12,7 @@ private func makeTrack(_ id: String) -> BridgeNowPlayingTrack {
         ),
         display: BridgeTrackDisplay(
             title: "Title \(id)",
-            artistNames: "Artist Name",
+            artistLine: .named("Artist Name"),
             albumId: "album-1",
             releaseId: "release-1",
             albumTitle: "Album Title",
@@ -27,7 +27,7 @@ private func queueEntry(_ entryId: String) -> BridgeQueueEntry {
         trackId: "track-\(entryId)",
         display: BridgeTrackDisplay(
             title: "Track Title",
-            artistNames: "Artist Name",
+            artistLine: .named("Artist Name"),
             albumId: "album-1",
             releaseId: "release-1",
             albumTitle: "Album Title",

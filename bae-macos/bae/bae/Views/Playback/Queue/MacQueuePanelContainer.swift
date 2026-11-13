@@ -43,7 +43,7 @@ struct MacQueuePanelContainer: View {
             onShowUpcoming: { playbackStore.showUpcoming(queue: queue) },
             isActive: np.isActive,
             nowPlayingTitle: track?.display.title,
-            nowPlayingArtist: track?.display.artistNames,
+            nowPlayingArtist: track?.display.artistLine.text,
             nowPlayingCover: cover,
             isPlaying: np.isPlaying,
             onClose: onClose,

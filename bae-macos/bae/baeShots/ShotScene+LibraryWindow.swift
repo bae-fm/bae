@@ -25,7 +25,7 @@ extension ShotScene {
             title: album.0,
             year: Int32(album.2),
             isCompilation: false,
-            artistNames: album.1,
+            artistLine: .named(album.1),
             releaseIds: ["rel-board-\(index)"],
             primaryReleaseId: "rel-board-\(index)",
             cover: nil
@@ -82,7 +82,7 @@ extension ShotScene {
                 ),
                 display: BridgeTrackDisplay(
                     title: "Low Tide Hours",
-                    artistNames: "Mara Quill",
+                    artistLine: .named("Mara Quill"),
                     albumId: "board-0",
                     releaseId: "rel-board-0",
                     albumTitle: "Low Tide Hours",

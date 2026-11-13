@@ -34,7 +34,7 @@ struct PlaybackPlayPauseTests {
             ),
             display: BridgeTrackDisplay(
                 title: "Track Title",
-                artistNames: "Artist Name",
+                artistLine: .named("Artist Name"),
                 albumId: "album-1",
                 releaseId: "release-1",
                 albumTitle: "Album Title",

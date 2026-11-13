@@ -89,7 +89,8 @@ struct QueueViewControlsTests {
                 onShowUpcoming: { store.showUpcoming(queue: queue) },
                 isActive: store.nowPlaying.isActive,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
-                nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
+                nowPlayingArtist: store.nowPlaying.track?.display.artistLine
+                    .text,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
                 onClose: { recorder.closeCount += 1 },
@@ -167,7 +168,7 @@ struct QueueViewControlsTests {
             ),
             display: BridgeTrackDisplay(
                 title: "Track Title",
-                artistNames: "Artist Name",
+                artistLine: .named("Artist Name"),
                 albumId: "album-id",
                 releaseId: "release-id",
                 albumTitle: "Album Title",

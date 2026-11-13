@@ -56,7 +56,7 @@ struct AlbumExpansionContent: View {
                         .themeText(.hero)
                         .lineLimit(1)
                     HStack(spacing: ThemeSpace.related) {
-                        Text(album.artistNames)
+                        Text(album.artistLine.text)
                             .foregroundStyle(.secondary)
                         if let year = album.year {
                             Text(verbatim: FactList.glyph)

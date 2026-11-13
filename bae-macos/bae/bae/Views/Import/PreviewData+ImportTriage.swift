@@ -88,7 +88,7 @@
             bridge: BridgeReleaseGroup(
                 id: "group-no-tracklist",
                 title: "Album Title Seven",
-                artist: "Artist Name",
+                artist: .named("Artist Name"),
                 label: "Label Name",
                 coverArt: nil,
                 sources: [
@@ -270,7 +270,7 @@
             placement: .pending,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Twelve",
-                albumArtists: "Artist Name"
+                albumArtists: .named("Artist Name")
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .fileMetadata,
@@ -295,7 +295,7 @@
             placement: .pending,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Thirteen",
-                albumArtists: "Artist Name"
+                albumArtists: .named("Artist Name")
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
@@ -313,7 +313,7 @@
             placement: .pending,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
-                albumArtists: "Artist Name"
+                albumArtists: .named("Artist Name")
             ),
             cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
@@ -430,7 +430,7 @@
             placement: .done,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Sixteen",
-                albumArtists: "Artist Name"
+                albumArtists: .named("Artist Name")
             ),
             cover: .local(file: previewArtFile("Front.png")),
             importStatus: .complete(
@@ -455,7 +455,7 @@
             placement: .done,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title",
-                albumArtists: "Artist Name"
+                albumArtists: .named("Artist Name")
             ),
             importStatus: .complete(
                 release: BridgeImportedRelease(

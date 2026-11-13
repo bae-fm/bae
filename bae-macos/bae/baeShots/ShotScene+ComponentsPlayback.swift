@@ -171,7 +171,7 @@ extension ShotScene {
                     trackId: "t-harbor-lights",
                     display: BridgeTrackDisplay(
                         title: "Harbor Lights",
-                        artistNames: "Mara Quill",
+                        artistLine: .named("Mara Quill"),
                         albumId: "a-01",
                         releaseId: "r-01",
                         albumTitle: "Low Tide Hours",

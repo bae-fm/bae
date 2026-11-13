@@ -91,7 +91,7 @@
         static let searchGroupExactBridge = BridgeReleaseGroup(
             id: "group-preview",
             title: "Album Title",
-            artist: "Artist Name",
+            artist: .named("Artist Name"),
             label: "Label Name",
             coverArt: nil,
             sources: [
@@ -149,7 +149,7 @@
             BridgeReleaseGroup(
                 id: "grp-1",
                 title: "Album Title One",
-                artist: "Artist Name",
+                artist: .named("Artist Name"),
                 label: "Label Name",
                 coverArt: nil,
                 sources: [
@@ -232,7 +232,7 @@
             BridgeReleaseGroup(
                 id: "grp-2",
                 title: "Album Title One (Remaster)",
-                artist: "Artist Name",
+                artist: .named("Artist Name"),
                 label: "Reissue Records",
                 coverArt: nil,
                 sources: [
@@ -313,7 +313,7 @@
         static let discidOnlyGroup = BridgeReleaseGroup(
             id: "group-disc",
             title: "Album Title",
-            artist: "Artist Name",
+            artist: .named("Artist Name"),
             label: "Label A",
             coverArt: nil,
             sources: [
@@ -368,7 +368,7 @@
         static let barcodeOnlyGroup = BridgeReleaseGroup(
             id: "group-bar",
             title: "Other Album Title",
-            artist: "Artist Name",
+            artist: .named("Artist Name"),
             label: "Label B",
             coverArt: nil,
             sources: [
@@ -734,7 +734,7 @@
                         bridge: BridgeReleaseGroup(
                             id: "group-preview",
                             title: "Album Title",
-                            artist: "Artist Name",
+                            artist: .named("Artist Name"),
                             label: "Label Name",
                             coverArt: nil,
                             sources: searchGroupExactBridge.sources,
@@ -771,7 +771,7 @@
                         bridge: BridgeReleaseGroup(
                             id: "group-preview",
                             title: "Album Title",
-                            artist: "Artist Name",
+                            artist: .named("Artist Name"),
                             label: "Label Name",
                             coverArt: nil,
                             sources: searchGroupExactBridge.sources,

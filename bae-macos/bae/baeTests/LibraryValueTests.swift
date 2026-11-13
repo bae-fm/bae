@@ -21,7 +21,7 @@ func makeBridgeAlbum(
         title: title,
         year: year,
         isCompilation: false,
-        artistNames: artistNames,
+        artistLine: .named(artistNames),
         releaseIds: releaseIds ?? [primaryReleaseId],
         primaryReleaseId: primaryReleaseId,
         cover: cover

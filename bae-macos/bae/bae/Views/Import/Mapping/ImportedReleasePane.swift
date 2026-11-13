@@ -341,7 +341,7 @@ private struct ReadOnlyCandidateMappingTable: View {
     ) -> String {
         switch assignments {
         case .albumArtists: String(localized: "Album artist")
-        case .explicit(let artists): bridgeCreditLine(credits: artists)
+        case .explicit(let artists): bridgeCreditLine(credits: artists).text
         }
     }
 

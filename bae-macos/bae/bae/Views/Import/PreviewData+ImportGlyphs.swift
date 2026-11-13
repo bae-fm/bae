@@ -15,7 +15,7 @@
 
         private static let glyphSummary = BridgeTriageMetadataSummary(
             albumTitle: "Album Title Fifteen",
-            albumArtists: "Artist Name"
+            albumArtists: .named("Artist Name")
         )
 
         /// A settled row whose draft was read from a record, or was not.

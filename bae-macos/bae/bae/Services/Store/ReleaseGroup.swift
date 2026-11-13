@@ -31,7 +31,7 @@ struct ReleaseGroup: Equatable, Identifiable {
     init(bridge: BridgeReleaseGroup) {
         id = bridge.id
         title = bridge.title
-        artist = bridge.artist
+        artist = bridge.artist?.text
         label = bridge.label
         coverArt = bridge.coverArt
         sources = bridge.sources

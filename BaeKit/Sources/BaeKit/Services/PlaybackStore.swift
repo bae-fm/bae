@@ -461,11 +461,11 @@ public enum NowPlaying {
             if let prompt = reason.sidePausePrompt {
                 return prompt.title()
             }
-            return track.display.artistNames
+            return track.display.artistLine.text
         case .playing(let track):
-            return track.display.artistNames
+            return track.display.artistLine.text
         case .loading:
-            return track?.display.artistNames
+            return track?.display.artistLine.text
         case .stopped:
             return nil
         }

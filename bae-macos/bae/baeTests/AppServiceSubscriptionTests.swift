@@ -300,7 +300,7 @@ private let playingState = BridgePlaybackValueState.playing(
         track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
         display: BridgeTrackDisplay(
             title: "Track Title",
-            artistNames: "Artist Name",
+            artistLine: .named("Artist Name"),
             albumId: "album-1",
             releaseId: "release-1",
             albumTitle: "Album Title",
@@ -389,7 +389,7 @@ private func playing(trackId: String) -> BridgePlaybackValueState {
             track: BridgePlayingTrack(trackId: trackId, durationMs: 120_000),
             display: BridgeTrackDisplay(
                 title: "Track Title",
-                artistNames: "Artist Name",
+                artistLine: .named("Artist Name"),
                 albumId: "album-1",
                 releaseId: "release-1",
                 albumTitle: "Album Title",

@@ -168,7 +168,7 @@ extension ShotScene {
                     title: row.title,
                     year: nil,
                     isCompilation: false,
-                    artistNames: row.artist,
+                    artistLine: .named(row.artist),
                     releaseIds: [releaseId],
                     primaryReleaseId: releaseId,
                     cover: nil

@@ -312,7 +312,7 @@ struct ImportStoreSidebarCoverTests {
                 title: "Subject",
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
-                    albumArtists: ""
+                    albumArtists: BridgeCreditLine(names: [])
                 ),
                 cover: choice.image
             )

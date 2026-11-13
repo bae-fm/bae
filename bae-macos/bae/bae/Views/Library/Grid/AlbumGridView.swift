@@ -376,7 +376,7 @@ extension AlbumGridView {
         if let album = list.row(at: position) {
             MacAlbumTile(
                 title: album.title,
-                artistNames: album.artistNames,
+                artistNames: album.artistLine.text,
                 year: album.year,
                 cover: album.cover,
                 isExpanded: uiStore.selectedAlbumId == albumId

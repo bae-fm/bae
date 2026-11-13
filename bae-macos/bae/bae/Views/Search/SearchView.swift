@@ -130,17 +130,17 @@ struct SearchView: View {
 
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {
         if let year = album.year {
-            "\(album.artistName) (\(year))"
+            "\(album.artistLine.text) (\(year))"
         }
         else {
-            album.artistName
+            album.artistLine.text
         }
     }
 
     private func trackSubtitle(_ track: TrackSearchResult) -> String {
         String(
             format: String(localized: "%@ - %@"),
-            track.artistName,
+            track.artistLine.text,
             track.albumTitle
         )
     }

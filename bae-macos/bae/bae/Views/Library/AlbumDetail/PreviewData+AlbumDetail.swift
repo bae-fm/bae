@@ -183,8 +183,8 @@
                     title: title,
                     durationMs: durationMs,
                     durationClock: bridgeLengthClock(ms: durationMs),
-                    artistNames: displayArtist ?? "Artist Name",
-                    displayArtist: displayArtist,
+                    artistLine: .named(displayArtist ?? "Artist Name"),
+                    displayArtist: displayArtist.map(BridgeCreditLine.named),
                     positionText: position
                 )
             )

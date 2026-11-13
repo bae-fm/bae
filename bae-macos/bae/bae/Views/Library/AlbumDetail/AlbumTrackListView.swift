@@ -90,7 +90,7 @@ struct AlbumTrackListView: View {
                 TrackRowView(
                     track: track,
                     // Core sets this only for a compilation.
-                    artist: track.displayArtist,
+                    artist: track.displayArtist?.text,
                     positionWidth: positionWidth,
                     isCurrent: currentTrackId == track.id,
                     isPlaying: isPlaying,

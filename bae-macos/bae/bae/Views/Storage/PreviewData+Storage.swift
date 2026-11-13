@@ -437,7 +437,7 @@
                     title: title,
                     year: year,
                     isCompilation: false,
-                    artistNames: artist,
+                    artistLine: .named(artist),
                     releaseIds: [releaseId],
                     primaryReleaseId: releaseId,
                     cover: nil

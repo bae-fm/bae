@@ -29,7 +29,7 @@ struct QueueNowPlayingNavigationTests {
                 ),
                 display: BridgeTrackDisplay(
                     title: "Track Title",
-                    artistNames: "Track Artist",
+                    artistLine: .named("Track Artist"),
                     albumId: "playing-album",
                     releaseId: "playing-release",
                     albumTitle: "Album Title",

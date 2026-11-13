@@ -221,7 +221,7 @@
                 reason: .damagedAudio(count: 2),
                 tags: BridgeSkippedTags(
                     albumTitle: "Album Title",
-                    artist: "Artist Name"
+                    artist: .named("Artist Name")
                 ),
                 cover: .local(file: previewArtFile("Front.png"))
             ),

@@ -619,7 +619,7 @@ struct ImportSearchFlowLibraryStatusTests {
                     BridgeReleaseGroup(
                         id: "group-live",
                         title: "Album Title",
-                        artist: "Artist Name",
+                        artist: .named("Artist Name"),
                         label: nil,
                         coverArt: nil,
                         sources: [

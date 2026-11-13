@@ -18,7 +18,8 @@ struct ImportReleaseSummary {
             ? Self.placeholderTitle : values.albumTitle
         artist =
             values.albumArtistAssignments.isEmpty
-            ? nil : bridgeCreditLine(credits: values.albumArtistAssignments)
+            ? nil
+            : bridgeCreditLine(credits: values.albumArtistAssignments).text
         let count = candidate.mapping.trackMappings.count
         let trackText = String(localized: "\(count) tracks")
         switch provenance {
@@ -51,7 +52,9 @@ struct ImportReleaseSummary {
         title =
             summary.albumTitle.isEmpty
             ? Self.placeholderTitle : summary.albumTitle
-        artist = summary.albumArtists.isEmpty ? nil : summary.albumArtists
+        artist =
+            summary.albumArtists.names.isEmpty
+            ? nil : summary.albumArtists.text
         factsLine = ""
         sourceAudio = nil
     }
@@ -61,7 +64,7 @@ struct ImportReleaseSummary {
     init(tags: BridgeSkippedTags) {
         titleIsPlaceholder = false
         title = tags.albumTitle
-        artist = tags.artist
+        artist = tags.artist?.text
         factsLine = ""
         sourceAudio = nil
     }

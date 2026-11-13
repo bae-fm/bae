@@ -25,7 +25,7 @@ struct QueueItemRow: View {
                 Text(item.display.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
-                Text(item.display.artistNames)
+                Text(item.display.artistLine.text)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

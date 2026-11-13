@@ -29,7 +29,7 @@ struct StorageReleaseCell: View {
                     Text(album.title).lineLimit(1)
                 }
             case .artist:
-                Text(album.artistNames).lineLimit(1)
+                Text(album.artistLine.text).lineLimit(1)
             case .media:
                 Text(release.media.isEmpty ? "\u{2014}" : release.mediaText)
             case .storage:

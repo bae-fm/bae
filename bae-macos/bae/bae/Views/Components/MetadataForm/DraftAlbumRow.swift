@@ -104,8 +104,9 @@ struct DraftAlbumRow: View {
 
     /// The album's credit line, then its year where it states one.
     private func line(of result: BridgeAlbumChoice) -> String {
-        guard let year = result.year else { return result.artistName }
-        return "\(result.artistName) · \(year)"
+        let artists = result.artistLine.text
+        guard let year = result.year else { return artists }
+        return "\(artists) · \(year)"
     }
 
     @MainActor

@@ -265,7 +265,7 @@
                     display: source?.display
                         ?? BridgeTrackDisplay(
                             title: "Track \(trackId)",
-                            artistNames: "Artist Name",
+                            artistLine: .named("Artist Name"),
                             albumId: "a-01",
                             releaseId: "r-01",
                             albumTitle: "Album Title",
@@ -299,7 +299,7 @@
                 trackId: "t-01",
                 display: BridgeTrackDisplay(
                     title: "Track Title 1",
-                    artistNames: "Artist Name A",
+                    artistLine: .named("Artist Name A"),
                     albumId: "a-01",
                     releaseId: "r-01",
                     albumTitle: "Album Title A",
@@ -312,7 +312,7 @@
                 trackId: "t-02",
                 display: BridgeTrackDisplay(
                     title: "Track Title 2",
-                    artistNames: "Artist Name A",
+                    artistLine: .named("Artist Name A"),
                     albumId: "a-01",
                     releaseId: "r-01",
                     albumTitle: "Album Title A",
@@ -325,7 +325,7 @@
                 trackId: "t-03",
                 display: BridgeTrackDisplay(
                     title: "Track Title 3",
-                    artistNames: "Artist Name B",
+                    artistLine: .named("Artist Name B"),
                     albumId: "a-02",
                     releaseId: "r-02",
                     albumTitle: "Album Title B",
@@ -338,7 +338,7 @@
                 trackId: "t-04",
                 display: BridgeTrackDisplay(
                     title: "Track Title 4",
-                    artistNames: "Artist Name B",
+                    artistLine: .named("Artist Name B"),
                     albumId: "a-02",
                     releaseId: "r-02",
                     albumTitle: "Album Title B",
@@ -351,7 +351,7 @@
                 trackId: "t-05",
                 display: BridgeTrackDisplay(
                     title: "Track Title 5",
-                    artistNames: "Artist Name C",
+                    artistLine: .named("Artist Name C"),
                     albumId: "a-03",
                     releaseId: "r-03",
                     albumTitle: "Album Title C",
@@ -478,21 +478,21 @@
                         id: "a-02",
                         title: "Album Title B",
                         year: 2019,
-                        artistName: "Artist Name A",
+                        artistLine: .named("Artist Name A"),
                         cover: nil
                     ),
                     BridgeAlbumSearchResult(
                         id: "a-14",
                         title: "Album Title N",
                         year: 2022,
-                        artistName: "Artist Name A",
+                        artistLine: .named("Artist Name A"),
                         cover: nil
                     ),
                     BridgeAlbumSearchResult(
                         id: "a-03",
                         title: "Album Title C",
                         year: 2021,
-                        artistName: "Artist Name B",
+                        artistLine: .named("Artist Name B"),
                         cover: nil
                     ),
                 ],
@@ -515,7 +515,7 @@
                         releaseId: "r-02",
                         albumId: "a-02",
                         albumTitle: "Album Title B",
-                        artistName: "Artist Name A",
+                        artistLine: .named("Artist Name A"),
                         cover: nil
                     ),
                     BridgeTrackSearchResult(
@@ -525,7 +525,7 @@
                         releaseId: "r-03",
                         albumId: "a-03",
                         albumTitle: "Album Title C",
-                        artistName: "Artist Name B",
+                        artistLine: .named("Artist Name B"),
                         cover: nil
                     ),
                 ],

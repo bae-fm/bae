@@ -12,7 +12,7 @@ struct TrackTests {
                 title: "Track Title",
                 durationMs: 180_000,
                 durationClock: bridgeLengthClock(ms: 180_000),
-                artistNames: "Artist Name",
+                artistLine: .named("Artist Name"),
                 displayArtist: nil,
                 positionText: "A"
             )
