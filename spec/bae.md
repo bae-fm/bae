@@ -394,7 +394,8 @@ one `artistId` is the first credit's).
 **An artist's other names.** `artists.name` is the name an artist goes by.
 The other names a credit prints for it, a MusicBrainz credit name or a
 Discogs name variation (`anv`) that is not the artist's own (the spaces
-around either aside), are the
+around either aside), on an album or track credit, a role credit (a release's
+or a track's) or a work's artist, are the
 artist's `artist_credits`, keyed by the artist and the folded name, so two
 devices meeting one printed name write one row. A credit links one of them,
 or none to print the artist's own name; it is never text. Importing decides
@@ -5556,7 +5557,7 @@ All sync.
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
 | `works` | MusicBrainz work |
-| `work_artists` | work's credited artist, in order |
+| `work_artists` | work's credited artist, in order, with the other name it prints (none: the artist's own) |
 | `work_parts` | work inside a larger work, in order |
 | `releases` | pressing: its album and place in the album's order (§2.1), name, year, country or region, status, packaging, Discogs details, source folder name (its text, escaped as a file's name is, §3.1), album loudness and peak |
 | `release_labels` | a release's labels: each at its position in the list, the library label it names and the catalog number it gives the pressing, either or both (§2.1) |
@@ -5564,12 +5565,12 @@ All sync.
 | `release_media` | a release's media: each carrier with its count, at its position in the list (§2.1) |
 | `covers` | release's cover, keyed by the release: the coven file it references (`file`), with an index by it, and its type |
 | `release_files` | file of a release: name (its path in the release, each byte of it that isn't UTF-8 escaped, §3.1), type, the role the scan gave it (audio, and only audio, stating audio facts) and, for a document and only a document, its kind, the audio facts the scan read, and the coven file it references (`file`, required), whose record holds its size and where it is, with an index by it; with an index of each release's files in `natural_order` of their names, id breaking a tie, the order every list of a release's files shows, read from the index; and by content type, name and id breaking a tie, another order a release's file table sorts by, read from its index forward or backward. Its order by size sorts the release's files by their coven files' sizes |
-| `release_artist_roles` | credit on a release, as the catalog stated it |
+| `release_artist_roles` | credit on a release, as the catalog stated it, with the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
 | `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
 | `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |
-| `track_artist_roles` | credit on a track, as the catalog stated it |
+| `track_artist_roles` | credit on a track, as the catalog stated it, with the other name it prints (none: the artist's own) |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
@@ -5687,7 +5688,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
 | `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). No row: a folder this device did not import holds its files' blank draft and the folder's own cover; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
-| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values |
+| `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_composer`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with the name its catalog printed |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes, which the slot fetches when it draws |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
@@ -5752,9 +5753,9 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `source_release` | one catalog release a row names, as fetched, and every fact an import reads from it but two it reads derived (§3.4): its album's year and its media counts |
 | `source_release_label`, `source_release_barcode` | its labels, each with its catalog number and the label's catalog ids, and its barcodes, in order |
-| `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits |
+| `source_release_album_artist`, `source_release_role`, `source_release_entry_credit`, `source_release_entry_role` | its credits, each with the name its catalog printed |
 | `source_release_medium`, `source_release_medium_disc`, `source_release_entry`, `source_release_format` | its mediums, each with its carrier where stated and the Disc IDs registered against it, their tracklists, and its format entries |
-| `source_release_work`, `source_release_work_composer` | its MusicBrainz works |
+| `source_release_work`, `source_release_work_composer` | its MusicBrainz works, each composer with the name MusicBrainz printed |
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
 | `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, its catalog was not asked (switched off, or Discogs had no key), or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |

@@ -459,31 +459,43 @@ fn discogs_role_is_composer_matches_composing_roles() {
     }
 }
 
-/// A composer role artist with no credited_name falls back to its canonical
-/// name and logs the fallback rather than dropping the credit silently.
+/// A role credit is its artist by the artist's own name, printing the name
+/// variation the release gives it; one with none prints the artist's name.
 #[test]
-fn role_artist_without_credited_name_falls_back_to_canonical_name() {
+fn role_credit_names_its_artist_and_prints_the_release_s_variation() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
-    release.extraartists = Some(vec![DiscogsRoleArtist {
+    release.extraartists = Some(vec![
+        DiscogsRoleArtist {
+            id: Some("discogs-composer-a".to_string()),
+            name: "Composer Canonical Name (2)".to_string(),
+            role: "Composed By".to_string(),
+            credited_name: Some("Composer Printed Name".to_string()),
+        },
+        DiscogsRoleArtist {
+            id: Some("discogs-composer-b".to_string()),
+            name: "Composer Name B".to_string(),
+            role: "Composed By".to_string(),
+            credited_name: None,
+        },
+    ]);
+    release.tracklist[0].extraartists = Some(vec![DiscogsRoleArtist {
         id: Some("discogs-composer-a".to_string()),
-        name: "Composer Canonical Name".to_string(),
-        role: "Composed By".to_string(),
-        credited_name: None,
+        name: "Composer Canonical Name (2)".to_string(),
+        role: "Written-By".to_string(),
+        credited_name: Some("Composer Printed Name".to_string()),
     }]);
 
-    let mut parsed = None;
-    let logs = bae_util::test_logs::capture_warn_logs(|| {
-        parsed = Some(map(&release).unwrap());
-    });
-    let values = parsed.unwrap();
+    let values = map(&release).unwrap();
 
-    let composer = values
-        .release_roles
-        .iter()
-        .find(|role| role.artist.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
-        .expect("composer role read");
-    assert_eq!(composer.artist.name, "Composer Canonical Name");
-    assert!(logs.contains("has no credited name"), "expected a fallback warning, got: {logs}");
+    let printed = &values.release_roles[0].artist;
+    assert_eq!(printed.name, "Composer Canonical Name (2)");
+    assert_eq!(printed.credited_as.as_deref(), Some("Composer Printed Name"));
+    let plain = &values.release_roles[1].artist;
+    assert_eq!(plain.name, "Composer Name B");
+    assert_eq!(plain.credited_as, None);
+    let track_role = &values.tracks[0].roles[0].artist;
+    assert_eq!(track_role.name, "Composer Canonical Name (2)");
+    assert_eq!(track_role.credited_as.as_deref(), Some("Composer Printed Name"));
 }
 
 /// An id-less composer role credit reads as the name it states, with no id:
@@ -525,32 +537,34 @@ fn id_less_role_credit_keeps_its_name_as_printed() {
     assert_eq!(role.artist.discogs_artist_id, None);
 }
 
-/// An id-less Discogs role credit is its *credited* name: two id-less
-/// composer credits sharing a credited name but with different canonical
-/// names read as that one name, and neither canonical name is read.
+/// Two id-less role credits with different canonical names are two artists
+/// that happen to print one name.
 #[test]
-fn id_less_role_credits_read_as_their_credited_name() {
+fn id_less_role_credits_keep_their_own_names_apart() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.extraartists = Some(vec![
         DiscogsRoleArtist {
             id: None,
             name: "Canonical One".to_string(),
             role: "Composed By".to_string(),
-            credited_name: Some("Shared Credited Name".to_string()),
+            credited_name: Some("Shared Printed Name".to_string()),
         },
         DiscogsRoleArtist {
             id: None,
             name: "Canonical Two".to_string(),
             role: "Written-By".to_string(),
-            credited_name: Some("Shared Credited Name".to_string()),
+            credited_name: Some("Shared Printed Name".to_string()),
         },
     ]);
 
     let values = map(&release).unwrap();
 
     let names: Vec<_> = values.release_roles.iter().map(|role| role.artist.name.as_str()).collect();
-    assert_eq!(names, ["Shared Credited Name", "Shared Credited Name"]);
-    assert!(values.release_roles.iter().all(|role| role.artist.discogs_artist_id.is_none()));
+    assert_eq!(names, ["Canonical One", "Canonical Two"]);
+    assert!(values
+        .release_roles
+        .iter()
+        .all(|role| role.artist.credited_as.as_deref() == Some("Shared Printed Name")));
 }
 
 /// A row of disc 2 printing no position is numbered by its place on disc 2,

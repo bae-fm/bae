@@ -67,8 +67,8 @@ pub(super) fn insert_entry(
         sql.execute(
             "INSERT INTO source_release_entry_role \
                  (catalog, release_id, entry, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, role) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  musicbrainz_artist_id, discogs_artist_id, credited_as, role) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 catalog,
                 key,
@@ -78,6 +78,7 @@ pub(super) fn insert_entry(
                 role.artist.sort_name,
                 role.artist.musicbrainz_artist_id,
                 role.artist.discogs_artist_id,
+                role.artist.credited_as,
                 role.role,
             ],
         )?;
@@ -155,8 +156,8 @@ fn insert_work(
                 sql.execute(
                     "INSERT INTO source_release_work_composer \
                          (catalog, release_id, node, position, name, sort_name, \
-                          musicbrainz_artist_id, discogs_artist_id) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                          musicbrainz_artist_id, discogs_artist_id, credited_as) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     params![
                         catalog,
                         key,
@@ -166,6 +167,7 @@ fn insert_work(
                         artist.sort_name,
                         artist.musicbrainz_artist_id,
                         artist.discogs_artist_id,
+                        artist.credited_as,
                     ],
                 )?;
             }
@@ -199,6 +201,9 @@ struct StoredArtist {
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
     discogs_artist_id: Option<String>,
+    /// Absent from the columns of a display credit, whose printed name is its
+    /// own `credited_name`.
+    credited_as: Option<String>,
 }
 
 impl StoredArtist {
@@ -208,7 +213,7 @@ impl StoredArtist {
             sort_name: self.sort_name,
             musicbrainz_artist_id: self.musicbrainz_artist_id,
             discogs_artist_id: self.discogs_artist_id,
-            credited_as: None,
+            credited_as: self.credited_as,
         }
     }
 }
@@ -237,6 +242,17 @@ fn artist_json(alias: &str) -> String {
         "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
                      'musicbrainz_artist_id', {alias}.musicbrainz_artist_id, \
                      'discogs_artist_id', {alias}.discogs_artist_id)"
+    )
+}
+
+/// A stored role's or composer's artist under `alias`, with the name its
+/// catalog printed.
+fn printed_artist_json(alias: &str) -> String {
+    format!(
+        "json_object('name', {alias}.name, 'sort_name', {alias}.sort_name, \
+                     'musicbrainz_artist_id', {alias}.musicbrainz_artist_id, \
+                     'discogs_artist_id', {alias}.discogs_artist_id, \
+                     'credited_as', {alias}.credited_as)"
     )
 }
 
@@ -297,7 +313,7 @@ pub(super) fn load_mediums<S: coven::SqlRead>(
              FROM source_release_entry AS entry \
              WHERE entry.catalog = ? AND entry.release_id = ? ORDER BY entry.entry",
             credited = artist_json("credit"),
-            role_artist = artist_json("role"),
+            role_artist = printed_artist_json("role"),
         ),
         params![catalog, key],
         |row| {
@@ -462,7 +478,7 @@ fn load_works<S: coven::SqlRead>(
                              AND part.parent = work.node) AS event) AS events \
              FROM source_release_work AS work \
              WHERE work.catalog = ? AND work.release_id = ? ORDER BY work.node",
-            composer = artist_json("composer"),
+            composer = printed_artist_json("composer"),
         ),
         params![catalog, key],
         |row| {

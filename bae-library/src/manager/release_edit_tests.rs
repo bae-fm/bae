@@ -305,6 +305,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
                 position: 0,
                 source: bae_catalogs::catalog::Catalog::MusicBrainz,
                 source_credit: Some("composer".to_string()),
+                credit: None,
                 created_at: Utc::now(),
             }],
             ..bae_records::test_fixtures::library::LibraryRows::default()

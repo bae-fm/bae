@@ -36,7 +36,8 @@ pub(super) fn insert_draft_values(
             sql.execute(
                 "INSERT INTO import_candidate_work_composer \
                  (content_hash, musicbrainz_work_id, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  musicbrainz_artist_id, discogs_artist_id, credited_as) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     content_hash,
                     work.musicbrainz_work_id,
@@ -45,6 +46,7 @@ pub(super) fn insert_draft_values(
                     composer.sort_name,
                     composer.musicbrainz_artist_id,
                     composer.discogs_artist_id,
+                    composer.credited_as,
                 ],
             )?;
         }
@@ -60,7 +62,8 @@ pub(super) fn insert_draft_values(
         sql.execute(
             "INSERT INTO import_candidate_release_role \
              (content_hash, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, source, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              discogs_artist_id, credited_as, source, role) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 position as i64,
@@ -68,6 +71,7 @@ pub(super) fn insert_draft_values(
                 role.artist.sort_name,
                 role.artist.musicbrainz_artist_id,
                 role.artist.discogs_artist_id,
+                role.artist.credited_as,
                 role.source.as_str(),
                 role.role,
             ],
@@ -88,7 +92,8 @@ pub(super) fn insert_track_values(
         sql.execute(
             "INSERT INTO import_candidate_track_role \
              (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, source, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              discogs_artist_id, credited_as, source, role) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 content_hash,
                 track.edit.id,
@@ -97,6 +102,7 @@ pub(super) fn insert_track_values(
                 role.artist.sort_name,
                 role.artist.musicbrainz_artist_id,
                 role.artist.discogs_artist_id,
+                role.artist.credited_as,
                 role.source.as_str(),
                 role.role,
             ],
@@ -120,7 +126,8 @@ pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
          'composers', json((SELECT json_group_array(json_object( \
                  'name', composer.name, 'sort_name', composer.sort_name, \
                  'musicbrainz_artist_id', composer.musicbrainz_artist_id, \
-                 'discogs_artist_id', composer.discogs_artist_id) ORDER BY composer.position) \
+                  'discogs_artist_id', composer.discogs_artist_id, \
+                 'credited_as', composer.credited_as) ORDER BY composer.position) \
              FROM import_candidate_work_composer AS composer \
              WHERE composer.content_hash = work.content_hash \
                AND composer.musicbrainz_work_id = work.musicbrainz_work_id))) \
@@ -138,7 +145,8 @@ pub(super) const WORK_PARTS_JSON: &str = "(SELECT json_group_array(json_object( 
 pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
          'name', role.name, 'sort_name', role.sort_name, \
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
-         'discogs_artist_id', role.discogs_artist_id, 'source', role.source, \
+         'discogs_artist_id', role.discogs_artist_id, \
+         'credited_as', role.credited_as, 'source', role.source, \
          'role', role.role) ORDER BY role.position) \
      FROM import_candidate_release_role AS role WHERE role.content_hash = edit.content_hash)";
 
@@ -147,7 +155,8 @@ pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_objec
 pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
          'name', role.name, 'sort_name', role.sort_name, \
          'musicbrainz_artist_id', role.musicbrainz_artist_id, \
-         'discogs_artist_id', role.discogs_artist_id, 'source', role.source, \
+         'discogs_artist_id', role.discogs_artist_id, \
+         'credited_as', role.credited_as, 'source', role.source, \
          'role', role.role) ORDER BY role.position) \
      FROM import_candidate_track_role AS role \
      WHERE role.content_hash = track.content_hash AND role.track_id = track.track_id)";
@@ -204,6 +213,7 @@ pub(super) struct StoredRole {
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
     discogs_artist_id: Option<String>,
+    credited_as: Option<String>,
     source: String,
     role: Option<String>,
 }
@@ -219,7 +229,7 @@ pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbEr
                     sort_name: stored.sort_name,
                     musicbrainz_artist_id: stored.musicbrainz_artist_id,
                     discogs_artist_id: stored.discogs_artist_id,
-                    credited_as: None,
+                    credited_as: stored.credited_as,
                 },
                 source: Catalog::from_str(&stored.source).map_err(|_unknown| {
                     DbError::unreadable("a draft role's stored source", &stored.source)

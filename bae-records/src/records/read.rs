@@ -90,7 +90,7 @@ fn joined_credit_name(
 
 /// [`joined_credit_name`] of a row's `key` and `name` columns, read in a row
 /// closure.
-pub(super) fn credit_name_column(
+pub fn credit_name_column(
     row: &Row,
     key: &str,
     name: &str,

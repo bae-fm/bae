@@ -8,6 +8,7 @@
 use super::*;
 use crate::album_detail::{ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading};
 use crate::composer::work_summary_columns;
+use bae_records::records::read::{credit_name_column, credit_name_join};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("composer_detail.sql");
@@ -238,6 +239,8 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
                 rar.position AS release_role_position,
                 rar.source AS release_role_source,
                 rar.source_credit AS release_role_source_credit,
+                release_credit.name_key AS release_role_credit_key,
+                release_credit.name AS release_role_credit_name,
                 rar.created_at AS release_role_created_at,
                 tar.id AS track_role_id,
                 tar.track_id AS track_role_track_id,
@@ -245,6 +248,8 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
                 tar.position AS track_role_position,
                 tar.source AS track_role_source,
                 tar.source_credit AS track_role_source_credit,
+                track_credit.name_key AS track_role_credit_key,
+                track_credit.name AS track_role_credit_name,
                 tar.created_at AS track_role_created_at,
                 t.id AS track_id, t.release_id AS track_release_id, t.title AS track_title,
                 t.medium_id AS track_medium_id, t.side AS track_side,
@@ -263,12 +268,16 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
          LEFT JOIN works w ON listing.section = 0 AND w.id = listing.item_id
          LEFT JOIN release_artist_roles rar ON listing.section = 1 AND rar.id = listing.item_id
          LEFT JOIN track_artist_roles tar ON listing.section = 2 AND tar.id = listing.item_id
+         {release_credit}
+         {track_credit}
          LEFT JOIN tracks t ON t.id = tar.track_id
          LEFT JOIN releases r ON listing.section <> 0 AND r.id = listing.group_id
          LEFT JOIN albums album ON album.id = r.album_id
          LEFT JOIN artists composer ON listing.section = 2 AND composer.id = listing.artist_id
          WHERE listing.artist_id = :artist_id AND {condition}
          ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+        release_credit = credit_name_join("rar", "release_credit"),
+        track_credit = credit_name_join("tar", "track_credit"),
         opens = opens_heading_sql(),
         work = work_summary_columns(),
         keys = order.key_columns(),
@@ -314,6 +323,11 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
                 position: row.get("release_role_position")?,
                 source: parsed_column(row, "release_role_source")?,
                 source_credit: row.get("release_role_source_credit")?,
+                credit: credit_name_column(
+                    row,
+                    "release_role_credit_key",
+                    "release_role_credit_name",
+                )?,
                 created_at: rfc3339_column(row, "release_role_created_at")?,
             },
             album: row_to_album_with_prefix(row, "album_")?,
@@ -326,6 +340,7 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
                 position: row.get("track_role_position")?,
                 source: parsed_column(row, "track_role_source")?,
                 source_credit: row.get("track_role_source_credit")?,
+                credit: credit_name_column(row, "track_role_credit_key", "track_role_credit_name")?,
                 created_at: rfc3339_column(row, "track_role_created_at")?,
             },
             track: row_to_track_with_prefix(row, "track_")?,

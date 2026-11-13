@@ -131,6 +131,9 @@ pub struct DbWorkArtist {
     pub artist_id: String,
     pub position: i32,
     pub source: Catalog,
+    /// The other printed name of the artist's this credit prints, as
+    /// [`DbAlbumArtist::credit`] is.
+    pub credit: Option<crate::credits::CreditName>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -161,6 +164,9 @@ pub struct DbReleaseArtistRole {
     pub position: i32,
     pub source: Catalog,
     pub source_credit: Option<String>,
+    /// The other printed name of the artist's this credit prints, as
+    /// [`DbAlbumArtist::credit`] is.
+    pub credit: Option<crate::credits::CreditName>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -172,6 +178,9 @@ pub struct DbTrackArtistRole {
     pub position: i32,
     pub source: Catalog,
     pub source_credit: Option<String>,
+    /// The other printed name of the artist's this credit prints, as
+    /// [`DbAlbumArtist::credit`] is.
+    pub credit: Option<crate::credits::CreditName>,
     pub created_at: DateTime<Utc>,
 }
 /// A logical album (the "master"): the metadata common to every physical release
@@ -703,6 +712,7 @@ impl DbWorkArtist {
         artist_id: &str,
         position: i32,
         source: Catalog,
+        credit: Option<crate::credits::CreditName>,
         now: DateTime<Utc>,
     ) -> Self {
         DbWorkArtist {
@@ -710,6 +720,7 @@ impl DbWorkArtist {
             artist_id: artist_id.to_string(),
             position,
             source,
+            credit,
             created_at: now,
         }
     }
@@ -765,6 +776,7 @@ impl DbReleaseArtistRole {
         position: i32,
         source: Catalog,
         source_credit: Option<String>,
+        credit: Option<crate::credits::CreditName>,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -775,6 +787,7 @@ impl DbReleaseArtistRole {
             position,
             source,
             source_credit,
+            credit,
             created_at: now,
         }
     }
@@ -787,6 +800,7 @@ impl DbTrackArtistRole {
         position: i32,
         source: Catalog,
         source_credit: Option<String>,
+        credit: Option<crate::credits::CreditName>,
         id: String,
         now: DateTime<Utc>,
     ) -> Self {
@@ -797,6 +811,7 @@ impl DbTrackArtistRole {
             position,
             source,
             source_credit,
+            credit,
             created_at: now,
         }
     }

@@ -257,8 +257,8 @@ pub(super) fn replace_source_release_on(
                 sql.execute(
                     "INSERT INTO source_release_role \
                          (catalog, release_id, position, name, sort_name, \
-                          musicbrainz_artist_id, discogs_artist_id, role) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                          musicbrainz_artist_id, discogs_artist_id, credited_as, role) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     params![
                         catalog,
                         key,
@@ -267,6 +267,7 @@ pub(super) fn replace_source_release_on(
                         role.artist.sort_name,
                         role.artist.musicbrainz_artist_id,
                         role.artist.discogs_artist_id,
+                        role.artist.credited_as,
                         role.role,
                     ],
                 )?;
@@ -538,14 +539,18 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
                 }
             },
             release_roles: sql.query(
-                "SELECT position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, role \
+                "SELECT position, name, sort_name, musicbrainz_artist_id, discogs_artist_id, role, \
+                        credited_as \
                  FROM source_release_role WHERE catalog = ? AND release_id = ? \
                  ORDER BY position",
                 params![catalog, key],
                 |row| {
                     Ok(RoleCredit {
                         position: row.get(0)?,
-                        artist: artist_at(row, 1)?,
+                        artist: bae_catalogs::credits::ArtistCredit {
+                            credited_as: row.get(6)?,
+                            ..artist_at(row, 1)?
+                        },
                         role: row.get(5)?,
                     })
                 },

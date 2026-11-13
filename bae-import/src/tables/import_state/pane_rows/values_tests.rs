@@ -13,7 +13,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let credit = |name: &str, discogs: Option<&str>| bae_catalogs::credits::ArtistCredit {
-        credited_as: None,
+        credited_as: Some(format!("{name} Printed")),
         name: name.to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,

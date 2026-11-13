@@ -229,8 +229,7 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
                         );
                         continue;
                     };
-                    let Some(name) = mb_artist_name(artist_ref, relation.target_credit.as_deref())
-                    else {
+                    let Some(artist) = mb_relation_artist(relation, artist_ref) else {
                         warn!(
                             track_title = ?title,
                             musicbrainz_artist_id = ?artist_ref.id,
@@ -240,7 +239,7 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
                     };
                     roles.push(RoleCredit {
                         position: relation_pos as i32,
-                        artist: mb_artist_ref(name, artist_ref),
+                        artist,
                         role: relation.relation_type.clone(),
                     });
                 } else {

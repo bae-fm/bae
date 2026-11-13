@@ -56,21 +56,11 @@ pub(crate) fn discogs_credits(artists: &[DiscogsArtist]) -> Vec<crate::credits::
     stated
 }
 
-/// The credit of a Discogs role artist. The display name is the
-/// `credited_name`, falling back to the canonical name (logged) when absent.
+/// The credit of a Discogs role artist: the artist by its own name, with the
+/// name variation the release prints for it where that is another.
 fn discogs_role_artist_ref(credit: &DiscogsRoleArtist) -> ArtistCredit {
-    let name = match credit.credited_name.clone() {
-        Some(name) => name,
-        None => {
-            warn!(
-                discogs_artist_id = ?credit.id,
-                artist_name = %credit.name,
-                "Discogs role artist has no credited name; using canonical name"
-            );
-            credit.name.clone()
-        }
-    };
-    discogs_artist_ref(name, credit.id.clone())
+    discogs_artist_ref(credit.name.clone(), credit.id.clone())
+        .printed_as(credit.credited_name.as_deref())
 }
 
 /// The credit of a Discogs display artist, keyed on its canonical name, with

@@ -197,11 +197,17 @@ CREATE TABLE IF NOT EXISTS work_artists (
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
+    -- One of the artist's other printed names (`artist_credits`) this credit
+    -- prints; NULL prints the artist's own.
+    credit_key TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
     UNIQUE(work_id, artist_id, position)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_work_artists_credit ON work_artists (artist_id, credit_key);
 
 CREATE INDEX IF NOT EXISTS idx_work_artists_work ON work_artists(work_id);
 
@@ -478,11 +484,17 @@ CREATE TABLE IF NOT EXISTS release_artist_roles (
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
     source_credit TEXT,
+    -- One of the artist's other printed names (`artist_credits`) this credit
+    -- prints; NULL prints the artist's own.
+    credit_key TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
     UNIQUE(release_id, artist_id, position, source)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_release_artist_roles_credit ON release_artist_roles (artist_id, credit_key);
 
 CREATE INDEX IF NOT EXISTS idx_release_artist_roles_release ON release_artist_roles(release_id);
 
@@ -591,11 +603,17 @@ CREATE TABLE IF NOT EXISTS track_artist_roles (
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
     source_credit TEXT,
+    -- One of the artist's other printed names (`artist_credits`) this credit
+    -- prints; NULL prints the artist's own.
+    credit_key TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id, credit_key) REFERENCES artist_credits (artist_id, name_key),
     UNIQUE(track_id, artist_id, position, source)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_track_artist_roles_credit ON track_artist_roles (artist_id, credit_key);
 
 CREATE INDEX IF NOT EXISTS idx_track_artist_roles_track ON track_artist_roles(track_id);
 

@@ -119,6 +119,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
                 position as i32,
                 role.source,
                 role.role.clone(),
+                printed_name(&role.artist),
                 ids.new_id().to_string(),
                 now,
             )
@@ -186,6 +187,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
                 position as i32,
                 role.source,
                 role.role.clone(),
+                printed_name(&role.artist),
                 ids.new_id().to_string(),
                 now,
             ));
@@ -232,6 +234,14 @@ pub fn assemble_rows<Binding: TrackBinding>(
         bindings,
         picked,
     })
+}
+
+/// The name a role or composer credit prints; the write keeps it only where
+/// it is not the resolved artist's own.
+fn printed_name(
+    credit: &bae_catalogs::credits::ArtistCredit,
+) -> Option<bae_records::credits::CreditName> {
+    Some(bae_records::credits::CreditName::of(credit.printed()))
 }
 
 /// The artist rows one import's links name: one per credit, and one per
@@ -301,6 +311,7 @@ fn work_rows<Binding>(
                 &artists.credited(composer),
                 position as i32,
                 Catalog::MusicBrainz,
+                printed_name(composer),
                 now,
             ));
         }

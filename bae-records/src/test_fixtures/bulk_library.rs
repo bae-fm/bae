@@ -97,7 +97,14 @@ pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Ident
             musicbrainz_work_id: musicbrainz_work,
             created_at: at,
         });
-        rows.work_artists.push(DbWorkArtist::new(&work, &artist, 0, Catalog::MusicBrainz, at));
+        rows.work_artists.push(DbWorkArtist::new(
+            &work,
+            &artist,
+            0,
+            Catalog::MusicBrainz,
+            None,
+            at,
+        ));
     }
     let labels = rows.label_parts(&coven::UuidIds, created_at(start));
     rows.write_on(sql, &labels)

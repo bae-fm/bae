@@ -177,6 +177,7 @@ impl RecordsFixture {
             artist,
             position as i32,
             Catalog::MusicBrainz,
+            None,
             self.at,
         ));
         self
@@ -227,6 +228,7 @@ impl RecordsFixture {
             position as i32,
             source,
             Some(credit.to_string()),
+            None,
             id.to_string(),
             self.at,
         ));
@@ -250,6 +252,7 @@ impl RecordsFixture {
             position as i32,
             source,
             Some(credit.to_string()),
+            None,
             id.to_string(),
             self.at,
         ));

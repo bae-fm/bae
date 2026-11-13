@@ -223,6 +223,9 @@ CREATE TABLE IF NOT EXISTS source_release_role (
     sort_name             TEXT,
     musicbrainz_artist_id TEXT,
     discogs_artist_id     TEXT,
+    -- The name the catalog prints for the artist where it is another than the
+    -- artist's own.
+    credited_as           TEXT CHECK (credited_as IS NULL OR credited_as <> ''),
     role                  TEXT,
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)

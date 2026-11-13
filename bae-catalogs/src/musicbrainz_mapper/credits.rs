@@ -12,24 +12,6 @@ pub(super) fn mb_relation_is(
         && relation.relation_type.as_deref() == Some(relation_type)
 }
 
-/// The name a role or composer credit goes by: the name the relation
-/// credits, else the artist's own.
-pub(super) fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> {
-    credit.filter(|c| !c.trim().is_empty()).map(str::to_string).or_else(|| artist.name.clone())
-}
-
-/// A role or composer credit of a MusicBrainz artist: `name` is the resolved
-/// credit name; sort name and MB id come from the artist payload.
-pub(super) fn mb_artist_ref(name: String, artist: &MbArtistRef) -> ArtistCredit {
-    ArtistCredit {
-        name,
-        sort_name: artist.sort_name.clone(),
-        musicbrainz_artist_id: artist.id.clone(),
-        discogs_artist_id: None,
-        credited_as: None,
-    }
-}
-
 /// The artist a MusicBrainz credit names, by the artist's own name (else the
 /// name the credit prints), with the printed name kept where it is another.
 /// `None` where neither names anyone.
@@ -51,6 +33,16 @@ pub(super) fn mb_credited_artist(artist: &MbArtistRef, printed: &str) -> Option<
         }
         .printed_as(Some(printed)),
     )
+}
+
+/// The artist a MusicBrainz relation credits: by the artist's own name,
+/// printing the name the relation credits (`target-credit`) where that is
+/// another. `None` where neither names anyone.
+pub(super) fn mb_relation_artist(
+    relation: &MbRelation,
+    artist: &MbArtistRef,
+) -> Option<ArtistCredit> {
+    mb_credited_artist(artist, relation.target_credit.as_deref().unwrap_or_default())
 }
 
 pub(super) fn mb_relation_is_composer(relation: &MbRelation) -> bool {
@@ -79,8 +71,7 @@ pub(super) fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> Sour
                     }
                     continue;
                 };
-                let Some(name) = mb_artist_name(artist_ref, relation.target_credit.as_deref())
-                else {
+                let Some(artist) = mb_relation_artist(relation, artist_ref) else {
                     if report {
                         warn!(
                             work_id = %work.id,
@@ -90,7 +81,7 @@ pub(super) fn source_work(work: &MbWork, reported: &mut HashSet<String>) -> Sour
                     }
                     continue;
                 };
-                events.push(SourceWorkEvent::Composer(mb_artist_ref(name, artist_ref)));
+                events.push(SourceWorkEvent::Composer(artist));
             } else if report {
                 debug!(
                     work_id = %work.id,

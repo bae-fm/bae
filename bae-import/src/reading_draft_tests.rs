@@ -106,6 +106,71 @@ async fn one_artist_credited_in_roles_on_the_release_and_a_track_commits_once() 
     assert!(!rows.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
 }
 
+/// A role, track role or work credit names its artist by its own name and
+/// links the name its catalog printed, as an album credit does.
+#[test]
+fn role_and_work_credits_link_the_names_their_catalogs_printed() {
+    let printed = |name: &str, printed: &str| ArtistCredit {
+        credited_as: Some(printed.to_string()),
+        ..artist(name, None, Some("discogs-composer-a"))
+    };
+    let mut values = reading(
+        artist("Artist Name A", None, Some("artist-1")),
+        vec![track(
+            1,
+            TrackCredits::AlbumArtists,
+            vec![role(
+                printed("Composer Name", "Composer Printed"),
+                Catalog::Discogs,
+                "Written-By",
+            )],
+            &["mb-work-a"],
+        )],
+    );
+    values.release_roles = vec![
+        role(printed("Composer Name", "Composer Printed"), Catalog::Discogs, "Composed By"),
+        role(artist("Plain Name", None, None), Catalog::Discogs, "Composed By"),
+    ];
+    values.works = WorkGraph {
+        works: vec![GraphWork {
+            musicbrainz_work_id: "mb-work-a".to_string(),
+            title: "Work Title".to_string(),
+            disambiguation: None,
+            work_type: None,
+            composers: vec![printed("Composer Name", "Composer Printed")],
+        }],
+        parts: Vec::new(),
+    };
+
+    let rows = committed_rows(values);
+
+    let name_of = |credit: &Option<bae_records::credits::CreditName>| {
+        credit.as_ref().map(|credit| credit.name.clone())
+    };
+    assert_eq!(name_of(&rows.release_artist_roles[0].credit).as_deref(), Some("Composer Printed"));
+    assert_eq!(name_of(&rows.track_artist_roles[0].credit).as_deref(), Some("Composer Printed"));
+    assert_eq!(
+        name_of(&rows.work_graph.work_artists[0].credit).as_deref(),
+        Some("Composer Printed")
+    );
+    let plain = rows
+        .artists
+        .iter()
+        .find(|artist| artist.id == rows.release_artist_roles[1].artist_id)
+        .expect("a role names its artist row");
+    assert_eq!(
+        name_of(&rows.release_artist_roles[1].credit).as_deref(),
+        Some(plain.name.as_str()),
+        "a credit printing the artist's own name links none once written"
+    );
+    let composer = rows
+        .artists
+        .iter()
+        .find(|artist| artist.id == rows.release_artist_roles[0].artist_id)
+        .expect("a role names its artist row");
+    assert_eq!(composer.name, "Composer Name");
+}
+
 /// An id-less role credit whose name matches the album artist's commits as
 /// that artist rather than a duplicate, however it is cased, accented or
 /// spaced: a credit with no id is matched by its name, whether or not the

@@ -298,6 +298,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &composer.id,
         0,
         bae_catalogs::catalog::Catalog::MusicBrainz,
+        None,
         now,
     )];
     let track_works = vec![DbTrackWork::new(
@@ -314,6 +315,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         0,
         bae_catalogs::catalog::Catalog::Discogs,
         Some("Conducted By".to_string()),
+        None,
         RELEASE_ROLE_A.to_string(),
         now,
     )];
@@ -323,6 +325,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         0,
         bae_catalogs::catalog::Catalog::MusicBrainz,
         Some("arranger".to_string()),
+        None,
         TRACK_ROLE_A.to_string(),
         now,
     )];

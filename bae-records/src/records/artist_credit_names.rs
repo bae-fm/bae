@@ -89,7 +89,13 @@ fn relink_credit_name(
     from: &str,
     to: Option<&str>,
 ) -> Result<(), DbError> {
-    for table in ["album_artists", "track_artists"] {
+    for table in [
+        "album_artists",
+        "track_artists",
+        "release_artist_roles",
+        "track_artist_roles",
+        "work_artists",
+    ] {
         conn.execute(
             &format!("UPDATE {table} SET credit_key = ? WHERE artist_id = ? AND credit_key = ?"),
             params![to, artist_id, from],

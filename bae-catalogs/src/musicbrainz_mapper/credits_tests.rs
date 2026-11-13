@@ -637,3 +637,53 @@ fn a_track_credit_keeps_each_printed_name_and_join() {
         "Artist A feat. B Printed & Nobody Named"
     );
 }
+
+/// A work's composer and a recording's composer are their artist by the
+/// artist's own name, printing the name the relation credits.
+#[test]
+fn role_credits_name_the_artist_and_print_the_relation_s_credit() {
+    let artist = MbArtistRef {
+        id: Some("composer-artist-a".to_string()),
+        name: Some("Composer Name A".to_string()),
+        sort_name: Some("Composer Name A".to_string()),
+    };
+    let other = MbArtistRef {
+        id: Some("composer-artist-b".to_string()),
+        name: Some("Composer Name B".to_string()),
+        sort_name: Some("Composer Name B".to_string()),
+    };
+    let relation = |artist: &MbArtistRef, credit: Option<&str>| MbRelation {
+        target_type: Some("artist".to_string()),
+        relation_type: Some("composer".to_string()),
+        artist: Some(artist.clone()),
+        target_credit: credit.map(str::to_string),
+        ..MbRelation::default()
+    };
+    let composed_work = MbWork {
+        id: "mb-work-a".to_string(),
+        title: "Work Title A".to_string(),
+        disambiguation: None,
+        work_type: None,
+        relations: vec![relation(&artist, Some("Composer Printed Name")), relation(&other, None)],
+    };
+    let mut track = make_mb_track("1", "Track Title 1");
+    track.recording.as_mut().unwrap().relations = vec![MbRelation {
+        target_type: Some("work".to_string()),
+        relation_type: Some("performance".to_string()),
+        work: Some(composed_work),
+        ..MbRelation::default()
+    }];
+    let response = make_response(vec![MbMedium {
+        discs: vec![],
+        format: Some("CD".to_string()),
+        tracks: vec![track],
+    }]);
+
+    let values = map(&response, vec![]).unwrap();
+
+    let composers = &work(&values, "mb-work-a").composers;
+    assert_eq!(composers[0].name, "Composer Name A");
+    assert_eq!(composers[0].credited_as.as_deref(), Some("Composer Printed Name"));
+    assert_eq!(composers[1].name, "Composer Name B");
+    assert_eq!(composers[1].credited_as, None);
+}

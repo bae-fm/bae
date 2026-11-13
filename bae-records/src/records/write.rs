@@ -348,10 +348,13 @@ pub fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbErr
 
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Result<(), DbError> {
+    let created_at = link.created_at.to_rfc3339();
+    let credit_key = settle_credit_name(conn, &link.artist_id, link.credit.as_ref(), &created_at)?;
     conn.execute(
         r#"
-        INSERT OR IGNORE INTO work_artists (id, work_id, artist_id, position, source, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO work_artists (
+            id, work_id, artist_id, position, source, credit_key, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             link.id(),
@@ -359,7 +362,8 @@ pub fn insert_work_artist_row(conn: &CovenWrite<'_>, link: &DbWorkArtist) -> Res
             link.artist_id,
             link.position,
             link.source.as_str(),
-            link.created_at.to_rfc3339()
+            credit_key,
+            created_at
         ],
     )
     .map(|_| ())
@@ -412,6 +416,8 @@ pub fn insert_release_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbReleaseArtistRole,
 ) -> Result<(), DbError> {
+    let created_at = role.created_at.to_rfc3339();
+    let credit_key = settle_credit_name(conn, &role.artist_id, role.credit.as_ref(), &created_at)?;
     insert_artist_role_row(
         conn,
         "release_artist_roles",
@@ -423,7 +429,8 @@ pub fn insert_release_artist_role_row(
             role.position,
             role.source.as_str(),
             role.source_credit,
-            role.created_at.to_rfc3339()
+            credit_key,
+            created_at
         ],
     )
 }
@@ -433,6 +440,8 @@ pub fn insert_track_artist_role_row(
     conn: &CovenWrite<'_>,
     role: &DbTrackArtistRole,
 ) -> Result<(), DbError> {
+    let created_at = role.created_at.to_rfc3339();
+    let credit_key = settle_credit_name(conn, &role.artist_id, role.credit.as_ref(), &created_at)?;
     insert_artist_role_row(
         conn,
         "track_artist_roles",
@@ -444,7 +453,8 @@ pub fn insert_track_artist_role_row(
             role.position,
             role.source.as_str(),
             role.source_credit,
-            role.created_at.to_rfc3339()
+            credit_key,
+            created_at
         ],
     )
 }
@@ -459,8 +469,9 @@ pub(super) fn insert_artist_role_row(
     let sql = format!(
         r#"
         INSERT INTO {table} (
-            id, {target_column}, artist_id, position, source, source_credit, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, {target_column}, artist_id, position, source, source_credit, credit_key,
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         "#
     );
     conn.execute(&sql, values).map(|_| ()).map_err(DbError::from)

@@ -32,6 +32,7 @@ fn musicbrainz_documents() -> ReleasePayloads {
     let composer = serde_json::json!({
         "target-type": "artist",
         "type": "composer",
+        "target-credit": "Composer Printed",
         "artist": { "id": "mb-artist-composer", "name": "Artist Composer", "sort-name": "Composer, Artist" }
     });
     let work = serde_json::json!({
