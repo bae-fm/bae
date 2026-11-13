@@ -5701,7 +5701,8 @@ and bae-cast connects each device and hands playback the channel or sink.
 A pre-commit hook runs the checks `.checks` declares for the staged files, and
 no others: the formatters of the staged files' languages, and static checks
 that read only what changed (clippy over the changed crates with their tests
-and, for bae-bridge, every feature the macOS app builds it with; the
+and, for bae-bridge, every feature the macOS app builds it with, while the
+workspace crates they depend on are only compiled, through the build cache; the
 file-size limit; visibility, error-printing, keychain, preview and ownership
 boundaries; the string catalogs; the linters of each language). It runs
 no tests, the tests of bae's own checkers included, and finishes within 45

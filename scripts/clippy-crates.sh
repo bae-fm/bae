@@ -6,6 +6,12 @@
 # the tests and the desktop code are compiled. Runs as the pre-commit hook's
 # compile check. `--workspace` checks every workspace crate in one run, with the
 # features of all of them (one feature resolution), as CI does.
+#
+# Only the named crates are linted. The workspace crates they depend on are
+# compiled by scripts/clippy-rustc-wrapper.sh through sccache: under
+# clippy-driver sccache caches nothing, so each new set of crates (a new
+# feature resolution) would recheck every workspace crate below them. They were
+# linted when a commit changed them.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -49,4 +55,19 @@ done
 while IFS= read -r feature; do
     [ -n "$feature" ] && args+=(--features "$feature")
 done <<< "$features"
-exec scripts/cargo.sh "${args[@]}" -- -D warnings
+# A crate scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to
+# cargo, which would then never lint it. Its records name the unit's folder in
+# .fingerprint; dating that folder's files to 1970 makes cargo see every input
+# of the unit as newer than its last build, so it rebuilds, and lints, each unit
+# of a crate named here.
+for crate in "${crates[@]+"${crates[@]}"}"; do
+    for record in target/*/clippy-unlinted/"$crate"__*; do
+        [ -f "$record" ] || continue
+        fingerprint=$(cat "$record")
+        if [ -d "$fingerprint" ]; then
+            find "$fingerprint" -type f -exec touch -t 197001020000 {} +
+        fi
+        rm -f "$record"
+    done
+done
+RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" exec scripts/cargo.sh "${args[@]}" -- -D warnings
