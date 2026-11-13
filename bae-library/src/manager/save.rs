@@ -28,8 +28,8 @@ impl LibraryManager {
         let album = self.records.get_album_for_release(release).await?;
 
         let album_artists = self.records.get_artists_for_album(&album.id).await?;
-        let album_artist = bae_records::credits::library_line(&album_artists);
-        let artist = bae_records::credits::library_line(
+        let album_artists = bae_records::credits::library_line(&album_artists);
+        let artists = bae_records::credits::library_line(
             &self.records.get_shown_artists_for_track(&track.id).await?,
         );
 
@@ -40,8 +40,8 @@ impl LibraryManager {
 
         let tags = SaveTags {
             title: track.title.clone(),
-            artist,
-            album_artist,
+            artists,
+            album_artists,
             album: album.title,
             album_year: album.year,
             year,

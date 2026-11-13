@@ -72,7 +72,7 @@ pub struct PlaylistEntryRow {
     pub track_id: String,
     pub title: String,
     /// The track's credit line: its own credits, else its album's (§2.3).
-    pub artist_names: String,
+    pub artist_line: bae_types::credits::CreditLine,
     pub album_id: String,
     pub album_title: String,
     pub release_id: String,
@@ -119,7 +119,7 @@ pub(crate) fn entry_stats_sql() -> String {
 /// One playlist's entries as its page lists them, in order.
 pub(crate) fn playlist_entries_sql() -> String {
     format!(
-        "SELECT e.position_id, e.track_id, t.title, {credits} AS artist_names, \
+        "SELECT e.position_id, e.track_id, t.title, {credits} AS artist_line, \
                 r.album_id, a.title, t.release_id, t.duration_ms, {cover} \
          FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
               JOIN releases AS r ON r.id = t.release_id JOIN albums AS a ON a.id = r.album_id \
@@ -261,7 +261,7 @@ fn playlist_detail_on(
             position_id: uuid_column(row, 0)?,
             track_id: row.get(1)?,
             title: row.get(2)?,
-            artist_names: credit_line_column(row, "artist_names")?,
+            artist_line: credit_line_column(row, "artist_line")?,
             album_id: row.get(4)?,
             album_title: row.get(5)?,
             release_id: row.get(6)?,

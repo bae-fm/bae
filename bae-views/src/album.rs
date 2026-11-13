@@ -345,7 +345,7 @@ pub fn resolve_library_search_projection(
 /// against whether storage is set up: joins artist names, formats labels,
 /// groups tracks by side, and builds galleries.
 fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail::AlbumDetail {
-    let artist_names = bae_records::credits::library_line(&raw.artists);
+    let artist_line = bae_records::credits::library_line(&raw.artists);
     let primary_release_id = raw.primary_release_id;
 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
@@ -363,7 +363,7 @@ fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail:
     crate::album_detail::AlbumDetail {
         album: raw.album,
         artists: raw.artists,
-        artist_names,
+        artist_line,
         releases,
         primary_release_id,
         cover,
@@ -407,7 +407,7 @@ fn search_library_on(
             year: row.get("year")?,
             primary_release_id: row.get("primary_release_id")?,
             cover_version: row.get("cover_version")?,
-            artist_name: credit_line_column(row, "artist_name")?,
+            artist_line: credit_line_column(row, "artist_name")?,
         })
     })?;
     let tracks = sql.query(
@@ -440,7 +440,7 @@ fn search_library_on(
                 release_id: row.get("release_id")?,
                 album_id: row.get("album_id")?,
                 album_title: row.get("album_title")?,
-                artist_name: credit_line_column(row, "artist_name")?,
+                artist_line: credit_line_column(row, "artist_name")?,
                 cover_version: row.get("cover_version")?,
             })
         },
@@ -488,7 +488,7 @@ struct AlbumSearchRow {
     year: Option<i32>,
     primary_release_id: String,
     cover_version: Option<String>,
-    artist_name: String,
+    artist_line: bae_types::credits::CreditLine,
 }
 
 #[derive(Clone, PartialEq)]
@@ -512,7 +512,7 @@ impl LibrarySearchRows {
                     year: row.year,
                     primary_release_id: row.primary_release_id,
                     cover_version: row.cover_version,
-                    artist_name: row.artist_name,
+                    artist_line: row.artist_line,
                 })
             })
             .collect::<Result<_, DbError>>()?;

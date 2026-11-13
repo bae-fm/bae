@@ -70,7 +70,7 @@ fn named_words(rows: &[&[MetadataResult]]) -> HashSet<String> {
         .flat_map(|records| records.iter())
         .flat_map(|record| {
             std::iter::once(record.title.as_str())
-                .chain(record.artist.as_deref())
+                .chain(record.artist.iter().flat_map(|artist| artist.name_values()))
                 .chain(record.labels.iter().filter_map(|label| label.name()))
         })
         .flat_map(words)

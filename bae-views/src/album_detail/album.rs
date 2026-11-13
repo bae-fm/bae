@@ -16,8 +16,8 @@ pub struct AlbumDetail {
     /// merges.
     pub artists: Vec<bae_records::credits::LibraryCredit>,
     /// The album's credit line: each credit's printed name, then the join its
-    /// source prints after it (", " where it states none).
-    pub artist_names: String,
+    /// source prints after it (the plain join where it states none).
+    pub artist_line: bae_types::credits::CreditLine,
     pub releases: Vec<ReleaseDetail>,
     /// The album's lowest-ordered release: the one whose cover it shows and
     /// that plays by default.
@@ -36,7 +36,7 @@ pub struct AlbumSummary {
     pub title: String,
     pub year: Option<i32>,
     pub is_compilation: bool,
-    pub artist_names: String,
+    pub artist_line: bae_types::credits::CreditLine,
     /// The album's releases in album order.
     pub release_ids: Vec<String>,
     /// The album's lowest-ordered release: the one whose cover it shows and
@@ -59,7 +59,7 @@ impl AlbumSummary {
             title: raw.title,
             year: raw.year,
             is_compilation: raw.is_compilation,
-            artist_names: raw.artist_names,
+            artist_line: raw.artist_line,
             release_ids: raw.release_ids,
             primary_release_id,
             cover,
@@ -75,7 +75,7 @@ pub struct AlbumAppearance {
     /// Grouped by artist: the album's credits other than the artist whose
     /// group lists it, printed as a line; `None` when that artist is its only
     /// credit, or when the grid is flat.
-    pub credited_with: Option<String>,
+    pub credited_with: Option<bae_types::credits::CreditLine>,
 }
 
 impl AlbumAppearance {

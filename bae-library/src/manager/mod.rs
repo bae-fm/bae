@@ -743,10 +743,11 @@ impl From<bae_import::ImportError> for LibraryError {
 #[cfg(desktop)]
 pub struct SaveTags {
     pub title: String,
-    /// The track's line: its own credits, else the album's (ARTIST).
-    pub artist: String,
-    /// The album's line (ALBUMARTIST).
-    pub album_artist: String,
+    /// The track's credits: its own, else the album's. Each is its own
+    /// ARTIST value in the file, joined by nothing.
+    pub artists: bae_types::credits::CreditLine,
+    /// The album's credits, each its own ALBUMARTIST value.
+    pub album_artists: bae_types::credits::CreditLine,
     pub album: String,
     /// The year the album first came out.
     pub album_year: Option<i32>,

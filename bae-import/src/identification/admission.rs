@@ -103,7 +103,7 @@ pub(super) async fn candidate_run_start(
     let Some((state, draft)) = context.tables.load_candidate_run_start(&content_hash).await? else {
         return Err(crate::tables::CandidateStateRefusal::NoDraft(content_hash).into());
     };
-    let artist = crate::credited_line(&draft.album_artist_assignments);
+    let artist = crate::credited_line(&draft.album_artist_assignments).plain_text();
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
         None => TitleSearch::of_draft(&draft.album_title, &artist),

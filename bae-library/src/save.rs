@@ -26,7 +26,7 @@ pub fn render_save_filename(
     let tags = &resolved.tags;
     let stem = rendered_name(pattern, |value| match value {
         SaveFilenameValue::Title => tags.title.clone(),
-        SaveFilenameValue::Artist => tags.artist.clone(),
+        SaveFilenameValue::Artist => tags.artists.plain_text(),
         SaveFilenameValue::Album => tags.album.clone(),
         // An absent year or disc renders empty. That is a legitimate state
         // for a filename pattern, not an error.
@@ -60,7 +60,8 @@ pub fn render_save_filename(
 
 /// A release's data a folder name pattern draws on, from the database alone.
 pub struct SaveFolderTags {
-    /// The album's line (ALBUMARTIST).
+    /// The album's line as a folder name: no viewer language, so plain names
+    /// are joined with ", ".
     pub artist: String,
     pub album: String,
     /// The year the album first came out.
@@ -545,15 +546,19 @@ fn write_tags(
     use lofty::config::WriteOptions;
     use lofty::picture::{Picture, PictureType};
     use lofty::prelude::*;
-    use lofty::tag::{items::Timestamp, Tag};
+    use lofty::tag::{items::Timestamp, ItemValue, Tag, TagItem};
 
     let mut tagged_file = lofty::read_from_path(path)
         .map_err(|e| format!("Failed to read file for tagging: {}", e))?;
 
     let mut tag = Tag::new(tag_type);
     tag.set_title(tags.title.clone());
-    tag.set_artist(tags.artist.clone());
-    tag.insert_text(ItemKey::AlbumArtist, tags.album_artist.clone());
+    for artist in tags.artists.name_values() {
+        tag.push(TagItem::new(ItemKey::TrackArtist, ItemValue::Text(artist.to_string())));
+    }
+    for artist in tags.album_artists.name_values() {
+        tag.push(TagItem::new(ItemKey::AlbumArtist, ItemValue::Text(artist.to_string())));
+    }
     tag.set_album(tags.album.clone());
 
     if let Some(year) = tags.year {

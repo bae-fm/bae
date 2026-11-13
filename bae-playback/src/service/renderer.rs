@@ -224,7 +224,7 @@ impl RemoteRenderer {
             url: served.url,
             content_type: served.content_type,
             title: display.title,
-            artist: display.artist_names,
+            artist: display.artist_line.plain_text(),
             album: display.album_title,
             cover_url: served.cover_url,
             duration: prepared.timeline.stream_duration(),

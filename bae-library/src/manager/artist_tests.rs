@@ -188,8 +188,8 @@ struct PrintedLines {
     plain_row: String,
     queued_featured: String,
     searched_album: String,
-    saved_artist: String,
-    saved_album_artist: String,
+    saved_artists: Vec<String>,
+    saved_album_artists: Vec<String>,
 }
 
 async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
@@ -205,15 +205,16 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
             .iter()
             .find(|track| track.id == id)
             .expect("the track's row")
-            .artist_names
-            .clone()
+            .artist_line
+            .plain_text()
     };
     let queued_featured =
         bae_playback::tables::track_display(&manager.library.manager().store, &library.featured.id)
             .await
             .unwrap()
             .expect("the track's display")
-            .artist_names;
+            .artist_line
+            .plain_text();
     let searched_album = views(manager.library.manager())
         .search_rows("Test Album", 10)
         .await
@@ -221,8 +222,8 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
         .albums
         .first()
         .expect("the album is found")
-        .artist_name
-        .clone();
+        .artist_line
+        .plain_text();
     let saved = manager
         .library
         .manager()
@@ -230,13 +231,13 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
         .await
         .unwrap();
     PrintedLines {
-        album_page: album.artist_names.clone(),
+        album_page: album.artist_line.plain_text(),
         featured_row: row(&library.featured.id),
         plain_row: row(&library.plain.id),
         queued_featured,
         searched_album,
-        saved_artist: saved.tags.artist,
-        saved_album_artist: saved.tags.album_artist,
+        saved_artists: saved.tags.artists.name_values().map(str::to_string).collect(),
+        saved_album_artists: saved.tags.album_artists.name_values().map(str::to_string).collect(),
     }
 }
 
@@ -251,8 +252,8 @@ async fn every_surface_prints_the_credits_as_stated() {
     assert_eq!(lines.plain_row, "Artist A & B Alias", "a track with no credits of its own");
     assert_eq!(lines.queued_featured, "Artist A feat. Artist B");
     assert_eq!(lines.searched_album, "Artist A & B Alias");
-    assert_eq!(lines.saved_artist, "Artist A feat. Artist B");
-    assert_eq!(lines.saved_album_artist, "Artist A & B Alias");
+    assert_eq!(lines.saved_artists, ["Artist A", "Artist B"], "each credit is its own value");
+    assert_eq!(lines.saved_album_artists, ["Artist A", "B Alias"]);
 }
 
 /// A credit printing another name still links its artist: the album lists

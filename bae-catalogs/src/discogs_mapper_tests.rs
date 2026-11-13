@@ -614,7 +614,10 @@ fn album_credits_keep_their_printed_names_and_joins() {
             ("Artist C", "Artist C", None),
         ]
     );
-    assert_eq!(crate::credits::SourceCredit::line(&credits), "A Variation & Artist B, Artist C");
+    assert_eq!(
+        crate::credits::SourceCredit::line(&credits).plain_text(),
+        "A Variation & Artist B, Artist C"
+    );
 }
 
 /// Every Barcode identifier reaches the pressing as printed, each code once:

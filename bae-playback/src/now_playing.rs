@@ -6,7 +6,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackDisplay {
     pub title: String,
-    pub artist_names: String,
+    pub artist_line: bae_types::credits::CreditLine,
     pub album_id: String,
     /// The release the track is on, which may be any of its album's releases.
     pub release_id: String,

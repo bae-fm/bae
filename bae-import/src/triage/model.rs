@@ -81,8 +81,8 @@ pub enum IdentificationStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriageMetadataSummary {
     pub album_title: String,
-    /// The album credits, printed as one line.
-    pub album_artists: String,
+    /// The album credits.
+    pub album_artists: bae_types::credits::CreditLine,
 }
 
 impl TriageMetadataSummary {

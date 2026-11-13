@@ -153,7 +153,7 @@ impl Library {
     ) -> Write {
         let tags = tags.map(|(album_title, artist)| crate::folder_scanner::SkippedTags {
             album_title: album_title.to_string(),
-            artist: artist.map(str::to_string),
+            artist: artist.map(bae_types::credits::CreditLine::of_name),
         });
         self.store(
             crate::folder_scanner::ScanItem::Invalid(

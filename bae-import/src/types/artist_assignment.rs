@@ -76,9 +76,9 @@ impl Credited {
     }
 }
 
-/// The line `credits` print (see [`bae_types::credits::credit_line`]).
-pub fn credited_line(credits: &[Credited]) -> String {
-    bae_types::credits::credit_line(
+/// The line `credits` print (see [`bae_types::credits::CreditLine`]).
+pub fn credited_line(credits: &[Credited]) -> bae_types::credits::CreditLine {
+    bae_types::credits::CreditLine::from_stored(
         credits.iter().map(|credited| (credited.artist.printed(), credited.join.as_deref())),
     )
 }

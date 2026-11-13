@@ -648,7 +648,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
     let row = rows.first().expect("storage row");
 
     assert_eq!(
-        row.album.artist_names,
+        row.album.artist_line.plain_text(),
         "Artist Name Primary, Artist Name First, Artist Name Second"
     );
     assert_eq!(row.album.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);

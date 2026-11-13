@@ -484,7 +484,7 @@ pub(crate) fn load_candidate_items_rows(
                     candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
                     {files} AS files, {PARTS_JSON} AS parts, \
                     {SKIPPED_FILES_JSON} AS skipped_files, \
-                    tags.album_title AS skipped_album_title, tags.artist AS skipped_artist \
+                    tags.album_title AS skipped_album_title, tags.credits AS skipped_credits \
              FROM scan_candidate AS candidate \
              LEFT JOIN scan_skipped_tags AS tags \
                  ON tags.watched_folder_path = candidate.watched_folder_path \
@@ -517,7 +517,7 @@ pub(crate) fn load_candidate_items_rows(
                     .map(|album_title| {
                         Ok::<_, rusqlite::Error>(SkippedTags {
                             album_title,
-                            artist: row.get("skipped_artist")?,
+                            artist: crate::tables::stored_credits::line_column(row, "skipped_credits")?,
                         })
                     })
                     .transpose()?,

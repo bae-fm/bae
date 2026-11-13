@@ -828,7 +828,7 @@ pub(super) fn credited(
     number: &str,
 ) -> MetadataResult {
     MetadataResult {
-        artist: Some(artist.to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name(artist)),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some(label), Some(number))],
         ..mk_result_from(source, release_id, Some("g"))
     }

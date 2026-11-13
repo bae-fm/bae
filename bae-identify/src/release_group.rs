@@ -45,7 +45,7 @@ pub struct ReleaseGroup {
     /// release's id when no source named a group.
     pub id: String,
     pub title: String,
-    pub artist: Option<String>,
+    pub artist: Option<bae_types::credits::CreditLine>,
     /// The label the card names beside the artist: the one every pressing
     /// naming a label agrees on, else none — no pressing speaks for the album
     /// over another. Core's call, not a surface's.

@@ -15,6 +15,9 @@ bae-app = { workspace = true }
 bae-library = { workspace = true }
 # The library's views the endpoints list and search, and the shapes they show.
 bae-views = { workspace = true }
+# The credit lines the API flattens into names, and the pressing values the
+# tests seed releases with.
+bae-types = { workspace = true }
 # The library's records the API serves.
 bae-store = { workspace = true }
 bae-records = { workspace = true }
@@ -56,8 +59,6 @@ bae-app = { workspace = true, features = ["test-utils"] }
 bae-library = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
-# The pressing values the server tests seed releases with.
-bae-types = { workspace = true }
 # The stable fixture ids the server tests name rows by.
 bae-util = { workspace = true, features = ["test-utils"] }
 # The WAV reader the transcode tests check served bytes with.

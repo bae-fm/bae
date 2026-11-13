@@ -1,5 +1,6 @@
 use super::*;
 use crate::manager::{ResolvedSaveTags, SaveTags};
+use bae_types::credits::CreditLine;
 
 fn resolved(
     title: &str,
@@ -11,8 +12,8 @@ fn resolved(
     ResolvedSaveTags {
         tags: SaveTags {
             title: title.to_string(),
-            artist: "Artist Name".to_string(),
-            album_artist: "Artist Name".to_string(),
+            artists: CreditLine::of_name("Artist Name"),
+            album_artists: CreditLine::of_name("Artist Name"),
             album: "Album Title".to_string(),
             album_year: Some(1999),
             year,
@@ -186,8 +187,8 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
 
     let tags = SaveTags {
         title: "Track Title".to_string(),
-        artist: "Artist Name".to_string(),
-        album_artist: "Artist Name".to_string(),
+        artists: CreditLine::of_name("Artist Name"),
+        album_artists: CreditLine::of_name("Artist Name"),
         album: "Album Title".to_string(),
         album_year: Some(1999),
         year: Some(2001),
@@ -273,8 +274,8 @@ fn write_tags_round_trips_through_mp4_ilst() {
 
     let tags = SaveTags {
         title: "Track Title".to_string(),
-        artist: "Artist Name".to_string(),
-        album_artist: "Artist Name".to_string(),
+        artists: CreditLine::of_name("Artist Name"),
+        album_artists: CreditLine::of_name("Artist Name"),
         album: "Album Title".to_string(),
         album_year: Some(1999),
         year: Some(2001),
@@ -479,4 +480,48 @@ fn replaygain_tags_state_gain_and_peak_for_each_measured_level() {
         ]
     );
     assert!(ReplayGainTags { track: None, album: None }.items().is_empty());
+}
+
+/// A file's ARTIST and ALBUMARTIST each hold one value per credit, joined by
+/// nothing: a credit with "feat." between two names writes both names, not a
+/// line saying so.
+#[test]
+fn write_tags_writes_each_credit_as_its_own_value() {
+    use lofty::prelude::*;
+    use lofty::tag::TagType;
+
+    bae_audio::init();
+    let samples: Vec<i32> = vec![0; 4410];
+    let flac = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
+        &samples,
+        44100,
+        1,
+    )
+    .unwrap();
+    let tags = SaveTags {
+        title: "Track Title".to_string(),
+        artists: CreditLine::from_stored([
+            ("Artist A", Some(" feat. ")),
+            ("Artist B", Some(", ")),
+            ("Artist C", None),
+        ]),
+        album_artists: CreditLine::from_stored([("Artist A", Some(" & ")), ("Artist D", None)]),
+        album: "Album Title".to_string(),
+        album_year: None,
+        year: None,
+        disc: None,
+    };
+    let dir = tempfile::TempDir::new().unwrap();
+    let path = dir.path().join("credited.flac");
+    std::fs::write(&path, &flac).unwrap();
+    write_tags(&path, TagType::VorbisComments, &tags, None, 1, None, None).unwrap();
+
+    let tagged = lofty::read_from_path(&path).unwrap();
+    let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
+    assert_eq!(
+        tag.get_strings(ItemKey::TrackArtist).collect::<Vec<_>>(),
+        ["Artist A", "Artist B", "Artist C"]
+    );
+    assert_eq!(tag.get_strings(ItemKey::AlbumArtist).collect::<Vec<_>>(), ["Artist A", "Artist D"]);
 }

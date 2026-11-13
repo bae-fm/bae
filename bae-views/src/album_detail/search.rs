@@ -27,7 +27,7 @@ impl SearchResults {
                         id: raw.id,
                         title: raw.title,
                         year: raw.year,
-                        artist_name: raw.artist_name,
+                        artist_line: raw.artist_line,
                         cover,
                     }
                 })
@@ -44,7 +44,7 @@ impl SearchResults {
                         release_id: raw.release_id,
                         album_id: raw.album_id,
                         album_title: raw.album_title,
-                        artist_name: raw.artist_name,
+                        artist_line: raw.artist_line,
                         cover,
                     }
                 })
@@ -62,7 +62,7 @@ pub struct AlbumSearchResult {
     pub id: String,
     pub title: String,
     pub year: Option<i32>,
-    pub artist_name: String,
+    pub artist_line: bae_types::credits::CreditLine,
     /// The album's cover — its primary release's — or `None` when there is no cover
     /// row. The search UI fetches the bytes by image id and caches under
     /// `(id, version)`. The primary release id itself isn't surfaced: search
@@ -81,7 +81,7 @@ pub struct TrackSearchResult {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub artist_name: String,
+    pub artist_line: bae_types::credits::CreditLine,
     /// The cover of the track's own release, or `None` when there is no cover
     /// row. Same fetch/caching contract as [`AlbumSearchResult::cover`].
     pub cover: Option<ImageRef>,

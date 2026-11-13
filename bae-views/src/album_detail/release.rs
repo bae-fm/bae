@@ -182,18 +182,18 @@ impl ReleaseDetail {
             .tracks
             .into_iter()
             .map(|entry| {
-                let artist_names = bae_records::credits::library_line(&entry.shown_artists);
+                let artist_line = bae_records::credits::library_line(&entry.shown_artists);
                 let position = raw.mediums.position(&entry.track);
                 let position_text = position.text();
                 // On a compilation each row carries its own artist, because the
                 // album header names no single one; on a single-artist album the
                 // row would only repeat the header, so it shows nothing.
-                let display_artist = ctx.is_compilation.then(|| artist_names.clone());
+                let display_artist = ctx.is_compilation.then(|| artist_line.clone());
                 TrackDetail {
                     id: entry.track.id,
                     title: entry.track.title,
                     duration_ms: entry.track.duration_ms,
-                    artist_names,
+                    artist_line,
                     display_artist,
                     position_text,
                     position,

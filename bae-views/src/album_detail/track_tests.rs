@@ -9,7 +9,7 @@ fn track(id: &str, position: TrackPosition) -> TrackDetail {
         id: id.to_string(),
         title: String::new(),
         duration_ms: 180_000,
-        artist_names: String::new(),
+        artist_line: bae_types::credits::CreditLine::default(),
         display_artist: None,
         position_text: position.text(),
         position,

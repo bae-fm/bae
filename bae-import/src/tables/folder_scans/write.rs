@@ -307,9 +307,14 @@ fn insert_invalid(
     if let Some(tags) = &candidate.tags {
         sql.execute(
             "INSERT INTO scan_skipped_tags \
-                 (watched_folder_path, candidate_path, album_title, artist) \
+                 (watched_folder_path, candidate_path, album_title, credits) \
              VALUES (?, ?, ?, ?)",
-            params![coven::path_bytes(watched_folder_path), key, tags.album_title, tags.artist],
+            params![
+                coven::path_bytes(watched_folder_path),
+                key,
+                tags.album_title,
+                tags.artist.as_ref().map(crate::tables::stored_credits::line_json).transpose()?,
+            ],
         )?;
     }
     Ok(())

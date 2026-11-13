@@ -203,7 +203,7 @@ pub struct DbAlbumSummary {
     pub title: String,
     pub year: Option<i32>,
     pub is_compilation: bool,
-    pub artist_names: String,
+    pub artist_line: bae_types::credits::CreditLine,
     /// The album's releases in album order.
     pub release_ids: Vec<String>,
     /// The album's lowest-ordered release.

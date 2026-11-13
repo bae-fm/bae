@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     source              TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     release_id          TEXT NOT NULL,
     title               TEXT NOT NULL,
-    artist              TEXT,
+    -- Its credits: a JSON list of `{name, join}`.
+    credits             TEXT,
     year                INTEGER,
     -- Its labels are its import_candidate_match_label rows.
     -- Where the pressing was released: an ISO 3166-1 alpha-2 country code, or a

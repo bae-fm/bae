@@ -517,7 +517,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     );
     let summary = row.metadata_summary.expect("the row shows the draft the pick read");
     assert_eq!(summary.album_title, "Picked Album Title");
-    assert_eq!(summary.album_artists, "Picked Artist Name");
+    assert_eq!(summary.album_artists.plain_text(), "Picked Artist Name");
 }
 
 /// A pick is written with the candidate, so the answer, the row's resume

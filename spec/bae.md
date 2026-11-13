@@ -361,19 +361,28 @@ one artist twice keeps both credits. Every reader takes the whole list:
 - The artist list and an artist's page count an album for every artist its
   list names, once per artist.
 
-**Credit lines.** A credit prints a name and, when another credit follows it,
-what the source prints between them: MusicBrainz's join phrase (" feat. ",
+**Credit lines.** A credit names an artist and, when another credit follows
+it, what the source prints between them: MusicBrainz's join phrase (" feat. ",
 " & "), Discogs's `join` (a comma as ", ", any other word or sign with a space
-either side). A credit that states nothing prints ", "; the last credit's
-join is never printed, and is not kept. One builder makes every line from
-those values: the album page and its track rows, the grid, the queue and now
-playing (and what AirPlay and DLNA devices are sent), search results, the
-import list and catalog picker rows, the identification title search,
-Subsonic's `artist`, and Save as's ARTIST (the track's line) and ALBUMARTIST
-(the album's). A track's line is its own credits, else its album's. Each
-credit still names its artist, so the artist's page lists the album and
-Subsonic lists every credited artist in `artists` (its one `artistId` is the
-first credit's).
+either side). The last credit's join is never printed, and is not kept. Core
+keeps a line as names with typed joins, and never as one string where a
+viewer reads it. It recognizes " feat. ", " & ", " and ", " with " and " vs. "
+(any spacing and case; a comma or nothing is the plain join) and keeps any
+other join as the source wrote it. The apps word a recognized join from one
+catalog message each, in the viewer's language (a language that writes
+"feat." in Latin letters, as Chinese does, says "feat."), show an
+unrecognized join as written, and join each run of plain names with their
+list formatter in the viewer's language ("A feat. B, C, and D"): the album
+page and its track rows, the grid, the queue and now playing, search results,
+the import list and catalog picker rows. A line that leaves bae with no
+language (what AirPlay and DLNA devices are sent, Subsonic's `artist`, the
+identification title search, the folder name of Save as) joins plain names with
+", " and writes a recognized join in English. Save as's tags hold each credit
+as its own value, ARTIST repeated for the track's credits and ALBUMARTIST
+repeated for the album's, and join nothing. A track's line is its own credits,
+else its album's. Each credit still names its artist, so the artist's page
+lists the album and Subsonic lists every credited artist in `artists` (its
+one `artistId` is the first credit's).
 
 **An artist's other names.** `artists.name` is the name an artist goes by.
 The other names a credit prints for it, a MusicBrainz credit name or a

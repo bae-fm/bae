@@ -474,7 +474,7 @@ pub(crate) fn verdict(
                 source: LookupCatalog::MusicBrainz,
                 release_id: release_id.to_string(),
                 title: "Verdict Album".to_string(),
-                artist: Some("Verdict Artist".to_string()),
+                artist: Some(bae_types::credits::CreditLine::of_name("Verdict Artist")),
                 year: Some(1999),
                 labels: Vec::new(),
                 area: None,

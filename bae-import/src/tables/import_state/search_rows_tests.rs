@@ -26,7 +26,7 @@ fn search_query() -> SearchQuery {
 fn search_result(source: LookupCatalog, release_id: &str) -> MetadataResult {
     MetadataResult {
         title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         year: Some(1992),
         ..MetadataResult::for_test(source, release_id, None)
     }

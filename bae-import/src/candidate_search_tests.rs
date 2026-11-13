@@ -28,7 +28,7 @@ fn query() -> SearchQuery {
 fn result(source: LookupCatalog, release_id: &str, group_id: &str) -> MetadataResult {
     MetadataResult {
         title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         year: Some(1992),
         barcodes: vec!["012345678905".to_string()],
         ..MetadataResult::for_test(source, release_id, Some(group_id))

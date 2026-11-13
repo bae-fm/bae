@@ -36,7 +36,7 @@ pub struct MetadataResult {
     pub source: LookupCatalog,
     pub release_id: String,
     pub title: String,
-    pub artist: Option<String>,
+    pub artist: Option<bae_types::credits::CreditLine>,
     pub year: Option<i32>,
     /// Every label the record states, with its catalog number; a Discogs
     /// search result states only the first.
@@ -251,7 +251,7 @@ pub struct ImportSearchReleaseDetail {
     pub source: LookupCatalog,
     pub source_group_id: Option<String>,
     pub title: String,
-    pub artist: Option<String>,
+    pub artist: Option<bae_types::credits::CreditLine>,
     pub year: Option<i32>,
     pub labels: Vec<ReleaseLabel>,
     pub barcodes: Vec<String>,
@@ -281,7 +281,9 @@ pub fn discogs_search_result_to_metadata(
     // Search titles use "Artist - Album"; split once. No separator means the
     // whole title is the album and the artist is unknown.
     let (artist, album) = match crate::discogs::split_title(&r.title) {
-        Some((artist, album)) => (artist.map(str::to_string), album.to_string()),
+        Some((artist, album)) => {
+            (artist.map(bae_types::credits::CreditLine::of_name), album.to_string())
+        }
         None => (None, r.title.clone()),
     };
     let year = r.year.as_ref().and_then(|y| y.parse::<i32>().ok());
@@ -424,16 +426,14 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
 
 /// The artist line a MusicBrainz credit list prints: each credited name, then
 /// what MusicBrainz prints after it. None for a release crediting no one.
-fn musicbrainz_credit_line(credits: &[crate::musicbrainz::MbArtistCredit]) -> Option<String> {
+fn musicbrainz_credit_line(
+    credits: &[crate::musicbrainz::MbArtistCredit],
+) -> Option<bae_types::credits::CreditLine> {
     if credits.is_empty() {
         return None;
     }
-    let joins: Vec<Option<String>> = credits
-        .iter()
-        .map(|credit| bae_types::credits::stated_join(credit.joinphrase.as_deref()))
-        .collect();
-    Some(bae_types::credits::credit_line(
-        credits.iter().zip(&joins).map(|(credit, join)| (credit.name.as_str(), join.as_deref())),
+    Some(bae_types::credits::CreditLine::from_stored(
+        credits.iter().map(|credit| (credit.name.as_str(), credit.joinphrase.as_deref())),
     ))
 }
 

@@ -16,7 +16,7 @@ pub struct DbLibrarySearchResults {
     pub works: Vec<DbWorkSummary>,
 }
 
-/// Raw album search-result row; `artist_name` is the album's credit line,
+/// Raw album search-result row; `artist_line` is the album's credit line,
 /// each name followed by the join its source prints.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSearchResult {
@@ -27,11 +27,11 @@ pub struct DbAlbumSearchResult {
     pub primary_release_id: String,
     /// The version of that release's cover; `None` when it has none.
     pub cover_version: Option<String>,
-    pub artist_name: String,
+    pub artist_line: bae_types::credits::CreditLine,
 }
 
 /// Raw track search-result row with album and artist info joined in SQL;
-/// `artist_name` is the track's own credits, else its album's. No formatted
+/// `artist_line` is the track's own credits, else its album's. No formatted
 /// duration label — resolving it formats one.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackSearchResult {
@@ -43,7 +43,7 @@ pub struct DbTrackSearchResult {
     pub release_id: String,
     pub album_id: String,
     pub album_title: String,
-    pub artist_name: String,
+    pub artist_line: bae_types::credits::CreditLine,
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
 }
@@ -84,7 +84,7 @@ pub struct DbAlbumAppearance {
     /// Grouped by artist: the album's credits other than the artist whose
     /// group lists it, printed as a line; `None` when that artist is its only
     /// credit, or when the grid is flat.
-    pub credited_with: Option<String>,
+    pub credited_with: Option<bae_types::credits::CreditLine>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -447,7 +447,10 @@ async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
         .pop()
         .expect("album summary row");
 
-    assert_eq!(summary.artist_names, "Artist Name Primary, Artist Name First, Artist Name Second");
+    assert_eq!(
+        summary.artist_line.plain_text(),
+        "Artist Name Primary, Artist Name First, Artist Name Second"
+    );
     assert_eq!(summary.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);
 }
 

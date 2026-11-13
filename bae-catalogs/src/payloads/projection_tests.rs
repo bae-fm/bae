@@ -136,7 +136,14 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
         )],
     );
     assert_eq!(
-        payloads.extract().unwrap().detail(&[]).artist.as_deref(),
+        payloads
+            .extract()
+            .unwrap()
+            .detail(&[])
+            .artist
+            .as_ref()
+            .map(bae_types::credits::CreditLine::plain_text)
+            .as_deref(),
         Some("Selected Artist, Second Artist")
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();

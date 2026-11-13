@@ -323,12 +323,13 @@ CREATE TABLE IF NOT EXISTS scan_skipped_file (
 
 -- What the tags of a release that failed validation call it: the album title
 -- the first of its playable files to state one gives, with that file's
--- artist. No row when none states one, and for a grouping's release.
+-- artists (a JSON list of `{name, join}`: one credit each, joined by nothing).
+-- No row when none states one, and for a grouping's release.
 CREATE TABLE IF NOT EXISTS scan_skipped_tags (
     watched_folder_path BLOB NOT NULL,
     candidate_path      BLOB NOT NULL,
     album_title         TEXT NOT NULL,
-    artist              TEXT,
+    credits             TEXT,
     PRIMARY KEY (watched_folder_path, candidate_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE

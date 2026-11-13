@@ -401,7 +401,7 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
         invalid.tags,
         Some(SkippedTags {
             album_title: "Album Title".to_string(),
-            artist: Some("Artist Name".to_string()),
+            artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         })
     );
     assert_eq!(invalid.cover().map(|file| file.relative_path.as_str()), Some("front.jpg"));

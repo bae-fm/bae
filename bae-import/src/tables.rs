@@ -14,6 +14,7 @@ pub(crate) mod import_state;
 mod release_groupings;
 mod skipped_candidates;
 mod source_releases;
+mod stored_credits;
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.

@@ -65,7 +65,8 @@ pub(super) fn names_artist(catalog: LookupCatalog) -> bool {
 /// compilation to various artists, which names no artist a catalog matches
 /// its other releases by.
 pub(super) fn credited_artist(result: &MetadataResult) -> Option<String> {
-    let artist = result.artist.as_deref()?.trim();
+    let line = result.artist.as_ref()?.plain_text();
+    let artist = line.trim();
     if bae_types::text_match::artist_name_key(artist).is_empty()
         || bae_types::text_match::is_various_artists(artist)
     {

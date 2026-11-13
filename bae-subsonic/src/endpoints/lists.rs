@@ -213,7 +213,7 @@ pub(crate) async fn search3(state: AppState, params: Params) -> Result<Option<El
                         &hit.id,
                         &hit.title,
                         &hit.album_title,
-                        &hit.artist_name,
+                        &hit.artist_line,
                     )
                     .await?
                     .to_element(),
@@ -289,7 +289,7 @@ async fn whole_library(
                 track_id,
                 &display.title,
                 &display.album_title,
-                &display.artist_names,
+                &display.artist_line,
             )
             .await?
             .to_element(),

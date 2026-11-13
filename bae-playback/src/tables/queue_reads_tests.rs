@@ -90,7 +90,10 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
     let items = queue_items(&db, &[TRACK_A]).await;
 
     assert_eq!(items.len(), 1);
-    assert_eq!(items[0].display.artist_names, "Track Artist Name First, Track Artist Name Second");
+    assert_eq!(
+        items[0].display.artist_line.plain_text(),
+        "Track Artist Name First, Track Artist Name Second"
+    );
 }
 
 /// Up Next longer than one SQL statement's parameter limit takes every track,

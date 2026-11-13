@@ -143,7 +143,7 @@ impl SkippedFile {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SkippedTags {
     pub album_title: String,
-    pub artist: Option<String>,
+    pub artist: Option<bae_types::credits::CreditLine>,
 }
 
 /// A leaf folder that looks like a release (it has audio) but failed

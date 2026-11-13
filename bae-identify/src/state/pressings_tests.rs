@@ -16,8 +16,10 @@ use bae_catalogs::records::LookupRef;
 #[test]
 fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label() {
     let state = disc_run_of_folder("Some Album", &[]);
-    let record =
-        MetadataResult { artist: Some("Artist Name".to_string()), ..mk_result("mb-1", Some("g")) };
+    let record = MetadataResult {
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
+        ..mk_result("mb-1", Some("g"))
+    };
     let reading = crate::state::step(
         state,
         IdentifyEvent::DiscidLookupAnswered {
@@ -68,8 +70,10 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
 #[test]
 fn a_row_with_no_link_is_looked_up_by_every_barcode_and_every_number() {
     let state = disc_run_of_folder("Some Album", &[]);
-    let record =
-        MetadataResult { artist: Some("Artist Name".to_string()), ..mk_result("mb-1", Some("g")) };
+    let record = MetadataResult {
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
+        ..mk_result("mb-1", Some("g"))
+    };
     let reading = crate::state::step(
         state,
         IdentifyEvent::DiscidLookupAnswered {

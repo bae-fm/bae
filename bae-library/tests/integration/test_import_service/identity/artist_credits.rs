@@ -396,7 +396,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
         .await
         .unwrap()
         .expect("the imported album");
-    assert_eq!(album.artist_names, "A Variation & Artist B");
+    assert_eq!(album.artist_line.plain_text(), "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");
 }

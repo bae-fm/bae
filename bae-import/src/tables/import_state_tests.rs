@@ -77,7 +77,7 @@ pub(crate) fn sample_match() -> MetadataResult {
         source: LookupCatalog::MusicBrainz,
         release_id: "rel-1".to_string(),
         title: "Album".to_string(),
-        artist: Some("Artist".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist")),
         year: Some(1999),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label"), Some("CAT-1"))],
         area: Some(bae_types::pressing::area("US")),

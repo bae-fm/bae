@@ -313,20 +313,30 @@ impl AutomationPressing {
     }
 }
 
-mirror_struct! {
-    AutomationReleaseGroup = ReleaseGroup,
-    from_core: pub(crate) fn,
-    fields: {
-        id,
-        title,
-        artist,
-        label,
-        cover_art: (opt AutomationRemoteCover),
-        sources: (each AutomationReleaseGroupSource),
-        year_min,
-        year_max,
-        sections: (each AutomationPressingSection),
-    },
+impl AutomationReleaseGroup {
+    /// The automation surface has no viewer language: its artist is the
+    /// credit line's names joined in English.
+    pub(crate) fn from_core(group: ReleaseGroup) -> Self {
+        Self {
+            id: group.id,
+            title: group.title,
+            artist: group.artist.map(|line| line.plain_text()),
+            label: group.label,
+            cover_art: group.cover_art.map(AutomationRemoteCover::from_core),
+            sources: group
+                .sources
+                .into_iter()
+                .map(AutomationReleaseGroupSource::from_core)
+                .collect(),
+            year_min: group.year_min,
+            year_max: group.year_max,
+            sections: group
+                .sections
+                .into_iter()
+                .map(AutomationPressingSection::from_core)
+                .collect(),
+        }
+    }
 }
 
 mirror_struct! {
@@ -354,7 +364,7 @@ impl AutomationMetadataResult {
             source: AutomationLookupCatalog::from_core(result.source),
             release_id: result.release_id,
             title: result.title,
-            artist: result.artist,
+            artist: result.artist.map(|line| line.plain_text()),
             year: result.year,
             labels: result.labels,
             facts,
@@ -650,7 +660,7 @@ impl AutomationTrackDetail {
             id: track.id,
             title: track.title,
             duration_ms: track.duration_ms,
-            artist_names: track.artist_names,
+            artist_names: track.artist_line.plain_text(),
             position_text: track.position_text,
             position: AutomationTrackPosition::from_core(track.position),
         }
@@ -738,10 +748,18 @@ impl AutomationLibrarySearchResults {
     }
 }
 
-mirror_struct! {
-    AutomationAlbumSearchResult = bae_views::album_detail::AlbumSearchResult,
-    from_core: pub(crate) fn,
-    fields: { id, title, year, artist_name, cover: (opt AutomationImageRef) },
+impl AutomationAlbumSearchResult {
+    /// The automation surface has no viewer language: its artist is the
+    /// line's plain text.
+    pub(crate) fn from_core(album: bae_views::album_detail::AlbumSearchResult) -> Self {
+        Self {
+            id: album.id,
+            title: album.title,
+            year: album.year,
+            artist_name: album.artist_line.plain_text(),
+            cover: album.cover.map(AutomationImageRef::from_core),
+        }
+    }
 }
 
 impl AutomationTrackSearchResult {
@@ -753,7 +771,7 @@ impl AutomationTrackSearchResult {
             duration_ms: track.duration_ms,
             album_id: track.album_id,
             album_title: track.album_title,
-            artist_name: track.artist_name,
+            artist_name: track.artist_line.plain_text(),
         }
     }
 }

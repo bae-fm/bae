@@ -150,7 +150,7 @@ fn a_done_row_follows_its_library_album() {
                 credit(&artist_b, 1, None, None),
             ]))
             .await,
-            moved_to("Retitled", "Artist A & Artist B")
+            moved_to("Retitled", "Artist A, Artist B")
         );
         let entered = |name: &str| bae_store::EnteredName::parse(name).unwrap();
         assert_eq!(
@@ -167,7 +167,7 @@ fn a_done_row_follows_its_library_album() {
                 credit(&artist_b, 1, Some("Printed B"), None),
             ]))
             .await,
-            moved_to("Retitled", "Artist A & Printed B")
+            moved_to("Retitled", "Artist A, Printed B")
         );
         assert_eq!(
             lib.moved_after(async {
@@ -181,7 +181,7 @@ fn a_done_row_follows_its_library_album() {
                     .unwrap()
             })
             .await,
-            moved_to("Retitled", "Artist A & Printed Bee")
+            moved_to("Retitled", "Artist A, Printed Bee")
         );
         // B, apart, meets artist A under another name; the later write's
         // name lands on A.
@@ -203,15 +203,7 @@ fn a_done_row_follows_its_library_album() {
                     .await;
             })
             .await,
-            moved_to("Retitled", "Renamed A & Printed Bee")
-        );
-        assert_eq!(
-            lib.moved_after(credited(vec![
-                credit(&artist_a, 0, None, Some(" with ")),
-                credit(&artist_b, 1, Some("Printed Bee"), None),
-            ]))
-            .await,
-            moved_to("Retitled", "Renamed A with Printed Bee")
+            moved_to("Retitled", "Renamed A, Printed Bee")
         );
         // Each device gives one artist the same Discogs id while apart: the
         // one B holds, whose id sorts first, survives the merge.
@@ -226,7 +218,7 @@ fn a_done_row_follows_its_library_album() {
         assert_eq!(
             lib.moved_after(merge_apart(devices, ("Renamed A", "Survivor"), "discogs-merged"))
                 .await,
-            moved_to("Retitled", "Survivor with Printed Bee"),
+            moved_to("Retitled", "Survivor, Printed Bee"),
             "a merged artist prints as the artist it shows as"
         );
         assert_eq!(

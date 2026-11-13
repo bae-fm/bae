@@ -103,7 +103,7 @@ fn the_album_credits_print_as_one_line() {
         let second = credited("Second Artist", Some("Printed Second"), None);
         assert_eq!(
             lib.moved(lib.credit("Album", vec![first.clone(), second.clone()])).await,
-            shown("First Artist & Printed Second")
+            shown("First Artist, Printed Second")
         );
         let picked = Credited {
             artist: ArtistAssignment::Picked {
@@ -121,13 +121,7 @@ fn the_album_credits_print_as_one_line() {
         assert_eq!(
             lib.moved(lib.credit("Album", vec![first.clone(), second.clone(), picked.clone()]))
                 .await,
-            shown("First Artist & Printed Second, Picked Artist")
-        );
-        let second = Credited { join: Some(" feat. ".to_string()), ..second };
-        assert_eq!(
-            lib.moved(lib.credit("Album", vec![first.clone(), second.clone(), picked.clone()]))
-                .await,
-            shown("First Artist & Printed Second feat. Picked Artist")
+            shown("First Artist, Printed Second, Picked Artist")
         );
         // B, apart, meets the picked artist under another name; the later
         // write's name lands on A.
@@ -149,7 +143,7 @@ fn the_album_credits_print_as_one_line() {
                     .await;
             })
             .await,
-            shown("First Artist & Printed Second feat. Renamed Artist")
+            shown("First Artist, Printed Second, Renamed Artist")
         );
         let records = lib.records();
         let other_name = bae_records::credits::CreditName::of("Other Name");
@@ -159,7 +153,7 @@ fn the_album_credits_print_as_one_line() {
                 records.add_artist_credit_name(&picked_id, &entered("Other Name")).await.unwrap()
             })
             .await,
-            shown("First Artist & Printed Second feat. Other Name")
+            shown("First Artist, Printed Second, Other Name")
         );
         assert_eq!(
             lib.moved_after(async {
@@ -169,18 +163,18 @@ fn the_album_credits_print_as_one_line() {
                     .unwrap()
             })
             .await,
-            shown("First Artist & Printed Second feat. Other NAME")
+            shown("First Artist, Printed Second, Other NAME")
         );
         assert_eq!(
             lib.moved_after(async {
                 records.remove_artist_credit_name(&picked_id, &other_name.key).await.unwrap()
             })
             .await,
-            shown("First Artist & Printed Second feat. Renamed Artist")
+            shown("First Artist, Printed Second, Renamed Artist")
         );
         assert_eq!(
             lib.moved(lib.credit("Album", vec![second, picked])).await,
-            shown("Printed Second feat. Renamed Artist")
+            shown("Printed Second, Renamed Artist")
         );
         // An artist no draft credits renames nothing.
         devices.pause().await;

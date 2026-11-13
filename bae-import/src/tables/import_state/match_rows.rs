@@ -9,6 +9,7 @@ use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
 use crate::tables::cover_labels;
+use crate::tables::stored_credits;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
@@ -192,7 +193,7 @@ pub(super) fn store_match(
         &format!(
             "INSERT INTO import_candidate_match \
              (content_hash, identify_run, search_run, search_state, picked, position, pressing, \
-              source, release_id, title, artist, year, \
+              source, release_id, title, credits, year, \
               country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
@@ -203,7 +204,7 @@ pub(super) fn store_match(
          ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
-             artist = excluded.artist, year = excluded.year, \
+             credits = excluded.credits, year = excluded.year, \
              country = excluded.country, region = excluded.region, status = excluded.status, \
              packaging = excluded.packaging, discogs_details = excluded.discogs_details, \
              media_kind = excluded.media_kind, cover_url = excluded.cover_url, \
@@ -228,7 +229,7 @@ pub(super) fn store_match(
             result.source.as_str(),
             result.release_id,
             result.title,
-            result.artist,
+            result.artist.as_ref().map(stored_credits::line_json).transpose()?,
             result.year,
             facts.country,
             facts.region,
@@ -673,7 +674,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
             source: source_of(&source)?,
             release_id: row.get("release_id")?,
             title: row.get("title")?,
-            artist: row.get("artist")?,
+            artist: stored_credits::line_column(row, "credits")?,
             year: row.get("year")?,
             labels: Vec::new(),
             area: facts.area,
@@ -706,7 +707,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
 /// the stored catalog release it names, joined as `fetched`.
 pub(super) const MATCH_COLUMNS: &str =
     "found.position, found.pressing, found.source, found.release_id, \
-     found.title, found.artist, found.year, found.country, found.region, \
+     found.title, found.credits, found.year, found.country, found.region, \
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \

@@ -44,8 +44,8 @@ impl LibraryCredit {
 }
 
 /// The line `credits` print.
-pub fn library_line(credits: &[LibraryCredit]) -> String {
-    bae_types::credits::credit_line(
+pub fn library_line(credits: &[LibraryCredit]) -> bae_types::credits::CreditLine {
+    bae_types::credits::CreditLine::from_stored(
         credits.iter().map(|credit| (credit.printed(), credit.join.as_deref())),
     )
 }

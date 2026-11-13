@@ -62,12 +62,12 @@ async fn an_album_is_found_by_any_of_its_credits() {
 
     let results = LibraryViews::new(db.clone()).search_rows("Artist B", 10).await.unwrap();
 
-    let albums: Vec<(&str, &str)> = results
+    let albums: Vec<(&str, String)> = results
         .albums
         .iter()
-        .map(|album| (album.id.as_str(), album.artist_name.as_str()))
+        .map(|album| (album.id.as_str(), album.artist_line.plain_text()))
         .collect();
-    assert_eq!(albums, [(ALBUM_AB, "Artist A, Artist B")]);
+    assert_eq!(albums, [(ALBUM_AB, "Artist A, Artist B".to_string())]);
 }
 
 #[tokio::test]
@@ -76,12 +76,18 @@ async fn a_track_search_row_names_its_own_credits_else_its_albums() {
 
     let results = LibraryViews::new(db.clone()).search_rows("Track", 10).await.unwrap();
 
-    let tracks: Vec<(&str, &str)> = results
+    let tracks: Vec<(&str, String)> = results
         .tracks
         .iter()
-        .map(|track| (track.title.as_str(), track.artist_name.as_str()))
+        .map(|track| (track.title.as_str(), track.artist_line.plain_text()))
         .collect();
-    assert_eq!(tracks, [("Track Credited", "Artist C"), ("Track Uncredited", "Various Artists"),]);
+    assert_eq!(
+        tracks,
+        [
+            ("Track Credited", "Artist C".to_string()),
+            ("Track Uncredited", "Various Artists".to_string()),
+        ]
+    );
 }
 
 /// "A" sorts before "A & B", which sorts before "A & C", whatever the titles
@@ -236,8 +242,8 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
     let albums =
         crate::LibraryViews::new(db.clone()).get_album_page(&album_sort, 0, 10).await.unwrap();
     assert_eq!(albums.len(), 2);
-    assert_eq!(albums[0].artist_names, "");
-    assert_eq!(albums[1].artist_names, "Artist Name First, Artist Name Second");
+    assert_eq!(albums[0].artist_line.plain_text(), "");
+    assert_eq!(albums[1].artist_line.plain_text(), "Artist Name First, Artist Name Second");
 
     let storage_sort = StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
@@ -249,8 +255,8 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
         .unwrap()
         .rows;
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].album.artist_names, "");
-    assert_eq!(rows[1].album.artist_names, "Artist Name First, Artist Name Second");
+    assert_eq!(rows[0].album.artist_line.plain_text(), "");
+    assert_eq!(rows[1].album.artist_line.plain_text(), "Artist Name First, Artist Name Second");
 }
 
 #[tokio::test]

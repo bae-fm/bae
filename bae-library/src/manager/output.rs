@@ -311,7 +311,7 @@ impl LibraryManager {
         let album_artists = self.records.get_artists_for_album(&album.id).await?;
         let labels = &release.pressing.labels;
         let tags = crate::save::SaveFolderTags {
-            artist: bae_records::credits::library_line(&album_artists),
+            artist: bae_records::credits::library_line(&album_artists).plain_text(),
             album_year: album.year,
             release_year: release.shown_year(album.year),
             album: album.title,

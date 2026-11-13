@@ -79,7 +79,7 @@ impl Fixture {
                     source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id: release_id.to_string(),
                     title: "Album".to_string(),
-                    artist: Some("Artist".to_string()),
+                    artist: Some(bae_types::credits::CreditLine::of_name("Artist")),
                     year: None,
                     labels: Vec::new(),
                     area: None,

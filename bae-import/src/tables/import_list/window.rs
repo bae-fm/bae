@@ -243,7 +243,7 @@ fn release_rows(
     let rows = sql.query(
         &format!(
             "SELECT p.watched_folder_path, p.key, p.display_path, \
-                    p.has_summary, p.shown_title, p.shown_artists, {LISTED_COLUMNS}, \
+                    p.has_summary, p.shown_title, p.shown_credits, {LISTED_COLUMNS}, \
                     c.name, c.content_hash, s.content_hash IS NOT NULL, \
                     origin.release_id, released.album_id, \
                     g.blocked, g.blocked_subject, g.blocked_holder, \
@@ -284,7 +284,11 @@ fn release_rows(
             let summary = match row.get::<_, Option<bool>>(3)? {
                 Some(true) => Some(TriageMetadataSummary {
                     album_title: row.get(4)?,
-                    album_artists: row.get(5)?,
+                    album_artists: crate::tables::stored_credits::line_column(
+                        row,
+                        "shown_credits",
+                    )?
+                    .unwrap_or_default(),
                 }),
                 Some(false) | None => None,
             };

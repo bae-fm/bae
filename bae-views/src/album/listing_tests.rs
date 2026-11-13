@@ -301,7 +301,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         for section in &sections {
             assert_eq!(section.window.offset, offset);
             let albums = &page[offset as usize..(offset + section.window.limit) as usize];
-            assert!(albums.iter().all(|album| album.artist_names == section.title));
+            assert!(albums.iter().all(|album| album.artist_line.plain_text() == section.title));
             assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
             for (position, album) in albums.iter().enumerate() {
                 assert_eq!(
@@ -574,16 +574,16 @@ async fn a_grouped_row_names_the_albums_other_credits() {
             credited_with.insert((
                 section.id.as_str(),
                 row.album.title.as_str(),
-                row.credited_with.as_deref(),
+                row.credited_with.as_ref().map(|line| line.plain_text()),
             ));
         }
     }
     assert_eq!(
         credited_with,
         [
-            (ARTIST_A, "Album A", Some("Artist Name B")),
+            (ARTIST_A, "Album A", Some("Artist Name B".to_string())),
             (ARTIST_A, "Album C", None),
-            (ARTIST_B, "Album A", Some("Artist Name A")),
+            (ARTIST_B, "Album A", Some("Artist Name A".to_string())),
             (ARTIST_B, "Album B", None),
             (ARTIST_B, "Album D", None),
             (ARTIST_C, "Album E", None),

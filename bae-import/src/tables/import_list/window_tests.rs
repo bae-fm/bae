@@ -786,7 +786,7 @@ async fn a_done_row_reads_its_library_release() {
         done.metadata_summary,
         Some(crate::TriageMetadataSummary {
             album_title: "Album Title".to_string(),
-            album_artists: "Artist Name".to_string(),
+            album_artists: bae_types::credits::CreditLine::of_name("Artist Name"),
         })
     );
     assert_eq!(

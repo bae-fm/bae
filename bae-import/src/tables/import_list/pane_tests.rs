@@ -520,7 +520,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         ],
         tags: Some(SkippedTags {
             album_title: "Album Title".to_string(),
-            artist: Some("Artist Name".to_string()),
+            artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         }),
     };
     let key = invalid.key();

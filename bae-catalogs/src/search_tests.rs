@@ -100,7 +100,10 @@ fn discogs_search_result_keeps_every_barcode() {
     assert_eq!(discogs.barcodes, vec!["0 12345 67890 5", "5051961234567"]);
     assert_eq!(discogs.source_group_id.as_deref(), Some("7"));
     assert_eq!(discogs.title, "Album Title");
-    assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(
+        discogs.artist.as_ref().map(bae_types::credits::CreditLine::plain_text).as_deref(),
+        Some("Artist Name")
+    );
     assert_eq!(discogs.year, Some(1992));
 }
 
@@ -238,7 +241,10 @@ fn discid_metadata_carries_every_medium_into_pairing() {
 #[test]
 fn discogs_title_splits_into_artist_and_album() {
     let m = discogs_search_result_to_metadata(result_with_title("Artist Name - Album Title"));
-    assert_eq!(m.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(
+        m.artist.as_ref().map(bae_types::credits::CreditLine::plain_text).as_deref(),
+        Some("Artist Name")
+    );
     assert_eq!(m.title, "Album Title");
 }
 
@@ -773,9 +779,14 @@ fn the_isrc_search_answers_each_release_of_an_asked_recording_once() {
     assert_eq!(
         results
             .iter()
-            .map(|result| (result.release_id.as_str(), result.artist.as_deref()))
+            .map(|result| {
+                (result.release_id.as_str(), result.artist.as_ref().map(|line| line.plain_text()))
+            })
             .collect::<Vec<_>>(),
-        vec![("rel-album", Some("Artist Name")), ("rel-compilation", Some("Various Artists")),]
+        vec![
+            ("rel-album", Some("Artist Name".to_string())),
+            ("rel-compilation", Some("Various Artists".to_string())),
+        ]
     );
 }
 
@@ -882,7 +893,11 @@ fn a_musicbrainz_search_result_names_its_whole_credit() {
     }))
     .expect("search release parses");
     assert_eq!(
-        search_release_to_metadata(release, None).artist.as_deref(),
+        search_release_to_metadata(release, None)
+            .artist
+            .as_ref()
+            .map(bae_types::credits::CreditLine::plain_text)
+            .as_deref(),
         Some("Artist One & Artist Two")
     );
 }
@@ -907,7 +922,10 @@ fn discid_metadata_names_its_whole_credit() {
     .expect("MusicBrainz DiscID response parses");
     let metadata = mb_discid_release_to_metadata("disc-1", response)
         .expect("the release contains the queried disc");
-    assert_eq!(metadata.artist.as_deref(), Some("Artist One feat. Artist Two"));
+    assert_eq!(
+        metadata.artist.as_ref().map(bae_types::credits::CreditLine::plain_text).as_deref(),
+        Some("Artist One feat. Artist Two")
+    );
 }
 
 /// Discogs writes links into a note as markup; a picker row's note reads the

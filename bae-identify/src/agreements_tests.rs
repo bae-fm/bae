@@ -367,7 +367,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
     let judged = judge(
         &MetadataResult {
             title: "Album Title".to_string(),
-            artist: Some("Artist Name".to_string()),
+            artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
             ..result()
         },
         &text(&["Artist Name - Album Title"]),
@@ -381,7 +381,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
     let other = judge(
         &MetadataResult {
             title: "Other Title".to_string(),
-            artist: Some("Other Name".to_string()),
+            artist: Some(bae_types::credits::CreditLine::of_name("Other Name")),
             ..result()
         },
         &text(&["Artist Name - Album Title"]),

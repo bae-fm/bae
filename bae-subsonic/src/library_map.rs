@@ -107,7 +107,7 @@ pub(crate) async fn release_album_id3_with(
     Ok(AlbumId3 {
         id: album_wire_id(&release.id),
         name: album.album.title.clone(),
-        artist: Some(album.artist_names.clone()),
+        artist: Some(album.artist_line.plain_text()),
         artist_id: album.artists.first().map(|credit| artist_wire_id(&credit.artist.id)),
         artists: CreditedArtist::of(&album.artists),
         cover_art,
@@ -207,7 +207,8 @@ pub(crate) async fn track_child(
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
         album: Some(album.name.clone()),
-        artist: Some(bae_records::credits::library_line(&credits)).filter(|line| !line.is_empty()),
+        artist: Some(bae_records::credits::library_line(&credits).plain_text())
+            .filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
         year: album.year,
         cover_art: album.cover_art.clone(),
@@ -237,7 +238,7 @@ pub(crate) async fn search_track_child(
     track_id: &str,
     title: &str,
     album_title: &str,
-    artist_name: &str,
+    artist_line: &bae_types::credits::CreditLine,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, track_id, None).await?;
     let release = services
@@ -253,7 +254,7 @@ pub(crate) async fn search_track_child(
         parent: Some(album_wire_id(&audio.release_id)),
         title: title.to_string(),
         album: Some(album_title.to_string()),
-        artist: Some(artist_name.to_string()),
+        artist: Some(artist_line.plain_text()),
         track: None,
         year: album.year,
         cover_art: album.cover_art,

@@ -262,7 +262,7 @@ fn folder(lines: &[&str]) -> CandidateText {
 fn pressing_of_album_one(release_id: &str, year: i32) -> MetadataResult {
     MetadataResult {
         title: "Album One".to_string(),
-        artist: Some("Artist One".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist One")),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("L1-16033"))],
         area: Some(bae_types::pressing::area("US")),
         status: None,
@@ -278,7 +278,7 @@ fn pressing_of_album_one(release_id: &str, year: i32) -> MetadataResult {
 fn unrelated_record() -> MetadataResult {
     MetadataResult {
         title: "Album Three".to_string(),
-        artist: Some("Artist Three".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Three")),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Three"), Some("L3-44633"))],
         area: Some(bae_types::pressing::area("FR")),
         status: None,
@@ -500,7 +500,7 @@ fn badges(agreements: &crate::agreements::Agreements) -> Vec<&'static str> {
 fn album_two_musicbrainz() -> MetadataResult {
     MetadataResult {
         title: "Album Two".to_string(),
-        artist: Some("Artist Two".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Two")),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("L2-2031"))],
         area: Some(bae_types::pressing::area("JP")),
         status: None,
@@ -520,7 +520,7 @@ fn album_two_discogs(release_id: &str, year: Option<i32>) -> MetadataResult {
     MetadataResult {
         source: LookupCatalog::Discogs,
         title: "Album Two".to_string(),
-        artist: Some("Artist Two".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Two")),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label Two"), Some("L2-2031"))],
         area: bae_types::pressing::ReleaseArea::discogs("Japan"),
         status: None,

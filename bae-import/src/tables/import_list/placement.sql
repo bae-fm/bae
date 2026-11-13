@@ -88,6 +88,10 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     -- its draft, else the folder's name; for a folder that failed
     -- validation, what its tags call it.
     shown_title         TEXT,
+    -- The credits shown, a JSON list of `{name, join}`: one entry each, the
+    -- join as its source stated it, which the apps word.
+    shown_credits       TEXT,
+    -- Their printed names alone, which is the text the list's filter reads.
     shown_artists       TEXT,
     -- The shown text case folded as `bae_fold_case` folds it, which is how
     -- the list's filter folds what is typed into it.
@@ -241,7 +245,11 @@ SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_
                 CASE WHEN identification IN ('not_written', 'inapplicable')
                      THEN save_failure_error ELSE verdict_error END
             END AS error_detail,
-       own_date, folder, has_summary, shown_title, shown_artists,
+       own_date, folder, has_summary, shown_title, shown_credits,
+       CASE WHEN shown_credits IS NOT NULL THEN
+                COALESCE((SELECT group_concat(shown.value ->> 'name', ', ')
+                          FROM json_each(shown_credits) AS shown), '')
+            END AS shown_artists,
        actionable, import_failed, draft_valid, lookup, separable
 FROM (
     SELECT judged.*,
@@ -263,9 +271,9 @@ FROM (
                 WHEN imported THEN library_title
                 WHEN has_summary THEN COALESCE(draft_title, name)
                 ELSE name END AS shown_title,
-           CASE WHEN item = 'invalid' THEN tag_artist
-                WHEN imported THEN COALESCE(library_credit_line, '')
-                WHEN has_summary THEN COALESCE(credit_line, '') END AS shown_artists,
+           CASE WHEN item = 'invalid' THEN tag_credits
+                WHEN imported THEN COALESCE(library_credits, '[]')
+                WHEN has_summary THEN COALESCE(draft_credits, '[]') END AS shown_credits,
            CASE WHEN item = 'candidate' THEN tab = 'pending' AND failed END AS import_failed,
            CASE WHEN item = 'candidate' THEN
                 -- What the stored lookup came to: failed when a source could
@@ -386,28 +394,24 @@ FROM (
                                                         AND m.listing = 'offered'))
                    END AS declined,
                    st.identification, st.import_step AS running_import, st.save_failure_error,
-                   t.album_title AS tag_title, t.artist AS tag_artist,
+                   t.album_title AS tag_title, t.credits AS tag_credits,
                    e.album_title AS draft_title,
                    album.title AS library_title,
-                   -- The library album's credits as one line, as the library
-                   -- prints them: each credit's printed name (its credit
-                   -- name, else the name of the artist it shows as), after
-                   -- the join the credit before it states, or a comma.
-                   (SELECT group_concat(
-                           COALESCE((SELECT COALESCE(before.join_phrase, ', ')
-                                     FROM album_artists AS before
-                                     WHERE before.album_id = credit.album_id
-                                       AND before.position < credit.position
-                                     ORDER BY before.position DESC LIMIT 1), '')
-                           || COALESCE(printed.name, shown.name),
-                           '' ORDER BY credit.position)
+                   -- The library album's credits, as the library prints them:
+                   -- each credit's printed name (its credit name, else the
+                   -- name of the artist it shows as), with the join it states
+                   -- after it.
+                   (SELECT json_group_array(
+                           json_object('name', COALESCE(printed.name, shown.name),
+                                       'join', credit.join_phrase)
+                           ORDER BY credit.position)
                     FROM album_artists AS credit
                     JOIN artist_shown_as AS shown_as ON shown_as.artist_id = credit.artist_id
                     JOIN artists AS shown ON shown.id = shown_as.shown_artist_id
                     LEFT JOIN artist_credits AS printed
                         ON printed.artist_id = credit.artist_id
                        AND printed.name_key = credit.credit_key
-                    WHERE credit.album_id = album.id) AS library_credit_line,
+                    WHERE credit.album_id = album.id) AS library_credits,
                    CASE WHEN listed.item = 'candidate' THEN
                        origin.release_id IS NOT NULL
                        OR (e.content_hash IS NOT NULL
@@ -422,24 +426,20 @@ FROM (
                        OR (s.content_hash IS NOT NULL AND e.content_hash IS NULL
                            AND c.grouping_key IS NOT NULL)
                    END AS has_summary,
-                   -- The draft's album credits as one line: each printed
-                   -- name, after the join the credit before it states, or a
-                   -- comma.
-                   (SELECT group_concat(
-                           COALESCE((SELECT COALESCE(before.join_phrase, ', ')
-                                     FROM import_candidate_album_artist_assignment AS before
-                                     WHERE before.content_hash = a.content_hash
-                                       AND before.position < a.position
-                                     ORDER BY before.position DESC LIMIT 1), '')
-                           || CASE a.assignment_kind
-                                  WHEN 'picked' THEN COALESCE(credit.name, artist.name)
-                                  ELSE COALESCE(a.credited_as, a.name) END,
-                           '' ORDER BY a.position)
+                   -- The draft's album credits: each printed name, with the
+                   -- join it states after it.
+                   (SELECT json_group_array(
+                           json_object('name',
+                                       CASE a.assignment_kind
+                                           WHEN 'picked' THEN COALESCE(credit.name, artist.name)
+                                           ELSE COALESCE(a.credited_as, a.name) END,
+                                       'join', a.join_phrase)
+                           ORDER BY a.position)
                     FROM import_candidate_album_artist_assignment AS a
                     LEFT JOIN artists AS artist ON artist.id = a.artist_id
                     LEFT JOIN artist_credits AS credit
                         ON credit.artist_id = a.artist_id AND credit.name_key = a.credit_key
-                    WHERE a.content_hash = e.content_hash) AS credit_line
+                    WHERE a.content_hash = e.content_hash) AS draft_credits
             FROM import_list_listed AS listed
             JOIN scan_candidate AS c
                 ON c.watched_folder_path = listed.watched_folder_path AND c.path = listed.key
@@ -470,10 +470,12 @@ BEGIN
     INSERT INTO import_list_placement
         (watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
          reason_pressings, error_detail, own_date, folder, has_summary,
-         shown_title, shown_artists, actionable, import_failed, draft_valid, lookup, separable)
+         shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid, lookup,
+         separable)
     SELECT watched_folder_path, item, key, root_position, tab, pending_state, needs_you_reason,
            reason_pressings, error_detail, own_date, folder, has_summary,
-           shown_title, shown_artists, actionable, import_failed, draft_valid, lookup, separable
+           shown_title, shown_credits, shown_artists, actionable, import_failed, draft_valid,
+           lookup, separable
     FROM import_list_entry WHERE key = NEW.key
     ON CONFLICT (watched_folder_path, item, key) DO UPDATE SET
         root_position = excluded.root_position,
@@ -486,6 +488,7 @@ BEGIN
         folder = excluded.folder,
         has_summary = excluded.has_summary,
         shown_title = excluded.shown_title,
+        shown_credits = excluded.shown_credits,
         shown_artists = excluded.shown_artists,
         actionable = excluded.actionable,
         import_failed = excluded.import_failed,
@@ -497,14 +500,16 @@ BEGIN
            import_list_placement.reason_pressings,
            import_list_placement.error_detail, import_list_placement.own_date,
            import_list_placement.folder, import_list_placement.has_summary,
-           import_list_placement.shown_title, import_list_placement.shown_artists,
+           import_list_placement.shown_title, import_list_placement.shown_credits,
+           import_list_placement.shown_artists,
            import_list_placement.actionable, import_list_placement.import_failed,
            import_list_placement.draft_valid, import_list_placement.lookup,
            import_list_placement.separable)
         IS NOT (excluded.root_position, excluded.tab, excluded.pending_state,
                 excluded.needs_you_reason, excluded.reason_pressings,
                 excluded.error_detail, excluded.own_date, excluded.folder,
-                excluded.has_summary, excluded.shown_title, excluded.shown_artists,
+                excluded.has_summary, excluded.shown_title, excluded.shown_credits,
+                excluded.shown_artists,
                 excluded.actionable, excluded.import_failed, excluded.draft_valid,
                 excluded.lookup, excluded.separable);
     -- A release that is no longer this item, or no longer listed, goes;

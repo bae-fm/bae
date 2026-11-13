@@ -225,7 +225,7 @@ impl AlbumSummaryRow {
             title: self.title,
             year: self.year,
             is_compilation: self.is_compilation,
-            artist_names: crate::credits::library_line(credits),
+            artist_line: crate::credits::library_line(credits),
             release_ids,
             primary_release_id: self.primary_release_id,
             cover_version: self.primary_cover_version,

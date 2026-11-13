@@ -12,7 +12,7 @@ fn release(
         source: catalog,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         year: Some(year),
         labels: Vec::new(),
         area: None,

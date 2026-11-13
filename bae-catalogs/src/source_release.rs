@@ -452,7 +452,7 @@ impl SourceRelease {
     }
 
     /// The album's credits, printed as the catalog prints them.
-    pub(crate) fn artist_line(&self) -> Option<String> {
+    pub(crate) fn artist_line(&self) -> Option<bae_types::credits::CreditLine> {
         let artists = &self.metadata.album.artists;
         (!artists.is_empty()).then(|| crate::credits::SourceCredit::line(artists))
     }

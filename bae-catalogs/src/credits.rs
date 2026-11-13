@@ -63,8 +63,8 @@ impl SourceCredit {
 
     /// The line `credits` print, as the picker's row shows a release's
     /// artists.
-    pub fn line(credits: &[Self]) -> String {
-        bae_types::credits::credit_line(
+    pub fn line(credits: &[Self]) -> bae_types::credits::CreditLine {
+        bae_types::credits::CreditLine::from_stored(
             credits.iter().map(|credit| (credit.credit.printed(), credit.join.as_deref())),
         )
     }

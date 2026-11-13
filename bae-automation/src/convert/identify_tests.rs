@@ -14,7 +14,7 @@ use bae_records::LibraryStatus;
 fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
     MetadataResult {
         title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         year: Some(1999),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100"))],
         area: Some(bae_types::pressing::ReleaseArea::Country(

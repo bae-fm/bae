@@ -77,7 +77,7 @@ pub(crate) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<Track
     Ok(TrackQueueMeta {
         display: crate::TrackDisplay {
             title: row.get("title")?,
-            artist_names: credit_line_column(row, "artist_names")?,
+            artist_line: credit_line_column(row, "artist_names")?,
             album_id: row.get("album_id")?,
             release_id,
             album_title: row.get("album_title")?,

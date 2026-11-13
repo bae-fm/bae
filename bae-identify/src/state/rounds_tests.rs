@@ -187,7 +187,7 @@ fn titled_folder() -> Signals {
 fn titled(release_id: &str, title: &str) -> MetadataResult {
     let mut result = discogs_pair(release_id, Some("m-1"));
     result.title = title.to_string();
-    result.artist = Some("Artist".to_string());
+    result.artist = Some(bae_types::credits::CreditLine::of_name("Artist"));
     result
 }
 

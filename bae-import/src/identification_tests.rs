@@ -885,7 +885,7 @@ pub(crate) fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> Termi
                     source: bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                     release_id: release_id.to_string(),
                     title: "Album".to_string(),
-                    artist: Some("Artist".to_string()),
+                    artist: Some(bae_types::credits::CreditLine::of_name("Artist")),
                     year: None,
                     labels: Vec::new(),
                     area: None,

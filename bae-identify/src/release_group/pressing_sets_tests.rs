@@ -13,7 +13,7 @@ fn artist_spelling_does_not_block_established_identity() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
     let mut respelled = discogs("dg-1", Some("master-7"), Some(1992));
-    respelled.artist = Some("The Artist Name".to_string());
+    respelled.artist = Some(bae_types::credits::CreditLine::of_name("The Artist Name"));
     respelled.barcodes = vec!["012345678905".to_string()];
     let groups = grouped(vec![one.clone(), respelled]);
     assert_eq!(groups.len(), 1);
@@ -25,7 +25,10 @@ fn artist_spelling_does_not_block_established_identity() {
     let groups = grouped(vec![anonymous, one]);
     assert_eq!(groups.len(), 1);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-2"]]);
-    assert_eq!(groups[0].artist.as_deref(), Some("Artist Name"));
+    assert_eq!(
+        groups[0].artist.as_ref().map(bae_types::credits::CreditLine::plain_text).as_deref(),
+        Some("Artist Name")
+    );
 }
 
 /// A release document that names the other source's release as the same
@@ -38,7 +41,7 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     one.links = vec![bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "dg-1")];
     let mut other = discogs("dg-1", Some("master-7"), Some(1994));
     other.title = "Another Album".to_string();
-    other.artist = Some("Other Artist".to_string());
+    other.artist = Some(bae_types::credits::CreditLine::of_name("Other Artist"));
 
     let groups = grouped(vec![other, one]);
     assert_eq!(groups.len(), 1);

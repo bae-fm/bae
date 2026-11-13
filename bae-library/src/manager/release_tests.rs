@@ -591,7 +591,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
 
         let detail =
             views(manager).find_release_detail(&release.id).await.unwrap().expect("detail present");
-        detail.tracks[0].display_artist.clone()
+        detail.tracks[0].display_artist.as_ref().map(|line| line.plain_text())
     }
 
     assert_eq!(

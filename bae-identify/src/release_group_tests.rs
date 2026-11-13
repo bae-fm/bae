@@ -17,7 +17,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         source: LookupCatalog::MusicBrainz,
         release_id: release_id.to_string(),
         title: "Album Title".to_string(),
-        artist: Some("Artist Name".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         year,
         labels: Vec::new(),
         area: None,
@@ -177,13 +177,13 @@ fn a_linked_album_is_one_card_whatever_the_artist_text_and_the_order() {
     let musicbrainz = |release_id: &str, year: i32| {
         let mut release = linked(mb(release_id, Some(group), Some(year)), master);
         release.title = "Album".to_string();
-        release.artist = Some("Artist".to_string());
+        release.artist = Some(bae_types::credits::CreditLine::of_name("Artist"));
         release
     };
     let discogs_release = |release_id: &str, year: i32, artist: &str| {
         let mut release = discogs(release_id, Some(master), Some(year));
         release.title = "Album".to_string();
-        release.artist = Some(artist.to_string());
+        release.artist = Some(bae_types::credits::CreditLine::of_name(artist));
         release
     };
     let results = vec![

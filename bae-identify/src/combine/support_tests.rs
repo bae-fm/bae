@@ -35,7 +35,7 @@ fn catalog_folder() -> CandidateText {
 fn stated_pressing(release_id: &str, media: StatedMedia) -> Found {
     MetadataResult {
         title: "Album One".to_string(),
-        artist: Some("Artist One".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist One")),
         labels: vec![bae_types::pressing::ReleaseLabel::of(None, Some("L1-100"))],
         media,
         ..MetadataResult::for_test(LookupCatalog::MusicBrainz, release_id, Some("rg-one"))
@@ -442,7 +442,7 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
         let result = stated_pressing(release_id, made_of(&[Medium::Vinyl]));
         MetadataResult {
             title: title.to_string(),
-            artist: Some(artist.to_string()),
+            artist: Some(bae_types::credits::CreditLine::of_name(artist)),
             labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), None)],
             area: Some(bae_types::pressing::area("US")),
             ..result
@@ -564,7 +564,7 @@ fn folder(line: &str) -> CandidateText {
 fn noted_pressing(release_id: &str, notes: &[&str]) -> MetadataResult {
     MetadataResult {
         title: "Album One".to_string(),
-        artist: Some("Artist One".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist One")),
         year: Some(1987),
         labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("L1-100"))],
         notes: notes.iter().map(|note| note.to_string()).collect(),
@@ -736,7 +736,7 @@ fn the_artist_s_name_in_a_note_keeps_the_tie() {
 fn dated_pressing(release_id: &str, year: Option<i32>) -> MetadataResult {
     MetadataResult {
         title: "Album One".to_string(),
-        artist: Some("Artist One".to_string()),
+        artist: Some(bae_types::credits::CreditLine::of_name("Artist One")),
         year,
         album_first_year: Some(1963),
         source_tracks: Some(SourceTracks::Listed { count: 10 }),

@@ -157,7 +157,10 @@ pub(super) fn credits_column(row: &Row, column: &str) -> rusqlite::Result<Vec<Li
 }
 
 /// The line a credit-list JSON column prints, read in a row closure.
-pub fn credit_line_column(row: &Row, column: &str) -> rusqlite::Result<String> {
+pub fn credit_line_column(
+    row: &Row,
+    column: &str,
+) -> rusqlite::Result<bae_types::credits::CreditLine> {
     let json: String = row.get(column)?;
     credits_from_json(&json)
         .map(|credits| crate::credits::library_line(&credits))

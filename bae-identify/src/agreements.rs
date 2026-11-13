@@ -109,7 +109,7 @@ pub(crate) fn agreements_of(
             .is_some_and(|year| facts.pressing_year(std::slice::from_ref(result)) == Some(year)),
         country: result.area.is_some_and(|area| facts.names_area(area)),
         title: text.states_title(&result.title),
-        artist: result.artist.as_deref().is_some_and(|artist| text.states(artist)),
+        artist: result.artist.as_ref().is_some_and(|artist| text.states(&artist.plain_text())),
     }
 }
 
