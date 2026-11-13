@@ -35,7 +35,9 @@ extension ShotScene {
     /// A browse session over `boardAlbums`.
     @MainActor
     static func boardLibraryBacking(
-        uiStore: UiStore
+        uiStore: UiStore,
+        playlists: [BridgePlaylistSummary] = [],
+        playlistDetails: [String: BridgePlaylistDetail] = [:]
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
             albumBrowse: { _, _ in
@@ -44,6 +46,18 @@ extension ShotScene {
             getAlbumIndex: { _, albumId, _ in
                 boardAlbums.firstIndex { $0.id == albumId }
                     .map(UInt64.init)
+            },
+            playlists: {
+                .fixed(
+                    BridgePlaylistListing(
+                        listed: playlists,
+                        addTargets: playlists.filter(\.yours),
+                        canCreate: true
+                    )
+                )
+            },
+            playlistDetail: {
+                .fixed(answers: UnansweredCount()) { playlistDetails[$0] }
             }
         )
         let session = LibraryBrowseSession(library: library, uiStore: uiStore)

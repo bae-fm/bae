@@ -14,13 +14,17 @@ extension ShotScenes {
         needsAttention: Bool = true,
         playbackStore: PlaybackStore = PlaybackStore(),
         importListSlot: ImportListSlot? = nil,
+        projections: LibraryProjectionStore? = nil,
         size: CGSize = CGSize(width: 1280, height: 800)
     ) -> some View {
         let importScene = PreviewData.importTabScene()
         return MacMainWindowContainer()
             .environment(backing.library)
             .environment(backing.session)
-            .environment(LibraryProjectionStore(library: backing.library))
+            .environment(
+                projections
+                    ?? LibraryProjectionStore(library: backing.library)
+            )
             .environment(uiStore)
             .environment(importScene.store)
             .environment(

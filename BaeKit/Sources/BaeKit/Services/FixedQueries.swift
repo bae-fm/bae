@@ -5,6 +5,32 @@
     // request with its slice of rows given already in order, which only core
     // orders and windows in a running app. Debug builds only.
 
+    extension PulledValues {
+        /// A read that answers `value` once and then waits, for previews and
+        /// tests of a live read with nothing more to say.
+        public static func fixed(_ value: Value) -> PulledValues<Value> {
+            let answered = FixedAnswer()
+            return PulledValues(read: {
+                if answered.take() { return value }
+                try await Task.sleep(for: .seconds(3600))
+                throw CancellationError()
+            })
+        }
+    }
+
+    private final class FixedAnswer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var answered = false
+
+        /// True the first time it is asked.
+        func take() -> Bool {
+            lock.withLock {
+                defer { answered = true }
+                return !answered
+            }
+        }
+    }
+
     extension KeyedDetailQuery {
         /// A read over fixed details, for shots and tests: every id is
         /// answered with what `lookup` finds for it.
