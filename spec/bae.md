@@ -3815,74 +3815,138 @@ everything is up to date. The panel doesn't offer *Retry now*: the Sync page's
 fix does.
 
 **The Sync page.** Sync has a page of its own, off the Library page. Its top
-is one block: *Status* with the state in words, then the state's cause and its
-fix, in that order, each only when it has one; on the Mac the fix is a primary
+is one block: *Status* with the state in words, then a line that says what
+happened, then a second line that says what to do, then the button that does
+it, each only when the state has one; on the Mac the button is a primary
 button. On the Mac a state in a color (green, amber or red) has a dot before
 its words, here and on the Library page's Sync row, and gray has none. *Last
-synced* follows the fix, in the same box on the Mac. It shows under a state that is a problem, amber or red, and never under
-Synced.
+synced* follows the button, in the same box on the Mac. *Last synced* shows
+under a state that is a problem, amber or red, and never under Synced.
 Under the block are the library's storage rows (§6.2).
 coven gives the state
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 and when several hold the first of these shows: Not synced, Removed from the
-library, Device needs reset, Update needed, Signed out, No access, Folder
-missing, Clock is wrong, Cloud full, Offline · unsent changes, Offline, Sync
-failed, Syncing…, Waiting to sync, Synced. core picks the words, the color and
-the fix; the apps draw what core sends and add nothing of their own but the
-words of a button, which are each platform's.
+library, Device needs reset, New restore code, Update needed, Signed out, No
+access, Folder missing, Clock is wrong, Cloud full, Waiting for access,
+Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync,
+Synced. core picks the words, the color and the button; the apps draw what core
+sends and add nothing of their own. Mac and Android show the same words and
+the same button for each state, except that a line or button that names the
+device says *this Mac* on the Mac and *this device* on Android, and a state
+only the Mac has. The lines below are the Mac's.
 
-- **Gray.** Not synced, on the Mac only: a phone joins a library and never
-  makes one. Syncing…, while coven's state says Syncing: work that clears by
-  itself is under way or next in line. Waiting to sync, online with work held
-  back for a while: with *An upload failed. bae will try again shortly.* and
-  *Retry now* when a retry waits, and with nothing else when sync isn't
-  running or a key or a snapshot from another device hasn't arrived. A paused
-  upload, or one held for the network, isn't a hold on the Sync row: it shows
-  in Transfers (§4.2). A phone never
-  uploads files, so its only reason to wait is the provider's. While a cloud home
-  setup runs, "Setting up your cloud home…" takes the place of any state that is no
-  problem (§6.2).
-- **Green.** Synced, with a dot. It means data and files both: a file still
-  uploading is Syncing….
-- **Amber.** Offline, and Offline · unsent changes when changes or files
-  wait to go out, with no count. Waiting to sync while the provider asked
-  bae to wait, saying who asked and when sync resumes ("Dropbox asked bae to
-  wait. Syncing resumes at 3:40."). Update needed, with *Update bae to keep
-  syncing.* and the check for updates. Signed out, naming the provider:
-  Dropbox and OneDrive sign in from bae, with *Sign in to Dropbox…*; iCloud
-  signs in from System Settings; an S3 library has no sign-in, so it reads
-  *Access key not accepted* and asks for a new key for the same bucket. A
-  sign-in that expired reads the same as none saved.
-- **Red.** Device needs reset, with *Reset from cloud…*. No access to the cloud, Cloud
-  folder missing and Clock is wrong, each with its cause. Removed from the
-  library, with *An admin removed this device. What's here is an old copy.*
-  and the list of libraries on this device, where it is removed. Cloud full, with *Free up space in the
-  cloud.* and, for Dropbox and OneDrive, *Open in browser*. Sync failed: any
-  failure with no state of its own, its cause in plain words, always with
-  *Retry now*, which it also does by itself. A file that can't be uploaded,
-  missing or changed since import, is named until it is back as it was, and
-  nothing skips it. A provider's error is told as the provider told it ("Dropbox
-  returned an error: Internal server error."). The other causes read: a change
-  from another device is damaged and can't be applied; bae couldn't read the
-  library, or its saved keys, on this device; the device has no space left;
-  the operating system won't let bae open a file it needs, named when
-  a row on this device names it (*Couldn't read "Cover.jpg": bae isn't allowed
-  to open it.*); the device's disk failed some other way (*bae couldn't read or
-  write a file on this device. It will try again.*); something went wrong in
-  bae. Each platform words the three that name the device: on the Mac, *There's
-  no space left on this Mac. Free some space and bae will try again.*, *The
-  keychain is locked. Unlock it to keep syncing.* and *bae couldn't read the
-  library on this Mac.*; on Android, *This device is out of space. Free some up
-  and bae will try again.*, *bae could not read its saved keys on this device.*
-  and *bae could not read the library on this device.* A phone never uploads, so
-  its causes are local ones, a provider error or a damaged change. A start that failed with sync
-  not running is Sync failed with the start's own line as its cause and
-  *Reconnect* as its fix.
+Every line that names the provider names the library's: the lines below use
+Dropbox, and OneDrive and iCloud read the same with their own names. An S3
+library reads *your S3 service* in place of the provider's name and *S3
+storage* where the line names the place the library is kept.
+
+- **Gray.**
+  - Not synced, on the Mac only, since a phone joins a library and never
+    makes one: *This library is only on this Mac.* / *Set up a cloud home to
+    invite people and use it from your other devices.*, with *Set up a cloud
+    home…*.
+  - While a cloud home setup runs, *Setting up your cloud home…* takes the
+    place of any state that is no problem (§6.2), on the Mac only: *Creating
+    the library in Dropbox.* / *Your music stays on this Mac until you move it
+    to the cloud.*
+  - Syncing…, only while something is sent or received, not on quiet passes:
+    *Receiving changes from your other devices.* while a pass applies incoming
+    changes, and *Sending your changes.* while a change goes out or waits next
+    in line, with any cover, artist image or profile picture it names.
+- **Green.** Synced, with a dot: *Your library is up to date.* Synced means
+  data and files both: a file still uploading is Syncing….
+- **Amber.**
+  - Waiting to sync while the provider asked bae to wait: *Dropbox asked bae
+    to slow down.* / *Resuming in 42 seconds.*, the seconds counting down.
+  - Waiting to sync after a failure that clears by itself, a network error or
+    a server error: *Syncing with Dropbox did not go through.* / *Retrying in
+    18 seconds.*, the seconds counting down, with *Retry now*.
+  - Waiting to sync while this device waits for another to save a fresh copy
+    of the library: *This Mac needs a fresh copy of the library from your other
+    devices, so nothing comes in or goes out.* / *Open bae on one of them so it
+    can save one.*
+  - A paused upload, or one held for the network, puts no state on the Sync
+    page: Transfers shows it (§4.2).
+  - Waiting for access, while a change received waits for a key this device
+    doesn't hold, naming the devices that hold it: *This Mac needs access from
+    your iPhone or Ana’s Pixel, which comes when either device syncs.* / *To get
+    it now, scan one of them.*, with *Scan device…*. The button opens a sheet,
+    *Scan another device*: *On your iPhone or Ana’s Pixel, open bae’s Sync
+    settings and choose Share access. Then hold its code up to this Mac’s
+    camera.*, over the camera and *Cancel*. When no device holds the key any
+    more, coven deletes the library for everyone, and this device says so once.
+  - Offline: *This Mac is offline.* / *Syncing resumes when it reconnects.*
+  - Offline · unsent changes, while changes or files wait to go out, with no
+    count: *This Mac is offline.* / *Syncing resumes when it reconnects. Your
+    changes stay here until then.*
+  - New restore code, after another of the person's devices made a new
+    restore code, naming that device: *You made a new restore code on your
+    iPhone.* / *Your changes stay on this Mac until you scan the new code from
+    your iPhone.*, with *Scan restore code…*. Sync stays stopped until the
+    person scans the code, and the device takes on the new keys in place.
+  - Update needed: *Another device uses a newer bae.* / *Update this one to
+    keep syncing with it.*, with *Update…*, which opens bae's updater on the
+    Mac and bae's page in the Play Store on Android.
+  - Signed out of Dropbox, and of OneDrive with its name: *Your changes stay on
+    this Mac until you sign in to Dropbox again.*, with *Sign in to Dropbox…*.
+  - Signed out of iCloud, on the Mac only: *Your changes stay on this Mac until
+    you sign in to iCloud in System Settings.*, with *Open System Settings…*.
+  - Signed out of S3, while storage refuses the library's access key: *Your
+    changes stay on this Mac until you sign in to S3 storage.*, with *Sign in to
+    S3…*.
+  - A sign-in that expired reads the same as none saved.
+- **Red.**
+  - Removed from the library, when an admin removed this device: *An admin
+    removed this Mac from the library, so it no longer syncs.* / *To reconnect,
+    add this Mac from one of your other devices.*; when an admin removed the
+    person: *An admin removed you from the library, so this Mac no longer
+    syncs.* / *To reconnect, ask an admin to re-add you.* Both have *Remove
+    from this Mac…*.
+  - Device needs reset, when a change from another device is damaged: *A
+    change from another device arrived damaged, so this Mac cannot take in new
+    changes.* / *Reset to reload the library from the cloud.*, with *Reset from
+    cloud…*.
+  - No access to the cloud: *This Mac can no longer reach the library in
+    Dropbox.* / *Ask the person who shared it to give you access again.*
+  - Cloud folder missing: *The library’s folder is gone from Dropbox.* /
+    *Restore it from Dropbox’s deleted files to keep syncing.*, and for
+    OneDrive *from OneDrive’s recycle bin*. An iCloud or S3 library says only
+    *The library is gone from iCloud.* or *The library is gone from S3
+    storage.*
+  - Clock is wrong, for S3 only: *The storage service refuses this Mac’s
+    requests because its clock is off.* / *Set the date and time automatically
+    in System Settings.*; on Android, *in Settings*.
+  - Cloud full: *Changes, new music and covers cannot upload until there is
+    space in Dropbox.*, with *Open in browser* for Dropbox and OneDrive and
+    *Open System Settings…* for iCloud. An S3 library reads *Your S3 service
+    has no space left for this library.* / *Ask whoever manages it for more.*,
+    with no button.
+  - Sync failed, for any failure with no state of its own, always with a
+    button, *Retry now* unless named otherwise, and bae retries by itself too:
+    - the device has no space: *This Mac is out of space, so changes from your
+      other devices cannot be saved.* / *Free some space.*
+    - bae can't read its saved keys: on the Mac *bae cannot read its keys
+      while the keychain is locked.* / *Unlock it to keep syncing.*; on
+      Android *bae could not read its saved keys on this device.* / *Restart
+      bae.*
+    - the provider refused a request and retrying won't clear it, told as the
+      provider told it: *Dropbox refused bae’s request (Invalid request).* /
+      *If retrying does not help, restart bae.*
+    - the library's database, the device's disk, decryption, an operation of
+      coven's own or a bug in bae: *bae ran into a problem on this Mac and
+      keeps trying.* / *If it does not clear, restart bae.*
+    - a start that failed with sync not running: *bae could not connect to
+      Dropbox when it started.* / *Check the internet connection, then
+      reconnect.*, with *Reconnect*.
+
+A file that can't be uploaded, missing or changed since import, shows on its
+release in the Storage manager, not on the Sync page.
 
 The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
-read the block says "Could not read sync status", which is the app's own
-state around the read, with the words in the app's own catalog: core sends
+read the block says "Could not read sync status", with *bae could not read
+this library’s sync status.* / *Restart bae.* That state is the app's own,
+made around the read, with the words in the app's own catalog: core sends
 only the status it read. The Library page's Sync row shows the state only,
 and the Library row in Android's settings and the Library item in the Mac's
 settings sidebar show it only while it is amber or red.
@@ -3985,7 +4049,7 @@ storage, and its record offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3). Other records offer
-*Retry*, *Reconnect*, *Update app* or *Restore with code*. bae never asks for a storage
+*Retry*, *Reconnect*, *Update…* or *Scan restore code…*. bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
 ([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
@@ -4002,23 +4066,18 @@ offers nothing.
   removed device, in the same words, with Removed from the library as its
   sync state
   ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
-- **Replaced keys.** When another of the person's devices replaced their keys,
-  this device can no longer send. Its record offers *Restore with code*: bae
-  closes the library and asks for the person's current restore code, warning
-  that restoring loads the library from storage again and discards edits on
-  this device that haven't synced. Core checks first that the code restores
-  this library; another library's code, or an invite, changes nothing. coven
-  then loads the library from the code under a new device id beside this
-  device's copy, which stays as it was until the load is complete and only
-  then is replaced
+- **New restore code.** When another of the person's devices made a new
+  restore code, this device stops syncing and keeps its changes, and its sync
+  state is New restore code, naming that device. *Scan restore code…* opens the
+  camera for the new code. Core checks first that the code restores this
+  library; another library's code, or an invite, changes nothing. coven then
+  takes on the new keys in place, on the same device id and the same copy of
+  the library, and sync resumes with the changes this device kept
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
-  The copy put in place starts at a new library's settings, as a reset's does
-  (Appendix C): nothing carries the settings of the copy it replaces.
-  The load itself runs at a new library's transfer limits. A restore that fails, such as with a code the replaced keys made or with
-  storage out of reach, leaves the library on this device: the code screen
-  shows why, a code the replaced keys made saying the current restore code
-  restores the library, and the person can restore again, and going back opens the
-  library as it was.
+  A scan that fails, such as one of an older code or with storage out of
+  reach, leaves the library as it was: the scan screen says why, an older code
+  saying that the code from the other device restores the library, and the
+  person can scan again.
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
 has been read the line says it is checking rather than claim the library is
@@ -6441,7 +6500,7 @@ with one of these categories and a detail:
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
-| `MemberKeysReplaced` | restores the library with their current restore code: another of their devices replaced their keys, which the code used, or this device's copy, doesn't hold (§6.4) |
+| `MemberKeysReplaced` | scans the new restore code: another of their devices made a new restore code, and this device takes on the new keys in place (§6.4) |
 | `StorageSetupUndone` | sets the library's storage up again: a setup ended undone with nobody there to hear it, such as one bae was stopped partway through (§6.2) |
 | `StorageSetupFinishing` | waits for the storage setup already running, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |

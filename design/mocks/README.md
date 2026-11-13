@@ -6,7 +6,8 @@ bae's screens as they should work, drawn on a claude.ai Design canvas. Each
 agent-instructions' `principles/design-to-implementation.md` sets out;
 `canvas.json` places the boards on pages and holds the notes beside them.
 A board another board mounts (`dc-import`) is a part, named
-`<platform>.parts.<thing>`.
+`<platform>.parts.<thing>`. A board every platform shares, such as a table of states, is named for
+platform `all` (`all.settings.sync.states-table`).
 
 `shots.txt` lists, one name a line, the boards whose screens get a shot: the
 app's real view drawn in a test and checked against the board. Explorations,

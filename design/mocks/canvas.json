@@ -2083,10 +2083,10 @@
    "y": 7652
   },
   "mac.settings.sync.every-state.dc.html": {
-   "h": 1450,
+   "h": 200,
    "page": "library",
    "title": "macOS: Sync status: every state",
-   "w": 1452,
+   "w": 484,
    "x": 1316,
    "y": 9392
   },
@@ -2924,10 +2924,10 @@
    "y": 7652
   },
   "android.settings.sync.every-state.dc.html": {
-   "h": 1800,
+   "h": 240,
    "page": "library",
    "title": "Sync status: every state",
-   "w": 1236,
+   "w": 412,
    "x": 0,
    "y": 9392
   },
@@ -4186,6 +4186,22 @@
    "w": 412,
    "x": 5386,
    "y": 15556
+  },
+  "all.settings.sync.states-table.dc.html": {
+   "h": 2098,
+   "page": "library",
+   "title": "Every platform: Sync status: every state, as a table",
+   "w": 1300,
+   "x": 2848,
+   "y": 9392
+  },
+  "mac.settings.sync.key-scan.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS settings: Sync: scanning another device for access",
+   "w": 690,
+   "x": 1316,
+   "y": 9640
   }
  },
  "createdOnFiles": {
@@ -5808,8 +5824,10 @@
   "mac.settings.sync-setup.s3-region-mismatch.dc.html",
   "mac.settings.sync-setup.s3-bucket-not-found.dc.html",
   "mac.settings.sync-setup.s3-bucket-not-empty.dc.html",
+  "all.settings.sync.states-table.dc.html",
   "android.settings.sync.every-state.dc.html",
   "mac.settings.sync.every-state.dc.html",
+  "mac.settings.sync.key-scan.dc.html",
   "android.settings.invite.dropbox.dc.html",
   "android.settings.invite.code.dc.html",
   "android.settings.people.invite-listed.dc.html",

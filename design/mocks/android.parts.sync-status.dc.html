@@ -17,6 +17,7 @@
 body{margin:0;background:var(--background)}
 .ss-more .bae-a-row{min-height:0;padding-bottom:4px}
 .ss-cause{padding:2px 16px 10px;font:400 14px/20px var(--font-android);color:var(--text-primary)}
+.ss-remedy{margin-top:4px}
 .ss-fix{padding:2px 16px 14px}
 .ss-when{padding:0 16px 14px;font:400 14px/20px var(--font-android);color:var(--text-secondary)}
 </style>
@@ -24,13 +25,13 @@ body{margin:0;background:var(--background)}
 <x-import component-from-global-scope="Bae.AndroidCard">
 <div class="{{blockClass}}" style="font-family: var(--font-android)">
 <x-import component-from-global-scope="Bae.AndroidRow" title="Status" subtitle="{{status}}" tone="{{tone}}"></x-import>
-<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ss-cause">{{cause}}</div></sc-if>
+<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ss-cause">{{cause}}<sc-if value="{{remedy}}"><div class="ss-remedy">{{remedy}}</div></sc-if></div></sc-if>
 <sc-if value="{{fix}}" hint-placeholder-val="{{ true }}"><div class="ss-fix"><x-import component-from-global-scope="Bae.AndroidButton">{{fix}}</x-import></div></sc-if>
 <sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><div class="ss-when">Last synced {{lastSynced}}</div></sc-if>
 </div>
 </x-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in the cloud."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":412,"height":220}}'>
+<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in the cloud."},"remedy":{"editor":"text","default":""},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":412,"height":220}}'>
 class Component extends DCLogic {
   renderVals() {
     const p = this.props;
@@ -41,6 +42,7 @@ class Component extends DCLogic {
       status: p.status ?? 'Cloud full',
       tone: p.tone ?? 'danger',
       cause,
+      remedy: p.remedy ?? '',
       fix,
       lastSynced,
       blockClass: cause || fix || lastSynced ? 'ss-more' : ''

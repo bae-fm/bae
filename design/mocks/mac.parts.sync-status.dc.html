@@ -17,19 +17,20 @@ body{margin:0;background:var(--elevated)}
 .ms-more .bae-m-row,.ms-more .bae-m-row-label{align-items:baseline}
 .ms-more .bae-m-row-value{align-self:baseline}
 .ms-cause{padding:0 12px 10px;font:400 11.5px/16px var(--font-sans);color:var(--text-secondary)}
+.ms-remedy{margin-top:4px}
 .ms-fix{padding:0 12px 10px}
 </style>
 </helmet>
 <div class="bae-mac"><x-import component-from-global-scope="Bae.MacBox">
 <div class="{{blockClass}}">
 <x-import component-from-global-scope="Bae.MacRow" label="Status" value="{{status}}" tone="{{tone}}"></x-import>
-<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ms-cause">{{cause}}</div></sc-if>
+<sc-if value="{{cause}}" hint-placeholder-val="{{ true }}"><div class="ms-cause">{{cause}}<sc-if value="{{remedy}}"><div class="ms-remedy">{{remedy}}</div></sc-if></div></sc-if>
 <sc-if value="{{fix}}" hint-placeholder-val="{{ true }}"><div class="ms-fix"><x-import component-from-global-scope="Bae.MacButton" kind="primary">{{fix}}</x-import></div></sc-if>
 </div>
 <sc-if value="{{lastSynced}}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="{{lastSynced}}"></x-import></sc-if>
 </x-import></div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in the cloud."},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
+<script type="text/x-dc" data-dc-script data-props='{"status":{"editor":"text","default":"Cloud full"},"tone":{"editor":"enum","options":["","success","warning","danger"],"default":"danger"},"cause":{"editor":"text","default":"Free up space in the cloud."},"remedy":{"editor":"text","default":""},"fix":{"editor":"text","default":"Open in browser"},"lastSynced":{"editor":"text","default":"2 hours ago"},"$preview":{"width":460,"height":150}}'>
 class Component extends DCLogic {
   renderVals() {
     const p = this.props;
@@ -39,6 +40,7 @@ class Component extends DCLogic {
       status: p.status ?? 'Cloud full',
       tone: p.tone ?? 'danger',
       cause,
+      remedy: p.remedy ?? '',
       fix,
       lastSynced: p.lastSynced ?? '2 hours ago',
       blockClass: cause || fix ? 'ms-more' : ''
