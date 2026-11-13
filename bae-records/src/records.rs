@@ -62,7 +62,7 @@ use release::write_release_metadata_on;
 mod release_edit_save;
 pub use release::AlbumFields;
 #[cfg(desktop)]
-pub use release_edit_save::{ReleaseEditSaveError, ReleaseEditWrite};
+pub use release_edit_save::{ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite};
 mod emptied;
 use emptied::Emptiable;
 mod release_credits;

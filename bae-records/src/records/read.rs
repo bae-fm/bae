@@ -1,7 +1,7 @@
 use super::*;
 
 pub fn find_album_by_id_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     album_id: &str,
 ) -> Result<Option<DbAlbum>, DbError> {
     sql.query_row(
@@ -21,7 +21,7 @@ pub fn find_album_by_id_on(
 }
 
 pub fn get_artists_for_album_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     album_id: &str,
 ) -> Result<Vec<LibraryCredit>, DbError> {
     // Each credit in list order, showing the artist it resolves to after
@@ -168,7 +168,7 @@ pub fn credit_line_column(
 }
 
 pub fn find_release_by_id_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
     sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
@@ -177,7 +177,7 @@ pub fn find_release_by_id_on(
 }
 
 pub fn get_releases_for_album_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     album_id: &str,
 ) -> Result<Vec<DbRelease>, DbError> {
     sql.query(
@@ -200,7 +200,7 @@ pub(super) const RELEASE_FILES_IN_ORDER: &str = concat!(
 );
 
 pub fn get_files_for_release_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbFile>, DbError> {
     let files = sql.query(RELEASE_FILES_IN_ORDER, params![release_id], row_to_file)?;
@@ -220,7 +220,7 @@ pub(super) const RELEASES_RECORDS_IN_ORDER: &str =
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
 pub fn get_release_records_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
     Ok(get_releases_records_on(sql, &[release_id.to_string()])?
@@ -232,7 +232,7 @@ pub fn get_release_records_on(
 /// per release, in the order surfaces list catalogs. A release described by
 /// no catalog has no entry.
 pub fn get_releases_records_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_ids: &[String],
 ) -> Result<HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
     let mut by_release: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>> = HashMap::new();
@@ -330,7 +330,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
 
 /// A release's mediums, in order.
 pub fn release_mediums_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<DbReleaseMediums, DbError> {
     Ok(DbReleaseMediums(sql.query(

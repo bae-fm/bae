@@ -23,51 +23,39 @@ pub enum ReleaseEditWrite {
     },
 }
 
-/// Why a save of an edit session did not commit. Nothing of it landed.
+/// Why a save of an edit session was refused. Nothing of it landed.
 #[cfg(desktop)]
 #[derive(Debug, thiserror::Error)]
-pub enum ReleaseEditSaveError {
-    /// A track the applied rows rewrite is no longer the release's: another
-    /// device's write took it after the session was checked against the
-    /// release.
-    #[error("release {release_id} holds no track {track_id} to write")]
-    TrackGone { release_id: String, track_id: String },
+pub enum ReleaseEditRefusal {
+    /// The release is no longer as the session opened on it, as the save's
+    /// own write found it.
+    #[error("the release changed after the session opened")]
+    Stale,
     #[error(transparent)]
-    Write(#[from] IdentityWriteError),
+    Identity(#[from] IdentityRefusal),
 }
 
-/// A store failure is the save's write failing in the store.
+/// Why a save of an edit session did not commit.
 #[cfg(desktop)]
-impl From<DbError> for ReleaseEditSaveError {
-    fn from(error: DbError) -> Self {
-        Self::Write(error.into())
-    }
-}
-
-/// The first track of `rows` the release no longer holds, if any.
-#[cfg(desktop)]
-fn track_gone_on(tx: &CovenWrite<'_>, rows: &ReleaseRows) -> Result<Option<String>, DbError> {
-    let held: HashSet<String> = tx
-        .query("SELECT id FROM tracks WHERE release_id = ?", params![rows.release.id], |row| {
-            row.get(0)
-        })?
-        .into_iter()
-        .collect();
-    Ok(rows.tracks.iter().find(|track| !held.contains(&track.id)).map(|track| track.id.clone()))
-}
+pub type ReleaseEditSaveError = WriteError<ReleaseEditRefusal>;
 
 #[cfg(desktop)]
 impl Records {
-    /// Save an edit session: move the release and replace its records where
-    /// `change` says (see `set_records_on`), then write
-    /// `write`, in one transaction — all of it, or none. Applied rows
-    /// naming a track the release no longer holds are refused before
-    /// anything is written.
+    /// Save an edit session: in one transaction — all of it, or none — first
+    /// check, as `still_as_opened` says, that the release is still as the
+    /// session opened on it, then move the release and replace its records
+    /// where `change` says (see `set_records_on`), then write `write`. A
+    /// release that is not is refused as [`ReleaseEditRefusal::Stale`] before
+    /// anything is written; the check runs in the write, so no other write
+    /// lands between it and the rows.
     pub async fn save_release_edit_atomic(
         &self,
         change: Option<RecordsChange>,
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
+        still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<bool, DbError>
+            + Send
+            + 'static,
     ) -> Result<(), ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
         let labels = LabelParts::new(
@@ -82,48 +70,43 @@ impl Records {
             ReleaseEditWrite::Fields(metadata) => metadata.release.id.clone(),
             ReleaseEditWrite::Applied { rows, .. } => rows.release.id.clone(),
         };
-        let release_id_written = release_id.clone();
-        let album_id_written = match &write {
+        let album_id = match &write {
             ReleaseEditWrite::Fields(metadata) => metadata.album.id.clone(),
             ReleaseEditWrite::Applied { rows, .. } => rows.album.id.clone(),
         };
-        let gone = artist_resolution::write_resolving_identities(&self.store, move |sql| {
-            let emptiable = Emptiable::of_releases(&sql, &[release_id_written.as_str()])?
-                .including_album(&sql, &album_id_written)?;
-            if let ReleaseEditWrite::Applied { rows, .. } = &write {
-                if let Some(track_id) = track_gone_on(&sql, rows)? {
-                    return Ok(Some(track_id));
+        self.store
+            .write(move |sql| {
+                if !still_as_opened(&sql)? {
+                    return Err(WriteError::Refused(ReleaseEditRefusal::Stale));
                 }
-            }
-            if let Some(change) = &change {
-                super::release_records::set_records_on(&sql, change, now_dt)?;
-            }
-            let now = now_dt.to_rfc3339();
-            match &write {
-                ReleaseEditWrite::Fields(metadata) => write_release_metadata_on(
-                    &sql,
-                    metadata,
-                    album_fields,
-                    &now,
-                    &label_write(&labels),
-                ),
-                ReleaseEditWrite::Applied { rows, picked } => write_applied_rows_on(
-                    &sql,
-                    rows,
-                    picked,
-                    album_fields,
-                    &now,
-                    &label_write(&labels),
-                ),
-            }?;
-            emptiable.remove_emptied(&sql)?;
-            Ok(None)
-        })
-        .await?;
-        match gone {
-            Some(track_id) => Err(ReleaseEditSaveError::TrackGone { release_id, track_id }),
-            None => Ok(()),
-        }
+                let emptiable = Emptiable::of_releases(&sql, &[release_id.as_str()])?
+                    .including_album(&sql, &album_id)?;
+                if let Some(change) = &change {
+                    super::release_records::set_records_on(&sql, change, now_dt)?;
+                }
+                let now = now_dt.to_rfc3339();
+                match &write {
+                    ReleaseEditWrite::Fields(metadata) => write_release_metadata_on(
+                        &sql,
+                        metadata,
+                        album_fields,
+                        &now,
+                        &label_write(&labels),
+                    ),
+                    ReleaseEditWrite::Applied { rows, picked } => write_applied_rows_on(
+                        &sql,
+                        rows,
+                        picked,
+                        album_fields,
+                        &now,
+                        &label_write(&labels),
+                    ),
+                }
+                .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
+                emptiable.remove_emptied(&sql)?;
+                Ok(())
+            })
+            .await
     }
 }
 
@@ -185,8 +168,8 @@ fn write_applied_rows_on(
             ],
         )?;
     }
-    // The save checked, in this write, that the release holds every track
-    // these rows name.
+    // The save checked, in this write, that the release is as the session
+    // opened on it, so it holds every track these rows name.
     for track in &rows.tracks {
         tx.execute(
             "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ? \

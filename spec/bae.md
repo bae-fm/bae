@@ -1991,14 +1991,14 @@ left as it was keeps the library label it named.
 
 Every editor opens a session of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
-never share an apply or a pick. A save first checks the release against what
-its session opened on: if the library no longer holds it so — another
+never share an apply or a pick. A save's one write first checks the release
+against what its session opened on: if the library no longer holds it so — another
 session saved it, MCP wrote its fields, another device's edit arrived, or an
 artist it credits was renamed — the save is refused, writes nothing, and the
 editor says the release changed after it opened; *Cancel* opens it again as
 it is now. Only the cover, which is written at once, never makes a session
-out of date. No other save or field edit on the device runs between a save's
-check and its write. After a save, the editor works in a fresh
+out of date. The check and the rows are one write, so nothing lands between
+them. After a save, the editor works in a fresh
 session opened on what it saved.
 
 The editor lays the tracks out as the import's mapping table does: a heading

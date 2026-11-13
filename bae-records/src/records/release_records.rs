@@ -254,7 +254,7 @@ pub(super) fn set_records_on(
 /// wins over a partner's. Where one record names several, its group's own
 /// album is it if the library holds it, else the oldest.
 pub fn album_records_name_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     records: &[bae_catalogs::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {

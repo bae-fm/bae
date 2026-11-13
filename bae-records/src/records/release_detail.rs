@@ -13,7 +13,7 @@ use bae_util::content_type::ContentType;
 /// credits, its files, records, mediums and audio on one device only, and
 /// whether it is pinned, stored, or queued to upload.
 pub fn release_detail_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release: DbRelease,
 ) -> Result<DbReleaseDetailRows, DbError> {
     let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
@@ -92,7 +92,7 @@ impl DbReleaseDetailRows {
 /// The release's tracks in playing order, each with its own credits and the
 /// credits it shows.
 fn get_tracks_with_artists_for_release_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbTrackWithArtists>, DbError> {
     let query = format!(
@@ -130,7 +130,7 @@ fn get_tracks_with_artists_for_release_on(
 /// The works each of the release's tracks performs, by track id, each
 /// track's in the order it performs them.
 fn performed_works_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<HashMap<String, Vec<DbPerformedWork>>, DbError> {
     let query = format!(
@@ -165,7 +165,7 @@ fn performed_works_on(
 /// is on, from `coven_devices`, and whether that device or its person was
 /// removed from the library. The disk is not asked.
 pub fn unstored_audio_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
     unstored_rows_on(sql, "f.release_id = ?", release_id)?
@@ -178,7 +178,7 @@ pub fn unstored_audio_on(
 /// The release files `filter` picks, binding `value`, that are on one device
 /// only, with what coven records of that device.
 fn unstored_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     filter: &str,
     value: &str,
 ) -> Result<Vec<UnstoredRow>, DbError> {

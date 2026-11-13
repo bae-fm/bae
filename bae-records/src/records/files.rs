@@ -220,7 +220,7 @@ const RELEASE_FILES_KEPT: &str = "SELECT f.id, pin.file IS NOT NULL \
 
 /// [`RELEASE_FILES_KEPT`] for `release_id`, by release file id.
 fn release_files_kept_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<std::collections::BTreeMap<String, bool>, DbError> {
     Ok(sql

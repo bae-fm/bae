@@ -478,7 +478,7 @@ pub(super) const RELEASE_EDIT_TRACKS: &str = "SELECT t.*, \
 
 #[cfg(desktop)]
 pub fn release_edit_tracks_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
     #[derive(serde::Deserialize)]

@@ -193,7 +193,7 @@ struct OriginalName {
 
 /// What of the release `release_id` waits in this device's upload queue.
 pub fn release_upload_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Option<DbReleaseUpload>, DbError> {
     Ok(release_uploads_on(sql, &[release_id.to_string()])?.remove(release_id))
@@ -202,7 +202,7 @@ pub fn release_upload_on(
 /// What of each of `release_ids` waits in this device's upload queue, in one
 /// statement. A release none of whose files waits has no entry.
 pub fn release_uploads_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_ids: &[String],
 ) -> Result<HashMap<String, DbReleaseUpload>, DbError> {
     release_rows_on(sql, RELEASE_UPLOAD_COLUMNS, release_ids, release_upload_in_row)
@@ -212,7 +212,7 @@ pub fn release_uploads_on(
 /// statement that reads neither the pending records nor the originals. A
 /// release none of whose files waits has no entry.
 pub fn release_upload_progress_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_ids: &[String],
 ) -> Result<HashMap<String, UploadProgress>, DbError> {
     release_rows_on(sql, RELEASE_UPLOAD_COUNT_COLUMNS, release_ids, release_upload_progress_in_row)
@@ -221,7 +221,7 @@ pub fn release_upload_progress_on(
 /// The releases among `release_ids` whose `columns` map to a value, each by
 /// its id.
 fn release_rows_on<T>(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     columns: &str,
     release_ids: &[String],
     map: fn(&Row<'_>) -> rusqlite::Result<Option<T>>,
@@ -272,7 +272,7 @@ fn releases_sending_bytes() -> String {
 
 /// Each file this process is sending now, a cover's or a picture's among
 /// them, and of a release's file its release and size.
-pub fn sending_files_on(sql: &SqlReadContext<'_>) -> Result<Vec<DbSendingFile>, DbError> {
+pub fn sending_files_on(sql: &impl coven::SqlRead) -> Result<Vec<DbSendingFile>, DbError> {
     Ok(sql.query(FILES_SENDING, [], sending_file_in_row)?)
 }
 

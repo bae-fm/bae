@@ -322,25 +322,37 @@ impl From<coven::CovenError> for LibraryError {
     }
 }
 
-/// A refused write whose rollback or byte removal failed too is the refusal
-/// with each failed cleanup after it.
-impl From<bae_records::IdentityWriteError> for LibraryError {
-    fn from(error: bae_records::IdentityWriteError) -> Self {
+impl LibraryError {
+    /// A write's failure: `refused` words its refusal, and a refused write
+    /// whose rollback or byte removal failed too is the refusal with each
+    /// failed cleanup after it.
+    pub(super) fn of_write<R>(
+        error: bae_store::WriteError<R>,
+        refused: &impl Fn(R) -> Self,
+    ) -> Self {
         use bae_store::WriteError as E;
         match error {
             E::Database(error) => Self::Database(error),
-            E::Refused(refusal) => Self::Identity(refusal),
+            E::Refused(refusal) => refused(refusal),
             E::Rollback { operation, rollback } => Self::Cleanup {
-                operation: Box::new((*operation).into()),
+                operation: Box::new(Self::of_write(*operation, refused)),
                 cleanup: Box::new(Self::Database(rollback.into())),
             },
             E::FileCleanup { write, failures } => {
-                failures.into_iter().fold((*write).into(), |operation, failure| Self::Cleanup {
-                    operation: Box::new(operation),
-                    cleanup: Box::new(Self::Database(failure.into())),
+                failures.into_iter().fold(Self::of_write(*write, refused), |operation, failure| {
+                    Self::Cleanup {
+                        operation: Box::new(operation),
+                        cleanup: Box::new(Self::Database(failure.into())),
+                    }
                 })
             }
         }
+    }
+}
+
+impl From<bae_records::IdentityWriteError> for LibraryError {
+    fn from(error: bae_records::IdentityWriteError) -> Self {
+        Self::of_write(error, &Self::Identity)
     }
 }
 
@@ -681,21 +693,6 @@ impl From<bae_records::CreditNameError> for LibraryError {
     }
 }
 
-/// An edit session's save that found a track it rewrites gone found the
-/// release changed since the session opened, which another device's write
-/// did after the save checked it.
-#[cfg(desktop)]
-impl From<bae_records::ReleaseEditSaveError> for LibraryError {
-    fn from(error: bae_records::ReleaseEditSaveError) -> Self {
-        match error {
-            bae_records::ReleaseEditSaveError::TrackGone { release_id, .. } => {
-                Self::ReleaseEditStale { release_id }
-            }
-            bae_records::ReleaseEditSaveError::Write(error) => error.into(),
-        }
-    }
-}
-
 /// A pin's byte counts that make no progress are the store's to explain.
 impl From<bae_transfers::DownloadProgressError> for LibraryError {
     fn from(error: bae_transfers::DownloadProgressError) -> Self {
@@ -813,11 +810,6 @@ pub struct LibraryManager {
     /// too.
     #[cfg(desktop)]
     release_reads: bae_import::ReleaseReads,
-    /// Held by every edit session's save and every field edit of a release,
-    /// so a save compares the release with what its session opened on and
-    /// writes with no other of them on this device between the two.
-    #[cfg(desktop)]
-    release_writes: Arc<tokio::sync::Mutex<()>>,
     /// Where a test holds each run of a pin's query of which of its
     /// release's files are kept.
     #[cfg(test)]

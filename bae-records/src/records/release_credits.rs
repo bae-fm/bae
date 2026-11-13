@@ -59,7 +59,7 @@ impl CreditPart<'_> {
 /// writing one of the works it performs, each work in the order the track
 /// performs it.
 pub(super) fn release_credits_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbReleaseCredit>, DbError> {
     let release = CreditPart {

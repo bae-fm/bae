@@ -38,7 +38,7 @@ pub use records::{
     ImageWriteRefusal, LabelParts, OtherDeviceError, PrimaryReleaseError, Records, ReleaseDeletion,
 };
 #[cfg(desktop)]
-pub use records::{ReleaseEditSaveError, ReleaseEditWrite};
+pub use records::{ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
 pub use resolved_track_audio::{

@@ -12,8 +12,8 @@
 //! Nothing re-reads a catalog or the files' tags: the session holds what the
 //! apply read.
 //!
-//! A save checks the release against what its session opened on: one the
-//! library no longer holds as it did — another session saved it, MCP wrote
+//! A save checks, in its one write, the release against what its session
+//! opened on: one the library no longer holds as it did — another session saved it, MCP wrote
 //! its fields, another device's edit synced in — is refused
 //! ([`LibraryError::ReleaseEditStale`]) and writes nothing, so no session
 //! overwrites values its editor never showed. The editor opens again to see
@@ -106,102 +106,32 @@ impl LibraryManager {
 
     /// The release as the editor reads it, from one read: its detail, its
     /// album's artists, and its tracks' audio in release order.
+    #[cfg(test)]
     pub(crate) async fn find_release_edit_context(
         &self,
         release_id: &str,
     ) -> Result<Option<ReleaseEditContext>, bae_store::DbError> {
         let release_id = release_id.to_string();
         self.store
-            .read(move |sql| {
-                let Some(release) =
-                    bae_records::records::read::find_release_by_id_on(&sql, &release_id)?
-                else {
-                    return Ok(None);
-                };
-                let album_artists =
-                    bae_records::records::read::get_artists_for_album_on(&sql, &release.album_id)?;
-                let detail = bae_records::records::release_detail_rows_on(&sql, release)?;
-                let tracks = bae_records::records::release_edit_tracks_on(&sql, &release_id)?;
-                Ok(Some((detail, album_artists, tracks)))
-            })
-            .process(|rows| {
-                Ok(rows.map(|(detail, album_artists, tracks)| ReleaseEditContext {
-                    detail: detail.process(),
-                    album_artists,
-                    tracks,
-                }))
-            })
+            .read(move |sql| release_edit_rows_on(&sql, &release_id))
+            .process(|rows| Ok(rows.map(|rows| rows.processed().0)))
             .await
     }
 
     /// The editor's seed for `release_id` as the library holds it, filed under
-    /// the album it is in.
-    ///
-    /// The album title and artists, the release's pressing fields and each
-    /// track's title and artists, rendered into the raw editor form. A track
-    /// with no artist rows of its own seeds an empty artist field ("shares the
-    /// album artist"); the album artists seed the album artist field.
+    /// the album it is in. See [`release_edit_seed`].
     async fn read_release_edit(
         &self,
         release_id: &str,
     ) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
-        let ReleaseEditContext { detail, album_artists, tracks: edit_tracks } = self
-            .find_release_edit_context(release_id)
+        let id = release_id.to_string();
+        let (context, album) = self
+            .store
+            .read(move |sql| release_edit_rows_on(&sql, &id))
+            .process(|rows| Ok::<_, LibraryError>(rows.map(ReleaseEditRows::processed)))
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
-        let release = &detail.release;
-        let album = self
-            .records
-            .find_album_by_id(&release.album_id)
-            .await?
-            .ok_or_else(|| LibraryError::AlbumMissing { album_id: release.album_id.clone() })?;
-        let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
-        let cover = bae_records::cover_ref(release_id, detail.cover_version.clone());
-
-        let album_artist_assignments: Vec<bae_import::Credited> =
-            album_artists.into_iter().map(bae_import::Credited::of_library).collect();
-
-        let mut tracks = Vec::with_capacity(detail.tracks.len());
-        for entry in &detail.tracks {
-            // Empty when the track has no artist rows of its own — the wire edit
-            // reads that as "shares the album artist", matching how
-            // `apply_release_metadata_user_edit` writes it back.
-            let artists: Vec<bae_import::Credited> =
-                entry.artists.clone().into_iter().map(bae_import::Credited::of_library).collect();
-            tracks.push((
-                entry.track.id.clone(),
-                bae_import::TrackUserEdit {
-                    title: entry.track.title.clone(),
-                    artist_assignments: if artists.is_empty() {
-                        bae_import::TrackArtistAssignments::AlbumArtists
-                    } else {
-                        bae_import::TrackArtistAssignments::Explicit(artists)
-                    },
-                    // Re-projecting a release's metadata never re-binds its files;
-                    // the audio each track already points at stays as it is.
-                    file: None,
-                },
-            ));
-        }
-
-        let edit = raw_release_edit_with_persisted_track_ids(
-            bae_import::ReleaseUserEdit {
-                album_title: album.title.clone(),
-                album_artist_assignments,
-                album_year: album.year,
-                pressing: release.pressing.clone(),
-                tracks: tracks.iter().map(|(_, track)| track.clone()).collect(),
-            },
-            tracks.iter().map(|(id, _)| id.as_str()),
-        )?;
-
-        let DbAlbum { id: album_id, title, .. } = album;
-        Ok(bae_import::ReleaseEditSeed {
-            edit,
-            cover,
-            display,
-            album: bae_import::DraftAlbum::Named { album_id, title },
-        })
+        release_edit_seed(context, album)
     }
 
     /// The session's draft as its editor shows it now.
@@ -423,19 +353,15 @@ impl LibraryManager {
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
     /// the library no longer holds the release as the session opened on it.
-    /// No other session's save, and no field edit
-    /// ([`Self::apply_release_metadata_user_edit`]), runs on this device
-    /// between that check and the write.
+    /// The write itself finds that out: it reads the release as it stands and
+    /// compares it with the session's, so no write lands between the check
+    /// and the rows.
     pub async fn save_release_edit(&self, session: &ReleaseEdit) -> Result<(), LibraryError> {
         let release_id = session.release_id();
         let SessionWork { form: edit, applied, picked_album: album, .. } =
             session.work.lock().await.clone();
         let shaped = edit.shape()?;
         shaped.validate()?;
-        let _writing = self.release_writes.lock().await;
-        if !self.read_release_edit(release_id).await?.holds_the_values_of(&session.opened) {
-            return Err(LibraryError::ReleaseEditStale { release_id: release_id.to_string() });
-        }
         let (current_album_id, release, current_album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
         let records = match &applied {
@@ -514,9 +440,139 @@ impl LibraryManager {
                 )?)
             }
         };
-        self.records.save_release_edit_atomic(change, write, album_fields).await?;
-        Ok(())
+        let opened = session.opened.clone();
+        let id = release_id.to_string();
+        let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
+            let Some(rows) = release_edit_rows_on(sql, &id)? else {
+                return Ok(false);
+            };
+            let (context, album) = rows.processed();
+            let seed = release_edit_seed(context, album).map_err(|error| {
+                bae_store::DbError::unreadable(format!("release {id} as an editor reads it"), error)
+            })?;
+            Ok(seed.holds_the_values_of(&opened))
+        };
+        self.records
+            .save_release_edit_atomic(change, write, album_fields, still_as_opened)
+            .await
+            .map_err(|error| release_edit_save_error(error, release_id))
     }
+}
+
+/// A save's refusal as the library words it: a release changed since the
+/// session opened is [`LibraryError::ReleaseEditStale`].
+fn release_edit_save_error(
+    error: bae_records::ReleaseEditSaveError,
+    release_id: &str,
+) -> LibraryError {
+    use bae_records::ReleaseEditRefusal as R;
+    LibraryError::of_write(error, &|refusal| match refusal {
+        R::Stale => LibraryError::ReleaseEditStale { release_id: release_id.to_string() },
+        R::Identity(refusal) => LibraryError::Identity(refusal),
+    })
+}
+
+/// The rows a release's edit seed is made of, as `sql` holds them: its
+/// detail, its album's artists, its tracks' audio in release order and its
+/// album. `None` when the release is gone. Read through a write too, so a
+/// save can find the release as it stands in the write itself.
+fn release_edit_rows_on<Q: coven::SqlRead>(
+    sql: &Q,
+    release_id: &str,
+) -> Result<Option<ReleaseEditRows>, bae_store::DbError> {
+    let Some(release) = bae_records::records::read::find_release_by_id_on(sql, release_id)? else {
+        return Ok(None);
+    };
+    let album = bae_records::records::read::find_album_by_id_on(sql, &release.album_id)?
+        .ok_or_else(|| {
+            bae_store::DbError::unreadable(
+                format!("album of release {release_id}"),
+                release.album_id.clone(),
+            )
+        })?;
+    let album_artists = bae_records::records::read::get_artists_for_album_on(sql, &album.id)?;
+    let detail = bae_records::records::release_detail_rows_on(sql, release)?;
+    let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
+    Ok(Some(ReleaseEditRows { detail, album_artists, tracks, album }))
+}
+
+/// [`release_edit_rows_on`]'s rows.
+struct ReleaseEditRows {
+    detail: bae_records::records::DbReleaseDetailRows,
+    album_artists: Vec<bae_records::credits::LibraryCredit>,
+    tracks: Vec<bae_records::DbReleaseEditTrack>,
+    album: DbAlbum,
+}
+
+impl ReleaseEditRows {
+    /// The rows as the editor reads them, and the album.
+    fn processed(self) -> (ReleaseEditContext, DbAlbum) {
+        let Self { detail, album_artists, tracks, album } = self;
+        (ReleaseEditContext { detail: detail.process(), album_artists, tracks }, album)
+    }
+}
+
+/// The editor's seed for a release as `context` and `album` hold it, filed
+/// under `album`.
+///
+/// The album title and artists, the release's pressing fields and each
+/// track's title and artists, rendered into the raw editor form. A track
+/// with no artist rows of its own seeds an empty artist field ("shares the
+/// album artist"); the album artists seed the album artist field.
+fn release_edit_seed(
+    context: ReleaseEditContext,
+    album: DbAlbum,
+) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
+    let ReleaseEditContext { detail, album_artists, tracks: edit_tracks } = context;
+    let release = &detail.release;
+    let release_id = release.id.as_str();
+    let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
+    let cover = bae_records::cover_ref(release_id, detail.cover_version.clone());
+
+    let album_artist_assignments: Vec<bae_import::Credited> =
+        album_artists.into_iter().map(bae_import::Credited::of_library).collect();
+
+    let mut tracks = Vec::with_capacity(detail.tracks.len());
+    for entry in &detail.tracks {
+        // Empty when the track has no artist rows of its own — the wire edit
+        // reads that as "shares the album artist", matching how
+        // `apply_release_metadata_user_edit` writes it back.
+        let artists: Vec<bae_import::Credited> =
+            entry.artists.clone().into_iter().map(bae_import::Credited::of_library).collect();
+        tracks.push((
+            entry.track.id.clone(),
+            bae_import::TrackUserEdit {
+                title: entry.track.title.clone(),
+                artist_assignments: if artists.is_empty() {
+                    bae_import::TrackArtistAssignments::AlbumArtists
+                } else {
+                    bae_import::TrackArtistAssignments::Explicit(artists)
+                },
+                // Re-projecting a release's metadata never re-binds its files;
+                // the audio each track already points at stays as it is.
+                file: None,
+            },
+        ));
+    }
+
+    let edit = raw_release_edit_with_persisted_track_ids(
+        bae_import::ReleaseUserEdit {
+            album_title: album.title.clone(),
+            album_artist_assignments,
+            album_year: album.year,
+            pressing: release.pressing.clone(),
+            tracks: tracks.iter().map(|(_, track)| track.clone()).collect(),
+        },
+        tracks.iter().map(|(id, _)| id.as_str()),
+    )?;
+
+    let DbAlbum { id: album_id, title, .. } = album;
+    Ok(bae_import::ReleaseEditSeed {
+        edit,
+        cover,
+        display,
+        album: bae_import::DraftAlbum::Named { album_id, title },
+    })
 }
 
 fn raw_release_edit_with_persisted_track_ids<'a>(

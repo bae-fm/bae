@@ -80,8 +80,6 @@ impl LibraryManager {
             downloads,
             #[cfg(desktop)]
             outputs,
-            #[cfg(desktop)]
-            release_writes: Arc::default(),
             #[cfg(test)]
             pin_reads_hold: Arc::default(),
         };
