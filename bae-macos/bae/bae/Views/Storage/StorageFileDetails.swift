@@ -82,9 +82,3 @@ struct StorageFileDetails: View {
         }
     }
 }
-
-#if DEBUG
-
-    extension BridgeFile {
-    }
-#endif

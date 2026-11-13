@@ -6,11 +6,6 @@ import Foundation
 /// here decides a file's job, and nothing infers a pairing from a filename.
 
 extension BridgeFileRole {
-    var isAudio: Bool {
-        if case .audio = self { return true }
-        return false
-    }
-
     /// Artwork shown in the gallery, including images unavailable as covers.
     var isImage: Bool {
         if case .artwork = self { return true }

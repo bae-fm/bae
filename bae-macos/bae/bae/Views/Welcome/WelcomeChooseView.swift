@@ -305,9 +305,3 @@ private struct UnfinishedRemovalNotice: View {
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
     }
 }
-
-#if DEBUG
-
-    #if BAE_DEV_RESET
-    #endif
-#endif

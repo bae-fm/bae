@@ -3,7 +3,6 @@ import SwiftUI
 
 /// An ⓘ after a row's title that opens a popover explaining the row when it
 /// is clicked, as macOS Settings does beside a setting that needs explaining.
-/// (`InfoTip` is the "?" that shows its text on hover.)
 struct MacInfoTip<Content: View>: View {
     let label: LocalizedStringKey
     @ViewBuilder

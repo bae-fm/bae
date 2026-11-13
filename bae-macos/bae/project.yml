@@ -196,6 +196,7 @@ targets:
     sources:
       - baeTests
       - baeTestSupport
+      - Fixtures
     dependencies:
       - target: bae
     settings:
@@ -217,8 +218,9 @@ targets:
         SWIFT_VERSION: "6.2"
         GENERATE_INFOPLIST_FILE: YES
   # Screenshot-capture bundle. Hosted in the app (like baeTests) so it can
-  # `@testable import bae` and reach the DEBUG ShotScenes builders +
-  # fixtures. Kept out of the `bae` scheme's test action — it runs only via its
+  # `@testable import bae` and reach the app's views; the scene builders
+  # (ShotScenes) are its own, and the fixtures are the folder it shares with
+  # baeTests. Kept out of the `bae` scheme's test action — it runs only via its
   # own `baeShots` scheme, which the bae-shots tool drives with an output
   # directory; run without one it fails loud.
   baeShots:
@@ -232,6 +234,7 @@ targets:
     sources:
       - baeShots
       - baeTestSupport
+      - Fixtures
     dependencies:
       - target: bae
     settings:

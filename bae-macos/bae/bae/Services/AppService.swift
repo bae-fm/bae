@@ -261,7 +261,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     }
 
     #if DEBUG
-        // periphery:ignore
+        // periphery:ignore - called by baeTests
         var hasDisplayedErrorForTesting: Bool {
             uiStore.lastError != nil
         }

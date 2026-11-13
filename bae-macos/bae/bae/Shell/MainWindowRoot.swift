@@ -255,6 +255,7 @@ extension View {
     private let mainWindowPreviewLogger = Logger.bae("MainWindowPreview")
 
     extension View {
+        // periphery:ignore - called by baeTests and baeShots
         /// The primary window's values for a shot of its content, which
         /// has no Settings window to open and no menu to search or select
         /// all from.

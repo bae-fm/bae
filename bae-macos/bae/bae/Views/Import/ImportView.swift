@@ -161,13 +161,6 @@ struct ImportView: View {
     }
 }
 
-#if DEBUG
-
-    extension View {
-    }
-
-#endif
-
 /// What one of the import view's candidate writes acts on.
 enum ImportTaskKey: Hashable {
     /// A write to one candidate, by its key.

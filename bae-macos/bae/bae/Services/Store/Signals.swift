@@ -6,10 +6,6 @@ import Foundation
 struct Signals: Equatable {
     let text: BridgeTextSignal
 
-    init(text: BridgeTextSignal) {
-        self.text = text
-    }
-
     init(bridge: BridgeSignals) {
         text = bridge.text
     }

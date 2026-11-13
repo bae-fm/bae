@@ -72,10 +72,6 @@ struct SyncSetupWizard: View {
     #if DEBUG
         /// The S3 form's fields, when a shot stages them.
         private var stagedS3: S3SetupFields?
-        #if BAE_OAUTH_PROVIDERS
-            /// The folder picker, when a shot stages it.
-            private var stagedBrowser: StorageFolderBrowser?
-        #endif
         /// The failure the S3 form shows at its top, when a shot stages one.
         private var stagedTopFailure: DisplayError?
     #endif
@@ -87,6 +83,46 @@ struct SyncSetupWizard: View {
         }
         _run = State(initialValue: StorageSetupRun(onCancelled: {}))
     }
+
+    #if DEBUG
+        // periphery:ignore - called by baeShots
+        /// The wizard on `provider`'s screen with `run` as its setup.
+        init(
+            provider: BridgeCloudProvider,
+            run: StorageSetupRun,
+            onDone: @escaping () -> Void
+        ) {
+            self.onDone = onDone
+            _step = State(initialValue: .configure(provider))
+            _run = State(initialValue: run)
+        }
+
+        // periphery:ignore - called by baeShots
+        /// The wizard on setup's last screen, holding `restoreCode`.
+        init(
+            restoreCode: RestoreCodeReveal,
+            provider: BridgeCloudProvider,
+            onDone: @escaping () -> Void
+        ) {
+            self.onDone = onDone
+            _step = State(initialValue: .restoreCode(provider))
+            _run = State(initialValue: StorageSetupRun(onCancelled: {}))
+            _restoreCode = State(initialValue: restoreCode)
+        }
+
+        // periphery:ignore - called by baeShots
+        /// This wizard with its S3 form staged: typed `fields`, and the
+        /// failure shown at the form's top.
+        func staging(
+            s3 fields: S3SetupFields,
+            topFailure: DisplayError? = nil
+        ) -> Self {
+            var wizard = self
+            wizard.stagedS3 = fields
+            wizard.stagedTopFailure = topFailure
+            return wizard
+        }
+    #endif
 
     var body: some View {
         MacSheet(verbatim: headerTitle, message: headerMessage, width: 460) {
@@ -225,10 +261,7 @@ struct SyncSetupWizard: View {
         private func folderBrowser(
             _ provider: StorageFolderBrowser.Provider
         ) -> StorageFolderBrowser {
-            #if DEBUG
-                if let stagedBrowser { return stagedBrowser }
-            #endif
-            return cloudSyncSetup.folderBrowser(provider)
+            cloudSyncSetup.folderBrowser(provider)
         }
     #endif
 
@@ -479,174 +512,3 @@ struct SetupStep<Fields: View, Leading: View>: View {
         )
     }
 }
-
-#if DEBUG
-    // MARK: - Shot staging
-
-    extension SyncSetupWizard {
-        /// Where a shot stages the wizard's S3 setup.
-        enum SetupStaging {
-            /// Running `step`, before its point of no return.
-            case running(BridgeStorageSetupStep)
-            /// Running `step`, past its point of no return.
-            case finishing(BridgeStorageSetupStep)
-            /// The person cancelled it while it connected.
-            case cancelling
-            /// The setup failed with `failure`, the form as typed.
-            case failed(BridgeStorageFailure)
-            /// The service refused the key, which shows at the top.
-            case refusedKey(S3SetupFields.KeyRejection)
-        }
-
-        /// The S3 form's fields as a shot types them.
-        private static func stagedFields() -> S3SetupFields {
-            let fields = S3SetupFields()
-            fields.endpoint = "https://s3.home.lan"
-            fields.region = "us-east-1"
-            fields.bucket = "my-bucket"
-            fields.accessKey = "a1b2c3d4e5f6"
-            fields.secretKey = "abcdefghijkl"
-            return fields
-        }
-
-        /// The wizard on the S3 form, its setup staged at `staging` in
-        /// place of core's.
-        static func staged(_ staging: SetupStaging) -> some View {
-            let sync = Sync(cancelStorageSetup: { .undoing })
-            let (step, finishing): (BridgeStorageSetupStep, Bool) =
-                switch staging {
-                case .running(let step): (step, false)
-                case .finishing(let step): (step, true)
-                case .cancelling, .failed, .refusedKey: (.connecting, false)
-                }
-            let run = StorageSetupRun(onCancelled: {})
-            if case .failed = staging {
-            }
-            else if case .refusedKey = staging {
-            }
-            else {
-                run.start(
-                    StorageSetupFollowing(
-                        staging: BridgeStorageSetupProgress(
-                            step: step,
-                            key: "core.library.storage_setup_step.connecting",
-                            done: 0,
-                            total: 1
-                        ),
-                        finishing: finishing
-                    ),
-                    operation: { _ in try await Task.neverAnswers() },
-                    onConnected: { _ in },
-                    onFailed: { _ in }
-                )
-            }
-            if case .cancelling = staging {
-                run.cancel(sync)
-            }
-            var wizard = SyncSetupWizard(provider: .s3, run: run, onDone: {})
-            if case .failed(let failure) = staging {
-                let fields = stagedFields()
-                _ = fields.place(
-                    BridgeError.Diagnostic(
-                        category: .storage(failure: failure),
-                        detail: ""
-                    )
-                )
-                wizard.stagedS3 = fields
-            }
-            if case .refusedKey(let rejection) = staging {
-                let fields = stagedFields()
-                wizard.stagedS3 = fields
-                wizard.stagedTopFailure = DisplayError(line: rejection.words)
-            }
-            return
-                wizard
-                .environment(PreviewData.configStore())
-                .environment(sync)
-                #if BAE_OAUTH_PROVIDERS
-                    .environment(CloudSyncSetup())
-                #endif
-        }
-
-        #if BAE_OAUTH_PROVIDERS
-        #endif
-
-        private init(
-            provider: BridgeCloudProvider,
-            run: StorageSetupRun,
-            onDone: @escaping () -> Void
-        ) {
-            self.onDone = onDone
-            _step = State(initialValue: .configure(provider))
-            _run = State(initialValue: run)
-        }
-
-        private init(
-            restoreCode: RestoreCodeReveal,
-            provider: BridgeCloudProvider,
-            onDone: @escaping () -> Void
-        ) {
-            self.onDone = onDone
-            _step = State(initialValue: .restoreCode(provider))
-            _run = State(initialValue: StorageSetupRun(onCancelled: {}))
-            _restoreCode = State(initialValue: restoreCode)
-        }
-    }
-
-    extension SyncSetupWizard {
-        #if BAE_OAUTH_PROVIDERS
-        #endif
-    }
-
-    extension SyncSetupWizard {
-        /// Setup's last screen for `provider`, in `state`: a fixture code in
-        /// a shot, never a real one.
-        static func finished(
-            on provider: BridgeCloudProvider,
-            holding state: RestoreCodeReveal.State
-        ) -> some View {
-            SyncSetupWizard(
-                restoreCode: RestoreCodeReveal(previewState: state),
-                provider: provider,
-                onDone: {}
-            )
-            .environment(PreviewData.configStore())
-            .environment(PreviewData.previewSync(storage: nil))
-            #if BAE_OAUTH_PROVIDERS
-                .environment(CloudSyncSetup())
-            #endif
-        }
-    }
-
-    extension SyncSetupWizard {
-        /// The wizard on iCloud's screen, before setup starts.
-        static func iCloud() -> some View {
-            SyncSetupWizard(
-                provider: .cloudKit,
-                run: StorageSetupRun(onCancelled: {}),
-                onDone: {}
-            )
-            .environment(PreviewData.configStore())
-            .environment(PreviewData.previewSync(storage: nil))
-            #if BAE_OAUTH_PROVIDERS
-                .environment(CloudSyncSetup())
-            #endif
-        }
-    }
-
-    extension SyncSetupWizard {
-        /// The wizard as it opens, on its list of providers.
-        static func choosing() -> some View {
-            SyncSetupWizard(onDone: {})
-                .environment(PreviewData.configStore())
-                .environment(PreviewData.previewSync(storage: nil))
-                #if BAE_OAUTH_PROVIDERS
-                    .environment(CloudSyncSetup())
-                #endif
-        }
-    }
-
-    #if BAE_OAUTH_PROVIDERS
-
-    #endif
-#endif

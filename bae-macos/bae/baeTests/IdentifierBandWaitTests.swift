@@ -122,7 +122,9 @@ struct IdentifierBandWaitTests {
                 form: CandidateSearchState(),
                 onCommit: { _ in },
                 signals: Signals(
-                    text: .scanning(catalogs: [], freeText: ["Album Title"])
+                    bridge: BridgeSignals(
+                        text: .scanning(catalogs: [], freeText: ["Album Title"])
+                    )
                 ),
                 focusRequest: 0,
                 onSearch: { _ in }

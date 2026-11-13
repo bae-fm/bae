@@ -42,32 +42,6 @@ struct ReleaseFieldWriter {
         self.setAlbumArtists = setAlbumArtists
     }
 
-    static func binding(_ form: Binding<BridgeRawReleaseEdit>) -> Self {
-        Self(
-            setField: { field, value in
-                switch field {
-                case .albumTitle: form.wrappedValue.albumTitle = value
-                case .albumYear: form.wrappedValue.albumYear = value
-                case .pressingYear: form.wrappedValue.pressing.year = value
-                }
-            },
-            setLabels: { labels in
-                form.wrappedValue.pressing.labels = labels
-            },
-            setBarcodes: { barcodes in
-                form.wrappedValue.pressing.barcodes = barcodes
-            },
-            setPressingFact: { fact in
-                form.wrappedValue.pressing.facts = bridgeApplyPressingFact(
-                    facts: form.wrappedValue.pressing.facts,
-                    edit: fact
-                )
-            },
-            setAlbumArtists: { assignments in
-                form.wrappedValue.albumArtistAssignments = assignments
-            }
-        )
-    }
 }
 
 /// The release header's sizes, shared with the surfaces that draw it and the

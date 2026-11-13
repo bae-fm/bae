@@ -647,4 +647,28 @@
             uniqueKeysWithValues: albumDetailList.map { ($0.album.id, $0) }
         )
     }
+
+    extension PreviewData {
+        /// A release every catalog describes: what a MusicBrainz release with
+        /// a full set of url-rels seeds.
+        static var releaseRecordsEveryCatalog: [BridgeReleaseRecord] {
+            bridgeCatalogs()
+                .map { catalog in
+                    record(
+                        catalog,
+                        "key-1"
+                    )
+                }
+        }
+
+        static func record(
+            _ catalog: BridgeCatalog,
+            _ key: String
+        ) -> BridgeReleaseRecord {
+            BridgeReleaseRecord(
+                catalog: catalog,
+                url: "https://example.test/\(key)"
+            )
+        }
+    }
 #endif

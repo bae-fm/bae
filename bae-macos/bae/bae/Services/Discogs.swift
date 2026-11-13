@@ -39,7 +39,4 @@ final class Discogs: Sendable, Observable {
         )
     }
 
-    #if DEBUG
-        static func stub() -> Discogs { Discogs() }
-    #endif
 }

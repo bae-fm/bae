@@ -276,13 +276,16 @@ final class ImportListSlot {
     }
 
     #if DEBUG
-        /// A slot over a fixed set of items, for shots and tests. The list
-        /// is seeded synchronously so a canvas draws without a live query.
-        static func preview(
+        // periphery:ignore - called by baeTests, through the fixtures' `preview`
+        /// A slot over a fixed set of items. The list is seeded synchronously
+        /// so a canvas draws without a live query; `pendingFilterEntries` are
+        /// what the import store holds as the filter's pending entries.
+        static func seededWithItems(
             importStore: ImportStore,
             uiStore: UiStore,
             items: [BridgeImportListItem],
-            selection: ImportSelection = ImportSelection()
+            selection: ImportSelection,
+            pendingFilterEntries: [BridgePendingFilterEntry]
         ) -> ImportListSlot {
             let tab = uiStore.importCandidateTab
             let pages = ImportListPages(
@@ -311,9 +314,7 @@ final class ImportListSlot {
                 makeSource: { _ in pages }
             )
             importStore.ingest(items)
-            importStore.applyPendingFilterEntries(
-                PreviewData.pendingFilterEntries()
-            )
+            importStore.applyPendingFilterEntries(pendingFilterEntries)
             let list = PaginatedList<BridgeImportListItem>(
                 pageSource: FixedImportListPageSource(items: items),
                 onError: { _ in }
