@@ -7,7 +7,7 @@ use crate::Schema;
 /// the wrong type rather than refuse it.
 pub fn loose_tables(schema: Schema) -> Vec<String> {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::schema::open_bare_library(&conn, schema);
+    schema.bare_library_parts().open_on(&conn);
     let loose = conn
         .prepare(
             "SELECT name FROM pragma_table_list
@@ -27,7 +27,7 @@ pub fn loose_tables(schema: Schema) -> Vec<String> {
 /// has, and the trigger then never fires on it.
 pub fn absent_update_of_columns(schema: Schema) -> Vec<String> {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::schema::open_bare_library(&conn, schema);
+    schema.bare_library_parts().open_on(&conn);
     let update_of = regex::Regex::new(r"(?is)UPDATE OF\s+(.+?)\s+ON\s+(\w+)").unwrap();
     let triggers: Vec<(String, String)> = conn
         .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger'")

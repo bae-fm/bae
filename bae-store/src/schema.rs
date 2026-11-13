@@ -277,19 +277,22 @@ pub(crate) fn register_bare_function(conn: &rusqlite::Connection, function: &Sch
     .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
 }
 
-/// Open an in-memory library on `schema` on `conn`, a fresh in-memory
-/// connection, as [`BareLibraryParts`] says: this crate's own tests'.
 #[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn open_bare_library(conn: &rusqlite::Connection, schema: Schema) {
-    let parts = schema.bare_library_parts();
-    for function in parts.functions {
-        register_bare_function(conn, function);
-    }
-    for collation in parts.collations {
-        conn.create_collation(collation.name, collation.compare)
-            .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
-    }
-    for statement in parts.statements {
-        conn.execute_batch(statement).expect("the bare library's schema applies");
+impl BareLibraryParts {
+    /// Open the library on `conn`, a fresh in-memory connection the caller
+    /// opened: register the functions and collations, then run the statements.
+    /// A `test-utils` item, so it is the one place a bare library's schema is
+    /// applied for every crate's tests.
+    pub fn open_on(self, conn: &rusqlite::Connection) {
+        for function in self.functions {
+            register_bare_function(conn, function);
+        }
+        for collation in self.collations {
+            conn.create_collation(collation.name, collation.compare)
+                .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
+        }
+        for statement in self.statements {
+            conn.execute_batch(statement).expect("the bare library's schema applies");
+        }
     }
 }

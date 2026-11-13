@@ -6,7 +6,7 @@ use rusqlite::Connection;
 /// mapper rejects it.
 fn seeded_conn() -> Connection {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::test_fixtures::bare_library::open_bare_library(&conn);
+    crate::test_fixtures::TEST_SCHEMA.bare_library_parts().open_on(&conn);
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
         "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('9644b84d-94b2-4b3b-863a-d6583931920c', 'Album Title', 0, ?)",

@@ -56,7 +56,7 @@ fn points_out_of_order_fail_the_write() {
 #[test]
 fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
     let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::test_fixtures::bare_library::open_bare_library(&conn);
+    crate::test_fixtures::TEST_SCHEMA.bare_library_parts().open_on(&conn);
     conn.execute_batch("PRAGMA foreign_keys = OFF").unwrap();
     let insert = |blob: &[u8]| {
         conn.execute(

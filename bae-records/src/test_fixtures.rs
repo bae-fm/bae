@@ -135,8 +135,6 @@ pub async fn seed_artist_album_release(store: &bae_store::Store) {
 pub mod aggregate_ordering;
 pub mod album_listing;
 pub mod artists_apart;
-#[cfg(test)]
-pub(crate) mod bare_library;
 pub mod bulk_library;
 pub mod bulk_tracks;
 pub mod chunked_tracks;
