@@ -91,9 +91,9 @@ extension PreviewData {
 
     static let searchGroupExactBridge = BridgeReleaseGroup(
         id: "group-preview",
-        title: "Album Title",
-        artist: .named("Artist Name"),
-        label: "Label Name",
+        titles: ["Album Title"],
+        artists: [.named("Artist Name")],
+        labels: ["Label Name"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -149,9 +149,9 @@ extension PreviewData {
     static let searchGroupsManualBridge: [BridgeReleaseGroup] = [
         BridgeReleaseGroup(
             id: "grp-1",
-            title: "Album Title One",
-            artist: .named("Artist Name"),
-            label: "Label Name",
+            titles: ["Album Title One"],
+            artists: [.named("Artist Name")],
+            labels: ["Label Name"],
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -232,9 +232,9 @@ extension PreviewData {
         ),
         BridgeReleaseGroup(
             id: "grp-2",
-            title: "Album Title One (Remaster)",
-            artist: .named("Artist Name"),
-            label: "Reissue Records",
+            titles: ["Album Title One (Remaster)"],
+            artists: [.named("Artist Name")],
+            labels: ["Reissue Records"],
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -313,9 +313,9 @@ extension PreviewData {
     /// One card per album when the Disc ID and the barcode share none.
     static let discidOnlyGroup = BridgeReleaseGroup(
         id: "group-disc",
-        title: "Album Title",
-        artist: .named("Artist Name"),
-        label: "Label A",
+        titles: ["Album Title"],
+        artists: [.named("Artist Name")],
+        labels: ["Label A"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -368,9 +368,9 @@ extension PreviewData {
 
     static let barcodeOnlyGroup = BridgeReleaseGroup(
         id: "group-bar",
-        title: "Other Album Title",
-        artist: .named("Artist Name"),
-        label: "Label B",
+        titles: ["Other Album Title"],
+        artists: [.named("Artist Name")],
+        labels: ["Label B"],
         coverArt: nil,
         sources: [
             BridgeReleaseGroupSource(
@@ -735,9 +735,9 @@ extension PreviewData {
                 ReleaseGroup(
                     bridge: BridgeReleaseGroup(
                         id: "group-preview",
-                        title: "Album Title",
-                        artist: .named("Artist Name"),
-                        label: "Label Name",
+                        titles: ["Album Title"],
+                        artists: [.named("Artist Name")],
+                        labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
                         yearMin: 1996,
@@ -772,9 +772,9 @@ extension PreviewData {
                 ReleaseGroup(
                     bridge: BridgeReleaseGroup(
                         id: "group-preview",
-                        title: "Album Title",
-                        artist: .named("Artist Name"),
-                        label: "Label Name",
+                        titles: ["Album Title"],
+                        artists: [.named("Artist Name")],
+                        labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
                         yearMin: 1996,

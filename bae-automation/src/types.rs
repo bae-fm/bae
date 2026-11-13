@@ -347,10 +347,14 @@ pub struct AutomationSearchResults {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationReleaseGroup {
     pub id: String,
-    pub title: String,
-    pub artist: Option<String>,
-    /// The label the album's pressings name, where they name one.
-    pub label: Option<String>,
+    /// The album's title as each of its records states it, each distinct
+    /// title once.
+    pub titles: Vec<String>,
+    /// The album's artist as each of its records states it, each distinct
+    /// credit once.
+    pub artists: Vec<String>,
+    /// Every label the album's pressings name, each once.
+    pub labels: Vec<String>,
     pub cover_art: Option<AutomationRemoteCover>,
     /// Every source carrying this group, in the order its rows name them.
     pub sources: Vec<AutomationReleaseGroupSource>,

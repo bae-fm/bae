@@ -1540,7 +1540,9 @@ suggests to.
 
 The pane's identifier chips list every value they hold: the ISRC chip writes
 every code the files' tags carry, separated by " · " and wrapping inside the
-chip, and its accessibility label reads them all.
+chip, and its accessibility label reads them all. Catalog numbers the folder's
+text offers that no release confirms are one chip listing every one, each a
+button that puts that number into the run; none is folded behind a count.
 
 A pressing's row lists every record's value where its records state a fact
 differently: the year, a catalog number, a barcode, the country, the format.
@@ -1551,7 +1553,10 @@ value. The row lists the notes of its records the folder's text names it by,
 each followed by its catalog where they differ, and the barcodes it states.
 What the row lists is what look-alike rows are compared by, so two pressings
 that differ only in what a second record states are two rows. Picking the
-row still applies its lead record alone. The summary line of an import pressing row
+row still applies its lead record alone. An album's card lists every title,
+every artist and every label its records state, each once, `Low Tide Hours /
+Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
+case, accents or punctuation are one. The summary line of an import pressing row
 lists the format, then the country, `CD · US`; the library's release summary
 keeps the country first.
 

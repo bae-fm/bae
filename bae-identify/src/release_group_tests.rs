@@ -363,11 +363,11 @@ fn year_span_is_none_when_no_pressing_carries_a_year() {
     assert_eq!(groups[0].year_max, None);
 }
 
-/// The card names the label every pressing naming one agrees on, however
-/// each spells it; pressings naming different labels leave the card none,
-/// never the first one's.
+/// The card names every label its pressings name, each once however it is
+/// spelled: pressings naming different labels are all listed, never the
+/// first one's alone and never none.
 #[test]
-fn the_card_label_is_the_one_its_pressings_agree_on() {
+fn the_card_lists_every_label_its_pressings_name() {
     let labelled = |id: &str, year: i32, names: &[&str]| {
         let mut record = mb(id, Some("group-x"), Some(year));
         record.labels = names
@@ -381,19 +381,19 @@ fn the_card_label_is_the_one_its_pressings_agree_on() {
         labelled("rel-2", 1994, &["Label Name"]),
         labelled("rel-3", 2012, &["Other Imprint", "LABEL NAME"]),
     ]);
-    assert_eq!(groups[0].label.as_deref(), Some("Label Name"));
+    assert_eq!(groups[0].labels, vec!["Label Name".to_string(), "Other Imprint".to_string()]);
 
     let groups = grouped(vec![
         labelled("rel-2", 1994, &["Label Name"]),
         labelled("rel-3", 2012, &["Reissue Records"]),
     ]);
-    assert_eq!(groups[0].label, None);
+    assert_eq!(groups[0].labels, vec!["Label Name".to_string(), "Reissue Records".to_string()]);
 }
 
 #[test]
 fn a_card_whose_pressings_name_no_label_has_none() {
     let groups = grouped(vec![mb("rel-1", Some("group-x"), Some(1992))]);
-    assert_eq!(groups[0].label, None);
+    assert!(groups[0].labels.is_empty());
 }
 
 /// Two results carrying the same `source_group_id` string but different

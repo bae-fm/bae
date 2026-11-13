@@ -26,9 +26,52 @@ fn artist_spelling_does_not_block_established_identity() {
     assert_eq!(groups.len(), 1);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-2"]]);
     assert_eq!(
-        groups[0].artist.as_ref().map(bae_types::credits::CreditLine::plain_text).as_deref(),
-        Some("Artist Name")
+        groups[0]
+            .artists
+            .iter()
+            .map(bae_types::credits::CreditLine::plain_text)
+            .collect::<Vec<_>>(),
+        vec!["Artist Name".to_string()]
     );
+}
+
+/// A card whose records title the album differently lists every title, and
+/// one artist the records spell alike once; a title only punctuated
+/// differently is the same title.
+#[test]
+fn a_card_lists_every_title_its_records_state() {
+    let record = |source: bae_catalogs::catalog::LookupCatalog, id: &str, title: &str| {
+        let mut record = match source {
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz => {
+                mb(id, Some("group-x"), Some(1992))
+            }
+            bae_catalogs::catalog::LookupCatalog::Discogs => {
+                discogs(id, Some("master-7"), Some(1992))
+            }
+        };
+        record.title = title.to_string();
+        record.artist = Some(bae_types::credits::CreditLine::of_name("Mara Quill"));
+        record.barcodes = vec!["012345678905".to_string()];
+        record
+    };
+    use bae_catalogs::catalog::LookupCatalog::{Discogs, MusicBrainz};
+
+    let groups = grouped(vec![
+        record(MusicBrainz, "mb-1", "Low Tide Hours"),
+        record(Discogs, "dg-1", "Low Tide Hours (Remastered)"),
+    ]);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(
+        groups[0].titles,
+        vec!["Low Tide Hours".to_string(), "Low Tide Hours (Remastered)".to_string()]
+    );
+    assert_eq!(groups[0].artists.len(), 1);
+
+    let groups = grouped(vec![
+        record(MusicBrainz, "mb-1", "Low Tide: Hours"),
+        record(Discogs, "dg-1", "Low Tide - Hours"),
+    ]);
+    assert_eq!(groups[0].titles, vec!["Low Tide: Hours".to_string()]);
 }
 
 /// A release document that names the other source's release as the same
@@ -47,7 +90,10 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(groups.len(), 1);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
     assert_eq!(groups[0].id, "group-x");
-    assert_eq!(groups[0].title, "Album Title: Subtitle");
+    assert_eq!(
+        groups[0].titles,
+        vec!["Album Title: Subtitle".to_string(), "Another Album".to_string()]
+    );
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::PressingLink {
@@ -118,7 +164,7 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
 
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
-    assert_eq!(groups[0].label.as_deref(), Some("Label Name Records"));
+    assert_eq!(groups[0].labels, vec!["Label Name Records".to_string()]);
 
     // An agreeing label does not make a shared catalog number a pair.
     let mut one = mb("mb-2", Some("group-y"), None);
@@ -354,7 +400,7 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
     let groups = grouped(vec![one, other]);
     assert_eq!(groups.len(), 1);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
-    assert_eq!(groups[0].title, "Album Title: Subtitle");
+    assert_eq!(groups[0].titles, vec!["Album Title: Subtitle".to_string()]);
     assert_eq!(
         groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]

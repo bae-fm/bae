@@ -87,11 +87,14 @@ pub struct BridgeReleaseGroup {
     /// Stable card identity (the first source's group id, or the lone
     /// release's id when no source named a group).
     pub id: String,
-    pub title: String,
-    pub artist: Option<BridgeCreditLine>,
-    /// The label the card names beside the artist, where the album's pressings
-    /// state one.
-    pub label: Option<String>,
+    /// The album's title as each of its records states it, each distinct
+    /// title once: every title where they differ.
+    pub titles: Vec<String>,
+    /// The album's artist as each of its records states it, listed as
+    /// `titles` are.
+    pub artists: Vec<BridgeCreditLine>,
+    /// Every label the album's pressings state, each once.
+    pub labels: Vec<String>,
     /// Representative cover for the card.
     pub cover_art: Option<BridgeRemoteCover>,
     /// Every source carrying this group, in the one order surfaces name
@@ -179,9 +182,6 @@ pub struct BridgePressing {
     pub details: Vec<crate::types::BridgeFactTerm>,
 }
 
-/// One provider's part of a candidate's manual search. Mirrors
-/// `bae_import::SourceSearch`; the results themselves reach a surface
-/// through the search's `groups`, so a source reports only how many it found.
 /// A label line of a pressing with each catalog number as the records state
 /// it. Mirrors `bae_identify::release_group::StatedLabelLine`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -214,6 +214,9 @@ pub struct BridgeTermsStatement {
     pub catalogs: Vec<BridgeLookupCatalog>,
 }
 
+/// One provider's part of a candidate's manual search. Mirrors
+/// `bae_import::SourceSearch`; the results themselves reach a surface
+/// through the search's `groups`, so a source reports only how many it found.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
     /// Switched off: the person is not asking this source.

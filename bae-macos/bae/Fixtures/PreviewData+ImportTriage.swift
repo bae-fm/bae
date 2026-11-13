@@ -88,9 +88,9 @@ extension PreviewData {
     private static let noTracklistGroup = ReleaseGroup(
         bridge: BridgeReleaseGroup(
             id: "group-no-tracklist",
-            title: "Album Title Seven",
-            artist: .named("Artist Name"),
-            label: "Label Name",
+            titles: ["Album Title Seven"],
+            artists: [.named("Artist Name")],
+            labels: ["Label Name"],
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(

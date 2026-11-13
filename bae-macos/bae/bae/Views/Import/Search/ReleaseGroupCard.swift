@@ -61,7 +61,11 @@ struct ReleaseGroupCard: View {
     }
 
     private var attribution: String {
-        FactList.joined([group.artist, group.label])
+        FactList.joined([
+            group.artist,
+            group.labels.isEmpty
+                ? nil : PressingText.alternatives(group.labels),
+        ])
     }
 }
 

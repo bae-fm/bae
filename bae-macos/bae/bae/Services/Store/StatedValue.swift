@@ -43,6 +43,17 @@ extension BridgeTermsStatement {
 }
 
 extension PressingText {
+    /// The values one fact has, each as stated, joined by the catalog's
+    /// separator for alternatives: an album's titles, "Low Tide Hours / Low
+    /// Tide Hours (Remastered)".
+    static func alternatives(_ values: [String]) -> String {
+        values.joined(
+            separator: localizedCoreString(
+                "core.pressing.alternatives_separator"
+            )
+        )
+    }
+
     /// The values of one fact, each followed by its catalogs, joined by the
     /// catalog's separator for alternatives: "1992 MusicBrainz / 1993
     /// Discogs".

@@ -45,12 +45,19 @@ pub struct ReleaseGroup {
     /// Stable card identity: the first source's group id, or the lone
     /// release's id when no source named a group.
     pub id: String,
-    pub title: String,
-    pub artist: Option<bae_types::credits::CreditLine>,
-    /// The label the card names beside the artist: the one every pressing
-    /// naming a label agrees on, else none — no pressing speaks for the album
-    /// over another. Core's call, not a surface's.
-    pub label: Option<String>,
+    /// The album's title as each of the card's records states it, each
+    /// distinct title once, in the order of the records: one title where they
+    /// agree, every title where they differ. Spellings that differ only in
+    /// case, accents or punctuation are one title.
+    pub titles: Vec<String>,
+    /// The album's artist as each of the card's records states it, listed as
+    /// `titles` are; none where no record names one.
+    pub artists: Vec<bae_types::credits::CreditLine>,
+    /// The labels the card names beside the artist: every label name any of
+    /// its pressings states, each once in the order of the pressings (two
+    /// spellings of one name count as one), none where no pressing names
+    /// one.
+    pub labels: Vec<String>,
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
     pub cover_art: Option<RemoteCover>,
@@ -467,8 +474,12 @@ fn build_group(
         .iter()
         .find_map(|bucket| bucket.source_group_id.clone())
         .unwrap_or_else(|| lead.release_id.clone());
-    let title = lead.title.clone();
-    let artist = members.iter().find_map(|&at| read(at).artist.clone());
+    let titles = distinct(members.iter().map(|&at| read(at).title.clone()), |title| {
+        bae_types::text_match::squash(title)
+    });
+    let artists = distinct(members.iter().filter_map(|&at| read(at).artist.clone()), |artist| {
+        bae_types::text_match::artist_name_key(&artist.plain_text())
+    });
     let cover_art = bae_catalogs::remote_image::preferred_cover(
         members.iter().filter_map(|&at| read(at).cover_art.clone()),
     );
@@ -521,7 +532,7 @@ fn build_group(
             row: Row { agreements: pressing.agreements(judgements).count(), pressing },
         });
     }
-    let label = agreed_label(rows.iter().map(|row| &row.row.pressing));
+    let labels = card_labels(rows.iter().map(|row| &row.row.pressing));
     let best = |offered: bool| {
         rows.iter().filter(|row| row.offered == offered).map(|row| row.row.agreements).max()
     };
@@ -559,34 +570,32 @@ fn build_group(
     };
 
     (
-        ReleaseGroup { id, title, artist, label, cover_art, sources, year_min, year_max, sections },
+        ReleaseGroup {
+            id,
+            titles,
+            artists,
+            labels,
+            cover_art,
+            sources,
+            year_min,
+            year_max,
+            sections,
+        },
         rank,
     )
 }
 
-/// The label name every one of `pressings` that names a label agrees on: of
-/// the first naming one's labels, in its order, the first every other names
-/// too (two spellings of one name count as one). None where the pressings
-/// name different labels, or none names any: no pressing speaks for the
-/// album over another.
-fn agreed_label<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Option<String> {
-    let named: Vec<Vec<bae_types::pressing::ReleaseLabel>> = pressings
-        .map(Pressing::labels)
-        .filter(|labels| labels.iter().any(|label| label.name().is_some()))
-        .collect();
-    let (first, others) = named.split_first()?;
-    first
-        .iter()
-        .filter_map(bae_types::pressing::ReleaseLabel::name)
-        .find(|name| {
-            others.iter().all(|labels| {
-                labels
-                    .iter()
-                    .filter_map(bae_types::pressing::ReleaseLabel::name)
-                    .any(|other| bae_types::text_match::same_label_name(name, other))
-            })
-        })
-        .map(str::to_string)
+/// Every label name `pressings` state, each once in order: two spellings of
+/// one name count as one, and the first spelling stands.
+fn card_labels<'a>(pressings: impl Iterator<Item = &'a Pressing>) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    for label in pressings.flat_map(Pressing::labels) {
+        let Some(name) = label.name() else { continue };
+        if !names.iter().any(|known| bae_types::text_match::same_label_name(known, name)) {
+            names.push(name.to_string());
+        }
+    }
+    names
 }
 
 /// One row as its card places it: the album it sits under, and whether it is
@@ -617,11 +626,26 @@ fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
     rows
 }
 
+/// `values` in order, each one once as its `key` tells values apart; a value
+/// whose key is empty states nothing and is left out.
+fn distinct<T>(values: impl Iterator<Item = T>, key: impl Fn(&T) -> String) -> Vec<T> {
+    let mut seen: Vec<String> = Vec::new();
+    let mut distinct = Vec::new();
+    for value in values {
+        let key = key(&value);
+        if !key.is_empty() && !seen.contains(&key) {
+            seen.push(key);
+            distinct.push(value);
+        }
+    }
+    distinct
+}
+
 mod labels;
 mod pressing;
 mod pressing_sets;
+mod statements;
 
 #[cfg(test)]
 #[path = "release_group_tests.rs"]
 mod tests;
-mod statements;

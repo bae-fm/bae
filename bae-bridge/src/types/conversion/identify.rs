@@ -256,9 +256,9 @@ impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_identify::release_group::ReleaseGroup) -> Self {
         let bae_identify::release_group::ReleaseGroup {
             id,
-            title,
-            artist,
-            label,
+            titles,
+            artists,
+            labels,
             cover_art,
             sources,
             year_min,
@@ -267,9 +267,9 @@ impl BridgeReleaseGroup {
         } = g;
         BridgeReleaseGroup {
             id,
-            title,
-            artist: artist.map(BridgeCreditLine::from_core),
-            label,
+            titles,
+            artists: artists.into_iter().map(BridgeCreditLine::from_core).collect(),
+            labels,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources.into_iter().map(BridgeReleaseGroupSource::from_core).collect(),
             year_min,

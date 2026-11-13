@@ -53,4 +53,14 @@ struct StatedValueTests {
                 + bridgeLookupCatalogName(catalog: .musicBrainz)
         )
     }
+
+    @Test("an album's titles are every title, in one line")
+    func titlesListEveryTitle() {
+        #expect(
+            PressingText.alternatives([
+                "Low Tide Hours", "Low Tide Hours (Remastered)",
+            ])
+                == "Low Tide Hours" + separator + "Low Tide Hours (Remastered)"
+        )
+    }
 }

@@ -319,9 +319,9 @@ impl AutomationReleaseGroup {
     pub(crate) fn from_core(group: ReleaseGroup) -> Self {
         Self {
             id: group.id,
-            title: group.title,
-            artist: group.artist.map(|line| line.plain_text()),
-            label: group.label,
+            titles: group.titles,
+            artists: group.artists.iter().map(|line| line.plain_text()).collect(),
+            labels: group.labels,
             cover_art: group.cover_art.map(AutomationRemoteCover::from_core),
             sources: group
                 .sources
