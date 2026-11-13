@@ -4475,6 +4475,20 @@ gap until the fill fetches it again. A track a receiver plays (§7.7),
 or one whose length is unknown, has no fill. Android's full player draws a taller
 line with an upright thumb and no fill at all.
 
+While the person drags a seek bar, on every platform and in every bar (the
+now-playing bar, the full player, the import preview's), the position time it
+shows follows the dragged position: the elapsed time, and the remaining time
+where the bar counts down. The playing position, which keeps arriving while
+they drag, doesn't move the time, and neither the time nor the fill steps
+back to it between the drop and the seek landing. On release the player
+seeks there; on a track's bar the dropped position stays (§9.4) until core
+has applied the seek, and then the time is the playing position again (the
+import preview's bar, whose position carries no count of applied seeks,
+shows the playing position from the release). A seek that fails
+ends playback with its error, as any failure of the player does (§7.6), and
+the bar then shows no time, as it does when nothing plays: the dropped
+position is never left standing.
+
 While the person waits on a track to start, or on a seek to land, and one
 of the playing track's reads fetches from storage (coven tells a read that
 fetches how many of its bytes are in hand), an arc turns around the
