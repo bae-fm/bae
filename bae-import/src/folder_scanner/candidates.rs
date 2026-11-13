@@ -137,9 +137,11 @@ impl SkippedFile {
     }
 }
 
-/// What a skipped folder's tags call the release: the album title the first
-/// of its playable files to state one gives, with the line of that file's
-/// album artists, or of its track artists when it names no album artist.
+/// What a skipped folder's tags call the release: the album title its
+/// playable files agree on (without a trailing disc marker where the discs
+/// differ by it), with the line of the album artists they agree on, or of
+/// their track artists when none names an album artist. None where they
+/// state a title differently.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SkippedTags {
     pub album_title: String,

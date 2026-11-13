@@ -164,10 +164,10 @@ pub(super) fn skipped_files(proposed: &[(ScannedFile, ProposedRole)]) -> Vec<Ski
     files
 }
 
-/// What the tags of `proposed`'s playable audio call the release: the album
-/// title the first of them in name order to state one gives, and that file's
-/// album artists' line, else its track artists'. A file whose tags do not parse
-/// is passed over, said in the log.
+/// What the tags of `proposed`'s playable audio call the release, as a draft
+/// seeded from them would: the album title and artists they agree on, none
+/// where they differ. A file whose tags do not parse is passed over, said in
+/// the log.
 fn skipped_tags(
     proposed: &[(ScannedFile, ProposedRole)],
     reads: &FileReads,
@@ -182,34 +182,17 @@ fn skipped_tags(
     }
     playable.sort_by(|a, b| bae_util::natural_order::compare(&a.relative_path, &b.relative_path));
     reads.skipped_tags(&playable, || {
+        let mut read = Vec::new();
         for file in &playable {
-            let tags = match reads.tags(file)? {
-                Ok(tags) => tags,
-                Err(error) => {
-                    tracing::warn!(
-                        "{}: its tags do not parse, so they name nothing: {error}",
-                        file.relative_path
-                    );
-                    continue;
-                }
-            };
-            if let Some(album_title) = tags.album_title {
-                let artists = if tags.album_artists.is_empty() {
-                    tags.track_artists
-                } else {
-                    tags.album_artists
-                };
-                return Ok(Some(SkippedTags {
-                    album_title,
-                    artist: (!artists.is_empty()).then(|| {
-                        bae_types::credits::CreditLine::from_stored(
-                            artists.iter().map(|name| (name.as_str(), None)),
-                        )
-                    }),
-                }));
+            match reads.tags(file)? {
+                Ok(tags) => read.push(tags),
+                Err(error) => tracing::warn!(
+                    "{}: its tags do not parse, so they name nothing: {error}",
+                    file.relative_path
+                ),
             }
         }
-        Ok(None)
+        Ok(crate::file_tag_mapper::skipped_tags(read.iter()))
     })
 }
 

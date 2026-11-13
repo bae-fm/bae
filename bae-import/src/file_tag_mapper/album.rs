@@ -1,7 +1,8 @@
 //! What the units of a folder that state album facts — each file's tags, or
 //! each CUE sheet — say of the album together (`TaggedAlbum::of`): the value
-//! they all give, else the first one's in play order, its title without a
-//! trailing disc marker.
+//! they all give, else nothing: a field the units state differently is left
+//! empty. Titles are compared without a trailing disc marker, so the discs of
+//! one set agree on theirs.
 
 use crate::cue_sheet::CueSheet;
 use crate::file_tag_reader::{non_empty, years_in_date};
@@ -58,13 +59,15 @@ fn names_various_artists(artists: &[String]) -> bool {
 }
 
 /// What the folder's units, together, say of the album. Units that state a
-/// value differently still give the album one, the first unit's: the discs
-/// of one set tag `Album Title (Disc 1)` and `Album Title (Disc 2)`, and a
-/// reissue's discs can carry different years.
+/// value differently give the album none of it: its field stays empty. The
+/// discs of one set that tag `Album Title (Disc 1)` and `Album Title (Disc 2)`
+/// do not differ, for a title is compared without its disc marker.
 pub(super) struct TaggedAlbum {
+    /// Empty where the units state it differently, and where none states one
+    /// and there is no folder name.
     pub(super) title: String,
     /// The album's artists, by name, in order; empty where no unit names
-    /// one.
+    /// one, and where the units name them differently.
     pub(super) artists: Vec<String>,
     /// Every unit says the album is a compilation: it is credited to the
     /// various-artists artist, and each track keeps its own artists.
@@ -73,30 +76,37 @@ pub(super) struct TaggedAlbum {
 }
 
 impl TaggedAlbum {
-    /// The album `units` describe, given in the order they play (disc, then
-    /// track). Each value is the one every unit stating it gives, else the
-    /// first such unit's; a title taken from the first unit drops a trailing
-    /// disc marker ([`without_disc_marker`]). The title falls back to
-    /// `folder_name` where no unit states one. The artists are the album
-    /// artists where any unit names one, else the track artists.
+    /// The album `units` describe. Each value is the one every unit stating
+    /// it gives, else none. Titles are the same where they are without a
+    /// trailing disc marker ([`without_disc_marker`]); units whose titles
+    /// differ only by that marker give the title without it. The title falls
+    /// back to `folder_name` where no unit states one. The artists are the
+    /// album artists where any unit names one, else the track artists.
     pub(super) fn of(units: impl Iterator<Item = UnitAlbum>, folder_name: Option<&str>) -> Self {
         let units: Vec<UnitAlbum> = units.collect();
-        let title = match given(units.iter().map(|unit| unit.title.as_deref()), |a, b| a == b) {
+        let titles = || units.iter().map(|unit| unit.title.as_deref());
+        let title = match given(titles(), |a, b| a == b) {
             Given::Agreed(title) => title.to_string(),
-            Given::Disagreed { first } => without_disc_marker(first).to_string(),
+            Given::Disagreed => {
+                match given(titles().map(|t| t.map(without_disc_marker)), |a, b| a == b) {
+                    Given::Agreed(title) => title.to_string(),
+                    Given::Disagreed | Given::Unstated => String::new(),
+                }
+            }
             Given::Unstated => folder_name.map(str::to_string).unwrap_or_default(),
         };
         let stated = |artists: &[String]| (!artists.is_empty()).then(|| artists.to_vec());
-        let artists =
-            given(units.iter().map(|unit| stated(&unit.album_artists)), |a, b| same_names(a, b))
-                .value()
-                .or_else(|| {
-                    given(units.iter().map(|unit| stated(&unit.track_artists)), |a, b| {
-                        same_names(a, b)
-                    })
+        let artists = match given(units.iter().map(|unit| stated(&unit.album_artists)), |a, b| {
+            same_names(a, b)
+        }) {
+            Given::Agreed(artists) => artists,
+            Given::Disagreed => Vec::new(),
+            Given::Unstated => {
+                given(units.iter().map(|unit| stated(&unit.track_artists)), |a, b| same_names(a, b))
                     .value()
-                })
-                .unwrap_or_default();
+                    .unwrap_or_default()
+            }
+        };
         let year = |year: fn(&StatedYears) -> Option<i32>| {
             given(units.iter().map(|unit| year(&unit.years)), |a, b| a == b).value()
         };
@@ -112,22 +122,34 @@ impl TaggedAlbum {
     }
 }
 
+impl TaggedAlbum {
+    /// The names the album is credited to: Various Artists for a compilation,
+    /// else its artists.
+    pub(super) fn credited_artists(&self) -> Vec<String> {
+        if self.compilation {
+            vec![super::VARIOUS_ARTISTS_NAME.to_string()]
+        } else {
+            self.artists.clone()
+        }
+    }
+}
+
 /// What the units stating a value give of it.
 enum Given<T> {
     /// Every unit stating it states this.
     Agreed(T),
-    /// Units state it differently; `first` is the first one's.
-    Disagreed { first: T },
+    /// Units state it differently.
+    Disagreed,
     /// No unit states it.
     Unstated,
 }
 
 impl<T> Given<T> {
-    /// The value the album takes: the one agreed on, else the first unit's.
+    /// The value the album takes: the one agreed on, else none.
     fn value(self) -> Option<T> {
         match self {
-            Self::Agreed(value) | Self::Disagreed { first: value } => Some(value),
-            Self::Unstated => None,
+            Self::Agreed(value) => Some(value),
+            Self::Disagreed | Self::Unstated => None,
         }
     }
 }
@@ -145,7 +167,7 @@ fn given<T>(values: impl Iterator<Item = Option<T>>, same: impl Fn(&T, &T) -> bo
     }
     match first {
         Some(value) if agreed => Given::Agreed(value),
-        Some(first) => Given::Disagreed { first },
+        Some(_) => Given::Disagreed,
         None => Given::Unstated,
     }
 }

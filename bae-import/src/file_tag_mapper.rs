@@ -10,8 +10,9 @@
 //! DiscID, and barcode are not part of this path.
 //!
 //! Album facts are what the files (or the CUE sheets) that state one say
-//! together (`TaggedAlbum::of`): the value they all give, else the first
-//! one's in play order, its title without a trailing disc marker. Each file's
+//! together (`TaggedAlbum::of`): the value they all give, else none, so a field
+//! they state differently stays empty; titles differing only by a trailing disc
+//! marker agree. Each file's
 //! dates name the album's year and the pressing's by the one year
 //! rule (`StatedYears::of`). Source codecs are physical audio facts, not
 //! release media, so the pressing's media stay unstated.
@@ -170,8 +171,7 @@ fn named_credits(names: &[String]) -> Vec<bae_catalogs::credits::SourceCredit> {
 fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseValues {
     let numbering: Vec<_> = tags.iter().map(|track| (track.disc, track.number)).collect();
     let (mediums, places) = bae_types::mediums::by_disc(&numbering);
-    let album_artists =
-        if album.compilation { vec![VARIOUS_ARTISTS_NAME.to_string()] } else { album.artists };
+    let album_artists = album.credited_artists();
     let tracks: Vec<TrackValues> = tags
         .into_iter()
         .zip(places)
@@ -200,6 +200,25 @@ fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseVa
         works: Default::default(),
         tracks,
     }
+}
+
+/// What the tags of a folder's playable files call the release, for the
+/// Skipped tab: the title and artists they agree on, as a draft would take
+/// them. `None` where they state no title, or state it differently. The
+/// files' tags are given in name order.
+pub(crate) fn skipped_tags<'a>(
+    files: impl Iterator<Item = &'a crate::file_tag_snapshot::FileTags>,
+) -> Option<crate::folder_scanner::SkippedTags> {
+    let album = TaggedAlbum::of(files.map(UnitAlbum::of_file), None);
+    let artists = album.credited_artists();
+    (!album.title.is_empty()).then(|| crate::folder_scanner::SkippedTags {
+        album_title: album.title,
+        artist: (!artists.is_empty()).then(|| {
+            bae_types::credits::CreditLine::from_stored(
+                artists.iter().map(|name| (name.as_str(), None)),
+            )
+        }),
+    })
 }
 
 /// The name a compilation's album credit is given where the tags only flag

@@ -407,6 +407,46 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
     assert_eq!(invalid.cover().map(|file| file.relative_path.as_str()), Some("front.jpg"));
 }
 
+/// A skipped folder's tags name the release as a draft read from them would:
+/// the title its playable tracks agree on, a disc marker taken off, and none
+/// where they title it differently.
+#[test]
+fn a_skipped_folder_names_the_album_its_tracks_agree_on() {
+    use lofty::config::WriteOptions;
+    use lofty::prelude::*;
+    use lofty::tag::{Tag, TagType};
+
+    let skipped_tags = |albums: [&str; 2]| {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path().join("Half Copied");
+        std::fs::create_dir(&root).unwrap();
+        for (name, album) in ["01.flac", "02.flac"].into_iter().zip(albums) {
+            std::fs::write(root.join(name), fake_flac()).unwrap();
+            let mut tagged = lofty::read_from_path(root.join(name)).unwrap();
+            let mut tag = Tag::new(TagType::VorbisComments);
+            tag.set_album(album.to_string());
+            tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
+            tagged.insert_tag(tag);
+            tagged.save_to_path(root.join(name), WriteOptions::default()).unwrap();
+        }
+        std::fs::write(root.join("03.flac"), b"").unwrap();
+        let items = scan_items(&root);
+        let [ScanItem::Invalid(invalid)] = items.as_slice() else {
+            panic!("the folder is skipped: {items:?}");
+        };
+        invalid.tags.clone()
+    };
+
+    assert_eq!(
+        skipped_tags(["Album Title (Disc 1)", "Album Title (Disc 2)"]),
+        Some(SkippedTags {
+            album_title: "Album Title".to_string(),
+            artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
+        })
+    );
+    assert_eq!(skipped_tags(["Album Alpha", "Album Beta"]), None);
+}
+
 /// A folder's files are in bae's one natural order, the order the library
 /// lists a release's files in: names alike but for case or spaces, which
 /// natural order alone counts as equal, fall in byte order, not in the order

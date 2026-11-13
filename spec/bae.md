@@ -910,8 +910,8 @@ different things about one file fails the scan.
   audio at all, is listed as skipped with its reason. It can't be imported.
   The scan reads every file before judging it, so it stores each file of the
   folder with what it made of it — each damaged track with why: it is empty,
-  or holds no audio bae can read — and the album title and artist its first
-  playable track's tags state.
+  or holds no audio bae can read — and the album title and artist its
+  playable tracks' tags agree on, read as a draft's are.
 - **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
   `Café.flac` from an old rip), is read and imported like any other. Its name
   in the release, which the library syncs and every surface shows, is its
@@ -1644,22 +1644,23 @@ folder holding the same files in one write, each found by that hash.
 more than once (two `ARTIST` comments, an ID3v2.4 frame of two values) states
 each, so a file naming two artists gives its track two credits. An album
 field is the value every file stating it gives; files that state it
-differently give it the first file's, in play order (disc, then track). A
-folder whose units are CUE sheets reads its album from the sheets' `TITLE`,
-`PERFORMER` and `REM DATE` the same way, the first sheet's winning, and with
-no title stated anywhere the folder's name is the title.
+differently leave the field empty, never the majority's or one file's value.
+A folder whose units are CUE sheets reads its album from the sheets' `TITLE`,
+`PERFORMER` and `REM DATE` the same way, and with no title stated anywhere the
+folder's name is the title.
 
-- The album title is the one every file states. Where they differ, it is the
-  first file's without the disc marker it ends with and the separator before
-  it: `Album Title (cd 1)`, `Album Title [disc 1]`, `Album Title CD1` and
-  `Album Title - Disc 1` give `Album Title`. A marker is `disc`, `disk`, `cd`
-  or `d` and a number, in brackets or not; `Album Title Volume 1` names no
-  disc and stays as it is.
-- The album artist is the `ALBUMARTIST` the files agree on, else the first
-  file's; where no file names one, the `ARTIST` they agree on, else the first
-  file's, so a compilation whose files neither flag it nor name an album
-  artist is credited to its first track's artist. With no artist named
-  anywhere the draft asks for one before it imports.
+- The album title is the one every file states. Titles are compared without
+  the disc marker each ends with and the separator before it, so a set whose
+  discs tag `Album Title (cd 1)`, `Album Title [disc 2]`, `Album Title CD3` or
+  `Album Title - Disc 4` agrees, and gives `Album Title`. A marker is `disc`,
+  `disk`, `cd` or `d` and a number, in brackets or not; `Album Title Volume 1`
+  names no disc and is a title of its own. Files whose titles still differ
+  leave the title empty, and the draft shows its placeholder.
+- The album artist is the `ALBUMARTIST` the files agree on; where no file
+  names one, the `ARTIST` they agree on. Files that state either differently
+  leave the album artist empty, so a compilation whose files neither flag it
+  nor name an album artist has none and each track keeps its own artist. With
+  no album artist the draft asks for one before it imports.
 - A track whose `ARTIST` names the album's artists is credited to the album;
   one naming others is credited to them.
 - A folder every file of which says it is a compilation, by its compilation
@@ -1672,7 +1673,7 @@ no title stated anywhere the folder's name is the title.
   one year is the album's, the pressing's left unknown. With the year the
   album first came out known (a record states it), that year is the album's
   and the latest later one the pressing's. The album's year and the
-  pressing's are each the one the files agree on, else the first file's.
+  pressing's are each the one the files agree on, else empty.
 - A file whose tags don't parse states nothing: the album fields are what the
   folder's other files state, and its name places and titles its track, as
   for a file with no tags. The scan's seeding, Reset to file metadata and a
