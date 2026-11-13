@@ -85,6 +85,22 @@ struct LibraryView: View {
             applyLibraryNavigation(request.target)
             uiStore.consumeLibraryNavigation(seq: request.seq)
         }
+        .sheet(
+            item: Binding(
+                get: { uiStore.newPlaylistSheet },
+                set: { uiStore.newPlaylistSheet = $0 }
+            )
+        ) { sheet in
+            NewPlaylistSheet(
+                // The dismissal frame shows the last real value.
+                state: Binding(
+                    get: { uiStore.newPlaylistSheet ?? sheet },
+                    set: { uiStore.newPlaylistSheet = $0 }
+                ),
+                onCancel: { uiStore.newPlaylistSheet = nil },
+                onCreate: createPlaylist
+            )
+        }
         // Opening an album's detail clears the multi-selection.
         .onChange(of: uiStore.selectedAlbumId) { _, selected in
             if selected != nil {
@@ -131,6 +147,28 @@ extension LibraryView {
         }
     }
 
+    /// Make the playlist `sheet` describes and open it; a failure stays in
+    /// the sheet, which stays open.
+    private func createPlaylist(_ sheet: NewPlaylistSheetState) {
+        let library = library
+        let session = session
+        let uiStore = uiStore
+        Task {
+            do {
+                let playlistId = try await library.createPlaylist(
+                    sheet.name,
+                    sheet.sharing,
+                    sheet.trackIds
+                )
+                session.selectPlaylist(playlistId)
+                uiStore.newPlaylistSheet = nil
+            }
+            catch {
+                uiStore.newPlaylistSheet?.error = DisplayError(error)
+            }
+        }
+    }
+
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
@@ -162,7 +200,11 @@ extension LibraryView {
             case .artists:
                 sortControls(session.artists)
             case .playlists:
-                EmptyView()
+                if libraryProjections.playlists.value?.canCreate == true {
+                    Button("New playlist…") {
+                        uiStore.presentNewPlaylist(trackIds: [])
+                    }
+                }
             }
         }
     }

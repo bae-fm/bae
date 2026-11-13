@@ -76,6 +76,12 @@ public final class Library: Sendable, Observable {
     /// config subscription re-renders the page through `ConfigStore`.
     public let setLibraryFullWidth:
         @Sendable (_ enabled: Bool) async throws -> Void
+    /// Make a playlist of this device's person holding `trackIds` in order,
+    /// answering its id. A failed write leaves no playlist.
+    public let createPlaylist:
+        @Sendable (
+            _ name: String, _ sharing: BridgeSharing, _ trackIds: [String]
+        ) async throws -> String
 
     public init(
         albumBrowse:
@@ -159,7 +165,10 @@ public final class Library: Sendable, Observable {
             },
         setLibraryFullWidth: @escaping @Sendable (Bool) async throws -> Void = {
             _ in throw StubError.notImplemented
-        }
+        },
+        createPlaylist:
+            @escaping @Sendable (String, BridgeSharing, [String]) async throws
+            -> String = { _, _, _ in throw StubError.notImplemented }
     ) {
         self.albumBrowse = albumBrowse
         self.getAlbumIndex = getAlbumIndex
@@ -182,6 +191,7 @@ public final class Library: Sendable, Observable {
         self.releaseFiles = releaseFiles
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
+        self.createPlaylist = createPlaylist
     }
 
     #if DEBUG
@@ -226,10 +236,8 @@ extension Library {
                     )
                 },
                 workDetail: { DetailQuery(handle.subscribeWorkDetail()) },
-                playlists: { PulledValues(handle.subscribePlaylists()) },
-                playlistDetail: {
-                    DetailQuery(handle.subscribePlaylistDetail())
-                },
+                playlists: Self.playlists(handle),
+                playlistDetail: Self.playlistDetail(handle),
                 albumSelection: {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
@@ -252,7 +260,8 @@ extension Library {
                 },
                 setLibraryFullWidth: {
                     try await handle.setLibraryFullWidth(enabled: $0)
-                }
+                },
+                createPlaylist: Self.createPlaylist(handle)
             )
         }
 
@@ -285,6 +294,36 @@ extension Library {
                     sortCriteria: $0,
                     albumIds: $1,
                     groupByArtist: $2
+                )
+            }
+        }
+
+        /// Every playlist this device holds, read through `handle`.
+        private static func playlists(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable () -> PulledValues<BridgePlaylistListing> {
+            { PulledValues(handle.subscribePlaylists()) }
+        }
+
+        /// The playlist page's read through `handle`.
+        private static func playlistDetail(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
+            { DetailQuery(handle.subscribePlaylistDetail()) }
+        }
+
+        /// Make a playlist through `handle`.
+        private static func createPlaylist(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (String, BridgeSharing, [String]) async throws
+            -> String
+        {
+            {
+                try await handle.createPlaylist(
+                    name: $0,
+                    sharing: $1,
+                    trackIds: $2
                 )
             }
         }

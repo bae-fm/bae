@@ -90,6 +90,8 @@ class UiStore: @unchecked Sendable {
 
     var activeSection: MainSection = .library
     var libraryBrowserMode: LibraryBrowserMode = .albums
+    /// The New playlist sheet's state while it is open.
+    var newPlaylistSheet: NewPlaylistSheetState?
     var selectedAlbumId: String?
     private(set) var showQueue: Bool = false
 
@@ -168,6 +170,11 @@ class UiStore: @unchecked Sendable {
 
     func navigateToLibraryRoot() {
         activeSection = .library
+    }
+
+    /// Open the New playlist sheet, the playlist starting with `trackIds`.
+    func presentNewPlaylist(trackIds: [String]) {
+        newPlaylistSheet = NewPlaylistSheetState(trackIds: trackIds)
     }
 
     func setLibraryBrowserMode(_ mode: LibraryBrowserMode) {

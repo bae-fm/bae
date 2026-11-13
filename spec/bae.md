@@ -2747,6 +2747,12 @@ and who sees it, then its tracks in order, each with its credit line (§2.3),
 album and release cover. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
 
+A playlist is made with a name and who sees it, *Only me* or *Everyone*,
+starting on *Only me*; a blank name cannot be made, by the rule that refuses a
+blank library or profile name. On macOS the Playlists heading's *New
+playlist…* button opens the sheet for it, and the playlist made opens in the
+view.
+
 Ben's phone and laptop each add a track to his party playlist while offline.
 Both take the next position, 7. When they sync, both entries stay; equal
 positions order by position id, so every device shows the same order. A
