@@ -68,25 +68,17 @@ struct AlbumTrackListLayoutTests {
     }
 
     /// A band per row: where its play button is laid out. SwiftUI puts a
-    /// stand-in view for each focusable control into the hosting view's key
-    /// view loop, at the control's frame, so the loop from the hosting view
-    /// back to it passes each row's button once. A row's button stays in the
-    /// layout tree whatever the row shows, opacity-toggled, centred in its
-    /// leading slot.
+    /// stand-in view for each focusable control into the hosting view, at the
+    /// control's frame, so the hosting view holds each row's button once. A
+    /// row's button stays in the layout tree whatever the row shows,
+    /// opacity-toggled, centred in its leading slot.
     private func rowBands(
         in host: NSView,
         release: ReleaseDetail
     ) -> [RowBand] {
-        // One past the rows at most, so a loop that never returns to the
-        // hosting view fails the count rather than hanging the test.
-        var frames: [CGRect] = []
-        var next = host.nextKeyView
-        while let view = next, view !== host,
-            frames.count <= release.tracks.count
-        {
-            frames.append(view.convert(view.bounds, to: host))
-            next = view.nextKeyView
-        }
+        let frames = SnapshotTestSupport.descendants(of: host)
+            .filter { String(describing: type(of: $0)) == "KeyViewProxy" }
+            .map { $0.convert($0.bounds, to: host) }
         let bands = frames.map { frame in
             RowBand(
                 x: frame.minX,
