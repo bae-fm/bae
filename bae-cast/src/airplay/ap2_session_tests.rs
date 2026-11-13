@@ -5,7 +5,6 @@
 
 use super::*;
 use crate::airplay::ap2_channel::control_keys;
-use crate::airplay::rtsp::read_request;
 use std::io::{BufRead, Write};
 use std::net::TcpListener;
 
@@ -226,9 +225,7 @@ fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
 
 // -- Full AirPlay 2 session against a scripted fake receiver --
 
-use crate::airplay::secure_rng::SecureRng;
-use crate::airplay::srp::SrpGroup;
-use crate::airplay::tlv8::{state, tlv_type, Tlv8};
+use crate::airplay::fake_receiver::serve_transient_pair_setup;
 use bae_playback::airplay_output::AirPlayStreamControl;
 use bae_playback::airplay_output::PcmSource;
 use bae_util::test_channels::HANG_GUARD;
@@ -289,93 +286,12 @@ fn run_full_ap2_session(
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
 
-        // -- Pairing (plaintext). The SRP secret is discarded by the sender, so
-        // a valid B and a bare M4 suffice; pair-verify's X25519 secret is real.
-        let group = SrpGroup::rfc5054_3072();
-        let b_pub = group.g.modpow(&num_bigint::BigUint::from_bytes_be(&[0x7Cu8; 32]), &group.n);
-        let respond = |writer: &mut TcpStream, cseq: &str, body: Vec<u8>| {
-            let mut out = format!(
-                "RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n",
-                body.len()
-            )
-            .into_bytes();
-            out.extend_from_slice(&body);
-            writer.write_all(&out).unwrap();
-            writer.flush().unwrap();
-        };
+        // -- Transient pair-setup over the plain socket, real SRP on this side.
+        // Every byte after M4 is HAP blocks keyed from the SRP key.
+        let shared = serve_transient_pair_setup(&mut reader, &mut writer)
+            .expect("the sender pairs the way a receiver reads it");
 
-        // pair-setup M1 -> M2 (salt + B)
-        let cseq = read_request(&mut reader)
-            .unwrap()
-            .expect("the sender sent a request")
-            .cseq()
-            .to_string();
-        respond(
-            &mut writer,
-            &cseq,
-            Tlv8::new()
-                .push_u8(tlv_type::STATE, state::M2)
-                .push(tlv_type::SALT, vec![0xA5u8; 16])
-                .push(tlv_type::PUBLIC_KEY, b_pub.to_bytes_be())
-                .encode(),
-        );
-        // pair-setup M3 -> M4 (bare)
-        let cseq = read_request(&mut reader)
-            .unwrap()
-            .expect("the sender sent a request")
-            .cseq()
-            .to_string();
-        respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
-
-        // pair-verify M1 -> M2 (device eph + signed encrypted identity)
-        use ed25519_dalek::{Signer, SigningKey};
-        use x25519_dalek::{PublicKey, StaticSecret};
-        let eph = StaticSecret::random_from_rng(SecureRng);
-        let eph_pub = PublicKey::from(&eph);
-        let signing = SigningKey::generate(&mut SecureRng);
-        let request = read_request(&mut reader).unwrap().expect("the sender sent a request");
-        let (cseq, m1) = (request.cseq().to_string(), request.body);
-        let m1_tlv = Tlv8::decode(&m1).unwrap();
-        let sender_pub: [u8; 32] = m1_tlv.get(tlv_type::PUBLIC_KEY).unwrap().try_into().unwrap();
-        let shared = eph.diffie_hellman(&PublicKey::from(sender_pub)).to_bytes();
-        let session_key = crate::airplay::ap2_channel::hkdf32(
-            b"Pair-Verify-Encrypt-Salt",
-            &shared,
-            b"Pair-Verify-Encrypt-Info",
-        );
-        let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
-        let mut signed = Vec::new();
-        signed.extend_from_slice(eph_pub.as_bytes());
-        signed.extend_from_slice(&sender_pub);
-        let sig = signing.sign(&signed);
-        let inner = Tlv8::new()
-            .push(tlv_type::IDENTIFIER, b"fake".to_vec())
-            .push(tlv_type::SIGNATURE, sig.to_bytes().to_vec())
-            .encode();
-        let sealed = cipher
-            .encrypt(
-                &crate::airplay::airplay2::pair_verify_nonce(b"PV-Msg02"),
-                Payload { msg: &inner, aad: &[] },
-            )
-            .unwrap();
-        respond(
-            &mut writer,
-            &cseq,
-            Tlv8::new()
-                .push_u8(tlv_type::STATE, state::M2)
-                .push(tlv_type::PUBLIC_KEY, eph_pub.as_bytes().to_vec())
-                .push(tlv_type::ENCRYPTED_DATA, sealed)
-                .encode(),
-        );
-        // pair-verify M3 -> M4 (bare)
-        let cseq = read_request(&mut reader)
-            .unwrap()
-            .expect("the sender sent a request")
-            .cseq()
-            .to_string();
-        respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
-
-        // -- Encrypted control channel (keys derived from the verify secret).
+        // -- Encrypted control channel, keyed from the SRP key.
         let (write, read) = control_keys(&shared);
         let mut channel = HapChannel::from_keys(&read, &write);
         let shk = audio_key(&shared);
@@ -479,7 +395,7 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
         vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"],
         "the AirPlay 2 control sequence runs in order over the encrypted channel"
     );
-    assert!(c.saw_shk, "SETUP carried the shk audio key derived from pair-verify");
+    assert!(c.saw_shk, "SETUP carried the shk audio key derived from the pair-setup key");
     assert_eq!(c.timing_protocol, "NTP");
     assert!(!c.anchor_has_network_time, "NTP carries no network-time anchor");
     // One packet = 352 stereo frames of 0x0102, little-endian.

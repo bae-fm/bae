@@ -3,15 +3,16 @@
 //!
 //! Transient pairing is the first four states (M1–M4) of HomeKit pair-setup with
 //! the transient flag set: no PIN, no persistent identity stored. The SRP shared
-//! secret it establishes is what the audio-stream encryption keys are later
-//! derived from. This is the flow pyatv's `hap_transient` (MIT, `master` @ 2024)
-//! runs against real HomePods:
+//! secret it establishes is what the control-channel and audio-stream encryption
+//! keys derive from. This is the flow pyatv's `hap_transient` (MIT, `master` @
+//! 2024) runs against real HomePods:
 //!
 //! 1. `POST /pair-setup` with `{Method=0, State=M1, Flags=Transient}`.
 //! 2. Receiver replies `{State=M2, Salt, PublicKey=B}`.
 //! 3. `POST /pair-setup` with `{State=M3, PublicKey=A, Proof=M1}`.
 //! 4. Receiver replies `{State=M4, Proof=M2}`; the shared secret is the SRP
-//!    session key.
+//!    session key. The control connection is encrypted from here on with keys
+//!    derived from it; no pair-verify follows.
 //!
 //! This module is the transport-agnostic state machine: it produces each request
 //! *body* (TLV8) and consumes each response *body*, so the session drives the
@@ -28,6 +29,10 @@ use super::{check_no_error, expect_state};
 /// receiver accepts (pyatv `TRANSIENT_PIN`).
 const PAIR_SETUP_USERNAME: &[u8] = b"Pair-Setup";
 const TRANSIENT_PIN: &[u8] = b"3939";
+
+/// The `X-Apple-HKP` value on every transient `/pair-setup` POST: 4 marks the
+/// transient flow. Receivers read nothing else from a request without it.
+pub(crate) const TRANSIENT_HKP: &str = "4";
 
 /// The transient pair-setup state machine. Built, then driven M1→M3, yielding the
 /// SRP shared secret once M4 arrives.

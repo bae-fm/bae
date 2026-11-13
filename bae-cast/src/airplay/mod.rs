@@ -26,6 +26,8 @@ pub(crate) mod bplist;
 pub(crate) mod capabilities;
 pub(crate) mod crypto;
 pub(crate) mod discovery;
+#[cfg(test)]
+mod fake_receiver;
 pub(crate) mod pairing;
 pub(crate) mod rtp;
 pub(crate) mod rtsp;

@@ -1,6 +1,6 @@
 //! The AirPlay 2 control sequence over the encrypted RTSP channel.
 //!
-//! After pair-setup and pair-verify establish the shared secret, an AirPlay 2
+//! After transient pair-setup establishes the shared secret, an AirPlay 2
 //! sender drives its control messages over the HomeKit secure transport
 //! ([`super::ap2_channel::HapChannel`]): SETUP (session), SETUP (audio stream,
 //! carrying the `shk` audio key), SETPEERS (the timing-peer list), and
@@ -10,7 +10,7 @@
 //!
 //! The bodies are pure functions (golden-tested), and the whole sequence is
 //! driven over a real encrypted socket against a scripted fake receiver that
-//! decrypts with the pair-verify key and checks the order and contents.
+//! decrypts with the pair-setup key and checks the order and contents.
 
 use std::io::{BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream};
@@ -20,10 +20,10 @@ use std::time::Duration;
 use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE};
 use tracing::warn;
 
-use super::airplay2::{Ap2AudioCipher, PairVerify};
+use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
 use super::bplist::{self, Plist};
-use super::pairing::{PairingError, TransientPairing};
+use super::pairing::{PairingError, TransientPairing, TRANSIENT_HKP};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
@@ -148,14 +148,14 @@ pub(crate) enum Ap2Error {
     BadBody(&'static str),
     #[error("AirPlay 2 response body is not a readable bplist: {0}")]
     BodyDecode(#[from] bplist::BplistError),
-    /// Transient pair-setup or pair-verify failed.
+    /// Transient pair-setup failed.
     #[error("AirPlay 2 pairing failed: {0}")]
     Pairing(#[from] PairingError),
 }
 
-/// The AirPlay 2 control connection after pair-verify: RTSP requests sealed onto
+/// The AirPlay 2 control connection after pair-setup: RTSP requests sealed onto
 /// the encrypted transport, responses decrypted back. Built from the shared
-/// secret pair-verify produced.
+/// secret pair-setup produced.
 pub(crate) struct Ap2Control {
     writer: TcpStream,
     reader: BufReader<TcpStream>,
@@ -170,7 +170,7 @@ impl Ap2Control {
     /// RTSP request URI (`rtsp://<local>/<session-id>`).
     pub(crate) fn new(
         stream: TcpStream,
-        shared_secret: &[u8; 32],
+        shared_secret: &[u8],
         uri: impl Into<String>,
         user_agent: impl Into<String>,
     ) -> std::io::Result<Self> {
@@ -346,39 +346,25 @@ pub(crate) struct Ap2SetupParams {
     pub ptp_anchor: Option<(u64, u32, u64)>,
 }
 
-/// Drive transient pair-setup (SRP) over the plaintext RTSP socket. The SRP
-/// shared secret proves transient pairing; the channel keys come from the
-/// pair-verify that follows.
-fn run_pair_setup(conn: &mut RtspConnection) -> Result<(), Ap2Error> {
+/// Drive transient pair-setup (SRP) over the plaintext RTSP socket, returning
+/// the SRP key. Every request after M4 is encrypted with keys derived from it,
+/// and the audio key comes from the same secret.
+pub(crate) fn run_pair_setup(conn: &mut RtspConnection) -> Result<Vec<u8>, Ap2Error> {
     let mut pairing = TransientPairing::new();
     let m1 = pairing.start()?;
     let m2 = pair_post(conn, "/pair-setup", m1)?;
     let m3 = pairing.handle_m2(&m2)?;
     let m4 = pair_post(conn, "/pair-setup", m3)?;
-    pairing.handle_m4(&m4)?;
-    Ok(())
+    Ok(pairing.handle_m4(&m4)?)
 }
 
-/// Drive pair-verify (X25519 + Ed25519) over the plaintext RTSP socket, returning
-/// the shared secret the encrypted channel and audio stream are keyed from.
-fn run_pair_verify(conn: &mut RtspConnection) -> Result<[u8; 32], Ap2Error> {
-    let mut verify = PairVerify::new();
-    let m1 = verify.start()?;
-    let m2 = pair_post(conn, "/pair-verify", m1)?;
-    let m3 = verify.handle_m2(&m2)?;
-    let m4 = pair_post(conn, "/pair-verify", m3)?;
-    Ok(verify.handle_m4(&m4)?)
-}
-
-/// POST a TLV8 pairing body and return the response body, or an error on a
-/// non-2xx status.
+/// POST a transient pair-setup body, marked `X-Apple-HKP: 4` as receivers
+/// require, and return the response body, or an error on a non-2xx status.
 fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec<u8>, Ap2Error> {
-    let response = conn.request(&RtspRequest::with_body(
-        Method::Post,
-        path,
-        "application/octet-stream",
-        body,
-    ))?;
+    let response = conn.request(
+        &RtspRequest::with_body(Method::Post, path, "application/octet-stream", body)
+            .header("X-Apple-HKP", TRANSIENT_HKP),
+    )?;
     if response.is_success() {
         Ok(response.body)
     } else {
@@ -428,8 +414,7 @@ pub(crate) struct Ap2Session {
 }
 
 impl Ap2Session {
-    /// Connect to an AirPlay 2 receiver, run transient pair-setup then pair-verify,
-    /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
+    /// Connect to an AirPlay 2 receiver, run transient pair-setup, drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
     /// start streaming `feed` as ChaCha-encrypted audio.
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
@@ -446,8 +431,7 @@ impl Ap2Session {
         let mut conn = RtspConnection::connect(receiver, airplay_port, "bae/1 (AirPlay 2)")?;
         let local_ip = conn.local_addr();
 
-        run_pair_setup(&mut conn)?;
-        let shared = run_pair_verify(&mut conn)?;
+        let shared = run_pair_setup(&mut conn)?;
 
         // Bind the timing/control sockets before SETUP so their ports are announced.
         let sockets = StreamSockets::bind()?;

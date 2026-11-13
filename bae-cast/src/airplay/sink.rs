@@ -95,7 +95,7 @@ impl AirPlayStreamControl for RaopSession {
 }
 
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
-/// (transient) then push ChaCha-encrypted audio to a HomePod-class receiver.
+/// (transient pair-setup) then push ChaCha-encrypted audio to a HomePod-class receiver.
 pub(crate) struct Ap2Sink {
     receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).

@@ -270,7 +270,7 @@ impl RtspConnection {
     }
 
     /// Take the underlying TCP stream back, for handing a control connection off to
-    /// the encrypted transport after AirPlay 2 pair-verify. The buffered reader is
+    /// the encrypted transport after AirPlay 2 pair-setup. The buffered reader is
     /// dropped — safe only when the last response was fully consumed (each RTSP
     /// request reads exactly its `Content-Length` body, so nothing is left over).
     pub(crate) fn into_stream(self) -> TcpStream {

@@ -1,12 +1,13 @@
-//! The encrypted AirPlay 2 control channel and the keys derived from pair-verify.
+//! The encrypted AirPlay 2 control channel and the keys derived from the
+//! transient pair-setup secret.
 //!
-//! Once pair-verify establishes a shared secret, the RTSP control connection is
-//! wrapped in the HomeKit secure transport: each message is split into blocks,
-//! and every block is `2-byte little-endian length ‖ ChaCha20-Poly1305(counter
+//! Once transient pair-setup establishes the SRP session key, the RTSP control
+//! connection is wrapped in the HomeKit secure transport: each message is split
+//! into blocks, and every block is `2-byte little-endian length ‖ ChaCha20-Poly1305(counter
 //! nonce, block, aad = the length bytes) ‖ 16-byte tag`. The counter increments
 //! per block, separately per direction. The write/read keys and the audio
 //! session key (`shk`, sent to the receiver in the SETUP streams plist) are all
-//! HKDF-SHA512 expansions of the pair-verify secret under fixed salt/info labels
+//! HKDF-SHA512 expansions of the session secret under fixed salt/info labels
 //! (semantics from the MIT `airplay2-rs` and pyatv).
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
@@ -25,10 +26,10 @@ pub(crate) fn hkdf32(salt: &[u8], ikm: &[u8], info: &[u8]) -> [u8; 32] {
     okm
 }
 
-/// The control-channel keys derived from the pair-verify shared secret: the
+/// The control-channel keys derived from the pair-setup session secret: the
 /// sender's write key (controller → accessory) and read key (accessory →
 /// controller).
-pub(crate) fn control_keys(shared: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
+pub(crate) fn control_keys(shared: &[u8]) -> ([u8; 32], [u8; 32]) {
     let write = hkdf32(b"Control-Salt", shared, b"Control-Write-Encryption-Key");
     let read = hkdf32(b"Control-Salt", shared, b"Control-Read-Encryption-Key");
     (write, read)
@@ -43,7 +44,7 @@ pub(crate) fn nonce_with_tail(tail: &[u8; 8]) -> Nonce {
     Nonce::from(bytes)
 }
 
-pub(crate) fn audio_key(shared: &[u8; 32]) -> [u8; 32] {
+pub(crate) fn audio_key(shared: &[u8]) -> [u8; 32] {
     hkdf32(b"Events-Salt", shared, b"Events-Write-Encryption-Key")
 }
 
@@ -67,8 +68,8 @@ pub(crate) struct HapChannel {
 }
 
 impl HapChannel {
-    /// Build the channel from the pair-verify shared secret.
-    pub(crate) fn from_shared_secret(shared: &[u8; 32]) -> Self {
+    /// Build the channel from the pair-setup session secret.
+    pub(crate) fn from_shared_secret(shared: &[u8]) -> Self {
         let (write_key, read_key) = control_keys(shared);
         Self::from_keys(&write_key, &read_key)
     }

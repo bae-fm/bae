@@ -80,14 +80,11 @@ aes = { workspace = true }
 cbc = { workspace = true }
 base64 = { workspace = true }
 sha1 = { workspace = true }
-# AirPlay 2 HomeKit pair-verify + audio-packet encryption (src/airplay/airplay2.rs).
-# Pair-verify is X25519 ECDH + Ed25519 signatures with HKDF-SHA512-derived keys;
-# the audio stream is ChaCha20-Poly1305 keyed from the pair-verify shared secret.
-# All on the same digest-0.10 stack as `sha2`. rand_core 0.6 is the RNG trait
-# these (and `rsa`) are built against — bae is on `rand` 0.9, so `secure_rng`
-# adapts the current OS RNG to the older trait.
-x25519-dalek = { workspace = true, features = ["static_secrets"] }
-ed25519-dalek = { workspace = true, features = ["rand_core"] }
+# AirPlay 2 control-channel and audio-packet encryption (src/airplay/ap2_channel.rs,
+# airplay2.rs): ChaCha20-Poly1305 with HKDF-SHA512 keys from the transient
+# pair-setup secret, on the same digest-0.10 stack as `sha2`. rand_core 0.6 is the
+# RNG trait `rsa` is built against — bae is on `rand` 0.9, so `secure_rng` adapts
+# the current OS RNG to the older trait.
 chacha20poly1305 = { workspace = true }
 hkdf = { workspace = true }
 rand_core = { workspace = true }

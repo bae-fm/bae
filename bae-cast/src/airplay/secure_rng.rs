@@ -1,7 +1,6 @@
 //! A `rand_core` 0.6 RNG over the current OS entropy source.
 //!
-//! The AirPlay crypto crates (`rsa`, `x25519-dalek`, `ed25519-dalek`) are built
-//! against `rand_core` 0.6, while bae is on `rand` 0.9. This adapter feeds the
+//! The AirPlay crypto crate `rsa` is built against `rand_core` 0.6, while bae is on `rand` 0.9. This adapter feeds the
 //! older trait from `rand`'s OS RNG so key generation and OAEP padding stay
 //! properly random — no fixed seed.
 

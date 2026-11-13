@@ -4,7 +4,7 @@
 //! value longer than 255 bytes is split into consecutive items of the *same*
 //! type, each ≤255 bytes, which a reader concatenates back together — that's how
 //! a 384-byte SRP public key rides in a TLV8 message. This encoding carries the
-//! `/pair-setup` and `/pair-verify` bodies (openairplay spec §9; the type
+//! `/pair-setup` bodies (openairplay spec §9; the type
 //! registry matches pyatv's `hap_tlv8`, MIT).
 //!
 //! Only one level of nesting is used (no TLV-in-TLV), matching the pairing flow.
@@ -14,9 +14,6 @@
 pub(crate) mod tlv_type {
     /// The pairing method (`kTLVType_Method`), `0x00` for pair-setup.
     pub(crate) const METHOD: u8 = 0x00;
-    /// A peer identifier — the controller's pairing id (`kTLVType_Identifier`),
-    /// carried inside the encrypted pair-verify sub-messages.
-    pub(crate) const IDENTIFIER: u8 = 0x01;
     /// The SRP salt `s` sent by the receiver (`kTLVType_Salt`).
     pub(crate) const SALT: u8 = 0x02;
     /// An SRP or X25519 public key — the receiver's `B`/ephemeral or the sender's
@@ -24,16 +21,11 @@ pub(crate) mod tlv_type {
     pub(crate) const PUBLIC_KEY: u8 = 0x03;
     /// The SRP proof `M1`/`M2` (`kTLVType_Proof`).
     pub(crate) const PROOF: u8 = 0x04;
-    /// A ChaCha20-Poly1305 ciphertext + tag (`kTLVType_EncryptedData`), carrying
-    /// the signed identity in pair-verify M2/M3.
-    pub(crate) const ENCRYPTED_DATA: u8 = 0x05;
     /// The pairing state machine step, M1–M6 (`kTLVType_State`; pyatv calls it
     /// `SeqNo`).
     pub(crate) const STATE: u8 = 0x06;
     /// A receiver-reported error (`kTLVType_Error`).
     pub(crate) const ERROR: u8 = 0x07;
-    /// An Ed25519 signature over the ephemeral-key exchange (`kTLVType_Signature`).
-    pub(crate) const SIGNATURE: u8 = 0x0A;
     /// Apple's pairing flags (`kTLVType_Flags`), carrying the transient-pairing
     /// bit.
     pub(crate) const FLAGS: u8 = 0x13;
