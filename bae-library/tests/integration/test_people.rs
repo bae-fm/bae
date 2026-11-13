@@ -7,6 +7,7 @@ use bae_library::test_libraries::{
 use bae_people::people::{HistorySharing, ProfileError};
 
 mod avatars;
+mod ratings;
 
 /// The diagnostics these tests' bootstrap calls report to: none.
 static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
