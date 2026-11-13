@@ -282,6 +282,40 @@ fn a_label_keeps_its_id_and_loses_its_disambiguation_suffix() {
     assert_eq!(search.label, Some(vec!["Label Name Records".to_string(), "Company".to_string()]));
 }
 
+/// An artist's name loses the " (n)" Discogs appends to tell two artists of
+/// one name apart, wherever the release states one; the id still names the
+/// artist, and a name only ending in a bracket keeps it.
+#[test]
+fn an_artist_keeps_its_id_and_loses_its_disambiguation_suffix() {
+    let raw = serde_json::json!({
+        "id": 123, "title": "Album",
+        "artists": [{"id": 31, "name": "Artist Name (2)", "anv": "", "join": ","},
+                    {"id": 32, "name": "Artist (UK)"}],
+        "extraartists": [{"id": 33, "name": "Helper Name (14)", "role": "Producer"}],
+        "tracklist": [{"position": "1", "title": "Track", "type_": "track",
+            "artists": [{"id": 31, "name": "Artist Name (2)"}],
+            "extraartists": [{"id": 33, "name": "Helper Name (14)", "role": "Mixed By"}]}]
+    })
+    .to_string();
+    let release = parse_discogs_release_json(&raw).unwrap();
+    let names = |artists: &[crate::discogs::models::DiscogsArtist]| {
+        artists.iter().map(|a| (a.id.clone(), a.name.clone())).collect::<Vec<_>>()
+    };
+    assert_eq!(
+        names(&release.artists),
+        vec![
+            ("31".to_string(), "Artist Name".to_string()),
+            ("32".to_string(), "Artist (UK)".to_string())
+        ]
+    );
+    assert_eq!(release.extraartists.as_ref().unwrap()[0].name, "Helper Name");
+    assert_eq!(
+        names(&release.tracklist[0].artists),
+        vec![("31".to_string(), "Artist Name".to_string())]
+    );
+    assert_eq!(release.tracklist[0].extraartists.as_ref().unwrap()[0].name, "Helper Name");
+}
+
 #[test]
 fn master_year_distinguishes_unknown_from_known() {
     for (document, expected) in [

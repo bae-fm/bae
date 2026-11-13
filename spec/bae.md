@@ -1243,9 +1243,9 @@ with the stored key that Discogs answers 401 marks it rejected, and one it
 answers confirms a key not yet checked. What a check or a call says of
 a key is recorded only while that key is still the one stored: an answer
 about a key replaced since leaves the new key as its own save recorded it. A
-Discogs label name
-loses the " (2)" Discogs adds to tell two labels of one name apart: the
-label's id tells them apart, and the name is what a release prints. Either catalog can be
+Discogs label or artist name
+loses the " (2)" Discogs adds to tell two of one name apart: the
+id tells them apart, and the name is what a release prints. Either catalog can be
 switched off, but not the last one asked. A library left asking none, its
 last asked catalog having lost its key, has nothing to search, which core
 states and Find online says. A catalog switched off is asked nothing: a read

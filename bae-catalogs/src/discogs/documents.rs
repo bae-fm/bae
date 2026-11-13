@@ -14,6 +14,7 @@ use tracing::warn;
 #[derive(Debug, Deserialize, Clone)]
 struct ArtistCredit {
     id: u64,
+    #[serde(deserialize_with = "name_without_suffix")]
     name: String,
     // Discogs prints "" for neither; the mapper reads an empty one as none.
     #[serde(default)]
@@ -31,6 +32,7 @@ impl ArtistCredit {
 #[derive(Debug, Deserialize, Clone)]
 struct ExtraArtistCredit {
     id: Option<u64>,
+    #[serde(deserialize_with = "name_without_suffix")]
     name: String,
     #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     role: Option<String>,
@@ -152,7 +154,7 @@ struct LabelResponse {
 }
 
 /// A Discogs name without the " (n)" Discogs appends to tell apart two
-/// entities of one name ("Label Name Records (2)"): the name the entity goes by.
+/// entities of one name ("Label Name Records (2)", "Artist Name (3)"): the name the entity goes by.
 pub(crate) fn without_suffix(name: &str) -> String {
     let trimmed = name.trim_end();
     if let Some(open) = trimmed.strip_suffix(')').and_then(|rest| rest.rfind(" (")) {
@@ -172,6 +174,14 @@ const NOT_ON_LABEL_ID: u64 = 1818;
 pub(crate) fn is_not_on_label(name: &str) -> bool {
     let name = name.trim();
     name.strip_prefix("Not On Label").is_some_and(|rest| rest.is_empty() || rest.starts_with(" ("))
+}
+
+/// One Discogs name, [`without_suffix`].
+fn name_without_suffix<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(without_suffix(&String::deserialize(deserializer)?))
 }
 
 /// A list of Discogs names, each [`without_suffix`].
