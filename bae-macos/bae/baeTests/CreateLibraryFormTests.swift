@@ -24,6 +24,7 @@ struct CreateLibraryFormTests {
             forgetSavedRestoreCode: { _ in throw CancellationError() },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
+            discardUnfinishedInstallation: { _ in throw CancellationError() },
             makeBootstrap: {
                 preconditionFailure("a create starts no restore")
             },

@@ -17,6 +17,10 @@ struct LocalLibrariesSection: View {
     let opening: ClosedLibraryOpening?
     /// A failed open of one of `libraries`, shown joined under its row.
     var openFailure: LoadError?
+    /// The library whose unfinished join or restore on this Mac can't be
+    /// read, as a row after the libraries.
+    var unreadableInstallation: String?
+    let onDiscardInstallation: (String) -> Void
     let onResetFromCloud: (BridgeLibrary) -> Void
     let onOpen: (BridgeLibrary) -> Void
     let onFinish: (BridgeLibrary, BridgeReplacedBy) -> Void
@@ -68,6 +72,18 @@ struct LocalLibrariesSection: View {
                         )
                     }
                 }
+                if let unreadableInstallation {
+                    if !libraries.isEmpty {
+                        Divider()
+                            .padding(.horizontal, ThemeSpace.group)
+                            .opacity(0.6)
+                    }
+                    UnreadableInstallationRow(
+                        libraryId: unreadableInstallation,
+                        disabled: disabled,
+                        onDiscard: onDiscardInstallation
+                    )
+                }
             }
             .card()
             MacSheetFooter {
@@ -83,6 +99,37 @@ struct LocalLibrariesSection: View {
             }
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)
+    }
+}
+
+/// An unfinished join or restore this Mac can't read: its library's id under
+/// the name of what it is, with Discard… to delete it. It can't open or
+/// resume, so nothing else is offered.
+private struct UnreadableInstallationRow: View {
+    let libraryId: String
+    let disabled: Bool
+    let onDiscard: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                Text("Unfinished join that cannot be read")
+                    .themeText(.strong)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(verbatim: libraryId)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: ThemeSpace.group)
+            Button("Discard…") { onDiscard(libraryId) }
+                .buttonStyle(.accentBordered)
+        }
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.vertical, ThemeSpace.related + ThemeSpace.line)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .disabled(disabled)
     }
 }
 

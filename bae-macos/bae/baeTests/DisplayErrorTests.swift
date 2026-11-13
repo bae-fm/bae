@@ -26,6 +26,23 @@ struct DisplayErrorTests {
         #expect(displayed.detail == "no such table: albums")
     }
 
+    /// The welcome offers to discard an unfinished join its listing failed
+    /// on, by the library id core names in the failure; any other failure
+    /// names none.
+    @Test("a failure names the library whose unfinished join cannot be read")
+    func unreadableInstallationNamesItsLibrary() {
+        let unreadable = BridgeError.Diagnostic(
+            category: .unfinishedInstallationUnreadable(libraryId: "lib-1"),
+            detail: "invalid store settings"
+        )
+        #expect(unreadable.unreadableInstallationLibraryId == "lib-1")
+        #expect(
+            BridgeError.Diagnostic(category: .config, detail: "no join")
+                .unreadableInstallationLibraryId == nil
+        )
+        #expect(BridgeError.Cancelled.unreadableInstallationLibraryId == nil)
+    }
+
     /// Core says this category's line names the whole fault, so its detail,
     /// the same sentence again in English, is not shown or offered.
     @Test("a category whose line says it all shows the line alone")

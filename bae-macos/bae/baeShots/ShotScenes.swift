@@ -175,6 +175,7 @@ extension ShotScenes {
                 )
             },
             opening: nil,
+            onDiscardInstallation: { _ in },
             onResetFromCloud: { _ in },
             onOpen: { _ in },
             onFinish: { _, _ in },

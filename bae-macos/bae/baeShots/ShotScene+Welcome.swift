@@ -18,6 +18,11 @@ extension ShotScene {
         ),
         welcomeWindow("mac.welcome.libraries.none", libraries: []),
         welcomeWindow(
+            "mac.welcome.libraries.damaged-join",
+            libraries: PreviewData.boardLibraries,
+            unreadableInstallation: PreviewData.unreadableInstallationId
+        ),
+        welcomeWindow(
             "mac.welcome.open-failed",
             libraries: PreviewData.boardLibraries,
             loadError: LoadError(
@@ -342,12 +347,14 @@ extension ShotScene {
         _ id: String,
         libraries: [BridgeLibrary],
         savedCodes: [BridgeSavedRestoreEntry] = [],
-        loadError: LoadError? = nil
+        loadError: LoadError? = nil,
+        unreadableInstallation: String? = nil
     ) -> ShotScene {
         ShotScene(id: id, size: WelcomeWindow.size) {
             let reads = CountedReads(
                 libraries: libraries,
-                savedCodes: savedCodes
+                savedCodes: savedCodes,
+                unreadableInstallation: unreadableInstallation
             )
             return ShotStage(
                 ShotScenes.welcome(
@@ -355,7 +362,7 @@ extension ShotScene {
                     setup: reads.setup,
                     loadError: loadError
                 )
-            ) { reads.answered == 2 }
+            ) { reads.answered == reads.reads }
         }
     }
 
@@ -367,13 +374,15 @@ extension ShotScene {
         size: CGSize = WelcomeWindow.size,
         libraries: [BridgeLibrary] = PreviewData.boardLibraries,
         savedCodes: [BridgeSavedRestoreEntry] = [],
+        unreadableInstallation: String? = nil,
         extraReads: Int = 0,
         laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
     ) -> ShotScene {
         ShotScene(id: id, size: size) {
             let reads = CountedReads(
                 libraries: libraries,
-                savedCodes: savedCodes
+                savedCodes: savedCodes,
+                unreadableInstallation: unreadableInstallation
             )
             // `ShotScenes.welcome` at `size`: a board may draw the window
             // taller than the app's, to fit a popover under its rows.
@@ -390,7 +399,7 @@ extension ShotScene {
             .environment(reads.setup)
             .environment(PreviewData.welcomeRemovals())
             return ShotStage(dialog(reads, AnyView(window))) {
-                reads.answered == 2 + extraReads
+                reads.answered == reads.reads + extraReads
             }
         }
     }
@@ -526,14 +535,23 @@ private final class CountedReads {
     let libraries: [BridgeLibrary]
     /// The restore codes the saved-code listing answers.
     let savedCodes: [BridgeSavedRestoreEntry]
+    /// The library whose unfinished join the listing of joins fails on, as
+    /// unreadable.
+    let unreadableInstallation: String?
 
     init(
         libraries: [BridgeLibrary] = [],
-        savedCodes: [BridgeSavedRestoreEntry] = []
+        savedCodes: [BridgeSavedRestoreEntry] = [],
+        unreadableInstallation: String? = nil
     ) {
         self.libraries = libraries
         self.savedCodes = savedCodes
+        self.unreadableInstallation = unreadableInstallation
     }
+
+    /// How many reads the welcome window makes as it appears: the two lists,
+    /// and the listing of joins when it fails.
+    var reads: Int { unreadableInstallation == nil ? 2 : 3 }
 
     var setup: LibrarySetup {
         let base = LibrarySetup.stub()
@@ -549,8 +567,18 @@ private final class CountedReads {
                 return savedCodes
             },
             forgetSavedRestoreCode: { _ in throw UnservedReadError() },
-            unfinishedJoins: { [] },
+            unfinishedJoins: { [self] in
+                guard let unreadableInstallation else { return [] }
+                await answer()
+                throw BridgeError.Diagnostic(
+                    category: .unfinishedInstallationUnreadable(
+                        libraryId: unreadableInstallation
+                    ),
+                    detail: "invalid store settings: EOF while parsing"
+                )
+            },
             unfinishedRestores: { [] },
+            discardUnfinishedInstallation: { _ in throw UnservedReadError() },
             makeBootstrap: {
                 LibraryBootstrap(
                     host: BaeHost.inTemporaryFolder(),
@@ -581,6 +609,10 @@ extension PreviewData {
     /// The libraries the welcome boards show: Home music, stored in the
     /// person's Dropbox, and Odile's records, which never synced.
     static let boardLibraries: [BridgeLibrary] = [homeMusic, odilesRecords]
+
+    /// The library whose unfinished join the welcome boards show as one this
+    /// Mac can't read.
+    static let unreadableInstallationId = "3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81"
 
     /// A library with no cloud home, which offers Delete in place of
     /// Remove.

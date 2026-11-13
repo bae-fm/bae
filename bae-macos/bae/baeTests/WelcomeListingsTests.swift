@@ -44,6 +44,9 @@ struct WelcomeListingsTests {
             forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
+            discardUnfinishedInstallation: { _ in
+                throw WelcomeTestError.notUsed
+            },
             makeBootstrap: {
                 preconditionFailure("the welcome's lists start no restore")
             },

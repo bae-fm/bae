@@ -19,6 +19,11 @@ struct WelcomeChooseView: View {
     /// Replace this Mac's copy of a library from the cloud: opens the reset
     /// for that library.
     let onResetFromCloud: (String) -> Void
+    /// The library whose unfinished join or restore on this Mac can't be
+    /// read, listed as a row that offers to discard it.
+    let unreadableInstallation: String?
+    /// Delete that unfinished installation from this Mac, and list again.
+    let onDiscardInstallation: (String) async -> Void
     /// Go to the step that asks the creator's name and creates a library.
     let onCreate: () -> Void
     let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
@@ -49,7 +54,8 @@ struct WelcomeChooseView: View {
         switch listings.localLibraries {
         case .loading: false
         case .failed: true
-        case .loaded(let libraries): libraries.isEmpty
+        case .loaded(let libraries):
+            libraries.isEmpty && unreadableInstallation == nil
         }
     }
 
@@ -98,6 +104,15 @@ struct WelcomeChooseView: View {
     private func finishRemoving(_ library: BridgeLibrary) async {
         await listings.finishRemoving(library, with: removals, from: setup)
         await offerRetry()
+    }
+
+    /// Ask whether to discard the unreadable unfinished join or restore of
+    /// `libraryId`, and discard it.
+    private func askToDiscard(_ libraryId: String) async {
+        guard
+            await asker.ask(InstallationDiscardAlert.confirmation) == 0
+        else { return }
+        await onDiscardInstallation(libraryId)
     }
 
     /// When a removal failed, say so, and on Retry run again what failed.
@@ -180,7 +195,9 @@ struct WelcomeChooseView: View {
                 )
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             }
-            else if !discoveredLibraries.isEmpty {
+            else if !discoveredLibraries.isEmpty
+                || unreadableInstallation != nil
+            {
                 LocalLibrariesSection(
                     libraries: discoveredLibraries,
                     disabled: isBusy,
@@ -188,6 +205,10 @@ struct WelcomeChooseView: View {
                     removing: removals.removing,
                     opening: removals.opening,
                     openFailure: openFailureInList,
+                    unreadableInstallation: unreadableInstallation,
+                    onDiscardInstallation: { libraryId in
+                        Task { await askToDiscard(libraryId) }
+                    },
                     onResetFromCloud: { onResetFromCloud($0.id) },
                     onOpen: { onOpenLibrary($0.id) },
                     onFinish: { onFinishReplacement($0.id, $1) },

@@ -37,6 +37,11 @@ public final class LibrarySetup: Sendable, Observable {
     /// themselves, to finish.
     public let unfinishedRestores:
         @Sendable () async throws -> [BridgeUnfinishedRestore]
+    /// Delete a library's unfinished join or restore from this device, for
+    /// one that can't resume because what it saved can't be read. Listing the
+    /// joins and restores fails on it until it is gone.
+    public let discardUnfinishedInstallation:
+        @Sendable (_ libraryId: String) async throws -> Void
     /// One restore or join attempt.
     private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
     /// A new setup call's steps, pulled on the process's host.
@@ -58,6 +63,8 @@ public final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
         unfinishedRestores:
             @escaping @Sendable () async throws -> [BridgeUnfinishedRestore],
+        discardUnfinishedInstallation:
+            @escaping @Sendable (_ libraryId: String) async throws -> Void,
         makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap,
         makeSetupSteps: @escaping @Sendable () -> LibrarySetupSteps
     ) {
@@ -68,6 +75,7 @@ public final class LibrarySetup: Sendable, Observable {
         self.forgetSavedRestoreCode = forgetSavedRestoreCode
         self.unfinishedJoins = unfinishedJoins
         self.unfinishedRestores = unfinishedRestores
+        self.discardUnfinishedInstallation = discardUnfinishedInstallation
         self.makeBootstrap = makeBootstrap
         self.makeSetupSteps = makeSetupSteps
     }
@@ -97,6 +105,9 @@ public final class LibrarySetup: Sendable, Observable {
             },
             unfinishedJoins: { try await host.unfinishedJoins() },
             unfinishedRestores: { try await host.unfinishedRestores() },
+            discardUnfinishedInstallation: {
+                try await host.discardUnfinishedInstallation(libraryId: $0)
+            },
             makeBootstrap: {
                 LibraryBootstrap(host: host, deviceName: deviceName)
             },
@@ -151,6 +162,9 @@ public final class LibrarySetup: Sendable, Observable {
                 },
                 unfinishedJoins: { [] },
                 unfinishedRestores: { [] },
+                discardUnfinishedInstallation: { _ in
+                    throw StubError.notImplemented
+                },
                 makeBootstrap: {
                     LibraryBootstrap(
                         host: BaeHost.inTemporaryFolder(),

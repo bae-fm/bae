@@ -65,6 +65,9 @@ struct SavedRestoreCodesTests {
             forgetSavedRestoreCode: { try await keychain.forget($0) },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
+            discardUnfinishedInstallation: { _ in
+                throw SavedCodesTestError.notUsed
+            },
             makeBootstrap: {
                 preconditionFailure("the saved-code list starts no restore")
             },

@@ -66,6 +66,16 @@ extension BridgeError {
         bridgeErrorShownDetail(error: self)
     }
 
+    /// The library whose unfinished join or restore on this device can't be
+    /// read, when this error says so: listing the joins and restores fails
+    /// with it until the app discards that installation. Core's answer.
+    public var unreadableInstallationLibraryId: String? {
+        guard case .Diagnostic(let category, _) = self,
+            case .unfinishedInstallationUnreadable(let libraryId) = category
+        else { return nil }
+        return libraryId
+    }
+
     /// Whether core says making the same call again can't get past this
     /// error: a damaged database, a bug, an edit to fix, a call only another
     /// call answers. Core's answer, not this app's.

@@ -53,6 +53,10 @@ struct WelcomeView: View {
     /// chooser.
     @State
     private var resumeError: DisplayError?
+    /// The library whose unfinished join or restore on this Mac can't be
+    /// read, which the listing failed on: the chooser offers to discard it.
+    @State
+    private var unreadableInstallation: String?
     /// Whether the chooser already went on with what was under way. It does
     /// so once, as it first shows: Back from a join or restore that failed
     /// again shows the chooser, and the next start goes on with it.
@@ -117,6 +121,8 @@ struct WelcomeView: View {
                 onOpenLibrary: onOpenLibrary,
                 onFinishReplacement: onFinishReplacement,
                 onResetFromCloud: onResetFromCloud,
+                unreadableInstallation: unreadableInstallation,
+                onDiscardInstallation: discardInstallation,
                 onCreate: { mode = .create },
                 onRestoreSaved: { mode = .restoreSaved($0) },
                 onScanCode: { mode = .code(scanning: true) },
@@ -144,6 +150,8 @@ struct WelcomeView: View {
     private func resumeUnfinished() async {
         guard !resumed else { return }
         resumed = true
+        resumeError = nil
+        unreadableInstallation = nil
         do {
             if let join = try await setup.unfinishedJoins().first {
                 mode = .resume(join)
@@ -157,8 +165,36 @@ struct WelcomeView: View {
             logger.error(
                 "listing what is under way failed: \(String(reflecting: error))"
             )
-            resumeError = DisplayError(error)
+            if let libraryId = (error as? BridgeError)?
+                .unreadableInstallationLibraryId
+            {
+                unreadableInstallation = libraryId
+            }
+            else {
+                resumeError = DisplayError(error)
+            }
         }
+    }
+
+    /// Delete the unreadable unfinished join or restore of `libraryId` from
+    /// this Mac, then list what is under way again: another may be unreadable
+    /// too, and a join that can resume goes on.
+    private func discardInstallation(_ libraryId: String) async {
+        do {
+            try await setup.discardUnfinishedInstallation(libraryId)
+        }
+        catch is CancellationError {
+            return
+        }
+        catch {
+            logger.error(
+                "discarding the unfinished installation failed: \(String(reflecting: error))"
+            )
+            resumeError = DisplayError(error)
+            return
+        }
+        resumed = false
+        await resumeUnfinished()
     }
 
     /// The code screen keeps the first form it is handed for as long as it
