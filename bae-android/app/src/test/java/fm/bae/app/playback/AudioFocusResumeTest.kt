@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,6 +35,7 @@ class AudioFocusResumeTest {
             applicationLooper = Looper.getMainLooper(),
             appHandle = handle,
             system = PlaybackSystem(context, audioFocus, { false }),
+            creditLineText = ::plainCreditText,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
 

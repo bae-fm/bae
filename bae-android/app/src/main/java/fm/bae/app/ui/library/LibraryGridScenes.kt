@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeAppChrome
@@ -174,7 +175,7 @@ private fun sceneGroupedRow(index: Int): BridgeAlbumAppearance =
                 title = if (index == 0) "A Long Album Title That Runs Past the Card" else "Album ${index + 1}",
                 year = if (index == 4) null else 1960 + 3 * index,
             ),
-        creditedWith = if (index % 3 == 1) "Another Artist" else null,
+        creditedWith = if (index % 3 == 1) creditLineNamed("Another Artist") else null,
     )
 
 @Preview(showBackground = true)

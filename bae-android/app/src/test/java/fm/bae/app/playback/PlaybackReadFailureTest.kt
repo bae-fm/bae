@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,6 +61,7 @@ class PlaybackReadFailureTest {
             applicationLooper = android.os.Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
             system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
+            creditLineText = ::plainCreditText,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
 }

@@ -14,6 +14,7 @@ import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -150,6 +151,7 @@ class PlaybackServiceTest {
                             appHandle = handle,
                             system = PlaybackSystem(context, AudioFocus(context), { false }),
                             scope = scope,
+                            creditLineText = ::plainCreditText,
                         ),
                     scope = scope,
                     messages = SessionMessages(scope, NoErrorDisplays),

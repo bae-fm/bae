@@ -1,5 +1,6 @@
 package fm.bae.app.ui.playback
 
+import fm.bae.app.creditLineNamed
 import fm.bae.app.playback.QueueContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -17,7 +18,7 @@ class QueueOrderTest {
             display =
                 BridgeTrackDisplay(
                     title = "Track Title",
-                    artistNames = "Artist Name",
+                    artistLine = creditLineNamed("Artist Name"),
                     albumId = "album-1",
                     releaseId = "release-1",
                     albumTitle = "Album Title",

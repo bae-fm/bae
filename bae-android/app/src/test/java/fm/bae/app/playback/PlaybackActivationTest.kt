@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Looper
 import androidx.media3.common.Player
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,6 +38,7 @@ class PlaybackActivationTest {
             appHandle = handle,
             system = PlaybackSystem(context, AudioFocus(context), { foreground }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            creditLineText = ::plainCreditText,
         )
     }
 

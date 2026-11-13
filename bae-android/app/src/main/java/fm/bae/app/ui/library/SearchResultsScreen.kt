@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.creditLineText
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
@@ -129,7 +130,10 @@ private fun SearchResultsList(
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AndroidLibraryRow(
                     title = album.title,
-                    subtitle = context.factsLine(listOf(album.artistName, album.year?.let(context::yearText))),
+                    subtitle =
+                        context.factsLine(
+                            listOf(context.creditLineText(album.artistLine), album.year?.let(context::yearText)),
+                        ),
                     art = album.cover,
                     onClick = { onSelectAlbum(album.id) },
                 )
@@ -183,7 +187,10 @@ private fun LazyListScope.trackResults(
     items(tracks, key = { "track:${it.id}" }) { track ->
         AndroidLibraryRow(
             title = track.title,
-            subtitle = LocalContext.current.namesLine(listOf(track.artistName, track.albumTitle)),
+            subtitle =
+                LocalContext.current.let {
+                    it.namesLine(listOf(it.creditLineText(track.artistLine), track.albumTitle))
+                },
             trailing = LocalContext.current.durationClockLabel(track.durationClock),
             noArt = true,
             onClick = { onSelectAlbum(track.albumId) },

@@ -9,6 +9,7 @@ import androidx.media3.session.SessionResult
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.data.Library
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -185,7 +186,7 @@ class BaeLibrarySessionCallbackTest {
         LibraryBrowseTree(
             Library(handle),
             { BrowseLabels("Library", "Albums", "Composers") },
-            { Uri.parse("content://test/cover/${it.id}") },
+            BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
             onChildrenChanged = changed,
             reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },
         )

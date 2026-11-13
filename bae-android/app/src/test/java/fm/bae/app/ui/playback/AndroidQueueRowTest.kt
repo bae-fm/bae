@@ -2,10 +2,13 @@ package fm.bae.app.ui.playback
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.creditLineNamed
+import fm.bae.app.creditLineText
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.TestTheme
@@ -33,7 +36,7 @@ class AndroidQueueRowTest {
                 display =
                     BridgeTrackDisplay(
                         title = "Track Title",
-                        artistNames = "Track Artist",
+                        artistLine = creditLineNamed("Track Artist"),
                         albumId = "album-1",
                         releaseId = "release-1",
                         albumTitle = "Compilation Album",
@@ -46,7 +49,7 @@ class AndroidQueueRowTest {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
                     AndroidQueueRow(
                         title = item.display.title,
-                        artist = item.display.artistNames,
+                        artist = LocalContext.current.creditLineText(item.display.artistLine),
                         cover = item.display.coverImage,
                         album = item.display.albumTitle,
                         duration = "3:00",

@@ -40,6 +40,7 @@ import fm.bae.app.MissingMainRelease
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
@@ -386,7 +387,7 @@ internal fun AndroidAlbumHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(text = album.title, style = ThemeText.hero.style)
             Text(
-                text = album.artistNames,
+                text = LocalContext.current.creditLineText(album.artistLine),
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

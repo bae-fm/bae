@@ -8,6 +8,7 @@ import fm.bae.app.HANG_GUARD
 import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
+import fm.bae.app.plainCreditText
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -46,7 +47,7 @@ class LibraryBrowseTreeTest {
         LibraryBrowseTree(
             library = Library(handle),
             labels = { labels },
-            artworkUri = { Uri.parse("content://test/cover/${it.id}") },
+            nodes = BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
             onChildrenChanged = onChildrenChanged,
             reportBug = { operation, error -> bugs += operation to error },
         )

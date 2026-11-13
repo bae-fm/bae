@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCountLabel
+import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeDeviceStorage
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -72,7 +73,7 @@ object BridgeFixtures {
             title = title,
             year = null,
             isCompilation = false,
-            artistNames = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             releaseIds = releaseIds,
             primaryReleaseId = primaryReleaseId,
             cover = null,
@@ -135,7 +136,7 @@ object BridgeFixtures {
             id = id,
             title = title,
             year = null,
-            artistName = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             cover = null,
         )
 
@@ -151,7 +152,7 @@ object BridgeFixtures {
             releaseId = releaseId,
             albumId = albumId,
             albumTitle = "Album Title",
-            artistName = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             cover = null,
         )
 
@@ -373,3 +374,6 @@ object BridgeFixtures {
         gigabytes: Int,
     ) = BridgeCacheLimit(choice, gigabytes.toULong() * 1_000_000_000uL)
 }
+
+/** A credit line as plain text, for a test that does not read it in a language. */
+fun plainCreditText(line: BridgeCreditLine): String = line.names.joinToString(", ") { it.name }

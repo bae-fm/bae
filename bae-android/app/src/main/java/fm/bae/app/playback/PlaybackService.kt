@@ -6,6 +6,7 @@ import androidx.media3.session.MediaSession
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
+import fm.bae.app.creditLineText
 import fm.bae.app.mainActivityIntent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,11 @@ class PlaybackService(
                         composers = getString(fm.bae.app.R.string.library_mode_composers),
                     )
                 },
-                artworkUri = { image -> ArtworkContentProvider.uriFor(this, image) },
+                nodes =
+                    BrowseNodeFactory(
+                        artworkUri = { image -> ArtworkContentProvider.uriFor(this, image) },
+                        creditLineText = { line -> creditLineText(line) },
+                    ),
                 scope = browseScope,
                 onChildrenChanged = { parentId, count ->
                     mediaSession?.notifyChildrenChanged(parentId, count, null)

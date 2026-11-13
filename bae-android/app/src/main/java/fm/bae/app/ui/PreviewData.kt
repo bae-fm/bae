@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import fm.bae.app.creditLineNamed
 import fm.bae.app.data.DownloadStore
 import fm.bae.app.playback.SidePausePrompt
 import fm.bae.fastvalues.LatestStream
@@ -101,7 +102,7 @@ object PreviewData {
             title = title,
             year = year,
             isCompilation = false,
-            artistNames = artistNames,
+            artistLine = creditLineNamed(artistNames),
             releaseIds = listOf("rel-$id"),
             primaryReleaseId = "rel-$id",
             cover = cover,
@@ -117,7 +118,7 @@ object PreviewData {
             title = title,
             durationMs = TRACK_DURATION_MS,
             durationClock = trackDurationClock,
-            artistNames = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             displayArtist = null,
             positionText = number.toString(),
         )
@@ -194,7 +195,7 @@ object PreviewData {
             id = id,
             title = title,
             year = 2020,
-            artistName = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             cover = imageRef(),
         )
 
@@ -210,7 +211,7 @@ object PreviewData {
             releaseId = releaseId,
             albumId = albumId,
             albumTitle = "Album Title",
-            artistName = "Artist Name",
+            artistLine = creditLineNamed("Artist Name"),
             cover = imageRef(),
         )
 

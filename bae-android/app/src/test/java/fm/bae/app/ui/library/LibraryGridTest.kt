@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
@@ -32,8 +33,8 @@ class LibraryGridTest {
     private val rows =
         listOf(
             BridgeAlbumAppearance(PreviewData.album(id = "alb-0", title = "Solo Album", year = 1971), creditedWith = null),
-            BridgeAlbumAppearance(PreviewData.album(id = "alb-1", title = "Shared Album", year = 1974), "Other Artist"),
-            BridgeAlbumAppearance(PreviewData.album(id = "alb-2", title = "Undated Album", year = null), "Other Artist"),
+            BridgeAlbumAppearance(PreviewData.album(id = "alb-1", title = "Shared Album", year = 1974), creditLineNamed("Other Artist")),
+            BridgeAlbumAppearance(PreviewData.album(id = "alb-2", title = "Undated Album", year = null), creditLineNamed("Other Artist")),
         )
 
     private fun showGrid(

@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
 import fm.bae.app.sideHeaderText
@@ -41,7 +42,7 @@ internal fun LazyListScope.albumTrackGroups(
                     TrackRowData(
                         positionLabel = track.positionText,
                         title = track.title,
-                        artistNames = track.displayArtist,
+                        artistNames = track.displayArtist?.let(context::creditLineText),
                         durationLabel = context.durationClockLabel(track.durationClock),
                         isCurrent = isCurrent,
                         isPlaying = playback.isPlaying,

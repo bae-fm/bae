@@ -847,6 +847,7 @@ object AppSessionHolder {
                                             .lifecycle.currentState
                                             .isAtLeast(Lifecycle.State.STARTED)
                                     },
+                                creditLineText = appContext::creditLineText,
                                 scope = sessionScope,
                             ),
                         scope = sessionScope,

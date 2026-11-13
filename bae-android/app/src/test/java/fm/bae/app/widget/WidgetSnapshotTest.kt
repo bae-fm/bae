@@ -1,6 +1,7 @@
 package fm.bae.app.widget
 
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import fm.bae.app.playback.AudioFocus
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
@@ -215,6 +216,7 @@ class WidgetSnapshotTest {
             applicationLooper = android.os.Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
             system = PlaybackSystem(context, AudioFocus(context), { false }),
+            creditLineText = ::plainCreditText,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }

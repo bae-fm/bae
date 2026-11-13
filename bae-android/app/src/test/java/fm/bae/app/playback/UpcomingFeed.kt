@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import fm.bae.app.creditLineNamed
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.BridgeDurationClock
@@ -87,7 +88,7 @@ internal fun upcomingEntry(entryId: String) =
         display =
             BridgeTrackDisplay(
                 title = "Track Title",
-                artistNames = "Artist Name",
+                artistLine = creditLineNamed("Artist Name"),
                 albumId = "album-1",
                 releaseId = "release-1",
                 albumTitle = "Album Title",

@@ -22,6 +22,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.creditLineNamed
+import fm.bae.app.creditLineText
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
@@ -124,7 +126,7 @@ private fun LazyGridScope.albumItems(
         if (row != null) {
             AndroidAlbumTile(
                 title = row.album.title,
-                line = if (grouped) groupedCardLine(row) else row.album.artistNames,
+                line = if (grouped) groupedCardLine(row) else LocalContext.current.creditLineText(row.album.artistLine),
                 cover = row.album.cover,
                 onClick = { onSelectAlbum(row.album.id) },
             )
@@ -137,8 +139,9 @@ private fun LazyGridScope.albumItems(
 /** A grouped card's line under an album's title: the year, and the album's other credits when it has any. */
 @Composable
 private fun groupedCardLine(row: BridgeAlbumAppearance): String {
-    val year = row.album.year?.let(LocalContext.current::yearText)
-    val creditedWith = row.creditedWith
+    val context = LocalContext.current
+    val year = row.album.year?.let(context::yearText)
+    val creditedWith = row.creditedWith?.let(context::creditLineText)
     return when {
         creditedWith == null -> year.orEmpty()
         year == null -> stringResource(R.string.album_credited_with, creditedWith)
@@ -151,7 +154,11 @@ private fun groupedCardLine(row: BridgeAlbumAppearance): String {
 private fun AlbumGridCardPreview() {
     PreviewTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            val row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist")
+            val row =
+                BridgeAlbumAppearance(
+                    album = PreviewData.album(),
+                    creditedWith = creditLineNamed("Another Artist"),
+                )
             AndroidAlbumTile(
                 title = row.album.title,
                 line = groupedCardLine(row),

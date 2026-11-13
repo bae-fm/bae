@@ -3,6 +3,8 @@ package fm.bae.app.playback
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Timeline
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.creditLineNamed
+import fm.bae.app.plainCreditText
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +39,7 @@ class NowPlayingProjectionTest {
             display =
                 BridgeTrackDisplay(
                     title = "Title $id",
-                    artistNames = "Artist Name",
+                    artistLine = creditLineNamed("Artist Name"),
                     albumId = "album-1",
                     releaseId = "release-1",
                     albumTitle = "Album Title",
@@ -189,6 +191,7 @@ class NowPlayingProjectionTest {
             appHandle = handle,
             system = PlaybackSystem(context, AudioFocus(context), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            creditLineText = ::plainCreditText,
         )
     }
 }

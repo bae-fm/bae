@@ -51,6 +51,7 @@ internal fun openTestLibrary(
                         applicationLooper = Looper.getMainLooper(),
                         appHandle = handle,
                         system = PlaybackSystem(context, AudioFocus(context), { false }),
+                        creditLineText = ::plainCreditText,
                         scope = scope,
                     ),
                 scope = scope,

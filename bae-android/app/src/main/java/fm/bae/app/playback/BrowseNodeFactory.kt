@@ -6,6 +6,7 @@ import androidx.media3.common.MediaMetadata
 import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeTrack
@@ -23,6 +24,8 @@ internal class BrowseNodeFactory(
      *  content URI the browse client fetches its bytes from — the same bytes the
      *  bridge's `fetchLibraryImageBytes` serves. */
     private val artworkUri: (image: BridgeImageRef) -> Uri,
+    /** The credit line in the person's language, for a track node's artist. */
+    private val creditLineText: (BridgeCreditLine) -> String,
 ) {
     /** A browsable (non-playable) node: a category, album, composer, or work the
      *  client drills into. */
@@ -89,7 +92,7 @@ internal class BrowseNodeFactory(
     ): MediaItem {
         val metadata =
             baseMetadata(track.title, release.cover)
-                .setArtist(track.artistNames)
+                .setArtist(creditLineText(track.artistLine))
                 .setDurationMs(track.durationMs.toLong())
                 .setIsBrowsable(false)
                 .setIsPlayable(true)

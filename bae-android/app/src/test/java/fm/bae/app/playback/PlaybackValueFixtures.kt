@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import fm.bae.app.creditLineNamed
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
@@ -58,7 +59,7 @@ internal fun nowPlayingTrack(
     display =
         BridgeTrackDisplay(
             title = title,
-            artistNames = artistNames,
+            artistLine = creditLineNamed(artistNames),
             albumId = albumId,
             releaseId = releaseId,
             albumTitle = albumTitle,

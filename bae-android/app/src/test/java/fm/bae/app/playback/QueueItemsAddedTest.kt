@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -59,6 +60,7 @@ class QueueItemsAddedTest {
             applicationLooper = Looper.getMainLooper(),
             appHandle = FakeAppHandle(),
             system = PlaybackSystem(context, AudioFocus(context), { false }),
+            creditLineText = ::plainCreditText,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
     }

@@ -1,6 +1,5 @@
 package fm.bae.app.playback
 
-import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
@@ -26,7 +25,6 @@ import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeException.Diagnostic
-import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
@@ -109,7 +107,7 @@ private fun ParentInterests.retain(
 internal class LibraryBrowseTree<Owner : Any>(
     private val library: Library,
     private val labels: () -> BrowseLabels,
-    artworkUri: (image: BridgeImageRef) -> Uri,
+    private val nodes: BrowseNodeFactory,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
     /** Reports a bug found while answering a controller; the controller is answered with an error. */
@@ -220,7 +218,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
-    private val nodes = BrowseNodeFactory(artworkUri)
     val root: MediaItem
         get() = nodes.browsable(BrowseId.Root, labels().library, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
     private val lock = Any()

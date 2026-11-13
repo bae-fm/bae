@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -132,6 +133,7 @@ class QueueUpcomingWindowTest {
                 system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
                 queueUpcomingSource = feed.source,
+                creditLineText = ::plainCreditText,
             )
         player.onQueueValue(
             BridgeQueueSnapshot(

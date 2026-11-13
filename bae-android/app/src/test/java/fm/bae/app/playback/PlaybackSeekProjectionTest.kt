@@ -2,6 +2,7 @@ package fm.bae.app.playback
 
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -246,6 +247,7 @@ class PlaybackSeekProjectionTest {
                 applicationLooper = Looper.getMainLooper(),
                 appHandle = handle,
                 system = PlaybackSystem(context, AudioFocus(context), { false }),
+                creditLineText = ::plainCreditText,
                 scope =
                     CoroutineScope(
                         SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, error -> reported += error },

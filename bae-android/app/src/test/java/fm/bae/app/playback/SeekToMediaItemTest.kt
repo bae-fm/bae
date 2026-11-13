@@ -3,6 +3,8 @@ package fm.bae.app.playback
 import android.os.Looper
 import androidx.media3.common.Player
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.creditLineNamed
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,7 +38,7 @@ class SeekToMediaItemTest {
             display =
                 BridgeTrackDisplay(
                     title = "Title $id",
-                    artistNames = "Artist Name",
+                    artistLine = creditLineNamed("Artist Name"),
                     albumId = "album-1",
                     releaseId = "release-1",
                     albumTitle = "Album Title",
@@ -129,6 +131,7 @@ class SeekToMediaItemTest {
                 applicationLooper = Looper.getMainLooper(),
                 appHandle = handle,
                 system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
+                creditLineText = ::plainCreditText,
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
                 queueUpcomingSource = feed.source,
             )

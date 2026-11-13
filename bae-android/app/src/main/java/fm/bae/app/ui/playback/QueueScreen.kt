@@ -24,6 +24,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidEyebrow
@@ -268,7 +269,7 @@ private fun LazyListScope.queueRows(
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                     AndroidQueueRow(
                         title = item.display.title,
-                        artist = item.display.artistNames,
+                        artist = LocalContext.current.creditLineText(item.display.artistLine),
                         album = item.display.albumTitle,
                         cover = item.display.coverImage,
                         duration = LocalContext.current.durationClockLabel(item.durationClock),

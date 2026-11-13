@@ -3,6 +3,8 @@ package fm.bae.app.playback
 import android.os.Looper
 import androidx.media3.common.Timeline
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.creditLineNamed
+import fm.bae.app.plainCreditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,7 +37,7 @@ class GetStateCurrentIndexTest {
         display =
             BridgeTrackDisplay(
                 title = "Title $trackId",
-                artistNames = "Artist Name",
+                artistLine = creditLineNamed("Artist Name"),
                 albumId = "album-1",
                 releaseId = "release-1",
                 albumTitle = "Album Title",
@@ -113,5 +115,6 @@ class GetStateCurrentIndexTest {
             appHandle = FakeAppHandle(),
             system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            creditLineText = ::plainCreditText,
         )
 }

@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
@@ -56,6 +57,8 @@ class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandleInterface,
     private val system: PlaybackSystem,
+    /** The credit line in the person's language, for the media session's artist and the now-playing value. */
+    private val creditLineText: (BridgeCreditLine) -> String,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
 ) : SimpleBasePlayer(applicationLooper) {
@@ -139,6 +142,7 @@ class BaeCorePlayer(
             meta: Meta,
             durationMs: Long,
             artworkUri: Uri?,
+            creditLineText: (BridgeCreditLine) -> String,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, durationMs)
             val metadata =
@@ -146,6 +150,7 @@ class BaeCorePlayer(
                     meta,
                     if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
                     artworkUri,
+                    creditLineText,
                 )
             return MediaItemData
                 .Builder(meta.uid)
@@ -165,11 +170,12 @@ class BaeCorePlayer(
             meta: Meta,
             durationMs: Long?,
             artworkUri: Uri?,
+            creditLineText: (BridgeCreditLine) -> String,
         ): MediaMetadata =
             MediaMetadata
                 .Builder()
                 .setTitle(meta.display.title)
-                .setArtist(meta.display.artistNames)
+                .setArtist(creditLineText(meta.display.artistLine))
                 .setAlbumTitle(meta.display.albumTitle)
                 .setDurationMs(durationMs)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
@@ -541,7 +547,7 @@ class BaeCorePlayer(
                 NowPlaying(
                     it.trackId,
                     it.display.title,
-                    it.display.artistNames,
+                    creditLineText(it.display.artistLine),
                     it.display.coverImage,
                     sidePausePrompt,
                 )
@@ -613,7 +619,7 @@ class BaeCorePlayer(
         val items =
             metas.map { meta ->
                 val itemArtworkUri = if (meta.entryId == null) artworkUri else null
-                mediaItemData(meta, source.durationMs, itemArtworkUri)
+                mediaItemData(meta, source.durationMs, itemArtworkUri, creditLineText)
             }
         // The current track leads the playlist.
         val currentIndex = if (source.current != null) 0 else C.INDEX_UNSET
