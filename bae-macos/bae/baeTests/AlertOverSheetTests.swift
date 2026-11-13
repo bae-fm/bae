@@ -47,11 +47,11 @@ struct AlertOverSheetTests {
         try await SnapshotTestSupport.withHostedWindow(
             Window(uiStore: uiStore),
             size: NSSize(width: 600, height: 400)
-        ) { window, host in
+        ) { window, _ in
             let sheet = macSheet()
-            window.beginSheet(sheet, completionHandler: nil)
-            SnapshotTestSupport.takeSheetNotices()
-            #expect(window.attachedSheet === sheet)
+            autoreleasepool { window.beginSheet(sheet, completionHandler: nil) }
+            try await SnapshotTestSupport.untilSheet(on: window, attached: true)
+            #expect(autoreleasepool { window.attachedSheet } === sheet)
 
             uiStore.showError(
                 DisplayError(
@@ -59,19 +59,17 @@ struct AlertOverSheetTests {
                     detail: "dns error"
                 )
             )
-            try await SnapshotTestSupport.settle(host)
-            await spin(until: { sheet.attachedSheet != nil })
-            SnapshotTestSupport.takeSheetNotices()
+            try await SnapshotTestSupport.untilSheet(on: sheet, attached: true)
 
-            let alert = try #require(sheet.attachedSheet)
+            let alert = try #require(autoreleasepool { sheet.attachedSheet })
             #expect(alert.isVisible)
             #expect(alert.canBecomeKey)
-            #expect(alert.attachedSheet == nil)
+            #expect(autoreleasepool { alert.attachedSheet } == nil)
             // The alert is the top of the chain: it sits over the sheet
             // that sits over the window, so the window and the sheet are the
             // ones blocked.
-            #expect(alert.sheetParent === sheet)
-            #expect(sheet.sheetParent === window)
+            #expect(autoreleasepool { alert.sheetParent } === sheet)
+            #expect(autoreleasepool { sheet.sheetParent } === window)
 
             // It is a key-capable panel of its own, the last of the alerts
             // showing, and sized to its words and buttons.
@@ -79,23 +77,17 @@ struct AlertOverSheetTests {
             #expect(alert.frame.width > 0 && alert.frame.height > 0)
 
             uiStore.clearError()
-            await spin(until: { sheet.attachedSheet == nil })
-            SnapshotTestSupport.takeSheetNotices()
-            #expect(sheet.attachedSheet == nil)
+            try await SnapshotTestSupport.untilSheet(on: sheet, attached: false)
             #expect(AlertWindows.shared.panels.isEmpty)
-            window.endSheet(sheet)
-            sheet.orderOut(nil)
-            sheet.contentView = nil
-            SnapshotTestSupport.takeSheetNotices()
-        }
-    }
-
-    /// Lets the main run loop turn, where SwiftUI applies a change, until
-    /// `condition` holds; a condition that never holds is for the caller's
-    /// expectation to report.
-    private func spin(until condition: @MainActor () -> Bool) async {
-        for _ in 0..<100 where !condition() {
-            try? await Task.sleep(for: .milliseconds(50))
+            autoreleasepool {
+                window.endSheet(sheet)
+                sheet.orderOut(nil)
+                sheet.contentView = nil
+            }
+            try await SnapshotTestSupport.untilSheet(
+                on: window,
+                attached: false
+            )
         }
     }
 }

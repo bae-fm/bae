@@ -53,7 +53,17 @@ extension SnapshotTestSupport {
         // Swift Testing drains none until the run ends, so under it a window
         // not let go here would stay for the rest of the run.
         if Test.current != nil, !retired {
-            try await Wait.until(file: file, line: line) { released == nil }
+            let end = ContinuousClock.now.advanced(by: Wait.deadline)
+            while released != nil {
+                handlePendingNotices()
+                if released == nil { break }
+                try await Wait.nextIdle(
+                    before: end,
+                    timeout: Wait.deadline,
+                    file: file,
+                    line: line
+                )
+            }
         }
         return result
     }
@@ -134,6 +144,53 @@ extension SnapshotTestSupport {
             ) {
                 NSApp.sendEvent(notice)
             }
+        }
+    }
+
+    /// Handle, in a pool of their own, the notices the window server has
+    /// already sent, without waiting for more. Handled by the run loop
+    /// instead, each is autoreleased with the window it names into the pool
+    /// the test runner holds for the whole run (see [`takeSheetNotices`]).
+    @MainActor
+    private static func handlePendingNotices() {
+        autoreleasepool {
+            while let notice = NSApp.nextEvent(
+                matching: .appKitDefined,
+                until: .distantPast,
+                inMode: .default,
+                dequeue: true
+            ) {
+                NSApp.sendEvent(notice)
+            }
+        }
+    }
+
+    /// Return once `window` has a sheet attached, or none, as `attached`
+    /// says. A sheet begun or ended is not done when the call returns: the
+    /// window server finishes it, and tells the app with notices, which are
+    /// handled here as they come. The wait ends on the window's own state,
+    /// read at each idle of the run loop, not on a stretch with no notices.
+    @MainActor
+    static func untilSheet(
+        on window: NSWindow,
+        attached: Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let end = ContinuousClock.now.advanced(by: Wait.deadline)
+        while true {
+            handlePendingNotices()
+            if autoreleasepool(invoking: { window.attachedSheet != nil })
+                == attached
+            {
+                return
+            }
+            try await Wait.nextIdle(
+                before: end,
+                timeout: Wait.deadline,
+                file: file,
+                line: line
+            )
         }
     }
 
