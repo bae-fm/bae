@@ -4350,7 +4350,9 @@ It runs from silent to full, and a level asked for past either is held to it
 where it is set, so this device, the receiver, the stored row and every screen
 hold the same level. A volume slider moves this device and the receiver as it
 is dragged; the stored row and the other screens take the level the drag ends
-on, in one write.
+on, in one write. A UPnP renderer that describes no volume control can't take
+a level: the set fails and is told to the person as a command the receiver
+refused, not taken as done.
 
 **Fetching receivers.** A Chromecast or UPnP renderer fetches each track from
 a small HTTP server bae runs for the session, on the local network, with a

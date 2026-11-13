@@ -38,7 +38,7 @@ pub(crate) struct DlnaChannel {
     /// The AVTransport control URL (load/play/pause/seek/stop, the status polls).
     av_transport_url: String,
     /// The RenderingControl control URL (volume), when the renderer has the
-    /// service. `None` renderers silently ignore a volume set.
+    /// service. A volume set on a `None` renderer is refused.
     rendering_control_url: Option<String>,
     /// End-of-track detection state, reset on each `load`.
     playback: PlaybackTracking,
@@ -208,8 +208,7 @@ impl RendererChannel for DlnaChannel {
 
     fn set_volume(&mut self, level: bae_playback::Volume) -> Result<(), RendererError> {
         let Some(control_url) = self.rendering_control_url.clone() else {
-            debug!("dlna: renderer has no RenderingControl; volume set ignored");
-            return Ok(());
+            return Err(RendererError::Command("the renderer has no volume control".to_string()));
         };
         self.post(&control_url, soap::set_volume(level)).map(|_| ())
     }

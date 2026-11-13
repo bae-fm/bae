@@ -597,6 +597,17 @@ fn channel_routes_each_command_to_its_soap_action() {
     );
 }
 
+/// A renderer with no RenderingControl cannot take a volume: the set is
+/// refused, so the session reports it, not accepted and ignored.
+#[test]
+fn a_volume_set_on_a_renderer_without_volume_control_is_refused() {
+    let mut channel = DlnaChannel::connect("http://127.0.0.1:9/avt".to_string(), None).unwrap();
+    let error = channel
+        .set_volume(bae_playback::Volume::new(0.5).unwrap())
+        .expect_err("a renderer without RenderingControl cannot set a volume");
+    assert!(matches!(error, RendererError::Command(_)), "{error:?}");
+}
+
 /// A renderer that plays through to (near) the track's end and then reports
 /// STOPPED is a natural end: the channel surfaces `Finished` for the queue to
 /// advance on.
