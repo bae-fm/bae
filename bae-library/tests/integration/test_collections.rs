@@ -5,6 +5,13 @@ use bae_people::people::Sharing;
 use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_ids::test_uuid;
 
+/// The playlists as the listing shows them now: a new subscription's first
+/// value is what is stored.
+async fn playlists_now(store: &bae_store::Store) -> Vec<bae_views::playlists::PlaylistSummary> {
+    let views = bae_views::LibraryViews::new(store.clone());
+    value_matching(&mut views.subscribe_playlists(), |_| true).await.listed
+}
+
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let directory = tempfile::tempdir().unwrap();
@@ -74,14 +81,14 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     assert_eq!(entries[0].track_id, first);
     people.set_playlist_sharing(id, Sharing::Household).await.unwrap();
     people.rename_playlist(id, "Gathering").await.unwrap();
-    let playlists = people.playlists(&bae_util::name_key::SortLanguage::root()).await.unwrap();
-    assert_eq!(playlists[0].audience, coven::Audience::Store);
+    let playlists = playlists_now(library.store()).await;
+    assert_eq!(playlists[0].sharing, Sharing::Household);
     assert_eq!(playlists[0].name, "Gathering");
     assert_eq!(people.playlist_entries(id).await.unwrap(), entries);
     people.remove_playlist_entry(id, b).await.unwrap();
     assert_eq!(people.playlist_entries(id).await.unwrap().len(), 2);
     people.delete_playlist(id).await.unwrap();
-    assert!(people.playlists(&bae_util::name_key::SortLanguage::root()).await.unwrap().is_empty());
+    assert!(playlists_now(library.store()).await.is_empty());
     assert!(people.playlist_entries(id).await.unwrap().is_empty());
     library.manager().close().await.unwrap();
 }
@@ -126,13 +133,8 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
     let refused =
         library.manager().create_playlist("Morning", Sharing::Private, vec![first, unknown]).await;
     assert!(refused.is_err());
-    let names: Vec<String> = people
-        .playlists(&bae_util::name_key::SortLanguage::root())
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|p| p.name)
-        .collect();
+    let names: Vec<String> =
+        playlists_now(library.store()).await.into_iter().map(|p| p.name).collect();
     assert_eq!(names, vec!["Evening".to_string()]);
     library.manager().close().await.unwrap();
 }
@@ -263,7 +265,6 @@ async fn playlists_list_by_name_in_the_devices_language() {
     .await;
     connect_storage(library.manager(), library.store(), &storage).await;
     made_profile(library.manager(), library.people(), "Robin").await;
-    let people = bae_people::People::new(library.store().clone());
     let views = bae_views::LibraryViews::new(library.store().clone());
     for name in ["Ängel", "Zebra", "Apa"] {
         library.manager().create_playlist(name, Sharing::Private, Vec::new()).await.unwrap();
@@ -279,14 +280,6 @@ async fn playlists_list_by_name_in_the_devices_language() {
     views.set_sort_language("sv").await.unwrap();
     let swedish = value_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;
     assert_eq!(names(&swedish), ["Apa", "Zebra", "Ängel"]);
-    let listed: Vec<String> = people
-        .playlists(&bae_util::name_key::SortLanguage::parse("sv").unwrap())
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|playlist| playlist.name)
-        .collect();
-    assert_eq!(listed, ["Apa", "Zebra", "Ängel"]);
     library.manager().close().await.unwrap();
 }
 

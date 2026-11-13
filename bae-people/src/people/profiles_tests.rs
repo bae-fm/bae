@@ -23,7 +23,7 @@ async fn a_request_no_longer_stored_is_not_written_as_a_profile() {
         matches!(refused, Err(ProfileRequestError::Changed(refused)) if refused == operation),
         "{refused:?}"
     );
-    assert!(people.profiles(&SortLanguage::root()).await.unwrap().is_empty());
+    assert!(first(people.subscribe_profiles(root)).await.is_empty());
 }
 
 /// Profiles list by name in the language asked: Swedish puts ö after z, the
@@ -53,10 +53,23 @@ async fn profiles_list_by_name_in_the_language_asked() {
         profiles.into_iter().map(|profile| profile.name).collect()
     };
 
-    let sv = SortLanguage::parse("sv").unwrap();
-    assert_eq!(names(people.profiles(&sv).await.unwrap()), ["Olle", "Zoe", "Östen"]);
-    assert_eq!(
-        names(people.profiles(&SortLanguage::root()).await.unwrap()),
-        ["Olle", "Östen", "Zoe"]
-    );
+    assert_eq!(names(first(people.subscribe_profiles(swedish)).await), ["Olle", "Zoe", "Östen"]);
+    assert_eq!(names(first(people.subscribe_profiles(root)).await), ["Olle", "Östen", "Zoe"]);
+}
+
+fn root(_: &SqlReadContext<'_>) -> Result<SortLanguage, DbError> {
+    Ok(SortLanguage::root())
+}
+
+fn swedish(_: &SqlReadContext<'_>) -> Result<SortLanguage, DbError> {
+    Ok(SortLanguage::parse("sv").unwrap())
+}
+
+/// The profiles a new subscription lists first: what is stored now.
+async fn first(mut profiles: coven::LiveQuery<Vec<PersonProfile>, DbError>) -> Vec<PersonProfile> {
+    tokio::time::timeout(std::time::Duration::from_secs(30), profiles.next())
+        .await
+        .expect("the list answers")
+        .expect("the list stays open")
+        .unwrap()
 }

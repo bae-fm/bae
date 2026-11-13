@@ -37,12 +37,6 @@ impl People {
         Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
     }
 
-    /// Every profile, ordered by name in `language`.
-    pub async fn profiles(&self, language: &SortLanguage) -> Result<Vec<PersonProfile>, DbError> {
-        let language = language.clone();
-        self.inner.store.read(move |sql| Ok(profile_rows(&sql, &language)?)).await
-    }
-
     /// Everyone in the library, in member-id order: each member, with
     /// their profile once they made one.
     pub async fn people(&self) -> Result<Vec<Person>, DbError> {

@@ -1,6 +1,7 @@
 //! A profile asked for while the person's private circle is made: the
 //! request coven's operation answers, and the write that ends it (§5.4).
 
+use bae_library::followed::value_matching;
 use bae_library::test_libraries::{connect_storage, requested_profile, storage_library};
 use bae_people::people::{HistorySharing, ProfileError};
 
@@ -43,7 +44,9 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     assert!(people.record_play(&played).await.unwrap());
 
     library.people().create_profile("Robin").await.unwrap();
-    assert!(people.profiles(&bae_util::name_key::SortLanguage::root()).await.unwrap().is_empty());
+    assert!(value_matching(&mut people.subscribe_profiles(bae_views::sort_language_on), |_| true)
+        .await
+        .is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
     let running = db

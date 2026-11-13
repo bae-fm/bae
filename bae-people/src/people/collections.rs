@@ -4,7 +4,6 @@ use crate::collections::{
     Stars,
 };
 use crate::people::Sharing;
-use bae_util::name_key::SortLanguage;
 
 impl People {
     pub async fn set_rating(
@@ -72,12 +71,6 @@ impl People {
             })
             .await?;
         Ok(playlist)
-    }
-
-    /// Every playlist, ordered by name in `language`.
-    pub async fn playlists(&self, language: &SortLanguage) -> Result<Vec<Playlist>, DbError> {
-        let language = language.clone();
-        self.inner.store.read(move |sql| Ok(playlists(&sql, &language)?)).await
     }
 
     pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
@@ -208,25 +201,10 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
     })
 }
 
-/// Every playlist, by name in the language bound to `?1`, then id.
-pub(super) const PLAYLISTS_SQL: &str =
-    "SELECT id, person_id, name, audience FROM playlists ORDER BY bae_name_key(name, ?1), id";
-
 /// One playlist's entries, in order; `playlist_entries_position` serves the
 /// lookup and the order.
 pub(super) const PLAYLIST_ENTRIES_SQL: &str = "SELECT position_id, track_id FROM playlist_entries \
      WHERE playlist_id = ? ORDER BY position, position_id";
-
-fn playlists(sql: &SqlReadContext<'_>, language: &SortLanguage) -> rusqlite::Result<Vec<Playlist>> {
-    sql.query(PLAYLISTS_SQL, [language.as_str()], |row| {
-        Ok(Playlist {
-            id: uuid_column(row, 0)?,
-            person: coven::MemberId(uuid_column(row, 1)?),
-            name: row.get(2)?,
-            audience: row.get(3)?,
-        })
-    })
-}
 
 fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<Vec<PlaylistEntry>> {
     sql.query(PLAYLIST_ENTRIES_SQL, [playlist.to_string()], |row| {
