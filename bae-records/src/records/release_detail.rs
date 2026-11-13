@@ -5,6 +5,7 @@
 use super::files::cover_version_sql;
 use super::query::*;
 use super::read::*;
+use super::release_credits::release_credits_on;
 use super::*;
 use bae_util::content_type::ContentType;
 
@@ -16,6 +17,7 @@ pub fn release_detail_rows_on(
     release: DbRelease,
 ) -> Result<DbReleaseDetailRows, DbError> {
     let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
+    let credits = release_credits_on(sql, &release.id)?;
     let files = get_files_for_release_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
@@ -41,6 +43,7 @@ pub fn release_detail_rows_on(
         release,
         mediums,
         tracks,
+        credits,
         files,
         records,
         unstored_audio,
@@ -57,6 +60,7 @@ pub struct DbReleaseDetailRows {
     release: DbRelease,
     mediums: DbReleaseMediums,
     tracks: Vec<DbTrackWithArtists>,
+    credits: Vec<DbReleaseCredit>,
     files: Vec<DbFile>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
@@ -73,6 +77,7 @@ impl DbReleaseDetailRows {
             release: self.release,
             mediums: self.mediums,
             tracks: self.tracks,
+            credits: self.credits,
             files: self.files,
             records: self.records,
             unstored_audio: self.unstored_audio,

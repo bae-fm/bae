@@ -548,6 +548,18 @@ with its credits and parts (§2.1); a work whose part a track performs is
 performed through it. A release's detail names the works each of its
 tracks performs, in the track's order, each with its composers.
 
+**A release's credits.** A release's detail lists who did what on it, every
+role. Its credits are the release's own, each track's own, and for each track
+the credits in a role other than a writing one of the works it performs, as
+that track's (a work's writing credits are the work's composers, named with the
+work). They group by role, with its qualifiers, and artist, each with the
+tracks it covers; artists who share a role and the same tracks are one row,
+and one artist in two roles is two rows. A row covering every track names no
+tracks. Rows go in the order of their first credit: the release's credits in
+the catalog's order, then each track's by track, then by the credit's order. A
+release with no credit has no row. On macOS the Credits are listed above the
+Works; on Android they follow the tracks, without the tracks each covers.
+
 **The composer list** shows every artist credited on a work in a writing role
 (Appendix H), and every artist holding a catalog role credit in a writing role
 that none of the works they wrote links: a release's credit is linked when a

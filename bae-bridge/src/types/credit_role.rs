@@ -18,6 +18,28 @@ pub struct BridgeCreditRole {
     pub qualifiers: Vec<BridgeTermLabel>,
 }
 
+/// One row of a release's Credits: a role, the artists who share it over the
+/// same tracks, and those tracks.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCreditRow {
+    pub role: BridgeCreditRole,
+    pub artists: super::BridgeCreditLine,
+    /// The position text of each track the row covers, in playing order;
+    /// empty for a row covering every track of the release.
+    pub tracks: Vec<String>,
+}
+
+impl BridgeCreditRow {
+    pub(crate) fn from_core(row: bae_views::album_detail::CreditRow) -> Self {
+        let bae_views::album_detail::CreditRow { role, artists, tracks } = row;
+        Self {
+            role: BridgeCreditRole::from_core(role),
+            artists: super::BridgeCreditLine::from_core(artists),
+            tracks,
+        }
+    }
+}
+
 /// The catalog key naming a role bae names.
 pub(crate) fn credit_role_key(kind: CreditRoleKind) -> String {
     format!("core.credit.role.{}", kind.key())

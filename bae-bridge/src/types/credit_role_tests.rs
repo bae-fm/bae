@@ -38,3 +38,24 @@ fn a_performer_is_worded_by_its_part_or_as_a_performer() {
     });
     assert_eq!(bare.role, localized("core.credit.role.performer"));
 }
+
+#[test]
+fn a_credit_row_words_its_role_and_carries_its_artists_and_tracks() {
+    let row = bae_views::album_detail::CreditRow {
+        role: CreditedAs::of(CreditRoleKind::Arranger),
+        artists: bae_types::credits::CreditLine::from_stored([
+            ("Artist Name One", None),
+            ("Artist Name Two", None),
+        ]),
+        tracks: vec!["2".to_string(), "5".to_string()],
+    };
+
+    let bridged = BridgeCreditRow::from_core(row);
+
+    assert_eq!(bridged.role.role, localized("core.credit.role.arranger"));
+    assert_eq!(
+        bridged.artists.names.iter().map(|credited| credited.name.as_str()).collect::<Vec<_>>(),
+        ["Artist Name One", "Artist Name Two"]
+    );
+    assert_eq!(bridged.tracks, ["2", "5"]);
+}

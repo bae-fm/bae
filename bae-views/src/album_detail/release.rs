@@ -145,6 +145,9 @@ pub struct ReleaseDetail {
     pub total_duration_ms: u64,
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
+    /// Who did what on the release and its tracks, every role: see
+    /// [`CreditRow`].
+    pub credits: Vec<CreditRow>,
     pub files: Vec<FileDetail>,
     /// The files no track plays from, in `files` order: the files the editor's
     /// Files section lists.
@@ -183,6 +186,11 @@ impl ReleaseDetail {
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
         let release = raw.release;
+
+        let track_ids: Vec<&str> = raw.tracks.iter().map(|entry| entry.track.id.as_str()).collect();
+        let positions: Vec<String> =
+            raw.tracks.iter().map(|entry| raw.mediums.position(&entry.track).text()).collect();
+        let credits = super::credits::credit_rows(&raw.credits, &track_ids, &positions);
 
         let tracks: Vec<TrackDetail> = raw
             .tracks
@@ -315,6 +323,7 @@ impl ReleaseDetail {
             total_duration_ms,
             tracks,
             track_groups,
+            credits,
             files,
             other_files,
             source_audio,

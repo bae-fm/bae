@@ -122,6 +122,7 @@ fn one_track(
             shown_artists: Vec::new(),
             works: Vec::new(),
         }],
+        credits: Vec::new(),
         files: Vec::new(),
         records: Vec::new(),
         unstored_audio: Vec::new(),

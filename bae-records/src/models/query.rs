@@ -8,6 +8,10 @@ pub struct DbReleaseDetail {
     /// The release's mediums, which its tracks' places are read against.
     pub mediums: DbReleaseMediums,
     pub tracks: Vec<DbTrackWithArtists>,
+    /// The release's credits in every role, in the order its detail lists
+    /// them: the release's own, then each track's in playing order, a
+    /// track's own before the non-writing credits of the works it performs.
+    pub credits: Vec<DbReleaseCredit>,
     pub files: Vec<DbFile>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
@@ -125,6 +129,25 @@ pub struct DbPerformedWork {
     /// The work's artists printed in credit order, the way a work's summary
     /// prints them; `None` when it has none.
     pub composer_names: Option<String>,
+}
+
+/// Where a credit of a release's detail sits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DbCreditScope {
+    /// The release's: it covers every track.
+    Release,
+    /// One track's, by its id.
+    Track(String),
+}
+
+/// One credit of a release's detail: the artist it shows as, the name it
+/// prints, what the artist did, and where.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbReleaseCredit {
+    pub artist_id: String,
+    pub printed: String,
+    pub role: bae_types::credit_role::CreditedAs,
+    pub scope: DbCreditScope,
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

@@ -22,6 +22,9 @@ public struct ReleaseDetail: Identifiable, Sendable {
     public var totalDuration: BridgeDurationUnits?
     public var tracks: [Track]
     public var trackGroups: [TrackGroup]
+    /// Who did what on the release and its tracks, by role and artist, as
+    /// core groups them.
+    public var credits: [BridgeCreditRow]
     public var imageFiles: [BridgeFile]
     public var coverFiles: [BridgeFile]
     public var galleryItems: [BridgeGalleryItem]
@@ -69,6 +72,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         makeLocal = bridge.makeLocal
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
+        credits = bridge.credits
         imageFiles = bridge.imageFiles
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems

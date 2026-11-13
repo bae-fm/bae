@@ -53,6 +53,7 @@ fn detail_of(
             chrono::Utc::now(),
         )]),
         tracks,
+        credits: Vec::new(),
         files,
         records: Vec::new(),
         unstored_audio: Vec::new(),

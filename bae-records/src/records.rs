@@ -65,6 +65,7 @@ pub use release::AlbumFields;
 pub use release_edit_save::{ReleaseEditSaveError, ReleaseEditWrite};
 mod emptied;
 use emptied::Emptiable;
+mod release_credits;
 mod release_deletion;
 mod release_detail;
 pub use release_detail::{

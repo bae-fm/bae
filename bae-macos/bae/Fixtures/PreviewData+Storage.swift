@@ -680,6 +680,7 @@ extension PreviewData {
             transitioning: row.release.transitioning,
             tracks: [],
             trackGroups: [],
+            credits: [],
             sourceAudio: .uniform(
                 descriptor: BridgeSourceAudioDescriptor(
                     layout: .file,

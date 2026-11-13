@@ -42,7 +42,8 @@ func makeBridgeRelease(
     fileCount: Int64 = 0,
     totalSize: UInt64 = 0,
     cover: BridgeImageRef? = nil,
-    distinctYear: Int32? = nil
+    distinctYear: Int32? = nil,
+    credits: [BridgeCreditRow] = []
 ) -> BridgeRelease {
     let facts = PreviewData.pressingFacts(media: media)
     return BridgeRelease(
@@ -61,6 +62,7 @@ func makeBridgeRelease(
         transitioning: transitioning,
         tracks: [],
         trackGroups: [],
+        credits: credits,
         sourceAudio: nil,
         otherFiles: [],
         imageFiles: [],
@@ -331,6 +333,22 @@ struct ReleaseDetailTests {
         #expect(detail.displayName == "Deluxe Edition")
         #expect(detail.totalDuration == .hoursAndMinutes(hours: 1, minutes: 45))
         #expect(detail.summary.media == PreviewData.media(.cd))
+    }
+
+    @MainActor
+    @Test("a detail carries who did what on the release")
+    func detailCarriesItsCredits() {
+        let row = BridgeCreditRow(
+            role: .word("Arranger"),
+            artists: .named("Artist Name"),
+            tracks: ["2", "5"]
+        )
+
+        let detail = ReleaseDetail(
+            bridge: makeBridgeRelease(credits: [row])
+        )
+
+        #expect(detail.credits == [row])
     }
 
     @MainActor

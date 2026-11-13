@@ -420,6 +420,9 @@ pub struct BridgeRelease {
     pub transitioning: bool,
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
+    /// Who did what on the release and its tracks, in every role, by role and
+    /// artist.
+    pub credits: Vec<crate::types::BridgeCreditRow>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The files no track plays from, in the release's file order: a cue sheet,
     /// a rip log, an image.
