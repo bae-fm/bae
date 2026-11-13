@@ -29,6 +29,7 @@ pub mod discogs;
 pub mod discogs_mapper;
 #[cfg(desktop)]
 pub(crate) mod discogs_mediums;
+#[cfg(desktop)]
 pub(crate) mod discogs_track_scope;
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 pub mod fake_catalogs;
