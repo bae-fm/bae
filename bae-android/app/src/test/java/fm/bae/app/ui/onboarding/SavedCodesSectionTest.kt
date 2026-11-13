@@ -69,7 +69,7 @@ class SavedCodesSectionTest {
         showWelcome(SavedCodesHost(listOf(dropboxCode), unreadable = listOf(UNREADABLE_LIBRARY)))
 
         compose.onNodeWithText("Home Library").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dropbox: ana@example.com").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dropbox · ana@example.com").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Restore code cannot be used").performScrollTo().assertIsDisplayed()
         compose
             .onNodeWithText("Saved in a format bae cannot read · $UNREADABLE_LIBRARY")

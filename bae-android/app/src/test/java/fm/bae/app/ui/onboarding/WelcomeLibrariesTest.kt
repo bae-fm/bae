@@ -184,7 +184,7 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Your libraries").assertIsDisplayed()
         compose.onNodeWithText("Home Library").assertIsDisplayed()
         compose.onNodeWithText("Office Library").assertIsDisplayed()
-        compose.onNodeWithText("Dropbox: ana@example.com").assertDoesNotExist()
+        compose.onNodeWithText("Dropbox · ana@example.com").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
     }
 
