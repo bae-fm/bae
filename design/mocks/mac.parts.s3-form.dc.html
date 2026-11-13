@@ -16,7 +16,7 @@ body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
 <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
-<sc-if value="{{topError}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" tone="danger" title="{{topError}}"></x-import></sc-if>
+<sc-if value="{{topError}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="danger" title="{{topError}}"></x-import></sc-if>
 <x-import component-from-global-scope="Bae.MacSection" title="Location">
 <x-import component-from-global-scope="Bae.MacBox">
 <x-import component-from-global-scope="Bae.MacFieldRow" label="Endpoint" label-width="120"><x-import component-from-global-scope="Bae.MacTextField" value="{{endpoint}}"></x-import></x-import>
