@@ -5146,6 +5146,7 @@ release's or track's id as UTF-8, or a candidate's key.
   close before restoring or resetting this device's copy, and, on Android, the
   close of the library a newly opened one replaces. Quitting the Mac app, and
   the close after a removal or a failed open, show nothing and report nowhere.
+  A close the Mac app shows that fails ends the library's session anyway, since the library is closed either way: the welcome screen shows *Could not close the library* with the failure and says the session ended anyway.
 - **`release_memory`** gives back the pages the library's store keeps cached
   that no read or write is using; later reads load what they need again. SQLite
   keeps every connection's unused pages in one pool for the process, so coven
