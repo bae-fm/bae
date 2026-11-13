@@ -197,6 +197,25 @@ async fn a_failed_write_of_what_playback_is_doing_is_reported() {
     assert_eq!(operations, ["write what playback is doing", "write why playback failed"]);
 }
 
+/// What the fan-out compares an event against is what the row took: a value
+/// the row refused is still the row's old one, so the same value told again
+/// is a change to write again, not one the fan-out already holds.
+#[tokio::test]
+async fn a_value_the_row_refused_is_not_held() {
+    let (handle, progress_tx, _db, tmp) = started().await;
+    let mut events = handle.subscribe_all();
+    crate::tables::lose_playback_level_for_test(tmp.path());
+
+    for _ in 0..2 {
+        progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
+        assert!(matches!(next_event(&mut events).await, PlaybackProgress::VolumeChanged { .. }));
+        assert!(
+            matches!(next_event(&mut events).await, PlaybackProgress::PlaybackError { .. }),
+            "the row still holds the old volume, so 0.5 is a change it failed to write again"
+        );
+    }
+}
+
 /// The next event the fan-out forwards, which it writes and folds into
 /// the positions first.
 async fn next_event(events: &mut PlaybackProgressFeed) -> PlaybackProgress {

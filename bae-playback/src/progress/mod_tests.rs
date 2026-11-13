@@ -1,5 +1,12 @@
 use super::*;
 
+/// `event`'s change, taken by the row, as the fan-out does on a good write.
+fn applied(values: &mut PlaybackValues, event: &PlaybackProgress) -> Option<PlaybackChange> {
+    let change = values.change_for(event)?;
+    values.took(&change);
+    Some(change)
+}
+
 fn preview_target(path: &str) -> bae_track_audio::PreviewTarget {
     bae_track_audio::PreviewTarget::sample_range(path.into(), 0, None)
 }
@@ -12,7 +19,7 @@ fn media_control_uses_preview_only_while_preview_is_active() {
     let playing =
         PreviewState::Playing { target: preview_target("/tmp/preview.flac"), duration_ms: 120_000 };
     assert_eq!(
-        values.apply(&PlaybackProgress::PreviewStateChanged(playing.clone())),
+        applied(&mut values, &PlaybackProgress::PreviewStateChanged(playing.clone())),
         Some(PlaybackChange::Preview(playing))
     );
     assert!(matches!(
@@ -21,7 +28,7 @@ fn media_control_uses_preview_only_while_preview_is_active() {
     ));
 
     assert_eq!(
-        values.apply(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle)),
+        applied(&mut values, &PlaybackProgress::PreviewStateChanged(PreviewState::Idle)),
         Some(PlaybackChange::Preview(PreviewState::Idle))
     );
     assert_eq!(values.media_control(), MediaControlPlayback::Library);
@@ -33,23 +40,23 @@ fn media_control_uses_preview_only_while_preview_is_active() {
 fn a_value_changes_only_when_it_moves_and_every_failure_is_a_change() {
     let mut values = PlaybackValues::initial();
     assert_eq!(
-        values.apply(&PlaybackProgress::VolumeChanged { volume: 1.0 }),
+        applied(&mut values, &PlaybackProgress::VolumeChanged { volume: 1.0 }),
         None,
         "the volume playback starts at"
     );
     assert_eq!(
-        values.apply(&PlaybackProgress::VolumeChanged { volume: 0.5 }),
+        applied(&mut values, &PlaybackProgress::VolumeChanged { volume: 0.5 }),
         Some(PlaybackChange::Volume(0.5))
     );
     assert_eq!(values.volume, 0.5);
     assert_eq!(
-        values.apply(&PlaybackProgress::StateChanged { state: PlaybackState::Stopped }),
+        applied(&mut values, &PlaybackProgress::StateChanged { state: PlaybackState::Stopped }),
         None
     );
     let failure = crate::PlaybackErrorReason::SyncDisconnected;
     for _ in 0..2 {
         assert_eq!(
-            values.apply(&PlaybackProgress::PlaybackError { reason: failure.clone() }),
+            applied(&mut values, &PlaybackProgress::PlaybackError { reason: failure.clone() }),
             Some(PlaybackChange::Failed(failure.clone()))
         );
     }
@@ -87,7 +94,7 @@ fn position_ticks_change_no_playback_value() {
         },
         PlaybackProgress::PreviewPositionUpdate { position_ms: 1_000, progress: 0.01 },
     ] {
-        assert!(values.apply(&tick).is_none(), "{tick:?} is a position");
+        assert!(applied(&mut values, &tick).is_none(), "{tick:?} is a position");
     }
 }
 

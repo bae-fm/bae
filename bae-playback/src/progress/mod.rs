@@ -133,35 +133,32 @@ impl PlaybackValues {
         }
     }
 
-    /// Take `event` into these values, and say what it changed: a value it
-    /// moved, or the failure it reports. `None` when it changed none of them.
-    pub(super) fn apply(&mut self, event: &PlaybackProgress) -> Option<PlaybackChange> {
-        fn changed<T: PartialEq + Clone>(
-            held: &mut T,
+    /// What `event` asks the row to take: a value it moves, or the failure it
+    /// reports. `None` when it moves none of them. These values are left as
+    /// they are: they follow the row, through [`Self::took`].
+    pub(super) fn change_for(&self, event: &PlaybackProgress) -> Option<PlaybackChange> {
+        fn moved<T: PartialEq + Clone>(
+            held: &T,
             next: &T,
             change: impl FnOnce(T) -> PlaybackChange,
         ) -> Option<PlaybackChange> {
-            if held == next {
-                return None;
-            }
-            held.clone_from(next);
-            Some(change(next.clone()))
+            (held != next).then(|| change(next.clone()))
         }
         match event {
             PlaybackProgress::StateChanged { state } => {
-                changed(&mut self.state, state, PlaybackChange::State)
+                moved(&self.state, state, PlaybackChange::State)
             }
             PlaybackProgress::VolumeChanged { volume } => {
-                changed(&mut self.volume, volume, PlaybackChange::Volume)
+                moved(&self.volume, volume, PlaybackChange::Volume)
             }
             PlaybackProgress::MuteChanged { is_muted } => {
-                changed(&mut self.is_muted, is_muted, PlaybackChange::Muted)
+                moved(&self.is_muted, is_muted, PlaybackChange::Muted)
             }
             PlaybackProgress::RemoteStatusChanged { remote } => {
-                changed(&mut self.remote, remote, PlaybackChange::Remote)
+                moved(&self.remote, remote, PlaybackChange::Remote)
             }
             PlaybackProgress::PreviewStateChanged(state) => {
-                changed(&mut self.preview, state, PlaybackChange::Preview)
+                moved(&self.preview, state, PlaybackChange::Preview)
             }
             PlaybackProgress::PlaybackError { reason }
             | PlaybackProgress::PreviewFailed { reason } => {
@@ -173,6 +170,19 @@ impl PlaybackValues {
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. }
             | PlaybackProgress::ServiceEnded => None,
+        }
+    }
+
+    /// The row took `change`: these values now hold it. A failure is not one
+    /// of the values.
+    pub(super) fn took(&mut self, change: &PlaybackChange) {
+        match change {
+            PlaybackChange::State(state) => self.state = state.clone(),
+            PlaybackChange::Volume(volume) => self.volume = *volume,
+            PlaybackChange::Muted(is_muted) => self.is_muted = *is_muted,
+            PlaybackChange::Remote(remote) => self.remote = remote.clone(),
+            PlaybackChange::Preview(preview) => self.preview = preview.clone(),
+            PlaybackChange::Failed(_) => {}
         }
     }
 }

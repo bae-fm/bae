@@ -108,47 +108,62 @@ impl PlaybackProgressHandle {
                     Some(progress) => {
                         let mut write_failure = None;
                         let folded = caught_sync("fold a playback event", || {
-                            let change = values.apply(&progress);
+                            let change = values.change_for(&progress);
                             publish_change(&positions_tx, |positions| {
                                 positions.applying(&progress)
                             });
-                            let timeline = fold.next(&positions_tx.borrow(), &values, clock.now());
-                            (change, timeline)
+                            change
                         });
                         match folded {
-                            Ok((change, timeline)) => {
+                            Ok(change) => {
                                 if let Some(change) = change {
-                                    if let Err(e) = row.apply(&change).await {
-                                        error!(
-                                            "couldn't write what playback is doing ({change:?}): {e}"
-                                        );
-                                        diagnostics
-                                            .report_failure("write what playback is doing", &e);
-                                        // The change is told below, then this failure: the
-                                        // row holds it for the screens when it can. Playback
-                                        // halts on hearing it, so the row, the audio and the
-                                        // screens agree.
-                                        let reason = crate::PlaybackErrorReason::internal(format!(
-                                            "write what playback is doing: {e}"
-                                        ));
-                                        if let Err(e) = row
-                                            .apply(&super::PlaybackChange::Failed(reason.clone()))
-                                            .await
-                                        {
-                                            error!("couldn't write why playback failed: {e}");
+                                    match row.apply(&change).await {
+                                        Ok(()) => values.took(&change),
+                                        Err(e) => {
+                                            error!(
+                                                "couldn't write what playback is doing ({change:?}): {e}"
+                                            );
                                             diagnostics
-                                                .report_failure("write why playback failed", &e);
+                                                .report_failure("write what playback is doing", &e);
+                                            // The change is told below, then this failure: the
+                                            // row holds it for the screens when it can. Playback
+                                            // halts on hearing it, so the row, the audio and the
+                                            // screens agree. The values stay what the row holds.
+                                            let reason = crate::PlaybackErrorReason::internal(
+                                                format!("write what playback is doing: {e}"),
+                                            );
+                                            if let Err(e) = row
+                                                .apply(&super::PlaybackChange::Failed(
+                                                    reason.clone(),
+                                                ))
+                                                .await
+                                            {
+                                                error!("couldn't write why playback failed: {e}");
+                                                diagnostics.report_failure(
+                                                    "write why playback failed",
+                                                    &e,
+                                                );
+                                            }
+                                            write_failure =
+                                                Some(PlaybackProgress::PlaybackError { reason });
                                         }
-                                        write_failure =
-                                            Some(PlaybackProgress::PlaybackError { reason });
                                     }
                                 }
-                                if let Some(timeline) = timeline {
-                                    if let Err(e) = timeline_row.write(&timeline).await {
-                                        error!(
-                                            "couldn't write where playback is ({timeline:?}): {e}"
-                                        );
-                                        diagnostics.report_failure("write where playback is", &e);
+                                match caught_sync("fold a playback event", || {
+                                    fold.next(&positions_tx.borrow(), &values, clock.now())
+                                }) {
+                                    Ok(Some(timeline)) => {
+                                        if let Err(e) = timeline_row.write(&timeline).await {
+                                            error!(
+                                                "couldn't write where playback is ({timeline:?}): {e}"
+                                            );
+                                            diagnostics
+                                                .report_failure("write where playback is", &e);
+                                        }
+                                    }
+                                    Ok(None) => {}
+                                    Err(bug) => {
+                                        diagnostics.panicked(bug);
                                     }
                                 }
                             }
