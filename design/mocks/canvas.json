@@ -4106,6 +4106,14 @@
    "w": 1400,
    "x": 0,
    "y": 4700
+  },
+  "mac.import.list.folder-not-watched.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: Import: a folder the system will not watch",
+   "w": 1400,
+   "x": 1496,
+   "y": 4700
   }
  },
  "createdOnFiles": {
@@ -6129,7 +6137,8 @@
   "mac.album.edit.album-picker.dc.html",
   "mac.album.edit.cover.dc.html",
   "mac.album.edit.cue-image.dc.html",
-  "mac.import.identify.records-differ.dc.html"
+  "mac.import.identify.records-differ.dc.html",
+  "mac.import.list.folder-not-watched.dc.html"
  ],
  "pages": [
   {
