@@ -415,7 +415,6 @@ impl BridgeBootstrapResult {
                 }),
                 error => Err(BridgeError::categorized(category, error)),
             },
-            error => Err(BridgeError::categorized(category, error)),
         }
     }
 }
