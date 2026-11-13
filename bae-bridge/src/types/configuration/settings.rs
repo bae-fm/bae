@@ -300,6 +300,13 @@ pub enum BridgeErrorCategory {
     /// Removing the library needs this device to sign in to its storage
     /// again first.
     DeletionSignInRequired,
+    /// This device holds an unfinished join or restore of the library
+    /// `library_id` that can't resume because what it saved can't be read;
+    /// listing the unfinished joins and restores fails on it until the app
+    /// calls `discard_unfinished_installation` with the id.
+    UnfinishedInstallationUnreadable {
+        library_id: String,
+    },
 }
 
 /// What a `NotFound` was looking for, so the UI can localize "… not found".
@@ -485,6 +492,9 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::StorageSetupFinishing => "core.error.storage_setup_finishing",
         BridgeErrorCategory::DeletionUnfinished => "core.error.deletion_unfinished",
         BridgeErrorCategory::DeletionSignInRequired => "core.error.deletion_sign_in_required",
+        BridgeErrorCategory::UnfinishedInstallationUnreadable { .. } => {
+            "core.error.unfinished_installation_unreadable"
+        }
     }
     .to_string()
 }
@@ -720,6 +730,7 @@ mirror_enum! {
         StorageSetupFinishing,
         DeletionUnfinished,
         DeletionSignInRequired,
+        UnfinishedInstallationUnreadable { library_id },
     },
 }
 

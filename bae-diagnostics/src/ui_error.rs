@@ -166,6 +166,13 @@ pub enum UiErrorCategory {
     /// Removing the library needs this device to sign in to its storage
     /// again first, so it can tell the library's other devices it left.
     DeletionSignInRequired,
+    /// This device holds an unfinished join or restore of the library
+    /// `library_id` that can't resume because what it saved can't be read:
+    /// the listing of unfinished joins and restores fails on it until it is
+    /// discarded from this device.
+    UnfinishedInstallationUnreadable {
+        library_id: String,
+    },
 }
 
 /// Why a release read from several folders cannot be worked on as it stands,

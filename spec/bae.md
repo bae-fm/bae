@@ -3019,7 +3019,21 @@ library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
 store whose name can't be read is listed beside the others, titled *Library
 that cannot be read* with its store id under the title, and offers Remove
-only. A
+only. A join or restore that stopped before it finished and whose saved
+settings can't be read can't resume, and coven fails listing the joins and
+restores under way, naming its library, instead of listing none. The first
+screen shows that failure as a row after the libraries, in the same list, even
+when the device holds none: *Unfinished join that cannot be read* with the
+library's id under it and **Discard…**, which asks "Discard the unfinished
+join?" ("It did not finish, and this Mac cannot read what it saved. Discarding
+removes it from this Mac. The library in the cloud is not touched." on a Mac, "phone" on
+Android) with **Discard** and **Cancel**. **Discard** deletes the unfinished
+installation from this device (`discard_unfinished_installation`) and lists
+what is under way again, so another unreadable one shows its own row and a join
+that can resume goes on; a discard that fails says why where the listing's
+failures show, and the row stays. A join whose request was sent stays pending in the
+library's storage until its invite ends, and the person's saved restore code
+stays. A
 library that fails to open on a Mac shows the failure joined to its row, under
 its name: **Could not open**, with **Details**; when what failed is the
 library's data on this Mac, such as tables that don't match the app's, it
@@ -4845,6 +4859,7 @@ library is registered there by id.
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries; coven keeps it with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
+| `discard_unfinished_installation` | deletes a join or restore that stopped before it finished from this device, directory and entries, for one coven can't read; `unfinished_joins` and `unfinished_restores` fail with `UnfinishedInstallationUnreadable` naming its library until it is gone; refused as `Config` when this device has none for the library, or a call holds it (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings or a name that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
@@ -6239,6 +6254,7 @@ with one of these categories and a detail:
 | `StorageSetupFinishing` | waits for the storage setup already running, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
+| `UnfinishedInstallationUnreadable` | discards the unfinished join or restore of the library the category names, which this device can't read; listing what is under way fails until it is gone (§5.6) |
 
 These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,

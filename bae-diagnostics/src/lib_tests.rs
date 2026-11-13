@@ -493,3 +493,18 @@ fn a_join_signed_in_as_the_wrong_account_asks_for_credentials() {
     };
     assert_eq!(bootstrap_category(&wrong), UiErrorCategory::Credentials);
 }
+
+/// An unfinished join or restore whose saved settings can't be read fails the
+/// listing of them naming its library, so the app can offer to discard it.
+#[test]
+fn an_unreadable_unfinished_installation_names_its_library() {
+    let store = coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap());
+    let unreadable = coven::BootstrapError::Directory(coven::BootstrapDirectoryError::Settings {
+        store,
+        source: coven::SettingsError::Missing(store),
+    });
+    assert_eq!(
+        bootstrap_category(&unreadable),
+        UiErrorCategory::UnfinishedInstallationUnreadable { library_id: store.to_string() }
+    );
+}

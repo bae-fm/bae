@@ -131,3 +131,94 @@ fn a_join_whose_load_is_refused_asks_for_the_profile_on_the_next_open() {
         household.owner.close().await.unwrap();
     });
 }
+
+/// Rowan's join stops while it waits, and what it saved can no longer be
+/// read. Listing the joins fails naming Rowan's library instead of listing
+/// none; discarding it from this device ends the failure and leaves no join,
+/// and discarding again finds nothing. The household's own library is not
+/// touched.
+#[test]
+fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
+    on_app_runtime(async {
+        let household = Household::new().await;
+        let invite = household.invite("guest-key").await;
+        let guest_dir = tempfile::tempdir().unwrap();
+        let guest = installation_in(&guest_dir);
+        let control = bae_library::JoinControl::new();
+        let (waiting, mut waits) = tokio::sync::watch::channel(false);
+        let joining = bae_library::join_with_invite(
+            household.device(&guest),
+            &invite.code,
+            bae_store::EnteredName::parse("Rowan").unwrap(),
+            "Guest Device",
+            household.sources.clock().clone(),
+            |status| {
+                if matches!(status, coven::BootstrapStatus::WaitingForApproval { .. }) {
+                    waiting.send_replace(true);
+                }
+            },
+            &control,
+            &NO_DIAGNOSTICS,
+        );
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            tokio::select! {
+                result = joining => panic!("the join ended while waiting: {:?}", result.err()),
+                changed = waits.wait_for(|waiting| *waiting) => drop(changed.unwrap()),
+            }
+        })
+        .await
+        .unwrap();
+        let builder = household.device(&guest);
+        let [join] = &bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS).await.unwrap()[..]
+        else {
+            panic!("one join under way");
+        };
+        let store = join.metadata.store_id;
+
+        let settings: Vec<_> = walk(guest_dir.path())
+            .into_iter()
+            .filter(|path| path.file_name().is_some_and(|name| name == "settings.json"))
+            .collect();
+        let [settings] = &settings[..] else {
+            panic!("the join saved one settings file: {settings:?}");
+        };
+        std::fs::write(settings, b"{").unwrap();
+
+        let error = bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS)
+            .await
+            .expect_err("the damaged join fails the listing");
+        assert_eq!(
+            error.category(),
+            bae_diagnostics::UiErrorCategory::UnfinishedInstallationUnreadable {
+                library_id: store.to_string()
+            },
+            "{error:?}"
+        );
+        assert!(bae_library::unfinished_restores(&builder, &NO_DIAGNOSTICS).await.is_err());
+
+        bae_library::discard_unfinished_installation(&builder, store, &NO_DIAGNOSTICS)
+            .await
+            .unwrap();
+        assert!(!settings.exists());
+        assert!(bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS).await.unwrap().is_empty());
+        let again = bae_library::discard_unfinished_installation(&builder, store, &NO_DIAGNOSTICS)
+            .await
+            .expect_err("nothing is left to discard");
+        assert_eq!(again.category(), bae_diagnostics::UiErrorCategory::Config, "{again:?}");
+        household.owner.close().await.unwrap();
+    });
+}
+
+/// Every file under `dir`.
+fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            files.extend(walk(&path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
+}

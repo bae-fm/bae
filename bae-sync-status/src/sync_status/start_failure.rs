@@ -109,7 +109,8 @@ impl FailureColumns {
             | K::StorageSetupUndone
             | K::StorageSetupFinishing
             | K::DeletionUnfinished
-            | K::DeletionSignInRequired => {
+            | K::DeletionSignInRequired
+            | K::UnfinishedInstallationUnreadable => {
                 Err(StartFailureRecordError::NotAStartFailure(category.clone()))
             }
         }

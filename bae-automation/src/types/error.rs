@@ -175,7 +175,8 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::StorageSetupUndone
             | UiErrorCategory::StorageSetupFinishing
             | UiErrorCategory::DeletionUnfinished
-            | UiErrorCategory::DeletionSignInRequired => Self::Unavailable(detail),
+            | UiErrorCategory::DeletionSignInRequired
+            | UiErrorCategory::UnfinishedInstallationUnreadable { .. } => Self::Unavailable(detail),
         }
     }
 }

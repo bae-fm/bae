@@ -391,6 +391,25 @@ pub async fn unfinished_restores(
     builder.unfinished_restores().await.map_err(|error| reported_restore_error(diagnostics, error))
 }
 
+/// Delete `store`'s unfinished first installation from this device: the
+/// directory it kept and this device's entries for it. For a join or restore
+/// that can't resume, which `unfinished_joins` and `unfinished_restores` fail
+/// on, naming it in `BootstrapError::Directory(Settings { store, .. })`
+/// until it is gone. A join whose request was sent stays pending in the
+/// library's storage until its invite ends, and the person's saved restore
+/// code stays. Fails as `NoUnfinishedInstallation` when this device has none
+/// for `store`, or a call holds it, and deletes nothing.
+pub async fn discard_unfinished_installation(
+    builder: &coven::CovenBuilder,
+    store: coven::StoreId,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<(), RestoreFromCodeError> {
+    builder
+        .discard_unfinished_installation(store)
+        .await
+        .map_err(|error| reported_restore_error(diagnostics, error))
+}
+
 /// Finish a restore from `unfinished_restores` after bae restarted, from what
 /// coven recorded: the code, the device's name, and on Dropbox and OneDrive
 /// the provider sign-in. This signs in only when coven asks for one, when the

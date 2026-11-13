@@ -307,7 +307,7 @@ pub(super) struct Household {
     _dir: tempfile::TempDir,
     pub(super) owner: coven::CovenHandle,
     pub(super) storage: std::sync::Arc<coven::MemoryStorage>,
-    sources: bae_library::test_libraries::TestSources,
+    pub(super) sources: bae_library::test_libraries::TestSources,
     robin: bae_people::people::PersonProfile,
 }
 

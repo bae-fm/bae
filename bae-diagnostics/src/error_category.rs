@@ -361,6 +361,12 @@ pub fn bootstrap_category(error: &coven::BootstrapError) -> C {
         E::Directory(coven::BootstrapDirectoryError::Lock(
             coven::StoreLockError::DeletionUnfinished(_),
         )) => C::DeletionUnfinished,
+        // An unfinished join or restore whose saved settings can't be read:
+        // it can't resume, and only discarding it from this device ends the
+        // failure of listing the others.
+        E::Directory(coven::BootstrapDirectoryError::Settings { store, .. }) => {
+            C::UnfinishedInstallationUnreadable { library_id: store.to_string() }
+        }
         E::Cancelled | E::Directory(_) => C::Internal,
         // The runtime is shutting down under the work: the process is
         // ending it, which no line the person reads can help with. A panic

@@ -57,11 +57,12 @@ pub enum UiErrorClass {
     StorageSetupFinishing,
     DeletionUnfinished,
     DeletionSignInRequired,
+    UnfinishedInstallationUnreadable,
 }
 
 impl UiErrorClass {
     /// Every class, each once.
-    const ALL: [Self; 50] = [
+    const ALL: [Self; 51] = [
         Self::Database,
         Self::DatabaseBusy,
         Self::DatabaseDamaged,
@@ -112,6 +113,7 @@ impl UiErrorClass {
         Self::StorageSetupFinishing,
         Self::DeletionUnfinished,
         Self::DeletionSignInRequired,
+        Self::UnfinishedInstallationUnreadable,
     ];
 
     /// The name a stored failure of this class goes by.
@@ -167,6 +169,7 @@ impl UiErrorClass {
             Self::StorageSetupFinishing => "storage_setup_finishing",
             Self::DeletionUnfinished => "deletion_unfinished",
             Self::DeletionSignInRequired => "deletion_sign_in_required",
+            Self::UnfinishedInstallationUnreadable => "unfinished_installation_unreadable",
         }
     }
 
@@ -227,7 +230,9 @@ impl UiErrorClass {
             | Self::S3VersioningUnsupported
             // Why a storage setup was undone: bae stopping, or the failure
             // or refusal that ended it.
-            | Self::StorageSetupUndone => true,
+            | Self::StorageSetupUndone
+            // Why the saved join or restore can't be read.
+            | Self::UnfinishedInstallationUnreadable => true,
             // The line names the whole fault, with the counts, discs or
             // folder it carries; the detail says it again, at most with an id
             // the person can't use.
@@ -312,6 +317,7 @@ impl UiErrorCategory {
             Self::StorageSetupFinishing => K::StorageSetupFinishing,
             Self::DeletionUnfinished => K::DeletionUnfinished,
             Self::DeletionSignInRequired => K::DeletionSignInRequired,
+            Self::UnfinishedInstallationUnreadable { .. } => K::UnfinishedInstallationUnreadable,
         }
     }
 
@@ -369,7 +375,8 @@ impl UiErrorCategory {
             | K::StorageCheck
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
-            | K::ReplacementUnfinished => return None,
+            | K::ReplacementUnfinished
+            | K::UnfinishedInstallationUnreadable => return None,
         })
     }
 }

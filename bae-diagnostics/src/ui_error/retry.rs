@@ -61,6 +61,7 @@ impl UiErrorCategory {
             | Self::StorageSetupUndone
             | Self::DeletionUnfinished
             | Self::DeletionSignInRequired
+            | Self::UnfinishedInstallationUnreadable { .. }
             | Self::StoreOwnerAccount
             | Self::InviteJoining
             // What was asked is what fails: the source's own bytes, an

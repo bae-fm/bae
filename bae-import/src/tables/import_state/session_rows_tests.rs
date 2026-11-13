@@ -73,6 +73,9 @@ fn every_failure_class_reads_back_as_itself() {
         C::StorageSetupFinishing,
         C::DeletionUnfinished,
         C::DeletionSignInRequired,
+        C::UnfinishedInstallationUnreadable {
+            library_id: "3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81".into(),
+        },
     ];
     for class in classes {
         assert_eq!(category_of(&category_column(class.clone())).unwrap(), class);

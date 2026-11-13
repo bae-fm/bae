@@ -313,3 +313,23 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
     closed.unwrap();
     drop(app);
 }
+
+/// Discarding an unfinished installation this device doesn't have deletes
+/// nothing and says so as a configuration fault; an id that is no library's
+/// is refused the same way before anything runs.
+#[test]
+fn discarding_an_installation_that_is_not_there_is_refused() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let store = coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap());
+    for library_id in [store.to_string(), "not a library".to_string()] {
+        let error = caller
+            .block_on(host.clone().discard_unfinished_installation(library_id))
+            .expect_err("nothing to discard");
+        let BridgeError::Diagnostic { category, .. } = &error else {
+            panic!("a refusal is a diagnostic: {error:?}");
+        };
+        assert_eq!(*category, crate::BridgeErrorCategory::Config, "{error:?}");
+    }
+}

@@ -38,6 +38,7 @@ impl UiErrorCategory {
             | Self::StorageSetupUndone
             | Self::DeletionUnfinished
             | Self::DeletionSignInRequired
+            | Self::UnfinishedInstallationUnreadable { .. }
             | Self::StoreOwnerAccount
             | Self::InviteJoining
             | Self::ImportData

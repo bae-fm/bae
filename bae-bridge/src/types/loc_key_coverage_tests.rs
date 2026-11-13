@@ -377,6 +377,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::StorageSetupFinishing,
         BridgeErrorCategory::DeletionUnfinished,
         BridgeErrorCategory::DeletionSignInRequired,
+        BridgeErrorCategory::UnfinishedInstallationUnreadable { library_id: String::new() },
     ] {
         keys.push(bridge_error_category_key(c));
     }

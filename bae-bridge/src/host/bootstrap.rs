@@ -356,6 +356,32 @@ impl BridgeHost {
             .await
     }
 
+    /// Delete the unfinished join or restore of `library_id` from this
+    /// device, for one that can't resume: `unfinished_joins` and
+    /// `unfinished_restores` fail with `UnfinishedInstallationUnreadable`
+    /// naming it until it is gone, so the app lists again afterwards. A join
+    /// whose request was sent stays pending in the library's storage until its
+    /// invite ends; the person's saved restore code stays. Fails as
+    /// `Config` when this device has no such installation, or a call holds it.
+    pub async fn discard_unfinished_installation(
+        self: Arc<Self>,
+        library_id: String,
+    ) -> Result<(), BridgeError> {
+        let store = crate::from_app::store(&library_id)?;
+        self.operations
+            .clone()
+            .run("BridgeHost.discard_unfinished_installation", move || async move {
+                bae_library::discard_unfinished_installation(
+                    &self.library_builder(),
+                    store,
+                    &self.diagnostics,
+                )
+                .await
+                .map_err(|error| BridgeError::categorized(error.category(), error))
+            })
+            .await
+    }
+
     /// Continue a join from `unfinished_joins` with the provider sign-in coven
     /// kept for it, signing in again only when coven asks for one. Dropping
     /// the call keeps the join, as for `join_with_invite`.
