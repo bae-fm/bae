@@ -44,7 +44,7 @@ enum LibraryRemovalAlerts {
         MacAlertWords, [MacAlertButton]
     ) {
         let words = MacAlertWords(
-            Text("Could not remove \(failed.library.name)"),
+            Text("Could not remove \(failed.library.title)"),
             message: Text(verbatim: failed.error.line)
         )
         guard failed.error.offersRetry else {

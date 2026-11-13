@@ -25,7 +25,10 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
         .await
         .unwrap();
     assert_eq!(
-        libraries.iter().map(|l| (l.id.as_str(), l.name.as_str(), l.is_active)).collect::<Vec<_>>(),
+        libraries
+            .iter()
+            .map(|l| (l.id.as_str(), l.name.as_deref().unwrap(), l.is_active))
+            .collect::<Vec<_>>(),
         vec![
             (second_id.to_string().as_str(), "Second", true),
             (first_id.to_string().as_str(), "First", false)
@@ -35,18 +38,26 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     assert_eq!(libraries[0].path, app_dir.registered_library(&second_id.to_string()));
 }
 
+/// A store whose name coven can't read is listed by its id beside the others
+/// instead of failing the whole listing.
 #[tokio::test]
-async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
+async fn discovery_lists_a_store_whose_name_cant_be_read() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
-    let id = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
-    installation.create_store_dir(id, &coven::UuidIds).unwrap();
-    let error = app_dir
+    let named = store(&installation, "Named").await;
+    let broken = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
+    installation.create_store_dir(broken, &coven::UuidIds).unwrap();
+    let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap_err();
-    assert!(error.to_string().contains(&id.to_string()), "{error}");
+        .unwrap();
+    assert_eq!(libraries.len(), 2);
+    assert_eq!(libraries[0].id, named.to_string());
+    assert_eq!(libraries[0].name.as_deref(), Some("Named"));
+    assert_eq!(libraries[1].id, broken.to_string());
+    assert_eq!(libraries[1].name, None);
+    assert!(matches!(libraries[1].state, LibraryState::NameUnreadable));
 }
 
 /// A library whose storage settings can't be read is listed with why, and
@@ -71,7 +82,11 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
         .await
         .unwrap();
     let state = |name: &str| {
-        &libraries.iter().find(|library| library.name == name).expect("every store is listed").state
+        &libraries
+            .iter()
+            .find(|library| library.name.as_deref() == Some(name))
+            .expect("every store is listed")
+            .state
     };
     assert!(matches!(state("Openable"), LibraryState::Openable(None)));
     assert!(

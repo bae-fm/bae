@@ -310,7 +310,7 @@ private fun openListed(
             onScreen(AppScreen.DeletionUnfinished(library.id, error = null))
         }
 
-        is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable -> {
+        is BridgeLibraryState.Openable, is BridgeLibraryState.Unreadable, is BridgeLibraryState.NameUnreadable -> {
             scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
         }
     }

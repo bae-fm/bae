@@ -6,9 +6,12 @@ import android.icu.text.MeasureFormat
 import android.icu.text.MessageFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeDurationUnits
+import uniffi.bae_bridge.BridgeLibrary
 import java.util.Locale
 
 private const val HOURS_KEY = "core.duration.hours"
@@ -52,6 +55,10 @@ fun Context.coreString(
 /** Core's count parts, such as "2 uploading" and "3 queued", each localized and
  *  joined with the catalog's list separator. Core decides which parts appear and in what order. */
 fun Context.countLabelsText(parts: List<BridgeCountLabel>): String = factsLine(parts.map { coreString(it) })
+
+/** The name a library is listed under: its own, or for one whose name can't be read, a fixed title. */
+@Composable
+fun BridgeLibrary.title(): String = name ?: LocalContext.current.coreString("core.library.name_unreadable")
 
 /** The configuration's primary locale, for number / duration / byte formatting. */
 fun Context.currentLocale(): Locale = resources.configuration.locales[0]

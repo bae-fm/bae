@@ -24,7 +24,7 @@ struct WelcomeLibraryDetails: View {
 
     var body: some View {
         Form {
-            Section(library.name) {
+            Section(library.title) {
                 rows
                     .listRowBackground(Rectangle().fill(Theme.surface))
             }

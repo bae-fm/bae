@@ -46,7 +46,7 @@ final class OpenLibraryMenu: NSObject, NSMenuDelegate {
         }
         for (index, library) in libraries.enumerated() {
             let item = NSMenuItem(
-                title: library.name,
+                title: library.title,
                 action: #selector(AppDelegate.openListedLibrary(_:)),
                 keyEquivalent: index < 9 ? String(index + 1) : ""
             )

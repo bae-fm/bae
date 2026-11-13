@@ -26,6 +26,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
+import fm.bae.app.title
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -108,16 +109,16 @@ private fun LibrarySwitcher(
         libraries.forEach { library ->
             // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
             val isActive = library.id == activeLibraryId
-            val detail = libraryDetail(library.state)
+            val detail = libraryDetail(library)
             AndroidRow(
-                title = library.name,
+                title = library.title(),
                 subtitle = detail.text,
                 tone = detail.tone,
                 selected = isActive,
                 // A library whose settings can't be read offers nothing; one
                 // whose reset or restore stopped partway offers to finish it.
                 onClick =
-                    if (!isActive && library.state !is BridgeLibraryState.Unreadable) {
+                    if (!isActive && !library.state.isUnopenableListing()) {
                         { onSwitchLibrary(library) }
                     } else {
                         null
@@ -241,9 +242,9 @@ internal fun renameLibraryParts(
  * with no storage, which a phone never has, is a reported bug, said in place.
  */
 @Composable
-internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
+internal fun libraryDetail(library: BridgeLibrary): LibraryDetail {
     val context = LocalContext.current
-    return when (state) {
+    return when (val state = library.state) {
         is BridgeLibraryState.Openable -> {
             val storage = state.storage
             if (storage == null) {
@@ -263,6 +264,10 @@ internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
             LibraryDetail(line, StatusTone.DANGER)
         }
 
+        is BridgeLibraryState.NameUnreadable -> {
+            LibraryDetail(library.id, tone = null)
+        }
+
         is BridgeLibraryState.ReplacementUnfinished -> {
             LibraryDetail(
                 context.coreString(state.lineKey),
@@ -278,6 +283,10 @@ internal fun libraryDetail(state: BridgeLibraryState): LibraryDetail {
         }
     }
 }
+
+/** Whether the library is listed but offers nothing to open: its settings or its name can't be read. */
+internal fun BridgeLibraryState.isUnopenableListing(): Boolean =
+    this is BridgeLibraryState.Unreadable || this is BridgeLibraryState.NameUnreadable
 
 /** The line a library row shows under its name, and the tone it is in. */
 internal data class LibraryDetail(

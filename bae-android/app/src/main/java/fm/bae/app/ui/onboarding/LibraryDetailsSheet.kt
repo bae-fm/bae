@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.LocalBugReports
 import fm.bae.app.R
 import fm.bae.app.data.LibraryWithoutStorage
+import fm.bae.app.title
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
@@ -33,7 +34,7 @@ internal fun LibraryDetailsSheet(
     details: LibraryDetails,
     onDismiss: () -> Unit,
 ) {
-    AndroidSheet(title = details.library.name, onDismiss = onDismiss) {
+    AndroidSheet(title = details.library.title(), onDismiss = onDismiss) {
         val storage = (details.library.state as? BridgeLibraryState.Openable)?.storage
         if (storage == null) {
             val bugs = LocalBugReports.current

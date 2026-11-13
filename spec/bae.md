@@ -2905,6 +2905,9 @@ way under **Your libraries**: a click on one opens it, and its ⋯ button, or a
 right click, holds **Remove…**, or **Delete…** for one never synced. A
 library that can't be read, or whose reset, restore or removal stopped
 partway, says so under its name, and its menu offers to finish it first. A
+store whose name can't be read is listed beside the others, titled *Library
+that cannot be read* with its store id under the title, and offers Remove
+only. A
 library that fails to open on a Mac shows the failure joined to its row, under
 its name: **Could not open**, with **Details**; when what failed is the
 library's data on this Mac, such as tables that don't match the app's, it
@@ -3453,7 +3456,8 @@ a library's cache in `~/.bae/libraries/<library id>/`, and this device's
 settings for it in its database (Appendix C). One library whose
 storage settings can't be read never hides the others: the list carries each
 library with its settings or why they can't be read, shows that reason in
-place of the account, and offers no Open for it. Launch and switching
+place of the account, and offers no Open for it. A store whose name can't be read is listed by its id
+instead of failing the listing, with no Open either. Launch and switching
 libraries pass over it. Switching keeps the open library until the next one
 has opened; a switch whose open fails leaves the open library on screen with
 the failure shown over it.
@@ -3996,7 +4000,7 @@ fail, saying the laptop left the library and its files are still on it.
   steps while it is opened to count, then the removal's, or the removal's from
   the start for one that can't open, whose removal reports leaving it and
   deleting its files.
-- **A library that can't open.** A library whose settings can't be read, or
+- **A library that can't open.** A library whose settings or name can't be read, or
   whose reset or restore stopped partway, can't be opened to count what it
   hasn't sent, nor to leave. Its confirmation says it can't be opened, so any
   changes on this device that weren't sent are lost. Removing it deletes it
@@ -4665,7 +4669,7 @@ library is registered there by id.
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
-| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
+| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings or a name that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
 | `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, waits for the Discogs key-validation writes still in flight, then closes the store |
 | `unsent_before_removal` | counts what removing a library that isn't open would discard: the edits and files this device hasn't sent, opening its store briefly (§6.4) |

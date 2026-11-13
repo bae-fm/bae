@@ -31,6 +31,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.library.album_count",
     "core.library.work_count",
     "core.library.track_count",
+    // The title of the welcome row for a library whose name can't be read.
+    "core.library.name_unreadable",
     // A queue row whose release the library no longer holds.
     "core.queue.release_missing",
     "core.download.bytes_progress",

@@ -115,7 +115,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     assert!(!stray.exists(), "bae's directory was emptied");
     let libraries = caller.block_on(host.clone().list_libraries()).unwrap();
     assert_eq!(
-        libraries.iter().map(|library| library.name.as_str()).collect::<Vec<_>>(),
+        libraries.iter().map(|library| library.name.as_deref().unwrap()).collect::<Vec<_>>(),
         vec!["Dev"],
         "the old libraries are gone and the profile's was created"
     );

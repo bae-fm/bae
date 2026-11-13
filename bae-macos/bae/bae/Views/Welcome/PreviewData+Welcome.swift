@@ -4,7 +4,8 @@
     import SwiftUI
 
     // Fixtures for the Welcome flow: a library with storage, one
-    // without, one that can't be read, one whose restore stopped partway, and
+    // without, one that can't be read, one whose name can't be read, one whose
+    // restore stopped partway, and
     // restore codes saved in iCloud Keychain for libraries not on this Mac,
     // one of them unreadable.
     // Generic placeholder names throughout.
@@ -60,6 +61,14 @@
                 state: .deletionUnfinished(
                     lineKey: "core.error.deletion_unfinished"
                 ),
+                isActive: false
+            ),
+            BridgeLibrary(
+                id: "6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
+                name: nil,
+                path:
+                    "/Users/preview/Music/bae/6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
+                state: .nameUnreadable,
                 isActive: false
             ),
         ]

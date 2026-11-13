@@ -13893,6 +13893,39 @@ da = "Gendannelsen indlæser biblioteket fra skyen igen med din nuværende genda
 nb = "Gjenoppretting laster inn biblioteket fra skyen på nytt med den gjeldende gjenopprettingskoden din og forkaster endringer på denne enheten som ikke er synkronisert."
 fi = "Palauttaminen lataa kirjaston pilvestä uudelleen nykyisellä palautuskoodillasi ja hylkää tällä laitteella tehdyt muokkaukset, joita ei ole synkronoitu."
 
+[messages."core.library.name_unreadable"]
+comment = "The title of a row on the welcome list for a library coven could not read the name of, listed beside the others with its store id below and Remove."
+value = "Library that cannot be read"
+
+[messages."core.library.name_unreadable".translations]
+es = "Biblioteca que no se puede leer"
+fr = "Bibliothèque illisible"
+de = "Mediathek, die nicht gelesen werden kann"
+pt-BR = "Biblioteca que não pode ser lida"
+ja = "読み取れないライブラリ"
+ko = "읽을 수 없는 라이브러리"
+zh-Hans = "无法读取的音乐库"
+ar = "مكتبة لا يمكن قراءتها"
+he = "ספרייה שאי אפשר לקרוא"
+uk = "Бібліотека, яку не вдається прочитати"
+bg = "Библиотека, която не може да се прочете"
+pl = "Biblioteka, której nie można odczytać"
+cs = "Knihovna, kterou nelze přečíst"
+hr = "Fonoteka koja se ne može pročitati"
+zh-Hant = "無法讀取的音樂庫"
+it = "Libreria che non può essere letta"
+tr = "Okunamayan kitaplık"
+nl = "Bibliotheek die niet gelezen kan worden"
+sk = "Knižnica, ktorú nemožno prečítať"
+hu = "Nem olvasható könyvtár"
+ro = "Bibliotecă care nu poate fi citită"
+el = "Βιβλιοθήκη που δεν μπορεί να διαβαστεί"
+pt-PT = "Biblioteca que não pode ser lida"
+sv = "Bibliotek som inte kan läsas"
+da = "Bibliotek, der ikke kan læses"
+nb = "Bibliotek som ikke kan leses"
+fi = "Kirjasto, jota ei voi lukea"
+
 [messages."core.library.work_count"]
 comment = "A composer's line under its name in the composer list, its detail and search: how many works it is credited on."
 args = { count = "Int" }

@@ -43,6 +43,9 @@ impl BridgeLibrary {
                         error: BridgeError::from_core(error),
                     }
                 }
+                bae_app_dir::LibraryState::NameUnreadable => {
+                    crate::types::BridgeLibraryState::NameUnreadable
+                }
                 bae_app_dir::LibraryState::ReplacementUnfinished(by) => {
                     let by = crate::types::BridgeReplacedBy::from_core(by);
                     crate::types::BridgeLibraryState::ReplacementUnfinished {

@@ -521,7 +521,7 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
         .unwrap();
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].id, store.to_string());
-    assert_eq!(libraries[0].name, "Household");
+    assert_eq!(libraries[0].name.as_deref(), Some("Household"));
     assert!(
         matches!(
             libraries[0].state,

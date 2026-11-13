@@ -10,7 +10,7 @@ fn a_library_waiting_on_a_replacement_crosses_with_the_call_that_finishes_it() {
     ] {
         let library = BridgeLibrary::from_core_info(bae_app_dir::LibraryInfo {
             id: "library".into(),
-            name: "Household".into(),
+            name: Some("Household".into()),
             path: "/libraries/library".into(),
             is_active: true,
             state: bae_app_dir::LibraryState::ReplacementUnfinished(core),
@@ -25,4 +25,19 @@ fn a_library_waiting_on_a_replacement_crosses_with_the_call_that_finishes_it() {
             library.state
         );
     }
+}
+
+/// A store whose name can't be read crosses with no name.
+#[test]
+fn a_library_whose_name_cant_be_read_has_no_name() {
+    let library = BridgeLibrary::from_core_info(bae_app_dir::LibraryInfo {
+        id: "library".into(),
+        name: None,
+        path: "/libraries/library".into(),
+        is_active: false,
+        state: bae_app_dir::LibraryState::NameUnreadable,
+    })
+    .unwrap();
+    assert_eq!(library.name, None);
+    assert!(matches!(library.state, crate::BridgeLibraryState::NameUnreadable));
 }

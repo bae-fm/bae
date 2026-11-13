@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.title
 import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -80,7 +81,7 @@ private fun removalWords(
     library: BridgeLibrary,
     loss: RemovalLoss,
 ): RemovalWords {
-    val title = stringResource(R.string.library_remove_confirm_title, library.name)
+    val title = stringResource(R.string.library_remove_confirm_title, library.title())
     val message = stringResource(R.string.settings_remove_library_confirm_body)
     val bodyColor = MaterialTheme.colorScheme.onSurfaceVariant
     return when (loss) {

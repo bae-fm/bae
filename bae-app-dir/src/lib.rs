@@ -165,7 +165,7 @@ impl AppDir {
     }
 
     /// The libraries registered on this device, the active one first, then by
-    /// name, each with whether it opens: the stores `coven`, this
+    /// name (a library whose name can't be read last), each with whether it opens: the stores `coven`, this
     /// directory's installation, lists. A bug coven's listing or a library's
     /// settings read carries back is reported to `bugs`, the crash reporter.
     pub async fn discover_libraries(
@@ -177,17 +177,20 @@ impl AppDir {
         let mut libraries = Vec::new();
         let listed = coven.stores().await.map_err(|error| coven::task::reported(bugs, error))?;
         for listed in listed {
-            // Sentinel: S-2's bae half lists an unreadable library beside the
-            // others once the person settles what its row's title shows; until
-            // then one fails the listing, as it did before coven listed it.
             let store = match listed {
                 coven::ListedStore::Readable(store) => store,
                 coven::ListedStore::Unreadable { id, reason } => {
                     coven::task::report_carried(bugs, &reason);
-                    return Err(AppDirError::UnreadableStore {
-                        store: id,
-                        reason: Box::new(reason),
+                    tracing::warn!(store = %id, %reason, "a library's name can't be read");
+                    let id = id.to_string();
+                    libraries.push(LibraryInfo {
+                        is_active: active_id.as_deref() == Some(id.as_str()),
+                        path: self.registered_library(&id),
+                        id,
+                        name: None,
+                        state: LibraryState::NameUnreadable,
                     });
+                    continue;
                 }
             };
             let state = match store.unfinished {
@@ -213,11 +216,15 @@ impl AppDir {
                 is_active: active_id.as_deref() == Some(id.as_str()),
                 path: self.registered_library(&id),
                 id,
-                name: store.name,
+                name: Some(store.name),
                 state,
             });
         }
-        libraries.sort_by(|a, b| b.is_active.cmp(&a.is_active).then_with(|| a.name.cmp(&b.name)));
+        libraries.sort_by(|a, b| {
+            b.is_active
+                .cmp(&a.is_active)
+                .then_with(|| (a.name.is_none(), &a.name).cmp(&(b.name.is_none(), &b.name)))
+        });
         Ok(libraries)
     }
 
@@ -241,7 +248,9 @@ impl AppDir {
 #[derive(Clone, Debug)]
 pub struct LibraryInfo {
     pub id: String,
-    pub name: String,
+    /// The store's name, or `None` when coven can't read it
+    /// ([`LibraryState::NameUnreadable`]).
+    pub name: Option<String>,
     pub path: PathBuf,
     pub is_active: bool,
     pub state: LibraryState,
@@ -254,6 +263,9 @@ pub enum LibraryState {
     Openable(Option<coven::StorageConfig>),
     /// Its storage settings can't be read, which keeps it from opening.
     Unreadable(bae_diagnostics::UiError),
+    /// coven can't read the store's name, which keeps it from opening; it is
+    /// listed by its id, and removing it deletes its files.
+    NameUnreadable,
     /// A reset or a restore of this device's copy put the new copy in place
     /// of the old one but stopped before it finished. The library opens once
     /// the call named here runs again and finishes it; coven refuses the
@@ -326,8 +338,6 @@ pub enum AppDirError {
     // the rest of this enum: every Result carrying it stays small.
     #[error(transparent)]
     Stores(Box<coven::StoreListError>),
-    #[error("library {store} can't be read: {reason}")]
-    UnreadableStore { store: coven::StoreId, reason: Box<coven::CovenError> },
 }
 
 /// The bug a coven call this directory's work made carried back, which its
@@ -339,7 +349,6 @@ impl coven::task::CarriesBug for AppDirError {
             Self::Io(error) => error.bug(),
             Self::File(error) => error.bug(),
             Self::Stores(error) => error.bug(),
-            Self::UnreadableStore { reason, .. } => reason.bug(),
         }
     }
 }
@@ -362,10 +371,7 @@ impl AppDirError {
             Self::Stores(error) => bae_diagnostics::store_list_category(error),
             Self::File(coven::FileError::Shutdown(_)) => C::Internal,
             Self::File(error) if error.bug().is_some() => C::Internal,
-            Self::UnreadableStore { reason, .. } if reason.bug().is_some() => C::Internal,
-            Self::Invalid(_) | Self::Io(_) | Self::File(_) | Self::UnreadableStore { .. } => {
-                C::Config
-            }
+            Self::Invalid(_) | Self::Io(_) | Self::File(_) => C::Config,
         }
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.title
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -33,6 +34,7 @@ import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
+import fm.bae.app.ui.settings.isUnopenableListing
 import fm.bae.app.ui.settings.libraryDetail
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -168,15 +170,15 @@ private fun WelcomeLibraryRow(
         return
     }
     val problem =
-        libraryDetail(library.state).takeIf { (library.state as? BridgeLibraryState.Openable)?.storage == null }
+        libraryDetail(library).takeIf { (library.state as? BridgeLibraryState.Openable)?.storage == null }
     AndroidRow(
-        title = library.name,
+        title = library.title(),
         subtitle = problem?.text,
         tone = problem?.tone,
-        // A library whose settings can't be read offers nothing to open.
+        // A library whose settings or name can't be read offers nothing to open.
         enabled = !busy,
         onClick =
-            if (library.state !is BridgeLibraryState.Unreadable) {
+            if (!library.state.isUnopenableListing()) {
                 { callbacks.onOpen(library) }
             } else {
                 null
@@ -227,7 +229,7 @@ private fun RunningLibraryRow(
 ) {
     val context = LocalContext.current
     AndroidRow(
-        title = library.name,
+        title = library.title(),
         subtitleContent = {
             AndroidProgress(
                 steps = running.closing,

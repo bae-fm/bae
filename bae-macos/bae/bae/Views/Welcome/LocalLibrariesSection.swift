@@ -166,7 +166,7 @@ private struct LibraryRow: View {
     private var label: some View {
         let content = HStack(spacing: ThemeSpace.group) {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text(library.name)
+                Text(library.title)
                     .themeText(.strong)
                     .foregroundStyle(Theme.textPrimary)
                 MacProgressContainer(steps: removalSteps, look: .note) {
@@ -233,7 +233,7 @@ private struct LibraryRow: View {
             entries.append(
                 .item(MacMenuItem("Details…") { showsDetails = true })
             )
-        case .unreadable:
+        case .unreadable, .nameUnreadable:
             break
         }
         entries.append(

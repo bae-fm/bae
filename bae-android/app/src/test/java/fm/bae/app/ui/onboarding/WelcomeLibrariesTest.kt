@@ -46,7 +46,7 @@ import java.time.Instant
 
 private fun library(
     id: String,
-    name: String,
+    name: String?,
     state: BridgeLibraryState,
 ) = BridgeLibrary(id = id, name = name, path = "/libraries/$id", state = state, isActive = false)
 
@@ -70,6 +70,8 @@ private val other =
 /** A phone's library always has storage; one without is a bug. */
 private val noStorage = library("none", "No Storage Library", BridgeLibraryState.Openable(storage = null))
 private val removalStopped = library("stopped", "Half Removed", BridgeLibraryState.DeletionUnfinished("core.error.deletion_unfinished"))
+
+private val nameUnreadable = library("6f1c2a9e-4b7d", null, BridgeLibraryState.NameUnreadable)
 
 /** What the welcome's library core was asked, in order, and what it answers. */
 private class FakeLibraries(
@@ -186,6 +188,18 @@ class WelcomeLibrariesTest {
         compose.onNodeWithText("Office Library").assertIsDisplayed()
         compose.onNodeWithText("Dropbox · ana@example.com").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("More").assertCountEquals(2)
+    }
+
+    /** A store whose name can't be read is titled by a fixed string with its id under it, offers nothing to open, and can be removed. */
+    @Test
+    fun aLibraryWhoseNameCantBeReadShowsItsIdUnderAFixedTitle() {
+        val fake = FakeLibraries(listOf(synced, nameUnreadable))
+        showLibraries(fake)
+
+        compose.onNodeWithText("Library that cannot be read").assertIsDisplayed()
+        compose.onNodeWithText("6f1c2a9e-4b7d").assertIsDisplayed()
+        compose.onNodeWithText("Library that cannot be read").performClick()
+        assertEquals(emptyList<String>(), fake.calls.filter { it.startsWith("open") })
     }
 
     /** The row being counted shows what it waits on as words under its name, a spinner where the ⋮ was, and nothing else taps. */

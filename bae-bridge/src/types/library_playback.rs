@@ -162,7 +162,9 @@ pub enum BridgeCloudProvider {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibrary {
     pub id: String,
-    pub name: String,
+    /// `None` when coven can't read the store's name
+    /// ([`BridgeLibraryState::NameUnreadable`]).
+    pub name: Option<String>,
     pub path: String,
     pub state: BridgeLibraryState,
     pub is_active: bool,
@@ -176,6 +178,9 @@ pub enum BridgeLibraryState {
     Openable { storage: Option<super::BridgeStorageLocation> },
     /// Its storage settings can't be read, which keeps it from opening.
     Unreadable { error: super::BridgeError },
+    /// Its name can't be read, which keeps it from opening; its row shows
+    /// its id, and removing it deletes its files.
+    NameUnreadable,
     /// A reset or a restore of this device's copy stopped partway; it opens
     /// once the call `by` names runs again and finishes it.
     ReplacementUnfinished {

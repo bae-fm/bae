@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.title
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.ButtonKind
@@ -38,7 +39,7 @@ internal fun removalFailedParts(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ): DialogParts {
-    val title = stringResource(R.string.library_remove_failed_title, library.name)
+    val title = stringResource(R.string.library_remove_failed_title, library.title())
     return if (error.offersRetry) {
         DialogParts(
             title = title,
