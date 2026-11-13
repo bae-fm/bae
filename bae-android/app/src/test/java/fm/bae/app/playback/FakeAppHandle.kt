@@ -132,6 +132,7 @@ internal open class FakeAppHandle(
      *  unaltered. */
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
+    val playTracksCalls = mutableListOf<Pair<List<String>, UInt>>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
 
     /** The first album browse the handle opened, once it has. */
@@ -276,6 +277,14 @@ internal open class FakeAppHandle(
         return BridgePlayOutcome.Playing
     }
 
+    override suspend fun playTracks(
+        trackIds: List<String>,
+        startIndex: UInt,
+    ): BridgePlayOutcome {
+        playTracksCalls.add(trackIds to startIndex)
+        return BridgePlayOutcome.Playing
+    }
+
     /** Closing the fake releases nothing. */
     override fun close() {}
 
@@ -365,11 +374,6 @@ internal open class FakeAppHandle(
     override suspend fun playLibraryShuffled(): BridgePlayOutcome = unfaked("playLibraryShuffled")
 
     override suspend fun playReleases(releaseIds: List<String>): BridgePlayOutcome = unfaked("playReleases")
-
-    override suspend fun playTracks(
-        trackIds: List<String>,
-        startIndex: UInt,
-    ): BridgePlayOutcome = unfaked("playTracks")
 
     override fun previewPlay(target: BridgePreviewTarget) {
         unfaked("previewPlay")

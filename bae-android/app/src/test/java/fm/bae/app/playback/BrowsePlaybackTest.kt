@@ -49,6 +49,26 @@ class BrowsePlaybackTest {
     }
 
     @Test
+    fun playingSeveralTrackItemsForwardsPlayTracksInTheOrderSent() {
+        val handle = FakeAppHandle()
+        val player = player(handle)
+
+        player.setMediaItems(
+            listOf(
+                mediaItem(BrowseId.Track(releaseId = "rel-1", trackId = "track-3").mediaId),
+                mediaItem(BrowseId.Track(releaseId = "rel-2", trackId = "track-9").mediaId),
+                mediaItem(BrowseId.Track(releaseId = "rel-1", trackId = "track-1").mediaId),
+            ),
+            1,
+            0L,
+        )
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(listOf("track-3", "track-9", "track-1") to 1u, handle.playTracksCalls.single())
+        assertTrue(handle.playReleaseCalls.isEmpty())
+    }
+
+    @Test
     fun playingANonTrackItemIsIgnored() {
         val handle = FakeAppHandle()
         val player = player(handle)
@@ -57,5 +77,6 @@ class BrowsePlaybackTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(handle.playReleaseCalls.isEmpty())
+        assertTrue(handle.playTracksCalls.isEmpty())
     }
 }

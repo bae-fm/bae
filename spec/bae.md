@@ -4614,6 +4614,9 @@ media session. Covers reach it as links it opens itself. Only an app connected
 to the session can open them, and it loses access when its last connection
 ends or the session closes. A composer there lists its page's rows (§2.4), a
 work opening its parts and releases and a credit opening its album.
+A controller that sends one track plays its release from that track; one that
+sends two or more plays those tracks, in the order sent, as a list of tracks
+(§7.8).
 
 ### 7.8 What a device remembers
 

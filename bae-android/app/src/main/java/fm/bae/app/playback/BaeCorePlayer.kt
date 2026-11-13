@@ -701,9 +701,12 @@ class BaeCorePlayer(
     }
 
     /**
-     * Play a track chosen from the browse tree (Android Auto, a Bluetooth head
-     * unit), which the session callback resolved every request to; anything
-     * else fails the request rather than reporting a play that didn't happen.
+     * Play what a controller (Android Auto, a Bluetooth head unit) sends, which
+     * the session callback resolved every request to a browse track. One item
+     * is a tapped track and plays its release from that track; two or more
+     * play as those tracks, in the order sent, starting at the start index.
+     * Anything else fails the request rather than reporting a play that
+     * didn't happen.
      */
     override fun handleSetMediaItems(
         mediaItems: MutableList<MediaItem>,
@@ -712,23 +715,45 @@ class BaeCorePlayer(
     ): ListenableFuture<*> {
         // C.INDEX_UNSET is Media3 asking to start from the default item, the first.
         val index = if (startIndex == C.INDEX_UNSET) 0 else startIndex
-        val mediaId = mediaItems.getOrNull(index)?.mediaId
-        val track = mediaId?.let { BrowseId.parse(it) } as? BrowseId.Track
-        if (track == null) {
-            logger.error("asked to play $mediaId at $index of ${mediaItems.size}, which names no track")
-            return Futures.immediateFailedFuture<Unit>(IllegalArgumentException("no track to play at $index"))
+        val tracks = mediaItems.map { item -> item.mediaId.let { BrowseId.parse(it) } as? BrowseId.Track }
+        val start = tracks.getOrNull(index)
+        if (start == null || tracks.any { it == null }) {
+            logger.error("asked to play ${mediaItems.map { it.mediaId }} at $index, which names no tracks")
+            return Futures.immediateFailedFuture<Unit>(IllegalArgumentException("no tracks to play at $index"))
         }
         val played = SettableFuture.create<Unit>()
-        scope.launch(CoroutineName("play ${track.trackId}")) {
+        scope.launch(CoroutineName("play ${start.trackId}")) {
             try {
-                answer(played, appHandle.playRelease(track.releaseId, track.trackId, false))
+                val outcome =
+                    if (tracks.size == 1) {
+                        appHandle.playRelease(start.releaseId, start.trackId, false)
+                    } else {
+                        appHandle.playTracks(tracks.map { it!!.trackId }, index.toUInt())
+                    }
+                answer(played, outcome)
             } catch (e: BridgeException) {
-                logger.error("playing $mediaId failed", e)
+                logger.error("playing ${start.trackId} failed", e)
                 played.setException(e)
             }
         }
         return played
     }
+
+    override fun handleAddMediaItems(
+        index: Int,
+        mediaItems: MutableList<MediaItem>,
+    ): ListenableFuture<*> = editingTheQueueFails("add")
+
+    override fun handleMoveMediaItems(
+        fromIndex: Int,
+        toIndex: Int,
+        newIndex: Int,
+    ): ListenableFuture<*> = editingTheQueueFails("move")
+
+    override fun handleRemoveMediaItems(
+        fromIndex: Int,
+        toIndex: Int,
+    ): ListenableFuture<*> = editingTheQueueFails("remove")
 
     /** A controller's play succeeds when something plays, and fails when nothing does. */
     private fun answer(
@@ -786,6 +811,12 @@ class BaeCorePlayer(
         systemHooks.detach()
         upcoming.close()
     }
+}
+
+/** The queue is core's, so a controller can't edit it item by item. */
+private fun editingTheQueueFails(edit: String): ListenableFuture<*> {
+    logger.warning("a controller asked to $edit queue items, which core's queue doesn't take")
+    return Futures.immediateFailedFuture<Unit>(UnsupportedOperationException("$edit queue items"))
 }
 
 /** The track this state loads, while it is a load. */

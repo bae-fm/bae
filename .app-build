@@ -29,6 +29,7 @@ step mac import-list-selection-tests ./bae-macos/test.sh --run-only ImportListSe
 step mac import-list-same-view-value-tests ./bae-macos/test.sh --run-only ImportListSameViewValueTests
 step mac import-candidate-table-place-tests ./bae-macos/test.sh --run-only ImportCandidateTablePlaceTests
 step mac playback-store-begin-loading-tests ./bae-macos/test.sh --run-only PlaybackStoreBeginLoadingTests
+step android android-browse-playback-tests ./bae-android/gradle.sh :app:testFullDebugUnitTest --tests *BrowsePlaybackTest
 step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
 step mac mac-welcome-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.welcome.
 step mac mac-component-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --select mac.component.
@@ -50,6 +51,7 @@ limit macos-folder-picker-notice-tests 10m
 limit android-sort-language-tests 10m
 limit macos-screen-subscription-tests 10m
 limit android-screen-subscription-tests 10m
+limit android-browse-playback-tests 10m
 limit mac-shots 20m
 limit mac-welcome-shots 20m
 limit mac-component-shots 20m

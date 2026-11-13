@@ -200,12 +200,15 @@ internal fun availableCommands(
             .add(Player.COMMAND_STOP)
             .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-            // Lets a browse client (Android Auto / a head unit) play a tapped
-            // library item: its play request resolves to a single-item
-            // setMediaItem, which routes to handleSetMediaItems. The core-driven
-            // queue isn't editable through the raw media-item API, so
-            // COMMAND_CHANGE_MEDIA_ITEMS (add/remove/move) stays unavailable.
+            // Lets a controller (Android Auto / a head unit) play what it
+            // sends: a tapped library item is a single-item setMediaItem, a
+            // list of items is setMediaItems, and both route to
+            // handleSetMediaItems. Media3 gates setMediaItems on
+            // COMMAND_CHANGE_MEDIA_ITEMS, so it is available too; the
+            // core-driven queue isn't editable through the raw media-item API,
+            // so BaeCorePlayer fails adding, moving and removing items.
             .add(Player.COMMAND_SET_MEDIA_ITEM)
+            .add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
             .add(Player.COMMAND_SET_REPEAT_MODE)
             .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_GET_TIMELINE)
