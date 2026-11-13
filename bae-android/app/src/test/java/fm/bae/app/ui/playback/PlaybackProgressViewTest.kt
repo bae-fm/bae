@@ -46,9 +46,35 @@ class PlaybackProgressViewTest {
         view.seekBar.progress = 7_000
         view.setPosition(SeekBarState(0.30, "0:30", "4:00", seekable = true))
 
-        assertEquals("0:30", view.leadingTextView.text.toString())
-        assertEquals("4:00", view.trailingTextView.text.toString())
         assertEquals(7_000, view.seekBar.progress)
+    }
+
+    /** The time follows the dragged position, not the playing one, and is not stepped back at the drop. */
+    @Test
+    fun theTimeFollowsTheDragAndStaysAtTheDropUntilCoreAppliesIt() {
+        val view = attachedView()
+        val positions = LatestStream.written<BridgeTrackPosition>()
+        positions.write(KEY, position(10_000))
+        view.bind(positions.source(KEY), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
+
+        view.beginTracking()
+        view.seekBar.progress = 3_000
+        assertEquals("30000", view.leadingTextView.text.toString())
+        view.seekBar.progress = 7_500
+        assertEquals("75000", view.leadingTextView.text.toString())
+
+        positions.write(KEY, position(11_000))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
+
+        view.finishTracking()
+        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
+
+        positions.write(KEY, position(76_000, seekRevision = 1uL))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("76000", view.leadingTextView.text.toString())
     }
 
     @Test

@@ -190,7 +190,9 @@ internal class PlaybackProgressView(
                         seekBar: SeekBar,
                         progress: Int,
                         fromUser: Boolean,
-                    ) = Unit
+                    ) {
+                        if (isDragging) showShown()
+                    }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar) {
                         beginTracking()
@@ -315,8 +317,21 @@ internal class PlaybackProgressView(
         showShown()
     }
 
+    /**
+     * What the labels and fill show: the dragged position while the person drags, else the
+     * seek they dropped until core applies it, else the stream's position.
+     */
     private fun showShown() {
-        setPosition(state(projected ?: position))
+        setPosition(state(if (isDragging) positionAt(draggedRatio()) ?: position else projected ?: position))
+    }
+
+    private fun draggedRatio(): Double = seekBar.progress.toDouble() / seekBar.max.toDouble()
+
+    /** The stream's position moved to [ratio] of its track; null while the length is unknown. */
+    private fun positionAt(ratio: Double): BridgeTrackPosition? {
+        val position = position
+        val durationMs = position?.durationMs ?: return null
+        return position.copy(positionMs = (ratio * durationMs.toDouble()).toLong(), progress = ratio)
     }
 
     internal fun beginTracking() {
@@ -324,18 +339,10 @@ internal class PlaybackProgressView(
     }
 
     internal fun finishTracking() {
-        val ratio = seekBar.progress.toDouble() / seekBar.max.toDouble()
+        val ratio = draggedRatio()
         isDragging = false
-        val position = position
-        val durationMs = position?.durationMs
-        if (position != null && durationMs != null) {
-            projected =
-                position.copy(
-                    positionMs = (ratio * durationMs.toDouble()).toLong(),
-                    progress = ratio,
-                )
-            showShown()
-        }
+        projected = positionAt(ratio) ?: projected
+        showShown()
         onSeekRatio(ratio)
     }
 
