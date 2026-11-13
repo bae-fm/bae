@@ -450,14 +450,6 @@
    "x": 1280,
    "y": 8868
   },
-  "android.history.plays.dc.html": {
-   "h": 916,
-   "page": "explore",
-   "title": "Exploration: History",
-   "w": 412,
-   "x": 1280,
-   "y": 3200
-  },
   "android.album.links-and-files.dc.html": {
    "h": 916,
    "page": "explore",
@@ -545,14 +537,6 @@
    "w": 1200,
    "x": 0,
    "y": 8868
-  },
-  "mac.history.plays.dc.html": {
-   "h": 760,
-   "page": "explore",
-   "title": "Exploration: macOS: History, the household’s plays",
-   "w": 1200,
-   "x": 0,
-   "y": 3200
   },
   "mac.settings.playback.loudness.dc.html": {
    "h": 600,
@@ -3874,6 +3858,38 @@
    "w": 412,
    "x": 1296,
    "y": 21244
+  },
+  "android.settings.your-plays.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Your plays",
+   "w": 412,
+   "x": 1294,
+   "y": 27204
+  },
+  "android.settings.person.plays.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "A person: their plays",
+   "w": 412,
+   "x": 1802,
+   "y": 27204
+  },
+  "mac.settings.your-plays.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Your plays",
+   "w": 690,
+   "x": 2310,
+   "y": 27204
+  },
+  "mac.settings.person.plays.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: A person: their plays",
+   "w": 690,
+   "x": 3096,
+   "y": 27204
   }
  },
  "createdOnFiles": {
@@ -5760,8 +5776,6 @@
   "mac.playlists.new-playlist.dc.html",
   "android.playlists.list.dc.html",
   "android.playlists.playlist.dc.html",
-  "mac.history.plays.dc.html",
-  "android.history.plays.dc.html",
   "mac.album.play-picked-tracks.dc.html",
   "mac.playback.queue.these-tracks.dc.html",
   "mac.settings.playback.loudness.dc.html",
@@ -5868,7 +5882,11 @@
   "mac.welcome.libraries.unreadable.dc.html",
   "android.welcome.libraries.unreadable.dc.html",
   "mac.album.record-sides.dc.html",
-  "android.album.record-sides.dc.html"
+  "android.album.record-sides.dc.html",
+  "android.settings.your-plays.dc.html",
+  "android.settings.person.plays.dc.html",
+  "mac.settings.your-plays.dc.html",
+  "mac.settings.person.plays.dc.html"
  ],
  "pages": [
   {

@@ -2682,8 +2682,11 @@ the network, not what a seek jumped over. The row is written when the play
 counts and updated as he keeps listening. Its start time is the playing
 device's clock when the play began, stored as UTC.
 
-bae records plays and syncs them by their audience; no screen, and nothing
-the bridge offers, lists them.
+bae records plays and syncs them by their audience. A person's plays show
+with their profile, newest first, under the day they were played: the
+person's own page lists all of theirs, and another person's page lists the
+plays they share with *Everyone*. No view lists the household's plays
+together.
 
 Each play is its own row, with a fresh id. A play count kept in one cell would
 lose plays: two devices adding to it at once merge cell by cell, and the later

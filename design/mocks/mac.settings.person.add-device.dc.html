@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>macOS: A person: add a device for them</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bae/tokens.css">
+<link rel="stylesheet" href="ds/bae/components/bundle.css">
+<script src="ds/bae/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
+.box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
+.r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
+.r+.r{border-top:1px solid var(--hairline)}
+.sec{margin:14px 4px 6px;font-size:13px;font-weight:600;color:var(--text-primary)}
+.v{color:var(--text-secondary)}
+.pop{height:22px;padding:0 8px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif;display:flex;align-items:center;gap:6px}
+.btn{height:22px;padding:0 10px;border-radius:5px;border:0;background:var(--tile);color:var(--text-primary);font:13px -apple-system,system-ui,sans-serif}
+.foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
+</style>
+</helmet>
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Ben" back="People and devices">
+  <x-import component-from-global-scope="Bae.MacBox">
+    <x-import component-from-global-scope="Bae.MacRow" label="Role" value="Member">
+      <x-import component-from-global-scope="Bae.MacButton">Make admin</x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.MacRow" label="Plays" chevron="{{yes}}"></x-import>    <x-import component-from-global-scope="Bae.MacRow" label="Remove from library…" action="{{yes}}" destructive="{{yes}}"></x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.MacSection" title="Devices">
+    <x-import component-from-global-scope="Bae.MacBox">
+      <x-import component-from-global-scope="Bae.MacRow" label="Tablet">
+        <x-import component-from-global-scope="Bae.MacMoreMenu"></x-import>
+      </x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Add device…</x-import></x-import>
+  </x-import>
+<x-import component-from-global-scope="Bae.MacSheet" title="Add a device for Ben" overlay="{{yes}}" width="440"><div class="bae-muted" style="font:400 13px var(--font-sans);margin-bottom:12px">For when Ben has lost every device and their restore code. Ben’s devices listed here stop syncing.</div><x-import component-from-global-scope="Bae.MacScanCode" instruction="Scan or enter the code on Ben’s new device." size="160"><x-import component-from-global-scope="Bae.MacButton">Copy code</x-import><x-import component-from-global-scope="Bae.MacButton">Share…</x-import></x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton" kind="primary">Done</x-import></x-import></x-import></x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>
