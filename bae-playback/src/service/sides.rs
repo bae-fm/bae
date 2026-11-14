@@ -21,41 +21,26 @@ impl PlaybackTrackInfo {
         records: &bae_records::Records,
         track_id: &str,
     ) -> Result<Option<Self>, bae_store::DbError> {
-        let Some(track) = records.find_track_by_id(track_id).await? else {
-            return Ok(None);
-        };
-        let mediums = records.get_release_mediums(&track.release_id).await?;
-        Ok(Some(Self::of(&track, &mediums)))
+        Ok(records.track_places(&[track_id.to_string()]).await?.into_iter().next().map(Self::of))
     }
 
-    /// The facts of `track`, which sits on one of `mediums`, its release's. A
-    /// track on a medium with no physical carrier — a download, a disc of
-    /// unstated carrier — is on no side playback pauses at.
-    pub(crate) fn of(
-        track: &bae_records::DbTrack,
-        mediums: &bae_records::DbReleaseMediums,
-    ) -> Self {
-        let place = mediums.place(track);
-        let side = mediums
-            .medium_of(track)
-            .medium
-            .carrier
-            .and_then(bae_types::pressing::Medium::physical)
-            .map(|physical| {
-                let boundary = match physical {
-                    PhysicalMedium::Record | PhysicalMedium::Cassette => {
-                        PlaybackPauseBoundary::Side
-                    }
-                    PhysicalMedium::Cd => PlaybackPauseBoundary::Disc,
-                };
-                let label = match bae_types::mediums::track_side(&place, &mediums.mediums()) {
-                    bae_types::mediums::TrackSide::Sided { side_letter } => side_letter,
-                    bae_types::mediums::TrackSide::Disc { disc } => disc.to_string(),
-                    bae_types::mediums::TrackSide::Flat => place.medium.to_string(),
-                };
-                PlaybackTrackSide { medium: place.medium, side: place.side, boundary, label }
-            });
-        Self { track_id: track.id.clone(), release_id: track.release_id.clone(), side }
+    /// The facts of the track at `place`. A track on a medium with no
+    /// physical carrier — a download, a disc of unstated carrier — is on no
+    /// side playback pauses at.
+    pub(crate) fn of(place: bae_records::DbTrackPlace) -> Self {
+        let side = place.carrier.and_then(bae_types::pressing::Medium::physical).map(|physical| {
+            let boundary = match physical {
+                PhysicalMedium::Record | PhysicalMedium::Cassette => PlaybackPauseBoundary::Side,
+                PhysicalMedium::Cd => PlaybackPauseBoundary::Disc,
+            };
+            let label = match place.on {
+                bae_types::mediums::TrackSide::Sided { side_letter } => side_letter,
+                bae_types::mediums::TrackSide::Disc { disc } => disc.to_string(),
+                bae_types::mediums::TrackSide::Flat => place.medium.to_string(),
+            };
+            PlaybackTrackSide { medium: place.medium, side: place.side, boundary, label }
+        });
+        Self { track_id: place.track_id, release_id: place.release_id, side }
     }
 }
 

@@ -25,6 +25,39 @@ fn sided_media_sql() -> String {
     format!("({})", keys.join(", "))
 }
 
+/// The common table expression `medium`: the mediums of the releases
+/// `release_filter` (a condition over `m`, a row of `release_mediums`) keeps,
+/// each with whether it is played side by side, how many sided sides come
+/// before it on its release, and how many mediums its release holds.
+fn medium_cte(release_filter: &str) -> String {
+    let sided = sided_media_sql();
+    format!(
+        "medium AS ( \
+            SELECT m.id, m.release_id, m.position, m.medium, \
+                   COALESCE(m.medium IN {sided}, 0) AS sided, \
+                   COALESCE(SUM(CASE WHEN COALESCE(m.medium IN {sided}, 0) THEN m.side_count \
+                                     ELSE 0 END) \
+                            OVER (PARTITION BY m.release_id ORDER BY m.position \
+                                  ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) \
+                       AS sides_before, \
+                   COUNT(*) OVER (PARTITION BY m.release_id) AS medium_count \
+            FROM release_mediums m WHERE {release_filter})"
+    )
+}
+
+/// What kind of side the track `track` sits on, over a join of `medium` as
+/// `m`: `sided`, `disc` or `flat`.
+const SIDE_KIND_SQL: &str = "CASE WHEN m.sided THEN 'sided' \
+                                  WHEN m.medium_count > 1 THEN 'disc' \
+                                  ELSE 'flat' END";
+
+/// The ordinal of the side the track `track` sits on, over a join of
+/// `medium` as `m`: its number among the sided sides, the disc's number, or
+/// zero.
+const SIDE_ORDINAL_SQL: &str = "CASE WHEN m.sided THEN m.sides_before + track.side \
+                                     WHEN m.medium_count > 1 THEN m.position \
+                                     ELSE 0 END";
+
 /// The two common table expressions the statements over a release's tracks
 /// start from, binding the release as `?1`: `medium`, each of its mediums
 /// with how many sided sides come before it, and `placed`, each of its
@@ -33,33 +66,19 @@ fn sided_media_sql() -> String {
 /// number on the side, and `extra_columns`, further columns of the track
 /// `track` of the release `r` of the album `a`, each starting with a comma.
 pub(super) fn placed_tracks_ctes(extra_columns: &str) -> String {
-    let sided = sided_media_sql();
     format!(
-        "medium AS ( \
-            SELECT m.id, m.position, \
-                   COALESCE(m.medium IN {sided}, 0) AS sided, \
-                   COALESCE(SUM(CASE WHEN COALESCE(m.medium IN {sided}, 0) THEN m.side_count \
-                                     ELSE 0 END) \
-                            OVER (ORDER BY m.position \
-                                  ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) \
-                       AS sides_before, \
-                   COUNT(*) OVER () AS medium_count \
-            FROM release_mediums m WHERE m.release_id = ?1), \
+        "{medium}, \
          placed AS ( \
             SELECT track.id AS id, track.title AS title, track.duration_ms AS duration_ms, \
                    track.position AS position, track.track_number AS number, \
-                   CASE WHEN m.sided THEN 'sided' \
-                        WHEN m.medium_count > 1 THEN 'disc' \
-                        ELSE 'flat' END AS side_kind, \
-                   CASE WHEN m.sided THEN m.sides_before + track.side \
-                        WHEN m.medium_count > 1 THEN m.position \
-                        ELSE 0 END AS side_ordinal \
+                   {SIDE_KIND_SQL} AS side_kind, {SIDE_ORDINAL_SQL} AS side_ordinal \
                    {extra_columns} \
             FROM tracks track \
             JOIN releases r ON r.id = track.release_id \
             JOIN albums a ON a.id = r.album_id \
             JOIN medium m ON m.id = track.medium_id \
-            WHERE track.release_id = ?1)"
+            WHERE track.release_id = ?1)",
+        medium = medium_cte("m.release_id = ?1"),
     )
 }
 
@@ -209,5 +228,58 @@ pub(super) fn release_total_duration_on(
         "SELECT COALESCE(SUM(duration_ms), 0) FROM tracks WHERE release_id = ?1",
         params![release_id],
         |row| row.get(0),
+    )?)
+}
+
+/// The places of the tracks the JSON array `?1` names, in the array's order,
+/// leaving out a track the library does not hold.
+fn track_places_sql() -> String {
+    format!(
+        "WITH wanted AS (SELECT j.key AS ord, j.value AS track_id FROM json_each(?1) j), \
+         {medium} \
+         SELECT track.id AS track_id, track.release_id AS release_id, \
+                m.position AS medium_position, track.side AS side, m.medium AS carrier, \
+                {SIDE_KIND_SQL} AS side_kind, {SIDE_ORDINAL_SQL} AS side_ordinal \
+         FROM wanted w \
+         JOIN tracks track ON track.id = w.track_id \
+         JOIN medium m ON m.id = track.medium_id \
+         ORDER BY w.ord",
+        medium = medium_cte(
+            "m.release_id IN (SELECT t.release_id FROM tracks t \
+                              JOIN wanted w ON w.track_id = t.id)"
+        ),
+    )
+}
+
+/// Where each of `track_ids` sits, in their order, each track the library
+/// holds.
+pub fn track_places_on(
+    sql: &impl coven::SqlRead,
+    track_ids: &[String],
+) -> Result<Vec<DbTrackPlace>, DbError> {
+    Ok(sql.query(
+        &track_places_sql(),
+        params![serde_json::json!(track_ids).to_string()],
+        |row| {
+            let unreadable =
+                |column: &str, reason: String| column_conversion_error(row, column, reason);
+            let kind: String = row.get("side_kind")?;
+            let ordinal: u32 = row.get("side_ordinal")?;
+            let carrier: Option<String> = row.get("carrier")?;
+            Ok(DbTrackPlace {
+                track_id: row.get("track_id")?,
+                release_id: row.get("release_id")?,
+                medium: row.get("medium_position")?,
+                side: row.get("side")?,
+                carrier: carrier
+                    .map(|key| {
+                        bae_types::pressing::Medium::from_key(&key)
+                            .ok_or_else(|| unreadable("carrier", format!("unknown medium {key:?}")))
+                    })
+                    .transpose()?,
+                on: track_side_of(&kind, ordinal)
+                    .map_err(|reason| unreadable("side_kind", reason))?,
+            })
+        },
     )?)
 }

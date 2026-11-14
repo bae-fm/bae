@@ -152,6 +152,22 @@ pub struct DbPerformedWork {
     pub composer_names: Option<String>,
 }
 
+/// Where a track sits on its release, as playback decides a pause between
+/// sides by it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbTrackPlace {
+    pub track_id: String,
+    pub release_id: String,
+    /// The track's medium's position among its release's.
+    pub medium: std::num::NonZeroU16,
+    /// The side of that medium.
+    pub side: std::num::NonZeroU8,
+    /// The medium's carrier, where the source states one.
+    pub carrier: Option<bae_types::pressing::Medium>,
+    /// The side or disc the track reads as on its release.
+    pub on: bae_types::mediums::TrackSide,
+}
+
 /// One row of a release's credits: a role, the names of the artists who hold
 /// it over the same tracks, and those tracks.
 #[derive(Debug, Clone, PartialEq, Eq)]

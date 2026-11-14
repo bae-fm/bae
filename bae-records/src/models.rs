@@ -452,24 +452,11 @@ impl DbReleaseMediums {
         }
     }
 
-    /// How `track` reads among these mediums.
-    pub fn position(&self, track: &DbTrack) -> bae_types::mediums::TrackPosition {
-        bae_types::mediums::track_position(&self.place(track), &self.mediums())
-    }
-
     /// The disc number a surface outside bae states for `track` (a saved
     /// file's disc tag, a Subsonic song's disc): its medium's position, for a
     /// release of several mediums, and none for a release of one.
     pub fn disc_number(&self, track: &DbTrack) -> Option<u32> {
         (self.0.len() > 1).then(|| u32::from(self.place(track).medium.get()))
-    }
-
-    /// The medium `track` sits on.
-    pub fn medium_of(&self, track: &DbTrack) -> &DbReleaseMedium {
-        self.0
-            .iter()
-            .find(|medium| medium.id == track.medium_id)
-            .expect("a track's medium row is its release's")
     }
 }
 /// A physical file belonging to a release — not to an album, and not to a track

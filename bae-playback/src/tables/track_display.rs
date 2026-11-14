@@ -14,19 +14,9 @@ pub(crate) fn subscribe_playback_track_infos(
 {
     store
         .subscribe_reconfigurable(initial, |track_ids, sql| {
-            let mut infos = Vec::with_capacity(track_ids.len());
-            for track_id in track_ids {
-                let track = sql
-                    .query_row("SELECT * FROM tracks WHERE id = ?", params![track_id], row_to_track)
-                    .optional()
-                    .map_err(DbError::from)?;
-                let Some(track) = track else { continue };
-                let mediums = release_mediums_on(&sql, &track.release_id)?;
-                infos.push(crate::PlaybackTrackInfo::of(&track, &mediums));
-            }
-            Ok(infos)
+            bae_records::records::track_places_on(&sql, track_ids)
         })
-        .process(Ok)
+        .process(|places| Ok(places.into_iter().map(crate::PlaybackTrackInfo::of).collect()))
 }
 
 /// The display of `track_id` as the library holds it now, or `None` when it

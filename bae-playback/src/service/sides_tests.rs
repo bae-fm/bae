@@ -78,10 +78,19 @@ fn info_on(
     mediums: &bae_records::DbReleaseMediums,
     (medium, side): (u16, u8),
 ) -> PlaybackTrackInfo {
-    let mut track = bae_records::DbTrack::new_test("release-id", track_id, "Track Title", 1);
-    track.medium_id.clone_from(&mediums.0[usize::from(medium) - 1].id);
-    track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
-    PlaybackTrackInfo::of(&track, mediums)
+    let place = bae_types::mediums::TrackPlace {
+        medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
+        side: std::num::NonZeroU8::new(side).expect("sides count from one"),
+        number: std::num::NonZeroU32::MIN,
+    };
+    PlaybackTrackInfo::of(bae_records::DbTrackPlace {
+        track_id: track_id.to_string(),
+        release_id: "release-id".to_string(),
+        medium: place.medium,
+        side: place.side,
+        carrier: mediums.0[usize::from(medium) - 1].medium.carrier,
+        on: bae_types::mediums::track_side(&place, &mediums.mediums()),
+    })
 }
 
 fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbReleaseMediums {

@@ -126,3 +126,103 @@ async fn track_display_names_the_track_s_own_release_not_the_album_s_primary() {
     assert_eq!(display.album_id, "82a53f44-1b76-435b-89f0-42749371ee15");
     assert_eq!(display.release_id, RELEASE_OTHER);
 }
+
+const INFO_ALBUM: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b01";
+const INFO_RECORD: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b02";
+const INFO_DISCS: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b03";
+const INFO_SIDE_A: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b11";
+const INFO_SIDE_B: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b12";
+const INFO_SECOND_DISC: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b13";
+const INFO_SIDE_C: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b15";
+const INFO_GONE: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b14";
+
+/// The side facts of the tracks asked for come back in the order asked, as one
+/// list across releases: a record's sides are lettered and a pause at each is
+/// a side's, a CD's disc is numbered and a pause there is a disc's, and a
+/// track the library does not hold is left out.
+#[tokio::test]
+async fn track_infos_follow_the_ids_asked_across_releases_and_leave_out_the_missing() {
+    use bae_types::mediums::ReleaseMedium;
+    use bae_types::pressing::Medium;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let medium = |release: &str, position: u16, carrier, sides: u8| {
+        let mut row = bae_records::DbReleaseMedium::new_test(release);
+        row.id = format!("{release}-medium-{position}");
+        row.position = std::num::NonZeroU16::new(position).unwrap();
+        row.medium = ReleaseMedium {
+            carrier: Some(carrier),
+            sides: std::num::NonZeroU8::new(sides).unwrap(),
+        };
+        row
+    };
+    bae_records::test_fixtures::library::RecordsFixture::new()
+        .artist(ARTIST_A, "Artist Name")
+        .album(INFO_ALBUM, "Album Title", None, &[ARTIST_A])
+        .release(INFO_ALBUM, INFO_RECORD)
+        .tracks(
+            INFO_RECORD,
+            &[
+                (INFO_SIDE_A, "Side A Track"),
+                (INFO_SIDE_B, "Side B Track"),
+                (INFO_SIDE_C, "Side C Track"),
+            ],
+        )
+        .release(INFO_ALBUM, INFO_DISCS)
+        .tracks(INFO_DISCS, &[(INFO_SECOND_DISC, "Second Disc Track")])
+        .edit(|rows| {
+            rows.mediums = vec![
+                medium(INFO_RECORD, 1, Medium::Vinyl, 2),
+                medium(INFO_RECORD, 2, Medium::Vinyl, 1),
+                medium(INFO_DISCS, 1, Medium::Cd, 1),
+                medium(INFO_DISCS, 2, Medium::Cd, 1),
+            ];
+            for track in &mut rows.tracks {
+                let (position, side, medium) = match track.id.as_str() {
+                    INFO_SIDE_A => (INFO_RECORD, 1, 1),
+                    INFO_SIDE_B => (INFO_RECORD, 2, 1),
+                    INFO_SIDE_C => (INFO_RECORD, 1, 2),
+                    _ => (INFO_DISCS, 1, 2),
+                };
+                track.medium_id = format!("{position}-medium-{medium}");
+                track.side = std::num::NonZeroU8::new(side).unwrap();
+            }
+        })
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
+
+    let mut follow = subscribe_playback_track_infos(
+        &db,
+        vec![
+            INFO_SECOND_DISC.to_string(),
+            INFO_GONE.to_string(),
+            INFO_SIDE_B.to_string(),
+            INFO_SIDE_C.to_string(),
+            INFO_SIDE_A.to_string(),
+        ],
+    );
+    let infos = follow.next().await.expect("the read runs").result.unwrap();
+
+    let facts: Vec<_> = infos
+        .iter()
+        .map(|info| {
+            let side = info.side.as_ref().expect("a carrier with sides");
+            (
+                info.track_id.as_str(),
+                side.medium.get(),
+                side.side.get(),
+                side.boundary,
+                &side.label[..],
+            )
+        })
+        .collect();
+    use crate::PlaybackPauseBoundary::{Disc, Side};
+    assert_eq!(
+        facts,
+        [
+            (INFO_SECOND_DISC, 2, 1, Disc, "2"),
+            (INFO_SIDE_B, 1, 2, Side, "B"),
+            (INFO_SIDE_C, 2, 1, Side, "C"),
+            (INFO_SIDE_A, 1, 1, Side, "A"),
+        ]
+    );
+}

@@ -75,6 +75,7 @@ mod release_file;
 mod release_locality;
 mod release_tracks;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
+pub use release_tracks::track_places_on;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]

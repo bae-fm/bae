@@ -74,6 +74,13 @@ impl Records {
         self.store.read(move |sql| release_mediums_on(&sql, &release_id)).await
     }
 
+    /// Where each of `track_ids` sits on its release, in their order, leaving
+    /// out a track the library does not hold.
+    pub async fn track_places(&self, track_ids: &[String]) -> Result<Vec<DbTrackPlace>, DbError> {
+        let track_ids = track_ids.to_vec();
+        self.store.read(move |sql| super::release_tracks::track_places_on(&sql, &track_ids)).await
+    }
+
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
