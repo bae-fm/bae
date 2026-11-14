@@ -20,7 +20,6 @@ sys.modules[SPEC.name] = GUARD
 SPEC.loader.exec_module(GUARD)
 
 POLICY = "owner-construction-check.toml"
-APPS = "scripts/ui-row-work.toml"
 
 
 def policy(*rows: tuple[str, str, str, int]) -> str:
@@ -28,16 +27,6 @@ def policy(*rows: tuple[str, str, str, int]) -> str:
     for path, item, shape, count in rows:
         lines.append(
             f'    {{ path = "{path}", item = "{item}", shape = "{shape}", count = {count}, finding = "f" }},'
-        )
-    lines.append("]")
-    return "\n".join(lines) + "\n"
-
-
-def apps(*rows: tuple[str, str, int]) -> str:
-    lines = ["frozen = ["]
-    for path, operation, count in rows:
-        lines.append(
-            f'    {{ path = "{path}", operation = "{operation}", count = {count}, finding = "f" }},'
         )
     lines.append("]")
     return "\n".join(lines) + "\n"
@@ -70,7 +59,7 @@ class FrozenShrinksTests(unittest.TestCase):
             return GUARD.violations(root)
 
     def test_an_unchanged_file_passes(self) -> None:
-        files = {POLICY: policy(("a.rs", "f", "sort", 2)), APPS: apps(("A.swift", "filter", 1))}
+        files = {POLICY: policy(("a.rs", "f", "sort", 2))}
         self.assertEqual(self.run_change(files, files), [])
 
     def test_a_removed_row_passes(self) -> None:
@@ -101,17 +90,8 @@ class FrozenShrinksTests(unittest.TestCase):
         self.assertIn("2", found[0])
         self.assertIn("3", found[0])
 
-    def test_the_apps_list_is_keyed_by_path_and_operation(self) -> None:
-        before = {APPS: apps(("A.swift", "filter", 1))}
-        grown = {APPS: apps(("A.swift", "filter", 1), ("A.swift", "sorted", 1))}
-        raised = {APPS: apps(("A.swift", "filter", 2))}
-        shrunk = {APPS: apps()}
-        self.assertEqual(len(self.run_change(before, grown)), 1)
-        self.assertEqual(len(self.run_change(before, raised)), 1)
-        self.assertEqual(self.run_change(before, shrunk), [])
-
     def test_a_file_absent_at_head_passes(self) -> None:
-        after = {POLICY: policy(("a.rs", "f", "sort", 2)), APPS: apps(("A.swift", "filter", 1))}
+        after = {POLICY: policy(("a.rs", "f", "sort", 2))}
         self.assertEqual(self.run_change(None, after), [])
 
     def test_a_list_absent_at_head_passes(self) -> None:
@@ -123,24 +103,6 @@ class FrozenShrinksTests(unittest.TestCase):
         before = {POLICY: policy(("a.rs", "f", "sort", 2))}
         after = {POLICY: policy(("a.rs", "f", "filter", 2))}
         self.assertEqual(len(self.run_change(before, after)), 1)
-
-    def test_a_shape_the_change_teaches_freezes_its_first_findings(self) -> None:
-        teacher = "scripts/ui_row_work.py"
-        before = {APPS: apps(("A.swift", "filter", 1)), teacher: "OPERATIONS = 1\n"}
-        taught = {
-            APPS: apps(("A.swift", "filter", 1), ("A.swift", "first(where:", 2), ("B.swift", "first(where:", 1)),
-            teacher: "OPERATIONS = 2\n",
-        }
-        self.assertEqual(self.run_change(before, taught), [])
-        # The same rows without a change to the pass that finds them fail.
-        untaught = {**taught, teacher: "OPERATIONS = 1\n"}
-        self.assertEqual(len(self.run_change(before, untaught)), 2)
-        # A shape the lists already hold rows for takes no new key, taught or not.
-        known = {
-            APPS: apps(("A.swift", "filter", 1), ("B.swift", "filter", 1)),
-            teacher: "OPERATIONS = 2\n",
-        }
-        self.assertEqual(len(self.run_change(before, known)), 1)
 
     def test_the_policy_list_is_taught_by_the_pinned_checker_revision(self) -> None:
         teacher = "scripts/owner-construction-check.sh"

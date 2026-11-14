@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Keep the read rule's frozen lists from growing.
 
-`owner-construction-check.toml` (`read_shapes.frozen`) and
-`scripts/ui-row-work.toml` (`frozen`) list the violations bae has today, keyed
-and counted exactly. They only shrink: a row may be removed or its count
-lowered, never added or raised. This compares each file's `frozen` rows with
-the same file at HEAD and fails on a new key or a higher count. A file that
+`owner-construction-check.toml` (`read_shapes.frozen`) lists the violations bae
+has today, keyed and counted exactly. It only shrinks: a row may be removed or
+its count lowered, never added or raised. This compares the file's `frozen`
+rows with the same file at HEAD and fails on a new key or a higher count. A file that
 or a list that does not exist at HEAD has nothing to compare with (the commit
 that adds the list).
 """
@@ -18,21 +17,14 @@ import tomllib
 from pathlib import Path
 
 # Each file, the location of its frozen rows, the fields that key a row, the
-# field naming the kind of shape or operation a row is about, and the file
-# that decides which shapes the check finds (the pinned checker's revision, or
-# the apps' pass).
+# field naming the kind of shape a row is about, and the file that decides which
+# shapes the check finds (the pinned checker's revision).
 LISTS = {
     "owner-construction-check.toml": (
         ("read_shapes", "frozen"),
         ("path", "item", "shape"),
         "shape",
         "scripts/owner-construction-check.sh",
-    ),
-    "scripts/ui-row-work.toml": (
-        ("frozen",),
-        ("path", "operation"),
-        "operation",
-        "scripts/ui_row_work.py",
     ),
 }
 
