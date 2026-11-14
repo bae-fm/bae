@@ -3,6 +3,7 @@ package fm.bae.app.playback
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSummary
@@ -89,18 +90,43 @@ internal class BrowseNodeFactory(
     fun track(
         release: BridgeRelease,
         track: BridgeTrack,
+    ): MediaItem =
+        playable(
+            BrowseId.Track(release.id, track.id),
+            track.title,
+            track.artistLine,
+            track.durationMs,
+            release.cover,
+        )
+
+    /** A playable track node for a track read alone, as [track] builds one from a release's rows. */
+    fun browseTrack(track: BridgeBrowseTrack): MediaItem =
+        playable(
+            BrowseId.Track(track.releaseId, track.id),
+            track.title,
+            track.artistLine,
+            track.durationMs,
+            track.cover,
+        )
+
+    private fun playable(
+        id: BrowseId.Track,
+        title: String,
+        artistLine: BridgeCreditLine,
+        durationMs: ULong,
+        cover: BridgeImageRef?,
     ): MediaItem {
         val metadata =
-            baseMetadata(track.title, release.cover)
-                .setArtist(creditLineText(track.artistLine))
-                .setDurationMs(track.durationMs.toLong())
+            baseMetadata(title, cover)
+                .setArtist(creditLineText(artistLine))
+                .setDurationMs(durationMs.toLong())
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                 .build()
         return MediaItem
             .Builder()
-            .setMediaId(BrowseId.Track(release.id, track.id).mediaId)
+            .setMediaId(id.mediaId)
             .setMediaMetadata(metadata)
             .build()
     }

@@ -594,6 +594,80 @@ async fn a_search_skips_a_found_album_with_no_track_to_play() {
     assert_eq!(top, Some((PLAYABLE_RELEASE.to_string(), PLAYABLE_TRACK.to_string())));
 }
 
+const PAGED_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5021";
+
+/// A search's albums come in windows of the title order; the window past the
+/// last album is empty.
+#[tokio::test]
+async fn a_search_pages_its_albums_in_sql() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let mut fixture = RecordsFixture::new().artist(PAGED_ARTIST, "Paged Artist");
+    for (id, release, title) in [
+        (
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5031",
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5061",
+            "Window A",
+        ),
+        (
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5032",
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5062",
+            "Window B",
+        ),
+        (
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5033",
+            "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5063",
+            "Window C",
+        ),
+    ] {
+        fixture = fixture.album(id, title, Some(2026), &[PAGED_ARTIST]).release(id, release);
+    }
+    fixture.write(&test_records(&db)).await;
+    let views = crate::LibraryViews::new(db.clone());
+    let query = crate::LibrarySearchQuery::parse("Window").unwrap();
+    let page = |offset, limit| {
+        let views = views.clone();
+        let query = query.clone();
+        async move {
+            views
+                .search_album_page(&query, offset, limit)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|album| album.title)
+                .collect::<Vec<_>>()
+        }
+    };
+
+    assert_eq!(page(0, 2).await, ["Window A", "Window B"]);
+    assert_eq!(page(2, 2).await, ["Window C"]);
+    assert!(page(4, 2).await.is_empty());
+}
+
+const PICKED_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5043";
+const OTHER_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5044";
+
+/// A browse item for one track is read by its ids; a track on another release
+/// is none.
+#[tokio::test]
+async fn a_release_track_is_read_by_its_ids() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(PAGED_ARTIST, "Paged Artist")
+        .album(PLAYABLE_ALBUM, "Picked Album", Some(2026), &[PAGED_ARTIST])
+        .release(PLAYABLE_ALBUM, PLAYABLE_RELEASE)
+        .tracks(PLAYABLE_RELEASE, &[(PICKED_TRACK, "Picked"), (OTHER_TRACK, "Other")])
+        .write(&test_records(&db))
+        .await;
+    let views = crate::LibraryViews::new(db.clone());
+
+    let picked = views.find_release_track(PLAYABLE_RELEASE, PICKED_TRACK).await.unwrap();
+    assert_eq!(
+        picked.map(|track| (track.id, track.title, track.release_id)),
+        Some((PICKED_TRACK.to_string(), "Picked".to_string(), PLAYABLE_RELEASE.to_string(),))
+    );
+    assert!(views.find_release_track(EMPTY_RELEASE, PICKED_TRACK).await.unwrap().is_none());
+}
+
 const SEARCHED_ARTIST: &str = "0373bb67-3abb-48e7-8a5b-6d29ef24308e";
 const SEARCHED_MUSICBRAINZ_ARTIST: &str = "mb-artist-asel";
 const SEARCHED_ALBUM: &str = "e307f0f5-e518-4d5e-bea8-83e439780ca0";

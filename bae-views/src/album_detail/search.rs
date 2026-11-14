@@ -4,7 +4,8 @@
 
 use super::*;
 use crate::{
-    DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbTopPlayable, DbWorkSummary,
+    DbAlbumSearchResult, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbTopPlayable,
+    DbTrackSearchResult, DbWorkSummary,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -23,37 +24,8 @@ impl SearchResults {
     /// Each hit as its row reads it, with the version of its cover or image.
     pub(crate) fn from_raw(raw: DbLibrarySearchResults) -> SearchResults {
         SearchResults {
-            albums: raw
-                .albums
-                .into_iter()
-                .map(|raw| {
-                    let cover = cover_ref(&raw.primary_release_id, raw.cover_version);
-                    AlbumSearchResult {
-                        id: raw.id,
-                        title: raw.title,
-                        year: raw.year,
-                        artist_line: raw.artist_line,
-                        cover,
-                    }
-                })
-                .collect(),
-            tracks: raw
-                .tracks
-                .into_iter()
-                .map(|raw| {
-                    let cover = cover_ref(&raw.release_id, raw.cover_version);
-                    TrackSearchResult {
-                        id: raw.id,
-                        title: raw.title,
-                        duration_ms: raw.duration_ms,
-                        release_id: raw.release_id,
-                        album_id: raw.album_id,
-                        album_title: raw.album_title,
-                        artist_line: raw.artist_line,
-                        cover,
-                    }
-                })
-                .collect(),
+            albums: raw.albums.into_iter().map(AlbumSearchResult::from_raw).collect(),
+            tracks: raw.tracks.into_iter().map(TrackSearchResult::from_raw).collect(),
             artists: raw.artists,
             composers: raw.composers,
             works: raw.works,
@@ -91,4 +63,33 @@ pub struct TrackSearchResult {
     /// The cover of the track's own release, or `None` when there is no cover
     /// row. Same fetch/caching contract as [`AlbumSearchResult::cover`].
     pub cover: Option<ImageRef>,
+}
+
+impl AlbumSearchResult {
+    pub(crate) fn from_raw(raw: DbAlbumSearchResult) -> AlbumSearchResult {
+        let cover = cover_ref(&raw.primary_release_id, raw.cover_version);
+        AlbumSearchResult {
+            id: raw.id,
+            title: raw.title,
+            year: raw.year,
+            artist_line: raw.artist_line,
+            cover,
+        }
+    }
+}
+
+impl TrackSearchResult {
+    pub(crate) fn from_raw(raw: DbTrackSearchResult) -> TrackSearchResult {
+        let cover = cover_ref(&raw.release_id, raw.cover_version);
+        TrackSearchResult {
+            id: raw.id,
+            title: raw.title,
+            duration_ms: raw.duration_ms,
+            release_id: raw.release_id,
+            album_id: raw.album_id,
+            album_title: raw.album_title,
+            artist_line: raw.artist_line,
+            cover,
+        }
+    }
 }

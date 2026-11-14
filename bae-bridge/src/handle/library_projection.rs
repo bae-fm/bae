@@ -205,6 +205,19 @@ mirror_struct! {
     },
 }
 
+impl crate::types::BridgeBrowseTrack {
+    pub(super) fn from_core(t: bae_views::album_detail::TrackSearchResult) -> Self {
+        Self {
+            id: t.id,
+            title: t.title,
+            duration_ms: t.duration_ms,
+            release_id: t.release_id,
+            artist_line: crate::types::BridgeCreditLine::from_core(t.artist_line),
+            cover: t.cover.map(crate::types::BridgeImageRef::from_core),
+        }
+    }
+}
+
 impl BridgeTrackSearchResult {
     pub(super) fn from_core(t: bae_views::album_detail::TrackSearchResult) -> Self {
         let bae_views::album_detail::TrackSearchResult {

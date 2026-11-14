@@ -39,6 +39,48 @@ impl LibraryViews {
             .await
     }
 
+    /// One window of the albums a search finds, in title order: at most `limit`
+    /// albums starting `offset` albums in, and none past the search's
+    /// [`crate::SEARCH_RESULT_LIMIT`]. A one-off read, so it pages by offset.
+    pub async fn search_album_page(
+        &self,
+        query: &crate::LibrarySearchQuery,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<crate::album_detail::AlbumSearchResult>, DbError> {
+        let pattern = search_pattern(query.as_str());
+        let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+        let cap = crate::SEARCH_RESULT_LIMIT as i64;
+        self.store
+            .read(move |sql| search_albums_on(&sql, &pattern, limit, offset, cap))
+            .process(|rows| Ok(rows.into_iter().map(AlbumSearchRow::process).collect::<Vec<_>>()))
+            .await
+    }
+
+    /// The track `track_id` of the release `release_id` as a browse item shows
+    /// it; `None` when the release has no such track.
+    pub async fn find_release_track(
+        &self,
+        release_id: &str,
+        track_id: &str,
+    ) -> Result<Option<crate::album_detail::TrackSearchResult>, DbError> {
+        let release_id = release_id.to_string();
+        let track_id = track_id.to_string();
+        self.store
+            .read(move |sql| {
+                Ok(sql.query(
+                    &format!("{} WHERE t.release_id = ?1 AND t.id = ?2", TRACK_HIT_SELECT.as_str()),
+                    params![release_id, track_id],
+                    track_hit_row,
+                )?)
+            })
+            .process(|rows| {
+                Ok(rows.into_iter().next().map(crate::album_detail::TrackSearchResult::from_raw))
+            })
+            .await
+    }
+
     /// Follow the results of one library search. The request is the parsed
     /// query; `None` is no search, which reads nothing and delivers no results.
     /// A new query moves this subscription's request rather than opening
@@ -362,15 +404,44 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
     }
 }
 
-/// The library rows holding the search `pattern` (see [`search_pattern`]),
-/// each kind's first `limit` in its order, ties going by id. Each kind finds
-/// its rows through its search table, then reads what it shows for those
-/// rows alone.
-fn search_library_on(
+/// What a track hit shows: the track, its release's album, its credit line and
+/// its release's cover version.
+static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    format!(
+        "SELECT t.id, t.title, t.duration_ms, t.release_id, \
+                r.album_id, a.title as album_title, {} as artist_name, \
+                {} as cover_version \
+         FROM tracks t \
+         JOIN releases r ON t.release_id = r.id \
+         JOIN albums a ON r.album_id = a.id",
+        track_credits_json_sql("t"),
+        bae_records::records::files::cover_version_sql("t.release_id"),
+    )
+});
+
+fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
+    Ok(DbTrackSearchResult {
+        id: row.get("id")?,
+        title: row.get("title")?,
+        duration_ms: row.get("duration_ms")?,
+        release_id: row.get("release_id")?,
+        album_id: row.get("album_id")?,
+        album_title: row.get("album_title")?,
+        artist_line: credit_line_column(row, "artist_name")?,
+        cover_version: row.get("cover_version")?,
+    })
+}
+
+/// The albums holding the search `pattern`, in title order, ties going by id:
+/// the window of at most `limit` starting `offset` albums in, and ending at
+/// most `cap` albums in.
+fn search_albums_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: i64,
-) -> Result<LibrarySearchRows, DbError> {
+    offset: i64,
+    cap: i64,
+) -> Result<Vec<AlbumSearchRow>, DbError> {
     let album_query = format!(
         r#"
             SELECT a.id, a.title, a.year,
@@ -381,7 +452,7 @@ fn search_library_on(
                 SELECT a.id, a.title, a.year FROM albums a
                 WHERE {album_matches}
                 ORDER BY {title_key}, a.id
-                LIMIT ?2
+                LIMIT MAX(MIN(?2, ?4 - ?3), 0) OFFSET ?3
             ) a
             ORDER BY {title_key}, a.id
             "#,
@@ -391,7 +462,7 @@ fn search_library_on(
         album_matches = album_matches_sql("a.id", "?1"),
         title_key = crate::name_sort::sort_key_sql("a.title"),
     );
-    let albums = sql.query(&album_query, params![pattern, limit], |row| {
+    Ok(sql.query(&album_query, params![pattern, limit, offset, cap], |row| {
         Ok(AlbumSearchRow {
             id: row.get("id")?,
             title: row.get("title")?,
@@ -400,16 +471,23 @@ fn search_library_on(
             cover_version: row.get("cover_version")?,
             artist_line: credit_line_column(row, "artist_name")?,
         })
-    })?;
+    })?)
+}
+
+/// The library rows holding the search `pattern` (see [`search_pattern`]),
+/// each kind's first `limit` in its order, ties going by id. Each kind finds
+/// its rows through its search table, then reads what it shows for those
+/// rows alone.
+fn search_library_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+    limit: i64,
+) -> Result<LibrarySearchRows, DbError> {
+    let albums = search_albums_on(sql, pattern, limit, 0, limit)?;
     let tracks = sql.query(
         &format!(
             r#"
-            SELECT t.id, t.title, t.duration_ms, t.release_id,
-                   r.album_id, a.title as album_title, {} as artist_name,
-                   {} as cover_version
-            FROM tracks t
-            JOIN releases r ON t.release_id = r.id
-            JOIN albums a ON r.album_id = a.id
+            {select}
             WHERE t.id IN (
                 SELECT found.id FROM tracks found
                 WHERE found.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
@@ -418,24 +496,12 @@ fn search_library_on(
             )
             ORDER BY {title_key}, t.id
             "#,
-            track_credits_json_sql("t"),
-            bae_records::records::files::cover_version_sql("t.release_id"),
+            select = TRACK_HIT_SELECT.as_str(),
             sort_title_key = crate::name_sort::sort_key_sql("found.title"),
             title_key = crate::name_sort::sort_key_sql("t.title"),
         ),
         params![pattern, limit],
-        |row| {
-            Ok(DbTrackSearchResult {
-                id: row.get("id")?,
-                title: row.get("title")?,
-                duration_ms: row.get("duration_ms")?,
-                release_id: row.get("release_id")?,
-                album_id: row.get("album_id")?,
-                album_title: row.get("album_title")?,
-                artist_line: credit_line_column(row, "artist_name")?,
-                cover_version: row.get("cover_version")?,
-            })
-        },
+        track_hit_row,
     )?;
     let artists = sql.query(
         &artist_listing_query(
@@ -525,22 +591,33 @@ struct LibrarySearchRows {
     top_playable: Option<DbTopPlayable>,
 }
 
+impl AlbumSearchRow {
+    fn process(self) -> crate::album_detail::AlbumSearchResult {
+        crate::album_detail::AlbumSearchResult::from_raw(DbAlbumSearchResult {
+            id: self.id,
+            title: self.title,
+            year: self.year,
+            primary_release_id: self.primary_release_id,
+            cover_version: self.cover_version,
+            artist_line: self.artist_line,
+        })
+    }
+}
+
 impl LibrarySearchRows {
     fn process(self) -> Result<DbLibrarySearchResults, DbError> {
         let albums = self
             .albums
             .into_iter()
-            .map(|row| {
-                Ok(DbAlbumSearchResult {
-                    id: row.id,
-                    title: row.title,
-                    year: row.year,
-                    primary_release_id: row.primary_release_id,
-                    cover_version: row.cover_version,
-                    artist_line: row.artist_line,
-                })
+            .map(|row| DbAlbumSearchResult {
+                id: row.id,
+                title: row.title,
+                year: row.year,
+                primary_release_id: row.primary_release_id,
+                cover_version: row.cover_version,
+                artist_line: row.artist_line,
             })
-            .collect::<Result<_, DbError>>()?;
+            .collect();
         Ok(DbLibrarySearchResults {
             albums,
             artists: self.artists,

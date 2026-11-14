@@ -12,6 +12,8 @@ import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddDeviceRequest
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumSearchResult
+import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
@@ -282,16 +284,30 @@ internal open class FakeAppHandle(
             }
         }.also(searchSubscriptions::add)
 
-    override suspend fun readLibrarySearch(query: String): BridgeSearchResults {
+    /** Plays the database: the window of the search's albums from [offset], at most [limit]. */
+    override suspend fun readSearchAlbumPage(
+        query: String,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeAlbumSearchResult> {
         initialSearchError(query)?.let { throw it }
-        return searchResults(query)
+        return searchResults(query).albums.drop(offset.toInt()).take(limit.toInt())
     }
 
-    override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = readLibrarySearch(query).topPlayable
+    /** Plays the database: the release's track with that id, as a browse item reads it. */
+    override suspend fun readReleaseTrack(
+        releaseId: String,
+        trackId: String,
+    ): BridgeBrowseTrack? =
+        releaseDetails[releaseId]?.let { release ->
+            release.tracks.singleOrNull { it.id == trackId }?.let {
+                BridgeBrowseTrack(it.id, it.title, it.durationMs, release.id, it.artistLine, release.cover)
+            }
+        }
+
+    override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = searchResults(query).topPlayable
 
     override suspend fun readAlbumDetail(albumId: String): BridgeAlbumDetail? = albumDetails[albumId]
-
-    override suspend fun readReleaseDetail(releaseId: String): BridgeRelease? = releaseDetails[releaseId]
 
     override suspend fun readComposerDetail(artistId: String): BridgeComposerDetail? = composerDetails[artistId]
 

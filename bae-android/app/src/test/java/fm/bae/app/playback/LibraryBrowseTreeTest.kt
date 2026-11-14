@@ -367,24 +367,46 @@ class LibraryBrowseTreeTest {
             assertEquals(1, notifications)
         }
 
+    /** A search page is the window the database read returns for its offset, not a slice of a longer list. */
     @Test
-    fun searchSharesTheCurrentDeliveredValue() =
+    fun aSearchPageIsTheWindowTheReadReturns() =
         runBlocking {
             val handle =
                 FakeAppHandle(
                     searchResults = {
                         BridgeFixtures.searchResults(
-                            albums = listOf(BridgeFixtures.albumSearchResult(id = "album-result")),
+                            albums = List(5) { BridgeFixtures.albumSearchResult(id = "album-$it") },
                         )
                     },
                 )
             val tree = tree(handle)
-            tree.subscribeSearch(Any(), "query") {}
 
             assertEquals(
-                BrowseId.Album("album-result").mediaId,
-                tree.search("query", 0, 20)!!.single().mediaId,
+                listOf(BrowseId.Album("album-2").mediaId, BrowseId.Album("album-3").mediaId),
+                tree.search("query", 1, 2)!!.map { it.mediaId },
             )
+            assertTrue(tree.search("query", 3, 2)!!.isEmpty())
+            tree.close()
+        }
+
+    /** A track item is the one track the database read returns, found by its release and track ids. */
+    @Test
+    fun aTrackItemIsTheTrackTheReadReturns() =
+        runBlocking {
+            val release =
+                PreviewData.release(
+                    id = "rel-1",
+                    albumId = "album-1",
+                    trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-a"), PreviewData.track("trk-b")))),
+                )
+            val tree = tree(FakeAppHandle(releaseDetails = mapOf("rel-1" to release)))
+
+            assertEquals(
+                BrowseId.Track("rel-1", "trk-b").mediaId,
+                tree.item(BrowseId.Track("rel-1", "trk-b").mediaId)!!.mediaId,
+            )
+            assertNull(tree.item(BrowseId.Track("rel-1", "trk-missing").mediaId))
+            tree.close()
         }
 
     @Test
@@ -424,10 +446,6 @@ class LibraryBrowseTreeTest {
                 BridgeFixtures.searchResults(albums = listOf(BridgeFixtures.albumSearchResult(id = "recovered"))),
             )
             assertEquals(listOf(2, 1), notifications)
-            assertEquals(
-                BrowseId.Album("recovered").mediaId,
-                tree.search("second", 0, 20)!!.single().mediaId,
-            )
             tree.close()
             assertTrue(handle.searchSubscriptions.single().closed)
         }

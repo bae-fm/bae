@@ -60,15 +60,38 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// What a library search finds, read once: for a request that needs the
-    /// answer one time (Android Auto's search). A blank query finds nothing.
-    fn read_library_search(query: String) -> crate::types::BridgeSearchResults {
+    /// One window of the albums a search finds, read once: at most `limit`
+    /// albums starting `offset` albums in. A blank query finds nothing.
+    fn read_search_album_page(
+        query: String,
+        offset: u64,
+        limit: u64,
+    ) -> Vec<crate::types::BridgeAlbumSearchResult> {
         let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
-            return Ok(crate::types::BridgeSearchResults::from_core(Default::default()));
+            return Ok(Vec::new());
         };
-        Ok(crate::types::BridgeSearchResults::from_core(
-            this.services.search_library(&query).await.map_err(BridgeError::from)?,
-        ))
+        Ok(this
+            .services
+            .search_album_page(&query, offset, limit)
+            .await
+            .map_err(BridgeError::from)?
+            .into_iter()
+            .map(crate::types::BridgeAlbumSearchResult::from_core)
+            .collect())
+    }
+
+    /// One track of a release as a browse item shows it, read once; `None`
+    /// when the release has no such track.
+    fn read_release_track(
+        release_id: String,
+        track_id: String,
+    ) -> Option<crate::types::BridgeBrowseTrack> {
+        Ok(this
+            .services
+            .find_release_track(&release_id, &track_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeBrowseTrack::from_core))
     }
 
     /// The track a spoken "play" of the search plays, read once, or `None`
@@ -94,16 +117,6 @@ forward! { async this => {
             .await
             .map_err(BridgeError::from)?
             .map(crate::types::BridgeAlbumDetail::from_core))
-    }
-
-    /// One release's detail, read once; `None` when the release doesn't exist.
-    fn read_release_detail(release_id: String) -> Option<crate::types::BridgeRelease> {
-        Ok(this
-            .services
-            .find_release_detail(&release_id)
-            .await
-            .map_err(BridgeError::from)?
-            .map(crate::types::BridgeRelease::from_core))
     }
 
     /// One composer's page above its rows, read once; `None` when the composer

@@ -20,6 +20,19 @@ pub struct BridgeTopPlayable {
     pub track_id: String,
 }
 
+/// One track as a browse item shows it: Android Auto's playable item.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeBrowseTrack {
+    pub id: String,
+    pub title: String,
+    pub duration_ms: u64,
+    /// The release the track is on, which playing it starts.
+    pub release_id: String,
+    pub artist_line: BridgeCreditLine,
+    /// The cover of the track's release, or `None`.
+    pub cover: Option<BridgeImageRef>,
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumSearchResult {
     pub id: String,

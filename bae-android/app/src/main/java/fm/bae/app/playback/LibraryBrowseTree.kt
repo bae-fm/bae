@@ -327,9 +327,8 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Track -> {
-                reportingFailure(onQueryError) { library.once.readReleaseDetail(id.releaseId) }?.let { release ->
-                    release.tracks.firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
-                }
+                reportingFailure(onQueryError) { library.once.readReleaseTrack(id.releaseId, id.trackId) }
+                    ?.let(nodes::browseTrack)
             }
         }
     }
@@ -345,9 +344,10 @@ internal class LibraryBrowseTree<Owner : Any>(
             logger.warning("a controller asked for search page $page of size $pageSize, which names no page")
             return null
         }
-        val search = synchronized(lock) { searchesByOwner.values.firstOrNull { it.query == query } }
-        val results = search?.results() ?: reportingFailure(onQueryError) { library.once.readSearch(query) }
-        return BrowsePaging.paginate(results.albums.map { nodes.album(it.id, it.title, it.cover) }, page, pageSize)
+        return pageAt(page, pageSize) { offset ->
+            reportingFailure(onQueryError) { library.once.readSearchAlbumPage(query, offset.toLong(), pageSize) }
+                .map { nodes.album(it.id, it.title, it.cover) }
+        }
     }
 
     suspend fun subscribeParent(

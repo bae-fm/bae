@@ -4500,7 +4500,9 @@ A spoken request to play something ("play" and a name, from a car's controls)
 plays the first track the library search finds, else the first track of the
 first album it finds that has a track on its main release. The search says
 which, and nothing plays when it finds neither. Android Auto reads that answer,
-and each item it opens, once from the database, not through a live query.
+and each item it opens, once from the database, not through a live query. The
+database picks the one track an item names and cuts the page of albums a search
+shows, so Android Auto never picks or pages over rows it already holds.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
