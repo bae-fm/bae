@@ -5,6 +5,11 @@
 *.cs text eol=lf
 *.axaml text eol=lf
 
+# bae-types compiles its MusicBrainz and Discogs lists in with include_str! and
+# looks entries up by their exact bytes: a crlf checkout on Windows leaves a
+# carriage return on every name, and no instrument is found by name.
+*.tsv text eol=lf
+
 # String catalogs merge by key (scripts/merge-xcstrings.py), so parallel
 # branches adding strings don't conflict. The driver itself is set in each
 # checkout's git config: scripts/hooks/post-checkout does it for new worktrees,
