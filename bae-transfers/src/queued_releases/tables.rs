@@ -699,6 +699,46 @@ pub mod bulk {
         ))?;
         Ok(())
     }
+
+    /// The download queue of a library of `start..end` albums: every hundredth
+    /// album's release, named by `release_id_sql`, queued to pin, every fifth
+    /// of those failed. Set-based, as [`queue_downloads_on`].
+    pub fn queue_shaped_downloads_on(
+        sql: &CovenWrite<'_>,
+        start: u64,
+        end: u64,
+        release_id_sql: &str,
+    ) -> Result<(), DbError> {
+        let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
+        sql.execute_batch(&format!(
+            "{rows} INSERT INTO download_queue (position, release_id, created_at, state, error, kind) \
+                 SELECT i, {release_id_sql}, i, \
+                        CASE WHEN i % 500 = 0 THEN 'failed' ELSE 'queued' END, \
+                        CASE WHEN i % 500 = 0 THEN 'the seed failed it' END, 'pin' \
+                 FROM k WHERE i % 100 = 0;"
+        ))?;
+        Ok(())
+    }
+
+    /// The output queue: the first `count` releases of `start..end` (those
+    /// numbered below `count`), named by `release_id_sql`, queued to export.
+    pub fn queue_shaped_outputs_on(
+        sql: &CovenWrite<'_>,
+        start: u64,
+        end: u64,
+        count: u64,
+        release_id_sql: &str,
+    ) -> Result<(), DbError> {
+        if start >= end.min(count) {
+            return Ok(());
+        }
+        let rows = bae_store::test_fixtures::window_cost::numbered(start, end.min(count));
+        sql.execute_batch(&format!(
+            "{rows} INSERT INTO output_queue (position, release_id, created_at, state, target_dir, kind) \
+                 SELECT i, {release_id_sql}, i, 'queued', CAST('/export' AS BLOB), 'export' FROM k;"
+        ))?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

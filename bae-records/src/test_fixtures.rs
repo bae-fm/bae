@@ -142,4 +142,5 @@ pub mod composed_work;
 pub mod labels;
 pub mod library;
 pub mod live_query;
+pub mod shaped_library;
 pub mod storage_listing;

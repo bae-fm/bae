@@ -14,6 +14,8 @@ mod joining;
 pub use joining::private_circle_name;
 mod profile_request;
 mod profiles;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod shaped_people;
 pub(crate) use profiles::name_this_person_goes_by;
 
 /// The SQL functions the people's reads name: the key lists of names order by.

@@ -509,6 +509,17 @@ pub fn lose_playback_level_for_test(directory: &std::path::Path) {
     );
 }
 
+/// The library playing its track `track_id`, as a listener leaves it:
+/// state playing, three minutes long.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn shaped_now_playing_on(sql: &CovenWrite<'_>, track_id: &str) -> Result<(), DbError> {
+    sql.execute(
+        "UPDATE playback_now SET state = 'playing', duration_ms = 180000, track_id = ?1",
+        params![track_id],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "now_tests.rs"]
 mod tests;
