@@ -329,9 +329,12 @@ extension ShotScene {
 
     /// `MacStep` and `MacStepActions`, a step of joining.
     private static let stepScenes: [ShotScene] = [
-        component("mac.component.step.with-a-code", width: 596, height: 300) {
+        component("mac.component.step.with-a-code", width: 596, height: 376) {
             MacStep("Tell Ana this code") {
-                MacMatchCode(code: "412 778")
+                MacMatchCode(
+                    code: "412 778",
+                    waiting: "Waiting for Ana to let you in…"
+                )
             }
         },
         component("mac.component.step-actions.two-buttons", height: 60) {

@@ -17,6 +17,7 @@ struct MacMatchCode: View {
             Text(verbatim: code)
                 .font(.system(size: 34, weight: .semibold))
                 .tracking(3)
+                .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)
             if let waiting {
                 MacSpinner(Text(verbatim: waiting))

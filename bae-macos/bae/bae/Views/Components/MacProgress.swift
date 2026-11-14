@@ -81,7 +81,7 @@ extension SetupLine: ProgressStep {
 }
 
 /// How a call's step shows. `line` is the name over its bar in a pane or
-/// sheet, left-aligned in secondary text. `stage` is the line of a screen the
+/// sheet, left-aligned in primary text. `stage` is the line of a screen the
 /// call fills: the name centred over the bar in primary text, the bar at the
 /// design system's height. `note` is the name alone, as a row's note.
 enum StepProgressLook {
@@ -130,7 +130,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
         switch look {
         case .line:
             label.font = .systemFont(ofSize: NSFont.systemFontSize)
-            label.textColor = .secondaryLabelColor
+            label.textColor = NSColor(Theme.textPrimary)
         case .stage:
             label.font = .systemFont(ofSize: NSFont.systemFontSize)
             label.textColor = NSColor(Theme.textPrimary)
@@ -248,7 +248,7 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 }
 
 /// A step's name over a bar, in the pane or sheet it runs in: the name in
-/// secondary text, the bar 4pt high under it. Drawn from the values it is
+/// primary text, the bar 4pt high under it. Drawn from the values it is
 /// given; a container reads the stream that moves the bar.
 struct MacProgress<Bar: View>: View {
     let title: String
@@ -263,7 +263,7 @@ struct MacProgress<Bar: View>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(title)
                 .cutLine(.prose)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textPrimary)
             bar
                 .frame(height: ProgressTrackNSView.trackHeight)
         }
