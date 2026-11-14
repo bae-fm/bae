@@ -127,19 +127,22 @@ struct ShotElementListTests {
             "mac.welcome.remove.failed",
         ] {
             let list = try await list(id)
+            let json = try json(list)
             for (index, element) in list.elements.enumerated() {
-                #expect(element.bounds.x >= -1)
-                #expect(element.bounds.y >= -1)
+                #expect(element.bounds.x >= -1, "\(json)")
+                #expect(element.bounds.y >= -1, "\(json)")
                 #expect(
                     element.bounds.x + element.bounds.width
-                        <= list.size.width + 1
+                        <= list.size.width + 1,
+                    "\(json)"
                 )
                 #expect(
                     element.bounds.y + element.bounds.height
-                        <= list.size.height + 1
+                        <= list.size.height + 1,
+                    "\(json)"
                 )
                 if let parent = element.parent {
-                    #expect(parent < index)
+                    #expect(parent < index, "\(json)")
                 }
             }
         }

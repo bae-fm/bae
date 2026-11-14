@@ -254,13 +254,22 @@
     }
 
     /// The alert's content in its panel: bae's face hung 36 points below the
-    /// top of the window it sits on, with room around it for its shadow.
+    /// top of the window it sits on, with room around it for its shadow. The
+    /// panel is a window of its own, so it draws in the tone, accent and
+    /// light or dark scheme of the window it sits on, which it inherits from
+    /// nothing.
+    private struct PanelLook {
+        let appearance: HostedAppearance
+        let scheme: ColorScheme
+    }
+
     private struct AlertPanelContent: View {
         static let hangs: CGFloat = 36
         static let shadowRoom: CGFloat = 24
 
         let build: () -> (MacAlertWords, [MacAlertButton])?
         let finish: @MainActor () -> Void
+        let look: PanelLook
 
         var body: some View {
             if let built = build() {
@@ -268,6 +277,8 @@
                     .elevatedFace()
                     .padding(.top, Self.hangs)
                     .padding([.horizontal, .bottom], Self.shadowRoom)
+                    .hostedAppearance(look.appearance)
+                    .environment(\.colorScheme, look.scheme)
             }
         }
     }
@@ -367,10 +378,11 @@
             return (place, observers)
         }
 
-        func present(
+        fileprivate func present(
             id: UUID,
             over window: NSWindow?,
             build: @escaping () -> (MacAlertWords, [MacAlertButton])?,
+            look: PanelLook,
             finish: @escaping @MainActor () -> Void
         ) {
             withdraw(id: id)
@@ -378,7 +390,11 @@
                 preconditionFailure("There is no window to show an alert over")
             }
             let host = NSHostingView(
-                rootView: AlertPanelContent(build: build, finish: finish)
+                rootView: AlertPanelContent(
+                    build: build,
+                    finish: finish,
+                    look: look
+                )
             )
             let panel = AlertPanel(
                 contentRect: NSRect(origin: .zero, size: host.fittingSize),
@@ -391,6 +407,7 @@
             panel.backgroundColor = .clear
             panel.hasShadow = false
             panel.animationBehavior = .none
+            panel.appearance = parent.effectiveAppearance
             panel.contentView = host
             panel.setAccessibilityModal(true)
             host.setAccessibilityModal(true)
@@ -542,6 +559,12 @@
         private var id = UUID()
         @State
         private var anchor = WindowAnchor()
+        @Environment(\.surfaceTone)
+        private var tone
+        @Environment(\.accentChoice)
+        private var accent
+        @Environment(\.colorScheme)
+        private var scheme
 
         func body(content: Content) -> some View {
             content
@@ -571,11 +594,16 @@
             let id = id
             let build = build
             let finish = finish
+            let look = PanelLook(
+                appearance: HostedAppearance(tone: tone, accent: accent),
+                scheme: scheme
+            )
             let show: @MainActor () -> Void = {
                 AlertWindows.shared.present(
                     id: id,
                     over: anchor.view?.window,
                     build: build,
+                    look: look,
                     finish: finish
                 )
             }

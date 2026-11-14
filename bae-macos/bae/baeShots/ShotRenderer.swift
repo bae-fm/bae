@@ -206,6 +206,10 @@ enum ShotRenderer {
                 defer: false
             )
             if titleBar == .hidden {
+                // SwiftUI's hidden-title-bar window lets its content reach
+                // the top edge; the hosting view otherwise keeps the title
+                // bar's height as a safe area and shifts the content down.
+                hosting.safeAreaRegions = []
                 window.styleMask.insert(.fullSizeContentView)
                 window.titlebarAppearsTransparent = true
                 window.titleVisibility = .hidden
