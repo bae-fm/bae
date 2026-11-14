@@ -6448,7 +6448,7 @@ playing track as Now playing, a failed lookup's mark as Failed. The parts macOS 
 such as the menu bar's menus and the save panel's Format pop-up, take
 the Pink accent the app declares, as long as the Mac's own accent is
 Multicolor, and the person's Mac accent otherwise; they do not follow the
-accent chosen here. Checkboxes, sliders, radio buttons, the keyboard focus ring,
+accent chosen here. Checkboxes, switches, sliders, radio buttons, the keyboard focus ring,
 selected text in fields and a list's or table's selected row show the chosen
 accent and never the Mac's own accent colour. On the Mac Theme and Tone are pop-up buttons; on
 Android the Appearance page has no heading over its card, the top bar names it.
