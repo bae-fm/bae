@@ -216,11 +216,9 @@ extension ShotScene {
             let op = BridgeDownloadOp(
                 releaseId: "rel-glass-harbor",
                 kind: kind,
-                release: BridgeQueuedRelease(
-                    title: "Glass Harbor",
-                    fileCount: 9,
-                    totalSize: 356_000_000
-                ),
+                fileCount: 9,
+                totalSize: 356_000_000,
+                release: BridgeQueuedRelease(title: "Glass Harbor"),
                 createdAt: 0,
                 state: .failed(error: "The network connection was lost.")
             )

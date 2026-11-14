@@ -40,12 +40,12 @@ struct OutputRow: View {
     @ViewBuilder
     private var detailLine: some View {
         switch (op.release, presetName) {
-        case (let release?, let presetName?):
+        case (_?, let presetName?):
             Text(
-                "\(release.fileCount) files · \(release.totalSizeText) · \(presetName)"
+                "\(op.fileCount) files · \(op.totalSize.fileSizeText) · \(presetName)"
             )
-        case (let release?, nil):
-            Text("\(release.fileCount) files · \(release.totalSizeText)")
+        case (_?, nil):
+            Text("\(op.fileCount) files · \(op.totalSize.fileSizeText)")
         case (nil, let presetName?):
             Text(presetName)
         case (nil, nil):

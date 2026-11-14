@@ -32,7 +32,6 @@ import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
-import uniffi.bae_bridge.BridgeQueuedRelease
 
 @Composable
 internal fun AndroidDownloadRow(
@@ -71,13 +70,11 @@ internal fun AndroidDownloadRow(
             }
             AndroidInlineIconButton(Icons.Filled.Close, stringResource(R.string.cancel), onCancel)
         }
-        if (release != null) {
-            Text(
-                text = release.detailText(context),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = op.detailText(context),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         DownloadRowState(op.state, progress, onRetry)
     }
 }
@@ -119,7 +116,8 @@ internal fun PinQueuedText() {
     )
 }
 
-private fun BridgeQueuedRelease.detailText(context: Context): String {
+/** The files and size the pin was queued with, which the row keeps once the library no longer has the release. */
+private fun BridgeDownloadOp.detailText(context: Context): String {
     val files =
         context.resources.getQuantityString(
             R.plurals.pin_file_count,

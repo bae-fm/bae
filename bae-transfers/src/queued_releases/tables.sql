@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS download_queue (
     release_id TEXT NOT NULL UNIQUE,
     -- When it was queued, in milliseconds since the epoch.
     created_at INTEGER NOT NULL,
+    -- How many files the release had and their total size in bytes when it
+    -- was queued, read in the statement that queues it. The row keeps both
+    -- after the release leaves the library, and its files with it.
+    file_count INTEGER NOT NULL CHECK (file_count >= 0),
+    total_size INTEGER NOT NULL CHECK (total_size >= 0),
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),
     error      TEXT,
     kind       TEXT NOT NULL CHECK (kind IN ('pin', 'move_to_this_device')),
@@ -78,6 +83,9 @@ CREATE TABLE IF NOT EXISTS output_queue (
     position   INTEGER PRIMARY KEY,
     release_id TEXT NOT NULL UNIQUE,
     created_at INTEGER NOT NULL,
+    -- As in `download_queue`.
+    file_count INTEGER NOT NULL CHECK (file_count >= 0),
+    total_size INTEGER NOT NULL CHECK (total_size >= 0),
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),
     error      TEXT,
     -- coven's bytes for the folder's path (`coven::path_bytes`).

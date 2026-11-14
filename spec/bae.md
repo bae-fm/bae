@@ -2505,7 +2505,7 @@ same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. The queue's counts say, with its per-phase numbers,
 whether it holds any entry and whether any failed, which is what the phones' Pinning screen
-reads to offer Pause and Retry. While a release's pin waits, its
+reads to offer Pause and Retry. Each entry keeps its release's file count and total size from the write that queued it, so the Pinning screen's row still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
 the queue and removes what it downloaded. coven's record of the failed
 download is listed among the pending records (§6.4), whose *Retry* queues the
@@ -6284,9 +6284,9 @@ write commits, so the release and the row naming it land in either order.
 | Table | Holds |
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
-| `download_queue` | release queued to pin or to move to this device, in the order queued: pin or move to this device, with a move-to-this-device's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
+| `download_queue` | release queued to pin or to move to this device, in the order queued: pin or move to this device, with a move-to-this-device's folder, a BLOB of coven's bytes for its path, and the release's file count and total size when it was queued; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Moving to This Mac lines count (§6.4) |
-| `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with its format and save settings captured whole, and queued, writing, or failed with its error (§4.6) |
+| `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with its format and save settings captured whole, the release's file count and total size when it was queued, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export
 queue opens empty and running.

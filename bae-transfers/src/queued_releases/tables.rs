@@ -218,10 +218,7 @@ fn phase_from_row(row: &Row<'_>, at: usize) -> rusqlite::Result<ReleaseQueueStat
 pub fn queue_rows_sql<P: QueuedPayload>(keyed: Option<&ListOrder>, tail: &str) -> String {
     format!(
         "SELECT {columns}, q.state, q.error, r.id IS NOT NULL, a.title, \
-            COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = q.release_id), 0) AS queued_file_count, \
-            COALESCE((SELECT SUM(coven.size) FROM release_files rf \
-                JOIN coven_files coven ON coven.id = rf.file \
-                WHERE rf.release_id = q.release_id), 0) AS queued_total_size{keys} \
+            q.file_count, q.total_size{keys} \
          FROM {table} q \
          LEFT JOIN releases r ON r.id = q.release_id \
          LEFT JOIN albums a ON a.id = r.album_id \
@@ -247,19 +244,13 @@ fn queue_row<P: QueuedPayload>(row: &Row<'_>) -> rusqlite::Result<ReleaseQueueRo
     let at = 2 + P::COLUMNS.len();
     let entry = entry_from_row::<P>(row)?;
     let held: bool = row.get(at + 2)?;
-    let release = if held {
-        Some(QueuedRelease {
-            title: row.get(at + 3)?,
-            file_count: bae_store::read::count_column(row, "queued_file_count")?,
-            total_size: bae_store::read::count_column(row, "queued_total_size")?,
-        })
-    } else {
-        None
-    };
+    let release = if held { Some(QueuedRelease { title: row.get(at + 3)? }) } else { None };
     Ok(ReleaseQueueRow {
         op: ReleaseQueueOp {
             release_id: entry.release_id,
             created_at: entry.created_at,
+            file_count: bae_store::read::count_column(row, "file_count")?,
+            total_size: bae_store::read::count_column(row, "total_size")?,
             payload: entry.payload,
             state: phase_from_row(row, at)?,
         },
@@ -377,9 +368,15 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     sql: &CovenWrite<'_>,
     entries: &[ReleaseQueueEntry<P>],
 ) -> Result<bool, DbError> {
-    let placeholders = vec!["?"; 2 + P::COLUMNS.len()].join(", ");
+    let placeholders =
+        (1..=2 + P::COLUMNS.len()).map(|at| format!("?{at}")).collect::<Vec<_>>().join(", ");
+    // The release's files and their size are read here, in the statement that
+    // queues it: the row keeps them once the release is gone.
     let insert = format!(
-        "INSERT INTO {table} ({columns}, state) VALUES ({placeholders}, 'queued') \
+        "INSERT INTO {table} ({columns}, file_count, total_size, state) \
+         SELECT {placeholders}, COUNT(rf.id), COALESCE(SUM(file.size), 0), 'queued' \
+         FROM release_files rf JOIN coven_files file ON file.id = rf.file \
+         WHERE rf.release_id = ?1 \
          ON CONFLICT (release_id) DO NOTHING",
         table = P::TABLE,
         columns = entry_columns::<P>(""),
@@ -408,13 +405,15 @@ pub(crate) fn enqueue_pinnable_releases_on(
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     Ok(sql.execute(
         &format!(
-            "INSERT INTO download_queue (release_id, created_at, state, kind) \
-             SELECT requested.value, :created_at, 'queued', 'pin' \
+            "INSERT INTO download_queue (release_id, created_at, file_count, total_size, state, kind) \
+             SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
+                    'queued', 'pin' \
              FROM json_each(:release_ids) AS requested \
              JOIN release_storage AS storage ON storage.release_id = requested.value \
              WHERE storage.stored = 1 AND NOT {pinned} \
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
+                 file_count = excluded.file_count, total_size = excluded.total_size, \
                  kind = 'pin', target_dir = NULL \
              WHERE download_queue.state = 'failed'",
             pinned = bae_records::records::query::RELEASE_STORAGE_PINNED,
@@ -603,13 +602,16 @@ pub(crate) fn enqueue_moves_to_this_device_on(
 ) -> Result<bool, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     Ok(sql.execute(
-        "INSERT INTO download_queue (release_id, created_at, state, kind, target_dir) \
-         SELECT requested.value, :created_at, 'queued', 'move_to_this_device', :target_dir \
+        "INSERT INTO download_queue \
+             (release_id, created_at, file_count, total_size, state, kind, target_dir) \
+         SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
+                'queued', 'move_to_this_device', :target_dir \
          FROM json_each(:release_ids) AS requested \
          JOIN release_storage AS storage ON storage.release_id = requested.value \
          WHERE storage.stored = 1 \
          ORDER BY requested.key \
          ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
+             file_count = excluded.file_count, total_size = excluded.total_size, \
              kind = 'move_to_this_device', target_dir = excluded.target_dir \
          WHERE download_queue.state = 'failed'",
         rusqlite::named_params! {
@@ -699,8 +701,9 @@ pub mod bulk {
     ) -> Result<(), DbError> {
         let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
         sql.execute_batch(&format!(
-            "{rows} INSERT INTO download_queue (position, release_id, created_at, state, kind) \
-                 SELECT i, {release_id_sql}, i, 'queued', 'pin' FROM k;"
+            "{rows} INSERT INTO download_queue \
+                    (position, release_id, created_at, file_count, total_size, state, kind) \
+                 SELECT i, {release_id_sql}, i, 0, 0, 'queued', 'pin' FROM k;"
         ))?;
         Ok(())
     }
@@ -716,8 +719,9 @@ pub mod bulk {
     ) -> Result<(), DbError> {
         let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
         sql.execute_batch(&format!(
-            "{rows} INSERT INTO download_queue (position, release_id, created_at, state, error, kind) \
-                 SELECT i, {release_id_sql}, i, \
+            "{rows} INSERT INTO download_queue \
+                    (position, release_id, created_at, file_count, total_size, state, error, kind) \
+                 SELECT i, {release_id_sql}, i, 0, 0, \
                         CASE WHEN i % 500 = 0 THEN 'failed' ELSE 'queued' END, \
                         CASE WHEN i % 500 = 0 THEN 'the seed failed it' END, 'pin' \
                  FROM k WHERE i % 100 = 0;"
@@ -739,8 +743,9 @@ pub mod bulk {
         }
         let rows = bae_store::test_fixtures::window_cost::numbered(start, end.min(count));
         sql.execute_batch(&format!(
-            "{rows} INSERT INTO output_queue (position, release_id, created_at, state, target_dir, kind) \
-                 SELECT i, {release_id_sql}, i, 'queued', CAST('/export' AS BLOB), 'export' FROM k;"
+            "{rows} INSERT INTO output_queue \
+                    (position, release_id, created_at, file_count, total_size, state, target_dir, kind) \
+                 SELECT i, {release_id_sql}, i, 0, 0, 'queued', CAST('/export' AS BLOB), 'export' FROM k;"
         ))?;
         Ok(())
     }

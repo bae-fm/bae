@@ -14,7 +14,14 @@ fn row<Extra>(
     state: ReleaseQueueState<()>,
 ) -> ReleaseQueueRow<Extra, ()> {
     ReleaseQueueRow {
-        op: ReleaseQueueOp { release_id: release_id.to_string(), created_at: 1, payload, state },
+        op: ReleaseQueueOp {
+            release_id: release_id.to_string(),
+            created_at: 1,
+            file_count: 0,
+            total_size: 0,
+            payload,
+            state,
+        },
         release: None,
     }
 }

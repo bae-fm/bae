@@ -126,12 +126,7 @@ private fun DownloadsBody(
             page.loading && !page.hasRows -> {}
 
             page.totalCount == 0 -> {
-                Text(
-                    text = stringResource(R.string.pinning_empty),
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-                )
+                DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
             }
 
             else -> {
@@ -155,6 +150,17 @@ private fun DownloadsBody(
             }
         }
     }
+}
+
+/** What the Pinning screen says when nothing is queued. */
+@Composable
+internal fun DownloadsEmpty(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.pinning_empty),
+        style = ThemeText.body.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(ThemeSpace.page),
+    )
 }
 
 /** Tells [page] which rows show, so it reads the windows around them. The summary line is row 0. */

@@ -38,6 +38,11 @@ pub struct ReleaseQueueEntry<Extra> {
 pub struct ReleaseQueueOp<Extra, Progress> {
     pub release_id: String,
     pub created_at: i64,
+    /// How many files the release had when it was queued.
+    pub file_count: u64,
+    /// Their total size in bytes when it was queued. The queue keeps both, so a
+    /// row still says what it moves once the library no longer has the release.
+    pub total_size: u64,
     pub payload: Extra,
     pub state: ReleaseQueueState<Progress>,
 }
@@ -47,9 +52,6 @@ pub struct ReleaseQueueOp<Extra, Progress> {
 pub struct QueuedRelease {
     /// The release's album title.
     pub title: String,
-    pub file_count: u64,
-    /// Total size in bytes across the release's files.
-    pub total_size: u64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -202,6 +204,8 @@ impl<Extra> ReleaseQueueSnapshot<Extra, ()> {
                     op: ReleaseQueueOp {
                         release_id: op.release_id,
                         created_at: op.created_at,
+                        file_count: op.file_count,
+                        total_size: op.total_size,
                         payload: op.payload,
                         state,
                     },

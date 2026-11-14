@@ -28,8 +28,8 @@ struct DownloadRow: View {
                     Text(op.titleText)
                         .lineLimit(1)
 
-                    if let release = op.release {
-                        Text(release.detailText)
+                    if op.release != nil {
+                        Text(op.detailText)
                             .themeText(.detail)
                             .monospacedDigit()
                             .foregroundStyle(.secondary)

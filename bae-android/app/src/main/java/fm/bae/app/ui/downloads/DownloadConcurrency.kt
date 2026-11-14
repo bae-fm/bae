@@ -40,7 +40,7 @@ internal fun setDownloadConcurrency(
 /** The concurrency picker, offering 1 up to [limit], with [value] selected and each tap reported
  *  through [onSelect]. */
 @Composable
-private fun DownloadConcurrencySelector(
+internal fun DownloadConcurrencySelector(
     value: UInt,
     limit: UInt,
     onSelect: (UInt) -> Unit,

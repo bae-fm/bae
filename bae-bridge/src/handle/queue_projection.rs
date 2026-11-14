@@ -54,7 +54,14 @@ impl crate::types::BridgeDownloadState {
 impl crate::types::BridgeDownloadOp {
     pub(crate) fn from_core(row: bae_transfers::DownloadRow) -> Self {
         let bae_transfers::ReleaseQueueRow { op, release } = row;
-        let bae_transfers::ReleaseQueueOp { release_id, created_at, payload, state } = op;
+        let bae_transfers::ReleaseQueueOp {
+            release_id,
+            created_at,
+            file_count,
+            total_size,
+            payload,
+            state,
+        } = op;
         let kind = match payload {
             bae_transfers::DownloadRequest::Pin => crate::types::BridgeDownloadKind::Pin,
             #[cfg(desktop)]
@@ -65,6 +72,8 @@ impl crate::types::BridgeDownloadOp {
         crate::types::BridgeDownloadOp {
             release_id,
             kind,
+            file_count,
+            total_size,
             release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeDownloadState::from_core(state),
@@ -108,11 +117,20 @@ impl crate::types::BridgeOutputState {
 impl crate::types::BridgeOutputOp {
     pub(super) fn from_core(row: bae_transfers::OutputPhaseRow) -> Self {
         let bae_transfers::ReleaseQueueRow { op, release } = row;
-        let bae_transfers::ReleaseQueueOp { release_id, created_at, payload, state } = op;
+        let bae_transfers::ReleaseQueueOp {
+            release_id,
+            created_at,
+            file_count,
+            total_size,
+            payload,
+            state,
+        } = op;
         let bae_transfers::OutputRequest { target_dir, kind } = payload;
         crate::types::BridgeOutputOp {
             release_id,
             target_dir: coven::path_text(&target_dir),
+            file_count,
+            total_size,
             release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeOutputState::from_core(state),

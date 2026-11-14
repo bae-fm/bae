@@ -114,11 +114,11 @@ pub(super) fn automation_output_snapshot(
             AutomationOutputOp {
                 release_id: op.release_id,
                 target_dir: op.payload.target_dir.to_string_lossy().to_string(),
-                release: row.release.map(|release| AutomationQueuedRelease {
-                    title: release.title,
-                    file_count: release.file_count,
-                    total_size: release.total_size,
-                }),
+                file_count: op.file_count,
+                total_size: op.total_size,
+                release: row
+                    .release
+                    .map(|release| AutomationQueuedRelease { title: release.title }),
                 created_at: op.created_at,
                 state,
                 kind,

@@ -223,15 +223,12 @@ pub struct BridgeMoveToThisDeviceProgress {
 pub struct BridgeQueuedRelease {
     /// The release's album title.
     pub title: String,
-    pub file_count: u64,
-    /// Total size in bytes across the release's files. The UI formats it.
-    pub total_size: u64,
 }
 
 mirror_struct! {
     BridgeQueuedRelease = bae_transfers::QueuedRelease,
     from_core: pub(crate) fn,
-    fields: { title, file_count, total_size },
+    fields: { title },
 }
 
 /// What a queued download does. Mirrors `DownloadKind`.
@@ -279,6 +276,11 @@ mirror_enum! {
 pub struct BridgeDownloadOp {
     pub release_id: String,
     pub kind: BridgeDownloadKind,
+    /// How many files the release had when it was queued, which the row
+    /// keeps after the library no longer has the release.
+    pub file_count: u64,
+    /// Their total size in bytes when it was queued. The UI formats it.
+    pub total_size: u64,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.
     pub release: Option<BridgeQueuedRelease>,
@@ -481,6 +483,11 @@ pub struct BridgeOutputOp {
     /// The chosen destination, as `coven::path_text` shows its path; the
     /// release's folder is rebuilt under it.
     pub target_dir: String,
+    /// How many files the release had when it was queued, which the row
+    /// keeps after the library no longer has the release.
+    pub file_count: u64,
+    /// Their total size in bytes when it was queued. The UI formats it.
+    pub total_size: u64,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.
     pub release: Option<BridgeQueuedRelease>,

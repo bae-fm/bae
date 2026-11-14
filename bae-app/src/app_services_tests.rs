@@ -195,7 +195,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     let queued = inspected_export_until(&inspector, |row| row.release.is_some()).await;
     let release = queued.release.as_ref().unwrap();
     assert_eq!(release.title, "Album Title");
-    assert_eq!(release.file_count, 0);
+    assert_eq!(queued.op.file_count, 0);
     assert_eq!(queued.op.release_id, release_id);
 
     manager

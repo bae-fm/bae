@@ -57,6 +57,8 @@ fn row(release_id: &str, state: ReleaseQueueState<()>) -> ReleaseQueueRow<(), ()
         op: ReleaseQueueOp {
             release_id: release_id.to_string(),
             created_at: 0,
+            file_count: 0,
+            total_size: 0,
             payload: (),
             state,
         },

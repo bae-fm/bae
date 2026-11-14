@@ -43,11 +43,11 @@ extension PreviewData {
         BridgeDownloadOp(
             releaseId: "rel-row-1",
             kind: .pin,
+            fileCount: 12,
+            totalSize: 367_000_000,
             release: BridgeQueuedRelease(
                 title:
-                    "Album Title with an Intentionally Long Descriptive Subtitle",
-                fileCount: 12,
-                totalSize: 367_000_000
+                    "Album Title with an Intentionally Long Descriptive Subtitle"
             ),
             createdAt: queuedAt(minutesAgo: 1),
             state: .active
@@ -55,22 +55,18 @@ extension PreviewData {
         BridgeDownloadOp(
             releaseId: "rel-row-2",
             kind: .pin,
-            release: BridgeQueuedRelease(
-                title: "B",
-                fileCount: 9,
-                totalSize: 210_000_000
-            ),
+            fileCount: 9,
+            totalSize: 210_000_000,
+            release: BridgeQueuedRelease(title: "B"),
             createdAt: queuedAt(minutesAgo: 3),
             state: .queued
         ),
         BridgeDownloadOp(
             releaseId: "rel-row-3",
             kind: .pin,
-            release: BridgeQueuedRelease(
-                title: "Album Title C",
-                fileCount: 15,
-                totalSize: 512_000_000
-            ),
+            fileCount: 15,
+            totalSize: 512_000_000,
+            release: BridgeQueuedRelease(title: "Album Title C"),
             createdAt: queuedAt(minutesAgo: 8),
             state: .failed(error: "The network connection was lost.")
         ),
@@ -129,11 +125,9 @@ extension PreviewData {
         BridgeOutputOp(
             releaseId: "rel-row-1",
             targetDir: "/Music/Exports",
-            release: BridgeQueuedRelease(
-                title: "Album Title A",
-                fileCount: 12,
-                totalSize: 213_000_000
-            ),
+            fileCount: 12,
+            totalSize: 213_000_000,
+            release: BridgeQueuedRelease(title: "Album Title A"),
             createdAt: queuedAt(minutesAgo: 1),
             state: .active,
             kind: .save(presetName: "FLAC")
@@ -141,11 +135,9 @@ extension PreviewData {
         BridgeOutputOp(
             releaseId: "rel-row-2",
             targetDir: "/Music/Exports",
-            release: BridgeQueuedRelease(
-                title: "Album Title B",
-                fileCount: 9,
-                totalSize: 340_000_000
-            ),
+            fileCount: 9,
+            totalSize: 340_000_000,
+            release: BridgeQueuedRelease(title: "Album Title B"),
             createdAt: queuedAt(minutesAgo: 4),
             state: .queued,
             kind: .export
@@ -153,11 +145,9 @@ extension PreviewData {
         BridgeOutputOp(
             releaseId: "rel-row-3",
             targetDir: "/Music/Exports",
-            release: BridgeQueuedRelease(
-                title: "Album Title C",
-                fileCount: 15,
-                totalSize: 512_000_000
-            ),
+            fileCount: 15,
+            totalSize: 512_000_000,
+            release: BridgeQueuedRelease(title: "Album Title C"),
             createdAt: queuedAt(minutesAgo: 9),
             state: .failed(error: "Destination folder is not writable."),
             kind: .export

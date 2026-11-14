@@ -286,12 +286,16 @@ object PreviewData {
     fun downloadOp(
         releaseId: String = "rel-1",
         state: BridgeDownloadState = BridgeDownloadState.Queued,
-        title: String = "Album Title",
+        title: String? = "Album Title",
+        fileCount: ULong = 10UL,
+        totalSize: ULong = 300_000_000UL,
     ): BridgeDownloadOp =
         BridgeDownloadOp(
             releaseId = releaseId,
             kind = BridgeDownloadKind.PIN,
-            release = BridgeQueuedRelease(title = title, fileCount = 10UL, totalSize = 300_000_000UL),
+            fileCount = fileCount,
+            totalSize = totalSize,
+            release = title?.let { BridgeQueuedRelease(title = it) },
             createdAt = 0,
             state = state,
         )

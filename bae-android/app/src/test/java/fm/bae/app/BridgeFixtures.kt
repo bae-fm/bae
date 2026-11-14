@@ -283,7 +283,9 @@ object BridgeFixtures {
         BridgeDownloadOp(
             releaseId = releaseId,
             kind = BridgeDownloadKind.PIN,
-            release = BridgeQueuedRelease(title = title, fileCount = fileCount, totalSize = totalSize),
+            fileCount = fileCount,
+            totalSize = totalSize,
+            release = BridgeQueuedRelease(title = title),
             createdAt = 0,
             state = state,
         )

@@ -269,11 +269,43 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
     enqueue_releases(&db, vec![download(RELEASE_A), download(gone)]).await.unwrap();
 
     let queue = release_queue::<DownloadRequest>(&db).await.unwrap();
-    let release = queue.rows[0].release.as_ref().expect("RELEASE_A is held");
-    assert_eq!(release.file_count, 0);
+    queue.rows[0].release.as_ref().expect("RELEASE_A is held");
     assert_eq!(queue.rows[1].op.release_id, gone);
     assert_eq!(queue.rows[1].release, None);
     assert_eq!(queue.total.queued, 2);
+}
+
+/// A row keeps how many files its release had and their size from when it
+/// was queued, so it still says what it moves once the library no longer
+/// has the release.
+#[tokio::test]
+async fn an_entry_keeps_its_files_and_size_after_its_release_is_gone() {
+    use bae_records::test_fixtures::storage_listing::{insert_file, write_library, RELEASE_EARLY};
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = test_records(&db);
+    write_library(&records).await;
+    insert_file(
+        &db,
+        tmp.path(),
+        ("6d1a0c52-3f2e-4f0b-8f43-0c6f1c0a7a11", RELEASE_EARLY, "front.jpg", 100),
+    )
+    .await;
+    insert_file(
+        &db,
+        tmp.path(),
+        ("b7c2e9f4-12d8-4a35-9a60-5e1b8d3c2f22", RELEASE_EARLY, "back.jpg", 20),
+    )
+    .await;
+    enqueue_releases(&db, vec![download(RELEASE_EARLY)]).await.unwrap();
+
+    let queued = release_queue::<DownloadRequest>(&db).await.unwrap();
+    assert_eq!((queued.rows[0].op.file_count, queued.rows[0].op.total_size), (2, 120));
+
+    delete_release(&records, RELEASE_EARLY).await;
+
+    let gone = release_queue::<DownloadRequest>(&db).await.unwrap();
+    assert_eq!(gone.rows[0].release, None);
+    assert_eq!((gone.rows[0].op.file_count, gone.rows[0].op.total_size), (2, 120));
 }
 
 /// An export and a save keep what they were queued with, the save's preset

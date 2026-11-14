@@ -792,8 +792,6 @@ pub enum AutomationOutputKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationQueuedRelease {
     pub title: String,
-    pub file_count: u64,
-    pub total_size: u64,
 }
 
 /// One queued release output in the `output_status` snapshot.
@@ -801,6 +799,10 @@ pub struct AutomationQueuedRelease {
 pub struct AutomationOutputOp {
     pub release_id: String,
     pub target_dir: String,
+    /// How many files the release had when it was queued.
+    pub file_count: u64,
+    /// Their total size in bytes when it was queued.
+    pub total_size: u64,
     /// `None` once the library no longer has the release.
     pub release: Option<AutomationQueuedRelease>,
     pub created_at: i64,

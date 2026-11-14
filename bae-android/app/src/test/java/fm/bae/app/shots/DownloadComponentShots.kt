@@ -95,9 +95,7 @@ private fun previewDownload(
     files: ULong,
     bytes: ULong,
     state: BridgeDownloadState,
-) = PreviewData.downloadOp(releaseId = releaseId, state = state, title = title).let { op ->
-    op.copy(release = checkNotNull(op.release).copy(fileCount = files, totalSize = bytes))
-}
+) = PreviewData.downloadOp(releaseId = releaseId, state = state, title = title, fileCount = files, totalSize = bytes)
 
 @Composable
 private fun Control(status: BridgeReleaseDownloadStatus) =
