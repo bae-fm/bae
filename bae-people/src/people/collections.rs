@@ -228,17 +228,32 @@ mod tests;
 /// playlists belong to.
 fn own_member_sql() -> String {
     format!(
-        "SELECT m.member, EXISTS (SELECT 1 FROM people AS p WHERE p.id = m.member) \
+        "SELECT m.member AS member, \
+                EXISTS (SELECT 1 FROM people AS p WHERE p.id = m.member) AS has_profile \
          FROM coven_members AS m WHERE NOT m.removed AND {}",
         super::profiles::IS_OWN_MEMBER
     )
 }
 
-/// Every person's stars for the album `?1`, by name then id; `ratings_album`
-/// finds the album's ratings.
-pub(super) const ALBUM_RATINGS_SQL: &str = "SELECT r.person_id, p.name, r.stars \
-     FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
-     WHERE r.album_id = ?1 ORDER BY p.name, p.id";
+/// What the album `?1`'s page reads of its ratings, in one row: whether this
+/// device's person has a profile to rate with, their own stars, and every
+/// other person's, by name then id, as a JSON array; `ratings_album` finds
+/// the album's ratings. A person with no registration yet is none of the
+/// ratings' people.
+pub(super) fn album_ratings_sql() -> String {
+    format!(
+        "WITH album(id) AS (SELECT ?1) \
+         SELECT COALESCE(own.has_profile, 0) AS can_rate, \
+                (SELECT r.stars FROM ratings AS r \
+                 WHERE r.album_id = album.id AND r.person_id = own.member) AS mine, \
+                (SELECT json_group_array(json_object('name', p.name, 'stars', r.stars) \
+                        ORDER BY p.name, p.id) \
+                 FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
+                 WHERE r.album_id = album.id AND r.person_id IS NOT own.member) AS others \
+         FROM album LEFT JOIN ({own}) AS own ON 1",
+        own = own_member_sql(),
+    )
+}
 
 /// This person's stars for the tracks of the release `?2`, by the track,
 /// found through `ratings`' key on the person and the track.
@@ -258,19 +273,25 @@ pub fn album_ratings_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
 ) -> rusqlite::Result<AlbumRatings> {
-    let own = own_profile_id(sql)?;
-    let rows = sql.query(ALBUM_RATINGS_SQL, [album_id], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, Stars::from_sql(row.get(2)?)?))
-    })?;
-    let mut mine = None;
-    let mut others = Vec::new();
-    for (person, name, stars) in rows {
-        match &own {
-            Some((member, true)) if *member == person => mine = Some(stars),
-            _ => others.push(OtherRating { name, stars }),
-        }
-    }
-    Ok(AlbumRatings { can_rate: matches!(own, Some((_, true))), mine, others })
+    sql.query_row(&album_ratings_sql(), [album_id], |row| {
+        let stars_of = |value: i64| Stars::from_sql(value);
+        let others: String = row.get("others")?;
+        let others: Vec<serde_json::Value> = serde_json::from_str(&others)
+            .map_err(|error| bae_store::read::column_conversion_error(row, "others", error))?;
+        Ok(AlbumRatings {
+            can_rate: row.get("can_rate")?,
+            mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
+            others: others
+                .iter()
+                .map(|other| {
+                    Ok(OtherRating {
+                        name: other["name"].as_str().unwrap_or_default().to_string(),
+                        stars: stars_of(other["stars"].as_i64().unwrap_or_default())?,
+                    })
+                })
+                .collect::<rusqlite::Result<_>>()?,
+        })
+    })
 }
 
 /// This person's stars for the tracks of the release `release_id` that they

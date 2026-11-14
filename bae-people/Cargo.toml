@@ -24,6 +24,8 @@ bae-util = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.
 coven = { workspace = true }
 rusqlite = { workspace = true }
+# The other people's ratings of an album come back as one JSON column.
+serde_json = { workspace = true }
 thiserror = { workspace = true }
 # The locks people and history writes take.
 tokio = { workspace = true, features = ["sync"] }

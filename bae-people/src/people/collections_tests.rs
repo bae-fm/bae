@@ -2,7 +2,7 @@
 //! statement states, read along an index rather than sorted after the read,
 //! and playlists and profiles list by name in the language they are asked in.
 
-use crate::people::collections::{ALBUM_RATINGS_SQL, PLAYLIST_ENTRIES_SQL, TRACK_STARS_SQL};
+use crate::people::collections::{album_ratings_sql, PLAYLIST_ENTRIES_SQL, TRACK_STARS_SQL};
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -39,7 +39,7 @@ async fn a_playlists_entries_read_in_order_without_a_sort() {
 #[tokio::test]
 async fn ratings_are_found_by_index() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let album = plan(&db, ALBUM_RATINGS_SQL.to_string()).await;
+    let album = plan(&db, album_ratings_sql()).await;
     assert!(
         album.iter().any(|step| step.contains("ratings_album")),
         "the album's ratings are not read along ratings_album: {album:?}"
