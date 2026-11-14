@@ -3162,6 +3162,7 @@ shows no error; **Restore** is off until the field holds something. A scanned co
 only an S3 code without the key stops first, to ask for it over the access
 key's two fields. A code that doesn't read says so on the code screen, and a
 restore that fails shows its error beside **Add**, to try again. The code screens on both platforms do not show where the library is stored.
+On Android every screen that holds a text field (the join name step, and the screen that asks for the S3 key of a saved code) keeps its fields above the keyboard.
 
 **A restore that stops partway.** Just before coven adds the new device to the
 library, the restore records itself on the device: the code, the device's name,
