@@ -93,6 +93,81 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(PERF.parse_numbers("created a library in 80ms\ntest ok"), {})
 
 
+class BarTests(unittest.TestCase):
+    def test_a_cost_line_may_carry_its_bar(self) -> None:
+        line = "COST metric=album_page value=12.5 unit=ms bar=50"
+        self.assertEqual(PERF.parse_numbers(line), {"album_page": (12.5, "ms")})
+        self.assertEqual(PERF.parse_bars(line), {"album_page": 50.0})
+
+    def test_a_window_line_may_carry_its_bar(self) -> None:
+        line = (
+            "WINDOW_COST list=albums order=title reach=jump n=20000 at=end "
+            "offset=19950 rows=50 median_ms=3.000 bar_ms=16"
+        )
+        self.assertEqual(PERF.parse_bars(line), {"albums/title/jump/20000/end": 16.0})
+
+    def test_a_line_without_a_bar_has_none(self) -> None:
+        self.assertEqual(PERF.parse_bars("COST metric=a value=1 unit=ms"), {})
+
+    def test_the_verdict_beside_the_bar(self) -> None:
+        self.assertEqual(PERF.bar_verdict(8.0, 8.0, "ms"), "meets bar")
+        self.assertEqual(PERF.bar_verdict(8.1, 8.0, "ms"), "over bar (8 ms)")
+        self.assertEqual(PERF.bar_verdict(8.1, None, "ms"), "")
+
+    def test_the_summary_records_the_bar(self) -> None:
+        runs = [{"a": (1.0, "ms"), "b": (2.0, "ms")}]
+        summary = PERF.summarize(runs, {"a": 8.0})
+        self.assertEqual(summary["a"]["bar"], 8.0)
+        self.assertNotIn("bar", summary["b"])
+
+
+class PlanTests(unittest.TestCase):
+    LINES = "\n".join(
+        (
+            "PLAN metric=grid n=0 sql=SELECT a.id FROM albums a step=SCAN albums",
+            "PLAN metric=grid n=0 sql=SELECT a.id FROM albums a step=USE TEMP B-TREE FOR ORDER BY",
+            "PLAN metric=grid n=1 sql=SELECT COUNT(*) FROM albums step=SEARCH albums USING INTEGER PRIMARY KEY (rowid=?)",
+            "PLAN metric=page n=0 sql=SELECT 1 step=SCAN CONSTANT ROW",
+            "created a library in 80ms",
+        )
+    )
+
+    def test_plans_are_collected_per_metric_in_statement_order(self) -> None:
+        self.assertEqual(
+            PERF.parse_plans(self.LINES),
+            {
+                "grid": [
+                    ["SELECT a.id FROM albums a", ["SCAN albums", "USE TEMP B-TREE FOR ORDER BY"]],
+                    [
+                        "SELECT COUNT(*) FROM albums",
+                        ["SEARCH albums USING INTEGER PRIMARY KEY (rowid=?)"],
+                    ],
+                ],
+                "page": [["SELECT 1", ["SCAN CONSTANT ROW"]]],
+            },
+        )
+
+    def test_costly_steps_are_big_table_scans_and_temporary_sorts(self) -> None:
+        self.assertEqual(
+            PERF.costly_steps(PERF.parse_plans(self.LINES)),
+            {"grid": ["SCAN albums", "USE TEMP B-TREE FOR ORDER BY"]},
+        )
+
+    def test_a_scan_of_a_small_table_is_not_costly(self) -> None:
+        plans = {"m": [["SELECT 1", ["SCAN settings"]]]}
+        self.assertEqual(PERF.costly_steps(plans), {})
+
+
+class NamedBaselineTests(unittest.TestCase):
+    def test_a_named_baseline_has_its_own_file(self) -> None:
+        self.assertEqual(
+            PERF.baseline_path("M1", None), PERF.BASELINES / "M1.json"
+        )
+        self.assertEqual(
+            PERF.baseline_path("M1", "before"), PERF.BASELINES / "M1.before.json"
+        )
+
+
 class SummaryTests(unittest.TestCase):
     def test_median_and_spread_over_runs(self) -> None:
         runs = [{"a": (90.0, "ms")}, {"a": (100.0, "ms")}, {"a": (120.0, "ms")}]

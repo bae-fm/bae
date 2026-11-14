@@ -2,8 +2,8 @@
 """The performance suite: bae's timed measurements, compared with baselines.
 
     scripts/perf.sh list
-    scripts/perf.sh run [--repeat N] [scenario...]
-    scripts/perf.sh accept [scenario...]
+    scripts/perf.sh run [--repeat N] [--against NAME] [scenario...]
+    scripts/perf.sh accept [--as NAME] [scenario...]
 
 A scenario is one of the repo's ignored measurements (the `SCENARIOS` table:
 its cargo command and how its numbers are read). They run on a person's
@@ -30,6 +30,25 @@ The tolerance is 25%, widened by the baseline's own spread. The last run
 is kept in `target/perf/last-run.json` (build output, not the repo) with each
 scenario's raw output beside it. `accept` copies the last run's medians and
 spreads into the machine's baseline file for the person to commit.
+
+`accept --as NAME` writes `perf/baselines/<machine>.<NAME>.json` instead, a
+named baseline that stays put while the machine's own moves with every accept;
+`run --against NAME` compares with it.
+
+A number may carry its bar, the cost the screen it serves needs: `bar=` on a
+`COST` line, `bar_ms=` on a `WINDOW_COST` line. Each reported number says
+`meets bar` or `over bar (N unit)` beside its verdict, and the last run and
+the baselines record the bar. A number over its bar does not change the exit
+status: the bar judges the work done after the baseline, `slower` judges the
+baseline.
+
+A measurement may also print the plans of the statements it ran, one line per
+plan step: `PLAN metric= n= sql= step=` (`n` numbers the metric's statements,
+`sql` is the statement's first 200 characters, `step` an EXPLAIN QUERY PLAN
+detail). They are recorded per metric in the last run and the baselines, and
+`run` prints each step that scans a table of the seeds' big ones
+(`BIG_TABLES`) or sorts with a temporary b-tree. SQLite names a scan by the
+statement's alias, so only an unaliased big table is recognised.
 
 The numbers are read from three kinds of line the measurements print:
 `WINDOW_COST ... median_ms=` (bae-store's `window_cost::report`),
@@ -72,7 +91,22 @@ BETTER, WITHIN, SLOWER, NO_BASELINE, NOT_COMPARED = (
 )
 
 WINDOW_COST = re.compile(r"^WINDOW_COST (list=.*)$")
-COST = re.compile(r"^COST metric=(\S+) value=(\S+) unit=(\S+)$")
+COST = re.compile(r"^COST metric=(\S+) value=(\S+) unit=(\S+?)(?: bar=(\S+))?$")
+PLAN = re.compile(r"^PLAN metric=(\S+) n=(\d+) sql=(.*?) step=(.*)$")
+SCAN_STEP = re.compile(r"^SCAN (\w+)")
+TEMP_SORT = "USE TEMP B-TREE FOR ORDER BY"
+# The tables the shaped seeds make big, whose scan a plan step reports.
+BIG_TABLES = frozenset(
+    (
+        "albums", "releases", "release_media", "tracks", "works", "track_works",
+        "album_artists", "artists", "release_files", "release_storage",
+        "release_artist_roles", "track_artist_roles", "release_records",
+        "playlist_entries", "ratings", "download_queue", "playback_context",
+        "scan_candidate", "import_list_placement", "import_list_item",
+        "album_listing", "release_listing", "composer_work", "composer_release",
+        "composer_listing", "composer_detail_row",
+    )
+)  # fmt: skip
 QUEUE_BENCH = re.compile(r"^(.+): fastest [\d.]+ s, median ([\d.]+) s \(runs ")
 
 
@@ -171,8 +205,63 @@ def parse_numbers(output: str) -> dict[str, tuple[float, str]]:
     return numbers
 
 
-def summarize(runs: list[dict[str, tuple[float, str]]]) -> dict[str, dict]:
-    """Median and spread of each metric over the repeated runs of a scenario."""
+def parse_bars(output: str) -> dict[str, float]:
+    """The bar each number printed, in the number's unit: metric -> bar."""
+    bars: dict[str, float] = {}
+    for line in output.splitlines():
+        line = line.strip()
+        if match := WINDOW_COST.match(line):
+            fields = dict(re.findall(r"(\w+)=(.*?)(?= \w+=|$)", match.group(1)))
+            if "bar_ms" in fields:
+                metric = "/".join(
+                    fields[key] for key in ("list", "order", "reach", "n", "at")
+                )
+                bars[metric] = float(fields["bar_ms"])
+        elif (match := COST.match(line)) and match.group(4) is not None:
+            bars[match.group(1)] = float(match.group(4))
+    return bars
+
+
+def parse_plans(output: str) -> dict[str, list[list]]:
+    """The plans printed, per metric: [[statement, [step, ...]], ...] in the
+    order of the statements' numbers."""
+    statements: dict[str, dict[int, list]] = {}
+    for line in output.splitlines():
+        if match := PLAN.match(line.strip()):
+            metric, n, sql, step = match.groups()
+            entry = statements.setdefault(metric, {}).setdefault(int(n), [sql, []])
+            entry[1].append(step)
+    return {
+        metric: [entry for _, entry in sorted(by_number.items())]
+        for metric, by_number in statements.items()
+    }
+
+
+def costly_steps(plans: dict[str, list[list]]) -> dict[str, list[str]]:
+    """Each metric's plan steps that scan a big table or sort in a
+    temporary b-tree."""
+    costly: dict[str, list[str]] = {}
+    for metric, statements in plans.items():
+        for _, steps in statements:
+            for step in steps:
+                scan = SCAN_STEP.match(step)
+                if step == TEMP_SORT or (scan and scan.group(1) in BIG_TABLES):
+                    costly.setdefault(metric, []).append(step)
+    return costly
+
+
+def bar_verdict(value: float, bar: float | None, unit: str) -> str:
+    """Whether a number meets the bar it printed with, if it printed one."""
+    if bar is None:
+        return ""
+    return "meets bar" if value <= bar else f"over bar ({bar:g} {unit})"
+
+
+def summarize(
+    runs: list[dict[str, tuple[float, str]]], bars: dict[str, float] | None = None
+) -> dict[str, dict]:
+    """Median and spread of each metric over the repeated runs of a scenario,
+    with its bar when it printed one."""
     summary: dict[str, dict] = {}
     for metric in sorted(set().union(*runs)):
         values = [run[metric][0] for run in runs if metric in run]
@@ -180,6 +269,8 @@ def summarize(runs: list[dict[str, tuple[float, str]]]) -> dict[str, dict]:
         median = statistics.median(values)
         spread = (max(values) - min(values)) / median if median else 0.0
         summary[metric] = {"median": median, "spread": spread, "unit": unit}
+        if bars and metric in bars:
+            summary[metric]["bar"] = bars[metric]
     return summary
 
 
@@ -208,6 +299,11 @@ def machine_name() -> str:
         ).stdout.strip()
     model = model or f"{platform.system()}-{platform.machine()}"
     return re.sub(r"[^A-Za-z0-9._]+", "-", f"{model}-{os.cpu_count()}cores")
+
+
+def baseline_path(machine: str, name: str | None) -> Path:
+    """The machine's moving baseline, or its baseline named `name`."""
+    return BASELINES / (f"{machine}.{name}.json" if name else f"{machine}.json")
 
 
 def load_json(path: Path) -> dict:
@@ -288,7 +384,10 @@ def wait_for_quiet(cores: int) -> None:
 
 def command_run(args: argparse.Namespace) -> int:
     machine = machine_name()
-    baselines = load_json(BASELINES / f"{machine}.json").get("scenarios", {})
+    path = baseline_path(machine, args.against)
+    if args.against and not path.exists():
+        sys.exit(f"no baseline named {args.against}: {path.relative_to(ROOT)} does not exist")
+    baselines = load_json(path).get("scenarios", {})
     cores = os.cpu_count() or 1
     last = {"machine": machine, "scenarios": {}}
     slower = 0
@@ -297,7 +396,7 @@ def command_run(args: argparse.Namespace) -> int:
         wait_for_quiet(cores)
         load = os.getloadavg()[0]
         print(f"\n{scenario.name} (load {load:.2f} of {cores} cores)")
-        runs, logs = [], []
+        runs, logs, bars, plans = [], [], {}, {}
         peak = None  # the highest load over the share: (load, seconds into the run, repeat)
         for repeat in range(1, args.repeat + 1):
             run = run_scenario(scenario)
@@ -306,6 +405,8 @@ def command_run(args: argparse.Namespace) -> int:
                 sys.stderr.write(run.output[-4000:])
                 sys.exit(f"{scenario.name}: cargo exited {run.status}")
             runs.append(parse_numbers(run.output))
+            bars.update(parse_bars(run.output))
+            plans.update(parse_plans(run.output))
             load = max(load, run.peak_load)
             if run.peak_load > cores * LOAD_SHARE and (peak is None or run.peak_load > peak[0]):
                 peak = (run.peak_load, run.peak_at, repeat)
@@ -318,7 +419,7 @@ def command_run(args: argparse.Namespace) -> int:
         (LAST_RUN.parent / f"{scenario.name}.log").write_text("\n".join(logs))
         if not any(runs):
             sys.exit(f"{scenario.name}: the run printed no numbers")
-        numbers = summarize(runs)
+        numbers = summarize(runs, bars)
         recorded = {}
         for metric, number in numbers.items():
             baseline = baselines.get(scenario.name, {}).get(metric)
@@ -327,14 +428,22 @@ def command_run(args: argparse.Namespace) -> int:
             against = (
                 f" (baseline {baseline['median']:.4g})" if baseline else ""
             )
-            print(f"  {verdict:12} {metric}: {number['median']:.4g} {number['unit']}{against}")
+            bar = bar_verdict(number["median"], number.get("bar"), number["unit"])
+            print(
+                f"  {verdict:12} {metric}: {number['median']:.4g} {number['unit']}{against}"
+                + (f"  {bar}" if bar else "")
+            )
             recorded[metric] = number
+        for metric, steps in costly_steps(plans).items():
+            for step in steps:
+                print(f"  plan         {metric}: {step}")
         last["scenarios"][scenario.name] = {
             "load": load,
             "load_over_at": None if peak is None else {"load": peak[0], "seconds": peak[1], "run": peak[2]},
             "cores": cores,
             "compared": load <= cores * LOAD_SHARE,
             "numbers": recorded,
+            "plans": plans,
         }
         LAST_RUN.write_text(json.dumps(last, indent=2) + "\n")
     return 1 if slower else 0
@@ -349,8 +458,9 @@ def command_accept(args: argparse.Namespace) -> int:
     names = [scenario.name for scenario in chosen(args.scenarios)] if args.scenarios else list(
         last["scenarios"]
     )
-    path = BASELINES / f"{last['machine']}.json"
+    path = baseline_path(last["machine"], args.name)
     baseline = load_json(path) or {"machine": last["machine"], "scenarios": {}}
+    baseline.setdefault("plans", {})
     for name in names:
         ran = last["scenarios"].get(name)
         if ran is None:
@@ -362,6 +472,7 @@ def command_accept(args: argparse.Namespace) -> int:
             )
     for name in names:
         baseline["scenarios"][name] = last["scenarios"][name]["numbers"]
+        baseline["plans"][name] = last["scenarios"][name].get("plans", {})
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n")
     print(f"wrote {', '.join(names)} to {path.relative_to(ROOT)}; commit it")
@@ -374,9 +485,15 @@ def main() -> int:
     commands.add_parser("list", help="the scenarios").set_defaults(run=command_list)
     run = commands.add_parser("run", help="run scenarios and compare with the baseline")
     run.add_argument("--repeat", type=int, default=DEFAULT_REPEAT, help="runs per scenario")
+    run.add_argument(
+        "--against", metavar="NAME", help="compare with the baseline accepted --as NAME"
+    )
     run.add_argument("scenarios", nargs="*")
     run.set_defaults(run=command_run)
     accept = commands.add_parser("accept", help="write the last run's numbers as the baseline")
+    accept.add_argument(
+        "--as", dest="name", metavar="NAME", help="write a baseline named NAME, not the machine's own"
+    )
     accept.add_argument("scenarios", nargs="*")
     accept.set_defaults(run=command_accept)
     args = parser.parse_args()
