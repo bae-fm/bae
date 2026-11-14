@@ -75,7 +75,6 @@ struct MacStorageUsage: View {
             legend
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 
     private var bar: some View {
@@ -99,7 +98,16 @@ struct MacStorageUsage: View {
             }
         }
         .frame(height: 8)
-        .accessibilityHidden(true)
+        // The bar is one picture; it reads as the kinds and their sizes.
+        .accessibilityElement()
+        .accessibilityAddTraits(.isImage)
+        .accessibilityLabel(
+            Text(
+                verbatim: usage.segments
+                    .map { "\($0.kind.title) \($0.bytes.fileSizeText)" }
+                    .joined(separator: ", ")
+            )
+        )
     }
 
     private var legend: some View {
