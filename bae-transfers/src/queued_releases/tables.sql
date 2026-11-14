@@ -40,25 +40,6 @@ CREATE TABLE IF NOT EXISTS download_batch (
     PRIMARY KEY (release_id, kind)
 ) STRICT, WITHOUT ROWID;
 
--- How many batches of each kind the download queue has begun: the number of
--- the batch download_batch holds of that kind now. A reader holding a batch's
--- bytes tells by it that the batch ended and another began, whether or not it
--- read the kind with none in between. Never synced.
-CREATE TABLE IF NOT EXISTS download_batch_number (
-    kind   TEXT PRIMARY KEY CHECK (kind IN ('pin', 'move_to_this_device')),
-    number INTEGER NOT NULL CHECK (number >= 0)
-) STRICT, WITHOUT ROWID;
-
-INSERT OR IGNORE INTO download_batch_number (kind, number) VALUES ('pin', 0), ('move_to_this_device', 0);
-
--- A kind's first release in its batch begins the next batch.
-CREATE TRIGGER IF NOT EXISTS download_batch_begun AFTER INSERT ON download_batch
-WHEN NOT EXISTS (
-    SELECT 1 FROM download_batch WHERE kind = NEW.kind AND release_id <> NEW.release_id)
-BEGIN
-    UPDATE download_batch_number SET number = number + 1 WHERE kind = NEW.kind;
-END;
-
 -- An entry waiting or downloading is in its kind's batch: queued, retried, put
 -- back by a pause, started, or queued again as the other kind in its place.
 CREATE TRIGGER IF NOT EXISTS download_batch_queued AFTER INSERT ON download_queue

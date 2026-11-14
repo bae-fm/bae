@@ -523,46 +523,32 @@ async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
     assert_eq!(download_batch(&db).await, vec![batched("pin", third)]);
 }
 
-/// Each kind's batch number, by kind.
-async fn download_batch_numbers(db: &Store) -> Vec<(String, i64)> {
-    db.read(|sql| {
-        Ok(sql.query(
-            "SELECT kind, number FROM download_batch_number ORDER BY kind",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?)
-    })
-    .await
-    .unwrap()
-}
-
-fn numbered(kind: &str, number: i64) -> (String, i64) {
-    (kind.to_string(), number)
-}
-
-/// A kind's batch takes the next number as its first release joins it, and
-/// keeps it while more join; the other kind's number stays as it was.
+/// The queue's counts say whether it holds any entry and whether any failed,
+/// so a screen needs no sum of the phases.
 #[tokio::test]
-async fn each_download_batch_takes_the_next_number_of_its_kind() {
+async fn the_counts_say_whether_any_entry_or_failure_is_held() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    assert_eq!(
-        download_batch_numbers(&db).await,
-        vec![numbered("move_to_this_device", 0), numbered("pin", 0)]
-    );
+    let counts = |db: &Store| {
+        let db = db.clone();
+        async move {
+            let counts = db
+                .read(|sql| tables::release_queue_counts_on::<DownloadRequest>(&sql))
+                .await
+                .unwrap();
+            (counts.has_entries, counts.has_failures)
+        }
+    };
+    assert_eq!(counts(&db).await, (false, false));
 
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
-    assert_eq!(
-        download_batch_numbers(&db).await,
-        vec![numbered("move_to_this_device", 0), numbered("pin", 1)],
-        "one batch began with two releases"
-    );
+    assert_eq!(counts(&db).await, (true, false));
+
+    assert!(fail_queued_release::<DownloadRequest>(&db, RELEASE_A, "offline".to_string())
+        .await
+        .unwrap());
+    assert_eq!(counts(&db).await, (true, true));
 
     assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_A).await.unwrap());
     assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_B).await.unwrap());
-    enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
-    assert_eq!(
-        download_batch_numbers(&db).await,
-        vec![numbered("move_to_this_device", 0), numbered("pin", 2)],
-        "the batch ended, and the release queued again began the next"
-    );
+    assert_eq!(counts(&db).await, (false, false));
 }

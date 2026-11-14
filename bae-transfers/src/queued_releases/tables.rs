@@ -336,19 +336,23 @@ pub(crate) fn network_usable_on(sql: &SqlReadContext<'_>) -> Result<Option<bool>
 pub fn release_queue_counts_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
 ) -> Result<ReleaseQueueCounts, DbError> {
-    let (queued, active, failed): (u32, u32, u32) = sql.query_row(
-        &format!(
-            "SELECT COALESCE(SUM(state = 'queued'), 0), COALESCE(SUM(state = 'active'), 0), \
-                    COALESCE(SUM(state = 'failed'), 0) \
-             FROM {}",
-            P::TABLE
-        ),
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-    )?;
+    let (queued, active, failed, has_entries, has_failures): (u32, u32, u32, bool, bool) = sql
+        .query_row(
+            &format!(
+                "SELECT COALESCE(SUM(state = 'queued'), 0), COALESCE(SUM(state = 'active'), 0), \
+                        COALESCE(SUM(state = 'failed'), 0), COUNT(*) > 0, \
+                        COALESCE(SUM(state = 'failed'), 0) > 0 \
+                 FROM {}",
+                P::TABLE
+            ),
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        )?;
     let network_usable = if P::NEEDS_NETWORK { network_usable_on(sql)? } else { None };
     Ok(ReleaseQueueCounts {
         total: ReleaseQueueProgress { queued, active, failed },
+        has_entries,
+        has_failures,
         wait: QueueWait::of(paused_on(sql, P::QUEUE)?, network_usable),
     })
 }

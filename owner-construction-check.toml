@@ -1569,7 +1569,6 @@ tables = [
     "release_queues",
     "download_queue",
     "download_batch",
-    "download_batch_number",
     "output_queue",
 ]
 
@@ -1779,7 +1778,6 @@ frozen = [
     { path = "bae-records/src/records/track.rs", item = "Records::filter_existing_track_ids", shape = "query-per-row", count = 1, finding = "`Records::filter_existing_track_ids` runs SQL with `query` once for each row (found by the check)" },
     { path = "bae-sync-status/src/sync_status/pending.rs", item = "pending_rows_on", shape = "query-per-row", count = 1, finding = "`pending_rows_on` runs `moved_original_on`, which runs SQL, once for each row (found by the check)" },
     { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
-    { path = "bae-transfers/src/queued_releases/tables.sql", item = "download_batch_number.number", shape = "counter", count = 1, finding = "`download_batch_number.number` is only ever counted up, never set to another value (found by the check)" },
     { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::new", shape = "filter", count = 2, finding = "`ReleaseLabel::new` filters with `filter` (found by the check)" },
     { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::with_ids", shape = "filter", count = 1, finding = "`ReleaseLabel::with_ids` filters with `filter` (found by the check)" },
     { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "filter", count = 1, finding = "`StatedMedia::any` filters with `filter_map` (found by the check)" },

@@ -403,6 +403,10 @@ pub struct BridgeDownloadProgress {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadCounts {
     pub total: BridgeDownloadProgress,
+    /// Whether the queue holds any entry, in any phase.
+    pub has_entries: bool,
+    /// Whether any entry failed.
+    pub has_failures: bool,
     /// What holds the queue back.
     pub wait: Option<BridgeQueueWait>,
 }

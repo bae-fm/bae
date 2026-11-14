@@ -88,6 +88,10 @@ impl QueueWait {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReleaseQueueCounts {
     pub total: ReleaseQueueProgress,
+    /// Whether the queue holds any entry, in any phase.
+    pub has_entries: bool,
+    /// Whether any entry failed.
+    pub has_failures: bool,
     pub wait: Option<QueueWait>,
 }
 

@@ -121,6 +121,8 @@ fn a_held_line_keeps_its_count() {
         moving_to_this_device: batch(1, 1),
         queue: ReleaseQueueCounts {
             total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
+            has_entries: true,
+            has_failures: false,
             wait: Some(QueueWait::Offline),
         },
     };
@@ -168,6 +170,8 @@ fn a_line_is_paused_only_by_the_person() {
             moving_to_this_device: batch(0, 1),
             queue: ReleaseQueueCounts {
                 total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
+                has_entries: true,
+                has_failures: false,
                 wait,
             },
         };
@@ -200,6 +204,8 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
     for wait in [QueueWait::Paused, QueueWait::Offline] {
         let held_queue = ReleaseQueueCounts {
             total: ReleaseQueueProgress { queued: 1, active: 0, failed: 0 },
+            has_entries: true,
+            has_failures: false,
             wait: Some(wait),
         };
         let pins = DownloadQueueCounts {
@@ -236,6 +242,8 @@ fn bytes_moving_are_not_held() {
         pins: batch(0, 1),
         queue: ReleaseQueueCounts {
             total: ReleaseQueueProgress { queued: 0, active: 1, failed: 0 },
+            has_entries: true,
+            has_failures: false,
             wait: None,
         },
         ..idle_downloads()

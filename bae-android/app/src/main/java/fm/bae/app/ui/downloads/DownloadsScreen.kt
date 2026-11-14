@@ -64,8 +64,8 @@ internal fun DownloadsScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         AndroidDownloadsBar(
             paused = paused,
-            hasDownloads = counts != null && counts.total.queued + counts.total.active + counts.total.failed > 0u,
-            hasFailures = counts != null && counts.total.failed > 0u,
+            hasDownloads = counts?.hasEntries == true,
+            hasFailures = counts?.hasFailures == true,
             onBack = onBack,
             onPauseToggle = {
                 if (counts != null) {

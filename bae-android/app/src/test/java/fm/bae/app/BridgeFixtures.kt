@@ -297,6 +297,8 @@ object BridgeFixtures {
                     active = active,
                     failed = failed,
                 ),
+            hasEntries = queued + active + failed > 0u,
+            hasFailures = failed > 0u,
             wait = wait,
         )
 
