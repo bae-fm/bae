@@ -155,6 +155,7 @@ struct SaveFormatPickerTests {
         )
         defer { picker.stop() }
 
+        configStore.addedSavePresetId = "c"
         await log.report {
             configStore.config =
                 store(
@@ -166,6 +167,30 @@ struct SaveFormatPickerTests {
 
         #expect(picker.selectedPresetId == "c")
         #expect(picker.popup.selectedItem?.title == "Car")
+        #expect(configStore.addedSavePresetId == nil)
+    }
+
+    @Test("a format that arrives without being added here leaves the choice")
+    func aFormatNotAddedHereKeepsTheChoice() async {
+        let configStore = store([preset("a", "FLAC")], lastUsed: "a")
+        let log = ChoiceLog()
+        let picker = picker(
+            configStore,
+            selected: "a",
+            onChange: { log.record($0) }
+        )
+        defer { picker.stop() }
+
+        await log.report {
+            configStore.config =
+                store(
+                    [preset("a", "FLAC"), preset("c", "Car")],
+                    lastUsed: "a"
+                )
+                .config
+        }
+
+        #expect(picker.selectedPresetId == "a")
     }
 
     @Test("a rename in Settings shows in the menu and keeps the choice")

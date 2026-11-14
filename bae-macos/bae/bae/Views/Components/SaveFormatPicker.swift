@@ -45,6 +45,7 @@ final class SaveFormatPicker: NSObject {
         self.openFormats = openFormats
         self.onChange = onChange
         self.choices = choices
+        configStore.addedSavePresetId = nil
         popup = NSPopUpButton(frame: frame, pullsDown: false)
         super.init()
         popup.target = self
@@ -126,7 +127,6 @@ final class SaveFormatPicker: NSObject {
     private func presetsChanged() {
         guard watching else { return }
         defer { watch() }
-        let before = Set(choices.map(\.presetId))
         let after = SaveFormatChoice.choices(
             presets: configStore.config.savePresets
         )
@@ -137,8 +137,11 @@ final class SaveFormatPicker: NSObject {
             return
         }
         choices = after
-        if let added = after.last(where: { !before.contains($0.presetId) }) {
-            selectedPresetId = added.presetId
+        if let added = configStore.addedSavePresetId,
+            after.contains(where: { $0.presetId == added })
+        {
+            configStore.addedSavePresetId = nil
+            selectedPresetId = added
         }
         else if !after.contains(where: { $0.presetId == selectedPresetId }) {
             selectedPresetId = configStore.config.lastSavePreset

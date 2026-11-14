@@ -6,6 +6,10 @@ import SwiftUI
 public class ConfigStore {
     public var config: Config
     public private(set) var storage: BridgeStorageLocation?
+    /// On-screen state, not config: the id of the save format the person just
+    /// added in Settings, which an open save panel's format pop-up chooses
+    /// and then clears.
+    public var addedSavePresetId: String?
 
     public var syncs: Bool { storage != nil }
 
