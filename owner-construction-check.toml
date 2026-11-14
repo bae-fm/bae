@@ -1813,7 +1813,6 @@ frozen = [
     { path = "bae-records/src/records/queued_uploads.rs", item = "release_uploads_on", shape = "group", count = 1, finding = "`release_uploads_on` returns a `HashMap` (found by the check)" },
     { path = "bae-records/src/records/read.rs", item = "get_releases_records_on", shape = "group", count = 3, finding = "`get_releases_records_on` returns a `HashMap` (found by the check)" },
     { path = "bae-records/src/records/release_detail.rs", item = "performed_works_on", shape = "group", count = 3, finding = "`performed_works_on` returns a `HashMap` (found by the check)" },
-    { path = "bae-records/src/records/release_detail.rs", item = "unstored_audio_on", shape = "filter", count = 1, finding = "`unstored_audio_on` filters with `filter` (found by the check)" },
     { path = "bae-records/src/records/release_records.rs", item = "album_records_name_on", shape = "query-per-row", count = 1, finding = "`album_records_name_on` runs SQL with `query_row` once for each row (found by the check)" },
     { path = "bae-records/src/records/track.rs", item = "Records::filter_existing_track_ids", shape = "query-per-row", count = 1, finding = "`Records::filter_existing_track_ids` runs SQL with `query` once for each row (found by the check)" },
     { path = "bae-store/src/list_windows.rs", item = "KnownPlaces::keep", shape = "kept-state", count = 1, finding = "keeps where the last read's rows sat in a `Mutex`, so the next read can start from them" },

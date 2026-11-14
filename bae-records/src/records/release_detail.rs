@@ -7,7 +7,6 @@ use super::query::*;
 use super::read::*;
 use super::release_credits::release_credits_on;
 use super::*;
-use bae_util::content_type::ContentType;
 
 /// The release's rows as its detail reads them: its tracks with their
 /// credits, its files, records, mediums and audio on one device only, and
@@ -168,9 +167,8 @@ pub fn unstored_audio_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    unstored_rows_on(sql, "f.release_id = ?", release_id)?
+    unstored_rows_on(sql, "f.release_id = ? AND f.content_type GLOB 'audio/*'", release_id)?
         .into_iter()
-        .filter(|row| ContentType::from_mime(&row.content_type).is_audio())
         .map(UnstoredRow::into_unstored_audio)
         .collect()
 }
@@ -184,7 +182,7 @@ fn unstored_rows_on(
 ) -> Result<Vec<UnstoredRow>, DbError> {
     Ok(sql.query(
         &format!(
-            "SELECT f.content_type, f.file, u.file IS NOT NULL, \
+            "SELECT f.file, u.file IS NOT NULL, \
                     d.is_self, d.name, d.state, m.removed \
              FROM release_files f JOIN coven_files coven ON coven.id = f.file \
              LEFT JOIN coven_user_files u ON u.file = f.file \
@@ -196,13 +194,12 @@ fn unstored_rows_on(
         params![value],
         |row| {
             Ok(UnstoredRow {
-                content_type: row.get(0)?,
-                file: row.get(1)?,
-                original_here: row.get(2)?,
-                is_self: row.get(3)?,
-                name: row.get(4)?,
-                state: row.get(5)?,
-                member_removed: row.get(6)?,
+                file: row.get(0)?,
+                original_here: row.get(1)?,
+                is_self: row.get(2)?,
+                name: row.get(3)?,
+                state: row.get(4)?,
+                member_removed: row.get(5)?,
             })
         },
     )?)
@@ -252,7 +249,6 @@ impl Records {
 
 /// One release file on one device only, as [`unstored_audio_on`] reads it.
 struct UnstoredRow {
-    content_type: String,
     file: String,
     /// Whether `coven_user_files` lists an original of it on this device.
     original_here: bool,
