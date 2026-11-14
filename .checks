@@ -22,6 +22,7 @@ check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {
 check rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
 check ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
 check coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
+check frozen-shrinks owner-construction-check.toml,scripts/ui-row-work.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
@@ -68,6 +69,7 @@ check actionlint .github/workflows/**,.github/actions/** env SHELLCHECK_OPTS=--s
 # Checker tests, run in CI when a push touches a checker or its test
 test ui-row-work-test scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/source_tokens.py,scripts/tests/ui-row-work-test.py python3 scripts/tests/ui-row-work-test.py
 test ui-projection-boundary-test scripts/ui-projection-boundary.py,scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/ui_view_sources.py,scripts/source_tokens.py,scripts/tests/ui-projection-boundary-test.py python3 scripts/tests/ui-projection-boundary-test.py
+test check-frozen-shrinks-test scripts/check-frozen-shrinks.py,scripts/tests/check-frozen-shrinks-test.py python3 scripts/tests/check-frozen-shrinks-test.py
 test coven-builder-boundary-test scripts/coven-builder-boundary.py,scripts/tests/coven-builder-boundary-test.py python3 scripts/tests/coven-builder-boundary-test.py
 test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scripts/tests/keyed-value-stream-boundary-test.py python3 scripts/tests/keyed-value-stream-boundary-test.py
 test uniffi-boundary-test scripts/check-uniffi-runtime-boundary.py,scripts/tests/check-uniffi-runtime-boundary-test.py python3 scripts/tests/check-uniffi-runtime-boundary-test.py
