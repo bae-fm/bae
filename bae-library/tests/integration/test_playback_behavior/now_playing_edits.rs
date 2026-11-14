@@ -64,19 +64,18 @@ async fn now_playing_until(
 
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
-    queue: &bae_library::LiveQueueUpcoming,
+    queue: &mut FirstUpcoming,
     accept: impl Fn(&bae_playback::QueueItem) -> bool,
 ) -> bae_playback::QueueItem {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let value = queue.next().await.expect("the queue's upcoming read resolves");
-            if let Some(item) = value
-                .windows
-                .into_iter()
-                .flat_map(|window| window.rows)
+            let value = queue
                 .next()
-                .filter(|item| accept(item))
-            {
+                .await
+                .expect("the queue's upcoming read stays open")
+                .result
+                .expect("the queue's upcoming read resolves");
+            if let Some(item) = value.rows.into_iter().next().filter(|item| accept(item)) {
                 return item;
             }
         }
@@ -85,13 +84,19 @@ async fn first_upcoming_until(
     .expect("the queue shows the edit")
 }
 
+/// The queue's upcoming window over its first track.
+type FirstUpcoming = coven::ReconfigurableLiveQuery<
+    bae_store::ListWindow,
+    bae_store::WindowRead<bae_playback::QueueItem>,
+    bae_store::DbError,
+>;
+
 /// The queue's upcoming read over its first track.
-fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
-    let queue = bae_library::subscribe_queue_upcoming(library.manager());
-    queue
-        .set(bae_playback::QueueWindows::from([bae_playback::QueueWindow::at(0, 1)]))
-        .expect("the read takes its window");
-    queue
+fn first_upcoming(library: &TestLibrary) -> FirstUpcoming {
+    library.manager().subscribe_upcoming_window(
+        false,
+        bae_store::ListWindow::Forward { from: None, until: None, limit: 1 },
+    )
 }
 
 /// Changing the cover of the release the paused track is on shows the new
@@ -103,10 +108,10 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         let release_id = paused_on_first_track(fixture).await;
         let track_id = fixture.track_ids[0].clone();
         let values = playback_values(fixture);
-        let queue = first_upcoming(&fixture.library);
+        let mut queue = first_upcoming(&fixture.library);
         let before =
             now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
-        first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
+        first_upcoming_until(&mut queue, |item| item.display.cover_image == before).await;
 
         let image_dir = TempDir::new().unwrap();
         let image_path = image_dir.path().join("front.gif");
@@ -143,7 +148,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         .await
         .cover_image;
         let upcoming =
-            first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
+            first_upcoming_until(&mut queue, |item| changed(&item.display.cover_image)).await;
         assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
     })
     .await;
@@ -157,9 +162,9 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         let release_id = paused_on_first_track(fixture).await;
         let track_id = fixture.track_ids[0].clone();
         let values = playback_values(fixture);
-        let queue = first_upcoming(&fixture.library);
+        let mut queue = first_upcoming(&fixture.library);
         now_playing_until(&values, &track_id, "the paused track", |_| true).await;
-        first_upcoming_until(&queue, |_| true).await;
+        first_upcoming_until(&mut queue, |_| true).await;
 
         let mut edit = fixture
             .library
@@ -184,7 +189,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
             display.title == "Renamed Opening Track" && display.album_title == "Renamed Album"
         })
         .await;
-        first_upcoming_until(&queue, |item| {
+        first_upcoming_until(&mut queue, |item| {
             item.display.title == "Renamed Second Track"
                 && item.display.album_title == "Renamed Album"
         })

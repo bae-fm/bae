@@ -50,7 +50,6 @@ class PlaybackReadFailureTest {
                 shuffled = false,
                 hasNext = false,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
         assertNull(player.readFailures.queue.value)

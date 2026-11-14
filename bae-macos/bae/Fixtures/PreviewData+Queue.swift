@@ -3,74 +3,164 @@ import Foundation
 
 @testable import bae
 
-/// The upcoming read behind `PreviewData.echoingQueue`: answers the
-/// windows it is asked for out of the model's context lane, and again
-/// after every change to it, as core's live read does.
-private final class PreviewUpcomingFeed: @unchecked Sendable {
+/// One feed of values a preview list answers a read with: the preview emits,
+/// the read takes them in order, and a failure ends the feed.
+final class PreviewQueueFeed<Value: Sendable>: @unchecked Sendable {
+    private let continuation: AsyncThrowingStream<Value, any Error>.Continuation
+    private var iterator: AsyncThrowingStream<Value, any Error>.AsyncIterator
+
+    init() {
+        let (stream, continuation) = AsyncThrowingStream<Value, any Error>
+            .makeStream()
+        self.continuation = continuation
+        iterator = stream.makeAsyncIterator()
+    }
+
+    func emit(_ value: Value) { continuation.yield(value) }
+
+    func fail(_ error: any Error) { continuation.finish(throwing: error) }
+
+    func next() async throws -> Value {
+        guard let value = try await iterator.next() else {
+            throw CancellationError()
+        }
+        return value
+    }
+}
+
+/// The upcoming list behind `PreviewData.echoingQueue`: the model's context
+/// lane read as the list core serves, windows bounded by keys, a count, the
+/// position of a key and the key at a position. A row's key is its place in
+/// the lane, which a change renumbers densely as core's lane does, and every
+/// change reaches every open window and the count, as core's live reads do.
+final class PreviewQueueList: @unchecked Sendable {
+    private final class Window: @unchecked Sendable {
+        let feed = PreviewQueueFeed<ListWindowDelivery<BridgeQueueEntry>>()
+        var request: BridgeListWindow
+        var stopped = false
+
+        init(_ request: BridgeListWindow) { self.request = request }
+    }
+
     private let lock = NSLock()
     private var rows: [BridgeQueueEntry] = []
-    private var windows: [BridgeQueueWindow] = []
-    private var version: UInt64 = 0
-    /// Whether a value is due that `take` has not taken yet.
-    private var due = true
-    private var waiter: CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>?
+    private var open: [Window] = []
+    private let counts = PreviewQueueFeed<BridgeListCount>()
+    /// Why every read of the list fails, when it does.
+    private let failure: (any Error)?
 
-    func show(_ rows: [BridgeQueueEntry], version: UInt64) {
-        deliver {
+    init(failure: (any Error)? = nil) { self.failure = failure }
+
+    /// Replace the lane's rows and deliver the change to the count and every
+    /// window.
+    func show(_ rows: [BridgeQueueEntry]) {
+        let windows = lock.withLock {
             self.rows = rows
-            self.version = version
+            return open.filter { !$0.stopped }
         }
+        counts.emit(BridgeListCount(rows: UInt64(rows.count), extra: .none))
+        for window in windows { deliver(to: window) }
     }
 
-    func setWindows(_ windows: [BridgeQueueWindow]) {
-        deliver { self.windows = windows }
+    private static func key(_ place: Int) -> [BridgeSortValue] {
+        [.integer(value: Int64(place))]
     }
 
-    /// The next value, once one is due.
-    func take() async -> BridgeQueueUpcomingSnapshot {
-        await withCheckedContinuation { continuation in
-            let ready: BridgeQueueUpcomingSnapshot? = lock.withLock {
-                guard due else {
-                    waiter = continuation
-                    return nil
-                }
-                due = false
-                return takeValue()
+    private static func place(_ key: [BridgeSortValue]) -> Int {
+        guard case .integer(let place)? = key.first else { return 0 }
+        return Int(place)
+    }
+
+    private func delivery(of window: BridgeListWindow) -> ListWindowDelivery<
+        BridgeQueueEntry
+    > {
+        lock.withLock {
+            let start: Int
+            let stop: Int
+            let beyond: Int?
+            switch window {
+            case .forward(let from, let until, let limit):
+                start = min(from.map(Self.place) ?? 0, rows.count)
+                let end = min(until.map(Self.place) ?? rows.count, rows.count)
+                stop = max(start, min(start + Int(limit), end))
+                beyond = stop < end ? stop : nil
+            case .backward(let until, let limit):
+                stop = min(Self.place(until), rows.count)
+                start = max(0, stop - Int(limit))
+                beyond = start > 0 ? start - 1 : nil
             }
-            if let ready { continuation.resume(returning: ready) }
+            let held = Array(rows[start..<stop])
+            return ListWindowDelivery(
+                window: window,
+                rows: held,
+                first: held.isEmpty ? nil : Self.key(start),
+                beyond: beyond.map(Self.key)
+            )
         }
     }
 
-    private func deliver(_ change: () -> Void) {
-        let ready:
-            (
-                CheckedContinuation<BridgeQueueUpcomingSnapshot, Never>,
-                BridgeQueueUpcomingSnapshot
-            )? =
-                lock.withLock {
-                    change()
-                    guard let waiter else {
-                        due = true
-                        return nil
-                    }
-                    self.waiter = nil
-                    return (waiter, takeValue())
-                }
-        if let (waiter, value) = ready { waiter.resume(returning: value) }
+    private func deliver(to window: Window) {
+        window.feed.emit(delivery(of: window.request))
     }
 
-    /// The value for the windows asked for; called under the lock.
-    private func takeValue() -> BridgeQueueUpcomingSnapshot {
-        BridgeQueueUpcomingSnapshot(
-            upcomingTotal: UInt64(rows.count),
-            contextVersion: version,
-            windows: windows.map { window in
-                let start = min(Int(window.offset), rows.count)
-                let end = min(start + Int(window.limit), rows.count)
-                return BridgeQueueUpcomingWindow(
-                    window: window,
-                    rows: Array(rows[start..<end])
+    var queries: BridgeListQueries<BridgeQueueEntry> {
+        BridgeListQueries(
+            window: { [self] first in
+                let window = Window(first)
+                lock.withLock { open.append(window) }
+                if let failure {
+                    window.feed.fail(failure)
+                }
+                else {
+                    deliver(to: window)
+                }
+                return ListWindowQuery(
+                    setWindow: { [self] next in
+                        window.request = next
+                        deliver(to: window)
+                    },
+                    values: PulledValues(
+                        read: { try await window.feed.next() },
+                        cancel: { window.stopped = true }
+                    )
                 )
+            },
+            count: { [self] in
+                if let failure {
+                    counts.fail(failure)
+                }
+                else {
+                    counts.emit(
+                        BridgeListCount(
+                            rows: UInt64(lock.withLock { rows.count }),
+                            extra: .none
+                        )
+                    )
+                }
+                return PulledValues(read: { try await self.counts.next() })
+            },
+            position: { [self] key in
+                let feed = PreviewQueueFeed<BridgeListPosition>()
+                let emit: @Sendable ([BridgeSortValue]) -> Void = { key in
+                    feed.emit(
+                        BridgeListPosition(
+                            key: key,
+                            rowsBefore: UInt64(Self.place(key))
+                        )
+                    )
+                }
+                emit(key)
+                return ListPositionQuery(
+                    setKey: emit,
+                    values: PulledValues(read: { try await feed.next() })
+                )
+            },
+            keyAt: { [self] position in
+                lock.withLock {
+                    rows.isEmpty
+                        ? nil
+                        : Self.key(min(Int(position), rows.count - 1))
+                }
             }
         )
     }
@@ -100,18 +190,17 @@ private final class PreviewQueueModel {
     private var shuffled: Bool
     /// Uniques the entry ids this model mints for inserted tracks.
     private var mintedEntryCount = 0
-    /// Each lane's version, counted per change as core's queue row does.
-    private var manualVersion: UInt64 = 0
-    private var contextVersion: UInt64 = 0
-    let upcomingFeed = PreviewUpcomingFeed()
+    let upcomingList: PreviewQueueList
 
     init(
         store: PlaybackStore,
         manual: [BridgeQueueEntry],
         upcoming: [BridgeQueueEntry],
         hasContext: Bool,
-        shuffled: Bool
+        shuffled: Bool,
+        upcomingList: PreviewQueueList
     ) {
+        self.upcomingList = upcomingList
         self.store = store
         self.manual = manual
         self.upcoming = upcoming
@@ -122,12 +211,7 @@ private final class PreviewQueueModel {
     }
 
     private func apply() {
-        manualVersion += 1
-        contextVersion += 1
-        upcomingFeed.show(
-            hasContext ? upcoming : [],
-            version: contextVersion
-        )
+        upcomingList.show(hasContext ? upcoming : [])
         store.applyQueueSnapshot(
             BridgeQueueSnapshot(
                 manual: manual,
@@ -138,8 +222,7 @@ private final class PreviewQueueModel {
                     ) : nil,
                 shuffled: shuffled,
                 hasNext: !manual.isEmpty || !upcoming.isEmpty,
-                hasPrevious: false,
-                manualVersion: manualVersion
+                hasPrevious: false
             )
         )
     }
@@ -164,10 +247,10 @@ private final class PreviewQueueModel {
     }
 
     /// Move `entryId` before `beforeEntryId` within its lane; `nil` moves
-    /// it to the lane's end — core's reorder semantics — and answer the
-    /// lane's version the move made.
+    /// it to the lane's end — core's reorder semantics — and answer whether
+    /// it moved.
     func reorder(_ entryId: String, before beforeEntryId: String?)
-        -> UInt64
+        -> Bool
     {
         func moved(in lane: [BridgeQueueEntry]) -> [BridgeQueueEntry]? {
             guard
@@ -194,13 +277,14 @@ private final class PreviewQueueModel {
         if let lane = moved(in: manual) {
             manual = lane
             apply()
-            return manualVersion
+            return true
         }
         if let lane = moved(in: upcoming) {
             upcoming = lane
+            apply()
+            return true
         }
-        apply()
-        return contextVersion
+        return false
     }
 
     /// Play the entry: it becomes now playing, and it — plus whatever sat
@@ -379,8 +463,7 @@ extension PreviewData {
                 },
                 shuffled: shuffled,
                 hasNext: !upcoming.isEmpty,
-                hasPrevious: false,
-                manualVersion: 1
+                hasPrevious: false
             )
         )
         return store
@@ -400,13 +483,21 @@ extension PreviewData {
         upcomingRequestFails: Bool = false
     ) -> QueuePreviewFixture {
         let store = PlaybackStore(trackPositions: queuePositions())
+        let upcomingList = PreviewQueueList(
+            failure: upcomingRequestFails
+                ? BridgeError.Diagnostic(
+                    category: .database,
+                    detail: "database is locked"
+                ) : nil
+        )
         let model = PreviewQueueModel(
             store: store,
             manual: Array(queueEntries.prefix(manualCount)),
             upcoming: context
                 ? Array(queueEntries.suffix(from: manualCount)) : [],
             hasContext: context,
-            shuffled: shuffled
+            shuffled: shuffled,
+            upcomingList: upcomingList
         )
         return QueuePreviewFixture(
             store: store,
@@ -436,20 +527,7 @@ extension PreviewData {
                         model.setShuffle(on)
                     }
                 },
-                subscribeUpcoming: { [feed = model.upcomingFeed] in
-                    QueueUpcomingQuery(
-                        setWindows: {
-                            if upcomingRequestFails {
-                                throw BridgeError.Diagnostic(
-                                    category: .database,
-                                    detail: "database is locked"
-                                )
-                            }
-                            feed.setWindows($0)
-                        },
-                        values: PulledValues(read: { await feed.take() })
-                    )
-                }
+                upcomingQueries: { _ in upcomingList.queries }
             )
         )
     }

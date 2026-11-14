@@ -138,7 +138,7 @@ class Library(
         }
 
     /** The reads of [list], taking its rows out of the variant of [BridgeListRows] they come in. */
-    private fun <Row> listReads(
+    internal fun <Row> listReads(
         list: BridgeList,
         sections: (() -> PulledSubscription<List<BridgeLibraryBrowseSection>>)? = null,
         rows: (BridgeListRows) -> List<Row>,

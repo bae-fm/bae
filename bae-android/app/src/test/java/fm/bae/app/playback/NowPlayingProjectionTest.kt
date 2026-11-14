@@ -127,7 +127,6 @@ class NowPlayingProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
         player.applyPlaybackState(playingState(trackId = "cur", durationMs = 185_000uL))
@@ -143,7 +142,6 @@ class NowPlayingProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
         assertNotSame(playing, player.currentTimeline)

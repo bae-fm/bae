@@ -192,7 +192,6 @@ extension ComposerDetailSubscription: PulledSubscription {}
 extension WorkDetailSubscription: PulledSubscription {}
 extension StorageSelectionSubscription: PulledSubscription {}
 extension StorageQueuesSubscription: PulledSubscription {}
-extension QueueUpcomingSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}

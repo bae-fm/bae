@@ -12,7 +12,7 @@ pub struct QueueItem {
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels
-/// the section — a release vs the library). Its tracks are read in windows of [`crate::QueueWindowRead`].
+/// the section — a release vs the library). Its tracks are the upcoming list (`tables::subscribe_upcoming_window`).
 /// Carried separately from the manual lane so each UI renders the two as
 /// distinct sections.
 #[derive(Debug, Clone, PartialEq)]
@@ -35,10 +35,6 @@ pub struct ResolvedQueueSnapshot {
     pub shuffled: bool,
     pub has_next: bool,
     pub has_previous: bool,
-    /// How many writes have changed Up Next, as the queue row counts them:
-    /// a screen holding an Up Next row it moved shows the tables' order again
-    /// once this reaches the version its move made.
-    pub manual_version: u64,
 }
 
 /// The last time tracks went into Up Next since playback started with the

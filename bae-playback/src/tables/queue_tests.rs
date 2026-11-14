@@ -757,9 +757,10 @@ mod playback_queue_bench {
 
         // The queue screens open, each following the queue as it changes.
         let mut value = subscribe_queue_value(&db);
-        let mut upcoming = subscribe_queue_upcoming(
+        let mut upcoming = subscribe_upcoming_window(
             &db,
-            crate::QueueWindows::from([crate::QueueWindow::at(0, 100)]),
+            false,
+            bae_store::ListWindow::Forward { from: None, until: None, limit: 100 },
         );
         value.next().await.unwrap().unwrap();
         upcoming.next().await.unwrap();

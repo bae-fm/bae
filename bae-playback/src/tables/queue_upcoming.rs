@@ -30,7 +30,7 @@ fn after_the_playing_track(shuffled: bool) -> String {
 /// The upcoming tracks `seek` reads in the lane's order, at most `limit` from
 /// `offset`, each with its key. The page is cut before the join, so the rows
 /// an offset passes over are never joined to their tracks.
-fn upcoming_rows_on(
+pub(super) fn upcoming_rows_on(
     sql: &SqlReadContext<'_>,
     shuffled: bool,
     seek: &Seek,
@@ -53,6 +53,23 @@ fn upcoming_rows_on(
     Ok(seek.bound(limit, offset, |params| {
         sql.query(&statement, params, |row| Ok((queue_item_from_row(row)?, order.key_of(row)?)))
     })?)
+}
+
+/// Every one of the context lane's tracks after the playing one, as the queue
+/// rows show them.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
+    store
+        .read(|sql| {
+            let shuffled: bool =
+                sql.query_row("SELECT shuffled FROM playback_queue", [], |row| row.get(0))?;
+            let order = upcoming_order(shuffled);
+            Ok(upcoming_rows_on(&sql, shuffled, &order.everything(), u64::MAX, 0)?
+                .into_iter()
+                .map(|(item, _key)| item)
+                .collect())
+        })
+        .await
 }
 
 /// Follow one window of the upcoming tracks, a range of the lane's order,

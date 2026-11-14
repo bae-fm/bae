@@ -160,11 +160,11 @@ impl PlaybackService {
             }
             PlaybackCommand::ReorderQueue { entry_id, before, reply } => {
                 let moved = match self.playback_queue.reorder(entry_id, before).await {
-                    Ok(Some(version)) => {
+                    Ok(true) => {
                         self.on_queue_mutated().await;
-                        Ok(Some(version))
+                        Ok(true)
                     }
-                    Ok(None) => Ok(None),
+                    Ok(false) => Ok(false),
                     Err(e) => {
                         self.queue_failed("reorder the queue", &e);
                         Err(super::api::QueueEditError::Queue(e))

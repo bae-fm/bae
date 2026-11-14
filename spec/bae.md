@@ -4499,12 +4499,9 @@ it played everything named:
 | Nothing to play | what was named holds no tracks; the queue is as it was |
 | Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
 
-A reorder answers too. The queue keeps a version for each part, counting the
-writes that change it: Up next's for every entry put in, taken out or moved;
-what's playing from's for every change to its tracks after the current one,
-or to which one is current. A reorder that moved its entry answers with its
-part's version after the move; one whose entry, or the entry it goes before,
-is no longer in that part moves nothing and answers that it moved nothing.
+A reorder answers too, whether it moved its entry: one whose entry, or the
+entry it goes before, is no longer in that part moves nothing and answers that
+it moved nothing.
 A remove, a skip to an entry and either clear answer too: a remove or skip
 whose entry is no longer in its part changes nothing and answers that it is
 done, and a failed write answers its error. So does every other queue command:
@@ -4520,11 +4517,15 @@ What's playing from's tracks are a list the queue screens read as any other
 list: the tracks after the current one, in the order the part reads in (its
 own, or the shuffled one while shuffle is on), read as windows that are ranges
 of that order, with the list's count a read of its own and a jump to a row read
-as the key at its position. Moving on to the next track moves the list's top.
+as the key at its position. A write that moves rows inside one window reads that
+window again and no other; moving on to the next track moves the list's top.
 
 When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
-with *Details* and *Retry*, which reads them again.
+with *Details* and *Retry*, which reads them again. On Android, the read of the
+first tracks that feed the system's playlist (the notification, the lock screen
+and Android Auto) shows its failure there too, and *Retry* reads that one again
+as well.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
 one reorder, however many rows the held row passed. While it is held, the Mac
@@ -4533,12 +4534,12 @@ show a drop (no line over a gap that leaves it where it is, or before a row not
 read yet); Android's held row follows the finger and the other rows slide apart
 around an open slot where it will land.
 
-The queue screens read each part with its version: a row dragged to a new
-place stays there until the part's read reaches the version the move
-answered, so it never jumps back while the move is on its way, and a move
-that failed or moved nothing puts the part back to its read at once. A move
-names the entry it goes before, or the part's end, so a row dragged to just
-before a row the screen hasn't read yet stays where it was.
+The queue screens keep a row dragged to a new place there until the part's
+rows draw it in the slot it was dropped in (or the part has changed length),
+so it never jumps back while the move is on its way, and a move that failed or
+moved nothing puts the part back to its rows at once. A move names the entry
+it goes before, or the part's end, so a row dragged to just before a row the
+screen hasn't read yet stays where it was.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
@@ -5275,9 +5276,10 @@ Reads come two ways:
   arrives. The import list is read the same way: each of its windows, its count, the
   position of a key and the chrome around it is a live read of its own,
   opened from the open list, whose keys lead with the number of the part of
-  the tab a row is in. Nothing about where rows sit is kept between reads. The playback queue's upcoming tracks are read by offset alone: the
-  offset passes over the context lane's positions before any track is read,
-  so a deep window costs little. The Storage manager's search counts what it
+  the tab a row is in. Nothing about where rows sit is kept between reads. The playback queue's upcoming tracks are one more list: its windows are
+  ranges of the context lane's places, which are dense whole numbers, and a
+  jump passes over those places by offset before any track is read, so a deep
+  window costs little. The Storage manager's search counts what it
   finds first: from library search's indexes when its text is in fewer
   album titles than about a fifth of the listed releases, else by taking the
   releases it doesn't find off the counts kept beside the listing, found in
@@ -5745,9 +5747,9 @@ release's or track's id as UTF-8, or a candidate's key.
   without one, and moves again with the next, so a stalled or paused transfer
   asks for no frames; a track's wait on storage rests from the start, since the arc
   it shows turns on its own clock; nothing the UI framework observes holds a fast value.
-- **Pulled subscriptions** — the browse and download lists, the searches,
+- **Pulled subscriptions** — the browse, download and queue lists, the searches,
   the import list and its counts, the detail views, the Storage manager's
-  list, a release's files, the queue's upcoming tail, and the reads of which
+  list, a release's files, and the reads of which
   selected albums are gone and which
   offered releases the library holds — are objects the app asks for each
   next value and points at new windows or a new query in place, built in the
@@ -6148,7 +6150,7 @@ membership's (`membership.sql`).
 
 | Table | Holds |
 |---|---|
-| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether shuffle is on, which of its rows is playing (its place in each of the two orders), the number the next entry of either part gets, never given twice, and each part's version, the count of writes that changed it, which the screens holding a moved row wait for (§7.1) |
+| `playback_queue` | the one row of this device's queue: repeat, what's playing from (its kind, and the release when it plays one), whether shuffle is on, which of its rows is playing (its place in each of the two orders), the number the next entry of either part gets, never given twice |
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |

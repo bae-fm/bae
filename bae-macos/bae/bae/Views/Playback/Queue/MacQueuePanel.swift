@@ -2,15 +2,16 @@ import BaeKit
 import SwiftUI
 
 /// The context lane as the panel draws it: its length, the rows read so far,
-/// and how to read more. A value the container builds from the store, so the
-/// panel draws without one.
+/// and how to hold a row's place in its list. A value the container builds
+/// from the store, so the panel draws without one.
 struct QueueUpcoming {
     let total: Int
     /// `nil` for a row not yet read.
     let itemAt: (Int) -> BridgeQueueEntry?
     let holds: (String) -> Bool
-    let version: UInt64
-    let loadRange: @MainActor (_ offset: Int, _ limit: Int) async -> Void
+    /// Names the list the rows are read from; `nil` while none is open.
+    let epoch: LoadEpoch?
+    let holdRow: @MainActor (_ index: Int) async -> Void
     /// Why the read failed, when it did.
     let failure: DisplayError?
     let onRetry: () -> Void
@@ -24,14 +25,8 @@ extension QueueUpcoming {
             total: store.upcomingTotal,
             itemAt: { store.upcomingItem(at: $0) },
             holds: { store.upcomingHolds(entryId: $0) },
-            version: store.contextVersion,
-            loadRange: { offset, limit in
-                await store.loadUpcomingRange(
-                    offset: offset,
-                    limit: limit,
-                    queue: queue
-                )
-            },
+            epoch: store.upcomingEpoch,
+            holdRow: { await store.holdUpcoming(at: $0) },
             failure: store.upcomingFailure,
             onRetry: {
                 Task { await store.retryUpcoming(queue: queue) }
@@ -47,7 +42,6 @@ extension QueueUpcoming {
 struct MacQueuePanel: View {
     /// The manual "Up next" lane, played first and always loaded in full.
     let manual: [BridgeQueueEntry]
-    let manualVersion: UInt64
     /// What's playing from, or `nil`; its tracks come from `upcoming`.
     let context: QueuePlaybackContext?
     /// Whether shuffle is on, which the context section's toggle shows.
@@ -55,8 +49,9 @@ struct MacQueuePanel: View {
     let upcoming: QueueUpcoming
     /// Where the playing track is; `nil` while none plays.
     let position: LatestSource<BridgeTrackPosition>?
-    /// The context's length is read before any of its rows is shown.
-    let onShowUpcoming: () -> Void
+    /// Opens the context's list in the order it reads in, which waits for its
+    /// length before any of its rows is shown.
+    let onShowUpcoming: () async -> Void
     var width: CGFloat = 420
 
     let isActive: Bool
@@ -72,16 +67,23 @@ struct MacQueuePanel: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
-    /// to the end of its lane. Answers the lane's version the move made, or
-    /// `nil` when the queue changed first and nothing moved.
+    /// to the end of its lane. Answers whether it moved: `false` when the
+    /// queue changed first and nothing moved.
     let onReorder:
         @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64?
+            -> Bool
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
     /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
+
+    /// What the context's list is opened for: it follows the order the lane
+    /// reads in.
+    private struct UpcomingOpening: Hashable {
+        let hasContext: Bool
+        let shuffled: Bool
+    }
 
     // Shared because a context row can be dragged into the manual lane.
     @State
@@ -135,12 +137,11 @@ struct MacQueuePanel: View {
                             holdsEntry: { id in
                                 manual.contains { $0.id == id }
                             },
-                            loadVersion: 0,
-                            loadRange: nil,
+                            loadEpoch: nil,
+                            holdRow: nil,
                             acceptsExternalDrops: true,
                             laneId: .manual,
                             coordinator: dragCoordinator,
-                            laneVersion: manualVersion,
                             onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
                             onRemove: onRemove,
@@ -152,20 +153,19 @@ struct MacQueuePanel: View {
                         .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
 
                         if let context, upcoming.total > 0 {
-                            // Partly read: `upcomingItem` returns `nil` for
-                            // rows not yet read.
+                            // Partly read: `itemAt` returns `nil` for rows
+                            // not yet read.
                             QueueSection(
                                 title: Self.contextSectionTitle(context),
                                 shuffled: shuffled,
                                 count: upcoming.total,
                                 itemAt: upcoming.itemAt,
                                 holdsEntry: upcoming.holds,
-                                loadVersion: upcoming.version,
-                                loadRange: upcoming.loadRange,
+                                loadEpoch: upcoming.epoch,
+                                holdRow: upcoming.holdRow,
                                 acceptsExternalDrops: false,
                                 laneId: .context,
                                 coordinator: dragCoordinator,
-                                laneVersion: upcoming.version,
                                 onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
                                 onRemove: onRemove,
@@ -194,8 +194,10 @@ struct MacQueuePanel: View {
                 }
             }
         }
-        .task(id: context != nil) {
-            onShowUpcoming()
+        .task(
+            id: UpcomingOpening(hasContext: context != nil, shuffled: shuffled)
+        ) {
+            await onShowUpcoming()
         }
         .frame(width: width)
         .frame(maxHeight: .infinity)

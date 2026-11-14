@@ -707,16 +707,15 @@ impl AppServices {
     }
 
     /// Move a queue entry, sent at this call, in order with the playback
-    /// commands sent before and after it; the future answers the lane's
-    /// version the move made, `None` when the entry or the one it goes before
-    /// is no longer queued there, or why the move failed.
+    /// commands sent before and after it; the future answers whether it
+    /// moved, `false` when the entry or the one it goes before is no longer
+    /// queued there, or why the move failed.
     pub fn playback_reorder_entry(
         &self,
         entry_id: bae_playback::QueueEntryId,
         before: Option<bae_playback::QueueEntryId>,
-    ) -> impl std::future::Future<Output = Result<Option<u64>, bae_playback::QueueEditError>>
-           + Send
-           + 'static {
+    ) -> impl std::future::Future<Output = Result<bool, bae_playback::QueueEditError>> + Send + 'static
+    {
         self.inner.playback.reorder_entry(entry_id, before)
     }
 

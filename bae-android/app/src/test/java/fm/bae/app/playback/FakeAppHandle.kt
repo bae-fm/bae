@@ -86,7 +86,6 @@ import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.ProfilesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.QueueSubscription
-import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.StorageQueuesSubscription
@@ -428,7 +427,7 @@ internal open class FakeAppHandle(
     override suspend fun reorderEntry(
         entryId: String,
         beforeEntryId: String?,
-    ): ULong? = unfaked("reorderEntry")
+    ): Boolean = unfaked("reorderEntry")
 
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 
@@ -788,8 +787,6 @@ internal open class FakeAppHandle(
     val requestedProfile = FakeRequestedProfileSubscription()
 
     override fun subscribeRequestedProfile(): RequestedProfileSubscription = requestedProfile
-
-    override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 

@@ -41,7 +41,7 @@ data class SidePausePrompt(
 
 /** What the queue plays from (a release, a list of tracks or the library), and the not-yet-played
  *  tracks after the current one: [upcomingTotal] of them, of which [upcoming] holds those read
- *  through [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */
+ *  through [BaeCorePlayer.showUpcoming], keyed by index in the whole tail. */
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val upcomingTotal: Int,
@@ -51,15 +51,11 @@ data class QueueContext(
 }
 
 /** The queue as two sections: tracks added by hand ([manual]) and the [context] played from, or
- *  null when there is none. [shuffled] is core's shuffle mode, which holds with no context too.
- *  [manualVersion] and [contextVersion] are core's versions of each: how
- *  many writes have changed that lane, as its read last carried them. */
+ *  null when there is none. [shuffled] is core's shuffle mode, which holds with no context too. */
 data class QueueProjection(
     val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
     val shuffled: Boolean = false,
-    val manualVersion: ULong = 0u,
-    val contextVersion: ULong = 0u,
 ) {
     companion object {
         val EMPTY = QueueProjection(manual = emptyList(), context = null)

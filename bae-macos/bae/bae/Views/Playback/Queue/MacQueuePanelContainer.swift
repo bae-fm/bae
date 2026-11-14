@@ -33,14 +33,13 @@ struct MacQueuePanelContainer: View {
             }
         MacQueuePanel(
             manual: playbackStore.manualQueue,
-            manualVersion: playbackStore.manualVersion,
             context: playbackStore.queueContext,
             shuffled: playbackStore.shuffled,
             upcoming: QueueUpcoming(store: playbackStore, queue: queue),
             position: playbackStore.trackPosition(
                 forTrack: track?.track.trackId
             ),
-            onShowUpcoming: { playbackStore.showUpcoming(queue: queue) },
+            onShowUpcoming: { await playbackStore.showUpcoming(queue: queue) },
             isActive: np.isActive,
             nowPlayingTitle: track?.display.title,
             nowPlayingArtist: track?.display.artistLine.text,

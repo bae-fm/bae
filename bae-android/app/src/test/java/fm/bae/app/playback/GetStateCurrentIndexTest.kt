@@ -93,7 +93,7 @@ class GetStateCurrentIndexTest {
         manual: List<BridgeQueueEntry>,
     ) {
         player.onQueueValue(
-            BridgeQueueSnapshot(manual = manual, context = null, shuffled = false, hasNext = true, hasPrevious = false, manualVersion = 1u),
+            BridgeQueueSnapshot(manual = manual, context = null, shuffled = false, hasNext = true, hasPrevious = false),
         )
         player.applyPlaybackState(
             playingState(

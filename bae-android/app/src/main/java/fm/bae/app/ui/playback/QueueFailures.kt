@@ -18,6 +18,7 @@ import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.coreString
 import fm.bae.app.displayError
+import fm.bae.app.playback.retryUpcoming
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
@@ -93,8 +94,8 @@ internal fun QueueCommandFailure(failures: QueueFailures) {
  */
 @Composable
 internal fun UpcomingFailureNotice(session: OpenLibrary) {
-    val upcoming = session.playback.upcoming
-    val failure by upcoming.failure.collectAsState()
+    val playback = session.playback
+    val failure by playback.upcomingFailure.collectAsState()
     val context = LocalContext.current
     val shown = failure?.let { context.displayError(it) } ?: return
     AndroidNotice(
@@ -103,6 +104,6 @@ internal fun UpcomingFailureNotice(session: OpenLibrary) {
         error = shown,
         modifier = Modifier.padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         look = NoticeLook.CENTERED,
-        action = shown.retryAction(onClick = upcoming::retry),
+        action = shown.retryAction(onClick = { playback.retryUpcoming() }),
     )
 }

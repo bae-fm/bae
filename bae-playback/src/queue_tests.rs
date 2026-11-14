@@ -279,7 +279,7 @@ async fn test_reorder_forward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap().is_some());
+    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
 }
 
@@ -329,7 +329,7 @@ async fn test_reorder_before_self_is_noop() {
 async fn test_reorder_unknown_source_is_noop() {
     let mut f = release(&["a", "b"]).await;
     f.add(&["a", "b"]).await;
-    assert!(f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap().is_none());
+    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["a", "b"]));
 }
 
@@ -454,7 +454,7 @@ async fn test_reorder_cross_lane_is_noop() {
     f.add(&["m1"]).await;
     let manual = f.manual_ids().await[0].clone();
     let context = f.entry("t2").await;
-    assert!(f.queue.reorder(manual, Some(context)).await.unwrap().is_none());
+    assert!(!f.queue.reorder(manual, Some(context)).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["m1", "t2"]));
 }
 
@@ -555,34 +555,6 @@ async fn test_has_next_and_has_previous() {
     assert!(!last.has_next && last.has_previous);
     f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();
     assert!(f.value().await.has_next, "repeat always has a next track");
-}
-
-/// The context lane's tracks are read in windows by offset from the playing
-/// track, each read with the tail's length.
-#[tokio::test]
-async fn test_offset_windows_read_with_the_tail_length() {
-    let tracks: Vec<String> = (0..130).map(|i| format!("t{i:03}")).collect();
-    let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
-    let mut f = release(&refs).await;
-    f.play_from("t000").await;
-
-    let windows = crate::QueueWindows::from([
-        crate::QueueWindow::at(0, 3),
-        crate::QueueWindow::at(100, 20),
-        crate::QueueWindow::at(125, 20),
-    ]);
-    let mut live = crate::tables::subscribe_queue_upcoming(&f.db, windows);
-    let read = live.next().await.expect("the query stays open").result.unwrap();
-    let window_tracks: Vec<Vec<String>> =
-        read.windows.iter().map(|w| w.rows.iter().map(|i| f.name(&i.track_id)).collect()).collect();
-    assert_eq!(window_tracks[0], tracks[1..4].to_vec());
-    assert_eq!(window_tracks[1], tracks[101..121].to_vec());
-    assert_eq!(
-        window_tracks[2],
-        tracks[126..130].to_vec(),
-        "a window past the end holds what remains"
-    );
-    assert_eq!(read.upcoming_total, 129);
 }
 
 /// The upcoming tracks are a list in the lane's order: windows are ranges of
@@ -698,10 +670,7 @@ async fn test_reorder_context_to_end() {
 async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
     let mut value = crate::tables::subscribe_queue_value(&f.db);
-    let mut upcoming = crate::tables::subscribe_queue_upcoming(
-        &f.db,
-        crate::QueueWindows::from([crate::QueueWindow::at(0, 10)]),
-    );
+    let mut upcoming = crate::tables::subscribe_upcoming_count(&f.db, false);
     macro_rules! value_until {
         ($check:expr) => {
             tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
@@ -720,14 +689,14 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
         ($total:expr) => {
             tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
                 loop {
-                    let read = upcoming.next().await.expect("the query stays open").result.unwrap();
-                    if read.upcoming_total == $total {
+                    let read = upcoming.next().await.expect("the query stays open").unwrap();
+                    if read == $total {
                         break;
                     }
                 }
             })
             .await
-            .expect("the upcoming windows follow the write")
+            .expect("the upcoming count follows the write")
         };
     }
     upcoming_until!(0);
@@ -747,50 +716,53 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     value_until!(|read: &crate::ResolvedQueueSnapshot| read.context.is_none());
 }
 
-/// Up Next's version and the context lane's, as the queue screens read them.
-async fn versions(f: &Fixture) -> (u64, u64) {
-    (f.value().await.manual_version, crate::tables::queue_context_version(&f.db).await.unwrap())
-}
-
-/// Each lane's version counts the writes that change that lane, and only
-/// those: Up Next's entries put in, taken out or moved; the context lane's
-/// tracks after the playing one put in, taken out or moved, or which one
-/// plays. A reorder answers the version its move made.
+/// A reorder answers whether it moved its entry: a move of entries the queue
+/// holds, in Up Next or in the context lane, moved; one naming an entry the
+/// queue no longer holds moved nothing.
 #[tokio::test]
-async fn each_lanes_version_counts_the_writes_that_change_it() {
+async fn each_reorder_answers_whether_it_moved() {
     let mut f = release_and_manual(&["t1", "t2", "t3", "t4"], &["m1", "m2", "m3"]).await;
-    assert_eq!(versions(&f).await, (0, 0));
-
     f.play_from("t1").await;
-    assert_eq!(versions(&f).await, (0, 1), "a play fills the context lane");
     f.add(&["m1", "m2", "m3"]).await;
-    assert_eq!(versions(&f).await, (1, 1), "an addition changes Up Next alone");
 
     let manual = f.manual_ids().await;
-    let moved = f.queue.reorder(manual[2].clone(), Some(manual[0].clone())).await.unwrap();
-    assert_eq!(moved, Some(2), "a reorder answers the version it made");
-    assert_eq!(versions(&f).await, (2, 1));
-
+    assert!(f.queue.reorder(manual[2].clone(), Some(manual[0].clone())).await.unwrap());
     let (t2, t4) = (f.entry("t2").await, f.entry("t4").await);
-    let moved = f.queue.reorder(t4, Some(t2)).await.unwrap();
-    assert_eq!(moved, Some(2), "a context move counts on the context lane");
-    assert_eq!(versions(&f).await, (2, 2));
-
-    assert_eq!(
-        f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap(),
-        None,
+    assert!(f.queue.reorder(t4, Some(t2)).await.unwrap());
+    assert!(
+        !f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap(),
         "a refused reorder moves nothing"
     );
-    assert_eq!(versions(&f).await, (2, 2), "and counts nothing");
+}
 
-    f.next().await;
-    assert_eq!(versions(&f).await, (3, 2), "playing on takes Up Next's first entry");
-    f.queue.clear_up_next().await.unwrap();
-    assert_eq!(versions(&f).await, (4, 2));
-    f.queue.clear_up_next().await.unwrap();
-    assert_eq!(versions(&f).await, (4, 2), "clearing an empty Up Next changes nothing");
-    f.next().await;
-    assert_eq!(versions(&f).await, (4, 3), "playing on in the context lane moves its cursor");
-    f.queue.set_repeat_mode(RepeatMode::Off).await.unwrap();
-    assert_eq!(versions(&f).await, (4, 3), "the repeat mode is no lane's");
+/// A write that moves rows inside one window of the upcoming list reruns that
+/// window alone: the other windows hold rows the write did not touch, and
+/// the count, which the write leaves where it was, reruns none of them.
+#[tokio::test]
+async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
+    use bae_store::list_windows::ListWindow::Forward;
+    let tracks: Vec<String> = (0..60).map(|i| format!("t{i:02}")).collect();
+    let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
+    let mut f = release(&refs).await;
+    f.play_from("t00").await;
+
+    let split = crate::tables::upcoming_key_at(&f.db, false, 30).await.unwrap().expect("a key");
+    let mut lower = crate::tables::subscribe_upcoming_window(
+        &f.db,
+        false,
+        Forward { from: None, until: Some(split.clone()), limit: 100 },
+    );
+    let mut upper = crate::tables::subscribe_upcoming_window(
+        &f.db,
+        false,
+        Forward { from: Some(split), until: None, limit: 100 },
+    );
+    for window in [&mut lower, &mut upper] {
+        window.next().await.expect("the query stays open").result.unwrap();
+    }
+
+    let (t45, t50) = (f.entry("t45").await, f.entry("t50").await);
+    f.queue.reorder(t50, Some(t45)).await.unwrap();
+    assert!(upper.is_marked_for_rerun(), "the rows moved inside the upper window");
+    assert!(!lower.is_marked_for_rerun(), "the lower window's rows were not touched");
 }

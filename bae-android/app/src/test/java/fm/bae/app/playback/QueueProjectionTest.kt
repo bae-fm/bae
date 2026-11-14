@@ -69,7 +69,6 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
@@ -93,11 +92,10 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
-        feed.deliver(total = 2, read = listOf(entry("c1"), entry("c2")))
+        feed.show(listOf(entry("c1"), entry("c2")))
         shadowOf(Looper.getMainLooper()).idle()
 
         val projection = player.queue.value
@@ -119,7 +117,6 @@ class QueueProjectionTest {
                 shuffled = true,
                 hasNext = false,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
@@ -142,7 +139,6 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
@@ -164,7 +160,6 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
@@ -175,13 +170,11 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = false,
                 hasPrevious = false,
-                manualVersion = 2u,
             ),
         )
 
         assertEquals(emptyList<BridgeQueueEntry>(), player.queue.value.manual)
         assertNull(player.queue.value.context)
-        assertEquals("Up Next's version is the one core's value carries", 2uL, player.queue.value.manualVersion)
     }
 
     private fun player(feed: UpcomingFeed = UpcomingFeed()): BaeCorePlayer {

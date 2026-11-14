@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,12 +40,6 @@ import uniffi.bae_bridge.BridgeQueueEntry
 
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
-
-/**
- * Rows fetched around an unloaded context row, the page size
- * [fm.bae.app.playback.BaeCorePlayer.loadUpcomingRange] uses.
- */
-private const val QUEUE_UPCOMING_LOAD_BATCH_SIZE = 100
 
 /** The play queue for a sheet that names it: the playing track, then the drag-reorderable lanes. */
 @Composable
@@ -123,26 +118,32 @@ internal fun rememberReorderableQueue(
             }
         }
     // The move is held over its lane until core's read shows it; one that failed (and shows its error)
-    // shows the lane's read at once.
+    // or that moved nothing shows the lane's read at once.
     val onDropped: () -> Unit = {
         order.released()?.let { drop ->
             val beforeEntryId = (drop.place as? LanePlace.Before)?.entryId
             scope.launch {
-                val version =
+                val moved =
                     failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
                         session.appHandle.reorderEntry(drop.entryId, beforeEntryId)
                     }
-                if (version != null) order.moveAnswered(drop.lane, version) else order.moveFailed(drop.lane)
+                if (moved == true) order.moveAnswered(drop.lane) else order.moveFailed(drop.lane)
             }
         }
     }
 
-    // Values wait out a drag, then re-seed the lanes; a page of the tail fills only its rows.
+    // The sheet reads the context's tail while it shows it.
+    DisposableEffect(session) {
+        val shown = session.playback.showUpcoming()
+        onDispose { shown.close() }
+    }
+
+    // Values wait out a drag, then re-seed the lanes.
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
         if (reorderState.isAnyItemDragging) {
             order.dragging()
         } else {
-            order.apply(queue.manual, queue.context, queue.manualVersion, queue.contextVersion)
+            order.apply(queue.manual, queue.context)
         }
     }
     return ReorderableQueue(order, reorderState, onDropped, failures, readFailure, queue.shuffled)
@@ -188,7 +189,7 @@ internal fun LazyListScope.queueContent(
         // Always fully resolved, so no load hook.
         queueRows(
             session,
-            QueueLane(size = order.manual.size, itemAt = order.manual::get, changes = 0uL, loadRange = null),
+            QueueLane(size = order.manual.size, itemAt = order.manual::get, hold = null),
             queue,
             onSkipped,
         )
@@ -221,15 +222,14 @@ private fun LazyListScope.contextLane(
         )
     }
     // The context tail is library-scaled and only partly read: the lazy list
-    // asks only the rows it places, and an unread row renders a placeholder
-    // and triggers loadUpcomingRange.
+    // asks only the rows it places, each holds its place in the list while it
+    // is placed, and an unread row renders a placeholder.
     queueRows(
         session,
         QueueLane(
             size = order.context.size,
             itemAt = order.context::itemAt,
-            changes = order.contextVersion ?: 0uL,
-            loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
+            hold = session.playback.upcoming::hold,
         ),
         queue,
         onSkipped,
@@ -237,16 +237,15 @@ private fun LazyListScope.contextLane(
     item(key = "upcoming-failure") { UpcomingFailureNotice(session) }
 }
 
-/** One lane's rows for [queueRows], read per row; [loadRange] fetches unloaded rows and is null for the manual lane. */
+/** One lane's rows for [queueRows], read per row; [hold] keeps a row's place read until the returned release
+ *  runs, and is null for the manual lane, which is always read in full. */
 private class QueueLane(
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
-    /** Core's version of the lane, which restarts a row's load. */
-    val changes: ULong,
-    val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
+    val hold: ((index: Int) -> () -> Unit)?,
 )
 
-// One lane's reorderable rows, keyed by entry id; an unloaded row shows a placeholder and loads its batch.
+// One lane's reorderable rows, keyed by entry id; an unloaded row shows a placeholder until its place is read.
 private fun LazyListScope.queueRows(
     session: OpenLibrary,
     lane: QueueLane,
@@ -257,13 +256,13 @@ private fun LazyListScope.queueRows(
     items(count = lane.size, key = { index -> lane.itemAt(index)?.entryId ?: "placeholder-$index" }) { index ->
         val item = lane.itemAt(index)
         val scope = rememberCoroutineScope()
-        if (item == null) {
-            LaunchedEffect(lane.changes, index) {
-                lane.loadRange?.invoke(
-                    (index - QUEUE_UPCOMING_LOAD_BATCH_SIZE / 2).coerceAtLeast(0),
-                    QUEUE_UPCOMING_LOAD_BATCH_SIZE,
-                )
+        lane.hold?.let { hold ->
+            DisposableEffect(hold, index) {
+                val release = hold(index)
+                onDispose { release() }
             }
+        }
+        if (item == null) {
             AndroidQueuePlaceholderRow()
         } else {
             ReorderableItem(queue.reorderState, key = item.entryId) { isDragging ->

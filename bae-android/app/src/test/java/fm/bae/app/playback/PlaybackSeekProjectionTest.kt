@@ -206,7 +206,6 @@ class PlaybackSeekProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
 
@@ -228,7 +227,6 @@ class PlaybackSeekProjectionTest {
                 shuffled = false,
                 hasNext = false,
                 hasPrevious = true,
-                manualVersion = 1u,
             ),
         )
 

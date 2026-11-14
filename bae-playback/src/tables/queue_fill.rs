@@ -303,9 +303,7 @@ pub(super) fn fill_on(
     let lead = if whole_shuffled { None } else { start.lead() }.filter(|_| shuffled);
     // Up Next empties and the context lane is replaced, with what it plays
     // from written below.
-    if sql.execute("DELETE FROM playback_manual", [])? > 0 {
-        sql.execute(super::queue::MANUAL_CHANGED, [])?;
-    }
+    sql.execute("DELETE FROM playback_manual", [])?;
     sql.execute("DELETE FROM playback_context", [])?;
     let play_order = match (shuffled, &lead) {
         (false, _) => "ordered".to_string(),
@@ -362,7 +360,7 @@ pub(super) fn fill_on(
     sql.execute(
         "UPDATE playback_queue \
          SET source_kind = ?, source_release_id = ?, shuffled = ?, ordered_cursor = ?, \
-             shuffled_cursor = ?, next_entry = ?, context_version = context_version + 1",
+             shuffled_cursor = ?, next_entry = ?",
         params![
             source_kind,
             source_release_id,

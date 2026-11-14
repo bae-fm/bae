@@ -3,9 +3,6 @@ import SwiftUI
 import os.log
 
 private let logger = Logger.bae("PlaybackStore")
-/// How many windows of the context's upcoming tail stay read at once: the one
-/// around the visible rows and the two nearest it.
-private let maximumUpcomingWindows = 3
 
 /// Mirror of core's playback state, written by the playback and queue
 /// subscriptions. Views read it and act through `appHandle`. Where the
@@ -24,41 +21,25 @@ public class PlaybackStore {
     public var settings: PlaybackSettings?
     /// The manual lane ("Up next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
-    /// Up Next's version as core's queue value carries it: how many writes
-    /// have changed the lane, which a held reorder waits for.
-    public private(set) var manualVersion: UInt64 = 0
-    /// What's playing from, or `nil`. Its tracks are read through the upcoming
-    /// read: `upcomingTotal` and `upcomingItem(at:)`.
+    /// What's playing from, or `nil`. Its tracks are the `upcoming` list.
     public var queueContext: QueuePlaybackContext?
     /// Whether shuffle is on, which holds with nothing playing: the next play
     /// starts shuffled.
     public private(set) var shuffled = false
-    /// The length of the context's not-yet-played tail, from the upcoming
-    /// read; 0 until the read answers.
-    public private(set) var upcomingTotal = 0
-    /// The tail entries the upcoming read last delivered, keyed by their index
-    /// in the tail. Indices it did not read are absent.
-    public private(set) var upcomingRows: [Int: BridgeQueueEntry] = [:]
-    /// The context lane's version as core's upcoming read carries it: how
-    /// many writes have changed its tracks after the playing one. A change
-    /// restarts the lane's row loads, and a held reorder waits for it; a
-    /// scroll leaves it.
-    public private(set) var contextVersion: UInt64 = 0
-    /// The live read of the upcoming tail, opened by `showUpcoming` and kept
-    /// while a context plays.
+    /// The context's tracks after the playing one, as a list read in windows
+    /// with a count of its own; `nil` until `showUpcoming` has opened it, and
+    /// again once no context plays.
+    private var upcoming: PaginatedList<BridgeQueueEntry>?
+    /// Which order `upcoming` reads in.
     @ObservationIgnored
-    private var upcomingQuery: QueueUpcomingQuery?
+    private var upcomingShuffled = false
+    /// Which `showUpcoming` call is the latest, so one a later call has
+    /// replaced does not open a list.
     @ObservationIgnored
-    private var upcomingDeliveries:
-        ScreenSubscription<PulledValues<BridgeQueueUpcomingSnapshot>>?
-    /// The tail ranges the upcoming read covers, at most
-    /// `maximumUpcomingWindows`; loading one past that drops the one farthest
-    /// from it.
-    @ObservationIgnored
-    private var upcomingWindows: [Range<Int>] = []
-    /// Why the upcoming read stopped, until `retryUpcoming` opens it again.
-    /// Unread rows stay placeholders while it is set.
-    public private(set) var upcomingFailure: DisplayError?
+    private var upcomingOpening = 0
+    /// A later read of `upcoming` failed. The list shows what it has, and the
+    /// queue says it couldn't read the rest.
+    private var upcomingReadFailure: DisplayError?
 
     /// Where the playing track is, under its track id, for the native views
     /// that read it each display frame.
@@ -196,162 +177,106 @@ public class PlaybackStore {
 
 extension PlaybackStore {
     /// Take core's queue value. A value without a context ends the upcoming
-    /// read: there is no tail to read.
+    /// list: there is no tail to read.
     @MainActor
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         manualQueue = snapshot.manual
-        manualVersion = snapshot.manualVersion
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         shuffled = snapshot.shuffled
         if queueContext == nil {
-            closeUpcomingQuery()
-            upcomingTotal = 0
-            upcomingRows = [:]
+            closeUpcoming()
         }
+    }
+
+    /// The length of the context's tail, from the upcoming list's count; 0
+    /// until the list is open and has answered.
+    @MainActor
+    public var upcomingTotal: Int {
+        upcoming?.totalCount ?? 0
     }
 
     /// The upcoming item at `index`, or `nil` when it is not read or past
     /// the end.
+    @MainActor
     public func upcomingItem(at index: Int) -> BridgeQueueEntry? {
-        upcomingRows[index]
+        upcoming?.row(at: index)
     }
 
     /// Whether a read upcoming row is the entry `entryId`.
+    @MainActor
     public func upcomingHolds(entryId: String) -> Bool {
-        upcomingRows.values.contains { $0.id == entryId }
+        upcoming?.position(of: entryId) != nil
     }
 
-    /// Open the upcoming read while a context plays, so its length is known
-    /// before any of its rows is asked for.
+    /// Names the open upcoming list, which changes when a new one replaces it
+    /// and so restarts the rows' holds; `nil` while none is open.
     @MainActor
-    public func showUpcoming(queue: Queue) {
+    public var upcomingEpoch: LoadEpoch? {
+        upcoming?.loadEpoch
+    }
+
+    /// Hold the upcoming item at `index` for as long as the call runs, so the
+    /// list reads the window around it.
+    @MainActor
+    public func holdUpcoming(at index: Int) async {
+        await upcoming?.holdPage(containing: index)
+    }
+
+    /// Why the upcoming list could not be read, when it could not: its first
+    /// read failing, or a later one.
+    @MainActor
+    public var upcomingFailure: DisplayError? {
+        upcomingReadFailure ?? upcoming?.initialLoadError
+    }
+
+    /// Open the upcoming list in the order the lane reads in now, while a
+    /// context plays, and wait for its count and first rows. A list open in
+    /// the other order stays shown until the new one has answered, so a
+    /// shuffle flip does not empty the lane.
+    @MainActor
+    public func showUpcoming(queue: Queue) async {
         guard queueContext != nil else {
             return
         }
-        _ = openUpcomingQuery(queue: queue)
-    }
-
-    /// Read `[offset, offset + limit)` of the upcoming tail. Beyond
-    /// `maximumUpcomingWindows`, the window farthest from this one is dropped.
-    /// A failed request or read stops the read and sets `upcomingFailure`,
-    /// which the queue shows with Retry.
-    @MainActor
-    public func loadUpcomingRange(offset: Int, limit: Int, queue: Queue) async {
-        guard queueContext != nil else {
+        if upcoming != nil, upcomingShuffled == shuffled {
             return
         }
-        let end = min(offset + limit, upcomingTotal)
-        guard offset < end else {
-            return
-        }
-        let range = offset..<end
-        if upcomingWindows.contains(where: {
-            $0.lowerBound <= range.lowerBound
-                && range.upperBound <= $0.upperBound
-        }) {
-            return
-        }
-        while upcomingWindows.count >= maximumUpcomingWindows {
-            let midpoint = range.lowerBound + range.count / 2
-            guard
-                let farthest = upcomingWindows.indices.max(by: {
-                    distance(from: upcomingWindows[$0], to: midpoint)
-                        < distance(from: upcomingWindows[$1], to: midpoint)
-                })
-            else { break }
-            upcomingWindows.remove(at: farthest)
-        }
-        upcomingWindows.append(range)
-        let query = openUpcomingQuery(queue: queue)
-        do {
-            try query.setWindows(
-                upcomingWindows.sorted { $0.lowerBound < $1.lowerBound }
-                    .map {
-                        BridgeQueueWindow(
-                            offset: UInt64($0.lowerBound),
-                            limit: UInt64($0.count)
-                        )
-                    }
-            )
-        }
-        catch {
-            logger.warning(
-                "upcoming range [\(offset), \(end)) was not requested: \(String(reflecting: error))"
-            )
-            // A request to a read a failure already stopped fails because of
-            // it, so the failure shown stays the first one.
-            if upcomingFailure == nil {
-                upcomingFailure = DisplayError(error)
-            }
-        }
-    }
-
-    /// Open the upcoming read again over the windows it covered, after a
-    /// failure stopped it.
-    @MainActor
-    public func retryUpcoming(queue: Queue) async {
-        upcomingFailure = nil
-        let covered = upcomingWindows
-        closeUpcomingQuery()
-        showUpcoming(queue: queue)
-        for window in covered {
-            await loadUpcomingRange(
-                offset: window.lowerBound,
-                limit: window.count,
-                queue: queue
-            )
-        }
-    }
-
-    /// Stop the upcoming read and forget the windows it covered.
-    @MainActor
-    private func closeUpcomingQuery() {
-        upcomingDeliveries?.stop()
-        upcomingDeliveries = nil
-        upcomingWindows = []
-        upcomingQuery = nil
-    }
-
-    @MainActor
-    private func openUpcomingQuery(queue: Queue) -> QueueUpcomingQuery {
-        if let upcomingQuery {
-            return upcomingQuery
-        }
-        let query = queue.subscribeUpcoming()
-        upcomingQuery = query
-        upcomingDeliveries = ScreenSubscription(
-            query.values,
-            onValue: { [weak self] snapshot in self?.applyUpcoming(snapshot) },
+        upcomingOpening += 1
+        let opening = upcomingOpening
+        let order = shuffled
+        let list = PaginatedList(
+            queries: queue.upcomingQueries(order),
             onError: { [weak self] error in
                 logger.warning(
                     "upcoming queue read failed: \(String(reflecting: error))"
                 )
-                self?.upcomingFailure = DisplayError(error)
-                self?.upcomingDeliveries?.stop()
+                self?.upcomingReadFailure = DisplayError(error)
             }
         )
-        return query
-    }
-
-    /// Show what the upcoming read delivered: the tail's length and the rows
-    /// of every window, read together, so the two always agree.
-    @MainActor
-    private func applyUpcoming(_ snapshot: BridgeQueueUpcomingSnapshot) {
-        var rows: [Int: BridgeQueueEntry] = [:]
-        for window in snapshot.windows {
-            for (i, entry) in window.rows.enumerated() {
-                rows[Int(window.window.offset) + i] = entry
-            }
+        await list.loadInitial()
+        guard upcomingOpening == opening, queueContext != nil else {
+            list.cancel()
+            return
         }
-        upcomingTotal = Int(snapshot.upcomingTotal)
-        upcomingRows = rows
-        contextVersion = snapshot.contextVersion
+        upcoming?.cancel()
+        upcoming = list
+        upcomingShuffled = order
     }
 
-    private func distance(from range: Range<Int>, to index: Int) -> Int {
-        if index < range.lowerBound { return range.lowerBound - index }
-        if index >= range.upperBound { return index - range.upperBound + 1 }
-        return 0
+    /// Open the upcoming list again after a failure.
+    @MainActor
+    public func retryUpcoming(queue: Queue) async {
+        closeUpcoming()
+        await showUpcoming(queue: queue)
+    }
+
+    /// Stop the upcoming list and forget it.
+    @MainActor
+    private func closeUpcoming() {
+        upcomingOpening += 1
+        upcoming?.cancel()
+        upcoming = nil
+        upcomingReadFailure = nil
     }
 }
 

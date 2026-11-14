@@ -1,83 +1,151 @@
 package fm.bae.app.playback
 
 import fm.bae.app.creditLineNamed
-import kotlinx.coroutines.CompletableDeferred
+import fm.bae.app.data.ListPositionRead
+import fm.bae.app.data.ListReads
+import fm.bae.app.data.ListWindowDelivery
+import fm.bae.app.data.ListWindowRead
+import fm.bae.screensubscription.PulledSubscription
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeListCount
+import uniffi.bae_bridge.BridgeListCountExtra
+import uniffi.bae_bridge.BridgeListPosition
+import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeQueueUpcomingSnapshot
-import uniffi.bae_bridge.BridgeQueueUpcomingWindow
-import uniffi.bae_bridge.BridgeQueueWindow
+import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeTrackDisplay
 
-/** An upcoming read a test drives: it records every window request and hands `next` whatever
- *  the test delivers. */
+/** The context's upcoming list as a test drives it: the rows it shows are the test's, every window read of them
+ *  answers out of those rows, and the list records which orders were opened and which windows were asked for. */
 internal class UpcomingFeed {
-    private companion object {
-        /** Wakes a waiting read so it can fail; never applied. */
-        val PLACEHOLDER =
-            BridgeQueueUpcomingSnapshot(upcomingTotal = 0uL, contextVersion = 0uL, windows = emptyList())
-    }
+    /** The order each open of the list asked for. */
+    val opened = mutableListOf<Boolean>()
 
-    var opened = 0
-        private set
-    val requests = mutableListOf<List<BridgeQueueWindow>>()
-    private val values = Channel<BridgeQueueUpcomingSnapshot>(Channel.UNLIMITED)
-    private var failNext: BridgeException? = null
-    private val closed = CompletableDeferred<Unit>()
+    /** Every window request, in the order made. */
+    val requests = mutableListOf<BridgeListWindow>()
+
+    private var rows = emptyList<BridgeQueueEntry>()
+    private val windows = mutableListOf<FeedWindow>()
+    private val counts = Channel<BridgeListCount>(Channel.UNLIMITED)
+    private var failure: BridgeException? = null
 
     val source: QueueUpcomingSource
-        get() = QueueUpcomingSource(::open)
-
-    fun open(): QueueUpcomingQuery {
-        opened++
-        return object : QueueUpcomingQuery {
-            override fun setWindows(windows: List<BridgeQueueWindow>) {
-                requests.add(windows)
+        get() =
+            QueueUpcomingSource { shuffled ->
+                opened.add(shuffled)
+                failure = null
+                reads()
             }
 
-            override suspend fun next(): BridgeQueueUpcomingSnapshot {
-                val value = values.receive()
-                failNext?.let { error ->
-                    failNext = null
-                    throw error
-                }
-                return value
-            }
-
-            override suspend fun cancel() {
-                closed.complete(Unit)
-            }
-        }
+    /** Show [rows] as the list: the count and every open window read again. */
+    fun show(rows: List<BridgeQueueEntry>) {
+        this.rows = rows
+        counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+        windows.toList().forEach(FeedWindow::deliver)
     }
 
-    /** End the read with [error]; a read opened after it reads on. */
+    /** End every read open now with [error]; a list opened after it reads on. */
     fun fail(error: BridgeException) {
-        failNext = error
-        values.trySend(PLACEHOLDER)
+        failure = error
+        counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+        windows.toList().forEach(FeedWindow::wake)
     }
 
-    /** Answer with a tail of [total] entries, of which [read] holds the ones read, from [offset]. */
-    fun deliver(
-        total: Int,
-        contextVersion: ULong = 1u,
-        offset: Int = 0,
-        read: List<BridgeQueueEntry> = emptyList(),
-    ) {
-        values.trySend(
-            BridgeQueueUpcomingSnapshot(
-                upcomingTotal = total.toULong(),
-                contextVersion = contextVersion,
-                windows =
-                    listOf(
-                        BridgeQueueUpcomingWindow(
-                            window = BridgeQueueWindow(offset.toULong(), read.size.toULong()),
-                            rows = read,
-                        ),
-                    ).filter { read.isNotEmpty() },
-            ),
+    private fun key(place: Int) = listOf<BridgeSortValue>(BridgeSortValue.Integer(place.toLong()))
+
+    private fun place(key: List<BridgeSortValue>): Int = (key.firstOrNull() as? BridgeSortValue.Integer)?.value?.toInt() ?: 0
+
+    private fun reads() =
+        ListReads<BridgeQueueEntry>(
+            window = { first ->
+                requests.add(first)
+                FeedWindow(first).also { windows.add(it) }
+            },
+            count = {
+                counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+                object : PulledSubscription<BridgeListCount> {
+                    override suspend fun next(): BridgeListCount {
+                        val value = counts.receive()
+                        failure?.let { throw it }
+                        return value
+                    }
+
+                    override suspend fun cancel() {}
+                }
+            },
+            position = { key ->
+                val feed = Channel<BridgeListPosition>(Channel.UNLIMITED)
+                feed.trySend(BridgeListPosition(key, place(key).toULong()))
+                object : ListPositionRead {
+                    override fun setKey(key: List<BridgeSortValue>) {
+                        feed.trySend(BridgeListPosition(key, place(key).toULong()))
+                    }
+
+                    override suspend fun next(): BridgeListPosition = feed.receive()
+
+                    override suspend fun cancel() {}
+                }
+            },
+            keyAt = { position -> if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1)) },
         )
+
+    /** One open window: it answers what its request names out of the rows, again at every change. */
+    private inner class FeedWindow(
+        var request: BridgeListWindow,
+    ) : ListWindowRead<BridgeQueueEntry> {
+        private val deliveries = Channel<ListWindowDelivery<BridgeQueueEntry>>(Channel.UNLIMITED)
+
+        init {
+            deliver()
+        }
+
+        fun deliver() {
+            val request = request
+            val start: Int
+            val stop: Int
+            val beyond: Int?
+            when (request) {
+                is BridgeListWindow.Forward -> {
+                    start = minOf(request.from?.let(::place) ?: 0, rows.size)
+                    val end = minOf(request.until?.let(::place) ?: rows.size, rows.size)
+                    stop = maxOf(start, minOf(start + request.limit.toInt(), end))
+                    beyond = if (stop < end) stop else null
+                }
+
+                is BridgeListWindow.Backward -> {
+                    stop = minOf(place(request.until), rows.size)
+                    start = maxOf(0, stop - request.limit.toInt())
+                    beyond = if (start > 0) start - 1 else null
+                }
+            }
+            val held = rows.subList(start, stop)
+            deliveries.trySend(
+                ListWindowDelivery(request, held, if (held.isEmpty()) null else key(start), beyond?.let(::key)),
+            )
+        }
+
+        /** Wake a waiting read so it can fail. */
+        fun wake() {
+            deliver()
+        }
+
+        override fun setWindow(window: BridgeListWindow) {
+            requests.add(window)
+            request = window
+            deliver()
+        }
+
+        override suspend fun next(): ListWindowDelivery<BridgeQueueEntry> {
+            val value = deliveries.receive()
+            failure?.let { throw it }
+            return value
+        }
+
+        override suspend fun cancel() {
+            windows.remove(this)
+        }
     }
 }
 

@@ -19,9 +19,12 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCreditLine
@@ -223,18 +226,26 @@ class BaeCorePlayer(
     private var manualEntries: List<BridgeQueueEntry> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Each lane's version as core's reads last carried it: Up Next's from the queue value, the
-     *  context lane's from the upcoming read. */
-    private var manualVersion: ULong = 0u
-    private var contextVersion: ULong = 0u
-
-    /** The read of the context's tail; the queue shows its failure and retries it. */
-    internal val upcoming =
-        QueueUpcomingWindows(queueUpcomingSource, scope) { version ->
-            contextVersion = version
+    /** The head of the context's tail, read for as long as a context plays: the Media3 playlist's tracks. */
+    internal val playlistHead =
+        UpcomingTail(queueUpcomingSource, scope) {
             entries = playlistEntries()
             publish()
+        }.also {
+            it.hold(0)
+            it.hold(PLAYLIST_CONTEXT_TRACKS - 1)
         }
+
+    /** The context's tail as the queue screen reads it, open while a screen shows it. */
+    internal val upcoming = UpcomingTail(queueUpcomingSource, scope) { publish() }
+
+    /** Why the read of the context's tail stopped, in the playlist's head or on the screen, until [retryUpcoming]. */
+    internal val upcomingFailure: StateFlow<BridgeException?> =
+        combine(playlistHead.failure, upcoming.failure) { head, screen -> screen ?: head }
+            .stateIn(scope, SharingStarted.Eagerly, null)
+
+    /** Whether the queue screen is showing the context's tail. */
+    private var upcomingShown = false
 
     /** The current track's metadata, from the latest playback value; null when stopped. */
     private var currentMeta: Meta? = null
@@ -501,12 +512,13 @@ class BaeCorePlayer(
     fun onQueueValue(value: BridgeQueueSnapshot) {
         readFailures.queueArrived()
         manualEntries = value.manual
-        manualVersion = value.manualVersion
         contextLane = value.context?.let { ContextLane(kind = it.kind) }
         if (contextLane == null) {
+            playlistHead.close()
             upcoming.close()
         } else {
-            upcoming.pin(0 until PLAYLIST_CONTEXT_TRACKS)
+            playlistHead.open(value.shuffled)
+            if (upcomingShown) upcoming.open(value.shuffled)
         }
         entries = playlistEntries()
         shuffled = value.shuffled
@@ -518,10 +530,10 @@ class BaeCorePlayer(
     /** The Media3 playlist after the current track: Up Next, then the context tracks read from
      *  its start, up to the first one not read yet. */
     private fun playlistEntries(): List<Meta> {
-        val read = upcoming.entries()
+        val read = playlistHead.entries()
         val context =
             generateSequence(0) { it + 1 }
-                .take(minOf(upcoming.total, PLAYLIST_CONTEXT_TRACKS))
+                .take(minOf(playlistHead.total, PLAYLIST_CONTEXT_TRACKS))
                 .map { read[it] }
                 .takeWhile { it != null }
                 .filterNotNull()
@@ -529,13 +541,15 @@ class BaeCorePlayer(
         return (manualEntries + context).map { it.toMeta() }
     }
 
-    /** Read `[offset, offset + limit)` of the context's tail. See [QueueUpcomingWindows.load]. */
-    fun loadUpcomingRange(
-        offset: Int,
-        limit: Int,
-    ) {
-        if (contextLane == null) return
-        upcoming.load(offset until minOf(offset + limit, upcoming.total))
+    /** The queue screen shows the context's tail from now on: it is read in the order the lane reads in, around the
+     *  rows the screen holds with [UpcomingTail.hold], until the returned closer runs. */
+    fun showUpcoming(): AutoCloseable {
+        upcomingShown = true
+        if (contextLane != null) upcoming.open(shuffled)
+        return AutoCloseable {
+            upcomingShown = false
+            upcoming.close()
+        }
     }
 
     /** Refresh the Media3 [State] and the in-app flows from the same fields. */
@@ -560,15 +574,14 @@ class BaeCorePlayer(
                 manual = manualEntries,
                 context =
                     contextLane?.let { lane ->
+                        val tail = if (upcomingShown) upcoming else playlistHead
                         QueueContext(
                             kind = lane.kind,
-                            upcomingTotal = upcoming.total,
-                            upcoming = upcoming.entries(),
+                            upcomingTotal = tail.total,
+                            upcoming = tail.entries(),
                         )
                     },
                 shuffled = shuffled,
-                manualVersion = manualVersion,
-                contextVersion = contextVersion,
             )
     }
 
@@ -809,8 +822,47 @@ class BaeCorePlayer(
 
     fun closeSession() {
         systemHooks.detach()
+        playlistHead.close()
         upcoming.close()
     }
+}
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+internal fun availableCommands(
+    hasNext: Boolean,
+    hasPrevious: Boolean,
+): Player.Commands {
+    val builder =
+        Player.Commands
+            .Builder()
+            .add(Player.COMMAND_PLAY_PAUSE)
+            .add(Player.COMMAND_STOP)
+            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+            // Lets a controller (Android Auto / a head unit) play what it
+            // sends: a tapped library item is a single-item setMediaItem, a
+            // list of items is setMediaItems, and both route to
+            // handleSetMediaItems. Media3 gates setMediaItems on
+            // COMMAND_CHANGE_MEDIA_ITEMS, so it is available too; the
+            // core-driven queue isn't editable through the raw media-item API,
+            // so BaeCorePlayer fails adding, moving and removing items.
+            .add(Player.COMMAND_SET_MEDIA_ITEM)
+            .add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
+            .add(Player.COMMAND_SET_REPEAT_MODE)
+            .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+            .add(Player.COMMAND_GET_TIMELINE)
+            .add(Player.COMMAND_GET_METADATA)
+
+    listOf(
+        hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
+        hasPrevious to listOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
+    ).forEach { (enabled, commands) ->
+        if (enabled) {
+            commands.forEach { builder.add(it) }
+        }
+    }
+
+    return builder.build()
 }
 
 /** The queue is core's, so a controller can't edit it item by item. */
@@ -836,3 +888,9 @@ private fun BridgePlaybackValueState.loadingTrackId(): String? =
             null
         }
     }
+
+/** Open each stopped read of the context's tail again, in the playlist's head and on the screen. */
+internal fun BaeCorePlayer.retryUpcoming() {
+    if (playlistHead.failure.value != null) playlistHead.retry()
+    if (upcoming.failure.value != null) upcoming.retry()
+}

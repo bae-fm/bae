@@ -354,11 +354,10 @@ forward! { sync this => {
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     /// Move the entry `entry_id` to sit immediately before `before_entry_id`,
-    /// or to the end of its lane without one, and answer the lane's version
-    /// the move made: a screen holding the moved row shows the lane's read
-    /// again once that read reaches it. `None` when the entry, or the one it
-    /// goes before, is no longer queued there: nothing moved, and the screen
-    /// shows the lane's read at once.
+    /// or to the end of its lane without one, and answer whether it moved:
+    /// `false` when the entry, or the one it goes before, is no longer queued
+    /// there, so nothing moved. The lane's list shows the move when it
+    /// arrives.
     ///
     /// The move is sent before the call first waits, so moves sent one after
     /// another, as a drag sends its steps, reach the queue in that order.
@@ -366,7 +365,7 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         entry_id: String,
         before_entry_id: Option<String>,
-    ) -> Result<Option<u64>, BridgeError> {
+    ) -> Result<bool, BridgeError> {
         let entry_id = parsed_queue_entry_id(&entry_id)?;
         let before = before_entry_id.as_deref().map(parsed_queue_entry_id).transpose()?;
         let answer = self.services.playback_reorder_entry(entry_id, before);

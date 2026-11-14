@@ -152,6 +152,5 @@ mirror_struct! {
         shuffled,
         has_next,
         has_previous,
-        manual_version,
     },
 }

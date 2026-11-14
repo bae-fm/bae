@@ -14,21 +14,13 @@ internal enum class OrderLane { MANUAL, CONTEXT }
 /**
  * The lanes as the sheet shows them: core's read of each, with the moves of a drag laid over a lane
  * until core's read shows them. A lane's moves are held while the drag runs and while a reorder it
- * sent is unanswered, then until the lane's read reaches the version core answered the last one
- * with; a reorder core refused or that failed ends the hold at once, so a move that didn't take
- * never stays on screen.
+ * sent is unanswered, then until the lane's read draws the moved row where the drag left it, or the
+ * lane has changed length; a reorder core refused or that failed ends the hold at once, so a move that
+ * didn't take never stays on screen.
  */
 internal class QueueOrder {
     val manual = mutableStateListOf<BridgeQueueEntry>()
     val context = ContextLaneOrder()
-
-    /** Core's version of the context lane the sheet shows, which re-keys each context row's load;
-     *  null before the first value. */
-    var contextVersion by mutableStateOf<ULong?>(null)
-        private set
-
-    /** Core's version of Up Next the sheet shows. */
-    private var manualVersion: ULong? = null
 
     val isEmpty: Boolean
         get() = manual.isEmpty() && context.size == 0
@@ -38,9 +30,6 @@ internal class QueueOrder {
 
     /** Each lane's moves core hasn't shown yet. */
     private val holds = mutableMapOf<OrderLane, LaneHold>()
-
-    /** The lanes whose holds ended while their moves still lie over them, until re-seeded. */
-    private val landed = mutableSetOf<OrderLane>()
 
     /** Where the drag's last step left its row, which its release sends core. */
     private var pending: LaneDrop? = null
@@ -67,7 +56,11 @@ internal class QueueOrder {
     }
 
     /** The drag ended: the reorder to send core, where the dragged row now sits, or null when it moved nothing. */
-    fun released(): LaneDrop? = pending.also { pending = null }
+    fun released(): LaneDrop? =
+        pending.also { drop ->
+            pending = null
+            drop?.let { holds[it.lane]?.target = it }
+        }
 
     /** [drop] within Up Next, which is read whole, so the row after the drop is always known. */
     private fun manualDrop(
@@ -80,7 +73,7 @@ internal class QueueOrder {
         val moved = manual.removeAt(from)
         manual.add(to, moved)
         val place = manual.getOrNull(to + 1)?.let { LanePlace.Before(it.entryId) } ?: LanePlace.End
-        return LaneDrop(OrderLane.MANUAL, moved.entryId, place)
+        return LaneDrop(OrderLane.MANUAL, moved.entryId, place, to)
     }
 
     /** [drop] within what's playing from. */
@@ -91,7 +84,7 @@ internal class QueueOrder {
         val from = context.indexOf(fromKey)
         val to = context.indexOf(toKey)
         val place = if (from != null && to != null) context.moveBefore(from, to) else null
-        return place?.let { LaneDrop(OrderLane.CONTEXT, fromKey, it) }
+        return if (place != null && to != null) LaneDrop(OrderLane.CONTEXT, fromKey, place, to) else null
     }
 
     /** A drag is reordering the lanes; values wait until it ends. */
@@ -101,108 +94,106 @@ internal class QueueOrder {
 
     /** A reorder of a row of [lane] is held until core answers it: the drag's first step makes it. */
     fun moveSent(lane: OrderLane) {
-        holds.getOrPut(lane) { LaneHold() }.unanswered++
+        val size = if (lane == OrderLane.MANUAL) manual.size else context.size
+        holds.getOrPut(lane) { LaneHold(size) }.unanswered++
     }
 
-    /** Core moved the row, making [lane]'s [version]. */
-    fun moveAnswered(
-        lane: OrderLane,
-        version: ULong,
-    ) {
+    /** Core moved the row of [lane]: the lane stays as moved until its read shows it. */
+    fun moveAnswered(lane: OrderLane) {
         val hold = holds[lane] ?: return
         hold.unanswered--
-        hold.landsAt = maxOf(hold.landsAt ?: version, version)
         show()
     }
 
-    /** Core moved nothing in [lane], or the reorder failed: the lane shows core's read at once. */
+    /**
+     * Core moved nothing in [lane], or the reorder failed: the lane shows core's read at once, unless a
+     * later drag's reorder is still unanswered, which keeps its own moves held.
+     */
     fun moveFailed(lane: OrderLane) {
-        holds.remove(lane) ?: return
+        val hold = holds[lane] ?: return
+        hold.unanswered--
+        if (hold.unanswered > 0) return
+        holds.remove(lane)
         reseed(lane)
     }
 
     /**
-     * Take the queue. A lane shows core's read again once nothing holds it: re-seeded when its version
-     * moved or its moves have landed. A context lane core did not change is more of its tail read,
-     * which fills only the rows it read.
+     * Take the queue. A lane shows core's read again once nothing holds it, or its hold's move shows in
+     * the read.
      */
     fun apply(
         manual: List<BridgeQueueEntry>,
         context: QueueContext?,
-        manualVersion: ULong,
-        contextVersion: ULong,
     ) {
         dragging = false
-        latest = QueueValue(manual, context, manualVersion, contextVersion)
+        latest = QueueValue(manual, context)
         show()
     }
 
     private fun show() {
         val value = latest ?: return
         if (dragging) return
-        if (!held(OrderLane.MANUAL, value.manualVersion) &&
-            (OrderLane.MANUAL in landed || value.manualVersion != manualVersion)
-        ) {
-            reseed(OrderLane.MANUAL)
-        }
-        if (held(OrderLane.CONTEXT, value.contextVersion)) {
-            // The moves lie over the rows they were made on: more of that read fills in, a read at
-            // another version waits for the hold to end.
-            if (value.contextVersion == contextVersion) context.fill(value.context)
-        } else if (OrderLane.CONTEXT in landed || value.contextVersion != contextVersion) {
-            reseed(OrderLane.CONTEXT)
-        } else {
-            context.fill(value.context)
+        for (lane in OrderLane.entries) {
+            if (!held(lane, value)) reseed(lane)
         }
     }
 
-    /** Whether [lane]'s moves still wait for core at [version]; a hold that has landed ends here. */
+    /** Whether [lane]'s moves still wait for core's read [value]; a hold whose move the read shows ends here. */
     private fun held(
         lane: OrderLane,
-        version: ULong,
+        value: QueueValue,
     ): Boolean {
         val hold = holds[lane] ?: return false
-        val landsAt = hold.landsAt
-        val waiting = hold.unanswered > 0 || landsAt == null || version < landsAt
-        if (!waiting) {
-            holds.remove(lane)
-            landed += lane
-        }
-        return waiting
+        val target = hold.target
+        val shown =
+            hold.unanswered == 0 &&
+                target != null &&
+                (
+                    value.sizeOf(lane) != hold.size ||
+                        value.entryAt(lane, target.index)?.entryId == target.entryId
+                )
+        if (shown) holds.remove(lane)
+        return !shown
     }
 
     private fun reseed(lane: OrderLane) {
         val value = latest ?: return
-        landed -= lane
         when (lane) {
             OrderLane.MANUAL -> {
-                manual.clear()
-                manual.addAll(value.manual)
-                manualVersion = value.manualVersion
+                if (manual.toList() != value.manual) {
+                    manual.clear()
+                    manual.addAll(value.manual)
+                }
             }
 
             OrderLane.CONTEXT -> {
                 context.seed(value.context)
-                contextVersion = value.contextVersion
             }
         }
     }
 }
 
-/** The reorders a lane sent that core hasn't shown: how many are unanswered, and the newest version
- *  core answered one with. */
-private class LaneHold {
+/** The reorders a lane sent that core hasn't shown: how many are unanswered, how long the lane was when the first
+ *  was made, and where the last left its row, once the drag has ended. */
+private class LaneHold(
+    val size: Int,
+) {
     var unanswered = 0
-    var landsAt: ULong? = null
+    var target: LaneDrop? = null
 }
 
 /** One value of the queue as [QueueOrder.apply] took it. */
 private class QueueValue(
     val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
-    val manualVersion: ULong,
-    val contextVersion: ULong,
-)
+) {
+    fun sizeOf(lane: OrderLane): Int = if (lane == OrderLane.MANUAL) manual.size else context?.upcomingTotal ?: 0
+
+    fun entryAt(
+        lane: OrderLane,
+        index: Int,
+    ): BridgeQueueEntry? = if (lane == OrderLane.MANUAL) manual.getOrNull(index) else context?.itemAt(index)
+}
 
 /**
  * The context lane as the sheet shows it: the queue's context, sized to its whole tail and read
@@ -226,11 +217,6 @@ internal class ContextLaneOrder {
     fun seed(context: QueueContext?) {
         source = context
         moves.clear()
-    }
-
-    /** Show [context], unchanged by core with more of its tail read. */
-    fun fill(context: QueueContext?) {
-        source = context
     }
 
     /** The row shown at [index], or null while it is not read. */
@@ -274,11 +260,13 @@ internal class ContextLaneOrder {
     }
 }
 
-/** A row a drag moved, in [lane], and where it then sits, as core is told it. */
+/** A row a drag moved, in [lane], and where it then sits, as core is told it: [index] is its place in the lane as
+ *  the sheet shows it. */
 internal data class LaneDrop(
     val lane: OrderLane,
     val entryId: String,
     val place: LanePlace,
+    val index: Int,
 )
 
 /** Where a moved row sits in its lane, as core is told it. */

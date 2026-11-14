@@ -2,14 +2,11 @@ import BaeKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// How many rows to load around an unloaded context row.
-private let queueUpcomingLoadBatchSize = 100
-
 // periphery:ignore
-/// A row's load task identity: the lane's change count, so a change restarts
-/// the load, and the absolute index.
+/// A row's hold task identity: the list the lane reads, so a new list
+/// restarts the hold, and the absolute index.
 private struct QueueRowLoadID: Hashable {
-    let epoch: UInt64
+    let epoch: LoadEpoch?
     let index: Int
 }
 
@@ -24,7 +21,9 @@ private struct QueueRowSlot: Identifiable {
 
 /// One queue lane (the manual "Up next" lane or the context) as a labelled
 /// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
-/// row, which shows a placeholder and calls `loadRange`.
+/// row, which shows a placeholder; each row holds its place in the lane's
+/// list through `holdRow` while it is drawn, and the list reads the windows
+/// around the rows held.
 struct QueueSection: View {
     /// A row's inset from the lane's edges, and the gap under it.
     private static let rowInset = ThemeSpace.related
@@ -42,30 +41,27 @@ struct QueueSection: View {
     /// Whether a loaded row of the lane is the entry of this id: what tells a
     /// collapsed row its removal has landed.
     let holdsEntry: (String) -> Bool
-    /// Restarts in-flight row loads when it changes: the context lane's
-    /// version. Fixed at 0 for the manual lane, which is always loaded.
-    let loadVersion: UInt64
-    /// Fetch `[offset, offset + limit)` and merge it into the store. `nil` for
-    /// the manual lane, which is never windowed.
-    let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
+    /// Names the list the lane reads, which restarts the rows' holds when the
+    /// list is replaced. `nil` for the manual lane, which is never windowed.
+    let loadEpoch: LoadEpoch?
+    /// Hold the row at an index in the lane's list for as long as the call
+    /// runs, so the list reads around it. `nil` for the manual lane.
+    let holdRow: (@MainActor (_ index: Int) async -> Void)?
     let acceptsExternalDrops: Bool
     /// This lane's key in the drag coordinator.
     let laneId: QueueLaneID
     /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
-    /// Core's version of this lane, as its read shows it; reaching the version
-    /// a reorder answered with drops the held post-commit order.
-    let laneVersion: UInt64
     /// Empties this lane; offered only while the lane has rows.
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
     /// Move `entryId` before `beforeEntryId`, or to the lane's end, answering
-    /// the lane's version the move made, or `nil` when the queue changed first
-    /// and nothing moved.
+    /// whether it moved: `false` when the queue changed first and nothing
+    /// moved.
     let onReorder:
         @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64?
+            -> Bool
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
@@ -147,23 +143,11 @@ struct QueueSection: View {
                         .opacity(isFloating ? 0 : 1)
                         .task(
                             id: QueueRowLoadID(
-                                epoch: loadVersion,
+                                epoch: loadEpoch,
                                 index: slot.sourceIndex
                             )
                         ) {
-                            guard item == nil, let loadRange else {
-                                return
-                            }
-                            let first = max(
-                                0,
-                                slot.sourceIndex - queueUpcomingLoadBatchSize
-                                    / 2
-                            )
-                            let end = min(
-                                first + queueUpcomingLoadBatchSize,
-                                count
-                            )
-                            await loadRange(first, end - first)
+                            await holdRow?(slot.sourceIndex)
                         }
                         .onDrop(
                             of: [UTType.plainText],
@@ -217,13 +201,19 @@ struct QueueSection: View {
                     )
                 )
         }
-        // The lane's read reached core's version: a held reorder that made it
-        // now matches the canonical order, and dropping it doesn't snap.
-        .onChange(of: laneVersion, initial: true) {
-            coordinator.laneRead(laneId, version: laneVersion)
-            // Drop only ids whose rows are gone: the rows and the version
-            // update separately, and a still-present row would jump back open.
-            removingEntryIds = removingEntryIds.filter(holdsEntry)
+        // The lane's rows show the held reorder: they now match the held
+        // order, and dropping the hold doesn't snap.
+        .onChange(of: holdEnded, initial: true) {
+            if holdEnded {
+                coordinator.releaseHold(laneId)
+            }
+        }
+        // Drop only ids whose rows are gone: a still-present row would jump
+        // back open.
+        .onChange(of: removalsLanded, initial: true) {
+            if removalsLanded {
+                removingEntryIds = removingEntryIds.filter(holdsEntry)
+            }
         }
         // Drop the hover when a drag starts, since `.onHover` won't fire again
         // until it ends.
@@ -237,6 +227,16 @@ struct QueueSection: View {
 
 /// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
+    /// Whether a row collapsing for removal has left the lane.
+    private var removalsLanded: Bool {
+        !removingEntryIds.allSatisfy(holdsEntry)
+    }
+
+    /// Whether the lane's rows show the reorder the coordinator holds.
+    private var holdEnded: Bool {
+        coordinator.holdEnded(laneId, count: count) { itemAt($0)?.id }
+    }
+
     /// The gap the lane draws its drop line over, `nil` hiding it: the manual
     /// lane's from an external drop or a cross-lane drag, either lane's from a
     /// row of its own held over a gap, unless the row after that gap isn't
@@ -298,28 +298,21 @@ extension QueueSection {
     }
 
     /// Hold `move` on screen and ask core for it: the hold ends once the
-    /// lane's read shows the version core answers with, or at once when core
-    /// moved nothing, with the failure shown when it failed.
+    /// lane's rows show the move, or at once when core moved nothing, with
+    /// the failure shown when it failed.
     private func commitReorder(
         _ entryId: String,
         before beforeEntryId: String?,
         _ move: QueueRowMove,
         _ lane: QueueLaneID
     ) {
-        let commit = coordinator.hold(move, lane: lane)
+        let commit = coordinator.hold(move, entryId: entryId, lane: lane)
         let coordinator = coordinator
         let onReorder = onReorder
         let onReorderFailed = onReorderFailed
         Task { @MainActor in
             do {
-                if let version = try await onReorder(entryId, beforeEntryId) {
-                    coordinator.reorderAnswered(
-                        lane,
-                        commit: commit,
-                        version: version
-                    )
-                }
-                else {
+                if try await !onReorder(entryId, beforeEntryId) {
                     coordinator.reorderFailed(lane, commit: commit)
                 }
             }

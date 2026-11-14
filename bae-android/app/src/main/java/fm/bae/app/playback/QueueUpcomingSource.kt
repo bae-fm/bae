@@ -1,227 +1,214 @@
 package fm.bae.app.playback
 
-import androidx.media3.common.Player
 import fm.bae.app.BaeLogger
-import fm.bae.screensubscription.PulledSubscription
+import fm.bae.app.data.BROWSER_PAGE_SIZE
+import fm.bae.app.data.Library
+import fm.bae.app.data.ListChain
+import fm.bae.app.data.ListReads
 import fm.bae.screensubscription.ScreenSubscription
-import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeList
+import uniffi.bae_bridge.BridgeListCount
+import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeQueueUpcomingSnapshot
-import uniffi.bae_bridge.BridgeQueueWindow
 
 private val logger = BaeLogger("bae.QueueUpcoming")
 
-/** How many windows of the context's upcoming tail stay read at once: the one around the visible
- *  rows and the two nearest it. */
-internal const val MAX_UPCOMING_WINDOWS = 3
-
-/** How many of the context's tracks the Media3 playlist lists after Up Next: the window the player
- *  keeps read while a context plays. */
+/** How many of the context's tracks the Media3 playlist lists after Up Next: the head of the tail the player keeps read
+ *  while a context plays. */
 internal const val PLAYLIST_CONTEXT_TRACKS = 100
 
-internal fun queuePageDistance(
-    range: IntRange,
-    index: Int,
-): Int =
-    when {
-        index < range.first -> range.first - index
-        index > range.last -> index - range.last
-        else -> 0
+/** Opens the reads of the context's upcoming tracks as a list, in the order the lane reads in: its own, or the shuffled
+ *  one when `shuffled`. */
+class QueueUpcomingSource internal constructor(
+    internal val reads: (shuffled: Boolean) -> ListReads<BridgeQueueEntry>,
+) {
+    constructor(handle: AppHandleInterface) : this(reads = { shuffled -> Library(handle).upcomingList(shuffled) })
+}
+
+/** The context's tracks after the playing one, in the order the lane reads in. */
+private fun Library.upcomingList(shuffled: Boolean): ListReads<BridgeQueueEntry> =
+    listReads(BridgeList.Upcoming(shuffled)) { rows ->
+        (rows as? BridgeListRows.Upcoming)?.rows ?: error("the upcoming list delivered rows of another list")
     }
 
 /**
- * The context's upcoming tail, read through one live subscription: which windows it reads changes
- * in place, and each value it is pulled for answers every window at once with the tail's length,
- * and says whether the queue changed or only the windows moved.
+ * The context's tracks after the playing one, read as a list: a chain of windows over the order the lane reads in,
+ * with its count a read of its own. The rows on screen are the places held with [hold], and the chain follows them;
+ * a place far from the chain's rows is a jump, which starts the chain over at the key the list has there. [onChange]
+ * hears each delivery. A failed read ends the list and is held in [failure] until [retry] opens it again.
  */
-interface QueueUpcomingQuery : PulledSubscription<BridgeQueueUpcomingSnapshot> {
-    fun setWindows(windows: List<BridgeQueueWindow>)
-}
-
-/** Opens the player's one upcoming read. */
-class QueueUpcomingSource(
-    val open: () -> QueueUpcomingQuery,
-) {
-    constructor(handle: AppHandleInterface) : this(
-        open = {
-            val subscription = handle.subscribeQueueUpcoming()
-            object :
-                QueueUpcomingQuery,
-                PulledSubscription<BridgeQueueUpcomingSnapshot> by pulled(subscription::next, subscription::cancel) {
-                override fun setWindows(windows: List<BridgeQueueWindow>) = subscription.setWindows(windows)
-            }
-        },
-    )
-}
-
-/**
- * The context tail's windows, read through one live query: a [pin]ned window, which stays read
- * while a context plays, and the windows the queue scrolls to. Its windows move in place; neither
- * opens another query. [onValue] hears each value it reads, with the context lane's version it
- * carries; a failed pull ends the read and is held in [failure] until [retry] opens it again.
- */
-internal class QueueUpcomingWindows(
+internal class UpcomingTail(
     private val source: QueueUpcomingSource,
     private val scope: CoroutineScope,
-    private val onValue: (contextVersion: ULong) -> Unit,
+    private val onChange: () -> Unit,
 ) {
     private val mutableFailure = MutableStateFlow<BridgeException?>(null)
 
-    /** Why the read stopped, until [retry] opens it again. */
+    /** Why the list stopped, until [retry] opens it again. */
     val failure: StateFlow<BridgeException?> = mutableFailure.asStateFlow()
 
-    private var query: QueueUpcomingQuery? = null
-    private var deliveries: ScreenSubscription<BridgeQueueUpcomingSnapshot>? = null
+    /** The tail's length as the count last said it; 0 until it answers. */
+    var total = 0
+        private set
 
-    /** Whether a failed pull ended the read; nothing opens it again until [retry] or [close]. */
-    private var ended = false
+    /** The order the list is open in; null while it is closed. */
+    private var shuffled: Boolean? = null
+    private var generation = 0
+    private var reads: ListReads<BridgeQueueEntry>? = null
+    private var chain: ListChain<BridgeQueueEntry>? = null
+    private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
+    private var countAnswered = false
+    private var jump: Job? = null
 
-    /** The window read for as long as the read is open, whatever the queue scrolls to. */
-    private var pinned: IntRange? = null
+    /** How many holds each place has: the rows on screen. */
+    private val holds = mutableMapOf<Int, Int>()
 
-    /** The scrolled-to tail ranges the read covers, at most [MAX_UPCOMING_WINDOWS]. */
-    private val windows = mutableListOf<IntRange>()
+    /** The rows the chain holds, by index in the tail. */
+    fun entries(): Map<Int, BridgeQueueEntry> =
+        chain
+            ?.placed
+            .orEmpty()
+            .flatMap { run -> run.rows.mapIndexed { i, entry -> run.start + i to entry } }
+            .toMap()
 
-    /** The newest value read; null until the read answers. */
-    private var latest: BridgeQueueUpcomingSnapshot? = null
-
-    /** The tail's length as the newest value read it; 0 until the read answers. */
-    val total: Int
-        get() = latest?.upcomingTotal?.toInt() ?: 0
-
-    /** Keep [range] read while the read is open, opening it when it is not. */
-    fun pin(range: IntRange) {
-        if (pinned == range && query != null) return
-        pinned = range
-        request()
-    }
-
-    /**
-     * Read [range] of the tail too. A no-op when a window already read covers it. Past
-     * [MAX_UPCOMING_WINDOWS], the window farthest from this one is dropped from the read. A failed
-     * request is logged and held in [failure].
-     */
-    fun load(range: IntRange) {
-        val covered = (windows + listOfNotNull(pinned)).any { it.first <= range.first && range.last <= it.last }
-        if (range.isEmpty() || covered) return
-        while (windows.size >= MAX_UPCOMING_WINDOWS) {
-            val midpoint = range.first + range.count() / 2
-            windows.remove(windows.maxBy { queuePageDistance(it, midpoint) })
-        }
-        windows.add(range)
-        request()
-    }
-
-    /** Open the read again over the windows it covered, after a failure stopped it. */
-    fun retry() {
+    /** Read the tail in `shuffled`'s order, starting over when it is open in the other one. */
+    fun open(shuffled: Boolean) {
+        if (this.shuffled == shuffled && mutableFailure.value == null) return
+        stopReads()
         mutableFailure.value = null
-        val covered = windows.toList()
-        val keptPinned = pinned
-        close()
-        keptPinned?.let(::pin)
-        covered.forEach(::load)
-    }
-
-    /** The newest value's entries by index in the tail. */
-    fun entries(): Map<Int, BridgeQueueEntry> {
-        val value = latest ?: return emptyMap()
-        return value.windows
-            .flatMap { window ->
-                window.rows.mapIndexed { i, entry -> window.window.offset.toInt() + i to entry }
-            }.toMap()
-    }
-
-    fun close() {
-        endRead()
-        ended = false
-        windows.clear()
-        pinned = null
-        latest = null
-    }
-
-    private fun endRead() {
-        deliveries?.stop()
-        deliveries = null
-        query = null
-    }
-
-    private fun request() {
-        if (ended) return
-        val read = (listOfNotNull(pinned) + windows).filterNot { it.isEmpty() }
-        try {
-            (query ?: open()).setWindows(
-                read
-                    .sortedBy { it.first }
-                    .map { BridgeQueueWindow(it.first.toULong(), it.count().toULong()) },
-            )
-        } catch (error: BridgeException) {
-            logger.error("upcoming windows $read were not requested", error)
-            mutableFailure.value = error
-        }
-    }
-
-    private fun open(): QueueUpcomingQuery {
-        val opened = source.open()
-        query = opened
-        deliveries =
+        this.shuffled = shuffled
+        generation++
+        val current = generation
+        val opened = source.reads(shuffled)
+        reads = opened
+        countAnswered = false
+        val opening = ListChain(scope, opened, BROWSER_PAGE_SIZE, { changed(current) }, { failed(it, current) })
+        chain = opening
+        countDeliveries =
             ScreenSubscription(
-                opened,
+                opened.count(),
                 scope,
-                onValue = { value ->
-                    latest = value
-                    onValue(value.contextVersion)
-                },
-                onError = { error ->
-                    logger.error("upcoming queue read failed", error)
-                    endRead()
-                    ended = true
-                    mutableFailure.value = error
-                },
+                onValue = { counted(it, current) },
+                onError = { failed(it, current) },
             )
-        return opened
+        opening.restart(null, 0)
+        follow()
     }
-}
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal fun availableCommands(
-    hasNext: Boolean,
-    hasPrevious: Boolean,
-): Player.Commands {
-    val builder =
-        Player.Commands
-            .Builder()
-            .add(Player.COMMAND_PLAY_PAUSE)
-            .add(Player.COMMAND_STOP)
-            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
-            // Lets a controller (Android Auto / a head unit) play what it
-            // sends: a tapped library item is a single-item setMediaItem, a
-            // list of items is setMediaItems, and both route to
-            // handleSetMediaItems. Media3 gates setMediaItems on
-            // COMMAND_CHANGE_MEDIA_ITEMS, so it is available too; the
-            // core-driven queue isn't editable through the raw media-item API,
-            // so BaeCorePlayer fails adding, moving and removing items.
-            .add(Player.COMMAND_SET_MEDIA_ITEM)
-            .add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
-            .add(Player.COMMAND_SET_REPEAT_MODE)
-            .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
-            .add(Player.COMMAND_GET_TIMELINE)
-            .add(Player.COMMAND_GET_METADATA)
-
-    listOf(
-        hasNext to listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
-        hasPrevious to listOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
-    ).forEach { (enabled, commands) ->
-        if (enabled) {
-            commands.forEach { builder.add(it) }
+    /** Keep the row at [index] read until the returned release runs. */
+    fun hold(index: Int): () -> Unit {
+        holds[index] = (holds[index] ?: 0) + 1
+        follow()
+        var released = false
+        return {
+            if (!released) {
+                released = true
+                val left = (holds[index] ?: 1) - 1
+                if (left > 0) holds[index] = left else holds.remove(index)
+                follow()
+            }
         }
     }
 
-    return builder.build()
+    /** Open the list again after a failure stopped it. */
+    fun retry() {
+        val order = shuffled ?: return
+        mutableFailure.value = null
+        shuffled = null
+        open(order)
+    }
+
+    /** Stop reading and forget the rows. */
+    fun close() {
+        stopReads()
+        shuffled = null
+        generation++
+        chain = null
+        reads = null
+        total = 0
+        mutableFailure.value = null
+    }
+
+    private fun stopReads() {
+        jump?.cancel()
+        jump = null
+        chain?.stop()
+        countDeliveries?.stop()
+        countDeliveries = null
+    }
+
+    /** The rows on screen changed: the chain grows towards them, or starts over from them when they are far off. */
+    private fun follow() {
+        val chain = chain
+        val first = holds.keys.minOrNull()
+        if (chain != null && first != null && jump == null) {
+            val last = holds.keys.max()
+            chain.visible = first..last
+            if (chain.isEmpty || !chain.reaches(first) || !chain.reaches(last)) {
+                jumpTo(first)
+            } else {
+                chain.reconcile()
+            }
+        }
+    }
+
+    /** Start the chain over at the row the list has at [position], a plain read of its key, not a live one. */
+    private fun jumpTo(position: Int) {
+        val chain = chain ?: return
+        val keyAt = reads?.keyAt ?: return
+        val current = generation
+        chain.stop()
+        jump =
+            scope.launch {
+                val key =
+                    try {
+                        keyAt(position.toULong())
+                    } catch (error: BridgeException) {
+                        if (current == generation) {
+                            jump = null
+                            failed(error, current)
+                        }
+                        return@launch
+                    }
+                if (current != generation) return@launch
+                jump = null
+                // A position past the list's end has the last row's key, which sits at the last position.
+                val known = if (countAnswered) maxOf(total - 1, 0) else position
+                chain.restart(key, minOf(position, known))
+            }
+    }
+
+    private fun counted(
+        count: BridgeListCount,
+        openedGeneration: Int,
+    ) {
+        if (openedGeneration != generation) return
+        total = count.rows.toInt()
+        countAnswered = true
+        onChange()
+    }
+
+    private fun changed(openedGeneration: Int) {
+        if (openedGeneration != generation) return
+        onChange()
+    }
+
+    private fun failed(
+        error: BridgeException,
+        openedGeneration: Int,
+    ) {
+        if (openedGeneration != generation) return
+        logger.error("upcoming queue read failed", error)
+        stopReads()
+        mutableFailure.value = error
+        onChange()
+    }
 }

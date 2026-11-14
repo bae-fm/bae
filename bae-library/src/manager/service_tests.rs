@@ -443,7 +443,13 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
 async fn closing_the_library_cancels_a_waiting_live_read() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let read = Arc::new(crate::subscribe_queue_upcoming(manager));
+    let read = Arc::new(bae_store::live_query::LiveRead::new(
+        manager.until_closed(manager.subscribe_upcoming_window(
+            false,
+            bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
+        )),
+        |_, window| Some(window),
+    ));
     read.next().await.expect("the initial value");
     let waiting = tokio::spawn({
         let read = read.clone();
@@ -458,7 +464,7 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         .unwrap();
     assert!(matches!(ended, Err(LiveQueryError::Cancelled)), "{ended:?}");
     assert!(matches!(
-        read.set([bae_playback::QueueWindow::at(0, 10)].into()),
+        read.set(bae_store::ListWindow::Forward { from: None, until: None, limit: 5 }),
         Err(LiveQueryError::Cancelled)
     ));
 }

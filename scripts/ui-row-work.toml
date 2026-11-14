@@ -3,12 +3,7 @@
 # count. `allowed` holds uses over values that are not a screen's rows.
 
 frozen = [
-    { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "max", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
-    { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "sorted", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/data/PhonePendingRecords.kt", operation = "partition", count = 1, finding = "partitions out the pending records only the Mac handles before showing (found by the audit: app filter)" },
-    { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "filterNot", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
-    { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "maxBy", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
-    { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "sortedBy", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/playback/QueueOrder.kt", operation = "fold", count = 2, finding = "maps shown positions through the drag's moves, held after release until core answers (found by the audit: optimistic overlay after release)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/settings/FormerDevices.kt", operation = "shown-count", count = 2, finding = "counts former devices in the app for a label (found by the check)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/settings/LibrarySettingsScreen.kt", operation = "shown-count", count = 2, finding = "counts people and sums their devices in the app for the Library row (found by the audit: count and sum)" },

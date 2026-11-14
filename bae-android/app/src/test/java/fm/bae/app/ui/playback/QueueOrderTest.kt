@@ -48,48 +48,41 @@ class QueueOrderTest {
     }
 
     @Test
-    fun aDragShowsItsMovesUntilCoresReadShowsTheVersionItsReorderMade() {
+    fun aDragShowsItsMovesUntilCoresReadShowsTheRowWhereItWasDropped() {
         val order = QueueOrder()
-        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")), manualVersion = 1u, contextVersion = 1u)
+        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")))
         order.dragging()
-        order.context.moveBefore(from = 0, to = 2)
-        order.moveSent(OrderLane.CONTEXT)
+        order.drop("a", "c")
         assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
         assertEquals(2, order.context.indexOf("a"))
-        order.context.moveBefore(from = 3, to = 1)
-        order.moveSent(OrderLane.CONTEXT)
-        assertEquals(listOf("b", "d", "c", "a", null, null), order.context.shown())
-        assertEquals(3, order.context.indexOf("a"))
 
         // The drag ends before core answers: the moves stay on screen.
-        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")), manualVersion = 1u, contextVersion = 1u)
-        assertEquals(listOf("b", "d", "c", "a", null, null), order.context.shown())
-        order.moveAnswered(OrderLane.CONTEXT, version = 2u)
-        order.moveAnswered(OrderLane.CONTEXT, version = 3u)
-        order.apply(emptyList(), context(total = 6, read = rows("b", "a", "c", "d")), manualVersion = 1u, contextVersion = 2u)
+        order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")))
+        assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
+        order.released()
+        order.moveAnswered(OrderLane.CONTEXT)
+        order.apply(emptyList(), context(total = 6, read = rows("a", "c", "b", "d")))
         assertEquals(
-            "a read before the last move's version keeps the moves",
-            listOf("b", "d", "c", "a", null, null),
+            "a read that doesn't draw the row where it was dropped keeps the moves",
+            listOf("b", "c", "a", "d", null, null),
             order.context.shown(),
         )
 
-        order.apply(emptyList(), context(total = 6, read = rows("b", "d", "c", "a")), manualVersion = 1u, contextVersion = 3u)
-        assertEquals(listOf("b", "d", "c", "a", null, null), order.context.shown())
-        assertEquals("core's read shows the lane again", 3, order.context.indexOf("a"))
+        order.apply(emptyList(), context(total = 6, read = rows("b", "c", "a", "d")))
+        assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
+        assertEquals("core's read shows the lane again", 2, order.context.indexOf("a"))
         order.context.moveBefore(from = 0, to = 1)
-        order.apply(emptyList(), context(total = 6, read = rows("b", "d", "c", "a")), manualVersion = 1u, contextVersion = 4u)
-        assertEquals("nothing holds the lane now", listOf("b", "d", "c", "a", null, null), order.context.shown())
+        order.apply(emptyList(), context(total = 6, read = rows("b", "c", "a", "d")))
+        assertEquals("nothing holds the lane now", listOf("b", "c", "a", "d", null, null), order.context.shown())
     }
 
     @Test
     fun aReorderCoreRefusesShowsTheLanesReadAtOnce() {
         val order = QueueOrder()
-        order.apply(listOf(entry("a"), entry("b"), entry("c")), null, manualVersion = 5u, contextVersion = 0u)
+        order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
         order.dragging()
-        val moved = order.manual.removeAt(0)
-        order.manual.add(2, moved)
-        order.moveSent(OrderLane.MANUAL)
-        order.apply(listOf(entry("a"), entry("b"), entry("c")), null, manualVersion = 5u, contextVersion = 0u)
+        order.drop("a", "c")
+        order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
         assertEquals(listOf("b", "c", "a"), order.manual.map { it.entryId })
 
         order.moveFailed(OrderLane.MANUAL)
@@ -97,34 +90,88 @@ class QueueOrderTest {
     }
 
     @Test
-    fun anAnswerTheReadAlreadyShowsEndsTheHold() {
+    fun aReorderCoreAnswersFalseEndsTheHoldBeforeAnyRowArrives() {
         val order = QueueOrder()
-        order.apply(listOf(entry("a"), entry("b")), null, manualVersion = 1u, contextVersion = 0u)
+        order.apply(listOf(entry("a"), entry("b")), null)
         order.dragging()
-        val moved = order.manual.removeAt(0)
-        order.manual.add(1, moved)
-        order.moveSent(OrderLane.MANUAL)
-        order.apply(listOf(entry("b"), entry("a")), null, manualVersion = 2u, contextVersion = 0u)
-        order.apply(listOf(entry("b"), entry("a"), entry("c")), null, manualVersion = 3u, contextVersion = 0u)
+        order.drop("a", "b")
+        order.released()
+        order.apply(listOf(entry("a"), entry("b")), null)
         assertEquals("the hold waits for core's answer", listOf("b", "a"), order.manual.map { it.entryId })
 
-        order.moveAnswered(OrderLane.MANUAL, version = 2u)
+        order.moveFailed(OrderLane.MANUAL)
+        assertEquals(listOf("a", "b"), order.manual.map { it.entryId })
+        order.apply(listOf(entry("a"), entry("b")), null)
+        assertEquals("nothing waits on a later reorder", listOf("a", "b"), order.manual.map { it.entryId })
+    }
+
+    @Test
+    fun anEarlierDragsFailureLeavesALaterDragsHold() {
+        val order = QueueOrder()
+        order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
+        order.dragging()
+        order.drop("a", "b")
+        order.released()
+        order.dragging()
+        order.drop("c", "a")
+        order.released()
+        order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
+
+        order.moveFailed(OrderLane.MANUAL)
+        assertEquals("the second reorder is still unanswered", listOf("b", "c", "a"), order.manual.map { it.entryId })
+        order.moveFailed(OrderLane.MANUAL)
+        assertEquals(listOf("a", "b", "c"), order.manual.map { it.entryId })
+    }
+
+    @Test
+    fun aReadThatShowsTheMoveBeforeTheAnswerEndsTheHoldAtTheAnswer() {
+        val order = QueueOrder()
+        order.apply(listOf(entry("a"), entry("b")), null)
+        order.dragging()
+        order.drop("a", "b")
+        order.released()
+        order.apply(listOf(entry("b"), entry("a")), null)
+        order.moveAnswered(OrderLane.MANUAL)
+        order.apply(listOf(entry("b"), entry("a")), null)
+        order.apply(listOf(entry("a"), entry("b")), null)
+        assertEquals("core's later read wins once the row arrived", listOf("a", "b"), order.manual.map { it.entryId })
+    }
+
+    @Test
+    fun aReadThatShowsTheMoveAfterTheAnswerEndsTheHold() {
+        val order = QueueOrder()
+        order.apply(listOf(entry("a"), entry("b")), null)
+        order.dragging()
+        order.drop("a", "b")
+        order.released()
+        order.apply(listOf(entry("b"), entry("a")), null)
+        assertEquals("the hold waits for core's answer", listOf("b", "a"), order.manual.map { it.entryId })
+
+        order.moveAnswered(OrderLane.MANUAL)
+        order.apply(listOf(entry("b"), entry("a"), entry("c")), null)
         assertEquals(listOf("b", "a", "c"), order.manual.map { it.entryId })
     }
 
     @Test
-    fun moreOfAnUnchangedTailFillsOnlyItsRowsAndAChangeReseedsIt() {
+    fun aLaneOfAnotherLengthEndsTheHoldWhateverItShows() {
         val order = QueueOrder()
-        order.apply(emptyList(), context(total = 4, read = rows("a", "b")), manualVersion = 1u, contextVersion = 1u)
-        order.apply(
-            emptyList(),
-            context(total = 4, read = rows("a", "b") + mapOf(3 to "d")),
-            manualVersion = 1u,
-            contextVersion = 1u,
-        )
+        order.apply(listOf(entry("a"), entry("b")), null)
+        order.dragging()
+        order.drop("a", "b")
+        order.released()
+        order.moveAnswered(OrderLane.MANUAL)
+        order.apply(listOf(entry("c")), null)
+        assertEquals(listOf("c"), order.manual.map { it.entryId })
+    }
+
+    @Test
+    fun eachReadOfTheTailShowsTheRowsItReadAndNoMore() {
+        val order = QueueOrder()
+        order.apply(emptyList(), context(total = 4, read = rows("a", "b")))
+        order.apply(emptyList(), context(total = 4, read = rows("a", "b") + mapOf(3 to "d")))
         assertEquals("a scroll fills the rows it read", listOf("a", "b", null, "d"), order.context.shown())
 
-        order.apply(emptyList(), context(total = 3, read = rows("b", "d")), manualVersion = 1u, contextVersion = 2u)
+        order.apply(emptyList(), context(total = 3, read = rows("b", "d")))
         assertEquals(listOf("b", "d", null), order.context.shown())
         assertNull(order.context.indexOf("a"))
     }
@@ -132,11 +179,10 @@ class QueueOrderTest {
     @Test
     fun aHoldOverOneLaneLeavesTheOtherFollowingCore() {
         val order = QueueOrder()
-        order.apply(listOf(entry("m")), context(total = 2, read = rows("a", "b")), manualVersion = 1u, contextVersion = 1u)
+        order.apply(listOf(entry("m")), context(total = 2, read = rows("a", "b")))
         order.dragging()
-        order.context.moveBefore(from = 0, to = 1)
-        order.moveSent(OrderLane.CONTEXT)
-        order.apply(listOf(entry("n")), context(total = 2, read = rows("a", "b")), manualVersion = 2u, contextVersion = 1u)
+        order.drop("a", "b")
+        order.apply(listOf(entry("n")), context(total = 2, read = rows("a", "b")))
         assertEquals(listOf("n"), order.manual.map { it.entryId })
         assertEquals("the context lane keeps its moves", listOf("b", "a"), order.context.shown())
     }
@@ -158,12 +204,10 @@ class QueueOrderTest {
         order.apply(
             listOf(entry("m"), entry("n")),
             context(total = 4, read = rows("a", "b", "c")),
-            manualVersion = 1u,
-            contextVersion = 1u,
         )
-        assertEquals(LaneDrop(OrderLane.MANUAL, "m", LanePlace.End), order.drop("m", "n"))
+        assertEquals(LaneDrop(OrderLane.MANUAL, "m", LanePlace.End, 1), order.drop("m", "n"))
         assertEquals(listOf("n", "m"), order.manual.map { it.entryId })
-        assertEquals(LaneDrop(OrderLane.CONTEXT, "a", LanePlace.Before("c")), order.drop("a", "b"))
+        assertEquals(LaneDrop(OrderLane.CONTEXT, "a", LanePlace.Before("c"), 1), order.drop("a", "b"))
         assertEquals(listOf("b", "a", "c", null), order.context.shown())
         assertNull("a drop just before an unread row moves nothing", order.drop("b", "c"))
         assertEquals(listOf("b", "a", "c", null), order.context.shown())
@@ -181,36 +225,31 @@ class QueueOrderTest {
     @Test
     fun aDragSendsCoreOneReorderAtItsReleaseHoldingTheLaneThroughIt() {
         val order = QueueOrder()
-        order.apply(
-            listOf(entry("m"), entry("n"), entry("o"), entry("p")),
-            context(total = 0),
-            manualVersion = 1u,
-            contextVersion = 1u,
-        )
+        order.apply(listOf(entry("m"), entry("n"), entry("o"), entry("p")), context(total = 0))
         order.dragging()
         // The held row passes "n" then "o": the rows move on screen, and nothing is sent.
         order.drop("m", "n")
         order.drop("m", "o")
         assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
         // The drag's end re-seeds the lanes from core's read, which the lane's hold keeps from undoing the moves.
-        order.apply(listOf(entry("m"), entry("n"), entry("o"), entry("p")), context(total = 0), manualVersion = 1u, contextVersion = 1u)
+        order.apply(listOf(entry("m"), entry("n"), entry("o"), entry("p")), context(total = 0))
         assertEquals("the moves stay until core answers", listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
 
         assertEquals(
             "one reorder, for where the row now sits",
-            LaneDrop(OrderLane.MANUAL, "m", LanePlace.Before("p")),
+            LaneDrop(OrderLane.MANUAL, "m", LanePlace.Before("p"), 2),
             order.released(),
         )
         assertNull("a release sends once", order.released())
-        order.moveAnswered(OrderLane.MANUAL, version = 2u)
-        order.apply(listOf(entry("n"), entry("o"), entry("m"), entry("p")), context(total = 0), manualVersion = 2u, contextVersion = 1u)
+        order.moveAnswered(OrderLane.MANUAL)
+        order.apply(listOf(entry("n"), entry("o"), entry("m"), entry("p")), context(total = 0))
         assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
     }
 
     @Test
     fun aDragThatMovedNothingSendsNothing() {
         val order = QueueOrder()
-        order.apply(listOf(entry("m"), entry("n")), context(total = 0), manualVersion = 1u, contextVersion = 1u)
+        order.apply(listOf(entry("m"), entry("n")), context(total = 0))
         order.dragging()
         assertNull(order.drop("m", "header"))
         assertNull(order.released())

@@ -37,18 +37,6 @@ impl LibraryManager {
         bae_playback::tables::subscribe_queue_addition(&self.store)
     }
 
-    /// Follow the windows `initial` names of the context lane's upcoming tracks.
-    pub fn subscribe_queue_upcoming(
-        &self,
-        initial: bae_playback::QueueWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_playback::QueueWindows,
-        bae_playback::tables::QueueUpcomingRead,
-        bae_store::DbError,
-    > {
-        bae_playback::tables::subscribe_queue_upcoming(&self.store, initial)
-    }
-
     /// Follow one window of the upcoming tracks, a range of the order the
     /// context lane reads in (`shuffled` picks which).
     pub fn subscribe_upcoming_window(

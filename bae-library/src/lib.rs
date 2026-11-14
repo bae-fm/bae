@@ -17,7 +17,6 @@ mod local_lifecycle;
 pub mod manager;
 mod outbox_watch;
 pub mod people;
-mod queue_upcoming;
 #[cfg(desktop)]
 pub mod save;
 mod saved_restore_codes;
@@ -56,7 +55,6 @@ pub use outbox_watch::{
     OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch, ReleaseUploadTransfer,
     UploadTransfer,
 };
-pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};
 pub use schema::SCHEMA;
 pub use upload_progress::UploadBar;

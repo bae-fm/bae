@@ -79,14 +79,13 @@ struct QueueViewControlsTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacQueuePanel(
                 manual: store.manualQueue,
-                manualVersion: store.manualVersion,
                 context: store.queueContext,
                 shuffled: store.shuffled,
                 upcoming: QueueUpcoming(store: store, queue: queue),
                 position: store.trackPosition(
                     forTrack: store.nowPlaying.track?.track.trackId
                 ),
-                onShowUpcoming: { store.showUpcoming(queue: queue) },
+                onShowUpcoming: { await store.showUpcoming(queue: queue) },
                 isActive: store.nowPlaying.isActive,
                 nowPlayingTitle: store.nowPlaying.track?.display.title,
                 nowPlayingArtist: store.nowPlaying.track?.display.artistLine
@@ -100,7 +99,7 @@ struct QueueViewControlsTests {
                 onClearPlayingFrom: {},
                 onSkipTo: { _ in },
                 onRemove: { _ in },
-                onReorder: { _, _ in 1 },
+                onReorder: { _, _ in true },
                 onReorderFailed: { _ in },
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }

@@ -1,23 +1,5 @@
 import Foundation
 
-/// The context's upcoming tail, read through one live subscription: which
-/// windows it reads is changed in place, and each value answers every window
-/// at once with the tail's length, and says whether the queue changed or only
-/// the windows moved.
-public struct QueueUpcomingQuery: Sendable {
-    public let setWindows: @Sendable ([BridgeQueueWindow]) throws -> Void
-    public let values: PulledValues<BridgeQueueUpcomingSnapshot>
-
-    public init(
-        setWindows:
-            @escaping @Sendable ([BridgeQueueWindow]) throws -> Void,
-        values: PulledValues<BridgeQueueUpcomingSnapshot>
-    ) {
-        self.setWindows = setWindows
-        self.values = values
-    }
-}
-
 /// Queue mutations — appending, inserting, reordering, removing,
 /// jumping to a queue entry. Reorder/remove/skip target one row by its
 /// `entryId`. Narrow subset of `AppHandle`.
@@ -34,19 +16,20 @@ public final class Queue: Sendable, Observable {
     /// Drop the context lane. The playing track keeps playing.
     public let clearPlayingFrom: @Sendable () async throws -> Void
     /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end
-    /// of its lane. Answers the lane's version the move made, or `nil` when the
-    /// queue changed first and core moved nothing.
+    /// of its lane. Answers whether it moved: `false` when the queue changed
+    /// first and core moved nothing.
     public let reorderEntry:
         @Sendable (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> UInt64?
+            -> Bool
     /// Skip to the row `entryId`. A row the queue no longer holds is not
     /// skipped to, and this answers as if it had been.
     public let skipToEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
-    /// Open the live read of the context's upcoming tail. It reads no
-    /// windows until its first `setWindows`.
-    public let subscribeUpcoming: @Sendable () -> QueueUpcomingQuery
+    /// The reads of the context's upcoming tracks as a list, in the order
+    /// the lane reads in: its own, or the shuffled one when `shuffled`.
+    public let upcomingQueries:
+        @Sendable (_ shuffled: Bool) -> BridgeListQueries<BridgeQueueEntry>
 
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
@@ -60,16 +43,19 @@ public final class Queue: Sendable, Observable {
         clearUpNext: @escaping @Sendable () async throws -> Void = {},
         clearPlayingFrom: @escaping @Sendable () async throws -> Void = {},
         reorderEntry:
-            @escaping @Sendable (String, String?) async throws -> UInt64? = {
+            @escaping @Sendable (String, String?) async throws -> Bool = {
                 _,
-                _ in 0
+                _ in true
             },
         skipToEntry: @escaping @Sendable (String) async throws -> Void = { _ in
         },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
-        subscribeUpcoming: @escaping @Sendable () -> QueueUpcomingQuery = {
-            fatalError("Queue upcoming subscription is not installed")
-        }
+        upcomingQueries:
+            @escaping @Sendable (Bool) -> BridgeListQueries<BridgeQueueEntry> =
+            {
+                _ in
+                fatalError("Queue upcoming list is not installed")
+            }
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
@@ -80,7 +66,7 @@ public final class Queue: Sendable, Observable {
         self.reorderEntry = reorderEntry
         self.skipToEntry = skipToEntry
         self.setShuffle = setShuffle
-        self.subscribeUpcoming = subscribeUpcoming
+        self.upcomingQueries = upcomingQueries
     }
 
     /// Queue commands over `handle`. An add, an insert or a shuffle has no
@@ -118,15 +104,37 @@ public final class Queue: Sendable, Observable {
             setShuffle: { on in
                 answerCommand(show) { try await handle.setShuffle(on: on) }
             },
-            subscribeUpcoming: {
-                let subscription = handle.subscribeQueueUpcoming()
-                return QueueUpcomingQuery(
-                    setWindows: { try subscription.setWindows(windows: $0) },
-                    values: PulledValues(subscription)
-                )
-            }
+            upcomingQueries: Self.upcomingQueries(handle)
         )
     }
+
+    #if os(macOS)
+        /// The upcoming tracks' list under each order, read through `handle`.
+        private static func upcomingQueries(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (Bool) -> BridgeListQueries<BridgeQueueEntry> {
+            { shuffled in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .upcoming(shuffled: shuffled),
+                    rows: { rows in
+                        guard case .upcoming(let entries) = rows else {
+                            preconditionFailure(
+                                "the upcoming list delivered rows of another list"
+                            )
+                        }
+                        return entries
+                    }
+                )
+            }
+        }
+    #else
+        private static func upcomingQueries(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (Bool) -> BridgeListQueries<BridgeQueueEntry> {
+            { _ in fatalError("the queue's upcoming list is read on macOS") }
+        }
+    #endif
 
     #if DEBUG
         // periphery:ignore

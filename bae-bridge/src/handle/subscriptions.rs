@@ -196,14 +196,6 @@ impl AppHandle {
             self.runtime.clone(),
         )
     }
-
-    /// The queue's upcoming tail, reading no windows until `set_windows`.
-    pub fn subscribe_queue_upcoming(&self) -> Arc<crate::QueueUpcomingSubscription> {
-        crate::screens::queue_upcoming(
-            self.services.subscribe_queue_upcoming(),
-            self.runtime.clone(),
-        )
-    }
 }
 
 #[cfg(desktop)]

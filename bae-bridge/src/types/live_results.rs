@@ -1,11 +1,3 @@
-/// A window of the queue's upcoming tail: where the screen counts it from,
-/// after the playing entry, and how many entries it holds.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeQueueWindow {
-    pub offset: u64,
-    pub limit: u64,
-}
-
 /// One sort value of a row, as the list's order evaluates it for the row.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeSortValue {

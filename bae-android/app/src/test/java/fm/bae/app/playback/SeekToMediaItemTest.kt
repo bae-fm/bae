@@ -73,7 +73,7 @@ class SeekToMediaItemTest {
                 ),
         )
         // The context's tracks reach the playlist through the upcoming read.
-        feed.deliver(total = 1, read = listOf(entry("c")))
+        feed.show(listOf(entry("c")))
         shadowOf(Looper.getMainLooper()).idle()
 
         // Playlist is [cur, track-m, track-c]; index 2 is the context entry.
@@ -118,7 +118,6 @@ class SeekToMediaItemTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
-                manualVersion = 1u,
             ),
         )
         shadowOf(Looper.getMainLooper()).idle()
