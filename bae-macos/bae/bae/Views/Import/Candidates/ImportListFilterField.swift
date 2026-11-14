@@ -9,8 +9,7 @@ struct ImportListFilterField: View {
     var focused: FocusState<Bool>.Binding
     /// The count for the filter the field holds now; `nil` while nothing
     /// narrows the list, and while core has not counted under this filter.
-    /// Typed text narrows the list, so text with no count is a count still
-    /// being read, drawn as "… of …".
+    /// Nothing stands in for a count still being read.
     let narrowed: BridgeNarrowedCount?
 
     var body: some View {
@@ -27,9 +26,6 @@ struct ImportListFilterField: View {
                     shown: narrowed.shown.formatted(),
                     total: narrowed.total.formatted()
                 )
-            }
-            else if !text.isEmpty {
-                narrowedText(shown: "…", total: "…")
             }
             if !text.isEmpty {
                 Button {
