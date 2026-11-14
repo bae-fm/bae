@@ -417,15 +417,16 @@ fn search_library_on(
             JOIN releases r ON t.release_id = r.id
             JOIN albums a ON r.album_id = a.id
             WHERE t.id IN (
-                SELECT track_id FROM track_search WHERE title GLOB ?1
-                ORDER BY {sort_title_key}, track_id
+                SELECT found.id FROM tracks found
+                WHERE found.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
+                ORDER BY {sort_title_key}, found.id
                 LIMIT ?2
             )
             ORDER BY {title_key}, t.id
             "#,
             track_credits_json_sql("t"),
             bae_records::records::files::cover_version_sql("t.release_id"),
-            sort_title_key = crate::name_sort::sort_key_sql("sort_title"),
+            sort_title_key = crate::name_sort::sort_key_sql("found.title"),
             title_key = crate::name_sort::sort_key_sql("t.title"),
         ),
         params![pattern, limit],
@@ -464,11 +465,12 @@ fn search_library_on(
         &work_summary_query(
             Some(&format!(
                 "WHERE w.id IN (
-                    SELECT work_id FROM work_search WHERE title GLOB ?1
-                    ORDER BY {}, work_id
+                    SELECT found.id FROM works found
+                    WHERE found.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)
+                    ORDER BY {}, found.id
                     LIMIT ?2
                 )",
-                crate::name_sort::sort_key_sql("sort_title"),
+                crate::name_sort::sort_key_sql("found.title"),
             )),
             Some(&format!("ORDER BY {}, w.id", crate::name_sort::sort_key_sql("w.title"))),
         ),

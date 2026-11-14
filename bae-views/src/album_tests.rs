@@ -664,3 +664,22 @@ async fn a_person_without_a_profile_reads_no_ratings() {
     assert!(detail.rating.raters.is_empty());
     assert_eq!(detail.releases[0].tracks[0].my_stars, None);
 }
+
+/// Searching with a limit keeps the first results in title order, tracks and
+/// works included: the same ones the unlimited search lists first.
+#[tokio::test]
+async fn a_limited_search_keeps_the_first_titles() {
+    let (db, _tmp) = crate::tests::library().await;
+    let views = crate::LibraryViews::new(db.clone());
+    let all = views.search_rows("1", 300).await.unwrap();
+    let few = views.search_rows("1", 5).await.unwrap();
+    let tracks = |found: &DbLibrarySearchResults| {
+        found.tracks.iter().map(|track| track.id.clone()).take(5).collect::<Vec<_>>()
+    };
+    let works = |found: &DbLibrarySearchResults| {
+        found.works.iter().map(|work| work.work.id.clone()).take(5).collect::<Vec<_>>()
+    };
+    assert_eq!(few.tracks.len(), 5);
+    assert_eq!(tracks(&few), tracks(&all));
+    assert_eq!(works(&few), works(&all));
+}

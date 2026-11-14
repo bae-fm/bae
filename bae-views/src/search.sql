@@ -39,7 +39,7 @@ BEGIN
     DELETE FROM album_search_entry WHERE album_id = OLD.id;
 END;
 
--- Track titles, each with its own title to order by.
+-- Track titles.
 CREATE TABLE IF NOT EXISTS track_search_entry (
     entry INTEGER PRIMARY KEY,
     track_id TEXT NOT NULL,
@@ -47,20 +47,20 @@ CREATE TABLE IF NOT EXISTS track_search_entry (
 ) STRICT;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS track_search USING fts5(
-    title, track_id UNINDEXED, sort_title UNINDEXED,
+    title, track_id UNINDEXED,
     tokenize = 'trigram case_sensitive 1'
 );
 
 CREATE TRIGGER IF NOT EXISTS track_search_added AFTER INSERT ON tracks
 BEGIN
     INSERT INTO track_search_entry (track_id) VALUES (NEW.id);
-    INSERT INTO track_search (rowid, title, track_id, sort_title)
-    VALUES ((SELECT entry FROM track_search_entry WHERE track_id = NEW.id), bae_fold_case(NEW.title), NEW.id, NEW.title);
+    INSERT INTO track_search (rowid, title, track_id)
+    VALUES ((SELECT entry FROM track_search_entry WHERE track_id = NEW.id), bae_fold_case(NEW.title), NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_search_changed AFTER UPDATE OF title ON tracks
 BEGIN
-    UPDATE track_search SET title = bae_fold_case(NEW.title), sort_title = NEW.title WHERE rowid = (SELECT entry FROM track_search_entry WHERE track_id = NEW.id);
+    UPDATE track_search SET title = bae_fold_case(NEW.title) WHERE rowid = (SELECT entry FROM track_search_entry WHERE track_id = NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_search_removed AFTER DELETE ON tracks
@@ -69,7 +69,7 @@ BEGIN
     DELETE FROM track_search_entry WHERE track_id = OLD.id;
 END;
 
--- Work titles, each with its own title to order by.
+-- Work titles.
 CREATE TABLE IF NOT EXISTS work_search_entry (
     entry INTEGER PRIMARY KEY,
     work_id TEXT NOT NULL,
@@ -77,20 +77,20 @@ CREATE TABLE IF NOT EXISTS work_search_entry (
 ) STRICT;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS work_search USING fts5(
-    title, work_id UNINDEXED, sort_title UNINDEXED,
+    title, work_id UNINDEXED,
     tokenize = 'trigram case_sensitive 1'
 );
 
 CREATE TRIGGER IF NOT EXISTS work_search_added AFTER INSERT ON works
 BEGIN
     INSERT INTO work_search_entry (work_id) VALUES (NEW.id);
-    INSERT INTO work_search (rowid, title, work_id, sort_title)
-    VALUES ((SELECT entry FROM work_search_entry WHERE work_id = NEW.id), bae_fold_case(NEW.title), NEW.id, NEW.title);
+    INSERT INTO work_search (rowid, title, work_id)
+    VALUES ((SELECT entry FROM work_search_entry WHERE work_id = NEW.id), bae_fold_case(NEW.title), NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS work_search_changed AFTER UPDATE OF title ON works
 BEGIN
-    UPDATE work_search SET title = bae_fold_case(NEW.title), sort_title = NEW.title WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = NEW.id);
+    UPDATE work_search SET title = bae_fold_case(NEW.title) WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS work_search_removed AFTER DELETE ON works
