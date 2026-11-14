@@ -657,28 +657,41 @@ pub(super) async fn pending_list_until(
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
 }
 
-/// The first rows the inspector's read gives for the release `release_id`
-/// that `accept` takes: its files with each one's pin as coven's tables hold
-/// it, whether or not the inspector shows it.
+/// The first inspector the read gives for the release `release_id` that
+/// `accept` takes.
 pub(super) async fn inspector_rows_until(
     manager: &LibraryManager,
     release_id: &str,
-    accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
-) -> bae_views::DbStorageInspector {
+    accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
+) -> bae_views::storage_inspector::StorageInspector {
     let mut rows = bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
 
-/// The first rows `rows` gives from now that `accept` takes.
+/// Whether coven lists a pin for every file of `release_id`, whether or not
+/// the inspector shows it.
+pub(super) async fn all_files_kept(manager: &LibraryManager, release_id: &str) -> bool {
+    manager
+        .store
+        .query_texts_for_test(&format!(
+            "SELECT f.id FROM release_files f WHERE f.release_id = '{release_id}' \
+               AND NOT EXISTS (SELECT 1 FROM coven_pins p WHERE p.file = f.file)"
+        ))
+        .await
+        .unwrap()
+        .is_empty()
+}
+
+/// The first inspector `rows` gives from now that `accept` takes.
 pub(super) async fn rows_until(
     rows: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
-        Option<bae_views::DbStorageInspector>,
+        Option<bae_views::storage_inspector::StorageInspector>,
         bae_store::DbError,
     >,
-    accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
-) -> bae_views::DbStorageInspector {
+    accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
+) -> bae_views::storage_inspector::StorageInspector {
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let event = rows.next().await.expect("the inspector's read runs");

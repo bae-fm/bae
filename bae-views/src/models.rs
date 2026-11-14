@@ -340,18 +340,33 @@ pub enum StorageFilter {
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspector {
+    /// The release the rows are of.
+    pub release_id: String,
     /// The release's files in their order, each with its pin and upload.
     pub files: Vec<DbStorageInspectorFile>,
+    /// How many of its files are downloading, waiting and kept while the
+    /// download queue pins the release; none otherwise.
+    pub pins: Option<DbPinCounts>,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
     /// The release's entries in the download and export queues.
     pub entries: bae_transfers::ReleaseQueueEntries,
 }
 
+/// How many of a pinning release's files are downloading now, waiting for
+/// their turn, and kept on this device.
+#[cfg(desktop)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DbPinCounts {
+    pub downloading: u32,
+    pub waiting: u32,
+    pub kept: u32,
+}
+
 /// One file of a release as the Storage Manager's inspector reads it: the
-/// file, where this device's pin of it stands (`None` while it isn't pinned
-/// or being pinned), and its upload while it waits in this device's upload
-/// queue.
+/// file, where this device's pin of it stands (`None` while the download
+/// queue is not pinning its release), and its upload while it waits in this
+/// device's upload queue.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspectorFile {

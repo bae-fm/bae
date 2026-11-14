@@ -325,8 +325,13 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     })
     .await
     .expect("the pin file watch names the file the pin downloads");
-    let pin_of = |rows: bae_views::DbStorageInspector| {
-        rows.files.into_iter().find(|row| row.file.id == file.id).expect("the release's file").pin
+    let pin_of = |inspector: bae_views::storage_inspector::StorageInspector| {
+        inspector
+            .files
+            .into_iter()
+            .find(|row| row.file.id == file.id)
+            .expect("the release's file")
+            .pin
     };
     assert_eq!(
         pin_of(inspector_rows_until(manager, &release_id, |_| true).await),
@@ -337,11 +342,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     resume.send(()).unwrap();
 
     pin.await.unwrap().unwrap();
-    assert_eq!(
-        pin_of(inspector_rows_until(manager, &release_id, |_| true).await),
-        Some(bae_views::album_detail::FilePin::Kept),
-        "a kept file downloads no more"
-    );
+    assert!(all_files_kept(manager, &release_id).await, "a kept file downloads no more");
 }
 
 /// Each release of an album carries its own pin state, read from that

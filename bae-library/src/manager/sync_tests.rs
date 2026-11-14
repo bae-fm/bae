@@ -659,7 +659,7 @@ async fn retrying_a_refused_upload_uploads_it() {
     .expect("the retry's pass ends");
     assert!(matches!(answer, bae_sync_status::SyncRetryOutcome::Synced), "{answer:?}");
     inspector_rows_until(manager.library.manager(), &release.id, |rows| {
-        rows.files.iter().all(|file| file.file.stored)
+        rows.files.iter().all(|file| file.upload.is_none())
     })
     .await;
     status_until(&manager, |value| value.pending.is_empty()).await;

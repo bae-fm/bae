@@ -4,8 +4,7 @@
 use super::*;
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
 use bae_sync_status::PendingWait;
-use bae_transfers::ReleaseQueueState;
-use bae_transfers::{DownloadRequest, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
+use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 
 /// What the inspector shows of one release, read in core for the release id
 /// it is set to.
@@ -59,28 +58,12 @@ pub enum StorageInspectorTransfer {
 }
 
 impl StorageInspector {
-    /// The release `release_id` from one read of it, `rows`.
-    pub fn read(release_id: &str, rows: crate::DbStorageInspector) -> Self {
-        Self::of(release_id, rows.files, &rows.entries, rows.upload.map(ReleaseUpload::from_raw))
-    }
-
-    /// The release `release_id`: its `files` in their order, each upload's
-    /// record with the error behind it; its entry in each queue
-    /// (`entries`, and its files waiting to upload, `upload`); and while its
-    /// download waits or runs, each file's pin and the download's count of
-    /// them.
-    pub(crate) fn of(
-        release_id: &str,
-        files: Vec<crate::DbStorageInspectorFile>,
-        entries: &ReleaseQueueEntries,
-        upload: Option<ReleaseUpload>,
-    ) -> Self {
-        // Only a pin brings files to this device's pins; a move-to-this-device brings
-        // them into a folder.
-        let pinning = entries.download.as_ref().is_some_and(|row| {
-            matches!(row.op.payload, DownloadRequest::Pin)
-                && !matches!(row.op.state, ReleaseQueueState::Failed { .. })
-        });
+    /// The release `rows` are of, as the inspector shows it: its files in
+    /// their order, each upload's record with the error behind it; its entry
+    /// in each queue and its files waiting to upload; and, while its download
+    /// pins it, the download's count of its files by where their pins stand.
+    pub fn read(rows: crate::DbStorageInspector) -> Self {
+        let crate::DbStorageInspector { release_id, files, pins, upload, entries } = rows;
         let files: Vec<StorageInspectorFile> = files
             .into_iter()
             .map(|file| StorageInspectorFile {
@@ -89,37 +72,22 @@ impl StorageInspector {
                     sending: upload.sending,
                     pending: upload
                         .pending
-                        .map(|record| PendingWait::of(&record, Some(release_id))),
+                        .map(|record| PendingWait::of(&record, Some(&release_id))),
                 }),
-                pin: pinning.then(|| file.pin.unwrap_or(FilePin::Waiting)),
+                pin: file.pin,
                 file: FileDetail::from_raw(file.file),
             })
             .collect();
-        let count = |stands: fn(&FilePin) -> bool| {
-            u32::try_from(files.iter().filter(|file| file.pin.as_ref().is_some_and(stands)).count())
-                .expect("a release's file count")
-        };
-        let pins = pinning.then(|| {
+        let pins = pins.map(|counts| {
             use bae_transfers::TransferStage;
             bae_transfers::transfer_summary([
-                (
-                    "core.queue.pinning",
-                    count(|pin| matches!(pin, FilePin::Downloading { .. })),
-                    TransferStage::Moving,
-                ),
-                (
-                    "core.queue.waiting",
-                    count(|pin| matches!(pin, FilePin::Waiting)),
-                    TransferStage::Waiting,
-                ),
-                (
-                    "core.queue.pinned",
-                    count(|pin| matches!(pin, FilePin::Kept)),
-                    TransferStage::Done,
-                ),
+                ("core.queue.pinning", counts.downloading, TransferStage::Moving),
+                ("core.queue.waiting", counts.waiting, TransferStage::Waiting),
+                ("core.queue.pinned", counts.kept, TransferStage::Done),
             ])
         });
-        Self { transfers: storage_inspector_transfers(release_id, entries, upload, pins), files }
+        let upload = upload.map(ReleaseUpload::from_raw);
+        Self { transfers: storage_inspector_transfers(&release_id, &entries, upload, pins), files }
     }
 }
 
@@ -163,7 +131,9 @@ fn storage_inspector_on(
         return Ok(None);
     }
     Ok(Some(DbStorageInspector {
+        release_id: release_id.to_string(),
         files: inspector_files_on(sql, release_id)?,
+        pins: pin_counts_on(sql, release_id)?,
         upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
         entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
     }))
@@ -171,16 +141,14 @@ fn storage_inspector_on(
 
 impl LibraryViews {
     /// Follow the release `initial` names, or none, as the Storage Manager's
-    /// inspector shows it, each value read in one go. Another release is a
+    /// inspector shows it, each value read in one go and none while no such
+    /// release exists. Another release is a
     /// new request on the same query.
     pub fn subscribe_storage_inspector(
         &self,
         initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<
-        Option<String>,
-        Option<DbStorageInspector>,
-        bae_store::DbError,
-    > {
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<StorageInspector>, bae_store::DbError>
+    {
         self.store
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let Some(release_id) = release_id else {
@@ -188,12 +156,13 @@ impl LibraryViews {
                 };
                 storage_inspector_on(&sql, release_id)
             })
-            .process(Ok)
+            .process(|rows| Ok(rows.map(StorageInspector::read)))
     }
 }
 
 /// A release's files as the inspector shows them, in the order of
 /// `RELEASE_FILES_IN_ORDER`, each with where this device's pin of it stands
+/// while the download queue pins the release (kept, downloading, or waiting)
 /// and its upload while it waits in this device's queue, from coven's `coven_pins`,
 /// `coven_downloading` and `coven_uploads`, each joined by the coven file the
 /// row references, the text of the error behind the upload's record when
@@ -203,12 +172,15 @@ impl LibraryViews {
 pub(crate) const INSPECTOR_FILES: &str = concat!(
     "SELECT ",
     bae_records::release_file_columns!(),
-    ", pin.file IS NOT NULL AS pin_kept, \
-        downloading.file AS downloading_file, \
+    ", CASE WHEN queued.kind = 'pin' AND queued.state <> 'failed' THEN \
+            CASE WHEN pin.file IS NOT NULL THEN 'kept' \
+                 WHEN downloading.file IS NOT NULL THEN 'downloading' \
+                 ELSE 'waiting' END END AS pin_state, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
         upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
         original.path AS original_path \
      FROM release_files AS f \
+     LEFT JOIN download_queue AS queued ON queued.release_id = f.release_id \
      LEFT JOIN coven_pins AS pin ON pin.file = f.file \
      LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
@@ -218,6 +190,34 @@ pub(crate) const INSPECTOR_FILES: &str = concat!(
      WHERE f.release_id = ?1 \
      ORDER BY f.original_filename COLLATE natural_order, f.id"
 );
+
+/// How many of the release's files this device keeps, is downloading and has
+/// yet to download, and whether the download queue holds the release to pin it
+/// without having failed, which is when those counts show.
+const PIN_COUNTS: &str = "SELECT \
+        EXISTS (SELECT 1 FROM download_queue AS queued \
+                WHERE queued.release_id = ?1 AND queued.kind = 'pin' \
+                  AND queued.state <> 'failed') AS pinning, \
+        COUNT(*) FILTER (WHERE pin.file IS NULL AND downloading.file IS NOT NULL), \
+        COUNT(*) FILTER (WHERE pin.file IS NULL AND downloading.file IS NULL), \
+        COUNT(*) FILTER (WHERE pin.file IS NOT NULL) \
+     FROM release_files AS f \
+     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
+     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
+     WHERE f.release_id = ?1";
+
+fn pin_counts_on(
+    sql: &SqlReadContext<'_>,
+    release_id: &str,
+) -> Result<Option<crate::DbPinCounts>, DbError> {
+    Ok(sql.query_row(PIN_COUNTS, params![release_id], |row| {
+        Ok(row.get::<_, bool>(0)?.then_some(crate::DbPinCounts {
+            downloading: row.get(1)?,
+            waiting: row.get(2)?,
+            kept: row.get(3)?,
+        }))
+    })?)
+}
 
 /// The records of moves whose upload found an original missing or changed,
 /// with the error behind each when coven keeps one: what an upload whose own
@@ -250,13 +250,14 @@ fn inspector_files_on(
             .cloned()
     };
     Ok(sql.query(INSPECTOR_FILES, params![release_id], |row| {
-        let pin = match (
-            row.get::<_, bool>("pin_kept")?,
-            row.get::<_, Option<coven::FileId>>("downloading_file")?,
-        ) {
-            (true, _) => Some(crate::album_detail::FilePin::Kept),
-            (false, Some(file)) => Some(crate::album_detail::FilePin::Downloading { file }),
-            (false, None) => None,
+        let file = row_to_file(row)?;
+        let pin = match row.get::<_, Option<String>>("pin_state")?.as_deref() {
+            Some("kept") => Some(crate::album_detail::FilePin::Kept),
+            Some("downloading") => {
+                Some(crate::album_detail::FilePin::Downloading { file: file.file })
+            }
+            Some(_) => Some(crate::album_detail::FilePin::Waiting),
+            None => None,
         };
         let upload = match row.get::<_, Option<coven::FileId>>("upload_file")? {
             Some(file) => Some(DbFileUpload {
@@ -274,6 +275,6 @@ fn inspector_files_on(
             }),
             None => None,
         };
-        Ok(DbStorageInspectorFile { file: row_to_file(row)?, pin, upload })
+        Ok(DbStorageInspectorFile { file, pin, upload })
     })?)
 }

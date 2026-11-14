@@ -3,7 +3,6 @@
 use super::*;
 use crate::album_detail::FilePin;
 use bae_records::test_fixtures::*;
-use bae_records::UploadProgress;
 use bae_store::test_fixtures::*;
 use bae_transfers::{DownloadRequest, ReleaseQueueEntries};
 use bae_transfers::{OutputKind, OutputRequest, ReleaseQueueEntry};
@@ -24,12 +23,8 @@ fn export() -> OutputRequest {
     OutputRequest { target_dir: "/exports".into(), kind: OutputKind::Export }
 }
 
-fn waiting() -> ReleaseUpload {
-    ReleaseUpload {
-        progress: UploadProgress { queued: 1, uploading: 0 },
-        summary: Vec::new(),
-        missing: None,
-    }
+fn waiting() -> bae_records::DbReleaseUpload {
+    bae_records::DbReleaseUpload { waiting: 1, sending: 0, stored: 0, missing: None }
 }
 
 fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
@@ -59,34 +54,16 @@ fn counts(summary: &[bae_transfers::TransferCount]) -> Vec<(&str, u32)> {
 fn shown(
     files: Vec<crate::DbStorageInspectorFile>,
     entries: &ReleaseQueueEntries,
-    upload: Option<ReleaseUpload>,
+    pins: Option<crate::DbPinCounts>,
+    upload: Option<bae_records::DbReleaseUpload>,
 ) -> StorageInspector {
-    StorageInspector::of("selected", files, entries, upload)
-}
-
-/// A move-to-this-device brings a release's files into a folder, not into this
-/// device's pins: its entry shows, and no file's pin does.
-#[cfg(desktop)]
-#[test]
-fn a_move_to_this_device_entry_shows_no_file_pins() {
-    let inspector = shown(
-        vec![file("a", None), file("b", Some(FilePin::Kept))],
-        &ReleaseQueueEntries {
-            download: Some(row(
-                DownloadRequest::MoveToThisDevice { target_dir: "/music".into() },
-                "selected",
-                ReleaseQueueState::Queued,
-            )),
-            output: None,
-        },
-        None,
-    );
-
-    assert!(inspector.files.iter().all(|file| file.pin.is_none()));
-    assert!(matches!(
-        inspector.transfers.as_slice(),
-        [StorageInspectorTransfer::Download { summary: None, .. }]
-    ));
+    StorageInspector::read(crate::DbStorageInspector {
+        release_id: "selected".to_string(),
+        files,
+        pins,
+        upload,
+        entries: entries.clone(),
+    })
 }
 
 #[test]
@@ -97,6 +74,7 @@ fn each_queue_shows_the_selected_releases_entry() {
             download: Some(row(DownloadRequest::Pin, "selected", ReleaseQueueState::Queued)),
             output: Some(row(export(), "selected", ReleaseQueueState::Queued)),
         },
+        None,
         Some(waiting()),
     );
     assert_eq!(
@@ -122,73 +100,39 @@ fn each_queue_shows_the_selected_releases_entry() {
 #[test]
 fn a_release_no_queue_holds_has_no_transfers() {
     let inspector = shown(
-        vec![file("a", Some(FilePin::Kept))],
+        vec![file("a", None)],
         &ReleaseQueueEntries { download: None, output: None },
+        None,
         None,
     );
     assert!(inspector.transfers.is_empty());
-    assert_eq!(inspector.files[0].pin, None, "no pin shows out of the queue");
 }
 
-/// While its download waits or runs, each file says whether it is kept,
-/// downloading or waiting, and the download counts them; a failed download
-/// shows neither.
+/// The download of a pinning release counts its files by where their pins
+/// stand, each count left out at zero, and counts nothing for a release that
+/// is not pinning.
 #[test]
-fn a_release_pinning_shows_each_files_pin_and_counts_them() {
-    let fetched = coven::FileId(uuid::Uuid::from_u128(7));
-    let downloading = FilePin::Downloading { file: fetched };
-    let files = || {
-        vec![
-            file("a", Some(FilePin::Kept)),
-            file("b", Some(FilePin::Waiting)),
-            file("c", None),
-            file("d", Some(downloading)),
-        ]
+fn a_pinning_releases_download_counts_its_files() {
+    let entries = ReleaseQueueEntries {
+        download: Some(row(DownloadRequest::Pin, "selected", ReleaseQueueState::Queued)),
+        output: None,
     };
-    for state in [ReleaseQueueState::Queued, ReleaseQueueState::Active { progress: () }] {
-        let inspector = shown(
-            files(),
-            &ReleaseQueueEntries {
-                download: Some(row(DownloadRequest::Pin, "selected", state)),
-                output: None,
-            },
-            None,
-        );
-        assert_eq!(
-            inspector.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
-            vec![
-                Some(FilePin::Kept),
-                Some(FilePin::Waiting),
-                Some(FilePin::Waiting),
-                Some(downloading),
-            ]
-        );
-        let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
-            inspector.transfers.as_slice()
-        else {
-            panic!("a pinning release's download counts its files");
-        };
-        assert_eq!(
-            counts(summary),
-            vec![("core.queue.pinning", 1), ("core.queue.waiting", 2), ("core.queue.pinned", 1)]
-        );
-    }
-
-    let failed = shown(
-        files(),
-        &ReleaseQueueEntries {
-            download: Some(row(
-                DownloadRequest::Pin,
-                "selected",
-                ReleaseQueueState::Failed { error: "the network connection was lost".into() },
-            )),
-            output: None,
-        },
+    let inspector = shown(
+        Vec::new(),
+        &entries,
+        Some(crate::DbPinCounts { downloading: 1, waiting: 2, kept: 0 }),
         None,
     );
-    assert!(failed.files.iter().all(|file| file.pin.is_none()));
+    let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
+        inspector.transfers.as_slice()
+    else {
+        panic!("a pinning release's download counts its files");
+    };
+    assert_eq!(counts(summary), vec![("core.queue.pinning", 1), ("core.queue.waiting", 2)]);
+
+    let resting = shown(Vec::new(), &entries, None, None);
     assert!(matches!(
-        failed.transfers.as_slice(),
+        resting.transfers.as_slice(),
         [StorageInspectorTransfer::Download { summary: None, .. }]
     ));
 }
@@ -237,6 +181,8 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
             break event.result.unwrap().expect("the library holds RELEASE_A");
         }
     };
-    assert_eq!(read.entries.download.map(|row| row.op.release_id).as_deref(), Some(RELEASE_A));
-    assert!(read.entries.output.is_none(), "only RELEASE_B is exporting");
+    let [StorageInspectorTransfer::Download { operation, .. }] = read.transfers.as_slice() else {
+        panic!("only RELEASE_A's download is queued: {:?}", read.transfers);
+    };
+    assert_eq!(operation.op.release_id, RELEASE_A);
 }

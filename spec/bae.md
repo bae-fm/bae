@@ -5123,7 +5123,11 @@ Reads come two ways:
   coven's download watch), and its entry in the download, export and upload
   queues, a download with how many of its files are downloading, wait and
   are kept, all read for that release alone and at once, so its queue entries
-  and its files' pins are as they stood together. It shows nothing of a
+  and its files' pins are as they stood together. The read itself decides
+  that the release is pinning (its download entry pins and has not failed) and
+  counts its files by pin state, and bae keeps no earlier value to compare
+  with: the live query sends a value only when it differs from the last. It
+  shows nothing of a
   whole queue, which the list's footer pauses (§4.2): its upload shows how
   many of its files are uploading, queued and stored, a count of none left
   out, so a release with nothing being sent reads only what waits and what

@@ -490,15 +490,11 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 /// after the other, so each pin passes through both.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_kept() {
-    use bae_views::album_detail::FilePin;
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let cloud =
         uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    let kept = |value: &bae_views::DbStorageInspector| {
-        value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
-    };
     let mut rows = bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_inspector(Some(cloud.clone()));
 
@@ -513,35 +509,24 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
             loop {
                 let event = rows.next().await.expect("the inspector's read runs");
                 let value = event.result.unwrap().expect("the library holds the release");
-                let queued = value.entries.download.is_some();
+                let queued = !value.transfers.is_empty();
+                if queued {
+                    continue;
+                }
                 assert!(
-                    queued || kept(&value),
+                    all_files_kept(manager, &cloud).await,
                     "round {round}: out of the download queue with a file not kept: {value:?}"
                 );
-                if !queued && kept(&value) {
-                    break;
-                }
+                break;
             }
         })
         .await
         .expect("the pin finishes");
 
+        // Out of the queue the inspector shows no pin whether the files are
+        // kept or not, so the unpin changes nothing it sends.
         manager.unpin_releases(std::slice::from_ref(&cloud)).await.unwrap();
-        rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
     }
-}
-
-/// Follow the inspector's read of `release_id` until the inspector it
-/// shows is one `accept` takes.
-async fn inspector_until(
-    manager: &LibraryManager,
-    release_id: &str,
-    accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
-) -> bae_views::storage_inspector::StorageInspector {
-    let shown = |rows: bae_views::DbStorageInspector| {
-        bae_views::storage_inspector::StorageInspector::read(release_id, rows)
-    };
-    shown(inspector_rows_until(manager, release_id, |rows| accept(&shown(rows.clone()))).await)
 }
 
 /// A release's file says whether this device keeps it whole, and while the
@@ -562,7 +547,7 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
-    let pinning = inspector_until(manager, &cloud, |value| !value.transfers.is_empty()).await;
+    let pinning = inspector_rows_until(manager, &cloud, |value| !value.transfers.is_empty()).await;
     assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
     let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
         pinning.transfers.as_slice()
@@ -579,12 +564,40 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     );
 
     manager.set_downloads_paused(false).await.unwrap();
-    let pinned = inspector_until(manager, &cloud, |value| value.transfers.is_empty()).await;
+    let pinned = inspector_rows_until(manager, &cloud, |value| value.transfers.is_empty()).await;
     assert!(pinned.files.iter().all(|file| file.pin.is_none()));
-    inspector_rows_until(manager, &cloud, |rows| {
-        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
+    assert!(all_files_kept(manager, &cloud).await, "the finished pin kept every file");
+}
+
+/// A pin whose download failed shows no file's pin and no count of them,
+/// though the entry stays listed, with its error, to retry.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_failed_pin_shows_no_file_pins() {
+    use bae_views::storage_inspector::StorageInspectorTransfer;
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let cloud =
+        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
+    inspector_rows_until(manager, &cloud, |value| {
+        value.files.iter().all(|file| file.pin.is_some())
     })
     .await;
+
+    assert!(fail_download(manager, &cloud, "the network connection was lost".into())
+        .await
+        .unwrap());
+    let failed = inspector_rows_until(manager, &cloud, |value| {
+        value.files.iter().all(|file| file.pin.is_none())
+    })
+    .await;
+    assert!(matches!(
+        failed.transfers.as_slice(),
+        [StorageInspectorTransfer::Download { summary: None, .. }]
+    ));
 }
 
 /// A release is pinning while the download queue holds it waiting or
