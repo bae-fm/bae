@@ -57,7 +57,8 @@ check dotnet-format-config .editorconfig,bae-avalonia/bae-avalonia.csproj dotnet
 
 # Localization
 check loc-orphans *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-macos/bae/bae/**/*.swift,BaeKit/Sources/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/app/src/main/**/*.xml,scripts/loc-chrome-orphans.py,scripts/loc-orphans-allowlist.txt python3 scripts/loc-chrome-orphans.py
-check loc-english-skeleton *.xcstrings,bae-android/app/src/main/res/**/strings.xml,scripts/loc-english-skeleton.py,scripts/loc-skeleton-allowlist.txt python3 scripts/loc-english-skeleton.py
+check loc-english-skeleton *.xcstrings,bae-android/app/src/main/res/**/strings.xml python3 scripts/loc-english-skeleton.py {files}
+check loc-english-skeleton-all scripts/loc-english-skeleton.py,scripts/loc-skeleton-allowlist.txt,bae-loc/src/lib.rs python3 scripts/loc-english-skeleton.py
 check loc-words *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-bridge/loc/catalog.toml,spec/words.md,bae-macos/bae/bae/Shell/*Menu*.swift,scripts/loc-words.py python3 scripts/loc-words.py
 
 # Boards and workflows

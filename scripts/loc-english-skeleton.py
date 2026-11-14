@@ -4,8 +4,7 @@ English source sentence, either untranslated or with a single glossary noun
 swapped in (sometimes with an English suffix glued onto a non-English stem,
 e.g. "Sincronizzazioneing", "Eşzamanlamaed", "Importerened").
 
-Covers every locale bae ships — the set comes from `loc-gen locales`, i.e.
-bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads the
+Covers every locale bae ships — the set is bae-loc's TARGET_LOCALES, so this script keeps no list of its own. Reads the
 macOS xcstrings catalog and the Android values-<locale>/strings.xml catalogs;
 both gate CI. A locale with no chrome file of a given kind simply has nothing
 to scan there.
@@ -60,18 +59,18 @@ ALLOWLIST = ROOT / "scripts/loc-skeleton-allowlist.txt"
 
 
 def shipping_locales():
-    """The locale set bae ships, straight from bae-loc's TARGET_LOCALES."""
-    out = subprocess.run(
-        ["cargo", "run", "-q", "-p", "bae-loc", "--bin", "loc-gen", "--", "locales"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-    )
-    if out.returncode != 0:
-        sys.exit(f"`loc-gen locales` failed:\n{out.stderr}")
-    locales = tuple(line.strip() for line in out.stdout.splitlines() if line.strip())
+    """The locale set bae ships, read from the TARGET_LOCALES literal in
+    bae-loc's lib.rs. Reading the source keeps this check from compiling
+    bae-loc (`loc-gen locales` prints the same list, but running it builds
+    the crate and its dependencies, which a hook run pays in full whenever
+    that build is cold)."""
+    source = (ROOT / "bae-loc/src/lib.rs").read_text(encoding="utf-8")
+    block = re.search(r"pub const TARGET_LOCALES: &\[&str\] = &\[(.*?)\];", source, re.DOTALL)
+    if not block:
+        sys.exit("bae-loc/src/lib.rs: no TARGET_LOCALES literal found")
+    locales = tuple(re.findall(r'"([^"]+)"', block.group(1)))
     if not locales:
-        sys.exit("`loc-gen locales` printed nothing")
+        sys.exit("bae-loc/src/lib.rs: TARGET_LOCALES is empty")
     return locales
 
 
@@ -88,6 +87,7 @@ def android_values_dir(locale):
 TARGET_LOCALES = shipping_locales()
 
 MAC_XCSTRINGS = "bae-macos/bae/bae/Localizable.xcstrings"
+ANDROID_EN_STRINGS = "bae-android/app/src/main/res/values/strings.xml"
 ANDROID_STRINGS = {
     loc: f"bae-android/app/src/main/res/{android_values_dir(loc)}/strings.xml"
     for loc in TARGET_LOCALES
@@ -393,6 +393,53 @@ def android_leaves(en_path, target_path, locale):
                 yield name, quantity, en_value, {locale: target_items[quantity]}
 
 
+# ── Changed entries (hook runs) ─────────────────────────────────────────────
+
+
+def head_text(path):
+    """The file's text at HEAD, or None when HEAD has no such file."""
+    out = subprocess.run(
+        ["git", "show", f"HEAD:{path}"], cwd=ROOT, capture_output=True, text=True
+    )
+    return out.stdout if out.returncode == 0 else None
+
+
+def xcstrings_entries(text):
+    return json.loads(text)["strings"] if text else {}
+
+
+def android_entries(text):
+    """{name: value(s)} for the strings and plurals of a strings.xml text."""
+    if not text:
+        return {}
+    root = ET.fromstring(text)
+    entries = {el.get("name"): "".join(el.itertext()) for el in root.findall("string")}
+    for el in root.findall("plurals"):
+        entries[el.get("name")] = tuple(
+            (item.get("quantity"), "".join(item.itertext())) for item in el.findall("item")
+        )
+    return entries
+
+
+def changed_keys(paths):
+    """The keys whose entries in the given catalog files differ from HEAD's.
+    A file not among the catalogs contributes nothing."""
+    keys = set()
+    for path in paths:
+        rel = str(pathlib.Path(path).resolve().relative_to(ROOT))
+        if rel == MAC_XCSTRINGS:
+            read = xcstrings_entries
+        elif rel in ANDROID_STRINGS.values() or rel == ANDROID_EN_STRINGS:
+            read = android_entries
+        else:
+            continue
+        now_file = ROOT / rel
+        now = read(now_file.read_text(encoding="utf-8") if now_file.exists() else None)
+        before = read(head_text(rel))
+        keys |= {k for k in now.keys() | before.keys() if now.get(k) != before.get(k)}
+    return keys
+
+
 # ── Scan orchestration ──────────────────────────────────────────────────────
 
 
@@ -542,14 +589,23 @@ def print_hits(label, hits, allowed):
 
 
 def main():
+    """With catalog paths as arguments (the hook's staged files), only the
+    entries that differ from HEAD's are scanned; with none, every entry."""
     verbose = "--verbose" in sys.argv
+    paths = [a for a in sys.argv[1:] if not a.startswith("--")]
+    only = changed_keys(paths) if paths else None
+
+    def narrowed(leaves):
+        leaves = list(leaves)
+        return leaves if only is None else [l for l in leaves if l[0] in only]
+
     allowed = load_allowlist()
 
     total_gating_failures = 0
 
     # ── Strict: the macOS xcstrings catalog and the Android catalog ─────────
     for label, path in (("macOS xcstrings", MAC_XCSTRINGS),):
-        leaves = list(xcstrings_leaves(path))
+        leaves = narrowed(xcstrings_leaves(path))
         detector_hits, band_hits = scan_leaves(leaves)
         unallowed = print_hits(f"{label} (strict)", detector_hits, allowed)
         total_gating_failures += len(unallowed)
@@ -575,8 +631,8 @@ def main():
 
     android_leaves_all = []
     for loc, target_path in ANDROID_STRINGS.items():
-        en_path = "bae-android/app/src/main/res/values/strings.xml"
-        android_leaves_all.extend(android_leaves(en_path, target_path, loc))
+        en_path = ANDROID_EN_STRINGS
+        android_leaves_all.extend(narrowed(android_leaves(en_path, target_path, loc)))
     if android_leaves_all:
         detector_hits, band_hits = scan_leaves(android_leaves_all)
         unallowed = print_hits("Android strings.xml (strict)", detector_hits, allowed)
