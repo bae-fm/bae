@@ -35,6 +35,14 @@ impl LiveRequest for BTreeSet<String> {
     }
 }
 
+/// A read for another window answers about rows the reader no longer asks
+/// for.
+impl LiveRequest for crate::ListWindow {
+    fn still_answers(&self, current: &Self) -> bool {
+        self == current
+    }
+}
+
 /// Each window a read names holds that window's rows as of the read, whatever
 /// windows are set since.
 impl LiveRequest for LibraryPageWindows {

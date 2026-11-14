@@ -128,7 +128,8 @@ impl LibraryViews {
                 let windows = read_windows(&order, requested, |seek, limit, offset| {
                     album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
                 })?;
-                let windows: Vec<_> = windows.into_iter().map(WindowRead::into_browse).collect();
+                let windows: Vec<_> =
+                    windows.into_iter().map(CursorWindowRead::into_browse).collect();
                 Ok((windows, total_count, row_count))
             })
             .process(move |(windows, total_count, row_count)| {

@@ -85,7 +85,7 @@ impl LibraryViews {
                 composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
             })?;
             Ok(ComposerDetailRowsProjection {
-                windows: windows.into_iter().map(WindowRead::into_browse).collect(),
+                windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
                 total_count,
             })
         })

@@ -1,4 +1,5 @@
-//! A paged list's windows, each read from where the list's order puts it.
+//! A paged list's windows, each read from where the list's order puts it
+//! (`range`: the windows a screen holds, each a range of the order).
 //!
 //! A window carries a cursor when the screen holds a row beside it: the sort
 //! values of the row at the screen's edge, which the screen read from a window
@@ -13,6 +14,9 @@ use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
+
+mod range;
+pub use range::{key_at, read_range, rows_before, ListWindow, WindowRead};
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,11 +124,15 @@ pub struct SortTerm {
     expression: String,
     descending: bool,
     nullable: bool,
+    /// How the term's text compares, when its expression collates it: two
+    /// values this calls equal are one value to the order, whatever their
+    /// bytes.
+    collation: Option<fn(&str, &str) -> Ordering>,
 }
 
 impl SortTerm {
     pub fn ascending(expression: impl Into<String>) -> Self {
-        Self { expression: expression.into(), descending: false, nullable: false }
+        Self { expression: expression.into(), descending: false, nullable: false, collation: None }
     }
 
     pub fn descending(expression: impl Into<String>) -> Self {
@@ -141,6 +149,11 @@ impl SortTerm {
     /// The same term over an expression that can be NULL.
     pub fn nullable(self) -> Self {
         Self { nullable: true, ..self }
+    }
+
+    /// The same term, whose expression collates its text as `compare` does.
+    pub fn collated(self, compare: fn(&str, &str) -> Ordering) -> Self {
+        Self { collation: Some(compare), ..self }
     }
 
     /// The term as an ORDER BY term, run `descending` or the other way.
@@ -259,6 +272,11 @@ fn key_parameter(at: usize) -> String {
     format!(":order_key_{at}")
 }
 
+/// The parameter a range seek binds term `at`'s value of its upper bound to.
+fn until_parameter(at: usize) -> String {
+    format!(":until_key_{at}")
+}
+
 /// Which way a read runs from its row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Side {
@@ -284,12 +302,24 @@ pub struct Seek {
 }
 
 /// What a seek holds the term at its place to.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Past {
-    Greater(usize),
-    Less(usize),
-    NotNull(usize),
-    Null(usize),
+    /// Above the lower bound and below the upper one, whichever are set. NULL
+    /// is neither.
+    Between {
+        lower: Option<Bound>,
+        upper: Option<Bound>,
+    },
+    NotNull,
+    Null,
+}
+
+/// One end of a [`Past::Between`]: the parameter holding the value, and
+/// whether a term equal to it is within.
+#[derive(Debug, Clone)]
+struct Bound {
+    inclusive: bool,
+    parameter: String,
 }
 
 impl Seek {
@@ -316,6 +346,12 @@ impl Seek {
     /// How many of the order's leading terms the seek holds equal.
     pub fn held_equal(&self) -> usize {
         self.equal
+    }
+
+    /// Whether the seek compares its term with a bound at each end.
+    #[cfg(test)]
+    pub(super) fn bounds_both_ends(&self) -> bool {
+        matches!(&self.past, Some(Past::Between { lower: Some(_), upper: Some(_) }))
     }
 
     /// Whether the seek reads every row in the order's own run: the seek of
@@ -402,11 +438,23 @@ impl ListOrder {
             Value::Null => format!("({}) IS {}", term(at), key_parameter(at)),
             _ => format!("({}) = {}", term(at), key_parameter(at)),
         };
-        let past = seek.past.map(|past| match past {
-            Past::Greater(at) => format!("({}) > {}", term(at), key_parameter(at)),
-            Past::Less(at) => format!("({}) < {}", term(at), key_parameter(at)),
-            Past::NotNull(at) => format!("({}) IS NOT NULL", term(at)),
-            Past::Null(at) => format!("({}) IS NULL", term(at)),
+        let past = seek.past.as_ref().map(|past| {
+            let term = term(seek.equal);
+            match past {
+                Past::Between { lower, upper } => {
+                    let lower = lower.iter().map(|bound| {
+                        let op = if bound.inclusive { ">=" } else { ">" };
+                        format!("({term}) {op} {}", bound.parameter)
+                    });
+                    let upper = upper.iter().map(|bound| {
+                        let op = if bound.inclusive { "<=" } else { "<" };
+                        format!("({term}) {op} {}", bound.parameter)
+                    });
+                    lower.chain(upper).collect::<Vec<_>>().join(" AND ")
+                }
+                Past::NotNull => format!("({term}) IS NOT NULL"),
+                Past::Null => format!("({term}) IS NULL"),
+            }
         });
         let conditions = (0..seek.equal).map(held).chain(past).collect::<Vec<_>>();
         if conditions.is_empty() {
@@ -462,26 +510,28 @@ impl ListOrder {
     /// an index seek: counting what they read counts those rows without
     /// numbering the list from its start.
     pub fn seeks_before(&self, key: &OrderKey) -> Vec<Seek> {
-        self.seeks(key, Side::Before)
+        self.seeks(key, Side::Before, false, true)
     }
 
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn seeks_beside(&self, key: &OrderKey) -> Vec<Seek> {
-        let mut seeks = self.seeks(key, Side::After);
+        let mut seeks = self.seeks(key, Side::After, false, false);
         seeks.extend(self.seeks_before(key));
         seeks
     }
 
-    /// The rows on `side` of the row at `key`, nearest first, as seeks to
-    /// run in turn, each an index seek: the rows that tie the row on every
-    /// term but the last and pass it on that, then those tying it on every
-    /// term but the last two, and so on out to the first term. Within each,
-    /// the terms the seek holds equal are left out of its order, which an
-    /// index on an expression needs to read them in order.
-    fn seeks(&self, key: &OrderKey, side: Side) -> Vec<Seek> {
-        let reversed = side == Side::Before;
+    /// The rows on `side` of the row at `key`, nearest first, as seeks to run
+    /// in turn, each read against the order when `reversed`, each an index
+    /// seek: the rows that tie the row on every term but the last and
+    /// pass it on that, then those tying it on every term but the last two,
+    /// and so on out to the first term. Within each, the terms the seek holds
+    /// equal are left out of its order, which an index on an expression needs
+    /// to read them in order. With `inclusive`, the row itself is among the
+    /// rows after it.
+    fn seeks(&self, key: &OrderKey, side: Side, inclusive: bool, reversed: bool) -> Vec<Seek> {
+        let last = self.terms.len() - 1;
         let mut seeks = Vec::new();
         for at in (0..self.terms.len()).rev() {
             let term = &self.terms[at];
@@ -489,8 +539,8 @@ impl ListOrder {
             // when it compares with it.
             let seek = |past: Past, from: usize| {
                 let compared = match past {
-                    Past::Greater(_) | Past::Less(_) => at + 1,
-                    Past::NotNull(_) | Past::Null(_) => at,
+                    Past::Between { .. } => at + 1,
+                    Past::NotNull | Past::Null => at,
                 };
                 Seek {
                     equal: at,
@@ -502,17 +552,21 @@ impl ListOrder {
                         .collect(),
                 }
             };
-            let downward = term.descending != reversed;
+            let bound =
+                || Bound { inclusive: inclusive && at == last, parameter: key_parameter(at) };
+            let downward = term.descending != (side == Side::Before);
             match (&key.0[at], downward) {
                 // NULL sorts first: everything else on this term is past it
                 // going up, and nothing is going down.
-                (Value::Null, false) => seeks.push(seek(Past::NotNull(at), at)),
+                (Value::Null, false) => seeks.push(seek(Past::NotNull, at)),
                 (Value::Null, true) => {}
-                (_, false) => seeks.push(seek(Past::Greater(at), at)),
+                (_, false) => {
+                    seeks.push(seek(Past::Between { lower: Some(bound()), upper: None }, at));
+                }
                 (_, true) => {
-                    seeks.push(seek(Past::Less(at), at));
+                    seeks.push(seek(Past::Between { lower: None, upper: Some(bound()) }, at));
                     if term.nullable {
-                        seeks.push(seek(Past::Null(at), at + 1));
+                        seeks.push(seek(Past::Null, at + 1));
                     }
                 }
             }
@@ -524,14 +578,14 @@ impl ListOrder {
 /// One window's rows as one read found them, with the sort values of its
 /// first row and of its last.
 #[derive(Debug, Clone, PartialEq)]
-pub struct WindowRead<R> {
+pub struct CursorWindowRead<R> {
     pub window: LibraryPageWindow,
     pub rows: Vec<R>,
     pub first: Option<OrderKey>,
     pub last: Option<OrderKey>,
 }
 
-impl<R> WindowRead<R> {
+impl<R> CursorWindowRead<R> {
     /// The window as a delivery carries it.
     pub fn into_browse(self) -> LibraryBrowseWindow<R> {
         LibraryBrowseWindow {
@@ -557,9 +611,12 @@ pub fn read_window<R, E>(
     }
     match &window.cursor {
         None => read(&order.everything(), window.limit, window.offset),
-        Some(Cursor::After(key)) => from_seeks(order.seeks(key, Side::After), window.limit, read),
+        Some(Cursor::After(key)) => {
+            from_seeks(order.seeks(key, Side::After, false, false), window.limit, read)
+        }
         Some(Cursor::Before(key)) => {
-            let mut rows = from_seeks(order.seeks(key, Side::Before), window.limit, read)?;
+            let mut rows =
+                from_seeks(order.seeks(key, Side::Before, false, true), window.limit, read)?;
             rows.reverse();
             Ok(rows)
         }
@@ -571,14 +628,14 @@ pub fn read_windows<R, E>(
     order: &ListOrder,
     windows: &LibraryPageWindows,
     mut read: impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-) -> Result<Vec<WindowRead<R>>, E> {
+) -> Result<Vec<CursorWindowRead<R>>, E> {
     windows
         .iter()
         .map(|window| {
             let rows = read_window(order, window, &mut read)?;
             let first = rows.first().map(|(_, key)| key.clone());
             let last = rows.last().map(|(_, key)| key.clone());
-            Ok(WindowRead {
+            Ok(CursorWindowRead {
                 window: window.clone(),
                 rows: rows.into_iter().map(|(row, _)| row).collect(),
                 first,

@@ -83,7 +83,7 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{read_windows, Keyed, ListOrder, Seek, SortTerm, WindowRead};
+use bae_store::list_windows::{read_windows, CursorWindowRead, Keyed, ListOrder, Seek, SortTerm};
 use bae_store::read::*;
 use bae_store::syncs_on;
 use bae_store::*;

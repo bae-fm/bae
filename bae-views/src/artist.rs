@@ -48,7 +48,7 @@ impl LibraryViews {
                 artist_rows_on(&sql, &order, seek, limit, offset)
             })?;
             Ok(ArtistBrowseProjection {
-                windows: windows.into_iter().map(WindowRead::into_browse).collect(),
+                windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
                 total_count,
             })
         })

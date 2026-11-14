@@ -18,7 +18,7 @@ use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
     ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
-use bae_store::list_windows::{read_windows, Keyed, ListOrder, Seek, SortTerm, WindowRead};
+use bae_store::list_windows::{read_windows, CursorWindowRead, Keyed, ListOrder, Seek, SortTerm};
 use bae_store::read::column_conversion_error;
 use bae_store::{DbError, LibraryPageWindows};
 use coven::{CovenWrite, SqlReadContext};
@@ -308,7 +308,7 @@ pub(crate) fn release_queue_windows_on<P: QueuedPayload>(
         queue_window_rows_on::<P>(sql, &order, seek, limit, offset)
     })?;
     Ok(ReleaseQueueWindows {
-        windows: windows.into_iter().map(WindowRead::into_browse).collect(),
+        windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
         total_count,
     })
 }
