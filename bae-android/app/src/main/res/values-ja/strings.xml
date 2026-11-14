@@ -5,6 +5,7 @@
     <string name="album_credited_with">共演：%1$s</string>
     <string name="album_year_credited_with">%1$s · 共演：%2$s</string>
     <string name="back">戻る</string>
+    <string name="back_to_library">ライブラリに戻る</string>
     <string name="cancel">キャンセル</string>
     <string name="retry">再試行</string>
     <string name="close">閉じる</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">アーティスト</string>
     <string name="library_switch_view">表示を切り替える</string>
     <string name="more">その他</string>
+    <string name="more_options">その他のオプション</string>
     <string name="library_empty_artists">アーティストがいません</string>
     <string name="library_mode_playlists">プレイリスト</string>
     <string name="library_empty_playlists">プレイリストがまだありません</string>

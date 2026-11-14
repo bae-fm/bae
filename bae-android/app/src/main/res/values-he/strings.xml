@@ -5,6 +5,7 @@
     <string name="album_credited_with">עם %1$s</string>
     <string name="album_year_credited_with">%1$s · עם %2$s</string>
     <string name="back">חזרה</string>
+    <string name="back_to_library">חזרה לספרייה</string>
     <string name="cancel">ביטול</string>
     <string name="retry">נסה שוב</string>
     <string name="close">סגור</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">אמנים</string>
     <string name="library_switch_view">החלפת תצוגה</string>
     <string name="more">עוד</string>
+    <string name="more_options">אפשרויות נוספות</string>
     <string name="library_empty_artists">אין אמנים</string>
     <string name="library_mode_playlists">רשימות השמעה</string>
     <string name="library_empty_playlists">עדיין אין רשימות השמעה</string>

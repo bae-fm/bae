@@ -94,6 +94,7 @@ fun AlbumDetailScreen(
     albumId: String,
     initialReleaseId: String? = null,
     onBack: () -> Unit,
+    backLabel: String,
 ) {
     val query by session.libraryQueries.album.state
         .collectAsState()
@@ -118,6 +119,7 @@ fun AlbumDetailScreen(
 
     AndroidDetailScreen(
         onBack = onBack,
+        backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
         actions = {
             if (detail != null) {

@@ -252,7 +252,9 @@ slim bar pinned above it, and a scroll that stops part way leaves it at the
 nearer size. On Android, the heading's end holds Search, the Activity
 button (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*; the playlists view has
-none), then *Shuffle library* and *Settings*. A card's title or artists, or a row's name, too long
+none), then *Shuffle library* and *Settings*; screen readers name that ⋮ *More options*. On Android the
+back arrow of an album, artist, composer or playlist page opened from the library is named *Back to library* (*Back* when
+opened from another page), and the album page's ⋮ *Album options*. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
 count, which opens the artist; the header of the artist being scrolled through

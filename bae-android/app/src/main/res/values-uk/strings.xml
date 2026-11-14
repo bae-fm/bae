@@ -5,6 +5,7 @@
     <string name="album_credited_with">разом із: %1$s</string>
     <string name="album_year_credited_with">%1$s · разом із: %2$s</string>
     <string name="back">Назад</string>
+    <string name="back_to_library">Назад до фонотеки</string>
     <string name="cancel">Скасувати</string>
     <string name="retry">Повторити</string>
     <string name="close">Закрити</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">Виконавці</string>
     <string name="library_switch_view">Змінити подання</string>
     <string name="more">Більше</string>
+    <string name="more_options">Більше параметрів</string>
     <string name="library_empty_artists">Немає виконавців</string>
     <string name="library_mode_playlists">Плейлисти</string>
     <string name="library_empty_playlists">Поки немає плейлистів</string>

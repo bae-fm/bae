@@ -38,13 +38,14 @@ internal fun AndroidScreen(
 }
 
 /**
- * A screen's bar, as the design draws it: 64 dp on the page's own colour, the way back, then the [title] if the
- * screen has one, and at the end the screen's own [actions].
+ * A screen's bar, as the design draws it: 64 dp on the page's own colour, the way back named [backLabel], then the
+ * [title] if the screen has one, and at the end the screen's own [actions].
  */
 @Composable
 internal fun AndroidTopBar(
     onBack: () -> Unit,
     title: String? = null,
+    backLabel: String = stringResource(R.string.back),
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -53,7 +54,7 @@ internal fun AndroidTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel)
         }
         if (title != null) {
             Text(text = title, style = ThemeText.androidBarTitle.style)

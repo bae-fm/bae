@@ -5,6 +5,7 @@
     <string name="album_credited_with">zajedno s: %1$s</string>
     <string name="album_year_credited_with">%1$s · zajedno s: %2$s</string>
     <string name="back">Natrag</string>
+    <string name="back_to_library">Natrag u fonoteku</string>
     <string name="cancel">Odustani</string>
     <string name="retry">Pokušaj ponovno</string>
     <string name="close">Zatvori</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">Izvođači</string>
     <string name="library_switch_view">Promijeni prikaz</string>
     <string name="more">Više</string>
+    <string name="more_options">Više mogućnosti</string>
     <string name="library_empty_artists">Nema izvođača</string>
     <string name="library_mode_playlists">Popisi za reprodukciju</string>
     <string name="library_empty_playlists">Još nema popisa za reprodukciju</string>

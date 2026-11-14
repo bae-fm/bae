@@ -7,8 +7,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.res.stringResource
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.SessionActions
@@ -67,6 +69,10 @@ internal fun LibraryScreen(
                     destination = entry.destination,
                     libraries = libraries,
                     onBack = popEntry,
+                    backLabel =
+                        stringResource(
+                            if (navigator.entries.size == 1) R.string.back_to_library else R.string.back,
+                        ),
                     onPush = navigator::push,
                     actions = actions,
                 )

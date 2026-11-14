@@ -5,6 +5,7 @@
     <string name="album_credited_with">合作：%1$s</string>
     <string name="album_year_credited_with">%1$s · 合作：%2$s</string>
     <string name="back">返回</string>
+    <string name="back_to_library">返回音乐库</string>
     <string name="cancel">取消</string>
     <string name="retry">重试</string>
     <string name="close">关闭</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">艺人</string>
     <string name="library_switch_view">切换视图</string>
     <string name="more">更多</string>
+    <string name="more_options">更多选项</string>
     <string name="library_empty_artists">没有艺人</string>
     <string name="library_mode_playlists">播放列表</string>
     <string name="library_empty_playlists">暂无播放列表</string>

@@ -107,6 +107,7 @@ internal fun LibraryDestinationScreen(
     destination: LibraryDestination,
     libraries: StateFlow<LibraryListing>,
     onBack: () -> Unit,
+    backLabel: String,
     onPush: (LibraryDestination) -> Unit,
     actions: SessionActions,
 ) {
@@ -122,6 +123,7 @@ internal fun LibraryDestinationScreen(
                 albumId = target.albumId,
                 initialReleaseId = target.initialReleaseId,
                 onBack = onBack,
+                backLabel = backLabel,
             )
         }
 
@@ -130,6 +132,7 @@ internal fun LibraryDestinationScreen(
                 session = session,
                 workId = destination.workId,
                 onBack = onBack,
+                backLabel = backLabel,
                 onSelectWork = pushWork,
                 onSelectAlbum = pushAlbum,
             )
@@ -140,6 +143,7 @@ internal fun LibraryDestinationScreen(
                 session = session,
                 artistId = destination.artistId,
                 onBack = onBack,
+                backLabel = backLabel,
                 onSelectWork = pushWork,
                 onSelectAlbum = pushAlbum,
             )
@@ -150,12 +154,13 @@ internal fun LibraryDestinationScreen(
                 session = session,
                 artistId = destination.artistId,
                 onBack = onBack,
+                backLabel = backLabel,
                 onSelectAlbum = { onPush(LibraryDestination.Album(AlbumTarget(it))) },
             )
         }
 
         is LibraryDestination.Playlist -> {
-            PlaylistScreen(session = session, playlistId = destination.playlistId, onBack = onBack)
+            PlaylistScreen(session, destination.playlistId, onBack, backLabel)
         }
 
         is LibraryDestination.Setting -> {

@@ -18,6 +18,7 @@
     <string name="album_year_credited_with">%1$s · with %2$s</string>
     <!-- Common -->
     <string name="back">Back</string>
+    <string name="back_to_library">Back to library</string>
     <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
     <string name="close">Close</string>
@@ -120,6 +121,7 @@
     <string name="library_mode_artists">Artists</string>
     <string name="library_switch_view">Switch view</string>
     <string name="more">More</string>
+    <string name="more_options">More options</string>
     <string name="library_empty_artists">No artists</string>
     <string name="library_mode_playlists">Playlists</string>
     <string name="library_empty_playlists">No playlists yet</string>

@@ -56,13 +56,13 @@ class LibraryHeaderTest {
         val state = LibraryBrowserState()
         showHeader(state)
 
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Sort by").assertExists()
         compose.onNodeWithText("Title").performClick()
         assertEquals(BridgeSortField.TITLE, state.sortCriterion.field)
         assertNull(state.openMenu)
 
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Group by artist").performClick()
         assertTrue(state.groupAlbumsByArtist)
     }
@@ -77,7 +77,7 @@ class LibraryHeaderTest {
         assertEquals(LibraryBrowserMode.PLAYLISTS, state.mode)
         assertEquals(LibraryBrowserMode.COMPOSERS, LibraryBrowserMode.entries[LibraryBrowserMode.PLAYLISTS.ordinal - 1])
 
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Sort by").assertDoesNotExist()
         compose.onNodeWithText("Shuffle library").assertExists()
         compose.onNodeWithText("Settings").assertExists()
@@ -100,10 +100,10 @@ class LibraryHeaderTest {
             }
         }
 
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Shuffle library").performClick()
         assertTrue(shuffled)
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Settings").performClick()
         assertTrue(settingsOpened)
     }

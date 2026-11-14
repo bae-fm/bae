@@ -96,7 +96,7 @@ internal fun LibraryMoreMenu(
     val close = { state.openMenu = null }
     Box {
         IconButton(onClick = { state.openMenu = LibraryHeaderMenu.MORE }) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
+            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options))
         }
         AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close, minWidth = 220.dp) {
             LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)

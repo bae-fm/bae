@@ -31,6 +31,7 @@ internal fun ArtistDetailScreen(
     session: OpenLibrary,
     artistId: String,
     onBack: () -> Unit,
+    backLabel: String,
     onSelectAlbum: (String) -> Unit,
 ) {
     val query by session.libraryQueries.artist.state
@@ -50,6 +51,7 @@ internal fun ArtistDetailScreen(
         }
     AndroidDetailScreen(
         onBack = onBack,
+        backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
         val loaded = detail

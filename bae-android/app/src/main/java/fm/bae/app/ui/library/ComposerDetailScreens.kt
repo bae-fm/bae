@@ -45,6 +45,7 @@ internal fun ComposerDetailScreen(
     session: OpenLibrary,
     artistId: String,
     onBack: () -> Unit,
+    backLabel: String,
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
@@ -68,6 +69,7 @@ internal fun ComposerDetailScreen(
         }
     AndroidDetailScreen(
         onBack = onBack,
+        backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
         val loaded = detail
@@ -231,6 +233,7 @@ internal fun WorkDetailScreen(
     session: OpenLibrary,
     workId: String,
     onBack: () -> Unit,
+    backLabel: String,
     onSelectWork: (String) -> Unit,
     onSelectAlbum: (String, String) -> Unit,
 ) {
@@ -251,6 +254,7 @@ internal fun WorkDetailScreen(
         }
     AndroidDetailScreen(
         onBack = onBack,
+        backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
         val loaded = detail

@@ -5,6 +5,7 @@
     <string name="album_credited_with">z udziałem: %1$s</string>
     <string name="album_year_credited_with">%1$s · z udziałem: %2$s</string>
     <string name="back">Wstecz</string>
+    <string name="back_to_library">Wróć do biblioteki</string>
     <string name="cancel">Anuluj</string>
     <string name="retry">Ponów</string>
     <string name="close">Zamknij</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">Wykonawcy</string>
     <string name="library_switch_view">Przełącz widok</string>
     <string name="more">Więcej</string>
+    <string name="more_options">Więcej opcji</string>
     <string name="library_empty_artists">Brak wykonawców</string>
     <string name="library_mode_playlists">Playlisty</string>
     <string name="library_empty_playlists">Nie ma jeszcze playlist</string>

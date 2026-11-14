@@ -5,6 +5,7 @@
     <string name="album_credited_with">spolu s: %1$s</string>
     <string name="album_year_credited_with">%1$s · spolu s: %2$s</string>
     <string name="back">Zpět</string>
+    <string name="back_to_library">Zpět do knihovny</string>
     <string name="cancel">Zrušit</string>
     <string name="retry">Zopakovat</string>
     <string name="close">Zavřít</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">Interpreti</string>
     <string name="library_switch_view">Přepnout zobrazení</string>
     <string name="more">Další</string>
+    <string name="more_options">Další možnosti</string>
     <string name="library_empty_artists">Žádní interpreti</string>
     <string name="library_mode_playlists">Seznamy skladeb</string>
     <string name="library_empty_playlists">Zatím žádné seznamy skladeb</string>

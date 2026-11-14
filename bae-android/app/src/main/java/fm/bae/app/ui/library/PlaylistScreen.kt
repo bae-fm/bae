@@ -49,6 +49,7 @@ internal fun PlaylistScreen(
     session: OpenLibrary,
     playlistId: String,
     onBack: () -> Unit,
+    backLabel: String,
 ) {
     val query by session.libraryQueries.playlist.state
         .collectAsState()
@@ -61,6 +62,7 @@ internal fun PlaylistScreen(
     val loadError = query.error?.let(LocalContext.current::displayError)
     AndroidDetailScreen(
         onBack = onBack,
+        backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

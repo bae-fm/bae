@@ -5,6 +5,7 @@
     <string name="album_credited_with">mukana: %1$s</string>
     <string name="album_year_credited_with">%1$s · mukana: %2$s</string>
     <string name="back">Takaisin</string>
+    <string name="back_to_library">Takaisin kirjastoon</string>
     <string name="cancel">Peruuta</string>
     <string name="retry">Yritä uudelleen</string>
     <string name="close">Sulje</string>
@@ -94,6 +95,7 @@
     <string name="library_mode_artists">Esittäjät</string>
     <string name="library_switch_view">Vaihda näkymää</string>
     <string name="more">Lisää</string>
+    <string name="more_options">Lisää vaihtoehtoja</string>
     <string name="library_empty_artists">Ei esittäjiä</string>
     <string name="library_mode_playlists">Soittolistat</string>
     <string name="library_empty_playlists">Ei vielä soittolistoja</string>

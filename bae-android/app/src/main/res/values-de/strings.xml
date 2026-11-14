@@ -5,6 +5,7 @@
     <string name="album_credited_with">mit %1$s</string>
     <string name="album_year_credited_with">%1$s · mit %2$s</string>
     <string name="back">Zurück</string>
+    <string name="back_to_library">Zurück zur Mediathek</string>
     <string name="cancel">Abbrechen</string>
     <string name="retry">Erneut versuchen</string>
     <string name="close">Schließen</string>
@@ -90,6 +91,7 @@
     <string name="library_mode_artists">Künstler</string>
     <string name="library_switch_view">Ansicht wechseln</string>
     <string name="more">Mehr</string>
+    <string name="more_options">Weitere Optionen</string>
     <string name="library_empty_artists">Keine Künstler</string>
     <string name="library_mode_playlists">Wiedergabelisten</string>
     <string name="library_empty_playlists">Noch keine Wiedergabelisten</string>

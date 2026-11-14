@@ -5,6 +5,7 @@
     <string name="album_credited_with">med %1$s</string>
     <string name="album_year_credited_with">%1$s · med %2$s</string>
     <string name="back">Tilbage</string>
+    <string name="back_to_library">Tilbage til biblioteket</string>
     <string name="cancel">Annuller</string>
     <string name="retry">Prøv igen</string>
     <string name="close">Luk</string>
@@ -94,6 +95,7 @@
     <string name="library_mode_artists">Kunstnere</string>
     <string name="library_switch_view">Skift visning</string>
     <string name="more">Mere</string>
+    <string name="more_options">Flere indstillinger</string>
     <string name="library_empty_artists">Ingen kunstnere</string>
     <string name="library_mode_playlists">Afspilningslister</string>
     <string name="library_empty_playlists">Ingen afspilningslister endnu</string>

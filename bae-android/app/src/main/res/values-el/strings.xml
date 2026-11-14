@@ -5,6 +5,7 @@
     <string name="album_credited_with">με %1$s</string>
     <string name="album_year_credited_with">%1$s · με %2$s</string>
     <string name="back">Πίσω</string>
+    <string name="back_to_library">Πίσω στη βιβλιοθήκη</string>
     <string name="cancel">Ακύρωση</string>
     <string name="retry">Δοκιμή ξανά</string>
     <string name="close">Κλείσιμο</string>
@@ -94,6 +95,7 @@
     <string name="library_mode_artists">Καλλιτέχνες</string>
     <string name="library_switch_view">Αλλαγή προβολής</string>
     <string name="more">Περισσότερα</string>
+    <string name="more_options">Περισσότερες επιλογές</string>
     <string name="library_empty_artists">Κανένας καλλιτέχνης</string>
     <string name="library_mode_playlists">Λίστες αναπαραγωγής</string>
     <string name="library_empty_playlists">Καμία λίστα αναπαραγωγής ακόμη</string>
