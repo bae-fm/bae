@@ -4493,8 +4493,9 @@ count says it, as it says how many albums there are.
 
 A spoken request to play something ("play" and a name, from a car's controls)
 plays the first track the library search finds, else the first track of the
-first album it finds, on that album's main release. The search says which, and
-nothing plays when it finds neither.
+first album it finds that has a track on its main release. The search says
+which, and nothing plays when it finds neither. Android Auto reads that answer,
+and each item it opens, once from the database, not through a live query.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless

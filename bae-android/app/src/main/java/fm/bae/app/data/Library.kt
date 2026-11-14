@@ -29,7 +29,6 @@ import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeRelease
-import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeWorkDetail
@@ -260,35 +259,13 @@ class Library(
             (rows as? BridgeListRows.Downloads)?.rows ?: error("the download queue delivered rows of another list")
         }
 
-    internal fun composerDetails(id: String): DetailEvents<BridgeComposerDetail> = detailFlow(::composerDetail, id)
-
     internal fun workDetails(id: String): DetailEvents<BridgeWorkDetail> = detailFlow(::workDetail, id)
-
-    internal fun releaseDetails(id: String): DetailEvents<BridgeRelease> = detailFlow(::releaseDetail, id)
 
     /** One live library search whose query moves in place as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
 
-    /**
-     * The results for one fixed query, for a surface that asks a whole phrase at once (Android
-     * Auto's spoken search). Values and nonterminal errors share one live flow; collecting
-     * continues until the caller cancels.
-     */
-    internal fun searchResults(query: String): Flow<LiveQueryEvent<BridgeSearchResults>> =
-        callbackFlow {
-            val search = librarySearch()
-            search.setQuery(query)
-            val wanted = query.trim()
-            launch {
-                search.pullEach(
-                    onValue = { if (it.query == wanted) send(LiveQueryEvent.Value(it.results)) },
-                    onError = { send(LiveQueryEvent.Error(it)) },
-                )
-            }
-            // The reader's pending read is cancelled with this flow; releasing
-            // the search then ends it in core.
-            awaitClose(search::release)
-        }
+    /** Reads that answer one request once, straight from the database, with no subscription. */
+    internal val once = LibraryOneOffReads(handle)
 }
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */

@@ -79,7 +79,6 @@ impl LibraryViews {
             .await
     }
 
-    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn find_work_detail(
         &self,
         work_id: &str,
@@ -89,7 +88,6 @@ impl LibraryViews {
     }
 
     /// The work's page as its view shows it; `None` for an unknown work.
-    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_work_detail(&self, work_id: &str) -> Result<Option<WorkDetail>, DbError> {
         Ok(self.find_work_detail(work_id).await?.map(work_detail_of))
     }

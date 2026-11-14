@@ -64,6 +64,7 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
+import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastReceiversSubscription
@@ -277,6 +278,21 @@ internal open class FakeAppHandle(
                 initialSearchError(query)?.let { Result.failure(it) } ?: Result.success(searchResults(query))
             }
         }.also(searchSubscriptions::add)
+
+    override suspend fun readLibrarySearch(query: String): BridgeSearchResults {
+        initialSearchError(query)?.let { throw it }
+        return searchResults(query)
+    }
+
+    override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = readLibrarySearch(query).topPlayable
+
+    override suspend fun readAlbumDetail(albumId: String): BridgeAlbumDetail? = albumDetails[albumId]
+
+    override suspend fun readReleaseDetail(releaseId: String): BridgeRelease? = releaseDetails[releaseId]
+
+    override suspend fun readComposerDetail(artistId: String): BridgeComposerDetail? = composerDetails[artistId]
+
+    override suspend fun readWorkDetail(workId: String): BridgeWorkDetail? = workDetails[workId]
 
     fun failSearchResults(
         subscription: Int,

@@ -472,8 +472,8 @@ fn search_library_on(
         row_to_work_summary,
     )?;
     // The first track found, and failing that the first track of the first
-    // album found: one row, whichever kind of hit ranks first.
-    let top_playable: Option<(String, Option<String>)> = sql
+    // album found that has a track: one row, whichever kind of hit ranks first.
+    let top_playable: Option<DbTopPlayable> = sql
         .query_row(
             &format!(
                 r#"
@@ -490,6 +490,7 @@ fn search_library_on(
                     FROM (SELECT a.id, a.title, {primary_release} AS release_id
                           FROM albums a WHERE {album_matches}) a
                 )
+                WHERE track_id IS NOT NULL
                 ORDER BY kind, found_key, tie LIMIT 1
                 "#,
                 track_key = crate::name_sort::sort_key_sql("t.title"),
@@ -498,12 +499,9 @@ fn search_library_on(
                 album_matches = album_matches_sql("a.id", "?1"),
             ),
             params![pattern],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
         )
         .optional()?;
-    let top_playable = top_playable.and_then(|(release_id, track_id)| {
-        track_id.map(|track_id| DbTopPlayable { release_id, track_id })
-    });
     Ok(LibrarySearchRows { albums, artists, tracks, composers, works, top_playable })
 }
 

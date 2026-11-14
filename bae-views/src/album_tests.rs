@@ -563,6 +563,37 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
     assert_eq!(top("Nothing Matches This").await, None);
 }
 
+const EMPTY_ALBUM: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5001";
+const EMPTY_RELEASE: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5002";
+const PLAYABLE_ALBUM: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5011";
+const PLAYABLE_RELEASE: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5012";
+const PLAYABLE_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5013";
+
+/// An album found whose main release has no track plays nothing, so the spoken
+/// "play" takes the next album found that has one.
+#[tokio::test]
+async fn a_search_skips_a_found_album_with_no_track_to_play() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(NEEDLE_ARTIST, "Needle Artist Name")
+        .album(EMPTY_ALBUM, "Alpha Probe", Some(2026), &[NEEDLE_ARTIST])
+        .release(EMPTY_ALBUM, EMPTY_RELEASE)
+        .album(PLAYABLE_ALBUM, "Beta Probe", Some(2026), &[NEEDLE_ARTIST])
+        .release(PLAYABLE_ALBUM, PLAYABLE_RELEASE)
+        .tracks(PLAYABLE_RELEASE, &[(PLAYABLE_TRACK, "Only Title")])
+        .write(&test_records(&db))
+        .await;
+
+    let top = crate::LibraryViews::new(db.clone())
+        .search_rows("Probe", 10)
+        .await
+        .unwrap()
+        .top_playable
+        .map(|top| (top.release_id, top.track_id));
+
+    assert_eq!(top, Some((PLAYABLE_RELEASE.to_string(), PLAYABLE_TRACK.to_string())));
+}
+
 const SEARCHED_ARTIST: &str = "0373bb67-3abb-48e7-8a5b-6d29ef24308e";
 const SEARCHED_MUSICBRAINZ_ARTIST: &str = "mb-artist-asel";
 const SEARCHED_ALBUM: &str = "e307f0f5-e518-4d5e-bea8-83e439780ca0";

@@ -311,21 +311,23 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                readOnce(library.albumDetails(id.albumId), onQueryError)?.let {
+                reportingFailure(onQueryError) { library.once.readAlbumDetail(id.albumId) }?.let {
                     nodes.album(it.album.id, it.album.title, it.album.cover)
                 }
             }
 
             is BrowseId.Composer -> {
-                readOnce(library.composerDetails(id.artistId), onQueryError)?.let { nodes.composer(it.composer) }
+                reportingFailure(onQueryError) { library.once.readComposerDetail(id.artistId) }?.let {
+                    nodes.composer(it.composer)
+                }
             }
 
             is BrowseId.Work -> {
-                readOnce(library.workDetails(id.workId), onQueryError)?.let { nodes.work(it.work) }
+                reportingFailure(onQueryError) { library.once.readWorkDetail(id.workId) }?.let { nodes.work(it.work) }
             }
 
             is BrowseId.Track -> {
-                readOnce(library.releaseDetails(id.releaseId), onQueryError)?.let { release ->
+                reportingFailure(onQueryError) { library.once.readReleaseDetail(id.releaseId) }?.let { release ->
                     release.tracks.firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
                 }
             }
@@ -344,7 +346,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             return null
         }
         val search = synchronized(lock) { searchesByOwner.values.firstOrNull { it.query == query } }
-        val results = search?.results() ?: readOnce(library.searchResults(query), onQueryError)
+        val results = search?.results() ?: reportingFailure(onQueryError) { library.once.readSearch(query) }
         return BrowsePaging.paginate(results.albums.map { nodes.album(it.id, it.title, it.cover) }, page, pageSize)
     }
 
@@ -450,7 +452,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
         checkOpen()
-        val top = readOnce(library.searchResults(query), onQueryError).topPlayable
+        val top = reportingFailure(onQueryError) { library.once.readSearchTopPlayable(query) }
         return top?.let { BrowseId.Track(it.releaseId, it.trackId) }
     }
 

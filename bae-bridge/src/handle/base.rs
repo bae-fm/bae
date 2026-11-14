@@ -69,6 +69,73 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
+    /// What a library search finds, read once: for a request that needs the
+    /// answer one time (Android Auto's search). A blank query finds nothing.
+    fn read_library_search(query: String) -> crate::types::BridgeSearchResults {
+        let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
+            return Ok(crate::types::BridgeSearchResults::from_core(Default::default()));
+        };
+        Ok(crate::types::BridgeSearchResults::from_core(
+            this.services.search_library(&query).await.map_err(BridgeError::from)?,
+        ))
+    }
+
+    /// The track a spoken "play" of the search plays, read once, or `None`
+    /// when the search finds no track to play.
+    fn read_search_top_playable(query: String) -> Option<crate::types::BridgeTopPlayable> {
+        let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
+            return Ok(None);
+        };
+        Ok(this
+            .services
+            .search_library(&query)
+            .await
+            .map_err(BridgeError::from)?
+            .top_playable
+            .map(crate::types::BridgeTopPlayable::from_core))
+    }
+
+    /// One album's detail, read once; `None` when the album doesn't exist.
+    fn read_album_detail(album_id: String) -> Option<crate::types::BridgeAlbumDetail> {
+        Ok(this
+            .services
+            .find_album_detail(&album_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeAlbumDetail::from_core))
+    }
+
+    /// One release's detail, read once; `None` when the release doesn't exist.
+    fn read_release_detail(release_id: String) -> Option<crate::types::BridgeRelease> {
+        Ok(this
+            .services
+            .find_release_detail(&release_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeRelease::from_core))
+    }
+
+    /// One composer's page above its rows, read once; `None` when the composer
+    /// doesn't exist.
+    fn read_composer_detail(artist_id: String) -> Option<crate::types::BridgeComposerDetail> {
+        Ok(this
+            .services
+            .get_composer_detail(&artist_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeComposerDetail::from_core))
+    }
+
+    /// One work's detail, read once; `None` when the work doesn't exist.
+    fn read_work_detail(work_id: String) -> Option<crate::types::BridgeWorkDetail> {
+        Ok(this
+            .services
+            .get_work_detail(&work_id)
+            .await
+            .map_err(BridgeError::from)?
+            .map(crate::types::BridgeWorkDetail::from_core))
+    }
+
     /// The sort values of the row at `position` of `list`, read by offset, or
     /// of its last row when the list ends before it; none for an empty list.
     /// A jump to a position starts the windows a screen holds there.

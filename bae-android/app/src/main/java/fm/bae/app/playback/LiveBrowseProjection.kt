@@ -7,21 +7,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 
-/**
- * The value a live read answers first, for a request that needs it once: the read is opened for the request and
- * ended with it, and a failure is reported to [onError] and thrown.
- */
-internal suspend fun <Value> readOnce(
-    read: Flow<LiveQueryEvent<Value>>,
+/** One read of the database for a request: a failure is reported to [onError] and thrown. */
+internal suspend fun <Value> reportingFailure(
     onError: (BridgeException) -> Unit,
+    read: suspend () -> Value,
 ): Value =
-    when (val event = read.first()) {
-        is LiveQueryEvent.Value -> event.value
-        is LiveQueryEvent.Error -> throw event.error.also(onError)
+    try {
+        read()
+    } catch (error: BridgeException) {
+        throw error.also(onError)
     }
 
 /**

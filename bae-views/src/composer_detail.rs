@@ -14,13 +14,24 @@ use bae_records::records::read::{credit_name_column, credit_name_join};
 pub(super) const SQL: &str = include_str!("composer_detail.sql");
 
 impl LibraryViews {
-    #[cfg(test)]
     pub(crate) async fn find_composer_detail(
         &self,
         artist_id: &str,
     ) -> Result<Option<DbComposerDetail>, DbError> {
         let artist_id = artist_id.to_string();
         self.store.read(move |sql| find_composer_detail_on(&sql, &artist_id)).await
+    }
+
+    /// The composer's page above its rows, read once; `None` when the
+    /// composer doesn't exist.
+    pub async fn get_composer_detail(
+        &self,
+        artist_id: &str,
+    ) -> Result<Option<ComposerDetail>, DbError> {
+        Ok(self.find_composer_detail(artist_id).await?.map(|raw| ComposerDetail {
+            composer: raw.composer,
+            default_work_id: raw.default_work_id,
+        }))
     }
 
     /// Follow the composer `initial` names, or none. The detail view moves to
