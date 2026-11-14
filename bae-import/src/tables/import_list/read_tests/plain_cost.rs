@@ -248,6 +248,38 @@ async fn counts(db: &Store, size: &str) {
         vec![],
     )
     .await;
+    // What the list reads: the counts over the placement and its indexes.
+    plain_cost(
+        db,
+        &format!("import/placement-tab-counts@{size}"),
+        Some(50.0),
+        super::super::summary::TAB_COUNTS,
+        vec![],
+    )
+    .await;
+    plain_cost(
+        db,
+        &format!("import/placement-filter-entries@{size}"),
+        Some(50.0),
+        super::super::summary::FILTER_ENTRIES,
+        vec![],
+    )
+    .await;
+    // The entry count of a window's group headers, 100 of them from the
+    // middle of the placement's groups.
+    plain_cost(
+        db,
+        &format!("import/placement-group-entry-counts@{size}"),
+        Some(50.0),
+        "SELECT h.key, (SELECT COUNT(*) FROM import_list_placement AS m \
+                        WHERE m.watched_folder_path = h.watched_folder_path \
+                          AND m.group_folder = h.key AND m.item <> 'group') \
+         FROM (SELECT watched_folder_path, key FROM import_list_placement \
+               WHERE tab = 'pending' AND item = 'group' \
+               ORDER BY watched_folder_path, key LIMIT 100 OFFSET 1000) AS h",
+        vec![],
+    )
+    .await;
 }
 
 /// Where a row at the middle of Found is revealed: the count of the items

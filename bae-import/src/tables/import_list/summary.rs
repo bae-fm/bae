@@ -17,7 +17,7 @@ use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
 /// Every tab's count: the releases and folders that failed validation it
 /// lists, which is every placement row but a group's header.
-const TAB_COUNTS: &str = "SELECT COUNT(*) FILTER (WHERE tab = 'pending'), \
+pub(super) const TAB_COUNTS: &str = "SELECT COUNT(*) FILTER (WHERE tab = 'pending'), \
                                  COUNT(*) FILTER (WHERE tab = 'done'), \
                                  COUNT(*) FILTER (WHERE tab = 'skipped') \
                           FROM import_list_placement WHERE item <> 'group'";
@@ -47,15 +47,17 @@ fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
 /// Every entry of Found's filter, in the menu's order, with how many of
 /// Found's releases it holds: `all` holds every one and the others each hold
 /// those in their states. An entry holding none cannot be chosen.
-const FILTER_ENTRIES: &str = "WITH entries (position, entry) AS ( \
+pub(super) const FILTER_ENTRIES: &str = "WITH entries (position, entry) AS ( \
          VALUES (1, 'needs_you'), (2, 'in_progress'), (3, 'identified'), (4, 'unmatched'), \
                 (5, 'not_looked_up')), \
+     held (entry, count) AS ( \
+         SELECT pending_entry, COUNT(*) FROM import_list_placement \
+         WHERE pending_entry IS NOT NULL GROUP BY pending_entry), \
      counted (position, entry, count) AS ( \
-         SELECT 0, 'all', COUNT(*) FROM import_list_placement WHERE pending_entry IS NOT NULL \
+         SELECT 0, 'all', COALESCE(SUM(count), 0) FROM held \
          UNION ALL \
-         SELECT e.position, e.entry, COUNT(p.entry) FROM entries AS e \
-         LEFT JOIN import_list_placement AS p ON p.pending_entry = e.entry \
-         GROUP BY e.position) \
+         SELECT e.position, e.entry, COALESCE(h.count, 0) FROM entries AS e \
+         LEFT JOIN held AS h ON h.entry = e.entry) \
      SELECT entry, count, count > 0 FROM counted ORDER BY position";
 
 /// How many of Found's releases each filter entry holds, in the menu's
