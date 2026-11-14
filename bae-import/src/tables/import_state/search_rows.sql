@@ -51,3 +51,31 @@ CREATE TABLE IF NOT EXISTS import_candidate_search_source (
     CHECK (failure IS NULL OR error_detail IS NULL),
     CHECK (failure_status IS NULL OR failure = 'provider')
 ) STRICT;
+
+-- What a pick of a MusicBrainz release read its album to be on the other
+-- catalog: the release's own documents' statements, before the list's
+-- releases are compared. A search's rows state what each group was read to be
+-- from all its picks together and the list (`import_candidate_match.album_links`),
+-- and a pick is the input of that reading, so it is kept apart. A pick lasts
+-- as long as the search holds the release.
+CREATE TABLE IF NOT EXISTS import_candidate_search_pick (
+    search_run  INTEGER NOT NULL
+        REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
+    release_id  TEXT NOT NULL CHECK (release_id <> ''),
+    -- As `import_candidate_match.album_links`: the album rows hold what the
+    -- documents named.
+    links       TEXT NOT NULL CHECK (links IN ('not_asked', 'read', 'unread')),
+    PRIMARY KEY (search_run, release_id)
+) STRICT;
+
+-- The albums a pick's documents named, strongest first.
+CREATE TABLE IF NOT EXISTS import_candidate_search_pick_album (
+    search_run  INTEGER NOT NULL,
+    release_id  TEXT NOT NULL,
+    ordinal     INTEGER NOT NULL CHECK (ordinal >= 0),
+    catalog     TEXT NOT NULL CHECK (catalog <> ''),
+    key         TEXT NOT NULL CHECK (key <> ''),
+    PRIMARY KEY (search_run, release_id, ordinal),
+    FOREIGN KEY (search_run, release_id)
+        REFERENCES import_candidate_search_pick (search_run, release_id) ON DELETE CASCADE
+) STRICT;

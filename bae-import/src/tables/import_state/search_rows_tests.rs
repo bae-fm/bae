@@ -482,3 +482,259 @@ async fn a_search_of_a_folder_the_scan_does_not_hold_is_refused() {
         "{refused:?}"
     );
 }
+
+/// One release of a search's list as the layout stored it: its row, its
+/// card and its place among its row's records.
+#[derive(Debug, PartialEq, Eq)]
+struct Laid {
+    release_id: String,
+    pressing: i64,
+    card: i64,
+    record_order: i64,
+}
+
+/// Every release of the search `run`, in list order, as stored.
+async fn laid_out(tables: &ImportTables, run: SearchRun) -> Vec<Laid> {
+    tables
+        .store
+        .read(move |sql| {
+            Ok(sql.query(
+                "SELECT release_id, pressing, card, record_order \
+                 FROM import_candidate_match AS found \
+                 JOIN import_candidate_search_source AS part \
+                   ON part.search_run = found.search_run AND part.catalog = found.source \
+                 WHERE found.search_run = ? ORDER BY part.position, found.position",
+                [run.number()],
+                |row| {
+                    Ok(Laid {
+                        release_id: row.get(0)?,
+                        pressing: row.get(1)?,
+                        card: row.get(2)?,
+                        record_order: row.get(3)?,
+                    })
+                },
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+/// The text of the search `run`'s cards, as `kind ordinal text` under each
+/// card, in order.
+async fn card_text(tables: &ImportTables, run: SearchRun) -> Vec<String> {
+    tables
+        .store
+        .read(move |sql| {
+            Ok(sql.query(
+                "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
+                 FROM import_candidate_card_text WHERE search_run = ? \
+                 ORDER BY card, kind, ordinal",
+                [run.number()],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+/// What the search `run`'s rows list, as `pressing fact line ordinal value
+/// catalogs`, in order.
+async fn statements(tables: &ImportTables, run: SearchRun) -> Vec<String> {
+    tables
+        .store
+        .read(move |sql| {
+            Ok(sql.query(
+                "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
+                        || value || ' ' || catalogs \
+                 FROM import_candidate_row_statement WHERE search_run = ? \
+                 ORDER BY pressing, fact, line, ordinal",
+                [run.number()],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+/// A release whose barcode `code` names the pressing it is, in the group its
+/// catalog files its album under.
+fn pressed(source: LookupCatalog, release_id: &str, group: &str, code: &str) -> MetadataResult {
+    MetadataResult {
+        source_group_id: Some(group.to_string()),
+        barcodes: vec![code.to_string()],
+        ..search_result(source, release_id)
+    }
+}
+
+/// Each catalog's answer lays the whole list out again: the MusicBrainz and
+/// the Discogs release that print one barcode become one row under one card,
+/// the MusicBrainz record leading, and a row that nothing pairs stays alone.
+/// What the row lists where its records differ is stored with it.
+#[tokio::test]
+async fn search_answer_pairs_rows_across_both_catalogs_answers() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    let mb = |id, group, code| pressed(LookupCatalog::MusicBrainz, id, group, code);
+    let dg = |id, group, code| pressed(LookupCatalog::Discogs, id, group, code);
+
+    let numbered = |mut release: MetadataResult, number: &str| {
+        release.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some(number))];
+        release
+    };
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![
+                numbered(mb("mb-1", "group-x", "012345678905"), "CAT 1"),
+                mb("mb-2", "group-y", "5051961234567")
+            ]),
+        )
+        .await
+    );
+    let alone: Vec<(i64, i64, i64)> = laid_out(&tables, run)
+        .await
+        .into_iter()
+        .map(|laid| (laid.pressing, laid.card, laid.record_order))
+        .collect();
+    assert_eq!(alone, [(0, 0, 0), (1, 1, 0)], "two releases of two albums are two rows");
+
+    let discogs_later = numbered(dg("dg-1", "master-7", "012345678905"), "CAT 2");
+    assert!(land(&tables, run, LookupCatalog::Discogs, Ok(vec![discogs_later])).await);
+
+    assert_eq!(
+        laid_out(&tables, run).await,
+        [
+            Laid { release_id: "mb-1".into(), pressing: 0, card: 0, record_order: 0 },
+            Laid { release_id: "mb-2".into(), pressing: 1, card: 1, record_order: 0 },
+            Laid { release_id: "dg-1".into(), pressing: 0, card: 0, record_order: 1 },
+        ],
+        "the Discogs release joins the MusicBrainz release's row and card"
+    );
+    assert_eq!(
+        card_text(&tables, run).await,
+        [
+            "0 artist 0 [{\"name\":\"Artist Name\",\"join\":null}]",
+            "0 label 0 Imprint",
+            "0 title 0 Album Title",
+            "1 artist 0 [{\"name\":\"Artist Name\",\"join\":null}]",
+            "1 title 0 Album Title",
+        ]
+    );
+    assert_eq!(
+        statements(&tables, run).await,
+        [
+            "0 barcode 0 0 012345678905 []",
+            "0 catalog_number 0 0 CAT 1 [\"musicbrainz\"]",
+            "0 catalog_number 0 1 CAT 2 [\"discogs\"]",
+            "0 label_name 0 0 Imprint []",
+            "0 year 0 0 1992 []",
+            "1 barcode 0 0 5051961234567 []",
+            "1 year 0 0 1992 []",
+        ],
+        "a row lists a fact once where its records agree"
+    );
+}
+
+/// A pick of a MusicBrainz release reads what its documents state its album
+/// is on Discogs, and the list is laid out again with that: the two
+/// albums' cards become one, though no row pairs their releases.
+#[tokio::test]
+async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![pressed(LookupCatalog::MusicBrainz, "mb-1", "group-x", "012345678905")]),
+        )
+        .await
+    );
+    tables
+        .land_candidate_search_pick(
+            key,
+            &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
+            AlbumLinks::Read(vec![MetadataRef::new(Catalog::Discogs, "master-7")]),
+        )
+        .await
+        .unwrap();
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![pressed(LookupCatalog::Discogs, "dg-1", "master-7", "5051961234567")]),
+        )
+        .await
+    );
+
+    assert_eq!(
+        laid_out(&tables, run).await,
+        [
+            Laid { release_id: "mb-1".into(), pressing: 0, card: 0, record_order: 0 },
+            Laid { release_id: "dg-1".into(), pressing: 1, card: 0, record_order: 0 },
+        ],
+        "two rows of one card: the picked album's link joined the cards, not the pressings"
+    );
+    let stored_links: Vec<String> = tables
+        .store
+        .read(move |sql| {
+            Ok(sql.query(
+                "SELECT found.release_id || ' ' || found.album_links || ' ' \
+                        || COALESCE(link.catalog || ':' || link.key, '') \
+                 FROM import_candidate_match AS found \
+                 LEFT JOIN import_candidate_match_album_link AS link \
+                   ON link.search_run = found.search_run AND link.position = found.position \
+                 WHERE found.search_run = ? ORDER BY found.release_id",
+                [run.number()],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        stored_links,
+        ["dg-1 not_asked ", "mb-1 read discogs:master-7"],
+        "the MusicBrainz release states the album its group was read to be"
+    );
+}
+
+/// Switching a catalog off deletes what it returned and lays out what the
+/// other catalog returned on its own: the row the two shared is the
+/// remaining release alone.
+#[tokio::test]
+async fn switching_a_catalog_off_lays_out_the_rest_again() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    for (source, id, group) in [
+        (LookupCatalog::MusicBrainz, "mb-1", "group-x"),
+        (LookupCatalog::Discogs, "dg-1", "master-7"),
+    ] {
+        assert!(
+            land(&tables, run, source, Ok(vec![pressed(source, id, group, "012345678905")])).await
+        );
+    }
+    assert_eq!(
+        laid_out(&tables, run).await.into_iter().map(|laid| laid.pressing).collect::<Vec<_>>(),
+        [0, 0],
+        "the two catalogs' releases share a row"
+    );
+
+    tables.switch_search_source_off(LookupCatalog::MusicBrainz).await.unwrap();
+
+    assert_eq!(
+        laid_out(&tables, run).await,
+        [Laid { release_id: "dg-1".into(), pressing: 0, card: 0, record_order: 0 }]
+    );
+    assert_eq!(
+        card_text(&tables, run).await.len(),
+        2,
+        "the one card that is left names its title and its artist"
+    );
+}

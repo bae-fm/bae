@@ -416,14 +416,8 @@ pub(crate) fn walkthrough_folder() -> tempfile::TempDir {
 /// Store `verdict` for a fresh candidate and read it back, with the
 /// listing of each match row in position order.
 pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdict, Vec<String>) {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let (db, hash, _tmp) = stored_verdict(verdict).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let candidate =
-        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
-    let hash = candidate.content_hash();
-    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), verdict);
-    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
     let loaded = tables.load_import_candidate_states().await.unwrap();
     let read =
         loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict.clone();
@@ -440,6 +434,22 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
         .await
         .unwrap();
     (read, listings)
+}
+
+/// A library holding one candidate's `verdict`, as the verdict write stores
+/// it: the library, the candidate's content hash and the directory the
+/// library lives in.
+pub(crate) async fn stored_verdict(
+    verdict: &TerminalVerdict,
+) -> (Store, String, tempfile::TempDir) {
+    let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), verdict);
+    store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
+    crate::tables::ImportTables::new(db.clone()).store_verdict(&row).await.unwrap();
+    (db, hash, tmp)
 }
 
 /// Damage the candidate `content_hash`'s draft as no write leaves it: it

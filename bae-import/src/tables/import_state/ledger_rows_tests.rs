@@ -257,3 +257,95 @@ async fn a_settled_ledger_with_a_lookup_under_way_is_a_bug() {
     let bug = the_reported_bug(&heard, &failed);
     assert!(bug.contains("a lookup under way"), "{bug}");
 }
+
+/// A cell's list is laid out with the ledger's write: the MusicBrainz and the
+/// Discogs release a lookup found that print one barcode are one row under
+/// one card, the MusicBrainz record leading, the card names its title and
+/// label once, and the row lists what its records state.
+#[tokio::test]
+async fn ledger_cell_cards_are_stored_with_the_ledger() {
+    use bae_identify::{
+        BarcodeStepView, CatalogStepView, IsrcStepView, ProviderCell, SearchStepView,
+        SignalValueRow,
+    };
+
+    let printed = |source, id: &str, group: &str, number: &str| MetadataResult {
+        barcodes: vec!["012345678905".to_string()],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some(number))],
+        source_group_id: Some(group.to_string()),
+        ..release_on(source, id)
+    };
+    let musicbrainz = printed(LookupCatalog::MusicBrainz, "mb-1", "group-x", "CAT 1");
+    let discogs = printed(LookupCatalog::Discogs, "dg-1", "master-7", "CAT 2");
+    let elsewhere = MetadataResult {
+        barcodes: vec!["5051961234567".to_string()],
+        ..release_on(LookupCatalog::MusicBrainz, "mb-2")
+    };
+    let found =
+        LookupView::answered(&vec![discogs.clone(), elsewhere.clone(), musicbrainz.clone()]);
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![musicbrainz.clone(), discogs.clone()],
+            pressings: vec![0, 0],
+            ..Findings::default()
+        },
+        track_count: 11,
+        ledger: Some(IdentifyRunView {
+            providers: vec![LookupCatalog::MusicBrainz],
+            disc_id: DiscIdStepView::Absent,
+            barcode: BarcodeStepView::Rows {
+                scanning: false,
+                rows: vec![SignalValueRow {
+                    value: "012345678905".to_string(),
+                    excluded: false,
+                    cells: vec![ProviderCell { source: LookupCatalog::MusicBrainz, lookup: found }],
+                }],
+            },
+            catalog: CatalogStepView::NoneFound,
+            isrc: IsrcStepView::Absent,
+            search: SearchStepView::NoTitle,
+        }),
+    };
+
+    let (db, hash, _tmp) = stored_verdict(&verdict).await;
+    let (placed, text, statements): (Vec<String>, Vec<String>, Vec<String>) = db
+        .read(move |sql| {
+            let query = |statement: &str| {
+                sql.query(statement, [hash.as_str()], |row| row.get::<_, String>(0))
+            };
+            Ok((
+                query(
+                    "SELECT found.release_id || ' ' || lookup.pressing || ' ' || lookup.card \
+                            || ' ' || lookup.record_order \
+                     FROM import_candidate_lookup_release AS lookup \
+                     JOIN import_candidate_match AS found \
+                       ON found.content_hash = lookup.content_hash \
+                      AND found.position = lookup.match_position \
+                     WHERE lookup.content_hash = ? ORDER BY lookup.ordinal",
+                )?,
+                query(
+                    "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
+                     FROM import_candidate_card_text WHERE content_hash = ? \
+                     ORDER BY card, kind, ordinal",
+                )?,
+                query(
+                    "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
+                            || value || ' ' || catalogs \
+                     FROM import_candidate_row_statement WHERE content_hash = ? \
+                     ORDER BY pressing, fact, line, ordinal",
+                )?,
+            ))
+        })
+        .await
+        .unwrap();
+
+    // The cell lists the cards the rules made of what it found, card by card.
+    assert_eq!(placed, ["mb-1 0 0 0", "dg-1 0 0 1", "mb-2 1 2 0"]);
+    assert!(text.contains(&"0 label 0 Imprint".to_string()), "{text:?}");
+    assert_eq!(text.len(), 6, "each of the two cards names its title, artist and label");
+    assert!(
+        statements.contains(&"0 catalog_number 0 0 CAT 1 [\"musicbrainz\"]".to_string())
+            && statements.contains(&"0 catalog_number 0 1 CAT 2 [\"discogs\"]".to_string()),
+        "{statements:?}"
+    );
+}

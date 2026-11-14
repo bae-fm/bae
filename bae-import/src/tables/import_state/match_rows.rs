@@ -145,15 +145,19 @@ pub(super) fn store_match(
     listing: Written<'_>,
 ) -> Result<(), DbError> {
     let position = ordinal_column(position)?;
-    let (listing, pressing, named_note) = match (owner, listing) {
+    // A search's release is written alone in its row and card, and the write
+    // that lands it lays the whole list out before it ends.
+    let (listing, pressing, named_note, own_card) = match (owner, listing) {
         (MatchOwner::Verdict(_), Written::Offered(pressing, named_note)) => {
-            (LISTING_OFFERED, Some(pressing), named_note)
+            (LISTING_OFFERED, Some(i64::from(pressing)), named_note, None)
         }
         (MatchOwner::Verdict(_), Written::NarrowedOut(pressing)) => {
-            (LISTING_NARROWED_OUT, Some(pressing), None)
+            (LISTING_NARROWED_OUT, Some(i64::from(pressing)), None, None)
         }
-        (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None),
-        (MatchOwner::Search(_), Written::Returned) => (LISTING_RETURNED, None, None),
+        (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None, None),
+        (MatchOwner::Search(_), Written::Returned) => {
+            (LISTING_RETURNED, Some(position), None, Some(position))
+        }
         (MatchOwner::Verdict(_), Written::Returned)
         | (
             MatchOwner::Search(_),
@@ -162,10 +166,11 @@ pub(super) fn store_match(
     };
     // A search's release hangs off the part that answered with it, which
     // holds releases only while it stands answered.
-    let (search_state, picked) = match owner {
-        MatchOwner::Search(_) => (Some(SEARCH_STATE_DONE), Some(false)),
-        MatchOwner::Verdict(_) => (None, None),
+    let search_state = match owner {
+        MatchOwner::Search(_) => Some(SEARCH_STATE_DONE),
+        MatchOwner::Verdict(_) => None,
     };
+    let record_order = own_card.map(|_| 0_i64);
     let cover = result.cover_art.as_ref();
     let cover_label = cover.map(|cover| cover_labels::label_json(&cover.label)).transpose()?;
     let (tracks_kind, tracks_count) = match &result.source_tracks {
@@ -192,17 +197,18 @@ pub(super) fn store_match(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_match \
-             (content_hash, identify_run, search_run, search_state, picked, position, pressing, \
-              source, release_id, title, credits, year, \
+             (content_hash, identify_run, search_run, search_state, position, pressing, card, \
+              record_order, source, release_id, title, credits, year, \
               country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?) \
+                 ?, ?, ?, ?, ?) \
          ON CONFLICT ({column}, position) DO UPDATE SET \
-             pressing = excluded.pressing, source = excluded.source, \
+             pressing = excluded.pressing, card = excluded.card, \
+             record_order = excluded.record_order, source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
              credits = excluded.credits, year = excluded.year, \
              country = excluded.country, region = excluded.region, status = excluded.status, \
@@ -223,9 +229,10 @@ pub(super) fn store_match(
             run,
             search,
             search_state,
-            picked,
             position,
             pressing,
+            own_card,
+            record_order,
             result.source.as_str(),
             result.release_id,
             result.title,
@@ -335,7 +342,7 @@ pub(super) fn store_match(
 }
 
 /// The album link rows of the match at `position`, which holds none yet.
-fn store_album_link_rows(
+pub(super) fn store_album_link_rows(
     sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,
     position: i64,
@@ -360,38 +367,8 @@ fn store_album_link_rows(
     Ok(())
 }
 
-/// Mark every row of `release` the search `search_run` holds picked, each
-/// stating `links` as its album on the other catalog, in place of what it
-/// stated.
-pub(super) fn store_picked(
-    sql: &CovenWrite<'_>,
-    search_run: i64,
-    release: &bae_catalogs::records::LookupRef,
-    links: &AlbumLinks,
-) -> Result<(), DbError> {
-    let positions = sql.query(
-        "SELECT position FROM import_candidate_match \
-         WHERE search_run = ? AND source = ? AND release_id = ?",
-        params![search_run, release.catalog.as_str(), release.key],
-        |row| row.get::<_, i64>(0),
-    )?;
-    for position in positions {
-        sql.execute(
-            "DELETE FROM import_candidate_match_album_link WHERE search_run = ? AND position = ?",
-            params![search_run, position],
-        )?;
-        sql.execute(
-            "UPDATE import_candidate_match SET picked = 1, album_links = ? \
-             WHERE search_run = ? AND position = ?",
-            params![album_links_column(links), search_run, position],
-        )?;
-        store_album_link_rows(sql, MatchOwner::Search(search_run), position, links)?;
-    }
-    Ok(())
-}
-
 /// The stored `album_links` value of `links`.
-fn album_links_column(links: &AlbumLinks) -> &'static str {
+pub(super) fn album_links_column(links: &AlbumLinks) -> &'static str {
     match links {
         AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
         AlbumLinks::Read(_) => ALBUM_LINKS_READ,
@@ -454,11 +431,8 @@ pub(super) enum Listing {
     /// Found by a cell of the ledger and listed in neither: only the cell
     /// shows it.
     Unlisted,
-    /// Returned by a typed search's catalog, and whether a pick has read its
-    /// documents.
-    Returned {
-        picked: bool,
-    },
+    /// Returned by a typed search's catalog.
+    Returned,
 }
 
 /// What a release a verdict lists carries beside the release: which pressing
@@ -496,7 +470,6 @@ pub(super) struct MatchColumns {
     pub(super) position: i64,
     pressing: Option<i64>,
     listing: String,
-    picked: Option<bool>,
     media_kind: String,
     /// The stored `album_links` value; [`match_of`] reads it with the album
     /// link rows.
@@ -516,7 +489,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         position,
         pressing,
         listing,
-        picked,
         media_kind,
         album_links: album_links_kind,
         mut result,
@@ -603,14 +575,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         LISTING_OFFERED => Listing::Offered(ListedMatch { named_note, ..listed(pressing)? }),
         LISTING_NARROWED_OUT if named_note.is_none() => Listing::NarrowedOut(listed(pressing)?),
         LISTING_UNLISTED if pressing.is_none() && named_note.is_none() => Listing::Unlisted,
-        LISTING_RETURNED if pressing.is_none() && named_note.is_none() => Listing::Returned {
-            picked: picked.ok_or_else(|| {
-                DbError::unreadable(
-                    format!("whether returned match {position} of {content_hash} was picked"),
-                    None::<bool>,
-                )
-            })?,
-        },
+        LISTING_RETURNED if pressing.is_some() && named_note.is_none() => Listing::Returned,
         LISTING_NARROWED_OUT | LISTING_UNLISTED | LISTING_RETURNED => {
             return Err(DbError::unreadable(
                 format!(
@@ -667,7 +632,6 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         position: row.get("position")?,
         pressing: row.get("pressing")?,
         listing: row.get("listing")?,
-        picked: row.get("picked")?,
         media_kind: row.get("media_kind")?,
         album_links: row.get("album_links")?,
         result: MetadataResult {
@@ -711,7 +675,7 @@ pub(super) const MATCH_COLUMNS: &str =
      found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
      found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
      found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
-     found.picked, found.document_failure, found.document_failure_status, \
+     found.document_failure, found.document_failure_status, \
      fetched.album_first_year, found.named_note";
 
 /// What hangs off a match joined as `found`, each list a JSON array in its
@@ -865,12 +829,13 @@ pub(super) fn load_run_matches_on(
     Ok(matches)
 }
 
-/// The releases every typed search holds, or `key`'s search alone, by search,
+/// The releases every typed search holds, or `key`'s search alone, or the search `run`'s, by search,
 /// each search's under its catalog parts in their order, each part's in the
 /// order it returned them.
 pub(super) fn load_search_matches_on(
     sql: &impl coven::SqlRead,
     key: Option<&crate::CandidateKey>,
+    run: Option<i64>,
 ) -> Result<HashMap<i64, Vec<MatchRow>>, DbError> {
     let rows = sql.query(
         &format!(
@@ -882,11 +847,12 @@ pub(super) fn load_search_matches_on(
                  ON part.search_run = found.search_run AND part.catalog = found.source \
              LEFT JOIN source_release AS fetched \
                  ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
-             WHERE ?1 IS NULL OR search.candidate_key = ?1 \
+             WHERE (?1 IS NULL OR search.candidate_key = ?1) \
+               AND (?2 IS NULL OR found.search_run = ?2) \
              ORDER BY found.search_run, part.position, found.position",
             entries = match_entries_columns(),
         ),
-        params![key],
+        params![key, run],
         |row| {
             Ok((
                 row.get::<_, i64>("match_search")?,
@@ -902,6 +868,14 @@ pub(super) fn load_search_matches_on(
         matches.entry(search).or_default().push(match_of(columns, entries.entries()?)?);
     }
     Ok(matches)
+}
+
+/// The releases of the search `run` alone, in the order its parts list them.
+pub(super) fn load_search_run_matches_on(
+    sql: &impl coven::SqlRead,
+    run: i64,
+) -> Result<Vec<MatchRow>, DbError> {
+    Ok(load_search_matches_on(sql, None, Some(run))?.remove(&run).unwrap_or_default())
 }
 
 #[cfg(test)]

@@ -113,6 +113,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_lookup_release (
     answer         TEXT NOT NULL DEFAULT 'answered' CHECK (answer = 'answered'),
     ordinal        INTEGER NOT NULL CHECK (ordinal >= 0),
     match_position INTEGER NOT NULL,
+    -- Where the release is in the cell's own list, laid out as a search's
+    -- list is (see `import_candidate_match`): its row, its card and its place
+    -- among its row's records.
+    pressing       INTEGER NOT NULL CHECK (pressing >= 0),
+    card           INTEGER NOT NULL CHECK (card >= 0),
+    record_order   INTEGER NOT NULL CHECK (record_order >= 0),
     UNIQUE (content_hash, step, position, cell, ordinal),
     UNIQUE (identify_run, step, position, cell, ordinal),
     FOREIGN KEY (content_hash, step, position, cell, answer)

@@ -16,9 +16,10 @@
 
 pub(super) const SQL: &str = include_str!("search_rows.sql");
 
+use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::load_search_matches_on;
-use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written};
+use super::match_rows::{store_match, Listing, MatchOwner, Written};
 use super::*;
 use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::CandidateFiles;
@@ -164,14 +165,19 @@ fn load_on(
     key: Option<&CandidateKey>,
 ) -> Result<HashMap<CandidateKey, (SearchRun, CandidateSearch)>, DbError> {
     let searches = sql.query(
-        "SELECT search_run, candidate_key, mode, artist, album, catalog_number, barcode \
-         FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1",
+        &format!(
+            "SELECT search_run, candidate_key, mode, artist, album, catalog_number, barcode, \
+                    {picks} AS picks \
+             FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1",
+            picks = picks_column("import_candidate_search.search_run")
+        ),
         params![key],
         |row| {
             Ok((
                 row.get::<_, i64>("search_run")?,
                 row.get::<_, CandidateKey>("candidate_key")?,
                 query_of(row),
+                row.get::<_, String>("picks")?,
             ))
         },
     )?;
@@ -200,14 +206,14 @@ fn load_on(
     for (search, part) in parts {
         parts_by_search.entry(search).or_default().push(part);
     }
-    let mut releases = load_search_matches_on(sql, key)?;
+    let mut releases = load_search_matches_on(sql, key, None)?;
     let mut loaded = HashMap::new();
-    for (run, key, query) in searches {
+    for (run, key, query, picks) in searches {
         let query = query?;
-        let mut picked: Vec<PickedResult> = Vec::new();
+        let picked = picks_of(&picks)?;
         let mut by_catalog: HashMap<LookupCatalog, Vec<MetadataResult>> = HashMap::new();
         for row in releases.remove(&run).unwrap_or_default() {
-            let Listing::Returned { picked: was_picked } = row.listing else {
+            let Listing::Returned = row.listing else {
                 return Err(DbError::unreadable(
                     format!(
                         "import_candidate_match.listing of {key}'s search match {}",
@@ -216,12 +222,6 @@ fn load_on(
                     &row.listing,
                 ));
             };
-            if was_picked && !picked.iter().any(|read| read.release_id == row.result.release_id) {
-                picked.push(PickedResult {
-                    release_id: row.result.release_id.clone(),
-                    links: row.result.album_links.clone(),
-                });
-            }
             by_catalog.entry(row.result.source).or_default().push(row.result);
         }
         let sources = parts_by_search
@@ -245,6 +245,99 @@ fn load_on(
         loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, picked)));
     }
     Ok(loaded)
+}
+
+/// The picks of the search a column names, as one JSON list column in the
+/// order they were stored, each with the albums its documents named.
+fn picks_column(search_run: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+                  'release_id', pick.release_id, 'links', pick.links, \
+                  'albums', json((SELECT json_group_array(json_object( \
+                                        'catalog', album.catalog, 'key', album.key) \
+                                    ORDER BY album.ordinal) \
+                             FROM import_candidate_search_pick_album AS album \
+                             WHERE album.search_run = pick.search_run \
+                               AND album.release_id = pick.release_id))) \
+                  ORDER BY pick.rowid) \
+          FROM import_candidate_search_pick AS pick \
+          WHERE pick.search_run = {search_run})"
+    )
+}
+
+/// One pick as [`picks_column`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredPick {
+    release_id: String,
+    links: String,
+    albums: Vec<crate::tables::album_link_rows::AlbumLinkRow>,
+}
+
+fn picks_of(json: &str) -> Result<Vec<PickedResult>, DbError> {
+    let picks: Vec<StoredPick> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("a search's stored picks", json, error))?;
+    picks
+        .into_iter()
+        .map(|StoredPick { release_id, links, albums }| {
+            let links = match links.as_str() {
+                "read" => AlbumLinks::Read(
+                    albums
+                        .into_iter()
+                        .map(crate::tables::album_link_rows::AlbumLinkRow::album)
+                        .collect::<Result<_, _>>()?,
+                ),
+                "not_asked" if albums.is_empty() => AlbumLinks::NotAsked,
+                "unread" if albums.is_empty() => AlbumLinks::Unread,
+                other => {
+                    return Err(DbError::unreadable("import_candidate_search_pick.links", other))
+                }
+            };
+            Ok(PickedResult { release_id, links })
+        })
+        .collect()
+}
+
+/// What the picks of the search `run` read, in the order they were stored.
+pub(super) fn load_picks_on(
+    sql: &impl coven::SqlRead,
+    run: i64,
+) -> Result<Vec<PickedResult>, DbError> {
+    let json: String =
+        sql.query_row(&format!("SELECT {}", picks_column("?1")), [run], |row| row.get(0))?;
+    picks_of(&json)
+}
+
+/// Store what a pick of the release `release_id` read, in place of what an
+/// earlier pick of it read.
+fn store_pick_on(
+    sql: &CovenWrite<'_>,
+    run: i64,
+    release_id: &str,
+    links: &AlbumLinks,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_search_pick WHERE search_run = ? AND release_id = ?",
+        params![run, release_id],
+    )?;
+    sql.execute(
+        "INSERT INTO import_candidate_search_pick (search_run, release_id, links) \
+         VALUES (?, ?, ?)",
+        params![run, release_id, super::match_rows::album_links_column(links)],
+    )?;
+    for (ordinal, album) in links.read().iter().enumerate() {
+        sql.execute(
+            "INSERT INTO import_candidate_search_pick_album \
+                 (search_run, release_id, ordinal, catalog, key) VALUES (?, ?, ?, ?, ?)",
+            params![
+                run,
+                release_id,
+                super::match_rows::ordinal_column(ordinal)?,
+                album.catalog.as_str(),
+                album.key
+            ],
+        )?;
+    }
+    Ok(())
 }
 
 /// `key`'s search; `None` when it has none.
@@ -393,6 +486,9 @@ fn land_on(
             Written::Returned,
         )?;
     }
+    // Every catalog's answer pairs with the others', so the whole list lays
+    // out again.
+    lay_out_search_on(sql, run.number())?;
     Ok(true)
 }
 
@@ -485,8 +581,21 @@ impl ImportTables {
         self.store
             .call(move |sql| {
                 // A part holds releases only while it stands answered, so they go
-                // first.
+                // first, and every search that held some lays out what is left.
+                let held = sql.query(
+                    "SELECT DISTINCT search_run FROM import_candidate_match \
+                     WHERE search_run IS NOT NULL AND source = ? ORDER BY search_run",
+                    [catalog.as_str()],
+                    |row| row.get::<_, i64>(0),
+                )?;
                 super::match_rows::delete_search_matches_of(sql, catalog)?;
+                if catalog == LookupCatalog::MusicBrainz {
+                    // Only a MusicBrainz release is picked.
+                    sql.execute("DELETE FROM import_candidate_search_pick", [])?;
+                }
+                for run in held {
+                    lay_out_search_on(sql, run)?;
+                }
                 sql.execute(
                     "UPDATE import_candidate_search_source \
                  SET state = 'off', failure = NULL, failure_status = NULL, error_detail = NULL \
@@ -524,13 +633,18 @@ impl ImportTables {
         let release = release.clone();
         self.store
             .call(move |sql| {
-                let Some((run, mut search)) = load_on(sql, Some(&key))?.remove(&key) else {
+                let Some((run, search)) = load_on(sql, Some(&key))?.remove(&key) else {
                     return Ok(());
                 };
-                let Some(kept) = search.record_picked(&release, links.clone()) else {
+                let Some(group) = search.pickable_group(&release) else {
                     return Ok(());
                 };
-                store_picked(sql, run.number(), &release, &links)?;
+                store_pick_on(sql, run.number(), &release.key, &links)?;
+                let read = lay_out_search_on(sql, run.number())?;
+                let landed = super::match_rows::load_search_run_matches_on(sql, run.number())?;
+                let landed: Vec<&MetadataResult> = landed.iter().map(|row| &row.result).collect();
+                let groups: Vec<_> = read.into_iter().filter(|read| read.group == group).collect();
+                let kept = bae_catalogs::album_links::to_keep(&groups, &landed);
                 crate::tables::album_link_rows::replace_group_album_links_on(sql, &kept)
             })
             .await

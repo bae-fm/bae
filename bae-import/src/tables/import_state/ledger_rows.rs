@@ -13,11 +13,13 @@
 
 pub(super) const SQL: &str = include_str!("ledger_rows.sql");
 
+use super::layout::{store_list_text, ListLayout, ListOwner};
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::Owner;
 use super::*;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::search::MetadataResult;
+use bae_identify::release_group::{group_results, unranked};
 use bae_identify::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
@@ -122,6 +124,8 @@ pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<()
         "import_candidate_lookup_provider",
         "import_candidate_lookup_isrc",
         "import_candidate_lookup_offered_catalog",
+        "import_candidate_card_text",
+        "import_candidate_row_statement",
     ] {
         sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
     }
@@ -286,7 +290,15 @@ fn store_lookup(
             failure.status,
         ],
     )?;
-    for (ordinal, release) in lookup.releases().into_iter().enumerate() {
+    let releases = lookup.releases();
+    if releases.is_empty() {
+        return Ok(());
+    }
+    // The cell's list lays out as the rules lay out any list, over the
+    // releases in the order the cell lists them.
+    let list: Vec<MetadataResult> = releases.iter().map(|release| (*release).clone()).collect();
+    let layout = ListLayout::of(&list, &group_results(unranked(list.clone()), None));
+    for ((ordinal, release), place) in releases.into_iter().enumerate().zip(&layout.places) {
         let Some((match_position, held)) =
             matches.get(&(release.source, release.release_id.as_str()))
         else {
@@ -306,8 +318,9 @@ fn store_lookup(
         );
         sql.execute(
             "INSERT INTO import_candidate_lookup_release \
-                 (content_hash, identify_run, step, position, cell, ordinal, match_position) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+                 (content_hash, identify_run, step, position, cell, ordinal, match_position, \
+                  pressing, card, record_order) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 owner.content_hash(),
                 owner.run(),
@@ -315,10 +328,27 @@ fn store_lookup(
                 column(position)?,
                 column(cell)?,
                 column(ordinal)?,
-                column(*match_position)?
+                column(*match_position)?,
+                place.pressing,
+                place.card,
+                place.record_order,
             ],
         )?;
     }
+    let content_hash = owner.content_hash();
+    store_list_text(
+        sql,
+        ListOwner {
+            content_hash: content_hash.as_deref(),
+            identify_run: owner.run(),
+            search_run: None,
+            step,
+            position: column(position)?,
+            cell: column(cell)?,
+        },
+        "answered",
+        &layout,
+    )?;
     Ok(())
 }
 

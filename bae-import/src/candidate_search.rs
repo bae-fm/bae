@@ -20,7 +20,6 @@
 
 use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::records::MetadataRef;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::Failure;
 use bae_identify::release_group::{group_results, ReleaseGroup};
@@ -167,6 +166,21 @@ impl CandidateSearch {
         self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
     }
 
+    /// The MusicBrainz release group of `release`, the album its pick reads
+    /// the documents of; `None` where `release` is no MusicBrainz result on the
+    /// list, or names no group, which no pick of this search reads.
+    pub(crate) fn pickable_group(
+        &self,
+        release: &bae_catalogs::records::LookupRef,
+    ) -> Option<String> {
+        if release.catalog != LookupCatalog::MusicBrainz {
+            return None;
+        }
+        self.landed()
+            .find(|result| result.release() == *release)
+            .and_then(|result| result.source_group_id.clone())
+    }
+
     /// Land what a picked MusicBrainz release's documents state its album
     /// is, and re-derive the result area with it. Answers what its album on
     /// the list was then read to be, to keep; `None` where the release is not
@@ -175,11 +189,12 @@ impl CandidateSearch {
     /// catalog, so a pick claims nothing about any other release; and a
     /// partner a pick claims that the list does not hold is no result of this
     /// search.
+    #[cfg(test)]
     pub(crate) fn record_picked(
         &mut self,
         release: &bae_catalogs::records::LookupRef,
         links: AlbumLinks,
-    ) -> Option<Vec<(String, Vec<MetadataRef>)>> {
+    ) -> Option<Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>> {
         if release.catalog != LookupCatalog::MusicBrainz {
             return None;
         }

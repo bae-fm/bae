@@ -22,12 +22,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     listing             TEXT NOT NULL
         CHECK (listing IN ('offered', 'narrowed_out', 'unlisted', 'returned')),
     -- The pressing row this release belongs to, numbered from zero; offered
-    -- and narrowed-out releases each number their own rows. NULL for an
-    -- unlisted or returned release, which is in no row.
+    -- and narrowed-out releases each number their own rows, and a search's
+    -- returned releases number theirs in list order. NULL for an unlisted
+    -- release, which is in no row.
     pressing            INTEGER CHECK (pressing >= 0),
-    -- For a search's release, whether a pick read its documents, which then
-    -- state its album on the other catalog in `album_links`; NULL otherwise.
-    picked              INTEGER CHECK (picked IN (0, 1)),
+    -- The card the release is on: the list place of the card's first release,
+    -- the place a card sits at among cards nothing ranks apart. NULL where
+    -- `pressing` is, and for a verdict-shaped owner's rows too until the
+    -- verdict stores its layout.
+    card                INTEGER CHECK (card >= 0),
+    -- Where this release stands among the records of its row, 0 for the row's
+    -- lead, which a pick reads the draft from. NULL where `card` is.
+    record_order        INTEGER CHECK (record_order >= 0),
     source              TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     release_id          TEXT NOT NULL,
     title               TEXT NOT NULL,
@@ -64,7 +70,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- What the record's catalog says its album is on the other catalog.
     -- 'not_asked': never read. 'read': the album link rows hold what it named.
     -- 'unread': a needed document could not be fetched and nothing named an
-    -- album.
+    -- album. A search's MusicBrainz release states what its group was read to
+    -- be from the picks (`import_candidate_search_pick`) and the list.
     album_links         TEXT NOT NULL CHECK (album_links IN ('not_asked', 'read', 'unread')),
     -- NULL until the source is asked for its tracklist. 'unreadable': it
     -- lists tracks for the audio that cannot be read into values.
@@ -98,15 +105,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK (listing = 'offered' OR named_note IS NULL),
-    CHECK ((listing IN ('unlisted', 'returned')) = (pressing IS NULL)),
+    CHECK ((listing = 'unlisted') = (pressing IS NULL)),
+    CHECK ((card IS NULL) = (record_order IS NULL)),
+    CHECK (listing <> 'returned' OR card IS NOT NULL),
+    CHECK (card IS NULL OR pressing IS NOT NULL),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1),
     CHECK ((search_run IS NOT NULL) = (search_state IS NOT NULL)),
     CHECK ((search_run IS NOT NULL) = (listing = 'returned')),
-    CHECK ((search_run IS NOT NULL) = (picked IS NOT NULL)),
-    -- A search's release states its album only once a pick read it.
-    CHECK (picked IS NOT 0 OR album_links = 'not_asked')
+    -- Only a MusicBrainz record's documents state its album on another
+    -- catalog.
+    CHECK (source = 'musicbrainz' OR album_links = 'not_asked')
 ) STRICT;
 
 -- The rows naming a catalog release, which keep it stored where it was read.
@@ -252,5 +262,68 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
         REFERENCES import_candidate_match (search_run, position, media_kind)
         ON DELETE CASCADE,
     CHECK (media_kind = 'formats' OR quantity = 1),
+    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+) STRICT;
+
+-- What each card of a list says, worked out when the list's releases are laid
+-- out into rows and cards: the titles, the artists and the labels the card
+-- names, each in `ordinal` order. A list is the owner's own (`step` empty,
+-- `position` and `cell` 0) or one cell of its ledger (that cell's key).
+-- `card` is the card's number in `import_candidate_match.card`. `text` is the
+-- title or label as written, or an artist's credit line as JSON.
+CREATE TABLE IF NOT EXISTS import_candidate_card_text (
+    content_hash TEXT,
+    identify_run INTEGER,
+    search_run   INTEGER,
+    step         TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    card         INTEGER NOT NULL CHECK (card >= 0),
+    kind         TEXT NOT NULL CHECK (kind IN ('title', 'artist', 'label')),
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    text         TEXT NOT NULL CHECK (text <> ''),
+    UNIQUE (content_hash, step, position, cell, card, kind, ordinal),
+    UNIQUE (identify_run, step, position, cell, card, kind, ordinal),
+    UNIQUE (search_run, step, position, cell, card, kind, ordinal),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
+    CHECK (step <> '' OR (position = 0 AND cell = 0)),
+    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+) STRICT;
+
+-- What a row lists where its records state a fact, as `Pressing::statements`
+-- words it: each value once under the key that makes two spellings one value,
+-- with the catalogs that state it as a JSON array of catalogs, empty where the
+-- records agree or one states it alone. A row is (`listing`, `pressing`) of
+-- the list; `listing` is the match listing of a verdict-shaped owner's row,
+-- 'returned' for a search's and 'answered' for a ledger cell's. `line`
+-- groups a label line's names and catalog numbers; every other fact has line
+-- 0. `value` is the year, the name, the catalog number or the barcode as
+-- written, or a JSON area or list of media counts.
+CREATE TABLE IF NOT EXISTS import_candidate_row_statement (
+    content_hash TEXT,
+    identify_run INTEGER,
+    search_run   INTEGER,
+    step         TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    listing      TEXT NOT NULL CHECK (listing IN ('offered', 'narrowed_out', 'returned', 'answered')),
+    pressing     INTEGER NOT NULL CHECK (pressing >= 0),
+    fact         TEXT NOT NULL
+        CHECK (fact IN ('year', 'label_name', 'catalog_number', 'barcode', 'area', 'media')),
+    line         INTEGER NOT NULL CHECK (line >= 0),
+    ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
+    value        TEXT NOT NULL CHECK (value <> ''),
+    catalogs     TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(catalogs) AND json_type(catalogs) = 'array'),
+    UNIQUE (content_hash, step, position, cell, listing, pressing, fact, line, ordinal),
+    UNIQUE (identify_run, step, position, cell, listing, pressing, fact, line, ordinal),
+    UNIQUE (search_run, step, position, cell, listing, pressing, fact, line, ordinal),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
+    CHECK (step <> '' OR (position = 0 AND cell = 0)),
+    CHECK (line = 0 OR fact IN ('label_name', 'catalog_number')),
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
 ) STRICT;

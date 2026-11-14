@@ -74,6 +74,7 @@ mod draft_store;
 pub(super) mod failure_rows;
 mod file_decision_rows;
 mod import_commit;
+mod layout;
 mod ledger_rows;
 mod lookup_choice_rows;
 mod lookup_failure_columns;
