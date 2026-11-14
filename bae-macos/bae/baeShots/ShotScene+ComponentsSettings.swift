@@ -168,20 +168,18 @@ extension ShotScene {
         }
     }
 
-    /// `FormDisclosure` in a grouped form.
+    /// `FormDisclosure` in a settings form.
     private static let disclosureScenes: [ShotScene] = [
         component("mac.component.disclosure.closed", height: 90) {
-            Form {
+            ShotForm {
                 FormDisclosure(isExpanded: .constant(false)) {
                 } label: {
                     Text("Advanced")
                 }
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         },
         component("mac.component.disclosure.open", height: 170) {
-            Form {
+            ShotForm {
                 FormDisclosure(isExpanded: .constant(true)) {
                     LabeledContent("Bit depth") {
                         MacPopUpButton("Bit depth", selection: .constant(16)) {
@@ -194,8 +192,6 @@ extension ShotScene {
                     Text("Advanced")
                 }
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         },
     ]
 
@@ -262,7 +258,7 @@ extension ShotScene {
     /// pattern, and a pattern the name can't be made from.
     private static let fileNameFieldScenes: [ShotScene] = [
         component("mac.component.file-name-field.file-name", height: 200) {
-            Form {
+            ShotBox {
                 SaveNameField(
                     title: "File name",
                     pieces: PreviewData.exportFilenamePieces,
@@ -272,11 +268,9 @@ extension ShotScene {
                     fail: { _ in }
                 )
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         },
         component("mac.component.file-name-field.typed-text", height: 200) {
-            Form {
+            ShotBox {
                 SaveNameField(
                     title: "Folder name",
                     pieces: PreviewData.exportFolderPieces,
@@ -285,11 +279,9 @@ extension ShotScene {
                     fail: { _ in }
                 )
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         },
         component("mac.component.file-name-field.error", height: 200) {
-            Form {
+            ShotBox {
                 SaveNameField<BridgeSaveFolderPiece>(
                     title: "Folder name",
                     pieces: [
@@ -301,8 +293,6 @@ extension ShotScene {
                     fail: { _ in }
                 )
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
         },
     ]
 

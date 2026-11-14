@@ -156,17 +156,28 @@ extension ShotScene {
     }
 }
 
-/// A `MacBox`: the box a grouped form draws round its rows, as the design's
-/// preview shows a row among others.
+/// A `MacBox`: the box of rows the settings panes draw, as the design's
+/// preview shows a row among others. A box outside a form is a `SettingsBox`,
+/// the form style's own rows and surface without its page margin.
 struct ShotBox<Content: View>: View {
     @ViewBuilder
     let content: Content
 
     var body: some View {
-        Form {
-            Section { content }
-        }
-        .formStyle(.grouped)
-        .scrollDisabled(true)
+        SettingsBox { content }
+    }
+}
+
+/// A settings form drawn in a component's frame: the form style's sections
+/// without the page margin a pane puts round them.
+struct ShotForm<Content: View>: View {
+    @ViewBuilder
+    let content: Content
+
+    var body: some View {
+        Form { content }
+            .formStyle(.settings)
+            .scrollDisabled(true)
+            .padding(.horizontal, -SettingsPaneMetrics.sideInset)
     }
 }
