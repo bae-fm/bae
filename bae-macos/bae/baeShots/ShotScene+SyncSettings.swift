@@ -168,7 +168,9 @@ func peopleSettingsWindow(
     alert: (MacAlertWords, [MacAlertButton])
 ) -> some View {
     let membership = MembershipStore.stub(
-        people: PreviewData.members(reaching: PreviewData.previewStorage),
+        people: PreviewData.members(
+            reaching: PreviewData.previewDropboxStorage
+        ),
         selfIsAdmin: true,
         invites: invites
     )
@@ -180,11 +182,13 @@ func peopleSettingsWindow(
             undoneSetup: nil,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(
-                    PreviewData.previewSync(storage: PreviewData.previewStorage)
+                    PreviewData.previewSync(
+                        storage: PreviewData.previewDropboxStorage
+                    )
                 )
                 .environment(
                     PreviewData.connectedConfigStore(
-                        storage: PreviewData.previewStorage
+                        storage: PreviewData.previewDropboxStorage
                     )
                 )
                 .environment(membership)

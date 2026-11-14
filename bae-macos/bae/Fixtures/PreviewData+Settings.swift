@@ -56,7 +56,7 @@ extension PreviewData {
         BridgePerson(
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
-                name: "Person A",
+                name: "Ana",
                 privateCircle: "circle-a",
                 historySharing: .private,
                 avatarVersion: nil
@@ -102,7 +102,7 @@ extension PreviewData {
         BridgePerson(
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000002",
-                name: "Person B",
+                name: "Ben",
                 privateCircle: "circle-b",
                 historySharing: .household,
                 avatarVersion: nil
