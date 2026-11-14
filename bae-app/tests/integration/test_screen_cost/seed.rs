@@ -146,4 +146,22 @@ mod tests {
             .unwrap();
         assert!(queued > 0, "some files wait to upload");
     }
+
+    /// Making the kept seed of L, which the measuring run reads from, holds
+    /// the shape's counts at 100,000 albums. It grows from M's, so it adds
+    /// the 80,000 albums beyond it.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "makes the kept seed of L, which takes a long while"]
+    async fn the_seed_of_l_holds_every_domains_rows() {
+        let (db, _copy) = SEEDS.seeded_copy(SIZES[2]).await;
+        let count = |table: &'static str| {
+            let db = db.clone();
+            async move { bae_store::test_fixtures::row_count(&db, table).await }
+        };
+        assert_eq!(count("albums").await, 100_000);
+        assert!(count("tracks").await > 1_000_000);
+        assert_eq!(count("output_queue").await, OUTPUTS as usize);
+        assert_eq!(count("playback_manual").await, UP_NEXT as usize);
+        assert_eq!(count("playlists").await, 201);
+    }
 }
