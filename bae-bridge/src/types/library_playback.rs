@@ -871,7 +871,11 @@ pub struct BridgeGalleryItem {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumDetail {
     pub album: BridgeAlbum,
+    /// The album's releases in album order, the primary release first.
     pub releases: Vec<BridgeRelease>,
+    /// Whether the album has more than one release, so its page offers a
+    /// choice between them.
+    pub shows_release_choices: bool,
     /// Who rated the album, and whether this person can.
     pub rating: crate::types::BridgeAlbumRating,
 }

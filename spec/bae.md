@@ -5214,8 +5214,9 @@ Reads come two ways:
 - **One-time reads** return the library as it stands: an album's detail (which
   carries the album's ratings and the person's stars for each track, and reads
   every release it holds, each with its tracks, credits, files, records and
-  storage state, in one statement), a release's tracks and files, an artist, a
-  work, a search.
+  storage state, in one statement, and says whether it holds more than one so
+  the page offers a choice between them), a release's tracks and files, an
+  artist, a work, a search.
 - **Live subscriptions** deliver a value, then a new one each time the rows it
   read change. The album grid, the artist and composer lists, a composer's
   page, a search, an editor's artist search, the import list, sync status,

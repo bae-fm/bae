@@ -28,12 +28,10 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeException.Diagnostic
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
-import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
-import uniffi.bae_bridge.BridgeTrack
 import java.util.LinkedHashMap
 
 private const val TAG = "bae.LibraryBrowseTree"
@@ -332,7 +330,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
             is BrowseId.Track -> {
                 releaseDetails.value(id.releaseId)?.let { release ->
-                    flatTracks(release).firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
+                    release.tracks.firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
                 }
             }
         }
@@ -467,7 +465,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             firstAlbum != null -> {
                 albumDetails.value(firstAlbum.id)?.let { detail ->
                     val release = detail.mainRelease() ?: throw missingMainRelease(detail, reportBug)
-                    flatTracks(release).firstOrNull()?.let { BrowseId.Track(release.id, it.id) }
+                    release.tracks.firstOrNull()?.let { BrowseId.Track(release.id, it.id) }
                 }
             }
 
@@ -601,8 +599,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         const val MAXIMUM_IMPLICIT_PARENT_INTERESTS = 12
     }
 }
-
-internal fun flatTracks(release: BridgeRelease): List<BridgeTrack> = release.trackGroups.flatMap { it.tracks }
 
 /** Report an album with no main release among its releases as a bug; what the controller is answered with. */
 internal fun missingMainRelease(

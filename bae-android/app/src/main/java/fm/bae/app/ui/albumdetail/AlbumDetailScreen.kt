@@ -335,7 +335,7 @@ internal fun AlbumDetailContent(
             )
         }
 
-        if (detail.releases.size > 1) {
+        if (detail.showsReleaseChoices) {
             block {
                 Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     detail.releases.forEach { rel ->

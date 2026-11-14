@@ -353,6 +353,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
         artists: raw.artists,
         artist_line,
         releases,
+        shows_release_choices: raw.shows_release_choices,
         primary_release_id,
         cover,
         rating: crate::album_detail::AlbumRating::from_raw(raw.ratings),
@@ -528,14 +529,20 @@ fn find_album_detail_on(
     if releases.is_empty() {
         return Ok(None);
     }
-    let (primary_release_id, primary_cover_version): (String, Option<String>) = sql.query_row(
+    let (primary_release_id, primary_cover_version, shows_release_choices): (
+        String,
+        Option<String>,
+        bool,
+    ) = sql.query_row(
         &format!(
-            "SELECT {primary}, {cover} FROM albums a WHERE a.id = ?",
+            "SELECT {primary}, {cover}, \
+                    (SELECT COUNT(*) > 1 FROM releases WHERE album_id = a.id) \
+             FROM albums a WHERE a.id = ?",
             primary = album_primary_release_sql(),
             cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         ),
         params![album_id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
     let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
@@ -543,6 +550,7 @@ fn find_album_detail_on(
         album,
         artists,
         releases,
+        shows_release_choices,
         primary_release_id,
         primary_cover_version,
     }))
@@ -553,6 +561,7 @@ struct AlbumDetailRows {
     album: DbAlbum,
     artists: Vec<LibraryCredit>,
     releases: Vec<ReleaseDetailRows>,
+    shows_release_choices: bool,
     primary_release_id: String,
     primary_cover_version: Option<String>,
     ratings: bae_people::collections::AlbumRatings,
@@ -564,6 +573,7 @@ impl AlbumDetailRows {
             album: self.album,
             artists: self.artists,
             releases: self.releases.into_iter().map(ReleaseDetailRows::process).collect(),
+            shows_release_choices: self.shows_release_choices,
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
             ratings: self.ratings,

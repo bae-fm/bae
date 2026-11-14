@@ -325,6 +325,7 @@ impl BridgeAlbumDetail {
             artists: _,
             artist_line,
             releases,
+            shows_release_choices,
             primary_release_id,
             cover,
             rating,
@@ -355,6 +356,7 @@ impl BridgeAlbumDetail {
         BridgeAlbumDetail {
             album,
             releases: releases.into_iter().map(BridgeRelease::from_core).collect(),
+            shows_release_choices,
             rating: crate::types::BridgeAlbumRating::from_core(rating),
         }
     }

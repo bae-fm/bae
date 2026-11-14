@@ -65,6 +65,6 @@ private fun albumPage(
     reportBug: (operation: String, error: Throwable) -> Unit,
 ): LiveQueryEvent<BrowsePage> {
     val release = detail?.let { it.mainRelease() ?: return LiveQueryEvent.Error(missingMainRelease(it, reportBug)) }
-    val tracks = release?.let { flatTracks(it).map { track -> nodes.track(it, track) } }.orEmpty()
+    val tracks = release?.let { it.tracks.map { track -> nodes.track(it, track) } }.orEmpty()
     return LiveQueryEvent.Value(BrowsePage(tracks, tracks.size))
 }

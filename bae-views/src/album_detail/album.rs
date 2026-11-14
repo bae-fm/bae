@@ -18,7 +18,11 @@ pub struct AlbumDetail {
     /// The album's credit line: each credit's printed name, then the join its
     /// source prints after it (the plain join where it states none).
     pub artist_line: bae_types::credits::CreditLine,
+    /// The album's releases in album order: the primary release first.
     pub releases: Vec<ReleaseDetail>,
+    /// Whether the album has more than one release, so its page offers a
+    /// choice between them.
+    pub shows_release_choices: bool,
     /// The album's lowest-ordered release: the one whose cover it shows and
     /// that plays by default.
     pub primary_release_id: String,

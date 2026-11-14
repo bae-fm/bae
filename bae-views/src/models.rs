@@ -70,6 +70,8 @@ pub struct DbAlbumDetail {
     pub artists: Vec<bae_records::credits::LibraryCredit>,
     /// The album's releases in album order.
     pub releases: Vec<ReleaseDetailRead>,
+    /// Whether the album has more than one release.
+    pub shows_release_choices: bool,
     /// The album's lowest-ordered release.
     pub primary_release_id: String,
     /// The version of that release's cover; `None` when it has none.

@@ -238,6 +238,7 @@
                     cover: nil,
                 ),
                 releases: releases,
+                showsReleaseChoices: releases.count > 1,
                 rating: BridgeAlbumRating(
                     canRate: false,
                     mine: nil,

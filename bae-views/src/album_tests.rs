@@ -220,8 +220,22 @@ async fn album_detail_reads_every_release_in_one_statement() {
         .unwrap()
         .expect("the album has releases");
     assert_eq!(detail.releases.len(), 3, "the album has three releases");
+    assert!(detail.shows_release_choices, "an album of three releases offers a choice");
     let statements = log.take();
     assert_eq!(statements.len(), 5, "{} statements", statements.len());
+}
+
+/// An album of one release offers no choice between releases.
+#[tokio::test]
+async fn an_album_of_one_release_shows_no_release_choices() {
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_album_detail(ALBUM_ID)
+        .await
+        .unwrap()
+        .expect("the album has a release");
+    assert_eq!(detail.releases.len(), 1);
+    assert!(!detail.shows_release_choices);
 }
 
 #[tokio::test]
