@@ -126,7 +126,8 @@ private final class SearchProbe: @unchecked Sendable {
                         artists: [],
                         tracks: [],
                         composers: [],
-                        works: []
+                        works: [],
+                        topPlayable: nil
                     ),
                     requestRevision: 1
                 )

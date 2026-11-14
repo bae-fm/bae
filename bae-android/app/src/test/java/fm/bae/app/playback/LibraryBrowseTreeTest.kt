@@ -57,7 +57,7 @@ class LibraryBrowseTreeTest {
     @Test
     fun anAlbumsChildrenAreItsMainReleasesTracks() =
         runBlocking {
-            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-main", releaseIds = listOf("rel-other", "rel-main"))
+            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-main", releaseIds = listOf("rel-main", "rel-other"))
             val other =
                 PreviewData.release(
                     id = "rel-other",
@@ -70,7 +70,7 @@ class LibraryBrowseTreeTest {
                     albumId = "album-1",
                     trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-main")))),
                 )
-            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(other, main)))))
+            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(main, other)))))
 
             val children = tree.children(BrowseId.Album("album-1").mediaId, 0, 20)!!
 
@@ -78,13 +78,12 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** An album naming a main release it doesn't hold is a bug: reported, and an error, not the first release. */
+    /** An album with no releases has no main one: that is a bug, reported, and an error. */
     @Test
-    fun anAlbumWhoseMainReleaseIsMissingIsReportedAndAnError() =
+    fun anAlbumWithNoReleasesIsReportedAndAnError() =
         runBlocking {
-            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-gone", releaseIds = listOf("rel-other"))
-            val other = PreviewData.release(id = "rel-other", albumId = "album-1")
-            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(other)))))
+            val album = BridgeFixtures.album(id = "album-1", releaseIds = emptyList())
+            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, emptyList()))))
 
             assertThrows(BridgeException::class.java) {
                 runBlocking { tree.children(BrowseId.Album("album-1").mediaId, 0, 20) }

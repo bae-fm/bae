@@ -151,6 +151,8 @@ pub enum BridgeListCountExtra {
     /// rows.
     AlbumGrid {
         albums: u64,
+        /// Whether the library holds a track, which shuffling it plays.
+        can_shuffle: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether
     /// a search narrows the list.

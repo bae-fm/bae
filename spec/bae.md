@@ -4487,6 +4487,14 @@ removable, reorderable and skipped to on its own.
 | Clear up next | empties Up next only |
 | Clear playing from | drops what's playing from; the current track plays on, then Up next, then playback stops |
 
+*Shuffle library* is offered while the library holds a track: the album grid's
+count says it, as it says how many albums there are.
+
+A spoken request to play something ("play" and a name, from a car's controls)
+plays the first track the library search finds, else the first track of the
+first album it finds, on that album's main release. The search says which, and
+nothing plays when it finds neither.
+
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
 it played everything named:

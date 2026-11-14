@@ -54,7 +54,7 @@ async fn album_window_delivers_rows_count_and_cover_versions() {
     let views = crate::LibraryViews::new(db.clone());
     let mut live = views.subscribe_album_window(&[], false, top(50));
     let counts = views.subscribe_album_count(false).next().await.unwrap().unwrap();
-    assert_eq!(counts, AlbumCounts { albums: 1, rows: 1 });
+    assert_eq!((counts.albums, counts.rows), (1, 1));
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.rows[0].album.title, "Album Title");
@@ -497,6 +497,70 @@ async fn search_library_treats_like_metacharacters_as_literals() {
     assert_eq!(underscore_results.albums[0].id, ALBUM_UNDERSCORE);
     assert_eq!(underscore_results.tracks.len(), 1);
     assert_eq!(underscore_results.tracks[0].id, TRACK_UNDERSCORE);
+}
+
+const NEEDLE_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a1111";
+const ALBUM_FOO: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a2001";
+const RELEASE_FOO: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a2002";
+const TRACK_FOO_FIRST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a2003";
+const TRACK_FOO_SECOND: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a2004";
+const ALBUM_NEEDLE_FIRST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a3001";
+const RELEASE_NEEDLE_FIRST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a3002";
+const TRACK_NEEDLE_FIRST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a3003";
+const ALBUM_NEEDLE_LAST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4001";
+const RELEASE_NEEDLE_LAST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4002";
+const TRACK_NEEDLE_SONG: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4003";
+
+/// What a spoken "play" of a search plays is the search's own `top_playable`:
+/// the first track found, else the first track of the first album found, and
+/// nothing when the search finds neither, as the library's SQL orders them.
+#[tokio::test]
+async fn a_search_names_the_track_a_spoken_play_plays() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(NEEDLE_ARTIST, "Needle Artist Name")
+        .album(ALBUM_FOO, "Foo Album Title", Some(2026), &[NEEDLE_ARTIST])
+        .release(ALBUM_FOO, RELEASE_FOO)
+        .tracks(
+            RELEASE_FOO,
+            &[(TRACK_FOO_FIRST, "Opening Title"), (TRACK_FOO_SECOND, "Second Title")],
+        )
+        .album(ALBUM_NEEDLE_FIRST, "Needle Aardvark Album", Some(2026), &[NEEDLE_ARTIST])
+        .release(ALBUM_NEEDLE_FIRST, RELEASE_NEEDLE_FIRST)
+        .tracks(RELEASE_NEEDLE_FIRST, &[(TRACK_NEEDLE_FIRST, "Zzz Title")])
+        .album(ALBUM_NEEDLE_LAST, "Zed Needle Album", Some(2026), &[NEEDLE_ARTIST])
+        .release(ALBUM_NEEDLE_LAST, RELEASE_NEEDLE_LAST)
+        .tracks(RELEASE_NEEDLE_LAST, &[(TRACK_NEEDLE_SONG, "Needle Song")])
+        .write(&test_records(&db))
+        .await;
+    let top = |query: &'static str| {
+        let views = crate::LibraryViews::new(db.clone());
+        async move {
+            views
+                .search_rows(query, 10)
+                .await
+                .unwrap()
+                .top_playable
+                .map(|top| (top.release_id, top.track_id))
+        }
+    };
+
+    assert_eq!(
+        top("Second Title").await,
+        Some((RELEASE_FOO.to_string(), TRACK_FOO_SECOND.to_string())),
+        "a track found is the track to play"
+    );
+    assert_eq!(
+        top("Foo Album").await,
+        Some((RELEASE_FOO.to_string(), TRACK_FOO_FIRST.to_string())),
+        "an album found plays its main release's first track"
+    );
+    assert_eq!(
+        top("Needle").await,
+        Some((RELEASE_NEEDLE_LAST.to_string(), TRACK_NEEDLE_SONG.to_string())),
+        "a track found outranks the albums found, whatever their order"
+    );
+    assert_eq!(top("Nothing Matches This").await, None);
 }
 
 const SEARCHED_ARTIST: &str = "0373bb67-3abb-48e7-8a5b-6d29ef24308e";

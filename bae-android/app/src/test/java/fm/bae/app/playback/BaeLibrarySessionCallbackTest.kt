@@ -23,6 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeListWindow
+import uniffi.bae_bridge.BridgeTopPlayable
 import java.util.concurrent.TimeUnit
 
 @RunWith(BaeRobolectricTestRunner::class)
@@ -151,7 +152,7 @@ class BaeLibrarySessionCallbackTest {
     fun aSpokenQueryResolvesToTheTopTrack() {
         val handle =
             FakeAppHandle(searchResults = {
-                BridgeFixtures.searchResults(tracks = listOf(BridgeFixtures.trackSearchResult(id = "trk-1", releaseId = "rel-1")))
+                BridgeFixtures.searchResults(topPlayable = BridgeTopPlayable(releaseId = "rel-1", trackId = "trk-1"))
             })
         val tree = tree(handle)
         val callback = BaeLibrarySessionCallback(tree, grants(), CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }

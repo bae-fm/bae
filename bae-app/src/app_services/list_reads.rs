@@ -28,7 +28,10 @@ impl AppServices {
             self.inner.views.subscribe_album_count(group_by_artist).process(|counts| {
                 Ok(bae_views::ListCount {
                     rows: counts.rows,
-                    extra: bae_views::ListCountExtra::AlbumGrid { albums: counts.albums },
+                    extra: bae_views::ListCountExtra::AlbumGrid {
+                        albums: counts.albums,
+                        can_shuffle: counts.can_shuffle,
+                    },
                 })
             }),
         )

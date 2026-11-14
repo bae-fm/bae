@@ -145,7 +145,8 @@ struct SearchResultsTests {
                         representativeReleaseId: "release-a",
                         representativeCover: nil
                     )
-                ]
+                ],
+                topPlayable: nil
             ),
             query: "work"
         )

@@ -91,6 +91,46 @@ async fn counts_of(db: &Store, group_by_artist: bool) -> AlbumCounts {
         .unwrap()
 }
 
+const SHUFFLE_ARTIST: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c01";
+const SHUFFLE_ALBUM: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c02";
+const SHUFFLE_RELEASE: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c03";
+const SHUFFLE_ALBUM_WITH_TRACK: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c05";
+const SHUFFLE_RELEASE_WITH_TRACK: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c06";
+const SHUFFLE_TRACK: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c04";
+
+/// Shuffling the library plays tracks, so the grid's count says whether the
+/// library holds one: not for an empty library, nor for albums whose releases
+/// hold none, and from the first track on, flat or grouped.
+#[tokio::test]
+async fn the_grid_count_says_whether_the_library_has_a_track_to_shuffle() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    for grouped in [false, true] {
+        assert!(!counts_of(&db, grouped).await.can_shuffle, "an empty library");
+    }
+
+    RecordsFixture::new()
+        .artist(SHUFFLE_ARTIST, "Shuffle Artist Name")
+        .album(SHUFFLE_ALBUM, "Shuffle Album Title", Some(2026), &[SHUFFLE_ARTIST])
+        .release(SHUFFLE_ALBUM, SHUFFLE_RELEASE)
+        .write(&test_records(&db))
+        .await;
+    for grouped in [false, true] {
+        let counts = counts_of(&db, grouped).await;
+        assert_eq!(counts.albums, 1);
+        assert!(!counts.can_shuffle, "an album with no tracks");
+    }
+
+    RecordsFixture::new()
+        .album(SHUFFLE_ALBUM_WITH_TRACK, "Shuffle Track Album", Some(2026), &[SHUFFLE_ARTIST])
+        .release(SHUFFLE_ALBUM_WITH_TRACK, SHUFFLE_RELEASE_WITH_TRACK)
+        .tracks(SHUFFLE_RELEASE_WITH_TRACK, &[(SHUFFLE_TRACK, "Shuffle Track Title")])
+        .write(&test_records(&db))
+        .await;
+    for grouped in [false, true] {
+        assert!(counts_of(&db, grouped).await.can_shuffle, "a library with a track");
+    }
+}
+
 /// The key of the grid's row at `position`.
 async fn key_of_row(
     db: &Store,
@@ -310,7 +350,8 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         let value = window_under(&db, &sort, true, from_key(at_two, 1)).await;
         assert_eq!(value.rows.len(), 1);
         let counts = counts_of(&db, true).await;
-        assert_eq!(counts, AlbumCounts { albums: 5, rows: 5 });
+        assert_eq!(counts.rows, 5);
+        assert_eq!(counts.albums, 5);
         let sections = sections_under(&db, &sort).await;
         assert_eq!(sections.len(), 3);
         let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 10).await.unwrap();
@@ -425,7 +466,8 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
     let value = window_under(&db, &sort, true, top(20)).await;
-    assert_eq!(counts_of(&db, true).await, AlbumCounts { albums: 5, rows: 6 });
+    let counts = counts_of(&db, true).await;
+    assert_eq!((counts.albums, counts.rows), (5, 6));
     let rows = &value.rows;
     let mut appearances = Vec::new();
     let sections = sections_under(&db, &sort).await;
@@ -444,10 +486,12 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
     );
     let flat = window_under(&db, &sort, false, top(20)).await;
-    assert_eq!(counts_of(&db, false).await, AlbumCounts { albums: 5, rows: 5 });
+    let counts = counts_of(&db, false).await;
+    assert_eq!((counts.albums, counts.rows), (5, 5));
     assert_eq!(flat.rows.iter().filter(|row| row.album.id == album_id).count(), 1);
     records.credit_album_for_test(album_id, &[ARTIST_A]).await.unwrap();
-    assert_eq!(counts_of(&db, true).await, AlbumCounts { albums: 5, rows: 5 });
+    let counts = counts_of(&db, true).await;
+    assert_eq!((counts.albums, counts.rows), (5, 5));
 }
 
 /// An album crediting A twice, then B, lists once under each; once A and B

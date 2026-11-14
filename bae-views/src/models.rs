@@ -14,6 +14,16 @@ pub struct DbLibrarySearchResults {
     pub tracks: Vec<DbTrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,
+    /// The track a spoken "play" of the search plays: the first track found,
+    /// else the first track of the first album found.
+    pub top_playable: Option<DbTopPlayable>,
+}
+
+/// A track to play, with the release it is on.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbTopPlayable {
+    pub release_id: String,
+    pub track_id: String,
 }
 
 /// Raw album search-result row; `artist_line` is the album's credit line,

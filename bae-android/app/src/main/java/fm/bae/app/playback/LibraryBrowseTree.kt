@@ -7,7 +7,6 @@ import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibrarySearch
 import fm.bae.app.data.LiveQueryEvent
-import fm.bae.app.mainRelease
 import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -224,11 +223,6 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
     private val fixedParents = mutableMapOf<String, FixedProjection<BrowsePage>>()
     private val searchesByOwner = mutableMapOf<Owner, OwnerSearch>()
-    private val albumDetails = exactProjectionCache(scope, library::albumDetails, onQueryError)
-    private val composerDetails = exactProjectionCache(scope, library::composerDetails, onQueryError)
-    private val workDetails = exactProjectionCache(scope, library::workDetails, onQueryError)
-    private val releaseDetails = exactProjectionCache(scope, library::releaseDetails, onQueryError)
-    private val spokenSearches = exactProjectionCache(scope, library::searchResults, onQueryError)
     private var albums: ListProjection<BridgeAlbumAppearance, BridgeAlbum>? = null
     private var composers: ListProjection<BridgeComposerSummary, BridgeComposerSummary>? = null
 
@@ -317,19 +311,21 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                albumDetails.value(id.albumId)?.let { nodes.album(it.album.id, it.album.title, it.album.cover) }
+                readOnce(library.albumDetails(id.albumId), onQueryError)?.let {
+                    nodes.album(it.album.id, it.album.title, it.album.cover)
+                }
             }
 
             is BrowseId.Composer -> {
-                composerDetails.value(id.artistId)?.let { nodes.composer(it.composer) }
+                readOnce(library.composerDetails(id.artistId), onQueryError)?.let { nodes.composer(it.composer) }
             }
 
             is BrowseId.Work -> {
-                workDetails.value(id.workId)?.let { nodes.work(it.work) }
+                readOnce(library.workDetails(id.workId), onQueryError)?.let { nodes.work(it.work) }
             }
 
             is BrowseId.Track -> {
-                releaseDetails.value(id.releaseId)?.let { release ->
+                readOnce(library.releaseDetails(id.releaseId), onQueryError)?.let { release ->
                     release.tracks.firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
                 }
             }
@@ -348,7 +344,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             return null
         }
         val search = synchronized(lock) { searchesByOwner.values.firstOrNull { it.query == query } }
-        val results = search?.results() ?: spokenSearches.value(query)
+        val results = search?.results() ?: readOnce(library.searchResults(query), onQueryError)
         return BrowsePaging.paginate(results.albums.map { nodes.album(it.id, it.title, it.cover) }, page, pageSize)
     }
 
@@ -454,25 +450,8 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
         checkOpen()
-        val results = spokenSearches.value(query)
-        val firstTrack = results.tracks.firstOrNull()
-        val firstAlbum = results.albums.firstOrNull()
-        return when {
-            firstTrack != null -> {
-                BrowseId.Track(firstTrack.releaseId, firstTrack.id)
-            }
-
-            firstAlbum != null -> {
-                albumDetails.value(firstAlbum.id)?.let { detail ->
-                    val release = detail.mainRelease() ?: throw missingMainRelease(detail, reportBug)
-                    release.tracks.firstOrNull()?.let { BrowseId.Track(release.id, it.id) }
-                }
-            }
-
-            else -> {
-                null
-            }
-        }
+        val top = readOnce(library.searchResults(query), onQueryError).topPlayable
+        return top?.let { BrowseId.Track(it.releaseId, it.trackId) }
     }
 
     fun close() = runBlocking { closeSuspending() }
@@ -498,12 +477,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         state.second.forEach { it.close() }
         pages.forEach { it.close() }
         state.third.forEach { it.close() }
-        val error = treeClosedError()
-        albumDetails.cancelAll(error)
-        composerDetails.cancelAll(error)
-        workDetails.cancelAll(error)
-        releaseDetails.cancelAll(error)
-        spokenSearches.cancelAll(error)
     }
 
     private fun albumProjection(): ListProjection<BridgeAlbumAppearance, BridgeAlbum> =

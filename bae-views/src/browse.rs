@@ -82,9 +82,11 @@ pub struct ListCount {
 pub enum ListCountExtra {
     None,
     /// The album grid's album count, which grouped by artist is not its row
-    /// count: an album shows once under each of its artists.
+    /// count: an album shows once under each of its artists, and whether the
+    /// library holds a track to shuffle.
     AlbumGrid {
         albums: u64,
+        can_shuffle: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether
     /// a search narrows the list.

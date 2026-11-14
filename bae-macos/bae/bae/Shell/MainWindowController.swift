@@ -116,11 +116,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
             // Both go from the current value, unknown until core says it.
             return target.playbackStore.settings != nil
         case #selector(shuffleLibrary(_:)):
-            // No total while the library's albums are not counted yet.
-            guard let albumTotal = target.libraryBrowseSession.albumTotal else {
-                return false
-            }
-            return albumTotal > 0
+            // Not known while the library is not counted yet.
+            return target.libraryBrowseSession.canShuffle ?? false
         default:
             return true
         }

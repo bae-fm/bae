@@ -60,6 +60,7 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStoragePart
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeSubsonicNetwork
+import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeWorkSummary
@@ -261,6 +262,7 @@ object BridgeFixtures {
         tracks: List<BridgeTrackSearchResult> = emptyList(),
         composers: List<BridgeComposerSummary> = emptyList(),
         works: List<BridgeWorkSummary> = emptyList(),
+        topPlayable: BridgeTopPlayable? = null,
     ): BridgeSearchResults =
         BridgeSearchResults(
             albums = albums,
@@ -268,6 +270,7 @@ object BridgeFixtures {
             tracks = tracks,
             composers = composers,
             works = works,
+            topPlayable = topPlayable,
         )
 
     fun downloadOp(

@@ -44,7 +44,6 @@ import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
-import fm.bae.app.mainRelease
 import fm.bae.app.pressingLineText
 import fm.bae.app.text
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -144,7 +143,8 @@ fun AlbumDetailScreen(
                 }
                 // Derived rather than stored, so a release list that arrives
                 // later needs no correction: the one chosen, else the main one.
-                val release = loaded.releases.firstOrNull { it.id == selectedReleaseId } ?: loaded.mainRelease()
+                val release =
+                    loaded.releases.firstOrNull { it.id == selectedReleaseId } ?: loaded.releases.firstOrNull()
                 if (release == null) {
                     MissingMainReleaseNotice(loaded)
                 } else {

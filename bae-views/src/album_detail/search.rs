@@ -3,7 +3,9 @@
 //! that produce them.
 
 use super::*;
-use crate::{DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbWorkSummary};
+use crate::{
+    DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbTopPlayable, DbWorkSummary,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {
@@ -12,6 +14,9 @@ pub struct SearchResults {
     pub tracks: Vec<TrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,
+    /// The track a spoken "play" of the search plays: the first track found,
+    /// else the first track of the first album found.
+    pub top_playable: Option<DbTopPlayable>,
 }
 
 impl SearchResults {
@@ -52,6 +57,7 @@ impl SearchResults {
             artists: raw.artists,
             composers: raw.composers,
             works: raw.works,
+            top_playable: raw.top_playable,
         }
     }
 }

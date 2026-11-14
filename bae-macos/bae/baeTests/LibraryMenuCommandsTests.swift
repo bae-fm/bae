@@ -57,7 +57,7 @@ struct LibraryMenuCommandsTests {
         // Not counted yet, then counted.
         #expect(try !valid("shuffleLibrary:"))
         target.libraryBrowseSession.start()
-        try await Wait.until { target.libraryBrowseSession.albumTotal == 3 }
+        try await Wait.until { target.libraryBrowseSession.canShuffle == true }
         #expect(try valid("shuffleLibrary:"))
 
         let fullWidth = try MenuLookup.item(menu, "fullWidthLibrary:")
@@ -119,7 +119,7 @@ struct LibraryMenuCommandsTests {
             ),
             libraryBrowseSession: LibraryBrowseSession(
                 library: Library(albumList: { _, _ in
-                    .fixed(albums, answers: UnansweredCount())
+                    .fixed(albums, answers: UnansweredCount(), canShuffle: true)
                 }),
                 uiStore: uiStore
             ),

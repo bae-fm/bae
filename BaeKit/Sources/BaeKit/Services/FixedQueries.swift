@@ -254,6 +254,7 @@
             _ rows: [Row],
             answers: UnansweredCount,
             itemCount: Int? = nil,
+            canShuffle: Bool? = nil,
             sections: [BridgeLibraryBrowseSection] = [],
             extra countExtra: BridgeListCountExtra? = nil,
             leadingHeader: @escaping @Sendable (_ position: Int) -> Row? = {
@@ -262,9 +263,11 @@
         ) -> BridgeListQueries<Row> {
             let extra: BridgeListCountExtra =
                 countExtra
-                ?? itemCount.map {
-                    BridgeListCountExtra.albumGrid(albums: UInt64($0))
-                }
+                ?? (itemCount != nil || canShuffle != nil
+                    ? BridgeListCountExtra.albumGrid(
+                        albums: UInt64(itemCount ?? rows.count),
+                        canShuffle: canShuffle ?? false
+                    ) : nil)
                 ?? BridgeListCountExtra.none
             let window = Self.fixedWindow(
                 of: rows,

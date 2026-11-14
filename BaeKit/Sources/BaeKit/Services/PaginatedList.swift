@@ -34,8 +34,18 @@ where Row.ID: Sendable {
     /// answered.
     public var itemCount: Int? {
         guard let countExtra else { return nil }
-        if case .albumGrid(let albums) = countExtra { return Int(albums) }
+        if case .albumGrid(let albums, _) = countExtra { return Int(albums) }
         return totalCount
+    }
+
+    /// Whether the library holds a track to shuffle, as the album grid's
+    /// count says; `nil` until it has answered, and for a list that is not
+    /// the album grid.
+    public var canShuffle: Bool? {
+        guard case .albumGrid(_, let canShuffle) = countExtra else {
+            return nil
+        }
+        return canShuffle
     }
 
     /// The artist headings of the album grid grouped by artist, from their own

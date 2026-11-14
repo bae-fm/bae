@@ -239,7 +239,14 @@ mirror_struct! {
         tracks: (each BridgeTrackSearchResult),
         composers: (each BridgeComposerSummary),
         works: (each BridgeWorkSummary),
+        top_playable: (opt crate::types::BridgeTopPlayable),
     },
+}
+
+mirror_struct! {
+    crate::types::BridgeTopPlayable = bae_views::DbTopPlayable,
+    from_core: pub(crate) fn,
+    fields: { release_id, track_id },
 }
 
 mirror_struct! {

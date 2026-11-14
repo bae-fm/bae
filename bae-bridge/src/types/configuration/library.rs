@@ -7,6 +7,17 @@ pub struct BridgeSearchResults {
     pub tracks: Vec<BridgeTrackSearchResult>,
     pub composers: Vec<BridgeComposerSummary>,
     pub works: Vec<BridgeWorkSummary>,
+    /// The track a spoken "play" of the search plays: the first track found,
+    /// else the first track of the first album found; `None` when the search
+    /// finds neither.
+    pub top_playable: Option<BridgeTopPlayable>,
+}
+
+/// A track to play, with the release it is on.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTopPlayable {
+    pub release_id: String,
+    pub track_id: String,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

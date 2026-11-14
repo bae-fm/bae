@@ -138,7 +138,9 @@ impl LibraryViews {
         self.store.subscribe(move |sql| {
             let albums = album_count_on(&sql)?;
             let rows = if group_by_artist { album_appearance_count_on(&sql)? } else { albums };
-            Ok(AlbumCounts { albums, rows })
+            let can_shuffle =
+                sql.query_row("SELECT EXISTS (SELECT 1 FROM tracks)", [], |row| row.get(0))?;
+            Ok(AlbumCounts { albums, rows, can_shuffle })
         })
     }
 
@@ -469,7 +471,40 @@ fn search_library_on(
         params![pattern, limit],
         row_to_work_summary,
     )?;
-    Ok(LibrarySearchRows { albums, artists, tracks, composers, works })
+    // The first track found, and failing that the first track of the first
+    // album found: one row, whichever kind of hit ranks first.
+    let top_playable: Option<(String, Option<String>)> = sql
+        .query_row(
+            &format!(
+                r#"
+                SELECT release_id, track_id FROM (
+                    SELECT t.release_id AS release_id, t.id AS track_id, 0 AS kind,
+                           {track_key} AS found_key, t.id AS tie
+                    FROM tracks t
+                    WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
+                    UNION ALL
+                    SELECT a.release_id, (SELECT id FROM tracks
+                                          WHERE release_id = a.release_id
+                                          ORDER BY position, id LIMIT 1),
+                           1, {album_key}, a.id
+                    FROM (SELECT a.id, a.title, {primary_release} AS release_id
+                          FROM albums a WHERE {album_matches}) a
+                )
+                ORDER BY kind, found_key, tie LIMIT 1
+                "#,
+                track_key = crate::name_sort::sort_key_sql("t.title"),
+                album_key = crate::name_sort::sort_key_sql("a.title"),
+                primary_release = album_primary_release_sql(),
+                album_matches = album_matches_sql("a.id", "?1"),
+            ),
+            params![pattern],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let top_playable = top_playable.and_then(|(release_id, track_id)| {
+        track_id.map(|track_id| DbTopPlayable { release_id, track_id })
+    });
+    Ok(LibrarySearchRows { albums, artists, tracks, composers, works, top_playable })
 }
 
 #[derive(Clone, PartialEq)]
@@ -489,6 +524,7 @@ struct LibrarySearchRows {
     tracks: Vec<DbTrackSearchResult>,
     composers: Vec<DbComposerSummary>,
     works: Vec<DbWorkSummary>,
+    top_playable: Option<DbTopPlayable>,
 }
 
 impl LibrarySearchRows {
@@ -513,6 +549,7 @@ impl LibrarySearchRows {
             tracks: self.tracks,
             composers: self.composers,
             works: self.works,
+            top_playable: self.top_playable,
         })
     }
 }
@@ -581,7 +618,7 @@ impl AlbumDetailRows {
     }
 }
 
-/// How many rows the album grid has.
+/// How many rows the album grid has, and whether the library has a track to shuffle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AlbumCounts {
     /// The albums.
@@ -589,6 +626,8 @@ pub struct AlbumCounts {
     /// The grid's rows: the albums, or grouped by artist an appearance of
     /// each album under each of its artists.
     pub rows: u64,
+    /// Whether the library holds a track, which shuffling it plays.
+    pub can_shuffle: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

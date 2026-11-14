@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import androidx.media3.common.MediaItem
 import fm.bae.app.data.Library
 import fm.bae.app.data.LiveQueryEvent
-import fm.bae.app.mainRelease
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -64,7 +63,8 @@ private fun albumPage(
     nodes: BrowseNodeFactory,
     reportBug: (operation: String, error: Throwable) -> Unit,
 ): LiveQueryEvent<BrowsePage> {
-    val release = detail?.let { it.mainRelease() ?: return LiveQueryEvent.Error(missingMainRelease(it, reportBug)) }
+    val release =
+        detail?.let { it.releases.firstOrNull() ?: return LiveQueryEvent.Error(missingMainRelease(it, reportBug)) }
     val tracks = release?.let { it.tracks.map { track -> nodes.track(it, track) } }.orEmpty()
     return LiveQueryEvent.Value(BrowsePage(tracks, tracks.size))
 }
