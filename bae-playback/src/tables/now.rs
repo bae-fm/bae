@@ -8,7 +8,9 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;
-use super::track_display::track_display_on;
+use super::track_display::{
+    now_track_display_columns, now_track_display_from_row, NOW_TRACK_DISPLAY_JOINS,
+};
 use super::*;
 use crate::renderer::picker::{kind_column, kind_from_column};
 use crate::renderer::CastReceiver;
@@ -468,11 +470,18 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
 }
 
 /// The row as the screens show it, with the queue's repeat mode and the
-/// playing track's current display; `None` while the row names a track the
-/// library no longer holds.
+/// playing track's current display, in one statement; `None` while the row
+/// names a track the library no longer holds.
 fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, DbError> {
-    let (values, repeat_mode, failure) =
-        sql.query_row("SELECT n.*, q.repeat FROM playback_now n, playback_queue q", [], |row| {
+    let (values, repeat_mode, failure, display) = sql.query_row(
+        &format!(
+            "SELECT n.*, q.repeat, {columns} \
+             FROM playback_now n CROSS JOIN playback_queue q {joins}",
+            columns = now_track_display_columns(),
+            joins = NOW_TRACK_DISPLAY_JOINS,
+        ),
+        [],
+        |row| {
             Ok((
                 PlaybackValues {
                     state: state_from_row(row)?,
@@ -483,18 +492,17 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
                 },
                 repeat_from_row(row, "repeat")?,
                 failure_from_row(row)?,
+                now_track_display_from_row(row)?,
             ))
-        })?;
-    // `Err(None)`: the library no longer holds the track.
-    let playback = values.try_map_track(|track| match track_display_on(sql, &track.track_id) {
-        Ok(Some(display)) => Ok(NowPlayingTrack { track, display }),
-        Ok(None) => Err(None),
-        Err(error) => Err(Some(error)),
+        },
+    )?;
+    // `Err(())`: the library no longer holds the track.
+    let playback = values.try_map_track(|track| {
+        display.clone().map(|display| NowPlayingTrack { track, display }).ok_or(())
     });
     match playback {
         Ok(playback) => Ok(Some(NowPlayingValues { playback, repeat_mode, failure })),
-        Err(None) => Ok(None),
-        Err(Some(error)) => Err(error),
+        Err(()) => Ok(None),
     }
 }
 

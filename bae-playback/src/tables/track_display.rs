@@ -70,6 +70,49 @@ pub(crate) fn track_display_columns() -> String {
     )
 }
 
+/// What the joins and columns of `playback_now`'s read add to its row for
+/// the track it names: the joins from `playback_now n` to that track, its
+/// release, album and cover, all LEFT, so a row naming no track, or one the
+/// library no longer holds, still reads.
+pub(crate) const NOW_TRACK_DISPLAY_JOINS: &str = "LEFT JOIN tracks t ON t.id = n.track_id \
+     LEFT JOIN releases r ON r.id = t.release_id \
+     LEFT JOIN albums a ON a.id = r.album_id \
+     LEFT JOIN covers c ON c.id = r.id";
+
+/// The columns of the playing track's display over
+/// [`NOW_TRACK_DISPLAY_JOINS`], named apart from `playback_now`'s own
+/// (`display_*`).
+pub(crate) fn now_track_display_columns() -> String {
+    format!(
+        "t.title AS display_title, a.id AS display_album_id, a.title AS display_album_title, \
+         r.id AS display_release_id, {cover_version} AS display_cover_version, \
+         {artist_names} AS display_artist_names",
+        cover_version = bae_store::file_version_sql("c.file"),
+        artist_names = track_credits_json_sql("t"),
+    )
+}
+
+/// The playing track's display from a row of `playback_now` read with
+/// [`now_track_display_columns`]; `None` when the row names no track the
+/// library holds.
+pub(crate) fn now_track_display_from_row(
+    row: &Row<'_>,
+) -> rusqlite::Result<Option<crate::TrackDisplay>> {
+    let Some(release_id) = row.get::<_, Option<String>>("display_release_id")? else {
+        return Ok(None);
+    };
+    // A release's cover image is keyed by the release's id.
+    let cover_image = bae_records::cover_ref(&release_id, row.get("display_cover_version")?);
+    Ok(Some(crate::TrackDisplay {
+        title: row.get("display_title")?,
+        artist_line: credit_line_column(row, "display_artist_names")?,
+        album_id: row.get("display_album_id")?,
+        release_id,
+        album_title: row.get("display_album_title")?,
+        cover_image,
+    }))
+}
+
 pub(crate) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<TrackQueueMeta> {
     let release_id: String = row.get("release_id")?;
     // A release's cover image is keyed by the release's id.
