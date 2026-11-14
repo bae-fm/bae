@@ -175,6 +175,9 @@ extension ShotElementList.Element {
         NSAccessibility.Role.image.rawValue: "image",
         NSAccessibility.Role.slider.rawValue: "slider",
         NSAccessibility.Role.progressIndicator.rawValue: "progress",
+        // AppKit's name for a progress indicator of unknown length, which
+        // is what a spinner is.
+        NSAccessibility.Role.busyIndicator.rawValue: "progress",
     ]
 
     /// The look the tree reports, nil when its font's weight is not one of

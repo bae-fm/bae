@@ -9,6 +9,14 @@ enum StorageTransferKind {
     /// Files coming down to stay on this device.
     case pin
 
+    /// What the transfer is doing, in words: the name of its bar.
+    var progressName: String {
+        switch self {
+        case .upload: String(localized: "Uploading")
+        case .pin: String(localized: "Pinning")
+        }
+    }
+
     var color: Color {
         switch self {
         case .upload: Theme.activity

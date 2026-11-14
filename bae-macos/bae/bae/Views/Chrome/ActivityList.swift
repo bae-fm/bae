@@ -264,11 +264,13 @@ private struct TransferLine: View {
             }
             if let bar {
                 ShareBar(share: bar)
+                    .accessibilityLabel(title)
             }
             else {
                 ProgressView()
                     .progressViewStyle(.linear)
                     .controlSize(.small)
+                    .accessibilityLabel(title)
             }
         }
         .padding(.top, ThemeSpace.group)

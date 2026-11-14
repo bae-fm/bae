@@ -146,11 +146,13 @@ struct InviteCodeSheetContent: View {
         }
         else if !offline {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                Text("Sharing the library with \(invite.label)…")
+                let sharing = Text("Sharing the library with \(invite.label)…")
+                sharing
                     .themeText(.body)
                     .foregroundStyle(.secondary)
                 ProgressView()
                     .progressViewStyle(.linear)
+                    .accessibilityLabel(sharing)
             }
         }
     }

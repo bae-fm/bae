@@ -50,6 +50,12 @@ final class TransferReadoutNSView: NSView {
             )
     }
 
+    /// What the bar counts, as VoiceOver names it.
+    var name: String? {
+        get { bar.accessibilityLabel() }
+        set { bar.setAccessibilityLabel(newValue) }
+    }
+
     var tint: NSColor {
         get { bar.accent }
         set { bar.accent = newValue }
@@ -162,11 +168,13 @@ struct TransferReadout: NSViewRepresentable {
 
     func makeNSView(context _: Context) -> TransferReadoutNSView {
         let view = TransferReadoutNSView(tint: NSColor(kind.color))
+        view.name = kind.progressName
         view.follow(stream)
         return view
     }
 
     func updateNSView(_ view: TransferReadoutNSView, context _: Context) {
+        view.name = kind.progressName
         view.tint = NSColor(kind.color)
         view.follow(stream)
     }
