@@ -220,10 +220,12 @@ extension ShotScene {
             bridge.upload = upload
             bridge.downloadStatus = download
             bridge.moveToThisDevice = move
-            // A queued pin and a failure still offer their actions; only a
-            // change under way offers none.
+            // A queued pin and a failure still offer their actions; an
+            // upload, a running pin and a move to This Mac, queued or running,
+            // offer none, as core's `transitioning` says.
             bridge.transitioning =
-                upload != nil || download == .downloading || move == .making
+                upload != nil || download == .downloading || move == .queued
+                || move == .making
             return StorageStatusBand(
                 release: ReleaseDetail(bridge: bridge),
                 onAction: { _ in },
