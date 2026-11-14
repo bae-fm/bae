@@ -4,11 +4,18 @@
 use crate::types::{BridgeError, BridgeStorageRow};
 
 /// The rows of the selected releases the Storage Manager list holds, in a
-/// window or not, and the storage actions every one of them allows.
+/// window or not, the storage actions every one of them allows, and whether
+/// any of them can only be cancelled.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageSelection {
+    /// The releases the selection was asked about, held or not: which
+    /// selection this answers.
+    pub asked: Vec<String>,
     pub selected: Vec<BridgeStorageRow>,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
+    /// Whether a selected release is mid-transition or its move failed: the
+    /// selection offers only cancelling.
+    pub cancel_only: bool,
 }
 
 /// The transfer queues holding files waiting or on the move, each with
@@ -56,12 +63,14 @@ impl BridgeStorageQueues {
 impl BridgeStorageSelection {
     fn from_core(selection: bae_views::StorageSelection) -> Self {
         Self {
+            asked: selection.asked,
             selected: selection.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
             selection_actions: selection
                 .selection_actions
                 .into_iter()
                 .map(crate::types::BridgeReleaseStorageAction::from_core)
                 .collect(),
+            cancel_only: selection.cancel_only,
         }
     }
 }

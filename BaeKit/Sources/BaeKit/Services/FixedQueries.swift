@@ -147,6 +147,7 @@
                         let ids = Set(try await requests.take())
                         let selected = rows.filter { ids.contains($0.id) }
                         return BridgeStorageSelection(
+                            asked: Array(ids),
                             selected: selected,
                             // The fixture's stand-in for core's answer: the
                             // actions every selected row lists.
@@ -158,7 +159,10 @@
                                         )
                                     }
                                 }
-                            } ?? []
+                            } ?? [],
+                            cancelOnly: selected.contains {
+                                $0.release.transitioning
+                            }
                         )
                     },
                     cancel: { requests.close() }

@@ -6,12 +6,11 @@ use crate::DbReleaseSummary;
 use bae_records::DbReleaseDetail;
 
 /// The per-release inputs the library's views read beside the release's rows and
-/// threads into the release projections: whether the library syncs at all
-/// (which gates `storage_actions`), and the release's own cover reference.
+/// threads into the release projections: the release's own cover reference
+/// and the album facts its tracks are shown against.
 /// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
-    pub(crate) syncs: bool,
     pub(crate) cover: Option<ImageRef>,
     /// Whether the owning album is a compilation. Decides `TrackDetail::display_artist`
     /// — the one album-level fact the per-track artist decision needs.
@@ -36,7 +35,7 @@ pub struct ReleaseSummary {
     pub media: Vec<bae_types::pressing::MediaCount>,
     /// Where its files are, and whether this device keeps them offline.
     pub storage_state: ReleaseStorageState,
-    /// The transitions available right now, derived by the core from
+    /// The transitions available right now, decided in SQL from
     /// `storage_state`, whether this device holds the originals an upload reads,
     /// and whether the library syncs; empty without it, and while
     /// the release is `transitioning`. The UI renders these and never
@@ -58,29 +57,19 @@ pub struct ReleaseSummary {
 }
 
 impl ReleaseSummary {
-    /// The one place `storage_actions` is derived: [`ReleaseDetail::from_raw`]
-    /// projects its fat aggregate down to a slim row and routes through here too.
+    /// [`ReleaseDetail::from_raw`] projects its fat aggregate down to a slim
+    /// row and routes through here too.
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote, raw.pinned);
         let upload = raw.upload.map(ReleaseUpload::from_raw);
-        let transitioning = upload.is_some()
-            || raw.download.as_ref().is_some_and(bae_transfers::DownloadEntry::holds_the_release);
         ReleaseSummary {
             id: raw.id,
             album_id: raw.album_id,
             media: raw.media,
             storage_state,
-            storage_actions: if transitioning {
-                Vec::new()
-            } else {
-                available_storage_actions(
-                    storage_state,
-                    &release_playability(&raw.unstored_audio),
-                    ctx.syncs,
-                )
-            },
+            storage_actions: raw.actions.list(),
             upload,
-            transitioning,
+            transitioning: raw.actions.transitioning,
             file_count: raw.file_count,
             total_size: raw.total_size,
             cover: ctx.cover.clone(),
@@ -179,6 +168,7 @@ impl ReleaseDetail {
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         download: Option<bae_transfers::DownloadEntry>,
+        actions: crate::DbStorageActions,
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
@@ -242,7 +232,7 @@ impl ReleaseDetail {
         );
 
         // Route the slim row through `ReleaseSummary::from_raw` rather than build it
-        // here, so the `storage_actions` derivation stays in one place.
+        // here.
         let summary = ReleaseSummary::from_raw(
             DbReleaseSummary {
                 id: release.id.clone(),
@@ -254,7 +244,7 @@ impl ReleaseDetail {
                 download: download.clone(),
                 file_count,
                 total_size,
-                unstored_audio: raw.unstored_audio,
+                actions,
             },
             ctx,
         );

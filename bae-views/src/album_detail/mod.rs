@@ -116,43 +116,11 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
     }
 }
 
-/// Storage requires the library to sync, so without it there are no transitions at
-/// all.
-///
-/// `Upload` uploads from this device's originals, so it is offered only
-/// where the library records this device holding them: not for a release
-/// another device imported. An original gone or changed since import fails
-/// the move when it reads the file. It
-/// admits work to coven's durable outbox; a stopped loop leaves that work
-/// truthfully queued until a cycle can drain it, and does not remove the
-/// action. Pin / Unpin / MoveToThisDevice gate on the library syncing alone.
-///
-/// A release mid-transition offers none of these: its summary empties them
-/// while its files wait to upload or a transfer runs.
-pub fn available_storage_actions(
-    state: ReleaseStorageState,
-    playability: &ReleasePlayability,
-    syncs: bool,
-) -> Vec<ReleaseStorageAction> {
-    use ReleaseStorageAction::*;
-    if !syncs {
-        return Vec::new();
-    }
-    match state {
-        ReleaseStorageState::OnOneDevice if *playability == ReleasePlayability::Playable => {
-            vec![Upload]
-        }
-        ReleaseStorageState::OnOneDevice => Vec::new(),
-        ReleaseStorageState::InStorage { pinned: true } => vec![Unpin, MoveToThisDevice],
-        ReleaseStorageState::InStorage { pinned: false } => vec![Pin, MoveToThisDevice],
-    }
-}
-
 /// What the album-detail download control shows for one release — the join of
 /// the release's pin state, the transitions core offers it, and its entry in the
 /// download queue.
 ///
-/// Lives here, next to [`available_storage_actions`], because two of the rules it
+/// Lives here, beside the storage actions SQL decides, because two of the rules it
 /// encodes are properties of *that* gate rather than of any one app's control:
 /// `Unpin` appears exactly when the release is pinned, and `Pin` exactly when a
 /// release in storage is not and the library syncs, to pin from.
@@ -205,7 +173,7 @@ pub fn release_move_to_this_device_status(
 /// show at all — no storage, or a release whose audio is already local.
 ///
 /// **Available means exactly "core offers Pin".** Deriving it from `pinned` alone
-/// would re-answer a question [`available_storage_actions`] has already answered,
+/// would re-answer a question the storage actions have already answered,
 /// and would disagree with it the moment its gate changes. `Unpin` is not
 /// consulted for the same reason in reverse: it appears exactly when `pinned`, so
 /// `pinned` already says it. `MoveToThisDevice` / `Upload` are desktop transitions

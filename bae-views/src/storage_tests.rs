@@ -330,8 +330,8 @@ fn window_of_five_from(from: bae_store::list_windows::OrderKey) -> ListWindow {
     ListWindow::Forward { from: Some(from), until: None, limit: 5 }
 }
 
-fn ids_of(read: &WindowRead<(DbStorageRow, bool)>) -> Vec<String> {
-    read.rows.iter().map(|(row, _)| row.release.id.clone()).collect()
+fn ids_of(read: &WindowRead<DbStorageRow>) -> Vec<String> {
+    read.rows.iter().map(|row| row.release.id.clone()).collect()
 }
 
 /// A live Storage Manager window narrowed by a search and started at a key

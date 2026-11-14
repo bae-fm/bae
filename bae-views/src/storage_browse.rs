@@ -8,8 +8,14 @@
 /// list doesn't.
 #[derive(Debug, Clone)]
 pub struct StorageSelection {
+    /// The releases the selection was asked about, held or not: which
+    /// selection this answers.
+    pub asked: Vec<String>,
     pub selected: Vec<crate::album_detail::StorageRow>,
     pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
+    /// Whether some selected release is mid-transition or its move failed:
+    /// the selection offers only cancelling, which ends those.
+    pub cancel_only: bool,
 }
 
 /// The transfer queues holding files waiting or on the move, each with what

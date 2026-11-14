@@ -76,7 +76,7 @@ struct StorageManagerView: View {
                 // inspector never shows a release the list doesn't.
                 StorageInspector(
                     releaseId: StorageInspector.releaseId(
-                        in: storageManagerStore.shown(selection)
+                        in: storageManagerStore.heldIds
                     ),
                     initialSelectedFileId: initialSelectedFileId
                 )

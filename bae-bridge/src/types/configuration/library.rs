@@ -232,6 +232,9 @@ pub struct BridgeStorageRow {
     pub release: BridgeReleaseSummary,
     pub album: BridgeAlbum,
     pub status: BridgeStorageRowStatus,
+    /// Whether the release can only be cancelled: it is mid-transition, or
+    /// its move failed.
+    pub cancel_only: bool,
     pub date_added: std::time::SystemTime,
 }
 

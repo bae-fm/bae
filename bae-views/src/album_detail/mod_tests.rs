@@ -1,5 +1,4 @@
 use super::*;
-use ReleasePlayability::*;
 use ReleaseStorageAction::*;
 use ReleaseStorageState::*;
 
@@ -11,42 +10,6 @@ fn storage_state_is_the_stored_fact_with_pinning_inside_it() {
     assert_eq!(storage_state(false, false), OnOneDevice);
     assert_eq!(storage_state(true, false), NOT_PINNED);
     assert_eq!(storage_state(true, true), PINNED);
-}
-
-#[test]
-fn no_storage_has_no_actions() {
-    for state in [OnOneDevice, NOT_PINNED, PINNED] {
-        assert_eq!(
-            available_storage_actions(state, &Playable, false),
-            Vec::<ReleaseStorageAction>::new(),
-            "no storage blocks all actions for {state:?}"
-        );
-    }
-}
-
-#[test]
-fn on_one_device_with_cloud_offers_upload() {
-    assert_eq!(available_storage_actions(OnOneDevice, &Playable, true), vec![Upload]);
-}
-
-/// Uploading reads this device's originals, so a release another device
-/// imported offers nothing to upload.
-#[test]
-fn on_one_device_without_its_originals_here_offers_nothing() {
-    let elsewhere =
-        OnOtherDevice(bae_records::OtherDevice::Active { name: "Device A".to_string() });
-    assert_eq!(
-        available_storage_actions(OnOneDevice, &elsewhere, true),
-        Vec::<ReleaseStorageAction>::new(),
-    );
-}
-
-/// A release in storage offers Pin or Unpin by whether this device keeps
-/// it, and Detach either way; none needs the sync loop running.
-#[test]
-fn in_storage_offers_pin_or_unpin_and_move_to_this_device() {
-    assert_eq!(available_storage_actions(PINNED, &Playable, true), vec![Unpin, MoveToThisDevice]);
-    assert_eq!(available_storage_actions(NOT_PINNED, &Playable, true), vec![Pin, MoveToThisDevice]);
 }
 
 /// A pin's entry in the queue decides the control, whatever the release's

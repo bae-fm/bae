@@ -16,8 +16,7 @@ impl LibraryViews {
         let Some(context) = self.find_release_detail_context(release_id).await? else {
             return Ok(None);
         };
-        let syncs = self.store.syncs().await?;
-        Ok(Some(resolve_release_detail(release_id, context, syncs)))
+        Ok(Some(resolve_release_detail(release_id, context)))
     }
 
     /// The release's rows as its detail reads them, unresolved; `None` when
@@ -53,19 +52,12 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |release_id, sql| {
-                let syncs = syncs_on(&sql)?;
-                let context = match release_id {
-                    Some(release_id) => find_release_detail_context_on(&sql, release_id)?,
-                    None => None,
-                };
-                Ok((context, syncs))
+            .subscribe_reconfigurable(initial, |release_id, sql| match release_id {
+                Some(release_id) => find_release_detail_context_on(&sql, release_id),
+                None => Ok(None),
             })
-            .process(|(context, syncs)| {
-                Ok(ReleaseDetailProjection {
-                    context: context.map(ReleaseContextRows::process),
-                    syncs,
-                })
+            .process(|context| {
+                Ok(ReleaseDetailProjection { context: context.map(ReleaseContextRows::process) })
             })
     }
 }
@@ -75,34 +67,30 @@ pub fn resolve_release_detail_projection(
     release_id: &str,
     projection: ReleaseDetailProjection,
 ) -> Option<ReleaseDetail> {
-    let syncs = projection.syncs;
-    projection.context.map(|context| resolve_release_detail(release_id, context, syncs))
+    projection.context.map(|context| resolve_release_detail(release_id, context))
 }
 
-/// The release's detail as its view shows it, against whether storage is
-/// set up.
-fn resolve_release_detail(
-    release_id: &str,
-    context: ReleaseDetailContext,
-    syncs: bool,
-) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, download, release_index, is_compilation, album_year } =
-        context;
+/// The release's detail as its view shows it.
+fn resolve_release_detail(release_id: &str, context: ReleaseDetailContext) -> ReleaseDetail {
+    let ReleaseDetailContext {
+        detail,
+        download,
+        actions,
+        release_index,
+        is_compilation,
+        album_year,
+    } = context;
     let ctx = ReleaseResolveCtx {
-        syncs,
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
         album_year,
     };
-    ReleaseDetail::from_raw(detail, download, release_index, &ctx)
+    ReleaseDetail::from_raw(detail, download, actions, release_index, &ctx)
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
-    /// Whether storage is set up on this device, as coven's sync status
-    /// says.
-    pub syncs: bool,
 }
 
 /// How many releases of its album come before the release `?1` in the
@@ -143,10 +131,11 @@ pub(crate) struct ReleaseContextRows {
 
 impl ReleaseContextRows {
     pub(crate) fn process(self) -> ReleaseDetailContext {
-        let ReleaseDetailRead { detail, download } = self.detail.process();
+        let ReleaseDetailRead { detail, download, actions } = self.detail.process();
         ReleaseDetailContext {
             detail,
             download,
+            actions,
             release_index: self.release_index,
             is_compilation: self.is_compilation,
             album_year: self.album_year,
@@ -154,8 +143,26 @@ impl ReleaseContextRows {
     }
 }
 
+/// The columns beside a release `rel`'s detail rows: its entry in the
+/// download queue and the storage actions it offers.
+fn release_standing_columns() -> String {
+    format!(
+        "{}, {}",
+        bae_transfers::download_entry_sql("rel.id"),
+        crate::storage_actions::storage_action_columns("rel.id")
+    )
+}
+
+type ReleaseStanding = (Option<bae_transfers::DownloadEntry>, crate::DbStorageActions);
+
+/// The standing of a release as [`release_standing_columns`] read it.
+fn release_standing(row: &Row<'_>) -> rusqlite::Result<ReleaseStanding> {
+    Ok((bae_transfers::download_entry_column(row)?, crate::DbStorageActions::of_row(row)?))
+}
+
 /// The release's rows as its detail reads them, beside its entry in the
-/// download queue; `None` when the release doesn't exist.
+/// download queue and the storage actions it offers; `None` when the release
+/// doesn't exist.
 pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
@@ -164,14 +171,15 @@ pub(crate) fn build_release_detail_on(
         sql,
         release_id,
         &bae_people::people::own_track_stars_sql("track"),
-        &bae_transfers::download_entry_sql("rel.id"),
-        bae_transfers::download_entry_column,
+        &release_standing_columns(),
+        release_standing,
     )?
-    .map(|(rows, download)| ReleaseDetailRows { rows, download }))
+    .map(|(rows, (download, actions))| ReleaseDetailRows { rows, download, actions }))
 }
 
 /// The detail rows of each release of the album `album_id`, in the album's
-/// order, each beside its entry in the download queue, in one statement.
+/// order, each beside its entry in the download queue and its storage
+/// actions, in one statement.
 pub(crate) fn build_album_release_details_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
@@ -180,11 +188,11 @@ pub(crate) fn build_album_release_details_on(
         sql,
         bae_records::records::ReleaseSet::OfAlbum(album_id),
         &bae_people::people::own_track_stars_sql("track"),
-        &bae_transfers::download_entry_sql("rel.id"),
-        bae_transfers::download_entry_column,
+        &release_standing_columns(),
+        release_standing,
     )?
     .into_iter()
-    .map(|(rows, download)| ReleaseDetailRows { rows, download })
+    .map(|(rows, (download, actions))| ReleaseDetailRows { rows, download, actions })
     .collect())
 }
 
@@ -192,11 +200,16 @@ pub(crate) fn build_album_release_details_on(
 pub(crate) struct ReleaseDetailRows {
     rows: DbReleaseDetailRows,
     download: Option<bae_transfers::DownloadEntry>,
+    actions: crate::DbStorageActions,
 }
 
 impl ReleaseDetailRows {
     pub(crate) fn process(self) -> ReleaseDetailRead {
-        ReleaseDetailRead { detail: self.rows.process(), download: self.download }
+        ReleaseDetailRead {
+            detail: self.rows.process(),
+            download: self.download,
+            actions: self.actions,
+        }
     }
 }
 

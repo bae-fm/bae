@@ -5,8 +5,6 @@
 frozen = [
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "max", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "sorted", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
-    { path = "BaeKit/Sources/BaeKit/Services/StorageManagerStore.swift", operation = "Dictionary(uniqueKeysWithValues:", count = 1, finding = "joins the selection to the rows the list holds and keeps them by id in the app (found by the audit: filter and join in the Storage Manager)" },
-    { path = "BaeKit/Sources/BaeKit/Services/StorageManagerStore.swift", operation = "filter", count = 1, finding = "joins the selection to the rows the list holds and keeps them by id in the app (found by the audit: filter and join in the Storage Manager)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/data/PhonePendingRecords.kt", operation = "partition", count = 1, finding = "partitions out the pending records only the Mac handles before showing (found by the audit: app filter)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "filterNot", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "maxBy", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
@@ -44,8 +42,6 @@ frozen = [
     { path = "bae-macos/bae/bae/Views/Settings/Library/LibrarySettingsTab.swift", operation = "shown-count", count = 1, finding = "counts people and sums their devices in the app for the Library settings row (found by the audit: count and sum)" },
     { path = "bae-macos/bae/bae/Views/Settings/Library/PeopleAndDevicesPage.swift", operation = "filter", count = 1, finding = "drops the person who is self from the list, and counts devices in the app (found by the audit: filter and count)" },
     { path = "bae-macos/bae/bae/Views/Settings/Library/PeopleAndDevicesPage.swift", operation = "shown-count", count = 2, finding = "drops the person who is self from the list, and counts devices in the app (found by the audit: filter and count)" },
-    { path = "bae-macos/bae/bae/Views/Storage/StorageActionRunner.swift", operation = "filter", count = 1, finding = "filters the selected releases by what the list shows (found by the audit: filter in the Storage Manager)" },
-    { path = "bae-macos/bae/bae/Views/Storage/StorageTableView.swift", operation = "filter", count = 1, finding = "filters the rows for the menu entries in the app (found by the audit: filter in the Storage Manager)" },
     { path = "bae-macos/bae/bae/Views/Storage/UnpinAsk.swift", operation = "shown-count", count = 1, finding = "counts the releases to unpin for the question's text in the app (found by the audit: selection count)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/components/AndroidStorageUsage.kt", operation = "count {", count = 1, finding = "the app sums storage segments itself (found by the check)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/components/AndroidStorageUsage.kt", operation = "shown-count", count = 1, finding = "the app sums storage segments itself (found by the check)" },
@@ -93,5 +89,4 @@ allowed = [
     { path = "bae-macos/bae/bae/Views/Library/Sort/MacSortCriteria.swift", operation = "filter", count = 1, reason = "the sort fields the app itself offers that no criterion uses yet; the app's own options, not rows" },
     { path = "bae-macos/bae/bae/Views/Settings/Library/FolderPicker.swift", operation = "reduce", count = 1, reason = "folder names joined into one breadcrumb text; no rows" },
     { path = "bae-macos/bae/bae/Views/Settings/Library/RestoreCodePage.swift", operation = "filter", count = 1, reason = "removes the spaces of a restore code to make the QR code's text; characters, not rows" },
-    { path = "bae-macos/bae/bae/Views/Storage/StorageTableView.swift", operation = "shown-count", count = 1, reason = "the count of the selection in a debug log line; not shown on a screen" },
 ]

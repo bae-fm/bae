@@ -84,6 +84,8 @@ pub(crate) fn storage_selection(
 ) -> bae_app::live_reads::LiveStorageSelection {
     bae_app::live_reads::LiveStorageSelection::new(
         manager.until_closed(views.subscribe_storage_selection(filter, "", Default::default())),
-        |_, projection| Some(bae_views::storage::resolve_storage_selection(projection)),
+        |read, projection| {
+            Some(bae_views::storage::resolve_storage_selection(read.request, projection))
+        },
     )
 }

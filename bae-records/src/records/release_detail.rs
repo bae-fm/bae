@@ -256,6 +256,19 @@ pub fn unstored_audio_json_sql(release_expr: &str) -> String {
     )
 }
 
+/// Whether an audio file of the release `release_expr` (an SQL expression)
+/// is on another device only: coven lists no original of it on this device
+/// and a device that is not this one holds it. The release cannot play here
+/// until that device moves the file to the cloud.
+pub fn release_audio_elsewhere_sql(release_expr: &str) -> String {
+    format!(
+        "EXISTS (SELECT 1 {UNSTORED_FILES} \
+                 WHERE f.release_id = {release_expr} AND f.content_type GLOB 'audio/*' \
+                     AND coven_file_device(coven.coordinates) IS NOT NULL \
+                     AND u.file IS NULL AND d.is_self = 0)"
+    )
+}
+
 /// The audio [`unstored_audio_json_sql`] reads into `column`; SQLite writes
 /// each flag in the JSON as 0 or 1.
 pub fn unstored_audio_column(

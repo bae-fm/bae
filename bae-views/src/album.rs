@@ -273,23 +273,19 @@ impl LibraryViews {
         self.store.read(|sql| album_count_on(&sql)).await
     }
 
-    /// The album's detail as its view shows it, against whether storage is
-    /// set up. `None` for an unknown album, or one with no releases.
+    /// The album's detail as its view shows it. `None` for an unknown album,
+    /// or one with no releases.
     pub async fn find_album_detail(
         &self,
         album_id: &str,
     ) -> Result<Option<crate::album_detail::AlbumDetail>, DbError> {
         let album_id = album_id.to_string();
-        let Some(raw) = self
+        Ok(self
             .store
             .read(move |sql| find_album_detail_on(&sql, &album_id))
             .process(|rows| Ok::<_, DbError>(rows.map(AlbumDetailRows::process)))
             .await?
-        else {
-            return Ok(None);
-        };
-        let syncs = self.store.syncs().await?;
-        Ok(Some(resolve_album_detail(raw, syncs)))
+            .map(resolve_album_detail))
     }
 
     /// Follow the album `initial` names, or none. The detail view moves to
@@ -300,16 +296,12 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection, bae_store::DbError>
     {
         self.store
-            .subscribe_reconfigurable(initial, |album_id, sql| {
-                let syncs = syncs_on(&sql)?;
-                let detail = match album_id {
-                    Some(album_id) => find_album_detail_on(&sql, album_id)?,
-                    None => None,
-                };
-                Ok((detail, syncs))
+            .subscribe_reconfigurable(initial, |album_id, sql| match album_id {
+                Some(album_id) => find_album_detail_on(&sql, album_id),
+                None => Ok(None),
             })
-            .process(|(detail, syncs)| {
-                Ok(AlbumDetailProjection { detail: detail.map(AlbumDetailRows::process), syncs })
+            .process(|detail| {
+                Ok(AlbumDetailProjection { detail: detail.map(AlbumDetailRows::process) })
             })
     }
 }
@@ -327,8 +319,7 @@ pub fn resolve_album_window(read: WindowRead<DbAlbumAppearance>) -> crate::ListW
 pub fn resolve_album_detail_projection(
     projection: AlbumDetailProjection,
 ) -> Option<crate::album_detail::AlbumDetail> {
-    let syncs = projection.syncs;
-    projection.detail.map(|raw| resolve_album_detail(raw, syncs))
+    projection.detail.map(resolve_album_detail)
 }
 
 /// One delivery of a library search as its results show it.
@@ -338,23 +329,23 @@ pub fn resolve_library_search_projection(
     crate::album_detail::SearchResults::from_raw(projection.results)
 }
 
-/// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`,
-/// against whether storage is set up: joins artist names, formats labels,
+/// Resolve a raw `DbAlbumDetail` into the display-ready `AlbumDetail`: joins artist names, formats labels,
 /// groups tracks by side, and builds galleries.
-fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail::AlbumDetail {
+fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail {
     let artist_line = bae_records::credits::library_line(&raw.artists);
     let primary_release_id = raw.primary_release_id;
 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
-    for (i, ReleaseDetailRead { detail, download }) in raw.releases.into_iter().enumerate() {
+    for (i, ReleaseDetailRead { detail, download, actions }) in raw.releases.into_iter().enumerate()
+    {
         let ctx = crate::album_detail::ReleaseResolveCtx {
-            syncs,
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
         };
-        releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, download, i, &ctx));
+        releases
+            .push(crate::album_detail::ReleaseDetail::from_raw(detail, download, actions, i, &ctx));
     }
 
     crate::album_detail::AlbumDetail {
@@ -593,9 +584,6 @@ pub struct AlbumCounts {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumDetailProjection {
     pub detail: Option<DbAlbumDetail>,
-    /// Whether storage is set up on this device, as coven's sync status
-    /// says.
-    pub syncs: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

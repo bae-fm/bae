@@ -203,6 +203,41 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     assert!(!uploaded.transitioning);
 }
 
+/// A selection of releases offers what every one of them offers, and only
+/// cancelling while one of them is mid-transition: its files wait to upload.
+#[tokio::test]
+async fn a_selection_with_a_release_mid_upload_offers_only_cancelling() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    connect_test_cloud(&test).await;
+    let release = insert_release_with_queued_uploads(
+        manager,
+        &temp_dir.path().join("queued"),
+        "Album Title",
+        &[("a.flac", b"bytes-a")],
+    )
+    .await;
+    let selection = |manager: LibraryManager, release_id: String| async move {
+        let asked = std::collections::BTreeSet::from([release_id]);
+        let mut live = bae_views::LibraryViews::new(manager.store.clone())
+            .subscribe_storage_selection(bae_views::StorageFilter::All, "", asked.clone());
+        let value = live.next().await.expect("the query stays open").result.unwrap();
+        bae_views::storage::resolve_storage_selection(&asked, value)
+    };
+
+    let queued = selection(test.library.manager().clone(), release.id.clone()).await;
+    assert_eq!(queued.selected.len(), 1);
+    assert!(queued.selection_actions.is_empty());
+    assert!(queued.cancel_only, "files wait to upload: only cancelling is offered");
+
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let uploaded = selection(test.library.manager().clone(), release.id.clone()).await;
+    assert!(uploaded
+        .selection_actions
+        .contains(&bae_types::release_storage::ReleaseStorageAction::MoveToThisDevice));
+    assert!(!uploaded.cancel_only);
+}
+
 /// A file being sent counts as uploading in its release's row while its
 /// upload is in flight.
 #[tokio::test]
@@ -242,7 +277,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         loop {
             let event = browse.next().await.expect("the browse query answers");
             let projection = event.result.unwrap();
-            let sending = projection.rows.iter().any(|(row, _)| {
+            let sending = projection.rows.iter().any(|row| {
                 row.release.id == release.id
                     && row.release.upload.as_ref().is_some_and(|upload| upload.sending == 1)
             });

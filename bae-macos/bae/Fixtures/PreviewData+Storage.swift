@@ -444,6 +444,7 @@ extension PreviewData {
                 cover: nil
             ),
             status: status,
+            cancelOnly: upload != nil || transitioning,
             dateAdded: Date(
                 timeIntervalSince1970: 1_700_000_000 + Double(index)
                     * 86_400

@@ -122,35 +122,20 @@ pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,
     pub status: StorageRowStatus,
+    /// Whether the release can only be cancelled: it is mid-transition, or
+    /// its move failed.
+    pub cancel_only: bool,
     /// When the release was added to the library.
     pub date_added: chrono::DateTime<chrono::Utc>,
-}
-
-/// The storage actions every one of `rows` allows, in the order
-/// [`available_storage_actions`] lists them; none for no rows. What the
-/// Storage Manager offers a selection: an action some selected release
-/// refuses is not offered for the rest.
-pub fn common_storage_actions(rows: &[StorageRow]) -> Vec<ReleaseStorageAction> {
-    let Some((first, rest)) = rows.split_first() else {
-        return Vec::new();
-    };
-    first
-        .release
-        .storage_actions
-        .iter()
-        .copied()
-        .filter(|action| rest.iter().all(|row| row.release.storage_actions.contains(action)))
-        .collect()
 }
 
 impl StorageRow {
     /// The release and its album arrive pre-joined from SQL, each with its
     /// cover's version; each half maps to its own summary projection, so the
     /// release row carries its own art and the album its primary release's.
-    pub(crate) fn from_raw(raw: DbStorageRow, syncs: bool) -> StorageRow {
+    pub(crate) fn from_raw(raw: DbStorageRow) -> StorageRow {
         let cover = cover_ref(&raw.release.id, raw.release_cover_version);
         let ctx = ReleaseResolveCtx {
-            syncs,
             cover,
             // A storage row projects a `ReleaseSummary`, which has no tracks, so
             // the per-track compilation flag is never read on this path.
@@ -158,6 +143,7 @@ impl StorageRow {
             album_year: raw.album.year,
         };
         StorageRow {
+            cancel_only: raw.release.actions.cancel_only,
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album),
             status: raw.status,

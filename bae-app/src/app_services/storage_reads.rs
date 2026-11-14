@@ -70,7 +70,9 @@ impl AppServices {
                 search,
                 Default::default(),
             )),
-            |_, projection| Some(bae_views::storage::resolve_storage_selection(projection)),
+            |read, projection| {
+                Some(bae_views::storage::resolve_storage_selection(read.request, projection))
+            },
         )
     }
 

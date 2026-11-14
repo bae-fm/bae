@@ -257,6 +257,8 @@ pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
     /// The release's entry in the download queue.
     pub download: Option<bae_transfers::DownloadEntry>,
+    /// The storage actions the release offers, as SQL decided them.
+    pub actions: crate::DbStorageActions,
     pub release_index: usize,
     pub is_compilation: bool,
     /// The album's year, which the release's year is compared with.
@@ -284,9 +286,8 @@ pub struct DbReleaseSummary {
     pub download: Option<bae_transfers::DownloadEntry>,
     pub file_count: i64,
     pub total_size: u64,
-    /// What the library records this device holding for each audio file whose
-    /// row names no stored file.
-    pub unstored_audio: Vec<DbUnstoredAudio>,
+    /// The storage actions the release offers, as SQL decided them.
+    pub actions: crate::DbStorageActions,
 }
 
 /// Raw storage-page row: a release summary joined with its parent album summary,
@@ -386,9 +387,10 @@ pub struct DbFileUpload {
 }
 
 /// A release's rows as its detail reads them, beside its entry in the
-/// download queue.
+/// download queue and the storage actions it offers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
     pub download: Option<bae_transfers::DownloadEntry>,
+    pub actions: crate::DbStorageActions,
 }

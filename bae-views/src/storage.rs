@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
+use crate::storage_actions::{selection_action_columns, storage_action_columns};
 use bae_records::records::queued_uploads::{
     upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_WAIT_COLUMNS,
 };
@@ -36,8 +37,7 @@ impl LibraryViews {
     ) -> Result<StoragePage, DbError> {
         let raw_rows = self.get_db_storage_page(sort, filter, offset, limit).await?;
         let total_count = self.get_storage_count(filter).await?;
-        let syncs = self.store.syncs().await?;
-        let rows = raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, syncs)).collect();
+        let rows = raw_rows.into_iter().map(StorageRow::from_raw).collect();
         Ok(StoragePage { rows, total_count })
     }
 
@@ -63,9 +63,8 @@ impl LibraryViews {
     }
 
     /// Follow one window of the Storage Manager list under `sort`, `filter`
-    /// and the search text `search`: a range of its order (`list_windows`),
-    /// each row beside whether storage is set up, which resolves it. Coven
-    /// reruns it for a write inside its range alone.
+    /// and the search text `search`: a range of its order (`list_windows`).
+    /// Coven reruns it for a write inside its range alone.
     ///
     pub fn subscribe_storage_window(
         &self,
@@ -73,34 +72,17 @@ impl LibraryViews {
         filter: StorageFilter,
         search: &str,
         initial: ListWindow,
-    ) -> coven::ReconfigurableLiveQuery<
-        ListWindow,
-        WindowRead<(DbStorageRow, bool)>,
-        bae_store::DbError,
-    > {
+    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbStorageRow>, bae_store::DbError>
+    {
         let order = storage_order(sort);
         let read_order = order.clone();
         let pattern =
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
             .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-                let syncs = syncs_on(sql)?;
-                Ok(storage_rows_on(
-                    sql,
-                    &read_order,
-                    filter,
-                    pattern.as_deref(),
-                    seek,
-                    limit,
-                    offset,
-                )?
-                .into_iter()
-                .map(|(parts, key)| ((parts, syncs), key))
-                .collect())
+                storage_rows_on(sql, &read_order, filter, pattern.as_deref(), seek, limit, offset)
             })
-            .process(|window| {
-                window.try_map_rows(|(parts, syncs)| Ok((process_storage_row(parts)?, syncs)))
-            })
+            .process(|window| window.try_map_rows(process_storage_row))
     }
 
     /// Follow how many releases the Storage Manager list holds under `filter`
@@ -173,7 +155,7 @@ impl LibraryViews {
         initial: BTreeSet<String>,
     ) -> coven::ReconfigurableLiveQuery<
         BTreeSet<String>,
-        (Vec<DbStorageRow>, bool),
+        (Vec<DbStorageRow>, crate::DbSelectionActions),
         bae_store::DbError,
     > {
         let pattern =
@@ -181,9 +163,11 @@ impl LibraryViews {
         self.store
             .subscribe_reconfigurable(initial, move |selected, sql| {
                 let rows = storage_selected_on(&sql, filter, pattern.as_deref(), selected)?;
-                Ok((rows, syncs_on(&sql)?))
+                let actions =
+                    storage_selection_actions_on(&sql, filter, pattern.as_deref(), selected)?;
+                Ok((rows, actions))
             })
-            .process(|(rows, syncs)| Ok((process_storage_rows(rows)?, syncs)))
+            .process(|(rows, actions)| Ok((process_storage_rows(rows)?, actions)))
     }
 
     /// Follow the transfer queues holding work, as the Storage Manager shows
@@ -207,24 +191,24 @@ pub struct StorageCounts {
 }
 
 /// One delivery of a Storage Manager window as the list shows it.
-pub fn resolve_storage_window(read: WindowRead<(DbStorageRow, bool)>) -> crate::ListWindowValue {
+pub fn resolve_storage_window(read: WindowRead<DbStorageRow>) -> crate::ListWindowValue {
     crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::Storage(
-            rows.into_iter().map(|(raw, syncs)| StorageRow::from_raw(raw, syncs)).collect(),
-        )
+        crate::ListRows::Storage(rows.into_iter().map(StorageRow::from_raw).collect())
     })
 }
 
-/// The rows of the selected releases the Storage Manager list holds, and the
-/// storage actions every one of them allows.
+/// The rows of the selected releases the Storage Manager list holds, the
+/// storage actions every one of them allows, and whether any of them can only
+/// be cancelled.
 pub fn resolve_storage_selection(
-    (rows, syncs): (Vec<DbStorageRow>, bool),
+    asked: &BTreeSet<String>,
+    (rows, actions): (Vec<DbStorageRow>, crate::DbSelectionActions),
 ) -> crate::StorageSelection {
-    let selected: Vec<StorageRow> =
-        rows.into_iter().map(|raw| StorageRow::from_raw(raw, syncs)).collect();
     crate::StorageSelection {
-        selection_actions: crate::album_detail::common_storage_actions(&selected),
-        selected,
+        asked: asked.iter().cloned().collect(),
+        selected: rows.into_iter().map(StorageRow::from_raw).collect(),
+        selection_actions: actions.list(),
+        cancel_only: actions.cancel_only,
     }
 }
 
@@ -294,7 +278,7 @@ fn storage_row_parts(row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
 fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
     let id: String = row.get("release_id")?;
     Ok(DbReleaseSummary {
-        unstored_audio: unstored_audio_column(row, "unstored_audio")?,
+        actions: crate::DbStorageActions::of_row(row)?,
         id,
         album_id: row.get("album_id")?,
         media: read_media(row, "release_media")?,
@@ -386,12 +370,12 @@ fn storage_row_columns(extra: &str) -> String {
          listing.created_at AS date_added, \
          {release_cover} AS release_cover_version, \
          {RELEASE_UPLOAD_COLUMNS}, \
-         {unstored_audio} AS unstored_audio, \
+         {actions}, \
          {download_entry}, \
          {album_columns}{extra}",
         release_cover = cover_version_sql("r.id"),
         release_media = release_media_sql("r.id"),
-        unstored_audio = unstored_audio_json_sql("r.id"),
+        actions = storage_action_columns("r.id"),
         download_entry = download_entry_sql("r.id"),
     )
 }
@@ -583,6 +567,37 @@ pub(crate) fn storage_selected_on(
     Ok(sql.query(&query, params.as_slice(), storage_row_parts)?)
 }
 
+/// What every one of the `release_ids` the list under `filter` and the search
+/// `pattern` holds allows, and whether any of them can only be cancelled: the
+/// least of each action's flag over their rows, none for no rows.
+pub(crate) fn storage_selection_actions_on(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+    release_ids: &BTreeSet<String>,
+) -> Result<crate::DbSelectionActions, DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let selected = serde_json::to_string(release_ids)
+        .map_err(|error| DbError::encode("selected release ids", error))?;
+    let statement = format!(
+        "SELECT {selection} FROM ( \
+            SELECT {actions} \
+            FROM release_listing listing {joins} \
+            WHERE {filter} AND {searched} \
+                AND listing.release_id IN (SELECT value FROM json_each(:selected)))",
+        selection = selection_action_columns(),
+        actions = storage_action_columns("r.id"),
+        joins = storage_row_joins(),
+        filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
+    );
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":selected", &selected)];
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
+    }
+    Ok(sql.query_row(&statement, params.as_slice(), crate::DbSelectionActions::of_row)?)
+}
+
 /// The Storage Manager list's order over `release_listing listing`. Every
 /// order ends with the album title, then `created_at` unless it sorts by
 /// that, and the release id, which tell apart two releases sharing a title
@@ -632,7 +647,3 @@ pub(crate) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
 #[cfg(test)]
 #[path = "storage_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "storage_audio_tests.rs"]
-mod audio_tests;

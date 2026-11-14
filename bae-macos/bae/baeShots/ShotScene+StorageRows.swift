@@ -174,6 +174,7 @@ extension ShotScene {
                     cover: nil
                 ),
                 status: row.status,
+                cancelOnly: transitioning,
                 dateAdded: ISO8601DateFormatter()
                     .date(from: "\(row.added)T12:00:00Z") ?? Date()
             )

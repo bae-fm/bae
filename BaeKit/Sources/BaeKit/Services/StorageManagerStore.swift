@@ -8,12 +8,10 @@ public final class StorageManagerStore {
     /// The transfer queues holding work, by core's last answer; `nil` until
     /// it answers.
     public private(set) var queues: BridgeStorageQueues?
-    /// The row of each selected release the list holds, by core's answer,
-    /// wherever in the list it sits — loaded or not — by release id.
-    private var selectedRows: [String: BridgeStorageRow] = [:]
-    /// The storage actions every release of `selectedRows` allows, by core's
-    /// answer.
-    private var selectedActions: [BridgeReleaseStorageAction] = []
+    /// Core's last answer for the selection: the row of each selected release
+    /// the list holds, wherever in the list it sits, the storage actions
+    /// every one of them allows, and whether any can only be cancelled.
+    private var answer: BridgeStorageSelection?
 
     @ObservationIgnored
     private let library: Library
@@ -112,17 +110,13 @@ public final class StorageManagerStore {
     /// value on: the answer belongs to the list it was read under.
     private func openSelection(filter: BridgeStorageFilter, search: String) {
         selectionDeliveries?.stop()
-        selectedRows = [:]
-        selectedActions = []
+        answer = nil
         let query = library.storageSelection(filter, search)
         selectionQuery = query
         selectionDeliveries = ScreenSubscription(
             query.values,
             onValue: { [weak self] value in
-                self?.selectedRows = Dictionary(
-                    uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
-                )
-                self?.selectedActions = value.selectionActions
+                self?.answer = value
             },
             onError: { [weak self] error in self?.onError(error) }
         )
@@ -138,38 +132,33 @@ public final class StorageManagerStore {
         }
     }
 
-    /// The part of `selection` the list holds: a row it has loaded, or a
-    /// release core says it holds. A selected release the list no longer
-    /// holds — uploaded out of the Local list, filtered out, deleted — is
-    /// never in it, so nothing showing this set shows a release the list
-    /// doesn't.
-    public func shown(_ selection: Set<String>) -> Set<String> {
-        selection.filter { row(of: $0) != nil }
+    /// The releases core says the list holds among the ones it last answered
+    /// for, so nothing showing them shows a release the list doesn't.
+    public var heldIds: Set<String> {
+        Set(answer?.selected.map(\.id) ?? [])
     }
 
-    /// The row the list's query returned for a release the list holds: the
-    /// selection's row, wherever the release sits, or the row of a loaded
-    /// page, which answers for a release just selected before core has.
-    /// `nil` for a release the list doesn't hold.
+    /// Core's answer, when it is for `selection` and not for an earlier
+    /// one: the rows of the releases the list holds among `selection`, the
+    /// storage actions every one allows, and whether any can only be
+    /// cancelled. `nil` while core's answer is for other releases.
+    public func answered(
+        for selection: Set<String>
+    ) -> BridgeStorageSelection? {
+        guard let answer, Set(answer.asked) == selection else { return nil }
+        return answer
+    }
+
+    /// The row core answered for a release the list holds among the
+    /// selection; `nil` for a release it didn't answer for.
     public func row(of releaseId: String) -> BridgeStorageRow? {
-        selectedRows[releaseId] ?? list?.row(of: releaseId)
-    }
-
-    /// The storage actions every release of `shown` allows, as core answered
-    /// for the selection, or `nil` while core's answer is for other releases:
-    /// `shown` holds one just selected that core has not answered for yet.
-    public func selectionActions(
-        for shown: Set<String>
-    ) -> [BridgeReleaseStorageAction]? {
-        guard shown == Set(selectedRows.keys) else { return nil }
-        return selectedActions
+        answer?.selected.first(where: { $0.id == releaseId })
     }
 
     public func cancel() {
         generation += 1
         selection = []
-        selectedRows = [:]
-        selectedActions = []
+        answer = nil
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()

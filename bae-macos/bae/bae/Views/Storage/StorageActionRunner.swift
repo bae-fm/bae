@@ -65,10 +65,12 @@ final class StorageActionRunner {
         self.openSaveAsSettings = openSaveAsSettings
     }
 
-    /// The releases of `releaseIds` the list holds now, in their order.
-    private func listed(_ releaseIds: [String]) -> [String] {
-        let shown = storageManagerStore.shown(Set(releaseIds))
-        return releaseIds.filter(shown.contains)
+    /// `releaseIds`, when the list still holds every one of them; `nil` when
+    /// one left it (uploaded out of the Local list, filtered out, deleted),
+    /// so a release the list doesn't hold is never acted on.
+    private func listed(_ releaseIds: [String]) -> [String]? {
+        Set(releaseIds).isSubset(of: storageManagerStore.heldIds)
+            ? releaseIds : nil
     }
 
     /// Export each release verbatim to a folder chosen once for the whole batch.
@@ -79,7 +81,7 @@ final class StorageActionRunner {
         guard let targetDir = OutputTarget.resolveExportDir() else {
             return
         }
-        let releaseIds = listed(releaseIds)
+        guard let releaseIds = listed(releaseIds) else { return }
         Task {
             for releaseId in releaseIds {
                 do {
@@ -106,7 +108,7 @@ final class StorageActionRunner {
             else {
                 return
             }
-            let releaseIds = listed(releaseIds)
+            guard let releaseIds = listed(releaseIds) else { return }
             for releaseId in releaseIds {
                 do {
                     try await outputs.enqueueReleaseSave(
@@ -139,15 +141,15 @@ final class StorageActionRunner {
             // Pinning routes through the download queue, which
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
-            let releaseIds = listed(releaseIds)
-            guard !releaseIds.isEmpty else { return }
+            guard let releaseIds = listed(releaseIds), !releaseIds.isEmpty
+            else { return }
             Task {
                 do { try await downloads.queuePins(releaseIds) }
                 catch { uiStore.showError(error) }
             }
         case .unpin:
-            let releaseIds = listed(releaseIds)
-            guard !releaseIds.isEmpty else { return }
+            guard let releaseIds = listed(releaseIds), !releaseIds.isEmpty
+            else { return }
             if UnpinAsk.asks(
                 askBeforeUnpinning: configStore.config.askBeforeUnpinning
             ) {
@@ -167,9 +169,10 @@ final class StorageActionRunner {
     /// How the Unpin alert closed: the releases it asked about unpin as the
     /// answer says.
     func answerUnpin(_ pending: PendingUnpin, _ answer: UnpinAsk.Answer) {
-        let releaseIds = listed(pending.releaseIds)
         let steps = UnpinAsk.steps(after: answer)
-        guard !releaseIds.isEmpty, !steps.isEmpty else { return }
+        guard let releaseIds = listed(pending.releaseIds),
+            !releaseIds.isEmpty, !steps.isEmpty
+        else { return }
         unpin(releaseIds, steps: steps)
     }
 
@@ -196,8 +199,8 @@ final class StorageActionRunner {
             preconditionFailure("move-to-cloud confirmation has no releases")
         }
         pendingMoveToCloud = nil
-        let listedIds = listed(releaseIds)
-        guard !listedIds.isEmpty else { return }
+        guard let listedIds = listed(releaseIds), !listedIds.isEmpty
+        else { return }
         Task {
             do {
                 try await releaseEditor.moveReleasesToCloud(listedIds)
@@ -215,7 +218,7 @@ final class StorageActionRunner {
     /// Cancel each release's in-progress transition (pin / upload / move to This Mac),
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
-        let releaseIds = listed(releaseIds)
+        guard let releaseIds = listed(releaseIds) else { return }
         Task {
             for id in releaseIds {
                 do {
@@ -247,8 +250,8 @@ final class StorageActionRunner {
         guard let newPath = Self.promptMoveToThisDeviceDestination() else {
             return
         }
-        let releaseIds = listed(releaseIds)
-        guard !releaseIds.isEmpty else { return }
+        guard let releaseIds = listed(releaseIds), !releaseIds.isEmpty
+        else { return }
         Task {
             do {
                 try await releaseEditor.moveReleasesToThisDevice(

@@ -34,6 +34,7 @@ pub mod release;
 mod release_files;
 mod search;
 pub mod storage;
+mod storage_actions;
 mod storage_browse;
 #[cfg(desktop)]
 pub mod storage_inspector;
@@ -53,6 +54,7 @@ pub use release_files::{
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, SEARCH_RESULT_LIMIT,
 };
+pub use storage_actions::{DbSelectionActions, DbStorageActions};
 pub use storage_browse::{ReleaseQueueRun, StorageQueues, StorageSelection, UploadQueueRun};
 pub use sync_activity::{
     DownloadQueueActivity, DownloadQueueCounts, SyncActivity, SyncActivityRows, TransferBatch,
@@ -80,13 +82,10 @@ use bae_records::records::files::{artist_image_version_sql, cover_version_sql};
 use bae_records::records::pressing_columns::{read_media, release_media_sql};
 use bae_records::records::query::*;
 use bae_records::records::read::*;
-use bae_records::records::{
-    release_detail_rows_on, unstored_audio_column, unstored_audio_json_sql, DbReleaseDetailRows,
-};
+use bae_records::records::{release_detail_rows_on, DbReleaseDetailRows};
 use bae_records::*;
 use bae_store::list_windows::{key_at, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;
-use bae_store::syncs_on;
 use bae_store::*;
 use bae_transfers::download_entry_sql;
 use bae_util::search_text::search_pattern;

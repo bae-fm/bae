@@ -139,15 +139,19 @@ struct StorageManagerStoreTests {
         store.select(selected)
         store.update(filter: .all, sort: byTitle, search: "")
         try await Wait.until { store.list != nil }
-        try await Wait.until { store.shown(selected) == selected }
+        try await Wait.until { store.answered(for: selected) != nil }
 
         #expect(
-            store.selectionActions(for: selected)
+            store.answered(for: selected)?.selectionActions
                 == commonActions(of: [rows[0], rows[1]])
         )
         #expect(
-            store.selectionActions(for: selected.union([rows[2].id])) == nil,
-            "a release core has not answered for leaves the answer unknown"
+            store.heldIds == selected,
+            "the releases core answered for are the ones the list holds"
+        )
+        #expect(
+            store.answered(for: selected.union([rows[2].id])) == nil,
+            "a selection core has not answered for has no answer"
         )
         #expect(
             reads.selected.last == selected.sorted(),

@@ -49,14 +49,6 @@ struct MacStorageChip: View {
     }
 }
 
-extension BridgeStorageRowStatus {
-    /// Whether the release's move to the cloud failed.
-    var isMoveFailed: Bool {
-        if case .moveFailed = self { return true }
-        return false
-    }
-}
-
 /// A release whose files only wait to upload: nothing is moving to fill.
 struct QueuedUploadChip: View {
     var body: some View {

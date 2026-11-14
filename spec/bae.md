@@ -2392,7 +2392,14 @@ rate for each release, its files being sent together, and for every file
 being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
 the release offers no storage action but cancelling, which would race it
-otherwise. A release in a download is the download queue's entry for it
+otherwise. The query that reads a release's storage state decides each
+action it offers (upload, pin, unpin, move to this device) as a column of its
+own, and the Storage Manager's selection offers an action when every selected
+release does (the least of each column over the selected rows), and only
+cancelling when a selected release is moving or its move failed (the greatest
+of those two flags over them). The answer names the releases it was asked
+about, so the Mac's menu acts on the rows core answered for the selection it
+shows and offers nothing while the answer is for an earlier one. A release in a download is the download queue's entry for it
 (§4.3, §4.4), a pin or a move-to-this-device, ended in the write that changes its
 files, so the entry and coven's change commit together and the release never
 shows a download its files have finished. The storage rows and the album and

@@ -417,7 +417,7 @@ extension StorageTableView.Coordinator {
         }
         let isOpenForRelease =
             inspectorPresented.wrappedValue
-            && storageManagerStore.shown(selection.wrappedValue) == [releaseId]
+            && storageManagerStore.heldIds == [releaseId]
         setInspectorPresented(!isOpenForRelease, releaseId: releaseId)
     }
 
@@ -547,30 +547,26 @@ extension StorageTableView.Coordinator {
 
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
-        let (targets, actions) = menuTargets(forClickedRelease: clickedId)
-        guard !targets.isEmpty else { return entries }
-        let releaseIds = targets.map(\.id)
+        let targets = menuTargets(forClickedRelease: clickedId)
+        guard !targets.rows.isEmpty else { return entries }
+        let releaseIds = targets.rows.map(\.id)
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
         // start another storage action (those race the transition), so the only
         // action it offers is cancelling — in every tab. So does a release
-        // whose move failed: cancelling ends the move.
-        let transitioning = targets.filter {
-            $0.release.transitioning || $0.status.isMoveFailed
-        }
-        if !transitioning.isEmpty {
+        // whose move failed: cancelling ends the move. Core says whether any
+        // target is one.
+        if targets.cancelOnly {
             entries.append(
                 .item(
                     MacMenuItem("Cancel") { [runner] in
-                        runner.cancelTransitions(
-                            releaseIds: transitioning.map(\.id)
-                        )
+                        runner.cancelTransitions(releaseIds: releaseIds)
                     }
                 )
             )
             return entries
         }
-        for action in actions {
+        for action in targets.actions {
             entries.append(
                 .item(
                     MacMenuItem(verbatim: action.label) { [runner] in
@@ -599,36 +595,44 @@ extension StorageTableView.Coordinator {
         return entries
     }
 
-    /// If the clicked release is already selected, act on the selected
-    /// releases the list holds, with the storage actions core says they all
+    /// If the clicked release is among the ones core answered for the
+    /// selection, act on those, with the storage actions core says they all
     /// allow; otherwise act on and select that release, with its own. Each
     /// target is the row the list's query returned for it.
     private func menuTargets(
         forClickedRelease clickedId: String
-    ) -> (rows: [BridgeStorageRow], actions: [BridgeReleaseStorageAction]) {
-        let shown = storageManagerStore.shown(selection.wrappedValue)
-        guard shown.contains(clickedId) else {
-            selection.wrappedValue = [clickedId]
-            applySelection([clickedId], to: tableView)
-            let row = targetRow(clickedId)
-            return ([row], row.release.storageActions)
-        }
-        let actions = storageManagerStore.selectionActions(for: shown)
-        if actions == nil {
-            logger.debug(
-                "No storage actions offered: core has not answered for the selection of \(shown.count) yet"
+    ) -> MenuTargets {
+        if let answer = storageManagerStore.answered(
+            for: selection.wrappedValue
+        ),
+            answer.selected.contains(where: { $0.id == clickedId })
+        {
+            return MenuTargets(
+                rows: answer.selected,
+                actions: answer.selectionActions,
+                cancelOnly: answer.cancelOnly
             )
         }
-        return (shown.map(targetRow), actions ?? [])
+        selection.wrappedValue = [clickedId]
+        applySelection([clickedId], to: tableView)
+        guard let row = list.row(of: clickedId) else {
+            preconditionFailure(
+                "Release \(clickedId) is clicked but has no row"
+            )
+        }
+        return MenuTargets(
+            rows: [row],
+            actions: row.release.storageActions,
+            cancelOnly: row.cancelOnly
+        )
     }
 
-    /// The row of a release `shown` keeps, or of the clicked one, which is
-    /// loaded.
-    private func targetRow(_ id: String) -> BridgeStorageRow {
-        guard let row = storageManagerStore.row(of: id) else {
-            preconditionFailure("Release \(id) is shown but has no row")
-        }
-        return row
+    /// The releases a menu acts on, the storage actions they all allow, and
+    /// whether any of them can only be cancelled.
+    private struct MenuTargets {
+        let rows: [BridgeStorageRow]
+        let actions: [BridgeReleaseStorageAction]
+        let cancelOnly: Bool
     }
 
     private func setInspectorPresented(
