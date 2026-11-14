@@ -42,16 +42,23 @@ struct MacSheet<Content: View, Footer: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+        // The boards' sheet: the title 18 down, the body 12 under it with 10
+        // between its parts, and the footer's own 4 above its buttons.
+        VStack(
+            alignment: .leading,
+            spacing: ThemeSpace.related + ThemeSpace.line
+        ) {
             title
                 .themeText(.strong)
+                .padding(.bottom, ThemeSpace.line)
             if let message {
                 SheetMessage(message)
             }
             content
             footer
         }
-        .padding(ThemeSpace.edge)
+        .padding([.horizontal, .bottom], ThemeSpace.edge)
+        .padding(.top, ThemeSpace.edge + ThemeSpace.line)
         .frame(width: width, alignment: .leading)
     }
 }

@@ -41,7 +41,9 @@ struct ShotElementListTests {
         #expect(title.text?.weight == 600, "\(json)")
         #expect(title.text?.color.hasPrefix("#FFFFFF") == true, "\(json)")
         #expect(abs(title.bounds.x - (left + 16)) <= 1, "\(json)")
-        #expect(abs(title.bounds.y - (36 + 16)) <= 1, "\(json)")
+        // The title sits 18 down from the sheet's top, as the board's
+        // `.bae-m-sheet-title` pads it (16 for the sheet's edge and 2 more).
+        #expect(abs(title.bounds.y - (36 + 18)) <= 1, "\(json)")
 
         let message = try #require(
             list.elements.first {
