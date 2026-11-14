@@ -144,6 +144,9 @@ const BOARD: &str = r##"<x-dc><helmet><style>body{margin:0;font:13px sans-serif}
 <select aria-label="Mode"><option>Never</option><option selected>Always</option></select>
 <div role="tab" aria-selected="true" tabindex="0">Library</div>
 <a href="#x">More</a>
+<button aria-current="page">Open pane</button>
+<button aria-current="false">Closed pane</button>
+<button>Plain pane</button>
 <img alt="Cover" width="10" height="10" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
 <div role="slider" aria-valuenow="5" aria-valuemin="0" aria-valuemax="10" aria-label="Volume" tabindex="0">x</div>
 <div role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Import">x</div>
@@ -222,6 +225,9 @@ async fn a_board_reads_as_the_shots_do() {
     assert_eq!(find(&elements, Role::Popup, "Mode").value.as_deref(), Some("Always"));
     assert_eq!(find(&elements, Role::Tab, "Library").selected, Some(true));
     find(&elements, Role::Link, "More");
+    assert_eq!(find(&elements, Role::Button, "Open pane").selected, Some(true));
+    assert_ne!(find(&elements, Role::Button, "Closed pane").selected, Some(true));
+    assert_ne!(find(&elements, Role::Button, "Plain pane").selected, Some(true));
     find(&elements, Role::Image, "Cover");
     assert_eq!(find(&elements, Role::Slider, "Volume").value.as_deref(), Some("5"));
     assert_eq!(find(&elements, Role::Progress, "Import").value.as_deref(), Some("40"));

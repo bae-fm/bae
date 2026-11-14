@@ -181,6 +181,10 @@ struct Geometry {
     /// What a text field holds, from the DOM: an input's value, or a
     /// `role=textbox` element's text without its `aria-hidden` descendants.
     field_value: Option<String>,
+    /// The DOM node says it is the current one (`aria-current`, any value but
+    /// `false`). Chrome's accessibility tree has no selected state for a
+    /// button, where the Mac marks the open row of a sidebar selected.
+    current: bool,
 }
 
 const GEOMETRY: &str = r#"function() {
@@ -214,6 +218,8 @@ const GEOMETRY: &str = r#"function() {
     field_value: isText ? null
       : (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') ? this.value
       : this.getAttribute('role') === 'textbox' ? typed(this) : null,
+    current: !isText && this.hasAttribute('aria-current')
+      && this.getAttribute('aria-current') !== 'false',
   };
 }"#;
 
@@ -371,6 +377,9 @@ async fn gather(page: &Page) -> Result<Vec<Raw>, ReadError> {
                                 _ => None,
                             };
                             raw.placeholder = geometry.placeholder;
+                            if geometry.current && raw.selected.is_none() {
+                                raw.selected = Some(true);
+                            }
                             // Chrome gives an empty field its placeholder as its
                             // accessibility value; the DOM holds what is typed.
                             if matches!(raw.chrome_role.as_str(), "textbox" | "searchbox") {
