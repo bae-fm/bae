@@ -20,7 +20,6 @@ import uniffi.bae_bridge.bridgePlayOutcomeKey
 import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
 import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
 import java.text.DateFormat
-import java.time.Duration
 import java.util.Date
 import java.util.Locale
 
@@ -71,6 +70,9 @@ fun Context.localizedLine(error: BridgeException): String? =
         }
     }
 
+private const val SECONDS_PER_MINUTE = 60L
+private const val SECONDS_PER_HOUR = 3600L
+
 /**
  * A wait of [seconds] as a length of time in [locale]: hours, minutes and
  * seconds, each named in full ("1 hour, 2 minutes"), or "0 seconds" for none.
@@ -80,12 +82,11 @@ internal fun waitText(
     seconds: Long,
     locale: Locale,
 ): String {
-    val wait = Duration.ofSeconds(seconds)
     val parts =
         listOf(
-            Measure(wait.toHours(), MeasureUnit.HOUR),
-            Measure(wait.toMinutesPart(), MeasureUnit.MINUTE),
-            Measure(wait.toSecondsPart(), MeasureUnit.SECOND),
+            Measure(seconds / SECONDS_PER_HOUR, MeasureUnit.HOUR),
+            Measure(seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE, MeasureUnit.MINUTE),
+            Measure(seconds % SECONDS_PER_MINUTE, MeasureUnit.SECOND),
         ).filter { it.number.toLong() != 0L }
     val shown = parts.ifEmpty { listOf(Measure(0, MeasureUnit.SECOND)) }
     return MeasureFormat

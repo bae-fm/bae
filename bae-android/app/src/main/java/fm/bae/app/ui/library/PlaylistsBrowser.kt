@@ -74,7 +74,7 @@ internal fun PlaylistListContent(
                         context.factsLine(
                             listOf(
                                 context.coreString(playlist.trackCount),
-                                context.getString(playlist.sharing.labelRes()),
+                                stringResource(playlist.sharing.labelRes()),
                             ),
                         ),
                     playlistCover = playlist.cover,

@@ -24,7 +24,4 @@ fun Context.namesLine(names: List<String?>): String =
 fun spokenListText(
     items: List<String>,
     locale: Locale,
-): String =
-    ListFormatter
-        .getInstance(locale, ListFormatter.Type.AND, ListFormatter.Width.WIDE)
-        .format(items)
+): String = ListFormatter.getInstance(locale).format(items)

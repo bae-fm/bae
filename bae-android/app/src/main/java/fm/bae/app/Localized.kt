@@ -129,7 +129,7 @@ internal fun clockText(
         )
     val format = MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.NUMERIC)
     val time = format.formatMeasures(*parts.toTypedArray())
-    return if (clock.negative) DecimalFormatSymbols.getInstance(locale).minusSignString + time else time
+    return if (clock.negative) DecimalFormatSymbols.getInstance(locale).minusSign + time else time
 }
 
 fun ULong.requireDisplayableByteCount(): Long {

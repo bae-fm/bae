@@ -142,7 +142,7 @@ internal fun PlaylistContent(
                                 listOf(
                                     summary.owner.name,
                                     context.coreString(summary.trackCount),
-                                    context.getString(summary.sharing.labelRes()),
+                                    stringResource(summary.sharing.labelRes()),
                                 ),
                             ),
                         style = ThemeText.detail.style,
