@@ -26,8 +26,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fm.bae.app.currentLocale
-import fm.bae.app.spokenListText
+import fm.bae.app.namesLine
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -146,7 +145,7 @@ internal fun AndroidStorageUsage(
 @Composable
 private fun UsageBar(segments: List<StorageUsageSegment>) {
     val description =
-        spokenListText(segments.map { "${it.label} ${it.size}" }, LocalContext.current.currentLocale())
+        LocalContext.current.namesLine(segments.map { "${it.label} ${it.size}" })
     BoxWithConstraints(modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description }) {
         val widths = segmentWidths(segments.map { it.share }, maxWidth - BAR_GAP * (segments.size - 1))
         Row(modifier = Modifier.height(BAR_HEIGHT), horizontalArrangement = Arrangement.spacedBy(BAR_GAP)) {
