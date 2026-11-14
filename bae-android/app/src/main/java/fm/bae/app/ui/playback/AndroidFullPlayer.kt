@@ -52,6 +52,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.receiverWithoutVolume
 import fm.bae.app.performBridgeAction
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -93,6 +94,7 @@ fun AndroidFullPlayerContainer(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        scrimColor = BaeTheme.colors.scrim,
     ) {
         LazyColumn(
             state = listState,

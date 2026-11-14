@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
@@ -65,7 +66,7 @@ internal fun SheetScene(
             Box(modifier = Modifier.fillMaxSize()) {
                 behind()
                 Box(
-                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA)),
+                    modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Surface(
@@ -144,7 +145,7 @@ internal fun InPlaceDialogScene(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+                        .background(BaeTheme.colors.scrim)
                         .padding(ThemeSpace.page),
                 contentAlignment = Alignment.Center,
             ) {
@@ -166,8 +167,6 @@ internal fun InPlaceDialogScene(
         }
     }
 }
-
-private const val SCRIM_ALPHA = 0.32f
 
 private val DIALOG_WIDTH = 340.dp
 

@@ -1,5 +1,6 @@
 package fm.bae.app.ui.components
 
+import android.view.WindowManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
@@ -7,8 +8,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.window.DialogWindowProvider
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 
 /**
@@ -75,7 +81,23 @@ internal fun AndroidDialog(
         title =
             if (parts.title != null || parts.message != null) ({ DialogHead(parts.title, parts.message) }) else null,
         text = parts.content,
-        confirmButton = parts.confirmButton,
+        confirmButton = {
+            DialogScrim(BaeTheme.colors.scrim)
+            parts.confirmButton()
+        },
         dismissButton = parts.dismissButton,
     )
+}
+
+/**
+ * Dims the screen behind the dialog window with the design system's scrim. The window dims with black at the scrim's
+ * opacity, which is the scrim colour laid over the screen. It draws nothing itself and runs inside the dialog's window.
+ */
+@Composable
+private fun DialogScrim(scrim: Color) {
+    val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+    SideEffect {
+        window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window?.setDimAmount(scrim.alpha)
+    }
 }
