@@ -10,7 +10,8 @@ fn the_entries_reading_a_folder_are_looked_up_by_the_folders_they_read() {
     let key = crate::CandidateKey::grouping("key");
     let mut passes = Vec::new();
     for under_root in [None, Some(286), Some(33_790)] {
-        let conn = crate::tables::tests::bare_library();
+        let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+        crate::TEST_SCHEMA.open_bare_library(&conn);
         if let Some(under_root) = under_root {
             plant_one_folders_statistics(&conn, under_root);
         }

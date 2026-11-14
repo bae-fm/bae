@@ -1256,7 +1256,7 @@ paths = ["Uuid::new_v4", "Uuid::new_v7", "Uuid::now_v7"]
 [database]
 capability = "SQLite"
 # Items gated on test support take a raw connection: a bare library's schema is
-# applied in one place, `BareLibraryParts::open_on`, for every crate's tests.
+# applied in one place, `Schema::open_bare_library`, for every crate's tests.
 test_support_features = ["test-utils"]
 
 [[database.domains]]

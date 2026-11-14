@@ -8,7 +8,8 @@ use bae_store::test_fixtures::exec;
 /// which the hash's uniqueness indexes.
 #[test]
 fn imported_content_hash_lookup_uses_its_unique_index() {
-    let conn = crate::tables::tests::bare_library();
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::TEST_SCHEMA.open_bare_library(&conn);
     let plan: Vec<String> = conn
         .prepare(
             "EXPLAIN QUERY PLAN \

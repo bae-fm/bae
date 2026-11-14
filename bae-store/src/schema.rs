@@ -249,30 +249,26 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
     builder
 }
 
-/// What a home's test opens an in-memory library on a schema with, outside
-/// coven, on a connection the home opens itself: the SQL functions to
-/// register, the collations, and the statements that create the library.
-#[cfg(any(test, feature = "test-utils"))]
-pub struct BareLibraryParts {
-    /// The schema's functions, and the `coven_path_text` coven registers on
-    /// every connection it opens.
-    pub functions: Vec<&'static SchemaFunction>,
-    pub collations: Vec<&'static SchemaCollation>,
-    /// The tables coven lets the schema's triggers follow, made as coven
-    /// makes them, then the schema's own statements, in order.
-    pub statements: Vec<&'static str>,
-}
-
 #[cfg(any(test, feature = "test-utils"))]
 impl Schema {
-    /// What an in-memory library on this schema is opened with.
-    pub fn bare_library_parts(self) -> BareLibraryParts {
-        let mut functions = vec![&COVEN_PATH_TEXT];
-        functions.extend(self.functions());
-        BareLibraryParts {
-            functions,
-            collations: self.collations(),
-            statements: coven::followed_tables_sql().chain(self.sql()).collect(),
+    /// Open the library on `conn`, a fresh in-memory connection the caller
+    /// opened, outside coven: the schema's functions and collations (and the
+    /// `coven_path_text` coven registers on every connection it opens) are
+    /// registered, then the tables coven lets the triggers follow, made as
+    /// coven makes them, and the schema's own statements run in order. A
+    /// `test-utils` item, so it is the one place a bare library is opened for
+    /// every crate's tests.
+    pub fn open_bare_library(self, conn: &rusqlite::Connection) {
+        register_bare_function(conn, &COVEN_PATH_TEXT);
+        for function in self.functions() {
+            register_bare_function(conn, function);
+        }
+        for collation in self.collations() {
+            conn.create_collation(collation.name, collation.compare)
+                .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
+        }
+        for statement in coven::followed_tables_sql().chain(self.sql()) {
+            conn.execute_batch(statement).expect("the bare library's schema applies");
         }
     }
 }
@@ -301,24 +297,4 @@ pub(crate) fn register_bare_function(conn: &rusqlite::Connection, function: &Sch
         move |context| compute(&SqlArguments::Bare(context)),
     )
     .unwrap_or_else(|error| panic!("{} registers: {error}", function.name));
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl BareLibraryParts {
-    /// Open the library on `conn`, a fresh in-memory connection the caller
-    /// opened: register the functions and collations, then run the statements.
-    /// A `test-utils` item, so it is the one place a bare library's schema is
-    /// applied for every crate's tests.
-    pub fn open_on(self, conn: &rusqlite::Connection) {
-        for function in self.functions {
-            register_bare_function(conn, function);
-        }
-        for collation in self.collations {
-            conn.create_collation(collation.name, collation.compare)
-                .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
-        }
-        for statement in self.statements {
-            conn.execute_batch(statement).expect("the bare library's schema applies");
-        }
-    }
 }

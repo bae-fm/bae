@@ -168,11 +168,3 @@ pub(crate) fn scan_candidate(
 ) -> crate::folder_scanner::ScanItem {
     crate::folder_scanner::ScanItem::Valid(candidate(root, name))
 }
-
-/// An in-memory library on the import's test schema, outside coven: for
-/// tests of SQL that runs on a bare connection.
-pub(crate) fn bare_library() -> rusqlite::Connection {
-    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
-    crate::TEST_SCHEMA.bare_library_parts().open_on(&conn);
-    conn
-}

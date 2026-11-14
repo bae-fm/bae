@@ -2,7 +2,8 @@
 /// tables naming `scan_candidate` in a foreign key are exactly those.
 #[test]
 fn an_entry_written_again_clears_every_table_below_its_row() {
-    let conn = crate::tables::tests::bare_library();
+    let conn = rusqlite::Connection::open_in_memory().expect("an in-memory database opens");
+    crate::TEST_SCHEMA.open_bare_library(&conn);
     let mut referencing: Vec<String> = conn
         .prepare(
             "SELECT DISTINCT m.name FROM sqlite_schema AS m, pragma_foreign_key_list(m.name) AS f \
