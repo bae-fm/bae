@@ -311,6 +311,30 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
+/// Done runs in two parts, the uploading releases and the rest, and the
+/// number of parts is no number of statements: the key at a position, how
+/// many items sit before a key, and where a release is each read in one
+/// statement beyond the list's own row.
+#[tokio::test]
+async fn positions_in_done_are_read_in_one_statement() {
+    let lib = Library::new().await;
+    lib.run(
+        scanned_with_states(&lib, &["A", "B", "C"])
+            + lib.imported("A", "2026-01-01T00:00:00Z")
+            + lib.imported("B", "2026-01-02T00:00:00Z")
+            + lib.imported("C", "2026-01-03T00:00:00Z"),
+    )
+    .await;
+    let tables = lib.tables();
+    let list = lib.open(view(TriageTab::Done)).await;
+    let log = lib.db.record_statements_for_test().await.unwrap();
+    let key = tables.import_key_at(list, 2).await.unwrap().expect("the list has items");
+    assert_eq!(log.take().len(), 2, "the list's row, then the key at the position");
+    let rows_before = tables.import_rows_before_for_test(list, key).await.unwrap();
+    assert_eq!(rows_before, 2);
+    assert_eq!(log.take().len(), 2, "the list's row, then the count before the key");
+}
+
 /// A jump past the end starts at the last item, and a window from its key
 /// holds that item alone.
 #[tokio::test]

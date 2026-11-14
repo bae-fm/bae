@@ -389,6 +389,21 @@ impl ListOrder {
             .join(", ")
     }
 
+    /// The order's key columns ([`Self::key_columns`]) of a subquery aliased
+    /// `t`, then NULL columns up to `width` of them: what the arms of one
+    /// compound statement select when their orders have different numbers of
+    /// terms.
+    #[cfg(desktop)]
+    pub fn key_columns_padded(&self, t: &str, width: usize) -> String {
+        (0..width)
+            .map(|at| match at < self.terms.len() {
+                true => format!("{t}.{0} AS {0}", key_column(at)),
+                false => format!("NULL AS {}", key_column(at)),
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
     /// The order as an ORDER BY clause over the key columns
     /// ([`Self::key_columns`]) of a subquery aliased `t`; a column keeps its
     /// expression's collation.

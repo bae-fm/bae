@@ -167,6 +167,16 @@ impl ImportTables {
             .ok_or(ImportListError::Closed(list))
     }
 
+    /// How many items of `list` sit before the one at `key`.
+    #[cfg(test)]
+    pub(super) async fn import_rows_before_for_test(
+        &self,
+        list: ImportListId,
+        key: OrderKey,
+    ) -> Result<u64, DbError> {
+        self.store.read(move |sql| position_on(&sql, list, &key)).await
+    }
+
     /// Every item of `list`, with its count, summary, filter entries and
     /// selection, read in one snapshot.
     #[cfg(any(test, feature = "test-utils"))]
