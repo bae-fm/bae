@@ -158,14 +158,16 @@ extension PreviewData {
         )
     }
 
+    /// An editor over a library holding `draft`.
     @MainActor
-    static func releaseEditor() -> ReleaseEditor {
+    static func releaseEditor(
+        holding draft: BridgeReleaseEditDraft = releaseEditDraft(
+            trackCount: 5
+        )
+    ) -> ReleaseEditor {
         ReleaseEditor(
             openReleaseEdit: { _ in
-                PreviewReleaseLibrary(
-                    draft: releaseEditDraft(trackCount: 5)
-                )
-                .opened()
+                PreviewReleaseLibrary(draft: draft).opened()
             }
         )
     }

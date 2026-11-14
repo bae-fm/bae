@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -22,6 +23,7 @@ struct ShotScene {
     static let all: [ShotScene] =
         welcomeScenes + componentScenes + syncSettingsScenes
         + storageSettingsScenes + alertScenes + importListScenes
+        + importPaneScenes
         + adminChangeScenes + menuScenes + playlistScenes + castingScenes
         + addDeviceScenes
 }
@@ -34,16 +36,22 @@ struct ShotScene {
 @MainActor
 struct ShotStage {
     let view: AnyView
+    /// Whether the hosted tree shows what the scene is about, read after
+    /// each layout, for what a view builds from a read it makes itself and
+    /// no store publishes, such as a text field holding a loaded value.
+    let isDrawn: @MainActor (NSView) -> Bool
     /// Read under observation tracking, so it holds only what a store
     /// publishes.
     let isReady: @MainActor () -> Bool
 
     init(
         _ view: some View,
-        isReady: @escaping @MainActor () -> Bool = { true }
+        isReady: @escaping @MainActor () -> Bool = { true },
+        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
     ) {
         self.view = AnyView(view)
         self.isReady = isReady
+        self.isDrawn = isDrawn
     }
 
     /// `view`, whose art comes from `images`, ready once the store has
@@ -54,9 +62,14 @@ struct ShotStage {
     init(
         _ view: some View,
         images: ImageStore,
-        isReady: @escaping @MainActor () -> Bool = { true }
+        isReady: @escaping @MainActor () -> Bool = { true },
+        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
     ) {
-        self.init(view) { images.unansweredImages == 0 && isReady() }
+        self.init(
+            view,
+            isReady: { images.unansweredImages == 0 && isReady() },
+            isDrawn: isDrawn
+        )
     }
 }
 

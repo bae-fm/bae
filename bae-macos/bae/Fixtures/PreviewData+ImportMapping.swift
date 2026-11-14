@@ -341,17 +341,21 @@ extension PreviewData {
         )
     }
 
-    /// An untouched session opened on `presentation`.
+    /// A session opened on `presentation`, at `section` of Find online,
+    /// with `artist` and `album` typed in its general search.
     static func paneSession(
-        presentation: BridgeMetadataPresentation
+        presentation: BridgeMetadataPresentation,
+        section: BridgeFindOnlineSection = .automatic,
+        artist: String = "",
+        album: String = ""
     ) -> BridgeCandidateSession {
         BridgeCandidateSession(
             presentation: presentation,
-            findOnlineSection: .automatic,
+            findOnlineSection: section,
             search: BridgeSearchForm(
                 tab: .general,
-                artist: "",
-                album: "",
+                artist: artist,
+                album: album,
                 catalog: "",
                 barcode: ""
             ),
@@ -372,13 +376,15 @@ extension PreviewData {
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
-        presentation: BridgeMetadataPresentation = .draft
+        presentation: BridgeMetadataPresentation = .draft,
+        session: BridgeCandidateSession? = nil,
+        resumedIdentifyState: BridgeIdentifyState = .idle
     ) -> Candidate {
         Candidate(
             detail: BridgeImportCandidateDetail(
                 candidate: folder,
                 actionable: true,
-                resumedIdentifyState: .idle,
+                resumedIdentifyState: resumedIdentifyState,
                 placement: .pending(folderCheck: nil, records: []),
                 live: BridgeCandidateLiveState(
                     identifying: nil,
@@ -410,7 +416,8 @@ extension PreviewData {
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
-                        session: paneSession(presentation: presentation)
+                        session: session
+                            ?? paneSession(presentation: presentation)
                     )
                 )
             )

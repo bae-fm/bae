@@ -60,7 +60,11 @@ enum ShotRenderer {
             window.close()
         }
 
-        try await settle(host: captured, until: stage.isReady)
+        try await settle(
+            host: captured,
+            until: stage.isReady,
+            drawn: stage.isDrawn
+        )
 
         return try await capture(window, host: captured, scene: scene)
     }
@@ -294,18 +298,22 @@ enum ShotRenderer {
     /// An idle can come while main-actor work is still queued, so a tree
     /// can read the same across one before a chain of main-actor steps that
     /// moves no frame has done anything; a scene whose reads start that way
-    /// names in `isReady` what they bring, such as a store's list.
+    /// names in `isReady` what they bring, such as a store's list. What a view
+    /// builds from a read it makes itself, which no store publishes, is
+    /// named in `isDrawn`, read from the laid-out tree.
     private static func settle(
         host: NSView,
-        until isReady: @MainActor () -> Bool
+        until isReady: @MainActor () -> Bool,
+        drawn isDrawn: @MainActor (NSView) -> Bool
     ) async throws {
         while true {
             try await Wait.until { isReady() }
+            try await Wait.untilLaidOut(host) { isDrawn(host) }
             try await Wait.untilSteady {
                 host.layoutSubtreeIfNeeded()
                 return frames(below: host)
             }
-            if isReady() { return }
+            if isReady(), isDrawn(host) { return }
         }
     }
 
