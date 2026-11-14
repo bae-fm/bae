@@ -143,6 +143,7 @@ struct StorageStatusBand: View {
             Button("Export…", action: onExport)
             Button("Save as…", action: onSaveAs)
         }
+        .buttonStyle(SecondaryButtonStyle().accentFocus())
     }
 }
 
