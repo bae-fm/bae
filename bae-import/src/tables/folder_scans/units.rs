@@ -148,6 +148,22 @@ pub(crate) struct StoredUnit {
 
 #[cfg(test)]
 impl crate::tables::ImportTables {
+    /// The blank cover stored for the candidates reading `content_hash`'s
+    /// files.
+    pub(crate) async fn blank_cover_file_for_test(&self, content_hash: &str) -> Option<String> {
+        let content_hash = content_hash.to_owned();
+        self.store
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT blank_cover_file FROM scan_candidate WHERE content_hash = ?",
+                    [content_hash],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .unwrap()
+    }
+
     /// The units stored for the candidates reading `content_hash`'s files, in
     /// play order.
     pub(crate) async fn load_units_for_test(&self, content_hash: &str) -> Vec<StoredUnit> {

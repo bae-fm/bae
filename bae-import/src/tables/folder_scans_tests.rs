@@ -809,3 +809,38 @@ pub struct DbFolderScanSnapshot {
 
 #[path = "folder_scans_tests/write_cost.rs"]
 mod write_cost;
+
+/// Scan the folder `name` below `root`, holding the files `setup` writes,
+/// and store it as a valid candidate; its content hash.
+pub(crate) async fn stored_folder(
+    db: &bae_store::Store,
+    root: &std::path::Path,
+    name: &str,
+    setup: impl FnOnce(&std::path::Path),
+) -> String {
+    let folder = root.join(name);
+    std::fs::create_dir_all(&folder).unwrap();
+    setup(&folder);
+    let files = crate::mapping::tests::scan(&folder);
+    let candidate = crate::folder_scanner::FolderCandidate {
+        path: folder.clone(),
+        file_root: folder.clone(),
+        name: name.to_owned(),
+        files,
+        watched_folder_path: root.to_path_buf(),
+        scope: crate::folder_scanner::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        relative_folder: crate::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
+        grouping: None,
+    };
+    let hash = candidate.files.content_hash();
+    let tables = ImportTables::new(db.clone());
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_scan_item(root, generation, &crate::folder_scanner::ScanItem::Valid(candidate))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    hash
+}

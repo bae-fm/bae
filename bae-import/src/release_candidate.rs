@@ -40,24 +40,6 @@ impl FolderCandidate {
         Ok(values)
     }
 
-    /// The draft a release starts from before anyone describes it: one blank
-    /// track per audio unit, in the release's own track layout. A release
-    /// read from several folders starts titled by the name it is listed as —
-    /// no one folder's name speaks for it on its own.
-    pub(crate) fn blank_draft(&self) -> super::CandidateDraft {
-        let mut draft = super::pane::blank_candidate_draft(&self.files);
-        if self.grouping.is_some() {
-            draft.album_title.clone_from(&self.name);
-        }
-        draft
-    }
-
-    /// The cover a release starts from before anyone describes it: the image
-    /// of its own the folder's cover rules pick, if it holds one.
-    pub(crate) fn blank_cover(&self) -> Option<super::cover_art::PreparedCover> {
-        super::cover_art::folder_cover(None, self.files.artwork())
-    }
-
     pub fn source(&self) -> CandidateSource {
         CandidateSource {
             path: self.file_root.clone(),

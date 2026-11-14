@@ -854,19 +854,21 @@ fn with_cover(root: &std::path::Path, name: &str) -> FolderCandidate {
     )
 }
 
-/// With no draft row a candidate reads as its files' blank draft and the
-/// folder's own cover, on its row and in its pane, and its first save stores
-/// the draft and that cover. An import deletes them, and the release it wrote
-/// deleted from the library puts the folder back in Found holding neither.
+/// An import deletes a candidate's draft and cover, and the release it wrote
+/// deleted from the library puts the folder back in Found holding its files'
+/// blank draft and the folder's own cover, on its row and in its pane.
 #[tokio::test]
-async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover() {
+async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cover() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let candidate = with_cover(&lib.root, "Album");
     let key = candidate.key();
     let hash = candidate.files.content_hash();
     let folder_cover = crate::cover_art::PreparedCover::Local("cover.jpg".to_string());
-    assert_eq!(candidate.blank_cover(), Some(folder_cover.clone()));
+    assert_eq!(
+        crate::cover_art::blank_cover_file(candidate.files.artwork()),
+        Some("cover.jpg".to_string())
+    );
     lib.run(
         lib.store(ScanItem::Valid(candidate.clone()), None)
             + lib.import_of(
@@ -902,7 +904,10 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     let pane =
         tables.load_import_candidate(&key).await.unwrap().expect("the folder has a pane").resolve();
     let draft = pane.draft().expect("a folder nobody imported holds a draft");
-    assert_eq!(draft.metadata_draft, candidate.blank_draft().release_edit());
+    assert_eq!(
+        draft.metadata_draft,
+        crate::pane::blank_candidate_draft(&candidate.files).release_edit()
+    );
     assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(
         draft.cover.as_ref().map(|cover| cover.selection().clone()),
@@ -919,6 +924,6 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     assert_eq!(
         lib.db.count_rows_for_test("import_candidate_cover", "content_hash", &hash).await.unwrap(),
         1,
-        "the first save stores the cover it read"
+        "the cover the deletion seeded is the one row"
     );
 }

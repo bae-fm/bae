@@ -7,27 +7,19 @@ pub(super) const SQL: &str = include_str!("seed_rows.sql");
 
 use super::*;
 
-/// What a new candidate's draft and cover are created from.
-pub(crate) enum CandidateStateSeed<'a> {
-    /// As many empty track slots as the folder has audio units, and the
-    /// folder's own cover: what a candidate holding no draft row reads as.
-    Blank { draft: &'a crate::CandidateDraft, cover: Option<crate::cover_art::PreparedCover> },
-    /// The folder read as its own files describe it, with the reading it was
-    /// projected from and the cover those tags embed.
-    FileMetadata(&'a crate::file_metadata_seed::FileMetadataSeed),
-}
-
 /// Make sure `files` has a state row, and record `folder` as a folder on disk
 /// it was found at; the state lives while a watched folder covers one of
-/// those folders. The write that creates the state seeds its draft and cover,
-/// unless this device imported the files, whose candidate holds neither; a
-/// state that already exists keeps what it holds, its draft row or none.
+/// those folders. A state that holds no draft row and whose files this device
+/// did not import is seeded with one: the folder read as its own files
+/// describe it when `file_metadata` holds that reading, and otherwise the
+/// blank draft its stored audio units make. A state that holds a draft keeps
+/// it.
 pub(crate) fn ensure_candidate_state(
     sql: &CovenWrite<'_>,
     path: &CandidateKey,
     folder: &std::path::Path,
     files: &crate::folder_scanner::CategorizedFiles,
-    seed: CandidateStateSeed<'_>,
+    file_metadata: Option<&crate::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
     let content_hash = files.content_hash();
     let created = sql.execute(
@@ -46,32 +38,21 @@ pub(crate) fn ensure_candidate_state(
          VALUES (?, ?) ON CONFLICT DO NOTHING",
         params![content_hash, coven::path_bytes(folder)],
     )?;
-    if !created {
+    if crate::tables::import_origin::imported_release_on(sql, &content_hash)?.is_some()
+        || super::pane_rows::has_draft_row_on(sql, &content_hash)?
+    {
         return Ok(());
     }
-    if crate::tables::import_origin::imported_release_on(sql, &content_hash)?.is_some() {
-        return Ok(());
-    }
-    // The folder's own cover is stored with the candidate so readers never
-    // recompute it; the picture the tags embed comes with the draft they
-    // seed.
-    let cover = match seed {
-        CandidateStateSeed::Blank { draft, cover } => {
-            super::pane_rows::insert_draft(
-                sql,
-                &content_hash,
-                draft,
-                crate::MetadataAuthor::Nobody,
-            )?;
-            cover
-        }
-        CandidateStateSeed::FileMetadata(seed) => {
+    match file_metadata {
+        Some(seed) => {
             super::pane_rows::insert_file_tags_draft(sql, &content_hash, &seed.draft)?;
-            crate::cover_art::folder_cover(seed.cover.clone(), files.artwork())
+            // The picture the tags embed comes with the draft they seed.
+            if let Some(cover) = crate::cover_art::folder_cover(seed.cover.clone(), files.artwork())
+            {
+                super::cover_rows::save_cover(sql, &content_hash, &cover)?;
+            }
         }
-    };
-    if let Some(cover) = cover {
-        super::cover_rows::save_cover(sql, &content_hash, &cover)?;
+        None => super::blank_draft_rows::seed_blank_draft_on(sql, &content_hash)?,
     }
     Ok(())
 }

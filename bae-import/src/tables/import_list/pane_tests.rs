@@ -668,3 +668,20 @@ async fn pane_folder_check_reads_the_stored_draft_validity() {
         "the pane reads the validity the draft row stores"
     );
 }
+
+/// Every state of a folder this device did not import holds a draft row, so
+/// the pane never builds a draft from the files: a state with none is a
+/// damaged row, and the pane refuses to read it.
+#[tokio::test]
+async fn pane_reads_no_draft_from_files() {
+    let (db, tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, _) = scanned_with_a_ruled_out_verdict(&db, &root).await;
+    let key = crate::CandidateKey::folder(&candidate.path);
+    assert!(tables.load_import_candidate(&key).await.unwrap().is_some(), "the pane reads");
+
+    crate::tables::ImportTables::plant_missing_drafts_for_test(tmp.path()).await;
+
+    let refused = tables.load_import_candidate(&key).await.expect_err("the pane has no draft");
+    assert!(refused.to_string().contains("import_candidate_edit"), "{refused}");
+}

@@ -24,9 +24,9 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     skipped_candidates::SCHEMA,
     folder_scans::SCHEMA,
     release_groupings::SCHEMA,
+    import_origin::SCHEMA,
     import_state::SCHEMA,
     source_releases::SCHEMA,
-    import_origin::SCHEMA,
     import_list::SCHEMA,
     cover_gallery::SCHEMA,
 ];

@@ -179,8 +179,7 @@ pub(crate) fn embedded_cover_selection(
 /// `None` when the folder has none of them.
 ///
 /// One rule, run wherever a candidate's cover comes from its folder: the
-/// scan that creates its state stores it, and a candidate holding no draft
-/// row, whose blank cover no row stores, reads it from its scanned files.
+/// scan that creates its state stores it.
 pub(crate) fn folder_cover<'a>(
     embedded: Option<PreparedCover>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
@@ -190,6 +189,19 @@ pub(crate) fn folder_cover<'a>(
         .map(local_selection)
         .or(embedded)
         .or_else(|| default_local_cover_file(artwork).map(local_selection))
+}
+
+/// The file of the folder the cover rules pick when no tag is read: what
+/// [`folder_cover`] picks with nothing embedded. The scan stores it with the
+/// folder's files (`scan_candidate.blank_cover_file`), where the blank draft
+/// reads it.
+pub(crate) fn blank_cover_file<'a>(
+    artwork: impl IntoIterator<Item = &'a ScannedFile>,
+) -> Option<String> {
+    let artwork = artwork.into_iter().collect::<Vec<_>>();
+    front_cover_file(artwork.iter().copied())
+        .or_else(|| default_local_cover_file(artwork))
+        .map(|file| file.relative_path.clone())
 }
 
 /// The cover applying a folder's file tags selects: the tags' embedded

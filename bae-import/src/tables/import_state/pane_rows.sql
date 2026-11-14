@@ -1,9 +1,9 @@
--- The release-level metadata draft the import will write. A candidate this
--- device did not import that has no row holds the blank draft of its files
--- and the folder's own cover, as a scan seeds a new candidate it reads no
--- tags of: a folder whose release was deleted is back in Found so, and the
--- first write to its draft stores the row. An imported candidate holds no
--- draft: the import deletes it, with its source, its cover and its link.
+-- The release-level metadata draft the import will write. Every state of a
+-- candidate this device did not import holds a draft row: a scan seeds a new
+-- state's, and deleting the release this device imported from the folder seeds
+-- the folder's blank draft and its own cover (`blank_draft_rows.sql`). An
+-- imported candidate holds no draft: the import deletes it, with its source,
+-- its cover and its link.
 CREATE TABLE IF NOT EXISTS import_candidate_edit (
     content_hash   TEXT PRIMARY KEY,
     album_title    TEXT NOT NULL,

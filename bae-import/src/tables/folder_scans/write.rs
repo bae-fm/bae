@@ -166,18 +166,11 @@ fn insert_candidate(
 ) -> Result<(), DbError> {
     insert_candidate_row(sql, watched_folder_path, generation, kind, source_kind, candidate)?;
     let path = candidate.key();
-    let blank;
-    use crate::tables::import_state::{ensure_candidate_state, CandidateStateSeed};
-    let seed = match file_metadata {
-        Some(seed) => CandidateStateSeed::FileMetadata(seed),
-        None => {
-            blank = candidate.blank_draft();
-            CandidateStateSeed::Blank { draft: &blank, cover: candidate.blank_cover() }
-        }
-    };
-    // File rows first: the file-tag reading references them.
+    use crate::tables::import_state::ensure_candidate_state;
+    // File rows first: the file-tag reading references them, and the blank
+    // draft is read from the units stored with them.
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
-    ensure_candidate_state(sql, &path, &candidate.path, &candidate.files, seed)?;
+    ensure_candidate_state(sql, &path, &candidate.path, &candidate.files, file_metadata)?;
     // The reading belongs to the scan row, so a seed always stores it, while
     // its draft only fills a candidate that has none.
     if let Some(seed) = file_metadata {
@@ -355,6 +348,15 @@ pub(crate) fn insert_candidate_files(
             )?;
         }
     }
+    sql.execute(
+        "UPDATE scan_candidate SET blank_cover_file = ? \
+         WHERE watched_folder_path = ? AND path = ?",
+        params![
+            crate::cover_art::blank_cover_file(files.artwork()),
+            coven::path_bytes(watched_folder_path),
+            candidate_path
+        ],
+    )?;
     super::units::insert_units(sql, watched_folder_path, candidate_path, files)
 }
 

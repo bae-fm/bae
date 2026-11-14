@@ -58,7 +58,7 @@ impl Fixture {
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is answerable");
-        let mut draft = candidate.blank_draft();
+        let mut draft = crate::pane::blank_candidate_draft(&candidate.files);
         draft.album_title = "Album".to_string();
         draft.album_artist_assignments =
             vec![crate::Credited::plain(crate::ArtistAssignment::Credit {

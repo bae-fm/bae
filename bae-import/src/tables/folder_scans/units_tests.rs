@@ -1,45 +1,10 @@
 //! The layout a scan stores with a candidate's files.
 
 use super::units::StoredUnit;
-use crate::mapping::tests::{cue_sheet_text, scan, write_flac};
+use crate::mapping::tests::{cue_sheet_text, write_flac};
+use crate::tables::folder_scans::tests::stored_folder;
 use crate::tables::tests::*;
 use crate::tables::ImportTables;
-use bae_store::Store;
-
-/// Scan the folder `name` below `root`, holding the files `setup` writes,
-/// and store it as a valid candidate; its content hash.
-async fn stored_folder(
-    db: &Store,
-    root: &std::path::Path,
-    name: &str,
-    setup: impl FnOnce(&std::path::Path),
-) -> String {
-    let folder = root.join(name);
-    std::fs::create_dir_all(&folder).unwrap();
-    setup(&folder);
-    let files = scan(&folder);
-    let candidate = crate::folder_scanner::FolderCandidate {
-        path: folder.clone(),
-        file_root: folder.clone(),
-        name: name.to_owned(),
-        files,
-        watched_folder_path: root.to_path_buf(),
-        scope: crate::folder_scanner::ReleaseFileScope::Recursive,
-        file_edit_revision: 0,
-        relative_folder: crate::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
-        grouping: None,
-    };
-    let hash = candidate.files.content_hash();
-    let tables = ImportTables::new(db.clone());
-    tables.add_watched_import_folder(root).await.unwrap();
-    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
-    tables
-        .save_folder_scan_item(root, generation, &crate::folder_scanner::ScanItem::Valid(candidate))
-        .await
-        .unwrap();
-    tables.finish_folder_scan(root, generation, None).await.unwrap();
-    hash
-}
 
 /// A loose bonus track and a disc image carved by its sheet into three.
 fn bonus_and_disc(folder: &std::path::Path) {
@@ -82,4 +47,26 @@ async fn units_time_each_cue_slice_to_the_next_boundary_or_the_container_end() {
         [(Some(0), Some(8820)), (Some(8820), Some(17640)), (Some(17640), None)]
     );
     assert_eq!(units[0].duration_ms, 1000, "a loose file plays for its own length");
+}
+
+/// The folder's front-cover-named image is the blank cover the scan stores
+/// with its files, over a file the cover rules rank lower; a folder with no
+/// image has none.
+#[tokio::test]
+async fn scan_stores_the_front_cover_named_file_as_the_blank_cover() {
+    let with_art = |folder: &std::path::Path| {
+        write_flac(&folder.join("01.flac"));
+        std::fs::write(folder.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        std::fs::write(folder.join("Front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    };
+    let without_art = |folder: &std::path::Path| write_flac(&folder.join("01.flac"));
+    let (db, _tmp, root) = watched_root().await;
+    let covered = stored_folder(&db, &root, "Covered", with_art).await;
+    assert_eq!(
+        ImportTables::new(db).blank_cover_file_for_test(&covered).await,
+        Some("Front.jpg".to_string())
+    );
+    let (db, _tmp, root) = watched_root().await;
+    let bare = stored_folder(&db, &root, "Bare", without_art).await;
+    assert_eq!(ImportTables::new(db).blank_cover_file_for_test(&bare).await, None);
 }

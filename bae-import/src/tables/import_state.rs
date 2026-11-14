@@ -26,6 +26,7 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     verdict_rows::SQL,
     match_rows::SQL,
     ledger_rows::SQL,
+    blank_draft_rows::SQL,
 ]);
 
 use super::*;
@@ -66,6 +67,7 @@ pub enum CandidateStateRefusal {
 }
 
 mod album_pick_rows;
+mod blank_draft_rows;
 mod candidate_rows;
 mod cover_rows;
 mod draft_store;
@@ -109,9 +111,7 @@ pub(crate) use preparation_rows::{
 pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 pub(super) use rows::load_states_on;
 pub use rows::DbImportCandidateState;
-pub(super) use seed_rows::{
-    ensure_candidate_state, forget_at_or_below, restart_state_on, CandidateStateSeed,
-};
+pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;

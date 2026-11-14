@@ -22,7 +22,6 @@ pub(crate) use provenance::{
 };
 
 use super::*;
-use crate::cover_art::PreparedCover;
 use crate::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
@@ -274,7 +273,7 @@ pub(crate) fn load_pane_rows_on(
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {
     let (draft, cover) = load_draft_and_cover_on(sql, content_hash)?;
-    let (draft_blank, draft_valid) = load_draft_columns_on(sql, content_hash, &draft)?;
+    let (draft_blank, draft_valid) = load_draft_columns_on(sql, content_hash)?;
     Ok(DbCandidatePaneRows {
         cover,
         draft,
@@ -300,24 +299,17 @@ impl ImportTables {
 
 /// Whether the draft of `content_hash` is blank and whether it would import,
 /// as its row stores them beside its fields, in the write that stored them.
-/// A candidate with no draft row reads as the blank draft its files make,
-/// which `draft` is.
 fn load_draft_columns_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
-    draft: &CandidateDraft,
 ) -> Result<(bool, bool), DbError> {
-    Ok(sql
-        .query_row(
-            "SELECT draft_blank, draft_valid FROM import_candidate_edit WHERE content_hash = ?",
-            [content_hash],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?
-        .unwrap_or_else(|| {
-            let edit = draft.release_edit();
-            (edit.is_blank(), edit.shape().is_ok())
-        }))
+    sql.query_row(
+        "SELECT draft_blank, draft_valid FROM import_candidate_edit WHERE content_hash = ?",
+        [content_hash],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+    .optional()?
+    .ok_or_else(|| DbError::unreadable("import_candidate_edit of a stored draft", content_hash))
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
@@ -335,44 +327,25 @@ pub(super) fn has_draft_row_on(
         .is_some())
 }
 
-/// The candidate's draft and cover: its rows', or, with no draft row, the
-/// blank draft of its files and the folder's own cover, which a scan seeds a
-/// new candidate with when it reads no tags. A candidate whose release this
-/// device deleted holds no draft row, and reads as that until a write stores
-/// one. The caller found in the same read that the candidate holds a state
-/// row and was not imported, since one this device imported holds no draft.
+/// The candidate's draft and cover, from its rows. Every state of a candidate
+/// this device did not import holds a draft row (the scan seeds it, and
+/// deleting the release it imported seeds it again), so a state with none is
+/// a damaged one and the read fails. The caller found in the same read that
+/// the candidate holds a state row and was not imported, since one this device
+/// imported holds no draft.
 pub(super) fn load_draft_and_cover_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
-    if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
-    {
-        return Ok((draft, super::cover_rows::load_cover_on(sql, content_hash)?));
-    }
-    let key: CandidateKey = sql
-        .query_row(
-            "SELECT candidate_key FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?
+    let draft = load_drafts_on(sql, CandidateRows::One(content_hash))?
+        .remove(content_hash)
         .ok_or_else(|| {
             DbError::unreadable(
-                "import_candidate_state of a candidate its reader found stated",
+                "import_candidate_edit of a candidate not imported here",
                 content_hash,
             )
         })?;
-    // The state names a copy the scan holds of its files.
-    let candidate = crate::tables::release_groupings::load_candidate_on(sql, &key)?
-        .map(|stored| stored.candidate)
-        .filter(|candidate| candidate.files.content_hash() == content_hash)
-        .ok_or_else(|| {
-            DbError::unreadable(
-                format!("import_candidate_state.candidate_key of {content_hash}"),
-                &key,
-            )
-        })?;
-    Ok((candidate.blank_draft(), candidate.blank_cover().as_ref().map(PreparedCover::selection)))
+    Ok((draft, super::cover_rows::load_cover_on(sql, content_hash)?))
 }
 
 /// Every candidate's complete stored draft, or the one `only` names: one row
@@ -886,6 +859,28 @@ impl ImportTables {
                 // list's functions, which this connection lacks.
                 "DROP TRIGGER IF EXISTS import_list_on_draft_changed; \
                  UPDATE import_candidate_edit SET draft_valid = 1;",
+            )
+        })
+        .await;
+    }
+
+    /// Plant damage for a test: every draft in the library under `directory`
+    /// is not its state's, though that state stays and its release was never
+    /// imported here. Every scan and the deletion of an imported release seed
+    /// the draft, so no write leaves a state without one.
+    pub(crate) async fn plant_missing_drafts_for_test(directory: &std::path::Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_blocking::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "import_candidate_edit",
+                // Each draft row is renamed away from its state, since a
+                // delete would reach the track indexes' collation, which
+                // this connection lacks; the list's trigger that follows
+                // the row would run the list's functions.
+                "PRAGMA foreign_keys = OFF; \
+                 DROP TRIGGER IF EXISTS import_list_on_draft_changed; \
+                 UPDATE import_candidate_edit SET content_hash = 'planted-' || content_hash;",
             )
         })
         .await;

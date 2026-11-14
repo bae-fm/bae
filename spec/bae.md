@@ -716,10 +716,10 @@ taken, as it reads what to import or as it writes: it fails with the same
 words and writes nothing. The release imported
 first stands. Deleting the release deletes the
 record with it, and the folder is back in Found as a folder whose tags bae
-never read: an imported folder holds no draft (§3.7), so it holds its files'
-blank draft and its own cover, and its row shows its folder's name (a release
-read from several folders, the name it is listed as) until something is
-written to its draft. It is identified like any folder in Found, and Reset to
+never read: an imported folder holds no draft (§3.7), so the write that
+deletes the release stores the folder's blank draft and its own cover, and its
+row shows its folder's name (a release read from several folders, the name it
+is listed as) until something is written to its draft. It is identified like any folder in Found, and Reset to
 file metadata reads its tags again.
 
 The hash reads no bytes, so it tells files apart by name, size and time alone.
@@ -1742,10 +1742,10 @@ since no source said anything about it, and the draft keeps only the works its
 tracks still perform.
 
 Every draft records who wrote it: nobody yet, the folder's tags, an
-identification, or the person. A folder this device did not import that
-holds no stored draft, as one whose release was deleted does (§2.7), holds
-its files' blank draft, which nobody wrote, and the first write to its draft
-stores it whole, with the cover the folder came with. Every pane control is stored the moment it's
+identification, or the person. Every state of a folder this device did not
+import holds a draft row: the scan writes the blank draft, which nobody wrote,
+with the cover the folder came with, and the write that deletes this device's
+release of the folder (§2.7) writes it again. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half
 done and come back to it, even after a restart. Where the pane was, such as a
 half-typed search, is stored too. A folder this device imported holds no
@@ -6100,7 +6100,7 @@ reads it again once.
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a scan is reading the folder is never stored (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when no tag is read (its blank cover, written with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
@@ -6121,7 +6121,7 @@ Keyed by the candidate's content hash.
 | Table | Holds |
 |---|---|
 | `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). Each draft write also stores whether the draft is blank and whether it would import; the pane and the list read those stored values and judge nothing again. No row: a folder this device did not import holds its files' blank draft and the folder's own cover; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
+| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). Each draft write also stores whether the draft is blank and whether it would import; the pane and the list read those stored values and judge nothing again. Every state of a folder this device did not import holds a draft row: the scan writes the blank one, and the write that deletes this device's release of the folder writes it again, from the folder's stored audio units; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with its role, qualifiers and the name its catalog printed |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |

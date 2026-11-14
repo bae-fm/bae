@@ -22,7 +22,7 @@ use crate::tables::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
     PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
 };
-use crate::tables::release_groupings::{block_of, release_of_stored};
+use crate::tables::release_groupings::block_of;
 use crate::tables::source_releases::load_releases_records_on;
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
@@ -52,7 +52,7 @@ pub(super) fn materialise(
     let imported = ImportedReads::of(sql, &releases)?;
     let linked = LinkedReads::of(sql, keys, &releases)?;
     let mut scanned = scanned_items(sql, keys, &releases)?;
-    let mut covers = row_covers(sql, keys, &releases, &mut scanned)?;
+    let mut covers = row_covers(sql, keys, &releases)?;
     let mut releases = releases.into_iter().peekable();
     keys.iter()
         .enumerate()
@@ -194,9 +194,6 @@ struct ReleaseRows {
     /// Whether the candidate's state describes its current files, which is
     /// when its draft, link, lookup and cover are its own.
     current: bool,
-    /// Whether that state holds a draft row; one that holds none holds its
-    /// files' blank draft and the folder's own cover.
-    drafted: bool,
     imported: Option<ImportedRelease>,
     /// The version of the imported release's library cover, if it has one.
     library_cover: Option<String>,
@@ -212,15 +209,6 @@ struct ReleaseRows {
     metadata_provenance: Option<crate::MetadataProvenance>,
     release_link: Option<ReleaseLink>,
     cover: Option<CoverSelection>,
-}
-
-impl ReleaseRows {
-    /// Whether the row is a current candidate this device did not import
-    /// that holds no draft row, so it shows the folder's own cover its blank
-    /// draft comes with, read from its scan.
-    fn reads_blank_cover(&self) -> bool {
-        self.imported.is_none() && self.current && !self.drafted
-    }
 }
 
 /// The releases of the window `keys`, in its order.
@@ -254,8 +242,6 @@ fn release_rows(
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
                     p.group_folder AS group_folder, \
                     w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
-                    EXISTS (SELECT 1 FROM import_candidate_edit AS drafted \
-                            WHERE drafted.content_hash = s.content_hash) AS drafted, \
                     {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover} \
              FROM json_each(:keys) AS w \
              JOIN import_list_placement AS p \
@@ -312,7 +298,6 @@ fn release_rows(
                     None => None,
                 },
                 library_cover: row.get("library_cover")?,
-                drafted: row.get("drafted")?,
                 block: (row.get(21)?, row.get(22)?, row.get(23)?),
                 failure: match failed {
                     true => Some(failure_reason_from_row(row)?),
@@ -351,9 +336,8 @@ fn release_rows(
 }
 
 /// The scan items the window's rows read their files from, by key, read in
-/// one statement: a folder that failed validation shows what its scan read,
-/// and a current candidate holding no draft row shows its files' blank
-/// cover. Only such a row reads its scan's files.
+/// one statement: a folder that failed validation shows what its scan read.
+/// Only such a row reads its scan's files.
 fn scanned_items(
     sql: &SqlReadContext<'_>,
     keys: &[ItemKey],
@@ -361,9 +345,7 @@ fn scanned_items(
 ) -> Result<HashMap<CandidateKey, folder_scans::StoredScanItem>, DbError> {
     let wanted: Vec<(&std::path::Path, &CandidateKey)> = releases
         .iter()
-        .filter(|release| {
-            keys[release.position].item == Item::Invalid || release.reads_blank_cover()
-        })
+        .filter(|release| keys[release.position].item == Item::Invalid)
         .map(|release| (release.watched_folder_path.as_path(), &release.key))
         .collect();
     folder_scans::load_items_by_keys(sql, &wanted, folder_scans::RowSources::Any)
@@ -568,33 +550,19 @@ impl LinkedRows {
 }
 
 /// The cover each row of a candidate this device did not import draws, by
-/// the row's position in the window: its stored selection, or, for a state
-/// holding no draft row, the folder's own cover its blank draft comes with,
-/// read from its scan, which it takes out of `scanned`. The versions of the files the selections
-/// name are read together.
+/// the row's position in the window: its stored selection. The versions of
+/// the files the selections name are read together.
 fn row_covers(
     sql: &SqlReadContext<'_>,
     keys: &[ItemKey],
     releases: &[ReleaseRows],
-    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
 ) -> Result<HashMap<usize, crate::CoverImageSource>, DbError> {
     let mut selections: Vec<(&ReleaseRows, CoverSelection)> = Vec::new();
     for release in releases {
         if keys[release.position].item == Item::Invalid || release.imported.is_some() {
             continue;
         }
-        let selection = if release.reads_blank_cover() {
-            let unreadable = || {
-                DbError::unreadable(format!("the scan_candidate rows of listed {}", release.key), 0)
-            };
-            let stored = scanned.remove(&release.key).ok_or_else(unreadable)?;
-            let (candidate, _) =
-                release_of_stored(&release.watched_folder_path, stored)?.ok_or_else(unreadable)?;
-            candidate.blank_cover().as_ref().map(crate::cover_art::PreparedCover::selection)
-        } else {
-            release.cover.clone()
-        };
-        if let Some(selection) = selection {
+        if let Some(selection) = release.cover.clone() {
             selections.push((release, selection));
         }
     }

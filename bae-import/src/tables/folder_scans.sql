@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     -- 'grouping' for a release a grouping with no anchor builds from its
     -- members.
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
+    -- The relative path of the image the folder's cover rules pick when no
+    -- tag is read (`cover_art::folder_cover`), NULL when it holds none;
+    -- written with the files, which it is a fact of.
+    blank_cover_file               TEXT,
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     -- A release a grouping reads as one leaves the queue with its grouping.

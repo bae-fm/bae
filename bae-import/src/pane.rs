@@ -21,10 +21,11 @@ pub(crate) fn candidate_track_id(position: usize) -> String {
     format!("{CANDIDATE_TRACK_ID_PREFIX}-{position}")
 }
 
-/// The source-less editable draft created with a discovered candidate.
-/// Candidate files determine only which audio units exist, and their discs
-/// and numbers; their names and tags do not become metadata until a source is
-/// explicitly applied.
+/// The draft a test starts from: one blank track per audio unit of the
+/// folder, on the medium of its disc. The scan stores the same draft with the
+/// folder (`blank_draft_*` views); this builds it from files held in memory,
+/// and a test checks the two are one draft.
+#[cfg(test)]
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft {
     let layout = crate::audio_layout::folder_tracks(files);
     let numbering: Vec<_> = layout.iter().map(|track| (track.disc, Some(track.number))).collect();

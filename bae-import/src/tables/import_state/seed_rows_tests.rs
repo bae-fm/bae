@@ -92,3 +92,45 @@ async fn a_named_copy_read_as_other_files_names_the_copy_that_stays() {
     let state = tables.load_import_candidate_state(&content_hash).await.unwrap();
     assert_eq!(state.expect("the state stays with a copy").candidate_key, second_candidate.key());
 }
+
+/// A loose bonus track, a disc of two tracks carved by its sheet and a disc
+/// of three.
+fn bonus_and_two_discs(folder: &std::path::Path) {
+    use crate::mapping::tests::{cue_sheet_text, write_flac};
+    write_flac(&folder.join("a bonus.flac"));
+    write_flac(&folder.join("disc 1.flac"));
+    std::fs::write(folder.join("disc 1.cue"), cue_sheet_text("disc 1.flac", 2)).unwrap();
+    write_flac(&folder.join("disc 2.flac"));
+    std::fs::write(folder.join("disc 2.cue"), cue_sheet_text("disc 2.flac", 3)).unwrap();
+}
+
+/// The scan seeds a folder's draft from its stored audio units: one medium
+/// per disc the files state, loose audio (no disc) first, each track on its
+/// disc's medium and numbered as its unit is. The draft is the one the files
+/// make read in memory.
+#[tokio::test]
+async fn blank_draft_statement_puts_each_disc_on_its_own_medium_loose_audio_first() {
+    use crate::tables::folder_scans::tests::stored_folder;
+    let (db, _tmp, root) = watched_root().await;
+    let hash = stored_folder(&db, &root, "Album", bonus_and_two_discs).await;
+    let files = crate::mapping::tests::scan(&root.join("Album"));
+    let tables = crate::tables::ImportTables::new(db.clone());
+
+    let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(
+        stored
+            .draft
+            .tracks
+            .iter()
+            .map(|track| (track.place.medium.get(), track.place.number.get()))
+            .collect::<Vec<_>>(),
+        [(1, 1), (2, 2), (2, 3), (3, 4), (3, 5), (3, 6)]
+    );
+    assert_eq!(stored.draft.mediums.len(), 3);
+    assert_eq!(stored.draft, crate::pane::blank_candidate_draft(&files));
+    assert_eq!(
+        tables.load_blank_draft(&hash).await.unwrap(),
+        Some(crate::pane::blank_candidate_draft(&files))
+    );
+    assert_eq!((stored.draft_blank, stored.draft_valid), (true, false));
+}

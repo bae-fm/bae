@@ -49,7 +49,10 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let mut draft = candidate.blank_draft();
+        let mut draft =
+            self.services.tables.load_blank_draft(&content_hash).await?.ok_or_else(|| {
+                crate::tables::CandidateStateRefusal::NoState(content_hash.clone())
+            })?;
         crate::pane::keep_row_identities(&mut draft.tracks, &current.metadata.draft.tracks)?;
         let _commit = self
             .commit_lock_for_revision(
