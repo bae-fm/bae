@@ -134,12 +134,13 @@ extension ShotScene {
         _ id: String,
         width: CGFloat = 396,
         height: CGFloat,
+        inset: CGFloat = 8,
         images: ImageStore? = nil,
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
             let content = view()
-                .padding(8)
+                .padding(inset)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,

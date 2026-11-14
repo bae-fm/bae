@@ -211,7 +211,7 @@ extension ShotScene {
         move: BridgeMoveToThisDeviceStatus? = nil,
         height: CGFloat
     ) -> ShotScene {
-        component(id, width: 596, height: height) {
+        component(id, width: 596, height: height, inset: 0) {
             var bridge = PreviewData.storageBridgeRelease(
                 storageState: state,
                 storageActions: actions,
