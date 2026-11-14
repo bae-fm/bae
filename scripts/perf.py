@@ -166,6 +166,34 @@ SCENARIOS: tuple[Scenario, ...] = (
         "how often the import screen's live queries rerun during a scan",
     ),
     Scenario(
+        "screen-library",
+        test_command(
+            "bae-app", ("--test", "integration"),
+            ("test_screen_cost::library::", "test_screen_cost::detail::"),
+        ),
+        "the album grid, artists, composers, detail pages and search as plain queries, at S, M and L",
+    ),
+    Scenario(
+        "screen-storage",
+        test_command("bae-app", ("--test", "integration"), ("test_screen_cost::storage::",)),
+        "the Storage Manager's windows, totals, search, selection and inspector as plain queries",
+    ),
+    Scenario(
+        "screen-playback",
+        test_command("bae-app", ("--test", "integration"), ("test_screen_cost::playback::",)),
+        "now playing, the queue head and the upcoming window, plain and as they read today",
+    ),
+    Scenario(
+        "screen-people",
+        test_command("bae-app", ("--test", "integration"), ("test_screen_cost::playlists::",)),
+        "the playlists' listing and detail as plain queries",
+    ),
+    Scenario(
+        "screen-activity",
+        test_command("bae-app", ("--test", "integration"), ("test_screen_cost::transfers::",)),
+        "the transfer queues and the bytes waiting to upload as plain queries",
+    ),
+    Scenario(
         "library-create",
         test_command("bae-library", ("--test", "integration"), ("test_library_create_cost::",)),
         "creating a library",

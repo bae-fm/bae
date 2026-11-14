@@ -25,6 +25,19 @@ const OUTPUTS: u64 = 20;
 /// How many tracks Up Next holds.
 const UP_NEXT: u64 = 50;
 
+/// The sizes to measure: [`SIZES`], or the ones `SCREEN_SIZES` names, comma
+/// separated album counts (`SCREEN_SIZES=2000`).
+pub(super) fn sizes() -> Vec<u64> {
+    match std::env::var("SCREEN_SIZES") {
+        Ok(text) => text
+            .split(',')
+            .map(|n| n.parse().expect("SCREEN_SIZES lists album counts"))
+            .inspect(|n| assert!(SIZES.contains(n), "{n} is not a seed size"))
+            .collect(),
+        Err(_) => SIZES.to_vec(),
+    }
+}
+
 pub(super) const SEEDS: KeptSeeds = KeptSeeds {
     schema: bae_library::SCHEMA,
     version: SEED_VERSION,

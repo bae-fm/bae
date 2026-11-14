@@ -50,6 +50,163 @@ where
     report_time(metric, median(runs), bar_ms);
 }
 
+/// The median time of [`RUNS`] calls of `call`, a screen's read as it runs
+/// today (its public call), reported as `metric` against `bar_ms`.
+pub async fn call_cost<T, E, Fut>(metric: &str, bar_ms: f64, mut call: impl FnMut() -> Fut)
+where
+    Fut: Future<Output = Result<T, E>>,
+    E: std::fmt::Debug,
+{
+    let mut runs = Vec::with_capacity(RUNS);
+    for _ in 0..RUNS {
+        let started = Instant::now();
+        call().await.expect("the measured call");
+        runs.push(started.elapsed());
+    }
+    report_time(metric, median(runs), bar_ms);
+}
+
+/// The plain query `sql`, bound to `params`, read [`RUNS`] times and the
+/// median reported as `metric` against `bar_ms` (none for a number with no
+/// bar): the baseline a screen's read is judged against. Returns how many
+/// rows the query gives, so a scenario can check it read what it meant to.
+pub async fn plain_cost(
+    db: &Store,
+    metric: &str,
+    bar_ms: Option<f64>,
+    sql: &str,
+    params: Vec<rusqlite::types::Value>,
+) -> usize {
+    let sql = sql.to_string();
+    let first = Instant::now();
+    let rows = {
+        let sql = sql.clone();
+        let params = params.clone();
+        db.read(move |read| {
+            Ok(read.query(&sql, rusqlite::params_from_iter(params), |_| Ok(()))?.len())
+        })
+        .await
+        .expect("the plain query reads")
+    };
+    // A read over a second is repeated three times, not fifteen: its number
+    // is its order of magnitude.
+    let repeats = if first.elapsed() > Duration::from_secs(1) { 3 } else { RUNS };
+    let mut runs = Vec::with_capacity(repeats);
+    for _ in 0..repeats {
+        let (sql, params) = (sql.clone(), params.clone());
+        let started = Instant::now();
+        db.read(move |read| {
+            read.query(&sql, rusqlite::params_from_iter(params), |_| Ok(()))?;
+            Ok(())
+        })
+        .await
+        .expect("the plain query reads");
+        runs.push(started.elapsed());
+    }
+    match bar_ms {
+        Some(bar_ms) => report_time(metric, median(runs), bar_ms),
+        None => report_unbarred(metric, median(runs)),
+    }
+    rows
+}
+
+/// A list's plain query: its rows, the one key expression its order compares
+/// first and the unique expression that breaks ties, written over the
+/// domain's own tables.
+pub struct ListShape<'a> {
+    /// The metric every number of this list is named after.
+    pub metric: &'a str,
+    /// The columns a window reads.
+    pub select: &'a str,
+    /// `FROM ... WHERE ...`, always with a WHERE (`WHERE 1` for none), so a
+    /// cursor can be added with AND.
+    pub source: &'a str,
+    /// The order's first term, one expression.
+    pub key: &'a str,
+    /// The expression that makes the order total.
+    pub tie: &'a str,
+    pub descending: bool,
+}
+
+/// The size of a library seed by its name: S, M or L.
+pub fn size_name(albums: u64) -> &'static str {
+    match albums {
+        2_000 => "S",
+        20_000 => "M",
+        100_000 => "L",
+        _ => "?",
+    }
+}
+
+/// What a list's plain reads cost at one size, each against its bar: its
+/// count (50 ms), its window at the top, middle and end by jump (16 ms at M,
+/// 50 ms at L) and its window beside the middle row by cursor (8 ms at M,
+/// 16 ms at L). `size` is the seed's album count, which names the metrics
+/// `<metric>/<read>@S|M|L`; the bars are M's for S and M.
+pub async fn list_costs(db: &Store, size: u64, list: &ListShape<'_>) {
+    use crate::test_fixtures::window_cost::{offsets, LIMIT};
+    use rusqlite::types::Value;
+    let at = size_name(size);
+    let large = size >= 100_000;
+    let (jump_bar, cursor_bar) = if large { (50.0, 16.0) } else { (16.0, 8.0) };
+    let ListShape { metric, select, source, key, tie, descending } = list;
+    let (direction, beyond) = if *descending { (" DESC", "<") } else { ("", ">") };
+    let total = plain_cost(
+        db,
+        &format!("{metric}/count@{at}"),
+        Some(50.0),
+        &format!("SELECT COUNT(*) {source}"),
+        vec![],
+    )
+    .await;
+    assert_eq!(total, 1);
+    let count: i64 = {
+        let sql = format!("SELECT COUNT(*) {source}");
+        db.read(move |read| read.query_row(&sql, [], |row| row.get(0)).map_err(Into::into))
+            .await
+            .expect("the list's count")
+    };
+    assert!(count > 0, "{metric} has no rows at {at}");
+    let window = format!(
+        "SELECT {select} {source} ORDER BY {key}{direction}, {tie}{direction} LIMIT {LIMIT} OFFSET ?"
+    );
+    for (place, offset) in offsets(count as u64) {
+        let rows = plain_cost(
+            db,
+            &format!("{metric}/jump-{place}@{at}"),
+            Some(jump_bar),
+            &window,
+            vec![Value::Integer(offset as i64)],
+        )
+        .await;
+        assert!(rows > 0, "{metric} {place} window is empty at {at}");
+    }
+    let edge = format!(
+        "SELECT {key}, {tie} {source} ORDER BY {key}{direction}, {tie}{direction} LIMIT 1 OFFSET ?"
+    );
+    let middle = count / 2;
+    let (edge_key, edge_tie): (Value, Value) = db
+        .read(move |read| {
+            read.query_row(&edge, [middle], |row| Ok((row.get(0)?, row.get(1)?)))
+                .map_err(Into::into)
+        })
+        .await
+        .expect("the row at the middle");
+    let cursor = format!(
+        "SELECT {select} {source} AND ({key}, {tie}) {beyond} (?, ?) \
+         ORDER BY {key}{direction}, {tie}{direction} LIMIT {LIMIT}"
+    );
+    let rows = plain_cost(
+        db,
+        &format!("{metric}/cursor-middle@{at}"),
+        Some(cursor_bar),
+        &cursor,
+        vec![edge_key, edge_tie],
+    )
+    .await;
+    assert!(rows > 0, "{metric} cursor window is empty at {at}");
+}
+
 /// A live query whose request can be moved, and its next value awaited:
 /// coven's own, or the cancellable one the surfaces hold.
 pub trait Reconfigurable<Request, Projection> {
@@ -179,6 +336,30 @@ where
     for run in 0..RUNS as u64 {
         let started = Instant::now();
         write(run).await;
+        runs.push(started.elapsed());
+    }
+    report_unbarred(metric, median(runs));
+}
+
+/// [`write_cost`] where each write needs rows made first: `prepare(run)`
+/// makes them, untimed, and only `write` of what it returns is timed, over
+/// `count` runs.
+pub async fn prepared_write_cost<P, PFut, W, WFut, T>(
+    metric: &str,
+    count: usize,
+    mut prepare: P,
+    mut write: W,
+) where
+    P: FnMut(u64) -> PFut,
+    PFut: Future<Output = T>,
+    W: FnMut(T) -> WFut,
+    WFut: Future<Output = ()>,
+{
+    let mut runs = Vec::with_capacity(count);
+    for run in 0..count as u64 {
+        let prepared = prepare(run).await;
+        let started = Instant::now();
+        write(prepared).await;
         runs.push(started.elapsed());
     }
     report_unbarred(metric, median(runs));
