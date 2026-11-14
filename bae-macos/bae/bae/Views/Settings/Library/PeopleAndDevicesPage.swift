@@ -152,12 +152,10 @@ struct PeopleAndDevicesPage: View {
 
     init(
         onBack: @escaping () -> Void,
-        subpage: Subpage = .people,
-        renaming: Bool = false
+        subpage: Subpage = .people
     ) {
         self.onBack = onBack
         _subpage = State(initialValue: subpage)
-        _renaming = State(initialValue: renaming)
     }
 
     var body: some View {

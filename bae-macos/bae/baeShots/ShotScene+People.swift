@@ -30,268 +30,215 @@ extension ShotScene {
 }
 
 extension ShotScene {
-    /// People and devices: the first page for an admin and for a member, a
-    /// person's page, this person's devices, the sheet that renames this
-    /// person, the sheet that asks to approve a join request, the sheet that
-    /// adds a device, with its code and once a device has joined, the
-    /// invite form for each storage, and the invite's sheet sharing, offline
-    /// and showing its code.
+    /// People and devices over the Settings window, as the boards draw it:
+    /// the first page for an admin and for a member, an invite that is
+    /// listed, waiting, joining or refused, a person's page, this person's
+    /// devices, the sheet that asks to approve a join request, the sheet
+    /// that adds a device and the one that shows it added, the invite form
+    /// for each storage, and the invite's sheet sharing, waiting for the
+    /// code and showing its code.
     static let peopleScenes: [ShotScene] = [
-        people("people-and-devices-admin", asAdmin: true, invites: [invited]),
-        people(
-            "people-and-devices-invite-offline",
-            asAdmin: true,
-            invites: [granting],
-            offline: true
-        ),
-        people(
-            "people-and-devices-invite-joining",
-            asAdmin: true,
-            invites: [joining]
-        ),
-        people(
-            "people-and-devices-invite-failed",
-            asAdmin: true,
-            refusedInvites: [
+        ShotScene(
+            id: "mac.settings.people",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(invites: [invited])
+        },
+        ShotScene(
+            id: "mac.settings.people.invite-waiting",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(invites: [granting], shown: .fixtureOffline)
+        },
+        ShotScene(
+            id: "mac.settings.people.invite-failed",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(refusedInvites: [
                 BridgeRefusedInvite(
                     operation: 7,
                     address: "dan@example.com",
                     refusal: .invalidAddress,
                     reasonKey: "core.invite.refused.invalid_address"
                 )
-            ]
-        ),
-        people("people-and-devices-member", asAdmin: false),
-        people(
-            "people-and-devices-person",
-            asAdmin: true,
-            subpage: .person(memberId: otherMemberId)
-        ),
-        people("people-and-devices-yours", asAdmin: true, subpage: .devices),
-        people("people-and-devices-rename", asAdmin: true, renaming: true),
-        ShotScene(
-            id: "people-and-devices-request",
-            size: CGSize(width: 400, height: 190)
-        ) {
-            ShotStage(
-                JoinRequestSheet(
-                    name: "Dan",
-                    confirmation: "412 778",
-                    busy: false,
-                    error: nil,
-                    onApprove: {},
-                    onDecline: {},
-                    onClose: {}
-                )
-            )
+            ])
         },
         ShotScene(
-            id: "people-and-devices-add-device",
-            size: CGSize(width: 440, height: 360)
+            id: "mac.settings.people.member",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                AddDeviceSheetContent(
-                    result: .success(
-                        BridgeAddDevice(
-                            id: "6f1f0ab0-0000-4000-8000-000000000001",
-                            code:
-                                "CVP1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
-                            qrText: "CVP1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+            peopleStage(asAdmin: false)
+        },
+        ShotScene(
+            id: "mac.settings.invite.joining",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(invites: [joining])
+        },
+        ShotScene(
+            id: "mac.settings.person",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(subpage: .person(memberId: otherMemberId))
+        },
+        ShotScene(
+            id: "mac.settings.devices",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(subpage: .devices)
+        },
+        ShotScene(
+            id: "mac.settings.invite.request",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(
+                invites: [invitedDan],
+                sheet: {
+                    AnyView(
+                        JoinRequestSheet(
+                            name: "Dan",
+                            confirmation: "412 778",
+                            busy: false,
+                            error: nil,
+                            onApprove: {},
+                            onDecline: {},
+                            onClose: {}
                         )
-                    ),
-                    face: .code,
-                    busy: false,
-                    error: nil,
-                    onApprove: {},
-                    onDecline: {},
-                    onDismiss: {}
-                )
+                    )
+                }
             )
         },
         ShotScene(
-            id: "people-and-devices-add-device-added",
-            size: CGSize(width: 440, height: 130)
+            id: "mac.settings.add-device",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                AddDeviceSheetContent(
-                    result: nil,
-                    face: .added(name: "Tablet"),
-                    busy: false,
-                    error: nil,
-                    onApprove: {},
-                    onDecline: {},
-                    onDismiss: {}
-                )
+            peopleStage(
+                subpage: .devices,
+                sheet: {
+                    AnyView(
+                        AddDeviceSheetContent(
+                            result: .success(
+                                BridgeAddDevice(
+                                    id: "6f1f0ab0-0000-4000-8000-000000000001",
+                                    code:
+                                        "CVP1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567",
+                                    qrText:
+                                        "CVP1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+                                )
+                            ),
+                            face: .code,
+                            busy: false,
+                            error: nil,
+                            onApprove: {},
+                            onDecline: {},
+                            onDismiss: {}
+                        )
+                    )
+                }
             )
         },
         ShotScene(
-            id: "people-and-devices-invite-dropbox",
-            size: CGSize(width: 440, height: 300)
+            id: "mac.settings.add-device.added",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InvitePersonForm(
-                    storage: .dropbox,
-                    email: .constant(""),
-                    accessKeyId: .constant(""),
-                    secretAccessKey: .constant(""),
-                    usesOwnKey: .constant(false),
-                    role: .constant(.member),
-                    lifetime: .constant(.sevenDays),
-                    error: nil,
-                    canCreate: false,
-                    onCreate: {},
-                    onCancel: {}
-                )
+            peopleStage(
+                subpage: .devices,
+                sheet: {
+                    AnyView(
+                        AddDeviceSheetContent(
+                            result: nil,
+                            face: .added(name: "Tablet"),
+                            busy: false,
+                            error: nil,
+                            onApprove: {},
+                            onDecline: {},
+                            onDismiss: {}
+                        )
+                    )
+                }
             )
         },
         ShotScene(
-            id: "people-and-devices-invite-onedrive",
-            size: CGSize(width: 440, height: 300)
+            id: "mac.settings.invite.dropbox",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InvitePersonForm(
-                    storage: .oneDrive,
-                    email: .constant(""),
-                    accessKeyId: .constant(""),
-                    secretAccessKey: .constant(""),
-                    usesOwnKey: .constant(false),
-                    role: .constant(.member),
-                    lifetime: .constant(.sevenDays),
-                    error: nil,
-                    canCreate: false,
-                    onCreate: {},
-                    onCancel: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteForm(.dropbox)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-icloud",
-            size: CGSize(width: 440, height: 300)
+            id: "mac.settings.invite.onedrive",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InvitePersonForm(
-                    storage: .iCloud,
-                    email: .constant(""),
-                    accessKeyId: .constant(""),
-                    secretAccessKey: .constant(""),
-                    usesOwnKey: .constant(false),
-                    role: .constant(.member),
-                    lifetime: .constant(.sevenDays),
-                    error: nil,
-                    canCreate: false,
-                    onCreate: {},
-                    onCancel: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteForm(.oneDrive)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-s3",
-            size: CGSize(width: 440, height: 330)
+            id: "mac.settings.invite.icloud",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InvitePersonForm(
-                    storage: .s3,
-                    email: .constant(""),
-                    accessKeyId: .constant(""),
-                    secretAccessKey: .constant(""),
-                    usesOwnKey: .constant(false),
-                    role: .constant(.member),
-                    lifetime: .constant(.sevenDays),
-                    error: nil,
-                    canCreate: false,
-                    onCreate: {},
-                    onCancel: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteForm(.iCloud)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-s3-own-key",
-            size: CGSize(width: 440, height: 260)
+            id: "mac.settings.invite.s3",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InvitePersonForm(
-                    storage: .s3,
-                    email: .constant(""),
-                    accessKeyId: .constant(""),
-                    secretAccessKey: .constant(""),
-                    usesOwnKey: .constant(true),
-                    role: .constant(.member),
-                    lifetime: .constant(.sevenDays),
-                    error: nil,
-                    canCreate: false,
-                    onCreate: {},
-                    onCancel: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteForm(.s3)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-sharing",
-            size: CGSize(width: 440, height: 190)
+            id: "mac.settings.invite.s3-own-key",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InviteCodeSheetContent(
-                    invite: BridgeInvite(
-                        id: "11",
-                        member: "4a1f2c3d-0000-4000-8000-000000000009",
-                        label: "dan@example.com",
-                        access: .providerAccount(email: "dan@example.com"),
-                        shown: .granting,
-                        held: nil
-                    ),
-                    providerName: "Dropbox",
-                    offline: false,
-                    error: nil,
-                    busy: false,
-                    onCancelInvite: {},
-                    onDone: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteForm(.s3, usesOwnKey: true)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-offline",
-            size: CGSize(width: 440, height: 190)
+            id: "mac.settings.invite.sharing",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InviteCodeSheetContent(
-                    invite: BridgeInvite(
-                        id: "11",
-                        member: "4a1f2c3d-0000-4000-8000-000000000009",
-                        label: "dan@example.com",
-                        access: .providerAccount(email: "dan@example.com"),
-                        shown: .granting,
-                        held: nil
-                    ),
-                    providerName: "Dropbox",
-                    offline: true,
-                    error: nil,
-                    busy: false,
-                    onCancelInvite: {},
-                    onDone: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteCodeSheet(granting, offline: false)
+            })
         },
         ShotScene(
-            id: "people-and-devices-invite-code",
-            size: CGSize(width: 440, height: 400)
+            id: "mac.settings.invite.no-code-yet",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            ShotStage(
-                InviteCodeSheetContent(
-                    invite: BridgeInvite(
-                        id: "11",
-                        member: "4a1f2c3d-0000-4000-8000-000000000009",
-                        label: "dan@example.com",
-                        access: .providerAccount(email: "dan@example.com"),
-                        shown: .code(code: "invite-code", progress: .waiting),
-                        held: nil
-                    ),
-                    providerName: "Dropbox",
-                    offline: false,
-                    error: nil,
-                    busy: false,
-                    onCancelInvite: {},
-                    onDone: {}
-                )
-            )
+            peopleStage(sheet: {
+                inviteCodeSheet(granting, offline: true)
+            })
+        },
+        ShotScene(
+            id: "mac.settings.invite.code",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(sheet: {
+                inviteCodeSheet(invitedDan, offline: false)
+            })
         },
     ]
 
@@ -390,6 +337,17 @@ extension ShotScene {
         held: nil
     )
 
+    /// An invite sent to dan@example.com, which shows its code and hasn't
+    /// been answered.
+    private static let invitedDan = BridgeInvite(
+        id: "11",
+        member: "4a1f2c3d-0000-4000-8000-000000000009",
+        label: "dan@example.com",
+        access: .providerAccount(email: "dan@example.com"),
+        shown: .code(code: "invite-code", progress: .waiting),
+        held: nil
+    )
+
     /// An invite sent to dan@example.com whose access sync has not granted.
     private static let granting = BridgeInvite(
         id: "12",
@@ -413,31 +371,26 @@ extension ShotScene {
     /// The shot people's other person.
     private static let otherMemberId = "4a1f2c3d-0000-4000-8000-000000000002"
 
-    private static func people(
-        _ id: String,
-        asAdmin: Bool,
+    /// The Settings window on the Library pane, showing People and devices
+    /// `subpage` with `sheet`, when there is one, laid over it as the boards
+    /// draw it.
+    private static func peopleStage(
         subpage: PeopleAndDevicesPage.Subpage = .people,
-        renaming: Bool = false,
+        asAdmin: Bool = true,
         invites: [BridgeInvite] = [],
         refusedInvites: [BridgeRefusedInvite] = [],
-        offline: Bool = false
-    ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 500, height: 480)) {
-            let membership = MembershipStore.stub(
-                people: PreviewData.members(
-                    reaching: PreviewData.previewStorage
-                ),
-                selfIsAdmin: asAdmin,
-                invites: invites,
-                refusedInvites: refusedInvites
-            )
-            return ShotStage(
-                PeopleAndDevicesPage(
-                    onBack: {},
-                    subpage: subpage,
-                    renaming: renaming
-                )
-                .frame(width: 500, height: 480)
+        shown: BridgeSyncShown = .fixtureSynced,
+        sheet: (@MainActor () -> AnyView)? = nil
+    ) -> ShotStage {
+        let membership = MembershipStore.stub(
+            people: peopleWithBen(role: .member),
+            selfIsAdmin: asAdmin,
+            invites: invites,
+            refusedInvites: refusedInvites
+        )
+        let window = SettingsWindowShot(
+            shown: shown,
+            page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(
                     PreviewData.previewSync(storage: PreviewData.previewStorage)
                 )
@@ -447,22 +400,51 @@ extension ShotScene {
                     )
                 )
                 .environment(membership)
-                .environment(syncStatus(offline: offline))
-            ) {
-                membership.members != nil
-            }
+        )
+        let content =
+            sheet.map { AnyView(OverWindow.sheet($0(), over: window)) }
+            ?? AnyView(window)
+        return ShotStage(content) {
+            membership.members != nil
         }
     }
 
-    /// The sync state the page reads: offline, or not read at all.
-    private static func syncStatus(offline: Bool) -> SyncStatusStore {
-        guard offline else { return SyncStatusStore() }
-        return SyncStatusStore(
-            snapshot: BridgeSyncStatusSnapshot(
-                shown: .fixtureOffline,
-                pending: [],
-                setupRunning: false,
-                undoneSetup: nil
+    /// The invite form for `storage`.
+    private static func inviteForm(
+        _ storage: InviteStorage,
+        usesOwnKey: Bool = false
+    ) -> AnyView {
+        AnyView(
+            InvitePersonForm(
+                storage: storage,
+                email: .constant(""),
+                accessKeyId: .constant(""),
+                secretAccessKey: .constant(""),
+                usesOwnKey: .constant(usesOwnKey),
+                role: .constant(.member),
+                lifetime: .constant(.sevenDays),
+                error: nil,
+                canCreate: false,
+                onCreate: {},
+                onCancel: {}
+            )
+        )
+    }
+
+    /// The sheet of `invite`.
+    private static func inviteCodeSheet(
+        _ invite: BridgeInvite,
+        offline: Bool
+    ) -> AnyView {
+        AnyView(
+            InviteCodeSheetContent(
+                invite: invite,
+                providerName: "Dropbox",
+                offline: offline,
+                error: nil,
+                busy: false,
+                onCancelInvite: {},
+                onDone: {}
             )
         )
     }

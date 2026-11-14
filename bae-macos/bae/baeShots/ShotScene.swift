@@ -25,7 +25,7 @@ struct ShotScene {
         + storageSettingsScenes + alertScenes + importListScenes
         + importPaneScenes
         + adminChangeScenes + menuScenes + playlistScenes + castingScenes
-        + addDeviceScenes
+        + addDeviceScenes + peopleScenes
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows
