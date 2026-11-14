@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material Symbols Rounded "keep_off", weight 400, 24 dp: the design system's `unpin` glyph. The icon set has no KeepOff. -->
+<!-- Material Symbols Rounded "keep_off", weight 400, 24 dp (@material-symbols/svg-400 keep_off.svg): the design system's `unpin` glyph. The icon set has no KeepOff. The package draws in a box whose top is -960, so the group moves it down. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
-  <path
-      android:fillColor="#FF000000"
-      android:pathData="M560,200L400,200L400,287L290,177Q285,172 282.5,166Q280,160 280,154Q280,141 289,130.5Q298,120 313,120L640,120Q657,120 668.5,131.5Q680,143 680,160Q680,176 665.5,182.5Q651,189 640,200L640,200L640,440Q640,457 628.5,468.5Q617,480 600,480Q583,480 571.5,468.5Q560,457 560,440L560,200ZM440,880L440,640L296,640Q271,640 256,622.5Q241,605 241,583Q241,572 245.5,561Q250,550 260,540L320,480L320,434L84,196Q73,185 72.5,168.5Q72,152 84,140Q95,129 112,129Q129,129 140,140L819,819Q831,831 830.5,847.5Q830,864 818,876Q806,887 790,887.5Q774,888 762,876L526,640L520,640L520,880Q520,897 508.5,908.5Q497,920 480,920Q463,920 451.5,908.5Q440,897 440,880ZM354,560L446,560L402,516L400,514L354,560ZM480,367L480,367L480,367L480,367L480,367ZM402,516L402,516L402,516L402,516L402,516Z" />
+  <group android:translateY="960">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M574-780H380v140L218-802q-4-4-5-7t-1-8q0-8.79 5.5-15.9Q223-840 234-840h400q12.75 0 21.38 8.62Q664-822.75 664-810q0 12-10.87 16.87Q642.25-788.25 634-780v327q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37v-327ZM450-70v-241H271q-17.27 0-27.64-12Q233-335 233-348.88q0-6.94 2.84-13.87 2.84-6.94 9.16-13.25l75-72v-84L76-776q-9-9-9-21t9-21q9-9 21-9t21 9l707 708q9 9 9 21t-9 21.39Q816-59 804-59t-21-9L540-311h-30v241q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63Q450-57.25 450-70ZM321-371h159L380-471v45l-59 55Zm156-172Zm-97 72Z" />
+  </group>
 </vector>
