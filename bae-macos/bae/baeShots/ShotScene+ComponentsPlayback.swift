@@ -402,7 +402,6 @@ extension ShotScene {
                         duration: 295_000
                     )
                 ],
-                manualVersion: 0,
                 context: QueuePlaybackContext(
                     bridge: BridgePlaybackContext(
                         kind: .release,
@@ -415,9 +414,8 @@ extension ShotScene {
                     itemAt: {
                         upcoming.indices.contains($0) ? upcoming[$0] : nil
                     },
-                    holds: { id in upcoming.contains { $0.entryId == id } },
-                    version: 0,
-                    loadRange: { _, _ in },
+                    epoch: nil,
+                    holdRow: { _ in },
                     failure: nil,
                     onRetry: {}
                 ),
@@ -438,7 +436,7 @@ extension ShotScene {
                 onClearPlayingFrom: {},
                 onSkipTo: { _ in },
                 onRemove: { _ in },
-                onReorder: { _, _ in nil },
+                onReorder: { _, _ in true },
                 onReorderFailed: { _ in },
                 onInsertTracks: { _, _ in },
                 onSetShuffle: { _ in }
