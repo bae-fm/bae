@@ -51,11 +51,7 @@ fn a_failure_its_cell_shows_has_no_line_of_its_own() {
         ledger: Some(ledger),
     };
     let IdentifyStateView::Failed { failure_lines, .. } =
-        IdentifyStateView::from(verdict.resume_state(
-            None,
-            &crate::LookupChoices::default(),
-            crate::signals::AudioFacts::default(),
-        ))
+        crate::view::reference_resume(verdict, None, &crate::LookupChoices::default())
     else {
         panic!("a failed run");
     };
@@ -76,11 +72,7 @@ fn every_failure_of_a_run_with_no_ledger_has_a_line() {
         ledger: None,
     };
     let IdentifyStateView::Failed { failure_lines, .. } =
-        IdentifyStateView::from(verdict.resume_state(
-            None,
-            &crate::LookupChoices::default(),
-            crate::signals::AudioFacts::default(),
-        ))
+        crate::view::reference_resume(verdict, None, &crate::LookupChoices::default())
     else {
         panic!("a failed run");
     };

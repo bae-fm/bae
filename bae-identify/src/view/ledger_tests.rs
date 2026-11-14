@@ -2,9 +2,7 @@
 //! which are only offered, and what striking one out does to the ranking.
 
 use super::*;
-use crate::signals::{
-    AudioFacts, BarcodeSignal, DiscIdSignal, Signals, TextLine, TextOrigin, TextSignal,
-};
+use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextLine, TextOrigin, TextSignal};
 use crate::view::tests::*;
 use crate::{Findings, LookupChoices, NarrowedOut, TerminalVerdict};
 use bae_catalogs::search::MetadataResult;
@@ -77,7 +75,7 @@ fn resumed(
         track_count: 9,
         ledger,
     };
-    IdentifyStateView::from(verdict.resume_state(Some(&signals), &choices, AudioFacts::default()))
+    crate::view::reference_resume(verdict, Some(&signals), &choices)
 }
 
 fn card_ids(view: &IdentifyStateView) -> Vec<&str> {

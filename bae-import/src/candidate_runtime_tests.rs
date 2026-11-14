@@ -127,6 +127,7 @@ pub(crate) fn published(state: bae_identify::IdentifyState) -> bae_identify::Pub
     bae_identify::PublishedRun {
         outcome: bae_identify::RunOutcome::of(&state).expect("a test publishes a run's state"),
         signals: None,
+        cards: Default::default(),
     }
 }
 

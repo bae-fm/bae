@@ -426,6 +426,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
                             },
                         ),
                         signals,
+                        cards: Default::default(),
                     },
                 )),
                 import: None,

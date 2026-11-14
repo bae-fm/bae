@@ -603,12 +603,13 @@ impl crate::types::BridgeImportCandidateDetail {
             signals,
             stage,
         } = detail;
-        let rate = resumed_identify_state.rate_ruling_out_cd();
+        let rate = signals.as_ref().and_then(|signals| signals.origin.not_cd_rate);
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             actionable,
-            resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
+            resumed_identify_state: crate::types::BridgeIdentifyState::from_view(
                 resumed_identify_state,
+                rate,
             ),
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),

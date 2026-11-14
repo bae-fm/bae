@@ -1,8 +1,8 @@
-//! The identify state as every surface renders it: [`IdentifyState`]'s
-//! [`Findings`] folded into ranked album cards with their badges and library
-//! statuses, and the run laid out as a ledger, [`IdentifyRunView`], one row
-//! per value and one cell per provider. The bridge and automation copy it
-//! field by field.
+//! The identify state as every surface renders it: a run's or a verdict's
+//! album cards with their badges, as its rows stored them ([`VerdictCards`]),
+//! and the run laid out as a ledger, [`IdentifyRunView`], one row per value
+//! and one cell per provider. The bridge and automation copy it field by
+//! field.
 //!
 //! The ledger is recorded once as a run ends, each release in its cells as
 //! the run last read it, and stored with its verdict.
@@ -11,15 +11,12 @@ use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::{Findings, LookupAnswers};
 use super::row_facts::FolderFacts;
 use super::state::{
-    BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress,
-    LookupResults, LookupState, SearchProgress, SignalsContext, ValueLookup,
+    BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress, IsrcProgress, LookupResults,
+    LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
-use crate::release_group::{
-    group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup, Statement,
-};
+use crate::release_group::{group_formed_rows, group_results, ReleaseGroup, Statement};
 use crate::signals::{ArtworkScan, DiscIdSignal};
-use crate::SharedAlbum;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::LookupFailure;
@@ -294,16 +291,6 @@ pub enum IdentifyStateView {
     },
 }
 
-impl From<IdentifyState> for IdentifyStateView {
-    fn from(state: IdentifyState) -> Self {
-        let text = state.candidate_text();
-        match RunOutcome::of(&state) {
-            Some(outcome) => IdentifyStateView::of_outcome(outcome, &text),
-            None => IdentifyStateView::Idle,
-        }
-    }
-}
-
 /// What the folder's text agrees with about one row: its badges.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RowAgreements {
@@ -315,50 +302,21 @@ pub struct RowAgreements {
     pub notes: Vec<Statement<String>>,
 }
 
-/// A state's answers as cards, with every row's badges.
-struct Folded {
-    groups: Vec<ReleaseGroup>,
-    agreements: Vec<(String, RowAgreements)>,
-    narrowed_out_count: u32,
+/// The album cards of a verdict or a run in flight, and what a surface shows
+/// beside them, as the verdict's rows stored them: the rows agreement set
+/// aside on their album's card beside the offered ones, each row's badges
+/// keyed by every release id in the row, and the counts the "more" disclosure
+/// and the album link read.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct VerdictCards {
+    /// The cards that offer a row first, then the cards whose rows were all
+    /// set aside.
+    pub groups: Vec<ReleaseGroup>,
+    pub agreements: Vec<(String, RowAgreements)>,
+    /// How many rows were set aside across every card.
+    pub narrowed_out_count: u32,
     /// Whether the offered rows are several pressings of one album.
-    offers_shared_album: bool,
-}
-
-/// A state's answers as cards, and what the cards' badges are read from.
-struct Cards {
-    groups: Vec<ReleaseGroup>,
-    judgements: Judgements,
-    named_notes: Vec<super::combine::NamedNote>,
-}
-
-/// Judge the offered and set-aside releases against the candidate's text and
-/// fold both into album cards as one grouping, so an album is one card either
-/// way. `ledger` is the run's, whose disc-ID lookups say which releases agree
-/// on a disc ID; none for a run that laid none out.
-fn cards(
-    findings: Findings,
-    ledger: Option<&IdentifyRunView>,
-    text: &CandidateText,
-    track_count: u32,
-) -> Cards {
-    let facts = FolderFacts::of(text, findings.releases());
-    let by_disc_id = ledger.map(IdentifyRunView::disc_id_releases).unwrap_or_default();
-    // The medium conflict is stated by the folder check, not here.
-    let Findings { matches, pressings, narrowed_out, medium_conflict: _, named_notes } = findings;
-    let offered = judged_results(matches, &by_disc_id, text, &facts);
-    let set_aside = judged_results(narrowed_out.matches, &by_disc_id, text, &facts);
-    let judgements = Judgements::of(
-        &offered.iter().chain(&set_aside).cloned().collect::<Vec<_>>(),
-        Some(track_count),
-    );
-    let groups = group_formed_rows(
-        offered,
-        &pressings,
-        set_aside,
-        &narrowed_out.pressings,
-        Some(track_count),
-    );
-    Cards { groups, judgements, named_notes }
+    pub offers_shared_album: bool,
 }
 
 /// A verdict's releases judged against the folder's text, and the album
@@ -400,72 +358,16 @@ impl JudgedFindings {
     }
 }
 
-/// The album a stored verdict's offered rows are several pressings of, as
-/// the candidate's text ranks and cards them: what the pane offers to link
-/// the folder to, its pressing unknown. `None` for a verdict that offers no
-/// rows.
-pub fn shared_album_of(
-    verdict: super::TerminalVerdict,
-    text: &CandidateText,
-) -> Option<SharedAlbum> {
-    match verdict {
-        super::TerminalVerdict::Found { findings, track_count, ledger }
-        | super::TerminalVerdict::Failed { findings, track_count, ledger, .. } => {
-            SharedAlbum::of(&cards(findings, ledger.as_ref(), text, track_count).groups)
-        }
-        super::TerminalVerdict::NotFoundAnywhere { .. }
-        | super::TerminalVerdict::ManualOnly { .. }
-        | super::TerminalVerdict::Error { .. } => None,
-    }
-}
-
-/// A state's answers as cards, with every row's badges. Badges belong to a row, so every release id in a row answers with the
-/// row's badges.
-fn fold(
-    findings: Findings,
-    ledger: Option<&IdentifyRunView>,
-    text: &CandidateText,
-    track_count: u32,
-) -> Folded {
-    let Cards { groups: cards, judgements, named_notes } =
-        cards(findings, ledger, text, track_count);
-    let named_notes = |pressing: &Pressing| {
-        pressing.noted(|release| {
-            named_notes
-                .iter()
-                .find(|named| named.release == release.release())
-                .map(|named| named.note.clone())
-        })
-    };
-    let agreements = cards
-        .iter()
-        .flat_map(|group| group.pressings().chain(group.narrowed_out()))
-        .flat_map(|pressing| {
-            let agreements = RowAgreements {
-                fields: pressing.agreements(&judgements),
-                notes: named_notes(pressing),
-            };
-            pressing
-                .releases
-                .iter()
-                .map(move |release| (release.release_id.clone(), agreements.clone()))
-        })
-        .collect();
-    let narrowed_out_count = cards.iter().map(|group| group.narrowed_out().count() as u32).sum();
-    Folded {
-        offers_shared_album: SharedAlbum::of(&cards).is_some(),
-        groups: cards,
-        agreements,
-        narrowed_out_count,
-    }
-}
-
 mod ledger;
 mod outcome;
+#[cfg(any(test, feature = "test-utils"))]
+mod reference;
 use ledger::{
     barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
 };
 pub use outcome::{PublishedRun, RunOutcome};
+#[cfg(any(test, feature = "test-utils"))]
+pub use reference::{reference_cards, reference_cards_of, reference_resume};
 
 /// The run as it stands, laid out as its ledger.
 pub(super) fn run_view(

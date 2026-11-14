@@ -16,6 +16,7 @@ use bae_identify::release_group::{
     AlbumHeading, Pressing, PressingSection, ReleaseGroup, ReleaseGroupSource, StatedLabelLine,
     Statement, Statements,
 };
+use bae_identify::{Agreements, RowAgreements, VerdictCards};
 use bae_types::pressing::{MediaCount, ReleaseArea};
 use std::str::FromStr;
 
@@ -25,8 +26,11 @@ use std::str::FromStr;
 /// first, in the order the list's loader returns them), `position` (the
 /// release's match row), `card`, `pressing`, `record_order`, `kind` (the
 /// listing the row is of), `source`, `release_id`, `title`, `year`,
-/// `source_group_id`, `album_links`, `cover_url`, `cover_standing` and
-/// `links` (a JSON list of the albums its statements name). `text_owner` is
+/// `source_group_id`, `album_links`, `cover_url`, `cover_standing`, `links` (a
+/// JSON list of the albums its statements name), `named_note`, and the eight
+/// flags `a_disc_id`, `a_barcode`, `a_catalog`, `a_label`, `a_year`,
+/// `a_country`, `a_title` and `a_artist` the folder's text agrees with it by
+/// (all 0 for a list nothing judges). `text_owner` is
 /// a condition over `t` selecting the list's rows of the card text and row
 /// statement tables.
 pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
@@ -49,12 +53,39 @@ pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
               SELECT card, pressing, kind, MIN(bidx) AS album, \
                      MIN(bidx * 4294967296 + ord) AS place, \
                      MAX(year) FILTER (WHERE record_order = 0) AS lead_year, \
-                     json_group_array(ord ORDER BY record_order) AS records \
+                     json_group_array(ord ORDER BY record_order) AS records, \
+                     MAX(a_disc_id) + MAX(a_barcode) + MAX(a_catalog) + MAX(a_label) \
+                         + MAX(a_year) + MAX(a_country) AS agreements, \
+                     json_object('disc_id', MAX(a_disc_id), 'barcode', MAX(a_barcode), \
+                                 'catalog', MAX(a_catalog), 'label', MAX(a_label), \
+                                 'year', MAX(a_year), 'country', MAX(a_country), \
+                                 'title', MAX(a_title), 'artist', MAX(a_artist)) AS agreed \
               FROM recs GROUP BY card, pressing, kind), \
           rowj AS ( \
               SELECT p.*, s.splits, \
                      json_object( \
                          'records', json(p.records), \
+                         'agreed', json(p.agreed), \
+                         'notes', json((SELECT json_group_array(json_object( \
+                                 'note', n.note, 'catalogs', json(n.catalogs)) ORDER BY n.first) \
+                             FROM (SELECT r.named_note AS note, MIN(r.record_order) AS first, \
+                                          CASE WHEN (SELECT COUNT(DISTINCT x.named_note) \
+                                                     FROM recs AS x \
+                                                     WHERE x.card = p.card AND x.pressing = p.pressing \
+                                                       AND x.kind = p.kind) > 1 \
+                                               THEN (SELECT json_group_array(c.source \
+                                                         ORDER BY bae_catalog_rank(c.source)) \
+                                                     FROM (SELECT DISTINCT y.source AS source \
+                                                           FROM recs AS y \
+                                                           WHERE y.card = p.card \
+                                                             AND y.pressing = p.pressing \
+                                                             AND y.kind = p.kind \
+                                                             AND y.named_note = r.named_note) AS c) \
+                                               ELSE '[]' END AS catalogs \
+                                   FROM recs AS r \
+                                   WHERE r.card = p.card AND r.pressing = p.pressing \
+                                     AND r.kind = p.kind AND r.named_note IS NOT NULL \
+                                   GROUP BY r.named_note) AS n)), \
                          'statements', json((SELECT json_group_array(json_object( \
                                  'fact', t.fact, 'line', t.line, 'ordinal', t.ordinal, \
                                  'value', t.value, 'catalogs', json(t.catalogs)) \
@@ -88,7 +119,8 @@ pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
               FROM recs, json_each(recs.links) AS link), \
           ranked AS ( \
               SELECT card, MAX(kind <> 'narrowed_out') AS offers, \
-                     0 AS best \
+                     COALESCE(MAX(agreements) FILTER (WHERE kind <> 'narrowed_out'), \
+                              MAX(agreements)) AS best \
               FROM pressings GROUP BY card), \
           cards AS (SELECT DISTINCT card FROM bk) \
           SELECT json_group_array(json_object( \
@@ -142,7 +174,8 @@ pub(super) fn search_cards_sql(search_run: &str) -> String {
                     found.position, found.card, found.pressing, found.record_order, \
                     'returned' AS kind, found.source, found.release_id, found.title, \
                     found.year, found.source_group_id, found.album_links, found.cover_url, \
-                    found.cover_standing, \
+                    found.cover_standing, 0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
+                    0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, 'key', link.key) \
                                              ORDER BY link.ordinal) \
                      FROM import_candidate_match_album_link AS link \
@@ -172,6 +205,8 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
                     found.pressing, found.record_order, 'answered' AS kind, matched.source, \
                     matched.release_id, matched.title, matched.year, matched.source_group_id, \
                     matched.album_links, matched.cover_url, matched.cover_standing, \
+                    0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
+                    0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, \
                                                          'key', link.key) \
                                              ORDER BY link.ordinal) \
@@ -189,6 +224,142 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
         ),
         &owner.replace("{table}", "t"),
     )
+}
+
+/// The SQL of a scalar subquery reading the cards of the verdict-shaped row
+/// joined as `verdict` (a candidate's verdict, or a run's): the cards of its
+/// offered and set-aside releases with what the folder's text agrees with
+/// about each row, how many rows were set aside, and whether the offered rows
+/// are several pressings of one album. A JSON object read by
+/// [`verdict_cards_of`].
+pub(super) fn verdict_cards_sql(verdict: &str) -> String {
+    let owner = format!(
+        "{{table}}.content_hash IS {verdict}.content_hash \
+         AND {{table}}.identify_run IS {verdict}.identify_run"
+    );
+    let found = owner.replace("{table}", "found");
+    let listed = format!("{found} AND found.listing IN ('offered', 'narrowed_out')");
+    let cards = cards_sql(
+        &format!(
+            "SELECT found.position AS ord, found.position, found.card, found.pressing, \
+                    found.record_order, found.listing AS kind, found.source, found.release_id, \
+                    found.title, found.year, found.source_group_id, found.album_links, \
+                    found.cover_url, found.cover_standing, \
+                    found.agrees_disc_id AS a_disc_id, found.agrees_barcode AS a_barcode, \
+                    found.agrees_catalog AS a_catalog, found.agrees_label AS a_label, \
+                    found.agrees_year AS a_year, found.agrees_country AS a_country, \
+                    found.agrees_title AS a_title, found.agrees_artist AS a_artist, \
+                    found.named_note, \
+                    (SELECT json_group_array(json_object('catalog', link.catalog, 'key', link.key) \
+                                             ORDER BY link.ordinal) \
+                     FROM import_candidate_match_album_link AS link \
+                     WHERE link.content_hash IS found.content_hash \
+                       AND link.identify_run IS found.identify_run \
+                       AND link.position = found.position) AS links \
+             FROM import_candidate_match AS found WHERE {listed}"
+        ),
+        &format!("{} AND t.step = ''", owner.replace("{table}", "t")),
+    );
+    format!(
+        "json_object('cards', json({cards}), \
+            'narrowed_out_count', (SELECT COUNT(DISTINCT found.pressing) \
+                                   FROM import_candidate_match AS found \
+                                   WHERE {found} AND found.listing = 'narrowed_out'), \
+            'offers_shared_album', \
+                (WITH offered AS (SELECT found.card, found.pressing, found.source, \
+                                         found.source_group_id \
+                                  FROM import_candidate_match AS found \
+                                  WHERE {found} AND found.listing = 'offered') \
+                 SELECT (SELECT COUNT(DISTINCT card) FROM offered) = 1 \
+                    AND (SELECT COUNT(DISTINCT pressing) FROM offered) >= 2 \
+                    AND NOT EXISTS (SELECT 1 FROM offered WHERE source_group_id IS NOT NULL \
+                                    GROUP BY source HAVING COUNT(DISTINCT source_group_id) > 1) \
+                    AND EXISTS (SELECT 1 FROM offered WHERE source_group_id IS NOT NULL)))"
+    )
+}
+
+/// The cards of the verdict stored under `content_hash`, which holds
+/// `verdict`: what its rows stored, selected in one statement.
+pub(crate) fn load_verdict_cards_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+    verdict: &bae_identify::TerminalVerdict,
+) -> Result<VerdictCards, DbError> {
+    let Some(findings) = verdict.findings() else {
+        return Ok(VerdictCards::default());
+    };
+    let json: String = sql.query_row(
+        &format!(
+            "SELECT {cards} FROM import_candidate_verdict AS verdict \
+             WHERE verdict.content_hash = ?",
+            cards = verdict_cards_sql("verdict")
+        ),
+        [content_hash],
+        |row| row.get(0),
+    )?;
+    verdict_cards_of(&json, &findings.releases().collect::<Vec<_>>())
+}
+
+/// What [`verdict_cards_sql`] answers.
+#[derive(serde::Deserialize)]
+pub(super) struct StoredVerdictCards {
+    cards: Vec<StoredCard>,
+    narrowed_out_count: u32,
+    offers_shared_album: i64,
+}
+
+/// The cards of a verdict that [`verdict_cards_sql`] answered, over its
+/// releases in position order, with each row's agreements and notes.
+pub(super) fn verdict_cards_of(
+    json: &str,
+    list: &[&MetadataResult],
+) -> Result<VerdictCards, DbError> {
+    let StoredVerdictCards { cards, narrowed_out_count, offers_shared_album } =
+        serde_json::from_str(json)
+            .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
+    let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
+    for card in &cards {
+        let rows = card
+            .sections
+            .iter()
+            .flat_map(|section| &section.pressings)
+            .chain(card.sections.iter().flat_map(|section| &section.narrowed_out));
+        for row in rows {
+            let stated = RowAgreements {
+                fields: row.agreed.agreements(),
+                notes: row
+                    .notes
+                    .iter()
+                    .map(|note| {
+                        Ok(Statement {
+                            value: note.note.clone(),
+                            catalogs: note
+                                .catalogs
+                                .iter()
+                                .map(|catalog| {
+                                    LookupCatalog::from_str(catalog).map_err(|_unknown| {
+                                        DbError::unreadable("a note's catalog", catalog)
+                                    })
+                                })
+                                .collect::<Result<_, DbError>>()?,
+                        })
+                    })
+                    .collect::<Result<_, DbError>>()?,
+            };
+            for &place in &row.records {
+                let release = list.get(place).ok_or_else(|| {
+                    DbError::unreadable("a card's release, which the list does not hold", place)
+                })?;
+                agreements.push((release.release_id.clone(), stated.clone()));
+            }
+        }
+    }
+    Ok(VerdictCards {
+        groups: groups_from(cards, list)?,
+        agreements,
+        narrowed_out_count,
+        offers_shared_album: offers_shared_album != 0,
+    })
 }
 
 /// One card as [`cards_sql`] answers it.
@@ -231,6 +402,42 @@ struct StoredSection {
 struct StoredRow {
     records: Vec<usize>,
     statements: Vec<StoredStatement>,
+    agreed: StoredAgreed,
+    notes: Vec<StoredNote>,
+}
+
+/// Which of its fields the folder's text agrees with about a row.
+#[derive(serde::Deserialize)]
+struct StoredAgreed {
+    disc_id: i64,
+    barcode: i64,
+    catalog: i64,
+    label: i64,
+    year: i64,
+    country: i64,
+    title: i64,
+    artist: i64,
+}
+
+impl StoredAgreed {
+    fn agreements(&self) -> Agreements {
+        Agreements {
+            disc_id: self.disc_id != 0,
+            barcode: self.barcode != 0,
+            catalog: self.catalog != 0,
+            label: self.label != 0,
+            year: self.year != 0,
+            country: self.country != 0,
+            title: self.title != 0,
+            artist: self.artist != 0,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct StoredNote {
+    note: String,
+    catalogs: Vec<String>,
 }
 
 #[derive(serde::Deserialize)]

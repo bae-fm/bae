@@ -126,11 +126,11 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     // The Disc ID agreement is read from the stored ledger: the releases a
     // disc ID's lookup found agree on it, and no other.
     let bae_identify::IdentifyStateView::Failed { agreements, .. } =
-        bae_identify::IdentifyStateView::from(read.clone().resume_state(
+        bae_identify::view::reference_resume(
+            read.clone(),
             None,
             &bae_identify::LookupChoices::default(),
-            bae_identify::signals::AudioFacts::default(),
-        ))
+        )
     else {
         panic!("a failed verdict resumes as Failed");
     };

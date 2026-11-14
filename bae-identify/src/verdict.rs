@@ -34,12 +34,9 @@
 //! findings the queue never imports unattended. Only `Idle` and
 //! `Triangulating` have no terminal verdict.
 
-use super::agreements::CandidateText;
 use super::combine::{Findings, NarrowedOut};
-use super::state::{IdentifyState, SignalsContext};
+use super::state::IdentifyState;
 use super::view::IdentifyRunView;
-use crate::signals::{AudioFacts, Signals};
-use crate::LookupChoices;
 use bae_catalogs::search::{MetadataResult, SourceFailure};
 use bae_catalogs::{InternalFailure, LookupFailure};
 
@@ -222,46 +219,14 @@ impl TerminalVerdict {
             Self::Error { .. } => None,
         }
     }
+}
 
-    /// The identify state this stored verdict stands back up as — what opening
-    /// an answered candidate shows without running anything.
-    ///
-    /// Nothing here is re-derived: the matches are the ones the run settled
-    /// on, and the ledger beside them is the one the run recorded, so the pane
-    /// after the save draws what it drew on the last live frame — every
-    /// provider that was asked, every code it was asked about, and what each of them
-    /// found, including results the agreement then narrowed out.
-    ///
-    /// The state carries no run context, because there is no run: this one
-    /// ended, and a toggle or a re-run starts another from the candidate's own
-    /// signals and choices, which are stored and read on their own.
-    ///
-    /// A failed run stands back up with what its answering lookups found,
-    /// beside the lookups that failed — the pane it showed as it ended.
-    ///
-    /// The candidate's own text, which is what the rows are judged and
-    /// ordered against, and the origin its audio came from both come from its
-    /// stored `signals` and `choices`, so no caller can pass one without the
-    /// other. `audio` is its audio read off its files. All of them belong to
-    /// the candidate rather than to the run, so they stand back up beside the
-    /// matches.
-    pub fn resume_state(
-        self,
-        signals: Option<&Signals>,
-        choices: &LookupChoices,
-        audio: AudioFacts,
-    ) -> IdentifyState {
-        let text = CandidateText::of_stored(signals, choices);
-        // A candidate with no stored signals has no known origin: this is the
-        // one place that default lives.
-        let origin = signals.map(|signals| signals.origin.clone()).unwrap_or_default();
-        let context = || SignalsContext {
-            text: text.clone(),
-            text_settled: true,
-            audio: audio.clone(),
-            origin: origin.clone(),
-            ..SignalsContext::default()
-        };
+#[cfg(any(test, feature = "test-utils"))]
+impl TerminalVerdict {
+    /// The identify state this verdict stands as in a test of what consumes a
+    /// run's final state, with no signals' context behind it.
+    pub fn standing_for_tests(self) -> IdentifyState {
+        let context = super::state::SignalsContext::default;
         match self {
             Self::Found { findings, track_count, ledger } => {
                 IdentifyState::Found { findings, track_count, ledger, context: context() }

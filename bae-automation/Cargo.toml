@@ -50,6 +50,8 @@ bae-app = { workspace = true, features = ["test-utils"] }
 bae-library = { workspace = true, features = ["test-utils"] }
 # The import runs the import tests land releases with.
 bae-import = { workspace = true, features = ["test-utils"] }
+# The tests read the cards the identify rules fold in memory.
+bae-identify = { workspace = true, features = ["test-utils"] }
 # The catalog fakes and releases the import tests seed.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }

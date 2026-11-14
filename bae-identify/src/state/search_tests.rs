@@ -160,10 +160,8 @@ fn a_failed_search_stores_what_the_other_provider_found() {
 
     let verdict = crate::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
     assert_eq!(verdict.findings(), Some(findings), "the stored failure keeps what Discogs found");
-    let resumed =
-        verdict.resume_state(Some(&stored), &crate::LookupChoices::default(), Default::default());
     assert_eq!(
-        crate::IdentifyStateView::from(resumed),
+        crate::view::reference_resume(verdict, Some(&stored), &crate::LookupChoices::default()),
         crate::IdentifyStateView::from(live),
         "the candidate opened later shows what the run showed"
     );

@@ -180,3 +180,91 @@ async fn two_records_of_one_pressing_lay_out_as_one_row() {
 
     assert_eq!(places(&db, &hash).await, vec!["a 0 0", "d 0 1"]);
 }
+
+/// The cards the stored rows answer, as the pane reads them.
+async fn stored_cards(
+    db: &Store,
+    hash: &str,
+    verdict: &TerminalVerdict,
+) -> bae_identify::VerdictCards {
+    crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash, verdict).await.unwrap()
+}
+
+/// The statement answers the cards the rules fold, with each row's badges
+/// and counts.
+#[tokio::test]
+async fn verdict_cards_statement_matches_the_rules() {
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![release("b", "CAT-B"), release("a", "CAT-A")],
+            pressings: vec![0, 1],
+            named_notes: Vec::new(),
+            narrowed_out: bae_identify::NarrowedOut {
+                matches: vec![release("c", "CAT-C")],
+                pressings: vec![0],
+            },
+            ..sample_findings()
+        },
+        track_count: 11,
+        ledger: None,
+    };
+    let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
+
+    let read = stored_cards(&db, &hash, &verdict).await;
+
+    let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
+    let expected =
+        bae_identify::view::reference_cards_of(&bae_identify::RunOutcome::Answered(verdict), &text);
+    assert_eq!(read, expected);
+}
+
+/// A card that offers a row with more agreements comes before one that
+/// offers fewer, whichever the run listed first.
+#[tokio::test]
+async fn verdict_cards_statement_ranks_cards_by_their_best_offered_row() {
+    let verdict = two_rows_listing_the_unagreed_first();
+    let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
+
+    let cards = stored_cards(&db, &hash, &verdict).await;
+
+    let ids: Vec<&str> = cards.groups.iter().map(|group| group.id.as_str()).collect();
+    assert_eq!(ids, vec!["group-a", "group-b"]);
+}
+
+fn two_rows_listing_the_unagreed_first() -> TerminalVerdict {
+    TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![release("b", "CAT-B"), release("a", "CAT-A")],
+            pressings: vec![0, 1],
+            named_notes: Vec::new(),
+            ..sample_findings()
+        },
+        track_count: 11,
+        ledger: None,
+    }
+}
+
+/// The rows agreement set aside are counted across every card.
+#[tokio::test]
+async fn verdict_cards_statement_counts_rows_set_aside() {
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![release("a", "CAT-A")],
+            pressings: vec![0],
+            named_notes: Vec::new(),
+            narrowed_out: bae_identify::NarrowedOut {
+                matches: vec![release("c", "CAT-C"), release("d", "CAT-D")],
+                pressings: vec![0, 1],
+            },
+            ..sample_findings()
+        },
+        track_count: 11,
+        ledger: None,
+    };
+    let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
+
+    let cards = stored_cards(&db, &hash, &verdict).await;
+
+    assert_eq!(cards.narrowed_out_count, 2);
+    assert!(!cards.offers_shared_album, "one offered row is not several pressings");
+}

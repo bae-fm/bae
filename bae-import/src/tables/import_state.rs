@@ -95,6 +95,7 @@ mod verdict_rows;
 
 pub(super) use album_pick_rows::load_album_pick_on;
 pub(super) use candidate_rows::CandidateRows;
+pub(super) use cards_read::load_verdict_cards_on;
 pub(super) use cover_rows::{cover_read_columns, read_cover};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;

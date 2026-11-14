@@ -433,17 +433,12 @@ impl BridgeAgreements {
 /// Mirror [`bae_identify::IdentifyStateView`] into the uniffi enum, a field
 /// copy per variant with the rate of the state's audio on its run.
 impl BridgeIdentifyState {
-    pub(crate) fn from_core(s: bae_identify::IdentifyState) -> Self {
-        let rate = s.rate_ruling_out_cd();
-        Self::from_view(bae_identify::IdentifyStateView::from(s), rate)
-    }
-
     /// What a run published, as its rows hold it.
     pub(crate) fn from_published(published: bae_identify::PublishedRun) -> Self {
         Self::from_view(published.view(), published.rate_ruling_out_cd())
     }
 
-    fn from_view(view: bae_identify::IdentifyStateView, rate: Option<u32>) -> Self {
+    pub(crate) fn from_view(view: bae_identify::IdentifyStateView, rate: Option<u32>) -> Self {
         use bae_identify::IdentifyStateView;
         match view {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,

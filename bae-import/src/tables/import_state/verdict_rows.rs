@@ -596,6 +596,20 @@ pub(super) fn medium_conflict_of(
 }
 
 impl ImportTables {
+    /// The cards of the verdict `verdict` stored under `content_hash`, as its
+    /// rows hold them.
+    pub(crate) async fn load_verdict_cards(
+        &self,
+        content_hash: &str,
+        verdict: &TerminalVerdict,
+    ) -> Result<bae_identify::VerdictCards, DbError> {
+        let content_hash = content_hash.to_string();
+        let verdict = verdict.clone();
+        self.store
+            .read(move |sql| super::load_verdict_cards_on(&sql, &content_hash, &verdict))
+            .await
+    }
+
     /// Whether a verdict is stored for the files at `content_hash` as their
     /// file decisions stand at `edit_revision`.
     pub(crate) async fn verdict_stored_for(

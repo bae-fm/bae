@@ -253,8 +253,12 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     let signals = scanning_signals();
     let state = barcode_half_answered();
     tables.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
+    let outcome = bae_identify::RunOutcome::of(&state).unwrap();
+    // The run's rows hold the cards the rules fold against its signals' text.
+    let text = bae_identify::CandidateText::of(&signals.text_pool, &[], signals.barcode.codes());
     let expected = bae_identify::PublishedRun {
-        outcome: bae_identify::RunOutcome::of(&state).unwrap(),
+        cards: bae_identify::view::reference_cards_of(&outcome, &text),
+        outcome,
         signals: Some(signals.clone()),
     };
     let bae_identify::RunOutcome::Running { findings, .. } = &expected.outcome else {
@@ -273,6 +277,7 @@ async fn a_run_in_flight_reads_back_as_it_published() {
             bae_identify::PublishedRun {
                 outcome: bae_identify::RunOutcome::of(&search_waiting()).unwrap(),
                 signals: Some(signals.clone()),
+                cards: Default::default(),
             }
         )])
     );

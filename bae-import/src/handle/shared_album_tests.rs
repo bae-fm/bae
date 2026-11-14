@@ -29,7 +29,7 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     store_two_pressings(&handle, &fakes, &hash).await;
     let before = pane(&handle, &key).await;
     let bae_identify::IdentifyStateView::Found { offers_shared_album, .. } =
-        bae_identify::IdentifyStateView::from(before.resumed_identify_state.clone())
+        before.resumed_identify_state.clone()
     else {
         panic!("the stored verdict reads back as found");
     };

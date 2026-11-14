@@ -26,7 +26,7 @@ pub(crate) async fn automation_candidate_from_folder(
     let view = match live.and_then(CandidateRuntimeSnapshot::identification_in_flight) {
         Some(bae_import::IdentificationInFlight::Run(published)) => published.view(),
         Some(bae_import::IdentificationInFlight::Queued) | None => {
-            bae_identify::IdentifyStateView::from(folder.resumed_identify_state.clone())
+            folder.resumed_identify_state.clone()
         }
     };
     // Whether each release the state names is in the library is read now,

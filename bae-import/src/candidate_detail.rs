@@ -15,7 +15,7 @@ use crate::CandidateSession;
 use crate::TriageTab;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_identify::signals::Signals;
-use bae_identify::{IdentifyState, VerdictSummary};
+use bae_identify::{IdentifyStateView, VerdictSummary};
 use bae_records::LibraryStatus;
 
 /// One candidate as the pane reads it, before its commands are decided.
@@ -28,9 +28,9 @@ pub struct ImportCandidateDetailProjection {
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
-    /// The identify state the stored verdict stands back up as — the answer a
-    /// row shows when no run is in flight.
-    pub resumed_identify_state: IdentifyState,
+    /// The identify state the stored verdict stands back up as, its cards as its
+    /// rows stored them — the answer a row shows when no run is in flight.
+    pub resumed_identify_state: IdentifyStateView,
     /// The stored verdict's columns, as the list reads them. `None` with no
     /// stored verdict for the candidate's current file shape.
     pub verdict: Option<VerdictSummary>,
@@ -323,7 +323,7 @@ pub struct ImportCandidateDetail {
     pub candidate: FolderCandidate,
     pub actionable: bool,
     pub skipped: bool,
-    pub resumed_identify_state: IdentifyState,
+    pub resumed_identify_state: IdentifyStateView,
     /// Where the queue places the candidate, with what the pane states beside
     /// it.
     pub placement: CandidatePanePlacement,

@@ -47,14 +47,15 @@ impl ImportServiceHandle {
         // as it reads now.
         let text =
             bae_identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
-        let shared =
-            bae_identify::view::shared_album_of(identify.verdict, &text).ok_or_else(|| {
-                crate::ImportError::Internal {
-                    detail: format!(
-                        "{candidate_key}'s lookup offers no several pressings of one album"
-                    ),
-                }
-            })?;
+        let cards =
+            self.services.tables.load_verdict_cards(&content_hash, &identify.verdict).await?;
+        let shared = bae_identify::SharedAlbum::of(&cards.groups).ok_or_else(|| {
+            crate::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key}'s lookup offers no several pressings of one album"
+                ),
+            }
+        })?;
         let lease = self.services.store.lease_one().await;
         let files = candidate.files.clone();
         let audio = self

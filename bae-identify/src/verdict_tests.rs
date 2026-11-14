@@ -1,4 +1,5 @@
 use super::*;
+use crate::state::SignalsContext;
 use crate::state::{
     step, BarcodeEvidence, BarcodeProgress, DiscIdEvidence, DiscidProgress, IdentifyEvent,
     SearchProgress,
@@ -160,54 +161,6 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
             .collect::<Vec<_>>(),
         vec!["rel-1", "rel-out"]
     );
-}
-
-/// A resumed verdict stands its narrowed-out releases back up.
-#[test]
-fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
-    let verdict = TerminalVerdict::Found {
-        findings: Findings {
-            narrowed_out: NarrowedOut { matches: vec![mk_result("rel-out")], pressings: vec![0] },
-            ..one_disc_id_match()
-        },
-        track_count: 11,
-        ledger: None,
-    };
-    let IdentifyState::Found { findings, .. } = verdict.resume_state(
-        None,
-        &crate::LookupChoices::default(),
-        crate::signals::AudioFacts::default(),
-    ) else {
-        panic!("a found verdict resumes as Found");
-    };
-    let narrowed_out = findings.narrowed_out;
-    assert_eq!(narrowed_out.matches, vec![mk_result("rel-out")]);
-}
-
-/// The origin a resumed state reads its rows against is the one the
-/// candidate's stored signals say, not a default.
-#[test]
-fn a_resumed_verdict_takes_its_origin_from_the_stored_signals() {
-    use crate::signals::{BarcodeSignal, DiscIdSignal, TextSignal};
-    let signals = Signals {
-        origin: bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-        disc_id: DiscIdSignal::Absent,
-        barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
-        text_pool: Vec::new(),
-        isrcs: Vec::new(),
-        track_titles: Vec::new(),
-    };
-    let verdict =
-        TerminalVerdict::Found { findings: one_disc_id_match(), track_count: 11, ledger: None };
-    let IdentifyState::Found { context, .. } = verdict.resume_state(
-        Some(&signals),
-        &crate::LookupChoices::default(),
-        crate::signals::AudioFacts::default(),
-    ) else {
-        panic!("a found verdict resumes as Found");
-    };
-    assert_eq!(context.origin.not_cd_rate, Some(96_000));
 }
 
 /// The reducer exposes a failed lookup directly, and verdict conversion
@@ -461,10 +414,9 @@ fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     assert_eq!(failures, &vec![details("first"), details("second")]);
 }
 
-/// A stored failure stands back up with its findings, each with a live
-/// library status.
+/// A stored failure names every release its findings hold.
 #[test]
-fn a_resumed_failure_stands_its_findings_back_up() {
+fn a_failure_names_the_releases_its_findings_hold() {
     let verdict = TerminalVerdict::Failed {
         failures: vec![IdentifyFailure::DiscId(bae_catalogs::LookupFailure::Network)],
         findings: one_disc_id_match(),
@@ -479,12 +431,5 @@ fn a_resumed_failure_stands_its_findings_back_up() {
             .collect::<Vec<_>>(),
         vec!["rel-1"]
     );
-    let IdentifyState::Failed { findings, .. } = verdict.resume_state(
-        None,
-        &crate::LookupChoices::default(),
-        crate::signals::AudioFacts::default(),
-    ) else {
-        panic!("a failed verdict resumes as Failed");
-    };
-    assert_eq!(findings, one_disc_id_match());
+    assert_eq!(verdict.findings(), Some(&one_disc_id_match()));
 }

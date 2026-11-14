@@ -40,7 +40,7 @@ fn load_runs_on(
     let rows = sql.query(
         &format!(
             "SELECT run.candidate_key AS run_key, run.identify_run AS run_number, \
-                    {verdict}, {signals} \
+                    {verdict}, {signals}, {cards} AS run_cards \
              FROM import_identify_run AS run \
              JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run \
              LEFT JOIN import_candidate_signals AS signals \
@@ -48,6 +48,7 @@ fn load_runs_on(
              WHERE ?1 IS NULL OR run.candidate_key = ?1",
             verdict = verdict_columns(),
             signals = signals_read_columns(),
+            cards = super::cards_read::verdict_cards_sql("verdict"),
         ),
         params![key],
         |row| {
@@ -56,20 +57,30 @@ fn load_runs_on(
                 row.get::<_, i64>("run_number")?,
                 read_verdict_row(row),
                 read_signals(row)?,
+                row.get::<_, String>("run_cards")?,
             ))
         },
     )?;
     let mut runs: HashMap<CandidateKey, BTreeMap<IdentifyRunId, PublishedRun>> = HashMap::new();
-    for (key, run, verdict, signals) in rows {
+    for (key, run, verdict, signals, cards) in rows {
         let verdict = verdict?.ok_or_else(|| {
             DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
         })?;
         let (outcome, _) = outcome_of(verdict, matches.remove(&run).unwrap_or_default())?;
         let signals = signals.map(|stored| stored.signals()).transpose()?;
+        let cards = match &outcome {
+            RunOutcome::Running { findings, .. } => Some(findings),
+            RunOutcome::Answered(verdict) => verdict.findings(),
+        }
+        .map(|findings| {
+            super::cards_read::verdict_cards_of(&cards, &findings.releases().collect::<Vec<_>>())
+        })
+        .transpose()?
+        .unwrap_or_default();
         let number = to_u64(run, &format!("{key}'s run number"))?;
         runs.entry(key)
             .or_default()
-            .insert(IdentifyRunId::of_number(number), PublishedRun { outcome, signals });
+            .insert(IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards });
     }
     if let Some(run) = matches.keys().next() {
         return Err(DbError::unreadable(

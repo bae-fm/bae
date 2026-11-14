@@ -11,7 +11,7 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::stored_cover_choice;
 use crate::tables::import_state::{
-    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
+    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on, load_verdict_cards_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{
@@ -30,6 +30,8 @@ pub(super) struct CandidateDetailRows {
     actionable: bool,
     skipped: bool,
     current: Option<DbImportCandidateState>,
+    /// The cards the stored verdict's rows hold.
+    cards: bae_identify::VerdictCards,
     standing: crate::TriageRuntimeFacts,
     listed: ListedColumns,
     stage: StageRows,
@@ -104,6 +106,10 @@ pub(super) fn load_candidate_detail_on(
             .remove(&content_hash);
     let current =
         state.filter(|state| state.file_edits.is_at_revision(candidate.file_edit_revision));
+    let cards = match current.as_ref().and_then(|state| state.identify.as_ref()) {
+        Some(identify) => load_verdict_cards_on(sql, &content_hash, &identify.verdict)?,
+        None => bae_identify::VerdictCards::default(),
+    };
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {
@@ -121,6 +127,7 @@ pub(super) fn load_candidate_detail_on(
         actionable,
         skipped,
         current,
+        cards,
         standing,
         listed,
         stage,
@@ -217,26 +224,32 @@ fn candidate_album_on(
 
 impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
-        let Self { candidate, source_error, actionable, skipped, current, standing, listed, stage } =
-            self;
+        let Self {
+            candidate,
+            source_error,
+            actionable,
+            skipped,
+            current,
+            cards,
+            standing,
+            listed,
+            stage,
+        } = self;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
         let lookup_choices =
             current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
-        let audio = crate::probe::audio_facts(&candidate.files)?;
         let mut verdict = None;
-        let mut resumed_identify_state = bae_identify::IdentifyState::Idle;
+        let mut resumed_identify_state = bae_identify::IdentifyStateView::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
             verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
-            // The candidate's own text is what the rows are judged and ordered
-            // against, live or resumed: striking a number out re-orders the
-            // rows the next time they are read, with nothing asked again.
-            resumed_identify_state = identify.verdict.clone().resume_state(
-                signals.as_ref(),
-                &lookup_choices,
-                audio.clone(),
+            // The rows' judgement is stored with them against the candidate's
+            // own text, so striking a number out has already reordered them.
+            resumed_identify_state = bae_identify::IdentifyStateView::of(
+                bae_identify::RunOutcome::Answered(identify.verdict.clone()),
+                cards,
             );
         }
         let stage = match stage {

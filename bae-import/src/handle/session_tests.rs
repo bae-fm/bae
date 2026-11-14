@@ -132,7 +132,7 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
         crate::FindOnlineSection::Automatic
     );
     assert!(
-        !matches!(pane.resumed_identify_state, bae_identify::IdentifyState::Idle),
+        !matches!(pane.resumed_identify_state, bae_identify::IdentifyStateView::Idle),
         "the stored verdict is what shows"
     );
     assert!(

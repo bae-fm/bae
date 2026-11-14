@@ -1,6 +1,7 @@
 use super::*;
 use crate::release_group::unranked;
 use crate::signals::SourcedValue;
+use crate::state::IdentifyState;
 use crate::state::{
     step, BarcodeEvidence, CatalogSearch, DiscIdEvidence, IdentifyEvent, LookupState,
     ProviderLookup, SearchProgress, ValueLookup,
@@ -81,7 +82,11 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
 }
 
 fn run_of(state: IdentifyState) -> IdentifyRunView {
-    match IdentifyStateView::from(state) {
+    run_of_view(IdentifyStateView::from(state))
+}
+
+fn run_of_view(view: IdentifyStateView) -> IdentifyRunView {
+    match view {
         IdentifyStateView::Triangulating { run, .. } => run,
         IdentifyStateView::Found { run: Some(run), .. }
         | IdentifyStateView::NotFoundAnywhere { run: Some(run) }
@@ -564,11 +569,8 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
         track_count: 9,
         ledger: Some(recorded_ledger()),
     };
-    let run = run_of(verdict.resume_state(
-        None,
-        &crate::LookupChoices::default(),
-        crate::signals::AudioFacts::default(),
-    ));
+    let run =
+        run_of_view(crate::view::reference_resume(verdict, None, &crate::LookupChoices::default()));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -587,11 +589,7 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
         ledger: None,
     };
     assert!(matches!(
-        IdentifyStateView::from(verdict.resume_state(
-            None,
-            &crate::LookupChoices::default(),
-            crate::signals::AudioFacts::default()
-        )),
+        crate::view::reference_resume(verdict, None, &crate::LookupChoices::default()),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
@@ -707,11 +705,7 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
     };
     let judged = |verdict: TerminalVerdict| {
         let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
-            IdentifyStateView::from(verdict.resume_state(
-                None,
-                &crate::LookupChoices::default(),
-                crate::signals::AudioFacts::default(),
-            ))
+            crate::view::reference_resume(verdict, None, &crate::LookupChoices::default())
         else {
             panic!("a found verdict resumes found");
         };

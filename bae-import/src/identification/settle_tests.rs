@@ -629,7 +629,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     assert!(
         matches!(
             &pane.resumed_identify_state,
-            IdentifyState::Failed { failures: shown, .. } if shown == failures
+            bae_identify::IdentifyStateView::Failed { failure_lines: shown, .. } if shown == failures
         ),
         "the pane states the stored failure, got {:?}",
         pane.resumed_identify_state
@@ -889,11 +889,7 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         crate::CandidateFiles::of(&candidate),
         candidate,
         IdentifyRunId::for_test(1),
-        TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
-            None,
-            &bae_identify::LookupChoices::default(),
-            bae_identify::signals::AudioFacts::default(),
-        ),
+        TerminalVerdict::NotFoundAnywhere { ledger: None }.standing_for_tests(),
         CancellationToken::new(),
     )
     .await;

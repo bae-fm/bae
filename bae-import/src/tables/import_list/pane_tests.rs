@@ -219,15 +219,16 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap()
         .expect("the candidate reads back");
-    let bae_identify::IdentifyState::Found { context, .. } = &detail.resumed_identify_state else {
-        panic!("a found verdict resumes as Found, got {:?}", detail.resumed_identify_state);
-    };
-    assert_eq!(
-        context.origin,
-        bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-        "the resumed state stands up beside its stored signals' origin"
+    assert!(
+        matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Found { .. }),
+        "a found verdict resumes as Found, got {:?}",
+        detail.resumed_identify_state
     );
-    assert_eq!(detail.resumed_identify_state.rate_ruling_out_cd(), Some(96_000));
+    assert_eq!(
+        detail.signals.expect("the stored signals read back").origin,
+        bae_catalogs::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
+        "the pane's signals carry the origin the rate comes from"
+    );
 }
 
 /// The detail resumes the stored verdict's matches.
@@ -244,14 +245,17 @@ async fn the_detail_resumes_the_stored_verdict() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let bae_identify::IdentifyState::Found {
-        findings: bae_identify::Findings { matches, .. }, ..
-    } = &detail.resumed_identify_state
+    let bae_identify::IdentifyStateView::Found { groups, .. } = &detail.resumed_identify_state
     else {
         panic!("expected the stored Found, got {:?}", detail.resumed_identify_state);
     };
     assert_eq!(
-        matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
+        groups
+            .iter()
+            .flat_map(|group| group.pressings())
+            .flat_map(|row| &row.releases)
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
         vec!["mb-verdict"]
     );
 }
@@ -291,7 +295,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .expect("the scanned candidate reads back");
 
     let bae_identify::IdentifyStateView::Found { run: Some(run), .. } =
-        bae_identify::IdentifyStateView::from(detail.resumed_identify_state)
+        detail.resumed_identify_state
     else {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
@@ -328,7 +332,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .unwrap()
         .expect("the scanned candidate still reads back");
 
-    assert!(matches!(detail.resumed_identify_state, bae_identify::IdentifyState::Idle));
+    assert!(matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Idle));
     assert!(detail.verdict.is_none());
 }
 

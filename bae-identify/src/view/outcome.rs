@@ -4,12 +4,11 @@
 //! hold it, and every surface draws a run in flight from them, beside the
 //! text it judges its rows against.
 
-use super::{fold, run_view, IdentifyRunView, IdentifyStateView};
-use crate::agreements::CandidateText;
+use super::{run_view, IdentifyRunView, IdentifyStateView, VerdictCards};
 use crate::combine::{combine_results, Findings, LookupAnswers};
 use crate::signals::Signals;
 use crate::state::{IdentifyState, PressingLookup};
-use crate::{CatalogStepView, TerminalVerdict, VerdictSummary};
+use crate::{TerminalVerdict, VerdictSummary};
 
 /// How a run stands, as its rows hold it.
 #[derive(Debug, Clone, PartialEq)]
@@ -72,33 +71,16 @@ impl RunOutcome {
     }
 }
 
-/// What a run published: how it stands and the signals it last read, none
-/// before extraction has reported.
+/// What a run published: how it stands, the signals it last read (none
+/// before extraction has reported), and the cards its rows stored.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PublishedRun {
     pub outcome: RunOutcome,
     pub signals: Option<Signals>,
+    pub cards: VerdictCards,
 }
 
 impl PublishedRun {
-    /// The text the run's rows are judged against, read off its signals.
-    ///
-    /// The numbers the person struck out are the ones the ledger leaves out:
-    /// a struck-out number counts against a row only where the folder's text
-    /// prints it, and the ledger lays out every struck-out number the text
-    /// prints as a row left out.
-    pub fn text(&self) -> CandidateText {
-        let struck_out: Vec<String> = match self.outcome.ledger().map(|ledger| &ledger.catalog) {
-            Some(CatalogStepView::Numbers { rows, .. }) => {
-                rows.iter().filter(|row| row.excluded).map(|row| row.value.clone()).collect()
-            }
-            Some(CatalogStepView::NoneFound) | None => Vec::new(),
-        };
-        self.signals.as_ref().map_or_else(CandidateText::default, |signals| {
-            CandidateText::of(&signals.text_pool, &struck_out, signals.barcode.codes())
-        })
-    }
-
     /// The sample rate that rules a CD out, read off the run's signals.
     pub fn rate_ruling_out_cd(&self) -> Option<u32> {
         self.signals.as_ref().and_then(|signals| signals.origin.not_cd_rate)
@@ -106,21 +88,20 @@ impl PublishedRun {
 
     /// The run as every surface draws it.
     pub fn view(&self) -> IdentifyStateView {
-        IdentifyStateView::of_outcome(self.outcome.clone(), &self.text())
+        IdentifyStateView::of(self.outcome.clone(), self.cards.clone())
     }
 }
 
 impl IdentifyStateView {
-    /// `outcome` as a surface renders it, its rows judged against `text`.
-    pub fn of_outcome(outcome: RunOutcome, text: &CandidateText) -> Self {
+    /// `outcome` as a surface renders it, its cards as its rows stored them.
+    pub fn of(outcome: RunOutcome, cards: VerdictCards) -> Self {
         match outcome {
-            RunOutcome::Running { ledger, findings, track_count } => {
-                let folded = fold(findings, Some(&ledger), text, track_count);
+            RunOutcome::Running { ledger, findings: _, track_count: _ } => {
                 IdentifyStateView::Triangulating {
                     run: ledger,
-                    groups: folded.groups,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
+                    groups: cards.groups,
+                    agreements: cards.agreements,
+                    narrowed_out_count: cards.narrowed_out_count,
                 }
             }
             RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, ledger }) => {
@@ -131,16 +112,15 @@ impl IdentifyStateView {
                     .picks_unattended()
                     .then(|| findings.matches.first().map(|lead| lead.release_id.clone()))
                     .flatten();
-                let folded = fold(findings, ledger.as_ref(), text, track_count);
                 IdentifyStateView::Found {
                     run: ledger,
-                    groups: folded.groups,
+                    groups: cards.groups,
                     track_count,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
+                    agreements: cards.agreements,
+                    narrowed_out_count: cards.narrowed_out_count,
                     folder_check: summary.folder_check(),
                     unattended_pick,
-                    offers_shared_album: folded.offers_shared_album,
+                    offers_shared_album: cards.offers_shared_album,
                 }
             }
             RunOutcome::Answered(TerminalVerdict::NotFoundAnywhere { ledger }) => {
@@ -154,11 +134,10 @@ impl IdentifyStateView {
             }
             RunOutcome::Answered(TerminalVerdict::Failed {
                 failures,
-                findings,
-                track_count,
+                findings: _,
+                track_count: _,
                 ledger,
             }) => {
-                let folded = fold(findings, ledger.as_ref(), text, track_count);
                 let failure_lines = failures
                     .into_iter()
                     .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
@@ -166,10 +145,10 @@ impl IdentifyStateView {
                 IdentifyStateView::Failed {
                     run: ledger,
                     failure_lines,
-                    groups: folded.groups,
-                    agreements: folded.agreements,
-                    narrowed_out_count: folded.narrowed_out_count,
-                    offers_shared_album: folded.offers_shared_album,
+                    groups: cards.groups,
+                    agreements: cards.agreements,
+                    narrowed_out_count: cards.narrowed_out_count,
+                    offers_shared_album: cards.offers_shared_album,
                 }
             }
         }

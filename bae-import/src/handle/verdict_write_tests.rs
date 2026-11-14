@@ -251,18 +251,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     };
 
     // The run's terminal state is what puts the key on a pending save.
-    fixture
-        .import
-        .hold_answer_for_test(
-            &key,
-            run,
-            &row.verdict.clone().resume_state(
-                Some(&row.signals),
-                &bae_identify::LookupChoices::default(),
-                bae_identify::signals::AudioFacts::default(),
-            ),
-        )
-        .await;
+    fixture.import.hold_answer_for_test(&key, run, &row.verdict.clone().standing_for_tests()).await;
     assert!(matches!(
         fixture.identification_status(&key).await,
         Some(crate::IdentificationStatus::Finalizing)
