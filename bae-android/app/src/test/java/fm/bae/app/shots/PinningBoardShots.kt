@@ -74,7 +74,11 @@ private fun Pinning(
     summary: String,
     ops: List<BridgeDownloadOp>,
 ) {
-    val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-1")
+    val downloads =
+        PreviewData.downloadStore(
+            downloadingReleaseId = "rel-1",
+            transfer = PreviewData.downloadTransferProgress(bytesDone = 120_000_000UL, bytesTotal = 344_000_000UL, fraction = 0.35),
+        )
     Column(modifier = Modifier.fillMaxSize()) {
         AndroidDownloadsBar(
             paused = false,

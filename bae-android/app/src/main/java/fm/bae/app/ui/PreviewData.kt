@@ -367,15 +367,16 @@ object PreviewData {
             previousOpenableId = null,
         )
 
-    /** A download store holding [counts], with [downloadingReleaseId]'s download at [downloadTransferProgress]. */
+    /** A download store holding [counts], with [downloadingReleaseId]'s download at [transfer]. */
     fun downloadStore(
         counts: BridgeDownloadCounts = downloadCounts(),
         downloadingReleaseId: String = "rel-1",
+        transfer: BridgeDownloadTransferProgress = downloadTransferProgress(),
     ): DownloadStore =
         DownloadStore(
             counts,
             initialUnmeteredOnly = false,
-            releaseProgress = LatestStream.downloads(mapOf(downloadingReleaseId to downloadTransferProgress())),
+            releaseProgress = LatestStream.downloads(mapOf(downloadingReleaseId to transfer)),
         )
 
     fun downloadTransferProgress(

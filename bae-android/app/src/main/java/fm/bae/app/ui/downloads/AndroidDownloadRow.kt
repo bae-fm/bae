@@ -61,7 +61,7 @@ internal fun AndroidDownloadRow(
             } else {
                 Text(
                     text = context.coreString("core.queue.release_missing"),
-                    style = ThemeText.body.style,
+                    style = ThemeText.androidRowTitle.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

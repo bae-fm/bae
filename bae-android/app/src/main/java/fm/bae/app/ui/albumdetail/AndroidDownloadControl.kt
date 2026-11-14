@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Keep
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -129,7 +129,7 @@ internal fun AndroidDownloadControl(
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
-            DownloadActionButton(stringResource(R.string.pin), Icons.Filled.PushPin, onDownload)
+            DownloadActionButton(stringResource(R.string.pin), Icons.Filled.Keep, onDownload)
         }
 
         BridgeReleaseDownloadStatus.Queued -> {
@@ -199,7 +199,7 @@ private fun DownloadedControl(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Filled.PushPin,
+            imageVector = Icons.Filled.Keep,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(ThemeIcon.small),
