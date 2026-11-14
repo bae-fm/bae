@@ -502,9 +502,11 @@ extension PreviewData {
                 )
             },
             storageSelection: { _, _ in
-                .fixed(rows, answers: answers)
+                // The shots select at most one release, which core answers
+                // as the sole one.
+                .fixed(rows, answers: answers, sole: { $0.first })
             },
-            storageHoldsAll: Library.fixedStorageHoldsAll(rows),
+            storageHoldsAll: Library.fixedStorageHoldsAll(true),
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }

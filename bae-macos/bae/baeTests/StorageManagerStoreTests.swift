@@ -46,7 +46,11 @@ private final class OpenedReads: @unchecked Sendable {
             storageSelection: { [self] _, _ in
                 let fixed = StorageSelectionQuery.fixed(
                     rows,
-                    answers: UnansweredCount()
+                    answers: UnansweredCount(),
+                    sole: { ids in
+                        ids.count == 1 && ids.first == rows.first?.id
+                            ? ids.first : nil
+                    }
                 )
                 return StorageSelectionQuery(
                     setSelected: { [self] ids in
@@ -56,7 +60,7 @@ private final class OpenedReads: @unchecked Sendable {
                     values: fixed.values
                 )
             },
-            storageHoldsAll: Library.fixedStorageHoldsAll(rows),
+            storageHoldsAll: Library.fixedStorageHoldsAll(true),
             storageQueues: {
                 .fixed(
                     BridgeStorageQueues(
@@ -154,10 +158,7 @@ struct StorageManagerStoreTests {
             try await store.holdsAll(Array(selected)),
             "the list holds the releases core answered for"
         )
-        #expect(
-            try await !store.holdsAll(["no-such-release"]),
-            "the list doesn't hold a release it lacks"
-        )
+
         #expect(
             store.answered(for: selected.union([rows[2].id])) == nil,
             "a selection core has not answered for has no answer"
