@@ -6,7 +6,6 @@ use super::*;
 use bae_people::people::Sharing;
 use bae_records::records::files::cover_version_sql;
 use bae_types::count_label::CountLabel;
-use std::collections::HashMap;
 
 /// How many different releases' covers a playlist's picture shows when it
 /// has that many.
@@ -88,34 +87,43 @@ pub struct PlaylistDetail {
     pub entries: Vec<PlaylistEntryRow>,
 }
 
-/// The playlists, with the columns [`summary_of`] reads, over `playlists pl`
+/// The playlists, with the columns [`playlist_row`] reads, over `playlists pl`
 /// and its owner's profile, `narrowing` narrowing them, by name in the
-/// device's language, then id.
+/// device's language, then id. Each playlist's summary comes with it: its
+/// entries counted and summed, the covers of its first releases (`cover_grid`,
+/// when it has a grid's worth of different releases) and the cover of its
+/// first entry's release.
 pub(crate) fn playlists_sql(narrowing: &str) -> String {
     format!(
         "SELECT pl.id, pl.name, pl.audience, pl.person_id, owner.name, {avatar}, \
-                COALESCE(pl.person_id = {own}, 0) AS yours \
+                COALESCE(pl.person_id = {own}, 0) AS yours, \
+                (SELECT COUNT(*) FROM playlist_entries AS e \
+                 WHERE e.playlist_id = pl.id) AS track_count, \
+                (SELECT COALESCE(SUM(t.duration_ms), 0) FROM playlist_entries AS e \
+                 JOIN tracks AS t ON t.id = e.track_id \
+                 WHERE e.playlist_id = pl.id) AS total_duration_ms, \
+                (SELECT CASE WHEN COUNT(*) = {COVER_GRID} THEN json_group_array( \
+                        json_object('release_id', release_id, 'cover_version', cover) \
+                        ORDER BY first_position) END \
+                 FROM (SELECT t.release_id AS release_id, {cover} AS cover, \
+                              MIN(e.position) AS first_position \
+                       FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
+                       WHERE e.playlist_id = pl.id GROUP BY t.release_id \
+                       ORDER BY first_position LIMIT {COVER_GRID})) AS cover_grid, \
+                (SELECT json_object('release_id', t.release_id, 'cover_version', {cover}) \
+                 FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
+                 WHERE e.playlist_id = pl.id ORDER BY e.position LIMIT 1) AS first_cover \
          FROM playlists AS pl JOIN people AS owner ON owner.id = pl.person_id{narrowing} \
          ORDER BY {name_key}, pl.id",
         name_key = crate::name_sort::sort_key_sql("pl.name"),
         avatar = bae_store::file_version_sql("owner.avatar_id"),
         own = OWN_MEMBER,
+        cover = cover_version_sql("t.release_id"),
     )
 }
 
 /// This device's member.
 const OWN_MEMBER: &str = "(SELECT member FROM coven_members WHERE is_self AND NOT removed)";
-
-/// What each entry of every playlist adds to its playlist's summary, in
-/// each playlist's order; `playlist_entries_position` serves the order.
-pub(crate) fn entry_stats_sql() -> String {
-    format!(
-        "SELECT e.playlist_id, t.release_id, t.duration_ms, {cover} \
-         FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
-         ORDER BY e.playlist_id, e.position",
-        cover = cover_version_sql("t.release_id"),
-    )
-}
 
 /// One playlist's entries as its page lists them, in order.
 pub(crate) fn playlist_entries_sql() -> String {
@@ -134,58 +142,36 @@ pub(crate) fn playlist_entries_sql() -> String {
 pub(crate) const CAN_CREATE_SQL: &str = "SELECT EXISTS (SELECT 1 FROM coven_members AS m \
      JOIN people AS p ON p.id = m.member WHERE m.is_self AND NOT m.removed)";
 
-/// The entries of one playlist, as far as its summary shows them.
-#[derive(Default)]
-struct Stats {
-    tracks: u32,
-    duration_ms: u64,
-    /// The different releases the entries are on, in entry order, up to a
-    /// grid's worth, each with its cover.
-    releases: Vec<(String, Option<ImageRef>)>,
-    /// The first entry's release's cover.
-    first: Option<Option<ImageRef>>,
-}
-
-impl Stats {
-    fn add(&mut self, release_id: String, duration_ms: u64, cover_version: Option<String>) {
-        self.tracks += 1;
-        self.duration_ms += duration_ms;
-        let cover = cover_ref(&release_id, cover_version);
-        if self.first.is_none() {
-            self.first = Some(cover.clone());
-        }
-        if self.releases.len() < COVER_GRID
-            && !self.releases.iter().any(|(release, _)| *release == release_id)
-        {
-            self.releases.push((release_id, cover));
-        }
-    }
-
-    fn cover(self) -> PlaylistCover {
-        if self.releases.len() < COVER_GRID {
-            return PlaylistCover::Single(self.first.flatten());
-        }
-        let mut covers = self.releases.into_iter().map(|(_, cover)| cover);
-        PlaylistCover::Grid(std::array::from_fn(|_| covers.next().flatten()))
-    }
-}
-
 fn uuid_column(row: &Row, index: usize) -> rusqlite::Result<uuid::Uuid> {
     let value: String = row.get(index)?;
     uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, index, error))
 }
 
-/// A playlist without its entries' part.
-struct PlaylistRow {
-    id: uuid::Uuid,
-    name: String,
-    sharing: Sharing,
-    owner: PlaylistOwner,
-    yours: bool,
+/// The covers a playlist's summary names, as JSON objects of a release and
+/// its cover's version.
+fn cover_of(object: &serde_json::Value) -> Option<ImageRef> {
+    let release = object["release_id"].as_str()?;
+    cover_ref(release, object["cover_version"].as_str().map(str::to_string))
 }
 
-fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistRow> {
-    Ok(PlaylistRow {
+fn json_column(row: &Row, index: usize) -> rusqlite::Result<Option<serde_json::Value>> {
+    row.get::<_, Option<String>>(index)?
+        .map(|text| {
+            serde_json::from_str(&text).map_err(|error| column_conversion_error(row, index, error))
+        })
+        .transpose()
+}
+
+/// A playlist as [`playlists_sql`] reads it.
+fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistSummary> {
+    let cover = match json_column(row, 9)? {
+        Some(grid) => {
+            let mut covers = grid.as_array().into_iter().flatten().map(cover_of);
+            PlaylistCover::Grid(std::array::from_fn(|_| covers.next().flatten()))
+        }
+        None => PlaylistCover::Single(json_column(row, 10)?.as_ref().and_then(cover_of)),
+    };
+    Ok(PlaylistSummary {
         id: uuid_column(row, 0)?,
         name: row.get(1)?,
         sharing: Sharing::of_audience(row.get(2)?),
@@ -195,53 +181,20 @@ fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistRow> {
             avatar_version: row.get(5)?,
         },
         yours: row.get(6)?,
+        track_count: CountLabel { key: "core.library.track_count".to_string(), count: row.get(7)? },
+        total_duration_ms: row.get(8)?,
+        cover,
     })
 }
 
-impl PlaylistRow {
-    fn summarized(self, stats: Stats) -> PlaylistSummary {
-        PlaylistSummary {
-            id: self.id,
-            name: self.name,
-            sharing: self.sharing,
-            owner: self.owner,
-            yours: self.yours,
-            track_count: CountLabel {
-                key: "core.library.track_count".to_string(),
-                count: stats.tracks,
-            },
-            total_duration_ms: stats.duration_ms,
-            cover: stats.cover(),
-        }
-    }
-}
-
 fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbError> {
-    let rows = sql.query(&playlists_sql(""), [], playlist_row)?;
-    let mut stats: HashMap<uuid::Uuid, Stats> = HashMap::new();
-    for (playlist, release, duration_ms, cover_version) in
-        sql.query(&entry_stats_sql(), [], |row| {
-            Ok((
-                uuid_column(row, 0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, u64>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ))
-        })?
-    {
-        stats.entry(playlist).or_default().add(release, duration_ms, cover_version);
-    }
-    let listed: Vec<PlaylistSummary> = rows
-        .into_iter()
-        .map(|row| {
-            let stats = stats.remove(&row.id).unwrap_or_default();
-            row.summarized(stats)
-        })
-        .collect();
-    let add_targets = listed.iter().filter(|playlist| playlist.yours).cloned().collect();
     Ok(PlaylistListing {
-        listed,
-        add_targets,
+        listed: sql.query(&playlists_sql(""), [], playlist_row)?,
+        add_targets: sql.query(
+            &playlists_sql(&format!(" WHERE pl.person_id = {OWN_MEMBER}")),
+            [],
+            playlist_row,
+        )?,
         can_create: sql.query_row(CAN_CREATE_SQL, [], |row| row.get(0))?,
     })
 }
@@ -253,7 +206,7 @@ fn playlist_detail_on(
     let Some(id) = id else {
         return Ok(None);
     };
-    let Some(row) = sql.query(&playlists_sql(" WHERE pl.id = ?1"), [id], playlist_row)?.pop()
+    let Some(summary) = sql.query(&playlists_sql(" WHERE pl.id = ?1"), [id], playlist_row)?.pop()
     else {
         return Ok(None);
     };
@@ -270,15 +223,7 @@ fn playlist_detail_on(
             cover: cover_ref(&row.get::<_, String>(6)?, row.get(8)?),
         })
     })?;
-    let mut stats = Stats::default();
-    for entry in &entries {
-        stats.add(
-            entry.release_id.clone(),
-            entry.duration_ms,
-            entry.cover.as_ref().map(|cover| cover.version.clone()),
-        );
-    }
-    Ok(Some(PlaylistDetail { summary: row.summarized(stats), entries }))
+    Ok(Some(PlaylistDetail { summary, entries }))
 }
 
 impl LibraryViews {

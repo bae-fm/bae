@@ -132,6 +132,58 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
+/// A playlist's summary is counted in SQL from its entries: how many, their
+/// total time, a grid of the first four different releases when its entries
+/// are on that many, else its first entry's cover; and Add to playlist lists
+/// only the person's own.
+#[tokio::test]
+async fn a_playlists_summary_comes_counted_with_its_row() {
+    use bae_views::playlists::PlaylistCover;
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let tracks: Vec<String> = (0..5).map(|n| test_uuid(&format!("summary-track-{n}"))).collect();
+    for (n, track) in tracks.iter().enumerate() {
+        bae_records::test_fixtures::album_with_tracks(
+            library.records(),
+            (&test_uuid(&format!("summary-album-{n}")), &format!("Album {n}")),
+            &test_uuid(&format!("summary-release-{n}")),
+            &[(track, &format!("Track {n}"))],
+        )
+        .await;
+    }
+    let playlist = async |name: &str, entries: &[usize]| {
+        let id = coven::IdSource::new_id(&coven::UuidIds);
+        people.create_playlist(id, name, Sharing::Private, Vec::new()).await.unwrap();
+        for &entry in entries {
+            let position = coven::IdSource::new_id(&coven::UuidIds);
+            people.append_playlist_entry(id, position, tracks[entry].clone()).await.unwrap();
+        }
+    };
+    playlist("Many", &[0, 0, 1, 2, 3, 4]).await;
+    playlist("Few", &[0, 0, 1]).await;
+    playlist("Empty", &[]).await;
+
+    let views = bae_views::LibraryViews::new(library.store().clone());
+    let listing = value_matching(&mut views.subscribe_playlists(), |_| true).await;
+    let summary = |name: &str| listing.listed.iter().find(|p| p.name == name).unwrap().clone();
+    let (many, few, empty) = (summary("Many"), summary("Few"), summary("Empty"));
+    assert_eq!((many.track_count.count, many.total_duration_ms), (6, 6 * 180_000));
+    assert_eq!(many.cover, PlaylistCover::Grid([None, None, None, None]));
+    assert_eq!((few.track_count.count, few.total_duration_ms), (3, 3 * 180_000));
+    assert_eq!(few.cover, PlaylistCover::Single(None));
+    assert_eq!((empty.track_count.count, empty.total_duration_ms), (0, 0));
+    assert_eq!(listing.add_targets, listing.listed);
+    library.manager().close().await.unwrap();
+}
+
 /// The detail's next value that `matches`, failing when none comes.
 async fn detail_matching(
     values: &mut coven::ReconfigurableLiveQuery<
