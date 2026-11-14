@@ -2652,7 +2652,7 @@
    "y": 11776
   },
   "mac.settings.save-as.delete-format.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, delete a format",
    "w": 690,
@@ -2660,7 +2660,7 @@
    "y": 9376
   },
   "mac.settings.save-as.format-editor.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, editing a format",
    "w": 690,
@@ -2668,7 +2668,7 @@
    "y": 9376
   },
   "mac.settings.save-as.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as",
    "w": 690,
@@ -2676,7 +2676,7 @@
    "y": 9376
   },
   "mac.settings.import.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, no Discogs key",
    "w": 690,
@@ -2684,7 +2684,7 @@
    "y": 8136
   },
   "mac.settings.import.checking-key.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, checking the key",
    "w": 690,
@@ -2692,7 +2692,7 @@
    "y": 8136
   },
   "mac.settings.import.discogs-connected.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, Discogs connected",
    "w": 690,
@@ -2700,7 +2700,7 @@
    "y": 8136
   },
   "mac.settings.import.key-rejected.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, key rejected",
    "w": 690,
@@ -2708,7 +2708,7 @@
    "y": 8136
   },
   "mac.settings.import.key-unvalidated.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, key saved offline",
    "w": 690,
@@ -3396,7 +3396,7 @@
    "y": 5444
   },
   "mac.settings.import.turn-off-discogs.dc.html": {
-   "h": 760,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Import, turning Discogs off",
    "w": 690,
@@ -3404,7 +3404,7 @@
    "y": 8136
   },
   "mac.settings.save-as.format-menu.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, a format’s menu",
    "w": 690,
@@ -3412,7 +3412,7 @@
    "y": 9376
   },
   "mac.settings.save-as.format-picker.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, choosing a format",
    "w": 690,
@@ -3420,7 +3420,7 @@
    "y": 9376
   },
   "mac.settings.save-as.bitrate-menu.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, an MP3 bitrate",
    "w": 690,
@@ -3428,7 +3428,7 @@
    "y": 9376
   },
   "mac.settings.save-as.bit-depth-menu.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, a FLAC bit depth",
    "w": 690,
@@ -3460,7 +3460,7 @@
    "y": 17972
   },
   "mac.settings.save-as.format-name-taken.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, a name already taken",
    "w": 690,
@@ -3500,7 +3500,7 @@
    "y": 8136
   },
   "mac.settings.save-as.name-invalid.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, a name that can’t be made",
    "w": 690,
@@ -3556,7 +3556,7 @@
    "y": 10696
   },
   "mac.settings.save-as.last-format.dc.html": {
-   "h": 960,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Save as, the only format left",
    "w": 690,
@@ -3580,7 +3580,7 @@
    "y": 12856
   },
   "mac.settings.storage.dc.html": {
-   "h": 700,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Storage",
    "w": 690,
@@ -3588,7 +3588,7 @@
    "y": 12856
   },
   "mac.settings.storage.from-before-reset.dc.html": {
-   "h": 820,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Storage, data from before a reset",
    "w": 690,
@@ -3596,7 +3596,7 @@
    "y": 12856
   },
   "mac.settings.storage.delete-from-before-reset.dc.html": {
-   "h": 820,
+   "h": 600,
    "page": "settings",
    "title": "macOS: Storage, deleting data from before a reset",
    "w": 690,
@@ -4172,9 +4172,9 @@
    "y": 2940
   },
   "mac.settings.sync.pending.dc.html": {
-   "h": 820,
+   "h": 600,
    "page": "library",
-   "title": "macOS: Sync: waiting for access",
+   "title": "macOS: Sync: needs attention",
    "w": 690,
    "x": 0,
    "y": 25888

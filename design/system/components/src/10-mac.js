@@ -51,7 +51,8 @@
           props.back ? h('button', { type: 'button', className: 'bae-m-back', 'aria-label': 'Back to ' + props.back },
             h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' }))) : null,
           h('h1', null, props.title)) : null,
-        props.children));
+        // `scroll`: the pane scrolled this many px, as a scrolled pane draws: the heading stays, the content runs under it from that offset and is cut at the window's bottom edge.
+        props.scroll ? h('div', { className: 'bae-m-main-scroll' }, h('div', { style: { transform: 'translateY(-' + Number(props.scroll) + 'px)' } }, props.children)) : props.children));
   }
 
   function MacSection(props) {

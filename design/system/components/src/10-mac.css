@@ -17,6 +17,7 @@
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
+.bae-m-main-scroll { flex: 1; min-height: 0; overflow: hidden; margin-top: 4px; }
 .bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
 .bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
 .bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
