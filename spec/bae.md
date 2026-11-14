@@ -2290,9 +2290,9 @@ device: once it finishes the files are in storage and unpinned, and the
 release is pinned afterwards like any other (§4.3).
 
 If an original goes missing before its upload, the move waits for it, the
-pending list and the release's row naming the file. If one changed, its upload stops before a
+release's row in Storage Manager naming the file. If one changed, its upload stops before a
 changed byte is sent and the move fails: none of its files switches, and the
-pending list names the file and offers Cancel upload.
+release's row names the file and offers Cancel upload.
 
 **Cancelling an upload** while any of its files is still queued, or after its
 move failed, cancels the release's move in one write. Nothing was switched, so
@@ -2447,7 +2447,7 @@ many entries wait ahead of it or what holds the queue back: a row's storage
 is its state and at most the one change on its way.
 A move fails when a file's original changed before its upload
 (coven lists the failed move's files in `coven_moves` until it is cancelled,
-and its pending record names the original, §6.4); the release stays on this
+and the release's row names the original); the release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
 the move.
 
@@ -2518,9 +2518,8 @@ queues only that release's failed pin. The queue's counts say, with its per-phas
 whether it holds any entry and whether any failed, which is what the phones' Pinning screen
 reads to offer Pause and Retry. Each entry keeps its release's file count and total size from the write that queued it, so the Pinning screen's row still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
-the queue and removes what it downloaded. coven's record of the failed
-download is listed among the pending records (§6.4), whose *Retry* queues the
-release's pin again; nothing retries it on its own. A read that fails, as a
+the queue and removes what it downloaded. A failed download shows on its
+release in Storage Manager, whose *Retry* queues the release's pin again; nothing retries it on its own. A read that fails, as a
 track plays, leaves no record: its failure goes to whatever read it. A release
 becomes pinned only once every file lands. The
 queue is kept on the device across restarts, entries and pause: a release that
@@ -3824,7 +3823,7 @@ whether or not storage is reachable.
 **The Activity button.** Sync takes one small control in the window's
 title bar on macOS and in the library's top bar on Android, never a
 bar across the content. While bytes move it is a spinner: files this device
-is sending, or offline copies downloading. While a problem the person hasn't dismissed, or a pending record, is
+is sending, or offline copies downloading. While a problem the person hasn't dismissed is
 listed in the Activity panel, it shows a small warning symbol, beside the
 spinner when both hold; with every problem dismissed it goes back to its usual look. While a
 queue is held and no bytes move, it is a pause symbol in the spinner's place,
@@ -3845,16 +3844,14 @@ attention*, one row each, a line between rows: the app's own problems (the
 sign-in settings it can't read; on macOS a library that failed to open while
 another stays open), each its title alone, saying what failed; a failure to read sync's state;
 sync's failure, with *Open sync settings*, which closes the panel and opens the
-Sync page; then each pending record in plain words, with *Open sync settings*,
-where each record offers its action. Nothing in the panel retries. A row shows
+Sync page. A file that can't move or a change that can't go out shows where it
+is handled, on its release in Storage Manager or in its change box, never in
+the panel. Nothing in the panel retries. A row shows
 no error: clicking it closes the panel and opens the alert with what to do and the causes
 (§9.7); on Android a tap closes the sheet and opens a dialog with the same words and causes. Each problem has an × that takes it out of the panel, without fixing
 it: it still shows where it is fixed, and a problem that leaves the list and
 comes back shows again. While a library is open these problems show only
-there. A failure a pending record shows has no line of its own: a pass that
-storage refused or couldn't reach leaves the connection's record, a blocked
-slot and a failed operation of coven's own have theirs, and the failure again
-beside its record would read as a second problem. Then, under a
+there. Then, under a
 *Transfers* label, one row per
 thing moving, each its words, how far it has got and a bar, with no icon:
 Syncing changes, while coven's sync state says Syncing (a pass receiving or
@@ -4031,18 +4028,11 @@ only the status it read. The Library page's Sync row shows the state only,
 and the Library row in Android's settings and the Library item in the Mac's
 settings sidebar show it only while it is amber or red.
 
-Under the storage rows and the restore code, a *Pending* section lists each
-pending record (§6.4) as a row of the page's list: what it is about, with the
-reason under it in plain words. On the Mac *Details* (§9.7), when coven kept an
-error behind the record, and the record's action sit at the right of the row;
-the failure of an action shows under its row. On Android the action is a text
-button at the right, a tap on the row opens its details in a dialog, and a note
-under the list says so. A phone sends no release files or covers and can't
-restore a source file, so a record of files it sends (an upload or a move), or
-one whose action is *Restore source file*, never reaches Android's list or its
-Activity panel: one that does is a bug, reported to the crash reporter without
-crashing and left out of both, and the Sync page shows *Something went wrong.*
-in place of its row. On the Mac, a read of this device's own record of the
+The Sync page lists no pending records: what stops sync is its status, a
+file's upload, pin, download or move shows on its release in Storage Manager,
+a change the person made (an invite, a role, a rename) shows in its change box
+where it happens, and what only waits for coven to retry shows nowhere but the
+status's Waiting to sync. On the Mac, a read of this device's own record of the
 cloud home that fails is a bug: the page says *Could not read this library’s
 cloud home.* with *Details* only, and the bug is reported to the crash reporter
 without crashing.
@@ -4116,16 +4106,16 @@ album or track is marked as on its way. No device waits for another's upload,
 and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
-Ben's laptop has two records in its Activity panel: Dropbox wants him to sign in again, and
-a file of his vinyl rip moved before it uploaded. The list offers *Sign in* for
-the first: core signs in with the access the library's folder needs, then
+Ben's laptop has two problems: Dropbox wants him to sign in again, which the
+Sync page's status says with *Sign in*, and a file of his vinyl rip moved
+before it uploaded, which its release's row in Storage Manager names. *Sign in*: core signs in with the access the library's folder needs, then
 connects that location again. On a library in an S3
 bucket, *Sign in* asks for a new access key for that bucket instead, the same
 form Settings shows a device that lost its key, and connects the bucket again
-with it. For the second it
+with it. The release's row
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
-storage, and its record offers *Cancel upload*, which ends the move and
+storage, and its row offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3). Other records offer

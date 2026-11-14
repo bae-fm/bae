@@ -3651,14 +3651,6 @@
    "x": 1754,
    "y": 14240
   },
-  "mac.settings.sync.pending.dc.html": {
-   "h": 820,
-   "page": "library",
-   "title": "macOS: Sync: needs attention",
-   "w": 690,
-   "x": 0,
-   "y": 25888
-  },
   "mac.settings.sync.setup-undone.dc.html": {
    "h": 600,
    "page": "library",
@@ -3673,14 +3665,6 @@
    "title": "macOS: Sync: cloud home unreadable",
    "w": 690,
    "x": 1540,
-   "y": 25888
-  },
-  "android.settings.sync.pending.dc.html": {
-   "h": 916,
-   "page": "library",
-   "title": "Sync: needs attention",
-   "w": 412,
-   "x": 2850,
    "y": 25888
   },
   "mac.settings.person.s3.dc.html": {
@@ -4186,6 +4170,22 @@
    "w": 1100,
    "x": 9900,
    "y": 2940
+  },
+  "mac.settings.sync.pending.dc.html": {
+   "h": 820,
+   "page": "library",
+   "title": "macOS: Sync: waiting for access",
+   "w": 690,
+   "x": 0,
+   "y": 25888
+  },
+  "android.settings.sync.pending.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: waiting for access",
+   "w": 412,
+   "x": 2850,
+   "y": 25888
   }
  },
  "createdOnFiles": {
@@ -5656,7 +5656,7 @@
    "page": "library",
    "x": 0,
    "y": 25748,
-   "text": "Sync page: needs attention, undone setup, unreadable cloud home (macOS)",
+   "text": "Sync page: waiting for access, undone setup, unreadable cloud home (macOS)",
    "kind": "title1",
    "w": 240,
    "maxW": 3200
@@ -5667,7 +5667,7 @@
    "w": 460,
    "x": 2310,
    "y": 25888,
-   "text": "What the code needs for these boards:\n- Needs attention: the status names the first thing that stops sync and what waits on it (\"The cover of Low Tide Hours could not upload. Changes from this Mac wait for it.\"), with its action, and that record is not listed again. The list below, titled Needs attention, holds only records whose action is the person's: each a quiet warning notice, the subject as its title, the reason under it, Details and the action. A record whose only action is to wait is not listed; coven retries it and the status says Waiting to sync. A record that holds up more than itself says what waits on it after its reason. Today PendingRecordsView.swift lists every record under Pending.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again.\n- Android: the same list, the notice's buttons under its text. A phone uploads no release files, so it never lists one of their records; an action only the Mac can take (Restore source file) has no button there. bae change if SyncScreen.kt draws them otherwise."
+   "text": "What the code needs for these boards:\n- No list of pending records: the Sync page has no Pending or Needs attention section. What stops sync is its status; a file's upload, pin, download or move shows on its release in Storage Manager; a change the person made shows in its change box; what only waits for coven to retry shows nowhere but Waiting to sync. Today SyncPendingList.swift and Android's Sync screen list every record: bae change to remove both lists. The two Sync boards here show the page without it, with Waiting for access in the status.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. It is the app's UndoneSetupLine as it is.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and the bug is reported. The app shows the notice; no Try again."
   },
   "code-welcome-damaged-join": {
    "page": "welcome",
