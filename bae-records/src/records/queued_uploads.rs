@@ -104,8 +104,8 @@ pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Upload
 /// is queued. A count below zero, or past a `u32`, is a column-conversion
 /// error.
 fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32)>> {
-    let queued: i64 = row.get("queued_count")?;
-    if queued == 0 {
+    let queued: Option<i64> = row.get("queued_count")?;
+    if queued.unwrap_or(0) == 0 {
         return Ok(None);
     }
     Ok(Some((

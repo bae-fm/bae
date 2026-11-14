@@ -23,7 +23,7 @@ struct CreditPart<'a> {
     first_position: &'a str,
     second_position: &'a str,
     joins: &'a str,
-    filter: &'a str,
+    filter: String,
 }
 
 impl CreditPart<'_> {
@@ -54,7 +54,8 @@ impl CreditPart<'_> {
     }
 }
 
-/// The rows of the credits the detail of the release `?1` lists. The credits
+/// The credits the detail of the release `release_expr` (an SQL expression naming
+/// its id) lists, as a JSON array of rows for [`credit_rows_column`]. The credits
 /// are ordered as the release lists them: the release's, in the order the
 /// catalog stated them; then for each track in playing order, its own
 /// credits, then the credits in a role other than a writing one of the works
@@ -63,7 +64,7 @@ impl CreditPart<'_> {
 /// of them for a credit of the release; artists holding a role over the same
 /// tracks are one row, in the order of their first credit, and rows go in the
 /// order of their first credit. A row covering every track has no tracks.
-fn release_credits_sql() -> String {
+pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
     let release = CreditPart {
         table: "release_artist_roles",
         part: 0,
@@ -73,7 +74,7 @@ fn release_credits_sql() -> String {
         first_position: "credit.position",
         second_position: "0",
         joins: "",
-        filter: "credit.release_id = ?1",
+        filter: format!("credit.release_id = {release_expr}"),
     };
     let track = CreditPart {
         table: "track_artist_roles",
@@ -84,7 +85,7 @@ fn release_credits_sql() -> String {
         first_position: "credit.position",
         second_position: "0",
         joins: "JOIN tracks track ON track.id = credit.track_id",
-        filter: "track.release_id = ?1",
+        filter: format!("track.release_id = {release_expr}"),
     };
     let work = CreditPart {
         table: "work_artists",
@@ -96,11 +97,13 @@ fn release_credits_sql() -> String {
         second_position: "credit.position",
         joins: "JOIN track_works performed ON performed.work_id = credit.work_id \
                 JOIN tracks track ON track.id = performed.track_id",
-        filter: "track.release_id = ?1 \
-                 AND credit.role NOT IN (SELECT role FROM writing_credit_roles)",
+        filter: format!(
+            "track.release_id = {release_expr} \
+             AND credit.role NOT IN (SELECT role FROM writing_credit_roles)"
+        ),
     };
     format!(
-        "WITH {placed}, \
+        "(WITH {placed}, \
          listed AS ({release} UNION ALL {track} UNION ALL {work}), \
          ordered AS ( \
             SELECT listed.*, \
@@ -129,13 +132,17 @@ fn release_credits_sql() -> String {
                                                AND same.artist_id = n.artist_id)) \
                    END AS tracks \
             FROM named n \
-            GROUP BY n.role, n.role_words, n.qualifiers, n.artist_id) \
-         SELECT role, role_words, qualifiers, \
-                json_group_array(printed ORDER BY ord) AS artists, tracks \
-         FROM held \
-         GROUP BY role, role_words, qualifiers, tracks \
-         ORDER BY MIN(ord)",
-        placed = super::release_tracks::placed_tracks_ctes(""),
+            GROUP BY n.role, n.role_words, n.qualifiers, n.artist_id), \
+         rows AS ( \
+            SELECT role, role_words, qualifiers, MIN(ord) AS first_ord, \
+                   json_group_array(printed ORDER BY ord) AS artists, tracks \
+            FROM held \
+            GROUP BY role, role_words, qualifiers, tracks) \
+         SELECT json_group_array(json_object( \
+                    'role', role, 'role_words', role_words, 'qualifiers', qualifiers, \
+                    'artists', json(artists), 'tracks', json(tracks)) ORDER BY first_ord) \
+         FROM rows)",
+        placed = super::release_tracks::placed_tracks_ctes(release_expr, ""),
         release = release.select(),
         track = track.select(),
         work = work.select(),
@@ -150,39 +157,47 @@ struct PlaceJson {
     number: u32,
 }
 
-/// The credit rows of the release `release_id`'s detail, in the order it
-/// lists them.
-pub(super) fn release_credits_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<Vec<DbCreditRow>, DbError> {
-    Ok(sql.query(&release_credits_sql(), params![release_id], |row| {
-        let role: String = row.get("role")?;
-        let words: Option<String> = row.get("role_words")?;
-        let qualifiers: String = row.get("qualifiers")?;
-        let artists: String = row.get("artists")?;
-        let tracks: Option<String> = row.get("tracks")?;
-        let places: Vec<PlaceJson> = tracks
-            .map(|tracks| serde_json::from_str(&tracks))
-            .transpose()
-            .map_err(|error| column_conversion_error(row, "tracks", error))?
-            .unwrap_or_default();
-        Ok(DbCreditRow {
-            role: bae_types::credit_role::CreditedAs::from_columns(&role, words, &qualifiers)
-                .map_err(|error| column_conversion_error(row, "role", error.to_string()))?,
-            artists: serde_json::from_str(&artists)
-                .map_err(|error| column_conversion_error(row, "artists", error))?,
-            tracks: places
-                .into_iter()
-                .map(|place| {
-                    super::release_tracks::track_position_of(
-                        &place.kind,
-                        place.ordinal,
-                        place.number,
-                    )
-                    .map_err(|reason| column_conversion_error(row, "tracks", reason))
-                })
-                .collect::<rusqlite::Result<_>>()?,
+/// One credit row, as the statement spells it in JSON.
+#[derive(serde::Deserialize)]
+struct RowJson {
+    role: String,
+    role_words: Option<String>,
+    qualifiers: String,
+    artists: Vec<String>,
+    tracks: Option<Vec<PlaceJson>>,
+}
+
+/// The release's credit rows, in the order it lists them, as
+/// [`release_credits_json_sql`] read them into `column`.
+pub(super) fn credit_rows_column(
+    row: &Row<'_>,
+    column: &str,
+) -> rusqlite::Result<Vec<DbCreditRow>> {
+    let rows: Vec<RowJson> = bae_store::read::json_column(row, column)?;
+    rows.into_iter()
+        .map(|credit| {
+            Ok(DbCreditRow {
+                role: bae_types::credit_role::CreditedAs::from_columns(
+                    &credit.role,
+                    credit.role_words,
+                    &credit.qualifiers,
+                )
+                .map_err(|error| column_conversion_error(row, column, error.to_string()))?,
+                artists: credit.artists,
+                tracks: credit
+                    .tracks
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|place| {
+                        super::release_tracks::track_position_of(
+                            &place.kind,
+                            place.ordinal,
+                            place.number,
+                        )
+                        .map_err(|reason| column_conversion_error(row, column, reason))
+                    })
+                    .collect::<rusqlite::Result<_>>()?,
+            })
         })
-    })?)
+        .collect()
 }

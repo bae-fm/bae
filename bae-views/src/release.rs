@@ -28,12 +28,7 @@ impl LibraryViews {
     ) -> Result<Option<DbReleaseDetail>, DbError> {
         let release_id = release_id.to_string();
         self.store
-            .read(move |sql| {
-                let Some(release) = find_release_by_id_on(&sql, &release_id)? else {
-                    return Ok(None);
-                };
-                Ok(Some(build_release_detail_on(&sql, release)?))
-            })
+            .read(move |sql| build_release_detail_on(&sql, &release_id))
             .process(|rows| Ok(rows.map(|rows| rows.process().detail)))
             .await
     }
@@ -125,22 +120,17 @@ pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseContextRows>, DbError> {
-    let Some(release) = find_release_by_id_on(sql, release_id)? else {
+    let Some(detail) = build_release_detail_on(sql, release_id)? else {
         return Ok(None);
     };
     let release_index: i64 =
-        sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| row.get(0))?;
+        sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release_id], |row| row.get(0))?;
     let release_index =
         bae_store::query::to_usize(release_index, "a release's index in its album")?;
-    let album = find_album_by_id_on(sql, &release.album_id)?;
+    let album = find_album_by_id_on(sql, &detail.rows.release().album_id)?;
     let is_compilation = album.as_ref().is_some_and(|album| album.is_compilation);
     let album_year = album.and_then(|album| album.year);
-    Ok(Some(ReleaseContextRows {
-        detail: build_release_detail_on(sql, release)?,
-        release_index,
-        is_compilation,
-        album_year,
-    }))
+    Ok(Some(ReleaseContextRows { detail, release_index, is_compilation, album_year }))
 }
 
 #[derive(Clone, PartialEq)]
@@ -165,15 +155,37 @@ impl ReleaseContextRows {
 }
 
 /// The release's rows as its detail reads them, beside its entry in the
-/// download queue.
+/// download queue; `None` when the release doesn't exist.
 pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
-    release: DbRelease,
-) -> Result<ReleaseDetailRows, DbError> {
-    let download = bae_transfers::release_download_entry_on(sql, &release.id)?;
-    let rows =
-        release_detail_rows_on(sql, release, &bae_people::people::own_track_stars_sql("track"))?;
-    Ok(ReleaseDetailRows { rows, download })
+    release_id: &str,
+) -> Result<Option<ReleaseDetailRows>, DbError> {
+    Ok(release_detail_rows_on(
+        sql,
+        release_id,
+        &bae_people::people::own_track_stars_sql("track"),
+        &bae_transfers::download_entry_sql("rel.id"),
+        bae_transfers::download_entry_column,
+    )?
+    .map(|(rows, download)| ReleaseDetailRows { rows, download }))
+}
+
+/// The detail rows of each release of the album `album_id`, in the album's
+/// order, each beside its entry in the download queue, in one statement.
+pub(crate) fn build_album_release_details_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+) -> Result<Vec<ReleaseDetailRows>, DbError> {
+    Ok(bae_records::records::release_details_on(
+        sql,
+        bae_records::records::ReleaseSet::OfAlbum(album_id),
+        &bae_people::people::own_track_stars_sql("track"),
+        &bae_transfers::download_entry_sql("rel.id"),
+        bae_transfers::download_entry_column,
+    )?
+    .into_iter()
+    .map(|(rows, download)| ReleaseDetailRows { rows, download })
+    .collect())
 }
 
 #[derive(Clone, PartialEq)]

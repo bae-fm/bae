@@ -219,17 +219,38 @@ pub fn get_files_for_release_on(
     Ok(files)
 }
 
-/// Each of the releases `?1` names, a JSON array of release ids, as one row
-/// in the array's order (`json_each` walks it so) holding its records: every catalog's description of
-/// it, in the order surfaces list catalogs (`bae_catalog_rank`), as a JSON
-/// array that is empty for a release no catalog describes.
-pub(super) const RELEASES_RECORDS_IN_ORDER: &str = "SELECT (SELECT json_group_array(json_object( \
+/// Every catalog's description of the release `release` (an SQL expression
+/// naming its id), in the order surfaces list catalogs, as a JSON array for
+/// [`records_column`] that is empty for a release no catalog describes.
+pub(super) fn release_records_json_sql(release: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
                  'catalog', ordered.catalog, 'key', ordered.key, 'kind', ordered.kind, \
                  'album_key', ordered.album_key)) \
-             FROM (SELECT rr.catalog, rr.key, rr.kind, rr.album_key FROM release_records rr \
-                   WHERE rr.release_id = r.value ORDER BY bae_catalog_rank(rr.catalog)) \
-                 AS ordered) AS records \
-     FROM json_each(?1) r";
+          FROM (SELECT rr.catalog, rr.key, rr.kind, rr.album_key FROM release_records rr \
+                WHERE rr.release_id = {release} ORDER BY bae_catalog_rank(rr.catalog)) \
+              AS ordered)"
+    )
+}
+
+/// The release's records as [`release_records_json_sql`] read them into
+/// `column`.
+pub(super) fn records_column(
+    row: &Row,
+    column: &str,
+) -> rusqlite::Result<Vec<bae_catalogs::records::ReleaseRecord>> {
+    let text: String = row.get(column)?;
+    let records: Vec<serde_json::Value> =
+        serde_json::from_str(&text).map_err(|error| column_conversion_error(row, column, error))?;
+    records.iter().map(|record| record_of(row, column, record)).collect()
+}
+
+/// Each of the releases `?1` names, a JSON array of release ids, as one row
+/// in the array's order (`json_each` walks it so) holding its records, as
+/// [`records_column`] reads them.
+pub fn releases_records_in_order_sql() -> String {
+    format!("SELECT {} AS records FROM json_each(?1) r", release_records_json_sql("r.value"))
+}
 
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
@@ -237,10 +258,11 @@ pub fn get_release_records_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
-    Ok(get_releases_records_on(sql, &[release_id.to_string()])?
-        .into_iter()
-        .next()
-        .unwrap_or_default())
+    Ok(sql.query_row(
+        &format!("SELECT {} AS records", release_records_json_sql("?1")),
+        params![release_id],
+        |row| records_column(row, "records"),
+    )?)
 }
 
 /// Every catalog's description of each of `release_ids`, in one statement:
@@ -251,27 +273,20 @@ pub fn get_releases_records_on(
     release_ids: &[String],
 ) -> Result<Vec<Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
     Ok(sql.query(
-        RELEASES_RECORDS_IN_ORDER,
+        &releases_records_in_order_sql(),
         params![serde_json::json!(release_ids).to_string()],
-        |row| {
-            let text: String = row.get("records")?;
-            let records: Vec<serde_json::Value> = serde_json::from_str(&text)
-                .map_err(|error| column_conversion_error(row, "records", error))?;
-            records
-                .iter()
-                .map(|record| record_of(row, record))
-                .collect::<rusqlite::Result<Vec<_>>>()
-        },
+        |row| records_column(row, "records"),
     )?)
 }
 
 /// One record of a `records` column's JSON array.
 fn record_of(
     row: &Row,
+    column: &str,
     record: &serde_json::Value,
 ) -> rusqlite::Result<bae_catalogs::records::ReleaseRecord> {
     let text = |field: &str| record[field].as_str().map(str::to_string);
-    let unreadable = |reason: String| column_conversion_error(row, "records", reason);
+    let unreadable = |reason: String| column_conversion_error(row, column, reason);
     let catalog = text("catalog")
         .ok_or_else(|| unreadable("a record has no catalog".to_string()))?
         .parse()
@@ -394,6 +409,7 @@ pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
 }
 
 /// A stored `source_audio_layout` value, read from `row`'s column `column`.
+#[cfg(desktop)]
 pub(super) fn source_audio_layout_value<I: rusqlite::RowIndex>(
     row: &Row,
     column: I,
@@ -410,19 +426,105 @@ pub(super) fn source_audio_layout_value<I: rusqlite::RowIndex>(
     }
 }
 
-pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
-    let layout = row
-        .get::<_, Option<String>>("source_audio_layout")?
-        .map(|layout| source_audio_layout_value(row, "source_audio_layout", &layout))
+/// The columns of a release file, by the names the `release_files` row, its
+/// size and whether it is stored read under (`release_file_columns!()`),
+/// whether a row reads them or a JSON object spells them.
+#[derive(serde::Deserialize)]
+pub(super) struct FileColumns {
+    id: String,
+    release_id: String,
+    original_filename: String,
+    content_type: String,
+    created_at: String,
+    file: coven::FileId,
+    role: String,
+    document_kind: Option<String>,
+    source_audio_layout: Option<String>,
+    source_audio_content_type: Option<String>,
+    source_audio_container: Option<String>,
+    source_audio_duration_ms: Option<u64>,
+    source_audio_sample_rate_hz: Option<i64>,
+    source_audio_bits_per_sample: Option<i64>,
+    source_audio_bitrate_kbps: Option<i64>,
+    source_audio_channels: Option<i64>,
+    file_size: u64,
+    stored: i64,
+}
+
+/// The names of [`FileColumns`] that come from `release_files` itself.
+const FILE_ROW_COLUMNS: [&str; 16] = [
+    "id",
+    "release_id",
+    "original_filename",
+    "content_type",
+    "created_at",
+    "file",
+    "role",
+    "document_kind",
+    "source_audio_layout",
+    "source_audio_content_type",
+    "source_audio_container",
+    "source_audio_duration_ms",
+    "source_audio_sample_rate_hz",
+    "source_audio_bits_per_sample",
+    "source_audio_bitrate_kbps",
+    "source_audio_channels",
+];
+
+/// A JSON object of one release file for [`file_of`]: `f`, a row of
+/// `release_files`, with the `size` coven records for it and whether it is
+/// `stored` (SQL expressions).
+pub(super) fn file_json_sql(size: &str, stored: &str) -> String {
+    let columns: Vec<String> =
+        FILE_ROW_COLUMNS.iter().map(|name| format!("'{name}', f.{name}")).collect();
+    format!("json_object({}, 'file_size', {size}, 'stored', {stored})", columns.join(", "))
+}
+
+impl FileColumns {
+    fn of_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Self {
+            id: row.get("id")?,
+            release_id: row.get("release_id")?,
+            original_filename: row.get("original_filename")?,
+            content_type: row.get("content_type")?,
+            created_at: row.get("created_at")?,
+            file: row.get("file")?,
+            role: row.get("role")?,
+            document_kind: row.get("document_kind")?,
+            source_audio_layout: row.get("source_audio_layout")?,
+            source_audio_content_type: row.get("source_audio_content_type")?,
+            source_audio_container: row.get("source_audio_container")?,
+            source_audio_duration_ms: row.get("source_audio_duration_ms")?,
+            source_audio_sample_rate_hz: row.get("source_audio_sample_rate_hz")?,
+            source_audio_bits_per_sample: row.get("source_audio_bits_per_sample")?,
+            source_audio_bitrate_kbps: row.get("source_audio_bitrate_kbps")?,
+            source_audio_channels: row.get("source_audio_channels")?,
+            file_size: bae_store::read::count_column(row, "file_size")?,
+            stored: row.get("stored")?,
+        })
+    }
+}
+
+/// The release file `columns` describe; a value that names no file fact is
+/// the column it sits in and why.
+pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, String)> {
+    let layout = columns
+        .source_audio_layout
+        .as_deref()
+        .map(|layout| match layout {
+            "file" => Ok(crate::source_audio::SourceAudioLayout::File),
+            "cue" => Ok(crate::source_audio::SourceAudioLayout::Cue),
+            other => Err(("source_audio_layout", format!("invalid source_audio_layout {other:?}"))),
+        })
         .transpose()?;
     let source_audio = match (
-        row.get::<_, Option<String>>("source_audio_content_type")?,
-        row.get::<_, Option<String>>("source_audio_container")?,
-        row.get::<_, Option<u64>>("source_audio_duration_ms")?,
-        row.get::<_, Option<i64>>("source_audio_sample_rate_hz")?,
-        row.get::<_, Option<i64>>("source_audio_bits_per_sample")?,
-        row.get::<_, Option<i64>>("source_audio_bitrate_kbps")?,
-        row.get::<_, Option<i64>>("source_audio_channels")?,
+        columns.source_audio_content_type,
+        columns.source_audio_container,
+        columns.source_audio_duration_ms,
+        columns.source_audio_sample_rate_hz,
+        columns.source_audio_bits_per_sample,
+        columns.source_audio_bitrate_kbps,
+        columns.source_audio_channels,
     ) {
         (None, None, None, None, None, None, None) if layout.is_none() => None,
         (
@@ -446,41 +548,52 @@ pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
                 channels,
             },
         }),
-        columns => {
-            return Err(column_conversion_error(
-                row,
+        facts => {
+            return Err((
                 "source_audio_content_type",
-                format!("inconsistent release source-audio facts: {columns:?}"),
+                format!("inconsistent release source-audio facts: {facts:?}"),
             ))
         }
     };
+    let role =
+        crate::ReleaseFileRole::from_db_values(&columns.role, columns.document_kind.as_deref())
+            .ok_or_else(|| {
+                (
+                    "role",
+                    format!(
+                        "invalid release file role {:?} with document kind {:?}",
+                        columns.role, columns.document_kind
+                    ),
+                )
+            })?;
+    let created_at = chrono::DateTime::parse_from_rfc3339(&columns.created_at)
+        .map(|created_at| created_at.with_timezone(&chrono::Utc))
+        .map_err(|error| {
+            (
+                "created_at",
+                format!(
+                    "created_at {:?} is not a valid rfc3339 timestamp: {error}",
+                    columns.created_at
+                ),
+            )
+        })?;
     Ok(DbFile {
-        id: row.get("id")?,
-        release_id: row.get("release_id")?,
-        original_filename: row.get("original_filename")?,
-        file_size: bae_store::read::count_column(row, "file_size")?,
-        content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
-        role: {
-            let role = row.get::<_, String>("role")?;
-            let document_kind = row.get::<_, Option<String>>("document_kind")?;
-            crate::ReleaseFileRole::from_db_values(&role, document_kind.as_deref()).ok_or_else(
-                || {
-                    column_conversion_error(
-                        row,
-                        "role",
-                        format!(
-                            "invalid release file role {role:?} with document kind \
-                             {document_kind:?}"
-                        ),
-                    )
-                },
-            )?
-        },
+        id: columns.id,
+        release_id: columns.release_id,
+        original_filename: columns.original_filename,
+        file_size: columns.file_size,
+        content_type: ContentType::from_mime(&columns.content_type),
+        role,
         source_audio,
-        file: row.get("file")?,
-        stored: row.get("stored")?,
-        created_at: rfc3339_column(row, "created_at")?,
+        file: columns.file,
+        stored: columns.stored != 0,
+        created_at,
     })
+}
+
+pub fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
+    file_of(FileColumns::of_row(row)?)
+        .map_err(|(column, reason)| column_conversion_error(row, column, reason))
 }
 
 pub fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {

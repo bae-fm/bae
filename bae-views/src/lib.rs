@@ -72,7 +72,7 @@ use artist::{artist_listing_query, row_to_artist_summary};
 use composer::{
     composer_listing_query, row_to_composer_summary, row_to_work_summary, work_summary_query,
 };
-use release::{build_release_detail_on, ReleaseDetailRows};
+use release::{build_album_release_details_on, ReleaseDetailRows};
 
 use album_search::*;
 use bae_records::credits::LibraryCredit;

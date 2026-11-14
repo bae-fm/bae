@@ -8,7 +8,6 @@ mod download_snapshot;
 mod output_snapshot;
 mod queued_releases;
 mod release_queue;
-mod release_state;
 mod release_transfers;
 pub mod storage_moves;
 
@@ -33,7 +32,6 @@ pub use release_queue::{
     ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
     TransferCount, TransferStage,
 };
-pub use release_state::release_download_entry_on;
 pub use release_transfers::{
     apply_release_changes, release_changes, ReleaseTransferChange, ReleaseTransferReport,
     ReleaseTransfers, ReleaseTransfersWatch,

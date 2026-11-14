@@ -480,19 +480,22 @@ fn release_edit_rows_on<Q: coven::SqlRead>(
     sql: &Q,
     release_id: &str,
 ) -> Result<Option<ReleaseEditRows>, bae_store::DbError> {
-    let Some(release) = bae_records::records::read::find_release_by_id_on(sql, release_id)? else {
+    let Some((detail, ())) = bae_records::records::release_detail_rows_on(
+        sql,
+        release_id,
+        bae_records::records::NO_STARS,
+        "",
+        |_| Ok(()),
+    )?
+    else {
         return Ok(None);
     };
-    let album = bae_records::records::read::find_album_by_id_on(sql, &release.album_id)?
-        .ok_or_else(|| {
-            bae_store::DbError::unreadable(
-                format!("album of release {release_id}"),
-                release.album_id.clone(),
-            )
+    let album_id = detail.release().album_id.clone();
+    let album =
+        bae_records::records::read::find_album_by_id_on(sql, &album_id)?.ok_or_else(|| {
+            bae_store::DbError::unreadable(format!("album of release {release_id}"), album_id)
         })?;
     let album_artists = bae_records::records::read::get_artists_for_album_on(sql, &album.id)?;
-    let detail =
-        bae_records::records::release_detail_rows_on(sql, release, bae_records::records::NO_STARS)?;
     let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
     Ok(Some(ReleaseEditRows { detail, album_artists, tracks, album }))
 }

@@ -533,8 +533,8 @@ fn find_album_detail_on(
         return Ok(None);
     };
     let artists = get_artists_for_album_on(sql, album_id)?;
-    let db_releases = get_releases_for_album_on(sql, album_id)?;
-    if db_releases.is_empty() {
+    let releases = build_album_release_details_on(sql, album_id)?;
+    if releases.is_empty() {
         return Ok(None);
     }
     let (primary_release_id, primary_cover_version): (String, Option<String>) = sql.query_row(
@@ -546,10 +546,6 @@ fn find_album_detail_on(
         params![album_id],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
-    let releases = db_releases
-        .into_iter()
-        .map(|release| build_release_detail_on(sql, release))
-        .collect::<Result<Vec<_>, _>>()?;
     let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
         ratings,

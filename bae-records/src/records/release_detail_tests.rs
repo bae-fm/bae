@@ -105,7 +105,9 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
 
     let (groups, mediums, places) = db
         .read(move |sql| {
-            let groups = release_tracks::release_track_groups_on(&sql, release, NO_STARS)?;
+            let (detail, ()) =
+                release_detail_rows_on(&sql, release, NO_STARS, "", |_| Ok(()))?.unwrap();
+            let groups = detail.process().track_groups;
             let mediums = release_mediums_on(&sql, release)?;
             let places = release_tracks::track_places_on(
                 &sql,

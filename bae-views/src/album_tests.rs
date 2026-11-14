@@ -206,6 +206,24 @@ async fn album_window_ignores_an_unread_table() {
     assert_eq!(moved.rows, initial.rows);
 }
 
+/// An album's page reads its album, its artists, every release with all its
+/// parts, the primary release, the person's ratings and whether storage is
+/// set up: six statements, whatever number of releases the album has.
+#[tokio::test]
+async fn album_detail_reads_every_release_in_one_statement() {
+    let (db, _temp) =
+        bae_records::test_fixtures::aggregate_ordering::aggregate_db(crate::TEST_SCHEMA).await;
+    let log = db.record_statements_for_test().await.unwrap();
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_album_detail(bae_records::test_fixtures::ALBUM_A)
+        .await
+        .unwrap()
+        .expect("the album has releases");
+    assert_eq!(detail.releases.len(), 3, "the album has three releases");
+    let statements = log.take();
+    assert_eq!(statements.len(), 6, "{} statements", statements.len());
+}
+
 #[tokio::test]
 async fn album_detail_subscription_delivers_absence_after_deletion() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;

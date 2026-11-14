@@ -92,7 +92,10 @@ async fn release_records_are_read_in_catalog_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::records::read::RELEASES_RECORDS_IN_ORDER),
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::records::read::releases_records_in_order_sql()
+                ),
                 [serde_json::json!([RELEASE_A]).to_string()],
                 |row| row.get::<_, String>(3),
             )

@@ -1773,7 +1773,6 @@ frozen = [
     { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::with_ids", shape = "filter", count = 1, finding = "`ReleaseLabel::with_ids` filters with `filter` (found by the check)" },
     { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "filter", count = 1, finding = "`StatedMedia::any` filters with `filter_map` (found by the check)" },
     { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "pick", count = 1, finding = "`StatedMedia::any` picks with `any` (found by the check)" },
-    { path = "bae-views/src/album.rs", item = "find_album_detail_on", shape = "query-per-row", count = 1, finding = "builds each release's detail with about nine statements apiece after the album query" },
     { path = "bae-views/src/invites.rs", item = "InviteEntry::in_operation_order", shape = "sort", count = 1, finding = "joins pending records to invites, joins profile names, filters refused outcomes and sorts open and refused invites in Rust" },
     { path = "bae-views/src/invites.rs", item = "LibraryViews::subscribe_invites", shape = "filter", count = 1, finding = "joins pending records to invites, joins profile names, filters refused outcomes and sorts open and refused invites in Rust" },
     { path = "bae-views/src/invites.rs", item = "LibraryViews::subscribe_invites", shape = "group", count = 1, finding = "joins pending records to invites, joins profile names, filters refused outcomes and sorts open and refused invites in Rust" },

@@ -6,61 +6,118 @@
 use super::files::cover_version_sql;
 use super::query::*;
 use super::read::*;
-use super::release_credits::release_credits_on;
-use super::release_tracks::{release_total_duration_on, release_track_groups_on};
+use super::release_credits::{credit_rows_column, release_credits_json_sql};
+use super::release_tracks::{total_duration_sql, track_groups_column, track_groups_json_sql};
 use super::*;
 
 /// What a track's stars are when no one's are asked for: none.
 pub const NO_STARS: &str = "NULL";
 
-/// The release's rows as its detail reads them: its tracks in groups, each
-/// with the stars `my_stars` gives it (an SQL expression over the track
-/// `track`, or [`NO_STARS`]), its credits, its files, records and audio on
-/// one device only, and whether it is pinned, stored, or queued to upload.
-pub fn release_detail_rows_on(
-    sql: &impl coven::SqlRead,
-    release: DbRelease,
-    my_stars: &str,
-) -> Result<DbReleaseDetailRows, DbError> {
-    let total_duration_ms = release_total_duration_on(sql, &release.id)?;
-    let track_groups = release_track_groups_on(sql, &release.id, my_stars)?;
-    let credits = release_credits_on(sql, &release.id)?;
-    let files = release_files_on(sql, &release.id)?;
-    let records = get_release_records_on(sql, &release.id)?;
-    let unstored_audio = unstored_audio_on(sql, &release.id)?;
-    let (pinned, remote) = sql.query_row(
-        &format!(
-            "SELECT EXISTS (SELECT 1 FROM release_storage storage \
-                            WHERE storage.release_id = ?1 AND {RELEASE_STORAGE_PINNED}), \
-                    EXISTS (SELECT 1 FROM release_storage storage \
-                            WHERE storage.release_id = ?1 AND storage.stored = 1)"
-        ),
-        params![release.id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
-    let cover_version = sql.query_row(
-        &format!("SELECT {}", cover_version_sql("?1")),
-        params![release.id],
-        |row| row.get(0),
-    )?;
-    let upload = super::queued_uploads::release_upload_on(sql, &release.id)?;
-
-    Ok(DbReleaseDetailRows {
-        release,
-        total_duration_ms,
-        track_groups,
-        credits,
-        files,
-        records,
-        unstored_audio,
-        pinned,
-        remote,
-        upload,
-        cover_version,
-    })
+/// The releases a read of their detail covers.
+#[derive(Debug, Clone, Copy)]
+pub enum ReleaseSet<'a> {
+    /// One release, by its id.
+    One(&'a str),
+    /// Every release of an album, by the album's id, in the album's order.
+    OfAlbum(&'a str),
 }
 
-/// A release's rows as [`release_detail_rows_on`] read them.
+impl ReleaseSet<'_> {
+    /// The condition and the order of the set over a row `rel` of `releases`,
+    /// binding the id as `?1`.
+    fn condition(&self) -> &'static str {
+        match self {
+            Self::One(_) => "rel.id = ?1 ORDER BY rel.id",
+            Self::OfAlbum(_) => "rel.album_id = ?1 ORDER BY rel.album_order, rel.id",
+        }
+    }
+
+    fn id(&self) -> &str {
+        match self {
+            Self::One(id) | Self::OfAlbum(id) => id,
+        }
+    }
+}
+
+/// The release `release_id`'s rows as its detail reads them, beside the
+/// `extra_columns` (SQL over the release `rel`, empty for none) that `extra` reads; `None`
+/// when the release does not exist. See [`release_details_on`].
+pub fn release_detail_rows_on<X>(
+    sql: &impl coven::SqlRead,
+    release_id: &str,
+    my_stars: &str,
+    extra_columns: &str,
+    extra: fn(&Row<'_>) -> rusqlite::Result<X>,
+) -> Result<Option<(DbReleaseDetailRows, X)>, DbError> {
+    Ok(release_details_on(sql, ReleaseSet::One(release_id), my_stars, extra_columns, extra)?
+        .into_iter()
+        .next())
+}
+
+/// The rows of the detail of each release of `set`, in one statement: each
+/// release a row whose columns hold its tracks in groups (each with the stars
+/// `my_stars` gives it, an SQL expression over the track `track`, or
+/// [`NO_STARS`]), its credits, its files, records and audio on one device
+/// only, and whether it is pinned, stored, or queued to upload. Beside each,
+/// `extra_columns`, further columns of the release `rel` that `extra` reads.
+pub fn release_details_on<X>(
+    sql: &impl coven::SqlRead,
+    set: ReleaseSet<'_>,
+    my_stars: &str,
+    extra_columns: &str,
+    extra: fn(&Row<'_>) -> rusqlite::Result<X>,
+) -> Result<Vec<(DbReleaseDetailRows, X)>, DbError> {
+    let statement = format!(
+        "SELECT rel.*, {labels} AS labels, {barcodes} AS barcodes, {media} AS media, \
+                {total_duration} AS total_duration_ms, \
+                {track_groups} AS track_groups, \
+                {credits} AS credits, \
+                {files} AS files, \
+                {records} AS records, \
+                {unstored_audio} AS unstored_audio, \
+                COALESCE({RELEASE_STORAGE_PINNED}, 0) AS pinned, \
+                COALESCE(storage.stored = 1, 0) AS remote, \
+                {upload_columns}, \
+                {cover_version} AS cover_version{extra_columns} \
+         FROM releases rel \
+         LEFT JOIN release_storage storage ON storage.release_id = rel.id \
+         LEFT JOIN ({sending}) sending ON sending.release_id = rel.id \
+         WHERE {condition}",
+        labels = super::pressing_columns::release_labels_sql("rel.id"),
+        barcodes = super::pressing_columns::release_barcodes_sql("rel.id"),
+        media = super::pressing_columns::release_media_sql("rel.id"),
+        total_duration = total_duration_sql("rel.id"),
+        track_groups = track_groups_json_sql("rel.id", my_stars),
+        credits = release_credits_json_sql("rel.id"),
+        files = release_files_json_sql("rel.id"),
+        records = release_records_json_sql("rel.id"),
+        unstored_audio = unstored_audio_json_sql("rel.id"),
+        upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
+        cover_version = cover_version_sql("rel.id"),
+        extra_columns =
+            if extra_columns.is_empty() { String::new() } else { format!(", {extra_columns}") },
+        sending = super::queued_uploads::RELEASES_SENDING,
+        condition = set.condition(),
+    );
+    Ok(sql.query(&statement, params![set.id()], |row| {
+        let detail = DbReleaseDetailRows {
+            release: row_to_release(row)?,
+            total_duration_ms: bae_store::read::count_column(row, "total_duration_ms")?,
+            track_groups: track_groups_column(row, "track_groups")?,
+            credits: credit_rows_column(row, "credits")?,
+            files: release_files_column(row, "files")?,
+            records: records_column(row, "records")?,
+            unstored_audio: unstored_audio_column(row, "unstored_audio")?,
+            pinned: row.get("pinned")?,
+            remote: row.get("remote")?,
+            upload: super::queued_uploads::release_upload_in_row(row)?,
+            cover_version: row.get("cover_version")?,
+        };
+        Ok((detail, extra(row)?))
+    })?)
+}
+
+/// A release's rows as [`release_details_on`] read them.
 #[derive(Clone, PartialEq)]
 pub struct DbReleaseDetailRows {
     release: DbRelease,
@@ -77,6 +134,11 @@ pub struct DbReleaseDetailRows {
 }
 
 impl DbReleaseDetailRows {
+    /// The release the rows are of.
+    pub fn release(&self) -> &DbRelease {
+        &self.release
+    }
+
     /// The release's detail, one entry per track.
     pub fn process(self) -> DbReleaseDetail {
         DbReleaseDetail {
@@ -95,43 +157,70 @@ impl DbReleaseDetailRows {
     }
 }
 
-/// The release's files, and among them the images, the images a cover can
-/// be made from, and the files no track plays from, each a statement of its
-/// own over the release's files in their order, and the files counted and
-/// their sizes added.
-fn release_files_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<DbReleaseFiles, DbError> {
-    let among = |condition: &str| {
-        sql.query(
-            &format!(
-                "SELECT {columns} FROM release_files AS f WHERE f.release_id = ?1 AND {condition} \
-                 ORDER BY f.original_filename COLLATE natural_order, f.id",
-                columns = release_file_columns!(),
-            ),
-            params![release_id],
-            row_to_file,
-        )
-    };
+/// The release `release` (an SQL expression naming its id)'s files, and among
+/// them the images, the images a cover can be made from, and the files no
+/// track plays from, each in the release's file order, and the files counted
+/// and their sizes added, as one JSON object for [`release_files_column`].
+fn release_files_json_sql(release: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
         .map(|content_type| format!("'{}'", content_type.as_str()))
         .collect();
-    let (count, total_size) = sql.query_row(
-        "SELECT COUNT(*), COALESCE(SUM(coven.size), 0) \
-         FROM release_files AS f JOIN coven_files AS coven ON coven.id = f.file \
-         WHERE f.release_id = ?1",
-        params![release_id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+    let list = |condition: &str| {
+        format!(
+            "json_group_array(json(listed.file_json) \
+                 ORDER BY listed.original_filename COLLATE natural_order, listed.id) \
+             FILTER (WHERE {condition})"
+        )
+    };
+    format!(
+        "(SELECT json_object( \
+              'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
+              'others', json({others}), \
+              'count', COUNT(*), 'total_size', COALESCE(SUM(listed.size), 0)) \
+          FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
+                       coven.size AS size, {file_json} AS file_json \
+                FROM release_files AS f \
+                LEFT JOIN coven_files AS coven ON coven.id = f.file \
+                WHERE f.release_id = {release}) AS listed)",
+        files = list("1"),
+        images = list("listed.content_type GLOB 'image/*'"),
+        covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
+        others = list("listed.source_audio_layout IS NULL"),
+        file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
+        release = release,
+    )
+}
+
+/// The release's files as [`release_files_json_sql`] read them into `column`.
+fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbReleaseFiles> {
+    #[derive(serde::Deserialize)]
+    struct Stored {
+        files: Vec<FileColumns>,
+        images: Vec<FileColumns>,
+        covers: Vec<FileColumns>,
+        others: Vec<FileColumns>,
+        count: i64,
+        total_size: u64,
+    }
+    let stored: Stored = bae_store::read::json_column(row, column)?;
+    let files = |columns: Vec<FileColumns>| {
+        columns
+            .into_iter()
+            .map(|file| {
+                file_of(file).map_err(|(field, reason)| {
+                    column_conversion_error(row, column, format!("{field}: {reason}"))
+                })
+            })
+            .collect::<rusqlite::Result<Vec<_>>>()
+    };
     Ok(DbReleaseFiles {
-        files: get_files_for_release_on(sql, release_id)?,
-        images: among("f.content_type GLOB 'image/*'")?,
-        covers: among(&format!("f.content_type IN ({})", covers.join(", ")))?,
-        others: among("f.source_audio_layout IS NULL")?,
-        count,
-        total_size,
+        files: files(stored.files)?,
+        images: files(stored.images)?,
+        covers: files(stored.covers)?,
+        others: files(stored.others)?,
+        count: stored.count,
+        total_size: stored.total_size,
     })
 }
 
