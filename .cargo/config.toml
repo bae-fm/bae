@@ -5,13 +5,12 @@ rustc-wrapper = "sccache"
 # FFmpeg comes exclusively from the bae-ffmpeg fork's prebuilt dist, never from a
 # system/Homebrew install -- local dev links the same artifacts CI and release
 # do. scripts/setup-ffmpeg.sh populates bae-ffmpeg/dist; it is required local
-# setup. Pointing pkg-config only there means ffmpeg-sys-next can't resolve a
-# Homebrew ffmpeg even if one is installed. relative=true resolves against the
-# repo root (the parent of this .cargo dir). force=false lets setup-ffmpeg.sh's
-# shell exports take over when present.
-PKG_CONFIG_PATH = { value = "bae-ffmpeg/dist/lib/pkgconfig", relative = true, force = false }
+# setup. PKG_CONFIG_PATH is deliberately not set: with FFMPEG_DIR set,
+# ffmpeg-sys-next never runs pkg-config, and a path here is an absolute,
+# per-checkout value that crates recording PKG_CONFIG_PATH as a rebuild trigger
+# (aws-lc-sys) would recompile for in every checkout.
 # The fork's shipped .pc files carry a dead CI-baked prefix (/Users/runner/...),
-# so pkg-config alone resolves wrong include/lib paths. FFMPEG_DIR makes
+# so pkg-config would resolve wrong include/lib paths. FFMPEG_DIR makes
 # ffmpeg-sys-next read $FFMPEG_DIR/{include,lib} directly, bypassing that prefix.
 # Every host cargo build then finds FFmpeg with no shell export -- the pre-commit
 # hook, plain cargo, and the Android build's host uniffi-bindgen/loc-gen steps
