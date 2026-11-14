@@ -13,7 +13,9 @@ struct OpenFailureOfferTests {
             name: "Library",
             path: "/libraries/library-1",
             state: state,
-            isActive: false
+            isActive: false,
+            nextOpenableId: nil,
+            previousOpenableId: nil
         )
     }
 

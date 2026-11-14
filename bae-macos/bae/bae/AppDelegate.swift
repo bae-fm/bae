@@ -681,18 +681,17 @@ extension AppDelegate {
         )
     }
 
-    /// Open the library `offset` places from the active one, wrapping and
-    /// skipping broken ones.
+    /// Open the library after the active one that opens when `offset` is
+    /// positive, and the one before it otherwise; core names both on the
+    /// active library and wraps at the ends.
     func switchLibrary(byOffset offset: Int) {
-        let openable = libraries.filter(\.isOpenable)
-        guard openable.count > 1,
-            let activeIdx = openable.firstIndex(where: \.isActive)
+        guard let active = libraries.first(where: \.isActive),
+            let id = offset > 0
+                ? active.nextOpenableId : active.previousOpenableId
         else {
             return
         }
-        let count = openable.count
-        let next = ((activeIdx + offset) % count + count) % count
-        openLibrary(openable[next])
+        openLocalLibrary(id: id)
     }
 
     /// Rename a library, showing a failure in the open sheet.

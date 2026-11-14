@@ -3658,7 +3658,10 @@ storage settings can't be read never hides the others: the list carries each
 library with its settings or why they can't be read, shows that reason in
 place of the account, and offers no Open for it. A store whose name can't be read is listed by its id
 instead of failing the listing, with no Open either. Launch and switching
-libraries pass over it. Switching keeps the open library until the next one
+libraries pass over it. Core decides which library a switch to the next or
+previous one opens: the list names, on the active library, the library after
+and the library before it among those that open (wrapping at the ends), and
+names none when no other library opens. Switching keeps the open library until the next one
 has opened; a switch whose open fails leaves the open library on screen with
 the failure shown over it.
 
@@ -4333,8 +4336,8 @@ it played everything named:
 | Answer | Meaning |
 |---|---|
 | Playing | everything named plays |
-| Playing without releases | those of several releases that hold no tracks are left out, named in order; the line says how many |
-| Playing without tracks | those tracks of a list the library doesn't hold are left out, named in order; the line says how many |
+| Playing without releases | those of several releases that hold no tracks are left out; the outcome carries how many, and the line says it |
+| Playing without tracks | those tracks of a list the library doesn't hold are left out; the outcome carries how many, and the line says it |
 | Nothing to play | what was named holds no tracks; the queue is as it was |
 | Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
 
@@ -4964,7 +4967,7 @@ library is registered there by id.
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, at a new library's settings; a restore failing before its record leaves this device's copy as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
 | `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries with the private circle it asks for, so the person's profile is written as their device registers (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
-| `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
+| `unfinished_joins`, `unfinished_join_for`, `resume_join` | list the joins this device has under way, find the one for a library, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `discard_unfinished_installation` | deletes a join or restore that stopped before it finished from this device, directory and entries, for one coven can't read; `unfinished_joins` and `unfinished_restores` fail with `UnfinishedInstallationUnreadable` naming its library until it is gone; refused as `Config` when this device has none for the library, or a call holds it (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |

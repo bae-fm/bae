@@ -43,6 +43,7 @@ struct WelcomeListingsTests {
             savedRestoreCodes: { await bridge.savedRestoreCodes() },
             forgetSavedRestoreCode: { _ in throw WelcomeTestError.notUsed },
             unfinishedJoins: { [] },
+            unfinishedJoinFor: { _ in nil },
             unfinishedRestores: { [] },
             discardUnfinishedInstallation: { _ in
                 throw WelcomeTestError.notUsed
@@ -82,7 +83,9 @@ struct WelcomeListingsTests {
             name: "Library",
             path: "/libraries/library-1",
             state: .openable(storage: nil),
-            isActive: false
+            isActive: false,
+            nextOpenableId: nil,
+            previousOpenableId: nil
         )
         let listings = WelcomeListings()
         await listings.load(from: setup)

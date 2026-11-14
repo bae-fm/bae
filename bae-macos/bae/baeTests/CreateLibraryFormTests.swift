@@ -23,6 +23,7 @@ struct CreateLibraryFormTests {
             savedRestoreCodes: { [] },
             forgetSavedRestoreCode: { _ in throw CancellationError() },
             unfinishedJoins: { [] },
+            unfinishedJoinFor: { _ in nil },
             unfinishedRestores: { [] },
             discardUnfinishedInstallation: { _ in throw CancellationError() },
             makeBootstrap: {

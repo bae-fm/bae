@@ -48,7 +48,15 @@ private fun library(
     id: String,
     name: String?,
     state: BridgeLibraryState,
-) = BridgeLibrary(id = id, name = name, path = "/libraries/$id", state = state, isActive = false)
+) = BridgeLibrary(
+    id = id,
+    name = name,
+    path = "/libraries/$id",
+    state = state,
+    isActive = false,
+    nextOpenableId = null,
+    previousOpenableId = null,
+)
 
 private val synced =
     library(

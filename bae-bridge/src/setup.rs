@@ -19,6 +19,33 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 }
 
 impl BridgeLibrary {
+    /// The libraries as the list shows them, in the order core lists them,
+    /// with the active library's neighbours among the ones that open.
+    pub(crate) fn list_from_core(
+        infos: Vec<bae_app_dir::LibraryInfo>,
+    ) -> Result<Vec<Self>, BridgeError> {
+        let mut libraries =
+            infos.into_iter().map(Self::from_core_info).collect::<Result<Vec<_>, _>>()?;
+        let openable: Vec<usize> = libraries
+            .iter()
+            .enumerate()
+            .filter(|(_, library)| {
+                matches!(library.state, crate::types::BridgeLibraryState::Openable { .. })
+            })
+            .map(|(index, _)| index)
+            .collect();
+        let active = openable.iter().position(|&index| libraries[index].is_active);
+        if let (Some(active), true) = (active, openable.len() > 1) {
+            let next = libraries[openable[(active + 1) % openable.len()]].id.clone();
+            let previous =
+                libraries[openable[(active + openable.len() - 1) % openable.len()]].id.clone();
+            let library = &mut libraries[openable[active]];
+            library.next_openable_id = Some(next);
+            library.previous_openable_id = Some(previous);
+        }
+        Ok(libraries)
+    }
+
     pub(crate) fn from_core_info(info: bae_app_dir::LibraryInfo) -> Result<Self, BridgeError> {
         let bae_app_dir::LibraryInfo { id, name, path, is_active, state } = info;
         let path = path
@@ -32,6 +59,8 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
+            next_openable_id: None,
+            previous_openable_id: None,
             state: match state {
                 bae_app_dir::LibraryState::Openable(storage) => {
                     crate::types::BridgeLibraryState::Openable {

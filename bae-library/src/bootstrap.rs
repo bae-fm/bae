@@ -351,6 +351,19 @@ pub async fn unfinished_joins(
     builder.unfinished_joins().await.map_err(|error| reported_restore_error(diagnostics, error))
 }
 
+/// The join this device has under way for the library `library_id`, as its
+/// saved invite reads, or `None` when it has none.
+pub async fn unfinished_join_for(
+    builder: &coven::CovenBuilder,
+    library_id: &str,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<Option<coven::InviteInfo>, RestoreFromCodeError> {
+    Ok(unfinished_joins(builder, diagnostics)
+        .await?
+        .into_iter()
+        .find(|join| join.metadata.store_id.to_string() == library_id))
+}
+
 /// Continue a join from `unfinished_joins` after bae restarted. coven keeps
 /// the join's provider sign-in on the device beside it, so this signs in only
 /// when coven asks for one: when the kept sign-in is gone, or the provider

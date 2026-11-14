@@ -226,4 +226,6 @@ internal val sceneLibrary =
                 ),
             ),
         isActive = false,
+        nextOpenableId = null,
+        previousOpenableId = null,
     )

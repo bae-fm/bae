@@ -28,6 +28,8 @@ import uniffi.bae_bridge.OpenedLibrary
 internal open class NoJoinsHost : EditionFakeBridgeHost() {
     override suspend fun unfinishedJoins(): List<BridgeUnfinishedJoin> = emptyList()
 
+    override suspend fun unfinishedJoinFor(libraryId: String): BridgeUnfinishedJoin? = null
+
     override suspend fun unfinishedRestores(): List<BridgeUnfinishedRestore> = emptyList()
 
     override suspend fun discardUnfinishedInstallation(libraryId: String) {

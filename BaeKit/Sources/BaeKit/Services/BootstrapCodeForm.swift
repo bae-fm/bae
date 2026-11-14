@@ -143,9 +143,10 @@ public final class BootstrapCodeForm {
     @ObservationIgnored
     private let unfinishedJoins:
         @Sendable () async throws -> [BridgeUnfinishedJoin]
-    /// The id of the library a join under way is for.
+    /// The join this device has under way for a library, if any.
     @ObservationIgnored
-    private let joinLibrary: (BridgeUnfinishedJoin) -> String
+    private let unfinishedJoinFor:
+        @Sendable (_ libraryId: String) async throws -> BridgeUnfinishedJoin?
     @ObservationIgnored
     private let unfinishedRestores:
         @Sendable () async throws -> [BridgeUnfinishedRestore]
@@ -163,14 +164,13 @@ public final class BootstrapCodeForm {
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
         unfinishedRestores:
             @escaping @Sendable () async throws -> [BridgeUnfinishedRestore],
-        joinLibrary:
-            @escaping (BridgeUnfinishedJoin) -> String = {
-                $0.info().metadata.libraryId
-            },
+        unfinishedJoinFor:
+            @escaping @Sendable (_ libraryId: String) async throws
+            -> BridgeUnfinishedJoin?,
         onLibraryReady:
             @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
     ) {
-        self.joinLibrary = joinLibrary
+        self.unfinishedJoinFor = unfinishedJoinFor
         self.entry = entry
         decoder = decodeCode
         self.makeBootstrap = makeBootstrap
@@ -444,13 +444,12 @@ extension BootstrapCodeForm {
         inviteRouting = .checking
         routing?.cancel()
         let library = invite.metadata.libraryId
-        let underWay = unfinishedJoins
-        let libraryOf = joinLibrary
+        let underWay = unfinishedJoinFor
         routing = Task {
             do {
-                let joins = try await underWay()
+                let join = try await underWay(library)
                 guard !Task.isCancelled else { return }
-                if let join = joins.first(where: { libraryOf($0) == library }) {
+                if let join {
                     inviteRouting = .resumes(join)
                     if !isRunning { start() }
                 }

@@ -36,8 +36,8 @@ pub use bootstrap::{
     create_library, discard_unfinished_installation, join_cancellable, join_with_invite,
     join_with_pairing, replacement_cancellable, reset_device, restore_from_code,
     restore_from_saved_code, restore_replacing_device, resume_join, resume_replacement,
-    resume_restore, unfinished_joins, unfinished_restores, CreateLibraryError, JoinControl,
-    JoinedLibrary, RestoreFromCodeError,
+    resume_restore, unfinished_join_for, unfinished_joins, unfinished_restores, CreateLibraryError,
+    JoinControl, JoinedLibrary, RestoreFromCodeError,
 };
 pub use closing_step::ClosingStep;
 pub use library_standing::{closed_library_standing, LibraryStanding, StandingState};

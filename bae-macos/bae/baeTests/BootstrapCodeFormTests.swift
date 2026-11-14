@@ -199,7 +199,9 @@ struct BootstrapCodeFormTests {
             unfinishedJoins: { unfinishedJoins },
             unfinishedRestores: { unfinishedRestores },
             // A join under way here is for the invite's library.
-            joinLibrary: { _ in "library-1" },
+            unfinishedJoinFor: {
+                $0 == "library-1" ? unfinishedJoins.first : nil
+            },
             onLibraryReady: { _, _ in
                 Issue.record("the recording host opens no library")
             }
@@ -345,6 +347,7 @@ struct BootstrapCodeFormTests {
             },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
+            unfinishedJoinFor: { _ in nil },
             onLibraryReady: { _, _ in }
         )
 

@@ -423,6 +423,7 @@ extension ShotScene {
             },
             unfinishedJoins: { [] },
             unfinishedRestores: { [] },
+            unfinishedJoinFor: { _ in nil },
             onLibraryReady: { _, _ in }
         )
     }
@@ -577,6 +578,7 @@ private final class CountedReads {
                     detail: "invalid store settings: EOF while parsing"
                 )
             },
+            unfinishedJoinFor: { _ in throw UnservedReadError() },
             unfinishedRestores: { [] },
             discardUnfinishedInstallation: { _ in throw UnservedReadError() },
             makeBootstrap: {
@@ -621,6 +623,8 @@ extension PreviewData {
         name: "Odile’s records",
         path: "/Users/preview/Music/bae/Odile’s records",
         state: .openable(storage: nil),
-        isActive: false
+        isActive: false,
+        nextOpenableId: nil,
+        previousOpenableId: nil
     )
 }

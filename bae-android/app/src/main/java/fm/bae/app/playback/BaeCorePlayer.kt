@@ -766,12 +766,12 @@ class BaeCorePlayer(
             }
 
             is BridgePlayOutcome.PlayingWithoutReleases -> {
-                logger.warning("playing without releases that hold no tracks: ${outcome.releaseIds}")
+                logger.warning("playing without ${outcome.count} releases that hold no tracks")
                 played.set(Unit)
             }
 
             is BridgePlayOutcome.PlayingWithoutTracks -> {
-                logger.warning("playing without tracks the library lacks: ${outcome.trackIds}")
+                logger.warning("playing without ${outcome.count} tracks the library lacks")
                 played.set(Unit)
             }
 

@@ -56,7 +56,15 @@ class OpenFailedScreenTest {
         DisplayError("Something went wrong with the database.", "damaged", offersRetry = false, resetFromCloudReplaces = true)
 
     private fun library(storage: BridgeStorageLocation?) =
-        BridgeLibrary("library", "Library", "/libraries/library", BridgeLibraryState.Openable(storage), isActive = false)
+        BridgeLibrary(
+            "library",
+            "Library",
+            "/libraries/library",
+            BridgeLibraryState.Openable(storage),
+            isActive = false,
+            nextOpenableId = null,
+            previousOpenableId = null,
+        )
 
     private val dropbox =
         BridgeStorageLocation.Dropbox(

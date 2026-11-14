@@ -509,8 +509,8 @@ fn produced_keys() -> Vec<String> {
     }
     for outcome in [
         BridgePlayOutcome::Playing,
-        BridgePlayOutcome::PlayingWithoutReleases { release_ids: vec!["rel-1".to_string()] },
-        BridgePlayOutcome::PlayingWithoutTracks { track_ids: vec!["track-1".to_string()] },
+        BridgePlayOutcome::PlayingWithoutReleases { count: 1 },
+        BridgePlayOutcome::PlayingWithoutTracks { count: 1 },
         BridgePlayOutcome::NothingToPlay,
         BridgePlayOutcome::StartMissing,
     ] {

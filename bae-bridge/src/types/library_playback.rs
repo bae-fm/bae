@@ -168,6 +168,14 @@ pub struct BridgeLibrary {
     pub path: String,
     pub state: BridgeLibraryState,
     pub is_active: bool,
+    /// On the active library, when another listed library opens: the id of
+    /// the next library that opens after it in the list, wrapping to the
+    /// first. `None` on every other library.
+    pub next_openable_id: Option<String>,
+    /// On the active library, when another listed library opens: the id of
+    /// the library that opens before it in the list, wrapping to the last.
+    /// `None` on every other library.
+    pub previous_openable_id: Option<String>,
 }
 
 /// Whether a library on this device opens, and where it is stored. Mirrors

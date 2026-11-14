@@ -290,12 +290,8 @@ internal class OnboardingCore(
     val joins: JoinCore = JoinCore(),
 )
 
-/**
- * What a join asks of core beside the host: [libraryId] names the library a join under way is for, and
- * [newControl] makes the control each join runs with.
- */
+/** What a join asks of core beside the host: [newControl] makes the control each join runs with. */
 internal class JoinCore(
-    val libraryId: (BridgeUnfinishedJoin) -> String = { it.info().metadata.libraryId },
     val newControl: () -> BridgeJoinControl = ::BridgeJoinControl,
 )
 
@@ -473,7 +469,7 @@ internal class OnboardingFlow(
         scope.launch {
             try {
                 val library = read.invite.metadata.libraryId
-                val underWay = core.host.unfinishedJoins().firstOrNull { core.joins.libraryId(it) == library }
+                val underWay = core.host.unfinishedJoinFor(library)
                 if (underWay == null) {
                     step = read
                 } else {

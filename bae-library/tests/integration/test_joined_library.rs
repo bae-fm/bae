@@ -183,6 +183,17 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
             panic!("one join under way");
         };
         let store = join.metadata.store_id;
+        let found = bae_library::unfinished_join_for(&builder, &store.to_string(), &NO_DIAGNOSTICS)
+            .await
+            .unwrap();
+        assert_eq!(found.as_ref(), Some(join), "the join under way for its own library is found");
+        assert!(
+            bae_library::unfinished_join_for(&builder, "another-library", &NO_DIAGNOSTICS)
+                .await
+                .unwrap()
+                .is_none(),
+            "no join is under way for another library"
+        );
 
         let settings: Vec<_> = walk(guest_dir.path())
             .into_iter()

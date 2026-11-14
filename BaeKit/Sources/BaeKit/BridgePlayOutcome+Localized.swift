@@ -9,20 +9,20 @@ extension BridgePlayOutcome {
         }
         let line = localizedCoreString(key)
         switch self {
-        case .playingWithoutReleases(let releaseIds):
+        case .playingWithoutReleases(let count):
             return DisplayError(
                 line: String(
                     format: line,
                     locale: Locale.current,
-                    releaseIds.count
+                    count
                 )
             )
-        case .playingWithoutTracks(let trackIds):
+        case .playingWithoutTracks(let count):
             return DisplayError(
                 line: String(
                     format: line,
                     locale: Locale.current,
-                    trackIds.count
+                    count
                 )
             )
         case .playing, .nothingToPlay, .startMissing:

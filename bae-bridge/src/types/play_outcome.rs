@@ -5,12 +5,12 @@
 pub enum BridgePlayOutcome {
     /// Playing everything the play named. Nothing to show.
     Playing,
-    /// Playing, without the releases named that hold no tracks, in the order
-    /// named. The line takes how many.
-    PlayingWithoutReleases { release_ids: Vec<String> },
-    /// Playing, without the tracks of the list that the library doesn't hold,
-    /// in the list's order. The line takes how many.
-    PlayingWithoutTracks { track_ids: Vec<String> },
+    /// Playing, without `count` of the releases named, which hold no tracks.
+    /// The line takes the count.
+    PlayingWithoutReleases { count: u32 },
+    /// Playing, without `count` of the tracks of the list, which the library
+    /// doesn't hold. The line takes the count.
+    PlayingWithoutTracks { count: u32 },
     /// What the play named holds no tracks.
     NothingToPlay,
     /// The track to start from is gone.
@@ -22,10 +22,12 @@ impl BridgePlayOutcome {
         match outcome {
             bae_playback::PlayOutcome::Playing => Self::Playing,
             bae_playback::PlayOutcome::PlayingWithoutReleases(release_ids) => {
-                Self::PlayingWithoutReleases { release_ids }
+                tracing::warn!(?release_ids, "playing without releases that hold no tracks");
+                Self::PlayingWithoutReleases { count: count(&release_ids) }
             }
             bae_playback::PlayOutcome::PlayingWithoutTracks(track_ids) => {
-                Self::PlayingWithoutTracks { track_ids }
+                tracing::warn!(?track_ids, "playing without tracks the library lacks");
+                Self::PlayingWithoutTracks { count: count(&track_ids) }
             }
             bae_playback::PlayOutcome::NothingToPlay => Self::NothingToPlay,
             bae_playback::PlayOutcome::StartMissing => Self::StartMissing,
@@ -33,8 +35,12 @@ impl BridgePlayOutcome {
     }
 }
 
+fn count(ids: &[String]) -> u32 {
+    u32::try_from(ids.len()).expect("a play names fewer than 2^32 ids")
+}
+
 /// The line a play's outcome shows, or `None` when it played everything it
-/// named, which shows nothing. The two "without" lines take a `count`.
+/// named, which shows nothing. The two "without" lines take their `count`.
 #[uniffi::export]
 pub fn bridge_play_outcome_key(outcome: &BridgePlayOutcome) -> Option<String> {
     match outcome {
@@ -81,5 +87,27 @@ impl From<bae_app::PlayPlaylistError> for super::BridgeError {
             bae_app::PlayPlaylistError::Entries(error) => error.into(),
             bae_app::PlayPlaylistError::Play(error) => error.into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A play that left releases or tracks out tells the apps how many, and the
+    /// apps count nothing.
+    #[test]
+    fn a_play_that_left_out_ids_tells_how_many() {
+        let ids = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        assert_eq!(
+            BridgePlayOutcome::from_core(bae_playback::PlayOutcome::PlayingWithoutReleases(
+                ids.clone()
+            )),
+            BridgePlayOutcome::PlayingWithoutReleases { count: 3 }
+        );
+        assert_eq!(
+            BridgePlayOutcome::from_core(bae_playback::PlayOutcome::PlayingWithoutTracks(ids)),
+            BridgePlayOutcome::PlayingWithoutTracks { count: 3 }
+        );
     }
 }

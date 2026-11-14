@@ -75,6 +75,12 @@ class OnboardingFlowTest {
             return joinsUnderWay
         }
 
+        /** A join under way here is for the invite's library. */
+        override suspend fun unfinishedJoinFor(libraryId: String): BridgeUnfinishedJoin? {
+            joinsFailure?.let { throw it }
+            return if (libraryId == "library-1") joinsUnderWay.firstOrNull() else null
+        }
+
         override suspend fun discardUnfinishedInstallation(libraryId: String) {
             discarded += libraryId
             discardFailure?.let { throw it }
@@ -203,7 +209,7 @@ class OnboardingFlowTest {
                         )
                     },
                     // A join under way here is for the invite's library.
-                    JoinCore({ "library-1" }, { BridgeJoinControl(NoHandle) }),
+                    JoinCore { BridgeJoinControl(NoHandle) },
                 ),
                 null,
                 restoreOver,

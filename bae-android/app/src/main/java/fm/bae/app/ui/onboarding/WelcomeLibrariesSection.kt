@@ -369,7 +369,15 @@ internal fun WelcomeLibrariesSceneContent(
         list =
             WelcomeLibrariesList.Loaded(
                 listOf(
-                    BridgeLibrary("lib-1", "Home music", "/tmp/lib-1", dropbox, isActive = false),
+                    BridgeLibrary(
+                        "lib-1",
+                        "Home music",
+                        "/tmp/lib-1",
+                        dropbox,
+                        isActive = false,
+                        nextOpenableId = null,
+                        previousOpenableId = null,
+                    ),
                     PreviewData.library(id = "lib-2", name = "Odile’s records", isActive = false),
                 ),
             ),

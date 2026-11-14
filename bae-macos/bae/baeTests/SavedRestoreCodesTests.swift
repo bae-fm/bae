@@ -64,6 +64,7 @@ struct SavedRestoreCodesTests {
             savedRestoreCodes: { await keychain.list() },
             forgetSavedRestoreCode: { try await keychain.forget($0) },
             unfinishedJoins: { [] },
+            unfinishedJoinFor: { _ in nil },
             unfinishedRestores: { [] },
             discardUnfinishedInstallation: { _ in
                 throw SavedCodesTestError.notUsed

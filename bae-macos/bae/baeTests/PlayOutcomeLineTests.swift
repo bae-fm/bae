@@ -20,15 +20,13 @@ struct PlayOutcomeLineTests {
     @Test
     func whatAPlayLeftOutIsCounted() {
         #expect(
-            BridgePlayOutcome.playingWithoutTracks(trackIds: [
-                "track-1", "track-2",
-            ])
-            .shown?
-            .line
+            BridgePlayOutcome.playingWithoutTracks(count: 2)
+                .shown?
+                .line
                 == "2 tracks are not in the library and were left out"
         )
         #expect(
-            BridgePlayOutcome.playingWithoutReleases(releaseIds: ["rel-1"])
+            BridgePlayOutcome.playingWithoutReleases(count: 1)
                 .shown?
                 .line
                 == "1 album has no tracks and was left out"

@@ -403,12 +403,9 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.list_libraries", move || async move {
-                self.app_dir
-                    .discover_libraries(&self.coven, &self.diagnostics)
-                    .await?
-                    .into_iter()
-                    .map(BridgeLibrary::from_core_info)
-                    .collect()
+                BridgeLibrary::list_from_core(
+                    self.app_dir.discover_libraries(&self.coven, &self.diagnostics).await?,
+                )
             })
             .await
     }

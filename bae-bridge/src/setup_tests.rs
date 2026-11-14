@@ -41,3 +41,59 @@ fn a_library_whose_name_cant_be_read_has_no_name() {
     assert_eq!(library.name, None);
     assert!(matches!(library.state, crate::BridgeLibraryState::NameUnreadable));
 }
+
+fn listed(id: &str, active: bool, openable: bool) -> bae_app_dir::LibraryInfo {
+    bae_app_dir::LibraryInfo {
+        id: id.into(),
+        name: Some(id.into()),
+        path: format!("/libraries/{id}").into(),
+        is_active: active,
+        state: if openable {
+            bae_app_dir::LibraryState::Openable(None)
+        } else {
+            bae_app_dir::LibraryState::NameUnreadable
+        },
+    }
+}
+
+/// The active library names the libraries before and after it among those that
+/// open, wrapping at the ends and skipping the ones that don't open.
+#[test]
+fn the_active_library_names_its_neighbours_that_open() {
+    let libraries = BridgeLibrary::list_from_core(vec![
+        listed("a", true, true),
+        listed("b", false, false),
+        listed("c", false, true),
+        listed("d", false, true),
+    ])
+    .unwrap();
+    let neighbours: Vec<_> = libraries
+        .iter()
+        .map(|library| (&library.next_openable_id, &library.previous_openable_id))
+        .collect();
+    assert_eq!(
+        neighbours,
+        vec![
+            (&Some("c".to_string()), &Some("d".to_string())),
+            (&None, &None),
+            (&None, &None),
+            (&None, &None),
+        ]
+    );
+}
+
+/// With no other library that opens, or an active library that doesn't open,
+/// nobody names a neighbour.
+#[test]
+fn no_neighbour_is_named_without_another_library_that_opens() {
+    for listing in [
+        vec![listed("a", true, true), listed("b", false, false)],
+        vec![listed("a", true, false), listed("b", false, true), listed("c", false, true)],
+    ] {
+        let libraries = BridgeLibrary::list_from_core(listing).unwrap();
+        assert!(libraries
+            .iter()
+            .all(|library| library.next_openable_id.is_none()
+                && library.previous_openable_id.is_none()));
+    }
+}

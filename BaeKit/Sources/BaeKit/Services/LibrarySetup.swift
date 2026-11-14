@@ -33,6 +33,9 @@ public final class LibrarySetup: Sendable, Observable {
     /// The joins this device has under way, to resume.
     public let unfinishedJoins:
         @Sendable () async throws -> [BridgeUnfinishedJoin]
+    /// The join this device has under way for a library, if any.
+    public let unfinishedJoinFor:
+        @Sendable (_ libraryId: String) async throws -> BridgeUnfinishedJoin?
     /// The restores onto this device that stopped after they recorded
     /// themselves, to finish.
     public let unfinishedRestores:
@@ -61,6 +64,9 @@ public final class LibrarySetup: Sendable, Observable {
             @escaping @Sendable (_ libraryId: String) async throws -> Void,
         unfinishedJoins:
             @escaping @Sendable () async throws -> [BridgeUnfinishedJoin],
+        unfinishedJoinFor:
+            @escaping @Sendable (_ libraryId: String) async throws
+            -> BridgeUnfinishedJoin?,
         unfinishedRestores:
             @escaping @Sendable () async throws -> [BridgeUnfinishedRestore],
         discardUnfinishedInstallation:
@@ -74,6 +80,7 @@ public final class LibrarySetup: Sendable, Observable {
         self.savedRestoreCodes = savedRestoreCodes
         self.forgetSavedRestoreCode = forgetSavedRestoreCode
         self.unfinishedJoins = unfinishedJoins
+        self.unfinishedJoinFor = unfinishedJoinFor
         self.unfinishedRestores = unfinishedRestores
         self.discardUnfinishedInstallation = discardUnfinishedInstallation
         self.makeBootstrap = makeBootstrap
@@ -105,6 +112,9 @@ public final class LibrarySetup: Sendable, Observable {
                 try await host.forgetSavedRestoreCode(libraryId: $0)
             },
             unfinishedJoins: { try await host.unfinishedJoins() },
+            unfinishedJoinFor: {
+                try await host.unfinishedJoinFor(libraryId: $0)
+            },
             unfinishedRestores: { try await host.unfinishedRestores() },
             discardUnfinishedInstallation: {
                 try await host.discardUnfinishedInstallation(libraryId: $0)
@@ -142,6 +152,7 @@ public final class LibrarySetup: Sendable, Observable {
             makeBootstrap: makeBootstrap,
             unfinishedJoins: unfinishedJoins,
             unfinishedRestores: unfinishedRestores,
+            unfinishedJoinFor: unfinishedJoinFor,
             onLibraryReady: onLibraryReady
         )
     }
@@ -162,6 +173,7 @@ public final class LibrarySetup: Sendable, Observable {
                     throw StubError.notImplemented
                 },
                 unfinishedJoins: { [] },
+                unfinishedJoinFor: { _ in nil },
                 unfinishedRestores: { [] },
                 discardUnfinishedInstallation: { _ in
                     throw StubError.notImplemented

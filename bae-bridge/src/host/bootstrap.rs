@@ -356,6 +356,27 @@ impl BridgeHost {
             .await
     }
 
+    /// The join this device has under way for the library `library_id`, or
+    /// `None` when it has none.
+    pub async fn unfinished_join_for(
+        self: Arc<Self>,
+        library_id: String,
+    ) -> Result<Option<Arc<BridgeUnfinishedJoin>>, BridgeError> {
+        self.operations
+            .clone()
+            .run("BridgeHost.unfinished_join_for", move || async move {
+                bae_library::unfinished_join_for(
+                    &self.library_builder(),
+                    &library_id,
+                    &self.diagnostics,
+                )
+                .await
+                .map(|join| join.map(|join| Arc::new(BridgeUnfinishedJoin { join })))
+                .map_err(|error| BridgeError::categorized(error.category(), error))
+            })
+            .await
+    }
+
     /// Delete the unfinished join or restore of `library_id` from this
     /// device, for one that can't resume: `unfinished_joins` and
     /// `unfinished_restores` fail with `UnfinishedInstallationUnreadable`

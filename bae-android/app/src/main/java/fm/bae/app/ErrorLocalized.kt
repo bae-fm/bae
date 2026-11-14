@@ -207,9 +207,9 @@ fun Context.displayError(outcome: BridgePlayOutcome): DisplayError? {
     val key = bridgePlayOutcomeKey(outcome) ?: return null
     val line =
         when (outcome) {
-            is BridgePlayOutcome.PlayingWithoutReleases -> coreString(key, mapOf("count" to outcome.releaseIds.size))
+            is BridgePlayOutcome.PlayingWithoutReleases -> coreString(key, mapOf("count" to outcome.count))
 
-            is BridgePlayOutcome.PlayingWithoutTracks -> coreString(key, mapOf("count" to outcome.trackIds.size))
+            is BridgePlayOutcome.PlayingWithoutTracks -> coreString(key, mapOf("count" to outcome.count))
 
             BridgePlayOutcome.Playing,
             BridgePlayOutcome.NothingToPlay,
