@@ -166,8 +166,9 @@ impl LibraryViews {
 /// and its upload while it waits in this device's queue, from coven's `coven_pins`,
 /// `coven_downloading` and `coven_uploads`, each joined by the coven file the
 /// row references, the text of the error behind the upload's record when
-/// coven keeps one (`coven_pending`), and the path of the original this
-/// device holds of it. A pin's download lists its file in
+/// coven keeps one (`coven_pending`); a file with no upload record of its own
+/// shows the record of the move whose upload found its original, named by its
+/// path, missing or changed. A pin's download lists its file in
 /// `coven_downloading` before `coven_pins` holds a row for it.
 pub(crate) const INSPECTOR_FILES: &str = concat!(
     "SELECT ",
@@ -177,8 +178,9 @@ pub(crate) const INSPECTOR_FILES: &str = concat!(
                  WHEN downloading.file IS NOT NULL THEN 'downloading' \
                  ELSE 'waiting' END END AS pin_state, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
-        upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
-        original.path AS original_path \
+        COALESCE(upload.pending, move_record.record) AS upload_pending, \
+        CASE WHEN upload.pending IS NOT NULL THEN upload_record.cause \
+             ELSE move_record.cause END AS upload_cause \
      FROM release_files AS f \
      LEFT JOIN download_queue AS queued ON queued.release_id = f.release_id \
      LEFT JOIN coven_pins AS pin ON pin.file = f.file \
@@ -187,6 +189,10 @@ pub(crate) const INSPECTOR_FILES: &str = concat!(
      LEFT JOIN coven_pending AS upload_record \
         ON upload_record.file = f.file AND upload_record.record = upload.pending \
      LEFT JOIN coven_user_files AS original ON original.file = f.file \
+     LEFT JOIN coven_pending AS move_record \
+        ON move_record.position = (SELECT MIN(m.position) FROM coven_pending AS m \
+                                   WHERE m.subject_kind = 'move' AND m.reason_kind = 'original' \
+                                     AND m.original_path = original.path) \
      WHERE f.release_id = ?1 \
      ORDER BY f.original_filename COLLATE natural_order, f.id"
 );
@@ -219,36 +225,10 @@ fn pin_counts_on(
     })?)
 }
 
-/// The records of moves whose upload found an original missing or changed,
-/// with the error behind each when coven keeps one: what an upload whose own
-/// record says nothing waits for. coven keeps them on the move, naming the
-/// original by its path.
-const MOVE_RECORDS: &str = "SELECT record, cause FROM coven_pending WHERE file IS NULL";
-
 fn inspector_files_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbStorageInspectorFile>, DbError> {
-    let moves: Vec<coven::PendingRecord> = sql
-        .query(MOVE_RECORDS, [], |row| {
-            let mut record = row.get::<_, coven::PendingRecord>(0)?;
-            record.cause = row.get(1)?;
-            Ok(record)
-        })?
-        .into_iter()
-        .filter(|record| matches!(record.subject, coven::PendingSubject::Move { .. }))
-        .collect();
-    // The record of the move whose upload found the original whose path's
-    // bytes are `path`.
-    let move_record = |path: &[u8]| {
-        moves
-            .iter()
-            .find(|record| {
-                matches!(&record.reason, coven::PendingReason::Original { path: original, .. }
-                    if coven::path_bytes(original) == path)
-            })
-            .cloned()
-    };
     Ok(sql.query(INSPECTOR_FILES, params![release_id], |row| {
         let file = row_to_file(row)?;
         let pin = match row.get::<_, Option<String>>("pin_state")?.as_deref() {
@@ -263,14 +243,13 @@ fn inspector_files_on(
             Some(file) => Some(DbFileUpload {
                 file,
                 sending: row.get("upload_sending")?,
-                pending: match row.get::<_, Option<coven::PendingRecord>>("upload_pending")? {
-                    Some(mut record) => {
+                pending: {
+                    let mut record =
+                        row.get::<_, Option<coven::PendingRecord>>("upload_pending")?;
+                    if let Some(record) = &mut record {
                         record.cause = row.get("upload_cause")?;
-                        Some(record)
                     }
-                    None => row
-                        .get::<_, Option<Vec<u8>>>("original_path")?
-                        .and_then(|path| move_record(&path)),
+                    record
                 },
             }),
             None => None,

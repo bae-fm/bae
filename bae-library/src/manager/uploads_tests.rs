@@ -660,6 +660,44 @@ async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
     );
 }
 
+/// The inspector shows a queued file whose original vanished with the
+/// record of the move that found it missing, joined to the file by the
+/// original's path in the inspector's own statement.
+#[tokio::test]
+async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
+    let (manager, temp, release, _file_id) = queued_upload_fixture("inspector-move").await;
+    std::fs::remove_file(temp.path().join("inspector-move/a.flac")).unwrap();
+    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
+    let mut inspector = bae_views::LibraryViews::new(manager.library.manager().store.clone())
+        .subscribe_storage_inspector(Some(release.id.clone()));
+    let mut last = None;
+    let shown = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        loop {
+            let event = inspector.next().await.expect("the inspector's read runs");
+            let value = event.result.unwrap().expect("the library holds the release");
+            last = Some(value.files.clone());
+            let waits: Vec<_> = value
+                .files
+                .iter()
+                .filter_map(|file| file.upload.as_ref()?.pending.as_ref())
+                .map(|wait| wait.reason.clone())
+                .collect();
+            if !waits.is_empty() {
+                break waits;
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("the move's record reaches the inspector: {last:?}"));
+    assert!(
+        shown.iter().any(|reason| matches!(
+            reason,
+            coven::PendingReason::Original { failure: coven::FileSourceFailure::Missing, .. }
+        )),
+        "the missing original is why the file waits: {shown:?}"
+    );
+}
+
 /// An upload whose original vanished is listed in the sync status, named by
 /// its file and album, with restoring the file as what the person can do.
 #[tokio::test]
