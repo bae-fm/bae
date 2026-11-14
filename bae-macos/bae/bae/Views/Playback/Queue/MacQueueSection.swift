@@ -46,7 +46,9 @@ struct MacQueueSection: View {
 
     private var clearButton: some View {
         Button(action: onClear) {
-            Eyebrow("Clear")
+            Text("Clear")
+                .themeText(.eyebrow)
+                .foregroundStyle(Theme.accent)
         }
         .buttonStyle(.accentPlain)
         .help(clearLabel)

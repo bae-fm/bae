@@ -21,7 +21,7 @@ extension ShotScene {
                     excerpt:
                         "The sign-in settings file is missing.\nOAuthConfig: missing client id"
                 )
-                .frame(width: 380)
+                .frame(width: 380, alignment: .leading)
             },
             component("mac.component.info-tip.after-a-row-name", height: 90) {
                 ShotBox {

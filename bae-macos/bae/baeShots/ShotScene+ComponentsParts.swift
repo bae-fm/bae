@@ -181,7 +181,7 @@ extension ShotScene {
         notice: @escaping @MainActor () -> Notice
     ) -> ShotScene {
         component(id, height: height) {
-            notice().frame(width: 380)
+            notice().frame(width: 380, alignment: .leading)
         }
     }
 
@@ -217,10 +217,12 @@ extension ShotScene {
     /// `MacProgress`, a step's name over its bar.
     private static let progressScenes: [ShotScene] = [
         component("mac.component.progress.length-unknown", height: 60) {
-            MacProgress(title: "Uploading…", fraction: nil).frame(width: 380)
+            MacProgress(title: "Uploading…", fraction: nil)
+                .frame(width: 380, alignment: .leading)
         },
         component("mac.component.progress.length-known", height: 60) {
-            MacProgress(title: "Uploading…", fraction: 0.3).frame(width: 380)
+            MacProgress(title: "Uploading…", fraction: 0.3)
+                .frame(width: 380, alignment: .leading)
         },
     ]
 
@@ -233,17 +235,17 @@ extension ShotScene {
                 detail: "112 / 130"
             )
             .themeText(.body)
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.progress-line.no-count", height: 50) {
             MacProgressLine("Reading files…", progress: 0.42)
                 .themeText(.body)
-                .frame(width: 380)
+                .frame(width: 380, alignment: .leading)
         },
         component("mac.component.progress-line.no-known-length", height: 50) {
             MacProgressLine("Importing…", progress: nil)
                 .themeText(.body)
-                .frame(width: 380)
+                .frame(width: 380, alignment: .leading)
         },
         component("mac.component.progress-line.upload", height: 50) {
             MacProgressLine(
@@ -251,7 +253,7 @@ extension ShotScene {
                 bar: ProgressTrackBar(progress: 0.15, tint: Theme.activity)
             )
             .themeText(.body)
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.progress-line.long-phase", height: 50) {
             MacProgressLine(
@@ -282,7 +284,7 @@ extension ShotScene {
                 Button("Cancel") {}
                 Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.sheet-footer.split", height: 60) {
             MacSheetFooter {
@@ -291,7 +293,7 @@ extension ShotScene {
                 Button("Cancel") {}
                 Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
     ]
 
@@ -342,7 +344,7 @@ extension ShotScene {
                 Button("Cancel") {}
                 Button("Join") {}.buttonStyle(PrimaryButtonStyle())
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
     ]
 
@@ -357,7 +359,7 @@ extension ShotScene {
             } trail: {
                 Text("2m ago").themeText(.fine).foregroundStyle(.secondary)
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.item.empty-lead-keeps-the-edge", height: 100) {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
@@ -374,7 +376,7 @@ extension ShotScene {
                     Text("34.1 MB").themeText(.fine).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.item.two-lines", height: 70) {
             RowItem {
@@ -388,7 +390,7 @@ extension ShotScene {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
     ]
 }

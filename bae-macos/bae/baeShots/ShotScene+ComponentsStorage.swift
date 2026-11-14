@@ -95,7 +95,7 @@ extension ShotScene {
                 moving: true,
                 onCancel: {}
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
             .environment(
                 OutboxStore(
                     uploadsPaused: false,
@@ -184,7 +184,7 @@ extension ShotScene {
                 subtitle: "Mara Quill · Low Tide Hours",
                 duration: "4:32"
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         }
     ]
 
@@ -198,7 +198,7 @@ extension ShotScene {
                 qr: "bae-pairing-4F7K-2M9Q",
                 code: "4F7K-2M9Q"
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         }
     ]
 

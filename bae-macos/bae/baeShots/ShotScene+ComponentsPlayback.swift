@@ -198,7 +198,7 @@ extension ShotScene {
                 onSkipTo: { _ in },
                 onRemove: { _ in }
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
             .environment(images)
         }
     }
@@ -220,7 +220,7 @@ extension ShotScene {
                 onClear: {},
                 onSetShuffle: nil
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component(
             "mac.component.queue-section.playing-from-shuffled",
@@ -234,7 +234,7 @@ extension ShotScene {
                 onClear: {},
                 onSetShuffle: { _ in }
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
     ]
 
@@ -273,7 +273,7 @@ extension ShotScene {
                     .disabled(state == .off)
                 }
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         }
     }
 

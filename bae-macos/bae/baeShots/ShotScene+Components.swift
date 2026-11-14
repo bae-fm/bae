@@ -115,7 +115,7 @@ extension ShotScene {
                     credit: credit,
                     part: part
                 )
-                .frame(width: 380)
+                .frame(width: 380, alignment: .leading)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,

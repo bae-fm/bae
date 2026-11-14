@@ -14,7 +14,7 @@ extension ShotScene {
                 folderPaths: [],
                 onNavigateToPlacement: {}
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
         component("mac.component.import-group-header.default", height: 60) {
             ImportListGroupHeader(

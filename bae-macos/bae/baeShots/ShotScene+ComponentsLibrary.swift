@@ -13,7 +13,7 @@ extension ShotScene {
     /// `SectionHeader` and `Eyebrow`.
     private static let headingScenes: [ShotScene] = [
         component("mac.component.section-header.default", height: 70) {
-            SectionHeader(title: "Works").frame(width: 380)
+            SectionHeader(title: "Works").frame(width: 380, alignment: .leading)
         },
         component("mac.component.eyebrow.default", height: 50) {
             Eyebrow(verbatim: "Side A")
@@ -184,7 +184,7 @@ extension ShotScene {
                     )
                 )
             }
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
             .environment(OutboxStore(uploadsPaused: false))
         },
         component("mac.component.file-details.default", height: 220) {
@@ -202,7 +202,7 @@ extension ShotScene {
                 ),
                 onClose: {}
             )
-            .frame(width: 380)
+            .frame(width: 380, alignment: .leading)
         },
     ]
 
