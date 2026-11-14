@@ -63,7 +63,13 @@ RESULTS="$(mktemp -d)"
 trap 'rm -rf "$RESULTS"' EXIT
 BUNDLE="$RESULTS/baeTests.xcresult"
 
-./bae-macos/ensure-bridge.sh Debug
+# Each scheme's pre-action would build the bridge again (cargo's checks of four
+# builds, the generators, the staticlib copy), so build it once here and tell
+# both xcodebuilds to skip their pre-action. A run that only runs tests builds
+# nothing.
+if [[ "$ACTION" != test-without-building ]]; then
+    CONFIGURATION=Debug ./bae-macos/prepare-build.sh
+fi
 
 # The scheme is the first argument: `bae` for the app's tests, `baeShots` for the
 # screenshot scenes.
@@ -74,7 +80,7 @@ xcodebuild_tests() {
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
         "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
         -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-        -disableAutomaticPackageResolution "$@"
+        -disableAutomaticPackageResolution BAE_SKIP_RUST_BRIDGE=YES "$@"
 }
 
 # Xcode makes the UI tests' runner by copying its own XCTRunner app, which Apple
