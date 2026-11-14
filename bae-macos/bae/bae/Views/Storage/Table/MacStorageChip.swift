@@ -1,61 +1,55 @@
 import BaeKit
 import SwiftUI
 
-/// The storage state chip: what core says the row's storage shows. Files on
-/// the move fill their chip as far as they have come, as does a release
-/// moving to This Mac.
+/// The Storage column's chip: one word of what core says the row's storage
+/// shows, with no icon. Files on the move fill their chip as far as they have
+/// come, as does a release moving to This Mac. A change that waits its turn
+/// reads Queued, a failure Error, and an upload held by a missing original
+/// Waiting; the tooltip says which and why.
 struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
 
     var body: some View {
         switch status {
-        case .downloadFailed(let error):
-            StatusChip("Could not pin", tone: .danger)
+        case .downloadFailed(let error), .moveToThisDeviceFailed(let error):
+            StatusChip("Error", tone: .danger)
                 .help(error)
         case .moveFailed(let fileName):
-            StatusChip(
-                "Move failed: \(fileName) changed since import",
-                tone: .danger
-            )
+            StatusChip("Error", tone: .danger)
+                .help(
+                    String(
+                        localized:
+                            "Move failed: \(fileName) changed since import"
+                    )
+                )
         case .uploading:
             if let missing = release.upload?.missing {
-                StatusChip("Waiting for \(missing)", tone: .warning)
+                StatusChip("Waiting", tone: .warning)
+                    .help(String(localized: "Waiting for \(missing)"))
             }
             else if release.upload?.progress.activity == .uploading {
                 StorageUploadingChipContainer(releaseId: release.id)
             }
             else {
-                QueuedUploadChip()
+                StatusChip("Queued", tone: .activity)
             }
-        case .pinning(.queued):
-            StatusChip("Queued to pin", tone: .activity)
+        case .pinning(.queued), .movingToThisDevice(.queued):
+            StatusChip("Queued", tone: .activity)
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
-        case .moveToThisDeviceFailed(let error):
-            StatusChip("Could not move to This Mac", tone: .danger)
-                .help(error)
-        case .movingToThisDevice(.queued):
-            StatusChip("Queued to move to This Mac", tone: .activity)
         case .movingToThisDevice(.running):
-            StorageMovingToThisDeviceChipContainer(releaseId: release.id)
+            StorageMovingToThisDeviceChipContainer(
+                releaseId: release.id,
+                label: Text("Moving")
+            )
         case .onOneDevice:
-            StatusChip("Local", symbol: "folder")
+            StatusChip("Local")
         case .pinned:
-            StatusChip("Pinned", symbol: "pin")
+            StatusChip("Pinned")
         case .inStorage:
-            StatusChip("In cloud", symbol: "cloud")
+            StatusChip("Cloud")
         }
-    }
-}
-
-/// A release whose files only wait to upload: nothing is moving to fill.
-struct QueuedUploadChip: View {
-    var body: some View {
-        StatusChip(
-            verbatim: BridgeUploadActivity.queued.phaseText,
-            tone: .activity
-        )
     }
 }
 
@@ -95,12 +89,13 @@ struct StoragePinningChipContainer: View {
 /// files have downloaded into the person's folder.
 struct StorageMovingToThisDeviceChipContainer: View {
     let releaseId: String
+    let label: Text
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
         StorageProgressChip(
-            verbatim: BridgeReleaseStorageAction.moveToThisDevice.transferLabel,
+            text: label,
             kind: .pin,
             fill: .moveToThisDevice(
                 downloadStore.moveToThisDeviceProgress(forRelease: releaseId)

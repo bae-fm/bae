@@ -53,12 +53,12 @@ struct StorageStatusBand: View {
             QueuedUploadChip()
         }
         else if let transfer {
-            MacStorageChip(release: release.summary, status: transfer)
+            StorageBandPill(release: release.summary, status: transfer)
         }
     }
 
     /// The storage status of the change on its way, placed as
-    /// `MacStorageChip` words it; nil when nothing is moving. Resting states
+    /// `StorageBandPill` words it; nil when nothing is moving. Resting states
     /// and failures show elsewhere in the band. An upload held by a missing
     /// original shows as the queued upload beside the warning notice that
     /// names the file.
@@ -142,6 +142,54 @@ struct StorageStatusBand: View {
             // Export and Save As change no state, so every release offers them.
             Button("Export…", action: onExport)
             Button("Save as…", action: onSaveAs)
+        }
+    }
+}
+
+/// A release whose files only wait to upload: nothing is moving to fill.
+struct QueuedUploadChip: View {
+    var body: some View {
+        StatusChip(
+            verbatim: BridgeUploadActivity.queued.phaseText,
+            tone: .activity
+        )
+    }
+}
+
+/// The band's pill for the change on its way, in the words the band spells
+/// out where the Storage column's chip says one: Queued to pin, Queued to move
+/// to This Mac, Moving to This Mac…. Only the states `transfer` returns reach
+/// it.
+struct StorageBandPill: View {
+    let release: ReleaseSummary
+    let status: BridgeStorageRowStatus
+
+    var body: some View {
+        switch status {
+        case .uploading:
+            if release.upload?.progress.activity == .uploading {
+                StorageUploadingChipContainer(releaseId: release.id)
+            }
+            else {
+                QueuedUploadChip()
+            }
+        case .pinning(.queued):
+            StatusChip("Queued to pin", tone: .activity)
+        case .pinning(.running):
+            StoragePinningChipContainer(releaseId: release.id)
+        case .movingToThisDevice(.queued):
+            StatusChip("Queued to move to This Mac", tone: .activity)
+        case .movingToThisDevice(.running):
+            StorageMovingToThisDeviceChipContainer(
+                releaseId: release.id,
+                label: Text(
+                    verbatim: BridgeReleaseStorageAction.moveToThisDevice
+                        .transferLabel
+                )
+            )
+        case .downloadFailed, .moveFailed, .moveToThisDeviceFailed,
+            .onOneDevice, .pinned, .inStorage:
+            EmptyView()
         }
     }
 }

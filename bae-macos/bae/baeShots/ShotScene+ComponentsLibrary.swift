@@ -256,7 +256,20 @@ extension ShotScene {
             )
         },
         storageChip("mac.component.storage-chip.queued") {
-            QueuedUploadChip()
+            MacStorageChip(
+                release: PreviewData.storageRelease(
+                    upload: BridgeReleaseUpload(
+                        progress: BridgeUploadProgress(
+                            queued: 3,
+                            uploading: 0,
+                            activity: .queued
+                        ),
+                        summary: [],
+                        missing: nil
+                    )
+                ),
+                status: .uploading
+            )
         },
         storageChip("mac.component.storage-chip.queued-to-move-to-this-mac") {
             MacStorageChip(

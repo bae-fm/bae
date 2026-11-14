@@ -30,7 +30,8 @@ struct StorageProgressChip: View {
         self.init(text: Text(verbatim: label), kind: kind, fill: fill)
     }
 
-    private init(
+    /// A chip whose words are a `Text` already.
+    init(
         text: Text,
         kind: StorageTransferKind,
         fill: ReleaseProgressSource?
