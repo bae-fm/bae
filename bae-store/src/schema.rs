@@ -15,15 +15,22 @@ const PAGE_CACHE_KIB: u32 = 64 * 1024;
 #[cfg(not(desktop))]
 const PAGE_CACHE_KIB: u32 = 16 * 1024;
 
+/// A domain's write for a member's device as its registration applies: coven
+/// runs it as a local write, in the transaction that first applies the
+/// registration, with the facts of the member's latest admission.
+pub type JoiningWrite = fn(&coven::JoiningWrite<'_>, &coven::Joining) -> Result<(), coven::DbError>;
+
 /// One domain's share of the schema: its SQL files, which run in the order
-/// given, the SQL functions and collations those files name, and the synced
-/// tables and namespaces of its tables.
+/// given, the SQL functions and collations those files name, the synced
+/// tables and namespaces of its tables, and its write for a member's device
+/// as it registers.
 pub struct SchemaPart {
     sql: &'static [&'static str],
     functions: &'static [&'static SchemaFunction],
     collations: &'static [&'static SchemaCollation],
     synced_tables: fn() -> Vec<coven::SyncedTable>,
     namespaces: fn() -> Vec<coven::Namespace>,
+    joining_write: Option<JoiningWrite>,
 }
 
 fn no_synced_tables() -> Vec<coven::SyncedTable> {
@@ -42,6 +49,7 @@ impl SchemaPart {
             collations: &[],
             synced_tables: no_synced_tables,
             namespaces: no_namespaces,
+            joining_write: None,
         }
     }
 
@@ -65,6 +73,12 @@ impl SchemaPart {
     ) -> Self {
         self.synced_tables = tables;
         self.namespaces = namespaces;
+        self
+    }
+
+    /// This part's write for a member's device as its registration applies.
+    pub const fn joining_write(mut self, write: JoiningWrite) -> Self {
+        self.joining_write = Some(write);
         self
     }
 }
@@ -174,6 +188,12 @@ impl Schema {
         Self { parts: Box::leak(parts.into_boxed_slice()) }
     }
 
+    /// The parts' writes for a member's device as its registration applies,
+    /// in part order.
+    pub fn joining_writes(self) -> Vec<JoiningWrite> {
+        self.parts().filter_map(|part| part.joining_write).collect()
+    }
+
     /// The synced tables the parts declare, in part order.
     pub fn synced_tables(self) -> Vec<coven::SyncedTable> {
         self.parts().flat_map(|part| (part.synced_tables)()).collect()
@@ -210,6 +230,12 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
         .migrations(schema.migrations());
     for collation in schema.collations() {
         builder = builder.collation(collation.name, collation.version, collation.compare);
+    }
+    let joining_writes = schema.joining_writes();
+    if !joining_writes.is_empty() {
+        builder = builder.joining_write(move |sql, joining| {
+            joining_writes.iter().try_for_each(|write| write(sql, joining))
+        });
     }
     for function in schema.functions() {
         let compute = function.compute;

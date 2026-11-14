@@ -18,7 +18,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         bae_store::TestSources::on(&clock).builder(&installation),
         crate::TEST_SCHEMA,
     )
-    .create_store("Test Library")
+    .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
     .await
     .unwrap();
     let id = handle.store_id();

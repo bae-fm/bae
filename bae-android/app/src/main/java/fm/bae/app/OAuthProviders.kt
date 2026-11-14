@@ -24,12 +24,10 @@ interface OAuthProviders {
 
     /**
      * Sign in again to the open library's provider when its sync asks, with the
-     * access its location needs, and reconnect that location under [deviceName],
-     * each step written into [setup]'s stream.
+     * access its location needs, and reconnect that location, each step written into [setup]'s stream.
      */
     suspend fun signInAgain(
         handle: AppHandleInterface,
-        deviceName: String,
         setup: BridgeLibrarySetup,
     ): BridgeStorageSetup
 

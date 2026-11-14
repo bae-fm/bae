@@ -66,7 +66,6 @@ impl LibraryManager {
     pub async fn save_s3_config(
         &self,
         data: S3ConfigData,
-        device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let (storage, credentials) = data
@@ -75,7 +74,6 @@ impl LibraryManager {
         let setup = self
             .heard_setup(self.store.setup_s3_storage(
                 storage,
-                device_name,
                 credentials.access_key_id,
                 credentials.secret_access_key,
                 steps,
@@ -110,7 +108,6 @@ impl LibraryManager {
     #[cfg(feature = "oauth-providers")]
     pub async fn sign_in_again(
         &self,
-        device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let storage = self.store.storage_config().await?.ok_or_else(|| {
@@ -123,29 +120,26 @@ impl LibraryManager {
             ))
         })?;
         self.store.authenticate(access).await?;
-        self.setup_oauth_storage(storage, device_name, steps).await
+        self.setup_oauth_storage(storage, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
     pub async fn setup_oauth_storage(
         &self,
         storage: coven::StorageConfig,
-        device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let provider = storage.provider();
-        let setup =
-            self.heard_setup(self.store.setup_oauth_storage(storage, device_name, steps)).await?;
+        let setup = self.heard_setup(self.store.setup_oauth_storage(storage, steps)).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(setup)
     }
 
     pub async fn use_cloudkit(
         &self,
-        device_name: &str,
         steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let setup = self.heard_setup(self.store.setup_cloudkit_storage(device_name, steps)).await?;
+        let setup = self.heard_setup(self.store.setup_cloudkit_storage(steps)).await?;
         self.diagnostics.event(TelemetryEvent::CloudProviderConnected {
             provider: coven::CloudProvider::CloudKit,
         });

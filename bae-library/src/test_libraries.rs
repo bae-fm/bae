@@ -427,7 +427,7 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let sources = TestSources::system();
     let library = runtime.block_on(async {
         let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-            .create_store("Test Library")
+            .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
             .await
             .expect("create fresh test store");
         test_library_from_handle(

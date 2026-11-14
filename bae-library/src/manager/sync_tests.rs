@@ -204,7 +204,6 @@ async fn failed_storage_setup_keeps_the_library_unconfigured() {
         .store
         .setup_s3_storage(
             test.storage.config(),
-            "Device",
             "key".into(),
             coven::SecretText::new("secret".into()),
             &|_| (),
@@ -403,7 +402,6 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
         .store
         .setup_s3_storage(
             manager.storage.config(),
-            "Test Device",
             "test-key".into(),
             coven::SecretText::new("test-secret".into()),
             &|_| (),
@@ -772,7 +770,7 @@ mod sign_in {
         ))
         .oauth_presenter(presenter)
         .storage_connector(storage.clone())
-        .create_store("Test Library")
+        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
         let library = TestLibrary::open(
@@ -813,7 +811,6 @@ mod sign_in {
             .store
             .setup_s3_storage(
                 storage.config(),
-                "Test Device",
                 "test-key".into(),
                 coven::SecretText::new("test-secret".into()),
                 &|_| (),
@@ -822,7 +819,7 @@ mod sign_in {
             .unwrap();
 
         let error = manager
-            .sign_in_again("Test Device", &|_| ())
+            .sign_in_again(&|_| ())
             .await
             .expect_err("an S3 library takes a new access key instead");
 

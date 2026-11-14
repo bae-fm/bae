@@ -6,7 +6,6 @@ use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
 use bae_sync_status::PendingWait;
 use bae_transfers::ReleaseQueueState;
 use bae_transfers::{DownloadRequest, DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
-use coven::UploadPhase;
 
 /// What the inspector shows of one release, read in core for the release id
 /// it is set to.
@@ -35,7 +34,7 @@ pub struct StorageInspectorFile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorUpload {
     pub file: coven::FileId,
-    pub phase: UploadPhase,
+    pub sending: bool,
     pub pending: Option<PendingWait>,
 }
 
@@ -87,11 +86,7 @@ impl StorageInspector {
             .map(|file| StorageInspectorFile {
                 upload: file.upload.map(|upload| StorageInspectorUpload {
                     file: upload.file,
-                    phase: if upload.sending {
-                        UploadPhase::Uploading
-                    } else {
-                        UploadPhase::Waiting
-                    },
+                    sending: upload.sending,
                     pending: upload
                         .pending
                         .map(|record| PendingWait::of(&record, Some(release_id))),

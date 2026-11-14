@@ -96,6 +96,7 @@ public final class LibrarySetup: Sendable, Observable {
                 try await host.createLibrary(
                     name: nil,
                     creatorName: $0,
+                    deviceName: deviceName,
                     setup: $1
                 )
             },

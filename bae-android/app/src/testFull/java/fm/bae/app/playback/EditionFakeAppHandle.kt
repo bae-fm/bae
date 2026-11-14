@@ -24,7 +24,6 @@ internal abstract class EditionFakeAppHandle : OpenLibraryHandle {
 
     override suspend fun setupOauthStorage(
         location: BridgeStorageLocation,
-        deviceName: String,
         setup: BridgeLibrarySetup?,
     ): BridgeStorageSetup = unfaked("setupOauthStorage")
 
@@ -32,8 +31,5 @@ internal abstract class EditionFakeAppHandle : OpenLibraryHandle {
         unfaked("signIn")
     }
 
-    override suspend fun signInAgain(
-        deviceName: String,
-        setup: BridgeLibrarySetup?,
-    ): BridgeStorageSetup = unfaked("signInAgain")
+    override suspend fun signInAgain(setup: BridgeLibrarySetup?): BridgeStorageSetup = unfaked("signInAgain")
 }

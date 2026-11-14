@@ -7,7 +7,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let sources = bae_library::test_libraries::TestSources::system();
     let handle = bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
-        .create_store("Schema Test")
+        .create_store("Schema Test", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     let records = bae_records::Records::new(

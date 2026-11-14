@@ -39,7 +39,7 @@ async fn manager_with_recording_transport_over_storage() -> (
     let sources = crate::test_libraries::TestSources::system();
     let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
         .storage_connector(storage.clone())
-        .create_store("Test Library")
+        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     let database = sources.store(handle);
@@ -127,7 +127,6 @@ async fn a_failed_upload_batch_ships_storage_transfer_failed() {
     store
         .setup_s3_storage(
             storage.config(),
-            "Test Device",
             "test-key".into(),
             coven::SecretText::new("test-secret".into()),
             &|_| (),

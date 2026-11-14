@@ -46,7 +46,7 @@ pub(crate) fn alone(state: coven::SyncState) -> SyncStatusSnapshot {
 
 /// A pass moving, or a file moving.
 pub(crate) fn moving() -> coven::SyncState {
-    coven::SyncState::Syncing
+    coven::SyncState::Syncing(coven::SyncActivity::Receiving)
 }
 
 /// No storage location recorded on this device.
@@ -214,7 +214,7 @@ fn only_a_moving_pass_is_syncing() {
     let syncing = |state| alone(state).syncing();
     assert!(syncing(moving()));
     assert!(!syncing(synced()));
-    assert!(!syncing(coven::SyncState::WaitingToSync(coven::SyncWait::Queued)));
+    assert!(!syncing(coven::SyncState::WaitingToSync(coven::SyncWait::NotSyncing)));
     assert!(!syncing(offline()));
     assert!(!syncing(blocked(coven::PendingReason::Removed, None, coven::SyncState::Removed)));
     assert!(!syncing(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)));

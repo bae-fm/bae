@@ -14,7 +14,7 @@ static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
     std::sync::LazyLock::new(bae_diagnostics::Diagnostics::noop);
 
 #[tokio::test]
-async fn profile_requires_membership_and_is_idempotent_after_setup() {
+async fn a_profile_is_idempotent_once_asked_for() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
@@ -23,10 +23,6 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     )
     .await;
     let people = library.people().clone();
-    assert!(matches!(
-        library.people().create_profile("Robin").await,
-        Err(ProfileError::NotRegistered)
-    ));
     assert!(value_matching(&mut people.subscribe_profiles(bae_views::sort_language_on), |_| true)
         .await
         .is_empty());
@@ -51,8 +47,8 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     library.manager().close().await.unwrap();
 }
 
-/// The creator's name waits with the library until storage makes them a
-/// member, and then becomes their profile in one write that also deletes it.
+/// The creator's name waits with the library until the open asks for their
+/// profile under it, in one write that also deletes the name.
 #[tokio::test]
 async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
     let directory = tempfile::tempdir().unwrap();
@@ -364,20 +360,17 @@ impl Household {
         // Made without the creator's profile `create_library` asks for, so
         // these tests start from a member with none.
         let owner = bae_store::configure_store(builder, bae_library::SCHEMA)
-            .create_store("Household")
+            .create_store("Household", "Owner Device", &[], |_, _| Ok(()))
             .await
             .unwrap();
         match storage.config().oauth_access() {
             Some(access) => {
                 owner.authenticate(access).await.unwrap();
-                Box::pin(owner.setup_oauth_storage(storage.config(), "Owner Device", &|_| ()))
-                    .await
-                    .unwrap();
+                Box::pin(owner.setup_oauth_storage(storage.config(), &|_| ())).await.unwrap();
             }
             None => {
                 Box::pin(owner.setup_s3_storage(
                     storage.config(),
-                    "Owner Device",
                     "owner-key".into(),
                     coven::SecretText::new("owner-secret".into()),
                     &|_| (),
@@ -505,15 +498,24 @@ impl Household {
 }
 
 /// The library a join let `guest` into, opened as the app opens one in
-/// `dir`, and the profile its open asked for under the invite's name,
-/// written once the joined device has synced the person's private circle.
+/// `dir`, and the profile the joining write made under the invite's name, in
+/// the circle the admission made, as the device registered, before any sync
+/// of the joined device runs; sync then runs on.
 async fn joined_profile(
     guest: coven::CovenHandle,
     household: &Household,
     dir: &std::path::Path,
 ) -> (bae_library::test_libraries::TestLibrary, bae_people::people::PersonProfile) {
     let library = household.library(guest, dir).await;
+    let written = library
+        .people()
+        .own_person()
+        .await
+        .unwrap()
+        .and_then(|person| person.profile)
+        .expect("the joining write made the profile as the device registered");
     let profile = requested_profile(library.manager(), library.people()).await;
+    assert_eq!(profile, written);
     (library, profile)
 }
 
@@ -578,9 +580,9 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     owner.close().await.unwrap();
 }
 
-/// The joined library's open asks for Rowan's profile under the name Robin
-/// typed in the invite; it is Rowan's own row, which Rowan can't use to edit
-/// Robin's (§5.4).
+/// The joining write gives Rowan a profile under the name Robin typed in the
+/// invite, in a private circle named for the member the invite fixed; it is
+/// Rowan's own row, which Rowan can't use to edit Robin's (§5.4).
 #[test]
 fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
@@ -601,6 +603,16 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
             joined_profile(guest.clone(), &household, library_dir.path()).await;
         let owner_profile = household.robin.clone();
         assert_eq!(profile.name, "Rowan");
+        assert_eq!(profile.id, invite.member);
+        let circle_names =
+            bae_store::test_devices::store_under(guest.clone(), household.sources.clock().clone())
+                .query_texts_for_test(&format!(
+                    "SELECT name FROM coven_circles WHERE circle = '{}'",
+                    profile.private_circle
+                ))
+                .await
+                .unwrap();
+        assert_eq!(circle_names, [format!("bae-person:{}", invite.member)]);
         assert_ne!(profile.id, owner_profile.id);
         assert_ne!(profile.private_circle, owner_profile.private_circle);
         let members = guest.circles().members(profile.private_circle).await.unwrap();

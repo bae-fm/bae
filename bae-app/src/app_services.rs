@@ -580,7 +580,7 @@ impl AppServices {
     delegate_async!(manager, move_releases_to_this_device => move_releases_to_this_device(release_ids: Vec<String>, folder: &std::path::Path) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
+    delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
     delegate_lib!(membership, get_members => members() -> bae_people::membership::Members);
     delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());
@@ -615,13 +615,13 @@ impl AppServices {
     delegate_lib!(store, set_sync_paused => set_uploads_paused(paused: bool) -> ());
     delegate_lib!(store, set_unmetered_only => set_unmetered_only(unmetered_only: bool) -> ());
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> Result<(), bae_library::LibraryError>);
-    delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
+    delegate_async!(manager, use_cloudkit => use_cloudkit(steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, sign_in => sign_in(provider: coven::CloudProvider) -> Result<(), bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, sign_in_again => sign_in_again(device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
+    delegate_async!(manager, sign_in_again => sign_in_again(steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
+    delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
     delegate_lib!(store, onedrive_root => onedrive_root() -> coven::StorageFolder);
     #[cfg(feature = "oauth-providers")]

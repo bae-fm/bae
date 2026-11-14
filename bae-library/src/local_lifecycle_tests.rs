@@ -61,7 +61,7 @@ impl Home {
             crate::SCHEMA,
         )
         .storage_connector(storage.clone())
-        .create_store(name)
+        .create_store(name, "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
         self.storages.lock().unwrap().insert(handle.store_id(), storage);
@@ -75,7 +75,6 @@ impl Home {
         handle
             .setup_s3_storage(
                 self.storage(handle.store_id()).config(),
-                "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
                 &|_| (),

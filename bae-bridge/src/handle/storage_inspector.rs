@@ -46,9 +46,10 @@ impl crate::types::BridgeStorageInspectorFile {
             file: BridgeFile::from_core(file),
             upload: upload.map(|upload| crate::types::BridgeFileUpload {
                 file_id: upload.file.to_string(),
-                state: match upload.phase {
-                    coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
-                    coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
+                state: if upload.sending {
+                    crate::types::BridgeUploadFileState::Uploading
+                } else {
+                    crate::types::BridgeUploadFileState::Waiting
                 },
                 pending: upload.pending.map(crate::types::BridgePendingWait::from_core),
             }),

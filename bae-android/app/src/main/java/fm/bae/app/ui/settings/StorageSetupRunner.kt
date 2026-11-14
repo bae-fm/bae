@@ -9,7 +9,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.data.StorageSetupProgress
-import fm.bae.app.deviceName
 import fm.bae.app.performBridgeAction
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CoroutineScope
@@ -34,16 +33,16 @@ internal class StorageSetupRunner(
     var steps by mutableStateOf<LatestSource<BridgeStorageSetupProgress>?>(null)
         private set
 
-    /** Run [setUp], named [operation] in the log, under this device's name. */
+    /** Run [setUp], named [operation] in the log. */
     suspend fun run(
         operation: String,
-        setUp: suspend (deviceName: String, setup: BridgeLibrarySetup) -> BridgeStorageSetup,
+        setUp: suspend (setup: BridgeLibrarySetup) -> BridgeStorageSetup,
     ) {
         StorageSetupProgress((context.applicationContext as BaeApp).host, scope, session.bugs).use { progress ->
             steps = progress.steps
             try {
                 performBridgeAction(logger, operation, session.errors, onError) {
-                    setUp(deviceName(context), progress.setup)
+                    setUp(progress.setup)
                 }
             } finally {
                 steps = null

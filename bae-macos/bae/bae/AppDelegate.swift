@@ -37,6 +37,7 @@ private func discoverInitialLibraries(
             let created = try await host.createLibrary(
                 name: nil,
                 creatorName: "UI Test",
+                deviceName: "UI Test Mac",
                 setup: BridgeLibrarySetup(host: host)
             )
             let app = try created.open(
@@ -540,7 +541,6 @@ extension AppDelegate {
             uiStore: uiStore,
             config: config,
             seed: seed,
-            deviceName: requiredApplicationServices.deviceName,
             host: requiredApplicationServices.host
         )
         service.wireUp()

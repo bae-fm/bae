@@ -34,14 +34,6 @@ impl Store {
         self.inner.handle.subscribe_store_name()
     }
 
-    /// The person's name the invite carried, which coven keeps on this
-    /// device with a library a join published until a write acknowledges it
-    /// (`CovenWrite::acknowledge_joined_invitee`); none for any other
-    /// library, and once acknowledged.
-    pub async fn joined_invitee(&self) -> Result<Option<String>, DbError> {
-        self.reported(self.inner.handle.joined_invitee().await).map_err(DbError::from)
-    }
-
     /// Delete the store, discarding what this device hasn't uploaded; the
     /// person confirmed that loss from [`Self::unsent_before_removal`].
     pub async fn delete_store(&self) -> Result<(), coven::StoreDeletionError> {
@@ -179,16 +171,12 @@ impl Store {
     pub async fn setup_s3_storage(
         &self,
         storage: coven::StorageConfig,
-        device_name: &str,
         access_key: String,
         secret_key: coven::SecretText,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.reported(
-            self.inner
-                .handle
-                .setup_s3_storage(storage, device_name, access_key, secret_key, steps)
-                .await,
+            self.inner.handle.setup_s3_storage(storage, access_key, secret_key, steps).await,
         )
     }
 
@@ -201,14 +189,10 @@ impl Store {
 
     pub async fn setup_cloudkit_storage(
         &self,
-        device_name: &str,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.reported(
-            self.inner
-                .handle
-                .setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps)
-                .await,
+            self.inner.handle.setup_cloudkit_storage("iCloud.fm.bae.desktop", steps).await,
         )
     }
 
@@ -224,10 +208,9 @@ impl Store {
     pub async fn setup_oauth_storage(
         &self,
         storage: coven::StorageConfig,
-        device_name: &str,
         steps: StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.reported(self.inner.handle.setup_oauth_storage(storage, device_name, steps).await)
+        self.reported(self.inner.handle.setup_oauth_storage(storage, steps).await)
     }
 
     #[cfg(feature = "oauth-providers")]

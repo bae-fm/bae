@@ -120,11 +120,11 @@ impl BenchLibrary {
             composition.ids.clone(),
         );
         let handle = bae_store::configure_store(builder, bae_library::SCHEMA)
-            .create_store(name)
+            .create_store(name, name, &[], |_, _| Ok(()))
             .await
             .map_err(|error| format!("creating the library failed: {error}"))?;
         let library = Self { handle, _installation: installation, _directory: directory };
-        match library.fill(storage, name, tracks).await {
+        match library.fill(storage, tracks).await {
             Ok(()) => Ok(library),
             Err(error) => match library.close().await {
                 Ok(()) => Err(error),
@@ -133,7 +133,7 @@ impl BenchLibrary {
         }
     }
 
-    async fn fill(&self, storage: &BenchStorage, name: &str, tracks: usize) -> Result<(), String> {
+    async fn fill(&self, storage: &BenchStorage, tracks: usize) -> Result<(), String> {
         let track_ids = bae_records::test_fixtures::chunked_tracks::track_ids(tracks);
         self.handle
             .write(move |sql| {
@@ -144,7 +144,6 @@ impl BenchLibrary {
         self.handle
             .setup_s3_storage(
                 storage.location.clone(),
-                name,
                 storage.credentials.access_key_id.clone(),
                 storage.credentials.secret_access_key.clone(),
                 |_| (),

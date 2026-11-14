@@ -51,7 +51,7 @@ fn a_settled_library_is_quiet() {
 #[test]
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
-    syncing.coven.state = coven::SyncState::Syncing;
+    syncing.coven.state = coven::SyncState::Syncing(coven::SyncActivity::Receiving);
     let activity = SyncActivity::new(&syncing, &idle_uploads(), &idle_downloads());
     assert!(activity.syncing);
     assert!(!activity.moving);

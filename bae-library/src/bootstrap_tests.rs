@@ -15,6 +15,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Created Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
+        "Test Device",
         bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -80,6 +81,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Cached Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
+        "Test Device",
         bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -96,9 +98,8 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     handle.close().await.unwrap();
 }
 
-/// The creator is no member until storage is set up, so the library keeps
-/// the name they typed, trimmed, and asks for their profile under it once
-/// they are one.
+/// The library keeps the name the creator typed, trimmed, and asks for their
+/// profile under it.
 #[tokio::test]
 async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
     let temp = tempfile::TempDir::new().unwrap();
@@ -109,6 +110,7 @@ async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
         sources.builder(&installation),
         bae_store::EnteredName::parse("Created Library").unwrap(),
         bae_store::EnteredName::parse("  Robin ").unwrap(),
+        "Test Device",
         sources.clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -135,6 +137,7 @@ async fn a_creator_s_name_that_cant_be_kept_leaves_no_library() {
     let error = create_keeping(
         sources.builder(&installation),
         bae_store::EnteredName::parse("Failed Library").unwrap(),
+        "Test Device",
         sources.clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
         |_| async {
@@ -158,6 +161,7 @@ async fn failed_creation_removes_the_partial_library() {
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Failed Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
+        "Test Device",
         bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -169,8 +173,11 @@ async fn failed_creation_removes_the_partial_library() {
     assert!(!app_dir.active_library_pointer().exists());
 }
 
+/// Coven refuses to reset a library that never set up storage, since there is
+/// nothing in storage to load, and changes nothing: the library keeps its
+/// device.
 #[tokio::test]
-async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name() {
+async fn resetting_an_unconnected_store_is_refused_and_changes_nothing() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -178,6 +185,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
         bae_store::test_devices::test_builder(&installation),
         bae_store::EnteredName::parse("Local Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
+        "Test Device",
         bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
@@ -186,7 +194,7 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let store = handle.store_id();
     let device = handle.device_id();
     handle.close().await.unwrap();
-    let reopened = reset_device(
+    let refused = reset_device(
         bae_store::test_devices::test_builder(&installation),
         store,
         "Replacement",
@@ -194,9 +202,18 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
-    .unwrap();
-    assert_ne!(reopened.device_id(), device);
-    assert_eq!(reopened.store_name().await.unwrap(), "Local Library");
+    .expect_err("a library with no storage has nothing to reset from");
+    assert!(
+        matches!(&refused, RestoreFromCodeError::Restore(error)
+            if matches!(**error, coven::BootstrapError::Sync(coven::SyncError::NoStorage))),
+        "{refused:?}"
+    );
+    let reopened =
+        configure_store(bae_store::test_devices::test_builder(&installation), crate::SCHEMA)
+            .open(store, |_| ())
+            .await
+            .unwrap();
+    assert_eq!(reopened.device_id(), device);
     reopened.close().await.unwrap();
 }
 
@@ -210,13 +227,12 @@ async fn connected_library(
     let handle =
         configure_store(bae_store::test_devices::test_builder(installation), crate::SCHEMA)
             .storage_connector(storage.clone())
-            .create_store(name)
+            .create_store(name, "Test Device", &[], |_, _| Ok(()))
             .await
             .unwrap();
     let setup = handle
         .setup_s3_storage(
             storage.config(),
-            "Device",
             "owner-key".into(),
             coven::SecretText::new("owner-secret".into()),
             &|_| (),

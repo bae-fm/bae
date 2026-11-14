@@ -72,9 +72,9 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     )
 }
 
-/// Create a store named `name`, and keep the name of its creator, `creator`,
-/// for their profile: the creator is no member until storage is set up, so
-/// the library asks for their profile when it has one (§5.4). Retains the
+/// Create a store named `name`, registering this device as `device_name`, and
+/// keep the name of its creator, `creator`, for their profile, which the
+/// library asks for when it opens (§5.4). Retains the
 /// store's open handle, including its identity custody. If the name can't be
 /// kept, the new library is deleted again and the call fails: a library
 /// either keeps its creator's name or doesn't exist.
@@ -82,10 +82,11 @@ pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
     creator: bae_store::EnteredName,
+    device_name: &str,
     clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
-    create_keeping(builder, name, clock, diagnostics, |store| async move {
+    create_keeping(builder, name, device_name, clock, diagnostics, |store| async move {
         bae_people::People::new(store).keep_creator_name(&creator).await
     })
     .await
@@ -96,6 +97,7 @@ pub async fn create_library(
 async fn create_keeping<Keep, Kept>(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
+    device_name: &str,
     clock: coven::ClockRef,
     diagnostics: &bae_diagnostics::Diagnostics,
     keep: Keep,
@@ -105,7 +107,7 @@ where
     Kept: std::future::Future<Output = Result<(), bae_store::DbError>>,
 {
     let handle = configure_store(builder, crate::SCHEMA)
-        .create_store(name.as_str())
+        .create_store(name.as_str(), device_name, &[], |_, _| Ok(()))
         .await
         .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))?;
     let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink());
@@ -169,8 +171,8 @@ pub async fn restore_from_saved_code(
 
 /// A join that let this device in: the library's open handle, and what
 /// failed once coven published it, if anything. The person's profile is
-/// asked for when the library opens, under the name coven keeps from the
-/// invite (§5.4).
+/// written as their device registers, which coven's load of the library
+/// applies (§5.4).
 pub enum JoinedLibrary {
     /// The library loaded.
     Loaded(coven::CovenHandle),
@@ -247,9 +249,9 @@ pub fn join_cancellable(status: &coven::BootstrapStatus) -> bool {
 }
 
 /// Join a library from an invite as the person named `joiner`, the name they
-/// typed, which the join's request carries and coven keeps with the library,
-/// which the library's open asks for the person's profile under (§5.4).
-/// Dropping the call before the join finds
+/// typed, which the join's request carries with the private circle it asks
+/// for, named by the invite's member: coven writes the person's profile as
+/// their device registers (§5.4). Dropping the call before the join finds
 /// its approval keeps the join for `resume_join`; once it has, coven
 /// publishes the library, which then loads, and the call returns it open
 /// even when its load failed. An invite that has ended by `clock`, with no
@@ -288,6 +290,7 @@ pub async fn join_with_invite(
         loading_builder(builder),
         code,
         Some(joiner.into_string()),
+        &bae_people::people::private_circle_name(&invite.metadata.member),
         device_name,
         on_status,
         &control.join,

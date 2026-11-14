@@ -228,8 +228,8 @@ private class PendingActionRunner(
         if (providers == null) {
             error = DisplayError(context.getString(R.string.oauth_unconfigured))
         } else {
-            setUp("sign in to $provider again") { deviceName, setup ->
-                providers.signInAgain(session.appHandle, deviceName, setup)
+            setUp("sign in to $provider again") { setup ->
+                providers.signInAgain(session.appHandle, setup)
             }
         }
     }
@@ -237,14 +237,14 @@ private class PendingActionRunner(
     /** Connect the library's location again with the access key [config] carries. */
     fun signInWithKey(config: BridgeSaveSyncConfig) {
         askingForKey = null
-        setUp("sign in to S3 with a new access key") { deviceName, setup ->
-            session.appHandle.saveSyncConfig(config, deviceName, setup)
+        setUp("sign in to S3 with a new access key") { setup ->
+            session.appHandle.saveSyncConfig(config, setup)
         }
     }
 
     private fun setUp(
         operation: String,
-        setUp: suspend (deviceName: String, setup: BridgeLibrarySetup) -> BridgeStorageSetup,
+        setUp: suspend (setup: BridgeLibrarySetup) -> BridgeStorageSetup,
     ) {
         error = null
         scope.launch { signIns.run(operation, setUp) }

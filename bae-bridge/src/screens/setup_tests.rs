@@ -41,7 +41,12 @@ fn creating_a_library_reports_its_step() {
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
     caller
-        .block_on(host.create_library(Some("Created".into()), "Creator".into(), setup.clone()))
+        .block_on(host.create_library(
+            Some("Created".into()),
+            "Creator".into(),
+            "Test Device".into(),
+            setup.clone(),
+        ))
         .unwrap();
     assert_eq!(
         setup.written(),
@@ -63,7 +68,12 @@ fn a_blank_creator_name_creates_nothing() {
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let error = caller
-        .block_on(host.clone().create_library(None, "  ".into(), setup.clone()))
+        .block_on(host.clone().create_library(
+            None,
+            "  ".into(),
+            "Test Device".into(),
+            setup.clone(),
+        ))
         .err()
         .expect("a blank name is refused");
     assert!(matches!(error, crate::BridgeError::Diagnostic { .. }), "{error:?}");

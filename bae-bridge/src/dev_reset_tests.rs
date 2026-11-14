@@ -55,6 +55,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             .block_on(host.clone().create_library(
                 Some(name.into()),
                 "Creator".into(),
+                "Test Device".into(),
                 crate::BridgeLibrarySetup::new(host.clone()),
             ))
             .unwrap();

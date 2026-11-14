@@ -35,6 +35,7 @@ fn library_with_fixture(
             bae_store::test_devices::test_builder(&installation),
             bae_store::EnteredName::parse("Fixture Library").unwrap(),
             bae_store::EnteredName::parse("Creator").unwrap(),
+            "Test Device",
             bae_store::TestSources::system().clock().clone(),
             &bae_diagnostics::Diagnostics::noop(),
         )

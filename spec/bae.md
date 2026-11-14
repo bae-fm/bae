@@ -2780,8 +2780,8 @@ once this device is no longer that person, such as one removed from the
 library during the play, saving it is refused.
 
 **Plays before a profile.** A device can play before its person has a profile:
-Ana's new library has no storage yet, so she is no member and has no circle
-(§5.4). Her plays are kept in the device-local table `local_history`, and
+Ana's new library asks for her profile when it opens, and until her
+private circle is made she has no circle to write into (§5.4). Her plays are kept in the device-local table `local_history`, and
 stay there until her profile exists. When her profile is created, the same
 write moves every one of them into her private circle. They never go to the household on their own: she hadn't chosen to share
 them.
@@ -2848,30 +2848,33 @@ history setting.
   keys, or re-inviting someone who lost every device, keeps the same id
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
-- **The joining person's own device asks for their `people` row** with the
-  name they typed when they joined, which their join request carried, so
-  every member has a profile once their circle is made (below). They can
-  rename themselves later. Coven keeps that name with the library the join
-  publishes, on that device only, until bae acknowledges it
+- **The joining person has a `people` row from the moment they join**, under
+  the name they typed, which their join request carries with the private
+  circle it asks for (named `bae-person:` and the member's id, which the
+  invite fixes). Coven admits the person, their device and their circle in
+  one step, and bae registers a joining write with coven: as a local write, in
+  the transaction that first applies a device's registration, it inserts the
+  person's row (that name, private history, that circle as `private_circle`)
+  when the member has none
   ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
-  Every open of the library reads it: once the library knows the person, at
-  once or when sync has loaded that far, one write asks for the profile and
-  acknowledges the name, so the two commit or roll back together. A join
+  The registration of any of the person's devices runs it (a join, a
+  restore, a pairing, a reset, or a snapshot that covers it) on every device
+  of theirs, once each, and a failing write fails the registration. So a join
   that finishes in one go, one whose first load failed and one bae quit
-  during all take this one path, at the library's open after the join or at
-  any later open. A person who made their profile, or asked for one, in
-  Settings meanwhile gets only the acknowledgment. A write that fails is
-  reported and leaves the name kept, and the next open asks again. Someone
-  re-invited after losing every device keeps their row, since their
-  `MemberId` is the same: that invite carries no name, and coven keeps
-  none.
-- **The person who made the library** becomes a member when it gets a cloud
-  home. Until then there is no member to credit. **Create new library…** on a
+  during all give the person their profile as their device registers, with
+  no later step to wait for. They can rename themselves later. Someone
+  re-invited after losing every device, or restoring, keeps their row, since
+  their `MemberId` is the same: that admission carries no name, and the write
+  only points the row's `private_circle` at the circle the admission made
+  when it names another, the old circle's key being lost with the old keys.
+- **The person who made the library** is its first member and admin from the
+  moment it exists, with this device registered, though it has no cloud home
+  yet. **Create new library…** on a
   Mac asks their name first, and the new library keeps it on this device only
   (`creator_name`, never synced), the way coven keeps a joiner's. That is a
   recorded intent, not a profile: nothing reads it as one. Every open of the
-  library reads it: once the library knows the person (storage is set up), one
-  write asks for the profile as above and deletes the kept name, so the two
+  library reads it: once the library knows the person, at once, one
+  write asks for the profile as below and deletes the kept name, so the two
   commit or roll back together; a person who made their profile, or asked for
   one, in Settings meanwhile gets only the deletion. A write that fails leaves
   the name kept, and the next open asks again. If the name can't be kept, the
@@ -3190,9 +3193,9 @@ Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,
 and only the number shows whose request it is.
 
-Once his phone has opened the library and loaded his admission, it asks
-for his `people` row with the name he typed (§5.4). Everyone's devices show Dan by
-name.
+Once his phone has opened the library and loaded his admission, his
+`people` row exists, written as his phone registered, with the name he typed
+(§5.4). Everyone's devices show Dan by name.
 
 **Once Ana approves.** As soon as Dan's phone finds her approval, the library
 is on his phone and the join is over: coven keeps his keys and publishes the
@@ -3205,9 +3208,9 @@ It is no failed join, and the first screen lists no join under way for it: it
 is a library that can't reach its storage, which its sync state shows, which
 sync retries, and which Dan removes as he removes any library. A load that
 bae quitting stops leaves the same library, whose sync loads the rest once it
-opens. A load that stopped before it knew Dan leaves his name with coven, and the
-library asks for his profile under it once sync has loaded that far, at
-that open or a later one (§5.4).
+opens. A load that stopped before it applied Dan's admission leaves him with no
+profile on his phone yet; the load that applies it writes the profile, at that
+open or a later one (§5.4).
 
 **Open invites.** Until it ends, each invite Ana's laptop made is a row in
 People: the address it shares with (the key's id on S3), marked invited, with a
@@ -3723,8 +3726,9 @@ slot and a failed operation of coven's own have theirs, and the failure again
 beside its record would read as a second problem. Then, under a
 *Transfers* label, one row per
 thing moving, each its words, how far it has got and a bar, with no icon:
-Syncing changes, while coven's sync state says so (a pass moving, or a file
-being sent or downloaded), with no count, so its bar moves; Uploading
+Syncing changes, while coven's sync state says Syncing (a pass receiving or
+sending, a file a write waits for uploading, or the next pass's turn with
+nothing holding it), with no count, so its bar moves; Uploading
 ("1 of 2 releases"); Pinning ("1 of 3 releases"), which on the phones opens
 the Pinning screen; and on the desktop Moving to This Mac on a line of its own ("0 of
 1 release"): a move-to-this-device changes where files live for every device, while a
@@ -3772,11 +3776,13 @@ the fix; the apps draw what core sends and add nothing of their own but the
 words of a button, which are each platform's.
 
 - **Gray.** Not synced, on the Mac only: a phone joins a library and never
-  makes one. Syncing…, only while something is sent or received, not on quiet
-  passes. Waiting to sync, online with changes held back: with *An upload
-  failed. bae will try again shortly.* and *Retry now* when an upload waits to
-  retry, and with nothing else when sync waits its turn, paused uploads
-  included: the pause shows in Transfers (§4.2), not on the Sync row. A phone never
+  makes one. Syncing…, while coven's state says Syncing: work that clears by
+  itself is under way or next in line. Waiting to sync, online with work held
+  back for a while: with *An upload failed. bae will try again shortly.* and
+  *Retry now* when a retry waits, and with nothing else when sync isn't
+  running or a key or a snapshot from another device hasn't arrived. A paused
+  upload, or one held for the network, isn't a hold on the Sync row: it shows
+  in Transfers (§4.2). A phone never
   uploads files, so its only reason to wait is the provider's. While a cloud home
   setup runs, "Setting up your cloud home…" takes the place of any state that is no
   problem (§6.2).
@@ -3913,7 +3919,7 @@ is about another device's upload.
 Ben's laptop has two records in its Activity panel: Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign in* for
 the first: core signs in with the access the library's folder needs, then
-connects that location again under this device's name. On a library in an S3
+connects that location again. On a library in an S3
 bucket, *Sign in* asks for a new access key for that bucket instead, the same
 form Settings shows a device that lost its key, and connects the bucket again
 with it. For the second it
@@ -4927,13 +4933,13 @@ library is registered there by id.
 
 | Call | What it does |
 |---|---|
-| `create_library` | creates a new library's store and gives this device its identity, and keeps the creator's name for their profile (§5.4); given no library name, the bridge generates one; a blank creator's name fails before anything is made, and a name that can't be kept removes the new library again |
+| `create_library` | creates a new library's store and gives this device its identity, registering it under the device name the call gives, and keeps the creator's name for their profile (§5.4); given no library name, the bridge generates one; a blank creator's name fails before anything is made, and a name that can't be kept removes the new library again |
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this device's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6); the apps ask first, and the question names the library of a readable code and says nothing of one for an unreadable code |
 | `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, at a new library's settings; a restore failing before its record leaves this device's copy as it was; called again, finishes a restore that stopped after its record (§6.4) |
 | `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
-| `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries; coven keeps it with the library for its open to ask for their profile under (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
+| `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries with the private circle it asks for, so the person's profile is written as their device registers (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `discard_unfinished_installation` | deletes a join or restore that stopped before it finished from this device, directory and entries, for one coven can't read; `unfinished_joins` and `unfinished_restores` fail with `UnfinishedInstallationUnreadable` naming its library until it is gone; refused as `Config` when this device has none for the library, or a call holds it (§5.6) |
 | `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |

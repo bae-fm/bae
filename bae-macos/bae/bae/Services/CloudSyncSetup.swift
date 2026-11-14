@@ -31,22 +31,20 @@
         let createDropboxSharedFolder:
             @Sendable (String) async throws -> BridgeStorageFolder
         #if BAE_CLOUDKIT
-            /// Use the signed-in Apple account's iCloud, registering this device
-            /// under its name.
+            /// Use the signed-in Apple account's iCloud.
             let useCloudKit:
                 @Sendable (BridgeLibrarySetup) async throws ->
                     BridgeStorageSetup
         #endif
 
-        init(handle: any AppHandleProtocol, deviceName: String) {
+        init(handle: any AppHandleProtocol) {
             signIn = { try await handle.signIn(provider: $0) }
             signInAgain = {
-                try await handle.signInAgain(deviceName: deviceName, setup: $0)
+                try await handle.signInAgain(setup: $0)
             }
             connect = {
                 try await handle.setupOauthStorage(
                     location: $0,
-                    deviceName: deviceName,
                     setup: $1
                 )
             }
@@ -61,10 +59,7 @@
             }
             #if BAE_CLOUDKIT
                 useCloudKit = {
-                    try await handle.useCloudkit(
-                        deviceName: deviceName,
-                        setup: $0
-                    )
+                    try await handle.useCloudkit(setup: $0)
                 }
             #endif
         }

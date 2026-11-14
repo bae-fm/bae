@@ -26,7 +26,7 @@ async fn opening_a_library_keeps_its_download_queue() {
     let sources = bae_store::TestSources::on(&clock);
     let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
         .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
-        .create_store("Test Library")
+        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     let left = sources.store(handle.clone());

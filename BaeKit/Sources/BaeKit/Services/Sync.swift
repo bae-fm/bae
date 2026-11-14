@@ -196,14 +196,12 @@ public final class Sync: Sendable, Observable {
     /// each of the handle's calls, so it grows with them.
     public convenience init(
         handle: any AppHandleProtocol,
-        deviceName: String,
         host: BridgeHost
     ) {
         self.init(
             saveSyncConfig: {
                 try await handle.saveSyncConfig(
                     configData: $0,
-                    deviceName: deviceName,
                     setup: $1
                 )
             },

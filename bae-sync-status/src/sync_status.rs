@@ -232,7 +232,7 @@ impl SyncStatusSnapshot {
     /// A pass is moving, or a file is being sent or downloaded, as coven's
     /// sync state says.
     pub fn syncing(&self) -> bool {
-        self.coven.state == coven::SyncState::Syncing
+        matches!(self.coven.state, coven::SyncState::Syncing(_))
     }
 
     /// Whether coven's sync loop runs: storage is set up on this device and
@@ -259,7 +259,7 @@ impl SyncStatusSnapshot {
             | S::NeedsReset(cause)
             | S::Failed(cause) => cause,
             S::NotSynced
-            | S::Syncing
+            | S::Syncing(_)
             | S::WaitingToSync(_)
             | S::Synced
             | S::SignedOut { cause: None, .. } => return None,

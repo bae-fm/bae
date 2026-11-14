@@ -26,7 +26,7 @@ async fn a_failed_setup_call_leaves_its_undone_row_until_the_next_call() {
     test.storage.set_online(false);
 
     manager
-        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| ())
+        .save_s3_config(memory_s3_config(&test), &|_| ())
         .await
         .expect_err("offline storage cannot be set up");
     assert!(matches!(
@@ -35,10 +35,7 @@ async fn a_failed_setup_call_leaves_its_undone_row_until_the_next_call() {
     ));
 
     test.storage.set_online(true);
-    manager
-        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| ())
-        .await
-        .expect("online storage sets up");
+    manager.save_s3_config(memory_s3_config(&test), &|_| ()).await.expect("online storage sets up");
     assert_eq!(manager.sync_status().await.unwrap().storage_setup, None);
 }
 
@@ -53,7 +50,7 @@ async fn a_failed_acknowledgement_refuses_the_setup_before_it_runs() {
     let steps = std::sync::Mutex::new(0usize);
 
     manager
-        .save_s3_config(memory_s3_config(&test), "Test Device", &|_| {
+        .save_s3_config(memory_s3_config(&test), &|_| {
             *steps.lock().unwrap() += 1;
         })
         .await
@@ -73,9 +70,7 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
     let told = std::sync::Mutex::new(Vec::new());
 
     manager
-        .save_s3_config(memory_s3_config(&test), "Test Device", &|progress| {
-            told.lock().unwrap().push(progress)
-        })
+        .save_s3_config(memory_s3_config(&test), &|progress| told.lock().unwrap().push(progress))
         .await
         .unwrap();
 
@@ -109,7 +104,7 @@ async fn a_finishing_step_is_past_the_point_of_no_return() {
     let told = std::sync::Mutex::new(Vec::new());
 
     manager
-        .save_s3_config(memory_s3_config(&test), "Test Device", &|progress| {
+        .save_s3_config(memory_s3_config(&test), &|progress| {
             let finishing = crate::storage_setup_finishing(&progress.step);
             let answer = finishing.then(|| manager.store.cancel_storage_setup());
             told.lock().unwrap().push((progress.step, answer));
@@ -144,8 +139,7 @@ async fn a_dropped_setup_call_cancels_its_setup() {
     // return while the call runs.
     let writes = Arc::new(tokio::sync::Semaphore::new(0));
     test.storage.gate_creations(writes.clone()).await;
-    let mut setup =
-        Box::pin(manager.save_s3_config(memory_s3_config(&test), "Test Device", &|_| ()));
+    let mut setup = Box::pin(manager.save_s3_config(memory_s3_config(&test), &|_| ()));
     let running = |status: &bae_sync_status::SyncStatusSnapshot| {
         status.storage_setup == Some(bae_sync_status::StorageSetupState::Running)
     };

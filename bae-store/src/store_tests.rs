@@ -47,7 +47,7 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
         crate::TestSources::on(&clock).builder(&installation),
         Schema::new(&[]),
     )
-    .create_store("Test Library")
+    .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
     .await
     .unwrap();
     let heard = coven::task::HeardBugs::shared();

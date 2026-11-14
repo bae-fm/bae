@@ -277,7 +277,7 @@ impl Store {
             coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
         let sources = crate::TestSources::on(&clock);
         let handle = crate::configure_store(sources.builder(&installation), schema)
-            .create_store("Test Library")
+            .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
             .await?;
         Ok(Self::new_on(handle, sources, bugs))
     }

@@ -65,7 +65,7 @@ async fn library(
         crate::test_fixtures::TEST_SCHEMA,
     )
     .storage_connector(device)
-    .create_store("Household")
+    .create_store("Household", "Test Device", &[], |_, _| Ok(()))
     .await
     .unwrap();
     let store = bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock));
@@ -81,7 +81,6 @@ async fn set_up(
     store
         .setup_s3_storage(
             device.config(),
-            "Device",
             "owner-key".into(),
             coven::SecretText::new("owner-secret".into()),
             &|_| (),

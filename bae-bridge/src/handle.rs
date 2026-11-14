@@ -375,12 +375,11 @@ impl AppHandle {
     pub(crate) async fn save_storage(
         &self,
         config: BridgeSaveSyncConfig,
-        device_name: &str,
         steps: &crate::screens::SetupSteps,
     ) -> Result<crate::types::BridgeStorageSetup, BridgeError> {
         Ok(self
             .services
-            .save_s3_config(config.into_core()?, device_name, &|progress| steps.storage(progress))
+            .save_s3_config(config.into_core()?, &|progress| steps.storage(progress))
             .await
             .map(crate::types::BridgeStorageSetup::from_core)?)
     }

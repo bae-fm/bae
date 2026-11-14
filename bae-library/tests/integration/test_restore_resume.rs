@@ -21,15 +21,14 @@ async fn dropbox_library(
         ),
         bae_store::EnteredName::parse("Household").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
+        "Test Device",
         bae_store::TestSources::system().clock().clone(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
     owner.authenticate(storage.config().oauth_access().unwrap()).await.unwrap();
-    let setup = Box::pin(owner.setup_oauth_storage(storage.config(), "Owner Device", &|_| ()))
-        .await
-        .unwrap();
+    let setup = Box::pin(owner.setup_oauth_storage(storage.config(), &|_| ())).await.unwrap();
     owner.close().await.unwrap();
     (storage, setup.restore_code.as_str().to_string())
 }

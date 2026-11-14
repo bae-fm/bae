@@ -58,7 +58,7 @@ pub(super) async fn setup_test_manager_with(
     let sources = bae_store::TestSources::on(&clock);
     let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
         .storage_connector(storage.clone())
-        .create_store("Test Library")
+        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     let database = sources.store(handle);
@@ -200,7 +200,6 @@ pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<M
         .store
         .setup_s3_storage(
             manager.storage.config(),
-            "Test Device",
             "test-key".into(),
             coven::SecretText::new("test-secret".into()),
             &|_| (),

@@ -436,7 +436,6 @@ private func makeAppService(
         uiStore: uiStore,
         config: testBridgeConfig(),
         seed: emptySeed,
-        deviceName: "Test Mac",
         host: TestHost.make()
     )
 }

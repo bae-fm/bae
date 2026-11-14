@@ -36,14 +36,13 @@ pub async fn create_first_store(
 ) -> coven::CovenHandle {
     let handle = crate::configure_store(sources.builder(installation), schema)
         .storage_connector(storage.clone())
-        .create_store("Two Devices")
+        .create_store("Two Devices", "Device A", &[], |_, _| Ok(()))
         .await
         .unwrap();
     let credentials = owner_credentials();
     handle
         .setup_s3_storage(
             storage.config(),
-            "Device A",
             credentials.access_key_id,
             credentials.secret_access_key,
             &|_| (),

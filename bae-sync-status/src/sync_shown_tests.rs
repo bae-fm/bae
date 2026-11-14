@@ -48,9 +48,9 @@ fn every_state_shows_its_words_color_cause_and_fix() {
     check(dropbox(moving()), W::Syncing, T::Neutral, None, None);
     check(dropbox(synced()), W::Synced, T::Success, None, None);
     let waits = |wait| dropbox(coven::SyncState::WaitingToSync(wait));
-    check(waits(coven::SyncWait::Queued), W::WaitingToSync, T::Neutral, None, None);
-    check(waits(coven::SyncWait::Blocked), W::WaitingToSync, T::Neutral, None, None);
-    check(waits(coven::SyncWait::Paused), W::WaitingToSync, T::Neutral, None, None);
+    check(waits(coven::SyncWait::NotSyncing), W::WaitingToSync, T::Neutral, None, None);
+    let snapshot = coven::SyncWait::Snapshot { audience: coven::Audience::Store };
+    check(waits(snapshot), W::WaitingToSync, T::Neutral, None, None);
     check(
         waits(coven::SyncWait::Retrying { at: finished() }),
         W::WaitingToSync,
@@ -329,7 +329,7 @@ fn last_synced_shows_under_a_problem_state_only() {
     assert_eq!(at(synced()), None);
     assert_eq!(at(moving()), None);
     assert_eq!(at(disconnected()), None);
-    assert_eq!(at(coven::SyncState::WaitingToSync(coven::SyncWait::Paused)), None);
+    assert_eq!(at(coven::SyncState::WaitingToSync(coven::SyncWait::NotSyncing)), None);
 }
 
 /// A start that failed with storage set up shows as a failure with the

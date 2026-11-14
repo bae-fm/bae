@@ -11,7 +11,7 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
         bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
-    .create_store("Unavailable Keychain")
+    .create_store("Unavailable Keychain", "Test Device", &[], |_, _| Ok(()))
     .await
     .err()
     .unwrap();
@@ -33,7 +33,7 @@ async fn opening_with_a_locked_keychain_remains_retryable() {
         bae_store::test_devices::test_builder(&installation),
         bae_library::SCHEMA,
     )
-    .create_store("Keychain test")
+    .create_store("Keychain test", "Test Device", &[], |_, _| Ok(()))
     .await
     .err()
     .unwrap();
@@ -86,7 +86,7 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
                 bae_store::test_devices::test_builder(&installation),
                 bae_library::SCHEMA,
             )
-            .create_store("Failing Bootstrap"),
+            .create_store("Failing Bootstrap", "Test Device", &[], |_, _| Ok(())),
         )
         .unwrap();
     let library_id = handle.store_id().to_string();

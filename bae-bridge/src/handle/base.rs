@@ -150,9 +150,9 @@ forward! { async this => {
 
     /// Set S3 up as the library's storage, each step coven runs written into
     /// `setup`'s stream when the app shows the setup.
-    fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
+    fn save_sync_config(config_data: BridgeSaveSyncConfig, setup: Option<std::sync::Arc<crate::BridgeLibrarySetup>>) -> crate::types::BridgeStorageSetup {
         let steps = crate::screens::SetupFeed::new(setup).steps();
-        this.save_storage(config_data, &device_name, &steps).await
+        this.save_storage(config_data, &steps).await
     }
 
     /// This person's restore code to type, and for the QR the code that also

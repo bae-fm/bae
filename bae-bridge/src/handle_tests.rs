@@ -192,7 +192,7 @@ pub(super) fn fresh_test_library(
     let handle = runtime
         .block_on(
             bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
-                .create_store("Test Library"),
+                .create_store("Test Library", "Test Device", &[], |_, _| Ok(())),
         )
         .expect("test store");
     let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
@@ -226,6 +226,7 @@ pub(crate) fn create_opened_library(
         .block_on(host.clone().create_library(
             Some(name.into()),
             "Creator".into(),
+            "Test Device".into(),
             crate::BridgeLibrarySetup::new(host.clone()),
         ))
         .unwrap()
@@ -336,7 +337,6 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
                             secret_key: "secret-key".to_string(),
                             profile: None,
                         },
-                        "Test device".into(),
                         None,
                     ))
                     .err()

@@ -558,12 +558,14 @@ impl BridgeHost {
     }
 
     /// Create a library, named `name` or a generated name, and the profile
-    /// of its creator, `creator_name`; its one step written into `setup`'s
-    /// stream. A blank `creator_name` fails the call before anything is made.
+    /// of its creator, `creator_name`, with this device named `device_name`;
+    /// its one step written into `setup`'s stream. A blank `creator_name`
+    /// fails the call before anything is made.
     pub async fn create_library(
         self: Arc<Self>,
         name: Option<String>,
         creator_name: String,
+        device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
     ) -> Result<Arc<crate::OpenedLibrary>, BridgeError> {
         let builder = self.library_builder();
@@ -578,9 +580,15 @@ impl BridgeHost {
             .clone()
             .run_to_completion(self.clone(), "create library", move || async move {
                 steps.uncounted(crate::types::BridgeSetupStep::CreatingLibrary);
-                let handle =
-                    bae_library::create_library(builder, name, creator, clock, &self.diagnostics)
-                        .await?;
+                let handle = bae_library::create_library(
+                    builder,
+                    name,
+                    creator,
+                    &device_name,
+                    clock,
+                    &self.diagnostics,
+                )
+                .await?;
                 Ok(Arc::new(crate::OpenedLibrary::new(handle, self)))
             })
             .await

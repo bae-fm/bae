@@ -74,6 +74,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone()),
             bae_store::EnteredName::parse("Test Library").unwrap(),
             bae_store::EnteredName::parse("Creator").unwrap(),
+            "Test Device",
             bae_store::TestSources::system().clock().clone(),
             &bae_diagnostics::Diagnostics::noop(),
         )
@@ -82,7 +83,6 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         handle
             .setup_s3_storage(
                 storage.config(),
-                "Device",
                 "key".into(),
                 coven::SecretText::new("secret".into()),
                 &|_| (),

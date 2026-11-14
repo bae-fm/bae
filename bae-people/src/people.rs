@@ -10,6 +10,8 @@ use std::sync::Arc;
 mod collections;
 pub use collections::{album_ratings_on, track_stars_on};
 mod history;
+mod joining;
+pub use joining::private_circle_name;
 mod profile_request;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
@@ -20,7 +22,8 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
 /// People's part of the schema: `people.sql`.
 pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_str!("people.sql")])
     .functions(SQL_FUNCTIONS)
-    .synced(crate::synced::synced_tables, crate::synced::namespaces);
+    .synced(crate::synced::synced_tables, crate::synced::namespaces)
+    .joining_write(joining::write_profile);
 
 struct PeopleInner {
     /// The store every read and write of the people runs through.

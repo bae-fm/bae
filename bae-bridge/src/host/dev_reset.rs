@@ -96,6 +96,7 @@ impl BridgeHost {
                 self.library_builder(),
                 name,
                 creator,
+                device_name,
                 self.clock.clone(),
                 &self.diagnostics,
             )
@@ -110,7 +111,7 @@ impl BridgeHost {
             .blocking("start the new library", move || created.open(200, false))
             .await
             .map_err(BridgeError::unfinished)??;
-        let set_up = self.set_up_dev_library(&app, profile, device_name, steps).await;
+        let set_up = self.set_up_dev_library(&app, profile, steps).await;
         let closing = app.clone();
         let closed = self
             .diagnostics
@@ -128,7 +129,6 @@ impl BridgeHost {
         &self,
         app: &Arc<crate::AppHandle>,
         profile: crate::BridgeDevResetProfile,
-        device_name: &str,
         steps: &crate::screens::SetupSteps,
     ) -> Result<(), BridgeError> {
         tracing::info!(
@@ -143,7 +143,7 @@ impl BridgeHost {
         tracing::info!("dev reset: connecting S3 storage");
         // Coven's steps go to the reset's own stream; the first line stays
         // Connecting storage until coven reports its first.
-        app.save_storage(profile.sync_config, device_name, steps).await?;
+        app.save_storage(profile.sync_config, steps).await?;
 
         tracing::info!("dev reset: saving the Discogs key");
         match app.clone().save_discogs_token(profile.discogs_token).await? {

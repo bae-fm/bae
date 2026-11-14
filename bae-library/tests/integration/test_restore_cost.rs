@@ -91,7 +91,7 @@ async fn pass(handle: &CovenHandle, clock: &BenchClock) {
             finished(status)
                 || !matches!(
                     status.state,
-                    SyncState::Synced | SyncState::Syncing | SyncState::WaitingToSync(_)
+                    SyncState::Synced | SyncState::Syncing(_) | SyncState::WaitingToSync(_)
                 )
         })
         .await;
@@ -126,17 +126,11 @@ async fn restore_cost(library: Library) {
     let installation = Coven::in_memory(app_dir.coven_app_dir());
     let handle = bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
         .storage_connector(storage.clone())
-        .create_store("Library")
+        .create_store("Library", "Ana's Mac", &[], |_, _| Ok(()))
         .await
         .unwrap();
     handle
-        .setup_s3_storage(
-            storage.config(),
-            "Ana's Mac",
-            "key".into(),
-            SecretText::new("secret".into()),
-            &|_| (),
-        )
+        .setup_s3_storage(storage.config(), "key".into(), SecretText::new("secret".into()), &|_| ())
         .await
         .unwrap();
     handle.start_sync().await.unwrap();

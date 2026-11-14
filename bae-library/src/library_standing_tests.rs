@@ -17,13 +17,12 @@ async fn synced_closed_library(
     );
     let handle = bae_store::configure_store(sources.builder(installation), crate::SCHEMA)
         .storage_connector(storage.clone())
-        .create_store(name)
+        .create_store(name, "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     handle
         .setup_s3_storage(
             storage.config(),
-            "Device",
             "key".into(),
             coven::SecretText::new("secret".into()),
             &|_| (),

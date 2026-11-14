@@ -161,7 +161,7 @@ impl SyncStatusSnapshot {
                 state,
                 SyncState::NotSynced
                     | SyncState::SignedOut { cause: None, .. }
-                    | SyncState::Syncing
+                    | SyncState::Syncing(_)
                     | SyncState::Synced
                     | SyncState::WaitingToSync(_)
             )
@@ -175,9 +175,9 @@ impl SyncStatusSnapshot {
         }
         match state {
             SyncState::NotSynced => SyncShown::new(W::NotSynced, T::Neutral),
-            SyncState::Syncing => SyncShown::new(W::Syncing, T::Neutral),
+            SyncState::Syncing(_) => SyncShown::new(W::Syncing, T::Neutral),
             SyncState::Synced => SyncShown::new(W::Synced, T::Success),
-            SyncState::WaitingToSync(wait) => self.waiting(*wait),
+            SyncState::WaitingToSync(wait) => self.waiting(wait),
             SyncState::Offline(_) => SyncShown::new(W::Offline, T::Warning),
             SyncState::OfflineWithUnsentChanges(_) => {
                 SyncShown::new(W::OfflineWithUnsentChanges, T::Warning)
@@ -227,7 +227,7 @@ impl SyncStatusSnapshot {
         }
     }
 
-    fn waiting(&self, wait: SyncWait) -> SyncShown {
+    fn waiting(&self, wait: &SyncWait) -> SyncShown {
         use SyncStatusWord::WaitingToSync;
         let neutral = SyncShown::new(WaitingToSync, SyncTone::Neutral);
         match wait {
@@ -238,16 +238,12 @@ impl SyncStatusSnapshot {
                 let amber = SyncShown::new(WaitingToSync, SyncTone::Warning);
                 match self.provider {
                     Some(provider) => {
-                        amber.because(SyncCauseLine::ProviderWait { provider, until })
+                        amber.because(SyncCauseLine::ProviderWait { provider, until: *until })
                     }
                     None => amber,
                 }
             }
-            SyncWait::NotSyncing
-            | SyncWait::Blocked
-            | SyncWait::Paused
-            | SyncWait::Metered
-            | SyncWait::Queued => neutral,
+            SyncWait::NotSyncing | SyncWait::KeyCopy { .. } | SyncWait::Snapshot { .. } => neutral,
         }
     }
 

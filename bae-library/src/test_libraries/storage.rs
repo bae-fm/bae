@@ -32,7 +32,7 @@ pub async fn storage_library_of(
         Arc::new(MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap());
     let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
         .storage_connector(storage.clone())
-        .create_store("Test Library")
+        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
     if let Some(creator) = creator {
@@ -71,7 +71,6 @@ pub async fn connect_storage(
                 access_key: "test-access".into(),
                 secret_key: "test-secret".into(),
             },
-            "Test Device",
             &|_| (),
         )
         .await

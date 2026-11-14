@@ -77,7 +77,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         uiStore: UiStore,
         config: BridgeConfig,
         seed: LibrarySessionSeed,
-        deviceName: String,
         host: BridgeHost
     ) {
         let playbackStore = PlaybackStore()
@@ -101,7 +100,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             show: { uiStore.showError($0) }
         )
         let imageStore = ImageStore(handle: appHandle)
-        let sync = Sync(handle: appHandle, deviceName: deviceName, host: host)
+        let sync = Sync(handle: appHandle, host: host)
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
         let castStart = CastStart(
@@ -136,10 +135,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         self.subsonicStore = subsonicStore
         export = TrackSave(handle: appHandle)
         #if BAE_OAUTH_PROVIDERS
-            cloudSyncSetup = CloudSyncSetup(
-                handle: appHandle,
-                deviceName: deviceName
-            )
+            cloudSyncSetup = CloudSyncSetup(handle: appHandle)
         #endif
         let libraryBrowseSession = LibraryBrowseSession(
             library: library,

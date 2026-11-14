@@ -424,7 +424,6 @@ internal open class FakeAppHandle(
 
     override suspend fun saveSyncConfig(
         configData: BridgeSaveSyncConfig,
-        deviceName: String,
         setup: BridgeLibrarySetup?,
     ): BridgeStorageSetup = unfaked("saveSyncConfig")
 

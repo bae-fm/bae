@@ -123,48 +123,9 @@ impl People {
         made.into_result()
     }
 
-    /// Ask for the profile of the person a join let in, under the name their
-    /// invite carried, which coven keeps with the library the join published
-    /// until a write acknowledges it (§5.4). Once the library knows the
-    /// person, at once or when sync has loaded that far, one write asks for
-    /// the profile as [`Self::create_profile`] does and acknowledges the
-    /// name; a person who already has a profile, or a request for one,
-    /// gets only the acknowledgment. With no name kept there is nothing to
-    /// ask for. A failed write leaves the name kept, and the library's next
-    /// open asks again.
-    pub async fn ask_for_joined_profile(&self) -> Result<(), ProfileError> {
-        let Some(name) = self.inner.store.joined_invitee().await? else {
-            return Ok(());
-        };
-        let name = bae_store::EnteredName::parse(&name)?.into_string();
-        let member = self.known_member().await?;
-        let _creation = self.inner.profile_creation.lock().await;
-        let _registration = self.inner.history_registration.lock().await;
-        let made = self
-            .inner
-            .store
-            .call(move |sql| {
-                let profile =
-                    sql.query_row(&profile_sql(), [member.to_string()], profile_row).optional()?;
-                let made = match (profile, profile_request_on(sql)?) {
-                    (None, None) => ask_for_profile(sql, member, name)?,
-                    // The person made their profile, or asked for one, in
-                    // Settings since the join.
-                    _ => ProfileWrite::Written,
-                };
-                if let ProfileWrite::Written = made {
-                    sql.acknowledge_joined_invitee()?;
-                }
-                Ok(made)
-            })
-            .await
-            .map_err(profile_write_error)?;
-        made.into_result()
-    }
-
-    /// Keep the name the library's creator typed, in a write of its own on a
-    /// library that has no member yet, until [`Self::ask_for_creator_profile`]
-    /// asks for their profile under it (§5.4).
+    /// Keep the name the library's creator typed, in a write of its own, until
+    /// [`Self::ask_for_creator_profile`] asks for their profile under it
+    /// (§5.4).
     pub async fn keep_creator_name(&self, name: &bae_store::EnteredName) -> Result<(), DbError> {
         let name = name.as_str().to_owned();
         self.inner
@@ -181,9 +142,9 @@ impl People {
 
     /// Ask for the profile of the person who made the library, under the
     /// name they typed, which this device keeps (`creator_name`) until a
-    /// write acknowledges it, as coven keeps a joiner's. Once the library
-    /// knows the person (storage is set up), one write asks for the profile
-    /// as [`Self::create_profile`] does and deletes the kept name; a person
+    /// write deletes it. Once the library knows the person, which a created
+    /// library does at once, one write asks for the profile as
+    /// [`Self::create_profile`] does and deletes the kept name; a person
     /// who already has a profile, or a request for one, gets only the
     /// deletion. With no name kept there is nothing to ask for. A failed
     /// write leaves the name kept, and the library's next open asks again.
@@ -427,7 +388,7 @@ fn ask_for_profile(
     member: coven::MemberId,
     name: String,
 ) -> Result<ProfileWrite, DbError> {
-    let circle_name = format!("bae-person:{member}");
+    let circle_name = private_circle_name(&member);
     let matching = sql.query(PRIVATE_CIRCLE_SQL, params![circle_name, member], |row| {
         Ok((row.get::<_, coven::CircleId>(0)?, row.get::<_, bool>(1)?))
     })?;

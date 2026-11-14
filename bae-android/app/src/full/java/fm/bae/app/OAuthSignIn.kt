@@ -80,9 +80,8 @@ class OAuthSignIn private constructor(
 
     override suspend fun signInAgain(
         handle: AppHandleInterface,
-        deviceName: String,
         setup: BridgeLibrarySetup,
-    ): BridgeStorageSetup = handle.signInAgain(deviceName, setup)
+    ): BridgeStorageSetup = handle.signInAgain(setup)
 
     companion object {
         /**

@@ -70,13 +70,12 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
 }
 
 /// Rowan's join is approved, and the storage refuses Rowan's phone before
-/// it has loaded anything: the library doesn't know Rowan yet, so nothing
-/// asks for a profile, and coven keeps the name Robin typed in the invite.
-/// Once the storage lets the phone in, the next open of the library asks
-/// for Rowan's profile under that name, and coven keeps the name no longer
-/// (§5.4).
+/// it has loaded anything: the library doesn't know Rowan yet, so it has no
+/// profile for them. Once the storage lets the phone in, the next open of the
+/// library loads it, and the load that registers Rowan's phone writes their
+/// profile under the name Robin typed in the invite (§5.4).
 #[test]
-fn a_join_whose_load_is_refused_asks_for_the_profile_on_the_next_open() {
+fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
@@ -105,7 +104,6 @@ fn a_join_whose_load_is_refused_asks_for_the_profile_on_the_next_open() {
         else {
             panic!("the load was refused");
         };
-        assert_eq!(handle.joined_invitee().await.unwrap().as_deref(), Some("Rowan"));
         let store = handle.store_id();
         handle.close().await.unwrap();
 
@@ -126,7 +124,6 @@ fn a_join_whose_load_is_refused_asks_for_the_profile_on_the_next_open() {
         assert!(profiles
             .iter()
             .any(|profile| profile.id == rowan.membership.id && profile.name == "Rowan"));
-        assert_eq!(reopened.joined_invitee().await.unwrap(), None);
         library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
