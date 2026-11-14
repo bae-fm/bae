@@ -56,7 +56,7 @@ public struct SecondaryButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .foregroundStyle(.primary)
+                .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 12)
                 .frame(height: height)
                 .background(fill, in: shape)

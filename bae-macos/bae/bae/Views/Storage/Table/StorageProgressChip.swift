@@ -45,7 +45,7 @@ struct StorageProgressChip: View {
         label
             .themeText(.chip)
             .lineLimit(1)
-            .foregroundStyle(.primary)
+            .foregroundStyle(Theme.textPrimary)
             .padding(.horizontal, ThemeSpace.compact)
             .padding(.vertical, ThemeSpace.line)
             .background {
