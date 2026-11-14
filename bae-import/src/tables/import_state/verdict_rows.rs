@@ -18,6 +18,7 @@ use super::ledger_rows::{
     StoredLedger,
 };
 use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
+use super::verdict_layout::{verdict_text_on, VerdictLayout};
 use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::InternalFailure;
@@ -94,17 +95,27 @@ impl<'a> Outcome<'a> {
         }
     }
 
-    fn ledger(self) -> Option<&'a IdentifyRunView> {
+    pub(super) fn ledger(self) -> Option<&'a IdentifyRunView> {
         match self {
             Self::Running { ledger, .. } => Some(ledger),
             Self::Settled(verdict) => verdict.ledger(),
         }
     }
 
-    fn findings(self) -> Option<&'a Findings> {
+    pub(super) fn findings(self) -> Option<&'a Findings> {
         match self {
             Self::Running { findings, .. } => Some(findings),
             Self::Settled(verdict) => verdict.findings(),
+        }
+    }
+
+    /// How many tracks the folder played, for an outcome that holds findings.
+    pub(super) fn track_count(self) -> Option<u32> {
+        match self {
+            Self::Running { track_count, .. } => Some(track_count),
+            Self::Settled(TerminalVerdict::Found { track_count, .. })
+            | Self::Settled(TerminalVerdict::Failed { track_count, .. }) => Some(*track_count),
+            Self::Settled(_) => None,
         }
     }
 
@@ -227,8 +238,18 @@ pub(super) fn store_outcome(
     // reads none of them.
     delete_ledger(sql, owner)?;
     super::match_rows::delete_verdict_match_entries(sql, owner)?;
-    let written = store_matches(sql, owner, outcome)?;
+    // The rows are laid out against the text the owner's signals and choices
+    // hold now, in this write, so no row is ever stored unjudged.
+    let layout = match (outcome.findings(), outcome.track_count()) {
+        (Some(findings), Some(track_count)) => {
+            let text = verdict_text_on(sql, owner, outcome.ledger())?;
+            VerdictLayout::of(findings, outcome.ledger(), &text, track_count)
+        }
+        _ => VerdictLayout::empty(),
+    };
+    let written = store_matches(sql, owner, outcome, &layout)?;
     super::match_rows::delete_verdict_matches_from(sql, owner, written.len())?;
+    layout.store_text(sql, owner)?;
     if let Some(ledger) = outcome.ledger() {
         let positions: MatchPositions<'_> = written
             .iter()
@@ -253,6 +274,7 @@ fn store_matches<'a>(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
     outcome: Outcome<'a>,
+    layout: &VerdictLayout,
 ) -> Result<Vec<&'a MetadataResult>, DbError> {
     let (matches, pressings, narrowed_out, named_notes): (
         &[MetadataResult],
@@ -306,13 +328,15 @@ fn store_matches<'a>(
     let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
         .zip(pressings.iter())
-        .map(|(result, pressing)| (result, Written::Offered(*pressing, named_note(result))))
-        .chain(
-            narrowed_matches
-                .iter()
-                .zip(narrowed_pressings.iter())
-                .map(|(result, pressing)| (result, Written::NarrowedOut(*pressing))),
-        )
+        .enumerate()
+        .map(|(index, (result, pressing))| {
+            (result, Written::Offered(*pressing, layout.placed(index), named_note(result)))
+        })
+        .chain(narrowed_matches.iter().zip(narrowed_pressings.iter()).enumerate().map(
+            |(index, (result, pressing))| {
+                (result, Written::NarrowedOut(*pressing, layout.placed(matches.len() + index)))
+            },
+        ))
         .collect();
     for listed in outcome
         .ledger()

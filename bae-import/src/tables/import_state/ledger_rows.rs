@@ -298,7 +298,7 @@ fn store_lookup(
     // The cell's list lays out as the rules lay out any list, over the
     // releases in the order the cell lists them.
     let list: Vec<MetadataResult> = releases.iter().map(|release| (*release).clone()).collect();
-    let layout = ListLayout::of(&list, &group_results(unranked(list.clone()), None));
+    let layout = ListLayout::of(&list, &group_results(unranked(list.clone()), None), "answered");
     for ((ordinal, release), place) in releases.into_iter().enumerate().zip(&layout.places) {
         let Some((match_position, held)) =
             matches.get(&(release.source, release.release_id.as_str()))
@@ -347,7 +347,6 @@ fn store_lookup(
             position: column(position)?,
             cell: column(cell)?,
         },
-        "answered",
         &layout,
     )?;
     Ok(())

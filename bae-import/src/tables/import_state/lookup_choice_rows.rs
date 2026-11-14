@@ -160,7 +160,12 @@ pub(super) fn replace_lookup_choices_on(
             params![content_hash, value],
         )?;
     }
-    Ok(())
+    // The rows the candidate's verdict lists are judged against the text with
+    // these numbers struck out.
+    super::verdict_layout::lay_out_matches_on(
+        sql,
+        super::verdict_rows::Owner::Candidate(content_hash),
+    )
 }
 
 impl ImportTables {

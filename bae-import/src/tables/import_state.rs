@@ -90,6 +90,7 @@ mod seed_rows;
 mod session_rows;
 mod signal_rows;
 mod standing_rows;
+mod verdict_layout;
 mod verdict_rows;
 
 pub(super) use album_pick_rows::load_album_pick_on;

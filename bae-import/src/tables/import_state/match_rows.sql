@@ -28,12 +28,25 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     pressing            INTEGER CHECK (pressing >= 0),
     -- The card the release is on: the list place of the card's first release,
     -- the place a card sits at among cards nothing ranks apart. NULL where
-    -- `pressing` is, and for a verdict-shaped owner's rows too until the
-    -- verdict stores its layout.
+    -- `pressing` is.
     card                INTEGER CHECK (card >= 0),
     -- Where this release stands among the records of its row, 0 for the row's
     -- lead, which a pick reads the draft from. NULL where `card` is.
     record_order        INTEGER CHECK (record_order >= 0),
+    -- Which of its fields the folder's text agrees with, 1 where it does: the
+    -- disc ID (a lookup of the folder's disc IDs returned the release), the
+    -- barcode, the catalog number, the label, the pressing year, the country,
+    -- and the album's title and artist. Written with the rows by the write
+    -- that changes the rows, the folder's text or the numbers struck out; 0
+    -- for every release nothing judges (a search's, an unlisted one).
+    agrees_disc_id      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_disc_id IN (0, 1)),
+    agrees_barcode      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_barcode IN (0, 1)),
+    agrees_catalog      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_catalog IN (0, 1)),
+    agrees_label        INTEGER NOT NULL DEFAULT 0 CHECK (agrees_label IN (0, 1)),
+    agrees_year         INTEGER NOT NULL DEFAULT 0 CHECK (agrees_year IN (0, 1)),
+    agrees_country      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_country IN (0, 1)),
+    agrees_title        INTEGER NOT NULL DEFAULT 0 CHECK (agrees_title IN (0, 1)),
+    agrees_artist       INTEGER NOT NULL DEFAULT 0 CHECK (agrees_artist IN (0, 1)),
     source              TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
     release_id          TEXT NOT NULL,
     title               TEXT NOT NULL,
@@ -107,8 +120,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK (listing = 'offered' OR named_note IS NULL),
     CHECK ((listing = 'unlisted') = (pressing IS NULL)),
     CHECK ((card IS NULL) = (record_order IS NULL)),
-    CHECK (listing <> 'returned' OR card IS NOT NULL),
-    CHECK (card IS NULL OR pressing IS NOT NULL),
+    CHECK ((card IS NULL) = (pressing IS NULL)),
+    CHECK (listing IN ('offered', 'narrowed_out')
+           OR agrees_disc_id + agrees_barcode + agrees_catalog + agrees_label + agrees_year
+              + agrees_country + agrees_title + agrees_artist = 0),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1),

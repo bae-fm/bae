@@ -361,6 +361,45 @@ fn cards(
     Cards { groups, judgements, named_notes }
 }
 
+/// A verdict's releases judged against the folder's text, and the album
+/// cards they fold into.
+pub struct JudgedFindings {
+    /// Every card the releases make, the rows agreement set aside on their
+    /// album's card beside the offered ones.
+    pub groups: Vec<ReleaseGroup>,
+    /// What the folder's text agrees with about each release, aligned with
+    /// [`Findings::releases`]: the offered releases, then the set-aside ones.
+    pub agreements: Vec<Agreements>,
+}
+
+impl JudgedFindings {
+    /// Judge `findings` against `text` and fold them into cards. `ledger` is
+    /// the run's, whose disc-ID lookups say which releases agree on a disc ID;
+    /// none for a run that laid none out. The medium conflict is stated by
+    /// the folder check, not here.
+    pub fn of(
+        findings: &Findings,
+        ledger: Option<&IdentifyRunView>,
+        text: &CandidateText,
+        track_count: u32,
+    ) -> Self {
+        let facts = FolderFacts::of(text, findings.releases());
+        let by_disc_id = ledger.map(IdentifyRunView::disc_id_releases).unwrap_or_default();
+        let offered = judged_results(findings.matches.clone(), &by_disc_id, text, &facts);
+        let set_aside =
+            judged_results(findings.narrowed_out.matches.clone(), &by_disc_id, text, &facts);
+        let agreements = offered.iter().chain(&set_aside).map(|(_, agreed)| *agreed).collect();
+        let groups = group_formed_rows(
+            offered,
+            &findings.pressings,
+            set_aside,
+            &findings.narrowed_out.pressings,
+            Some(track_count),
+        );
+        Self { groups, agreements }
+    }
+}
+
 /// The album a stored verdict's offered rows are several pressings of, as
 /// the candidate's text ranks and cards them: what the pane offers to link
 /// the folder to, its pressing unknown. `None` for a verdict that offers no

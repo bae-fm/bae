@@ -43,6 +43,9 @@ pub(super) struct CardText {
 /// What a row lists where its records state a fact.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct RowStatements {
+    /// What the row is listed as: the list's own listing, or for a verdict's
+    /// list whether the row is offered or set aside.
+    pub(super) listing: &'static str,
     pub(super) pressing: u32,
     pub(super) statements: Statements,
 }
@@ -58,8 +61,44 @@ pub(super) struct ListLayout {
 
 impl ListLayout {
     /// The layout of `list` that `groups`, the cards the rules made of it,
-    /// hold.
-    pub(super) fn of(list: &[MetadataResult], groups: &[ReleaseGroup]) -> Self {
+    /// hold, its rows all `listing`. The rows are numbered by where each first
+    /// appears in the list.
+    pub(super) fn of(
+        list: &[MetadataResult],
+        groups: &[ReleaseGroup],
+        listing: &'static str,
+    ) -> Self {
+        Self::laid_out(list, groups, |_first, rank| rank, |_| listing)
+    }
+
+    /// The layout of a verdict's `list`, its `offered` releases first and the
+    /// ones agreement set aside after, that `groups` hold. The rows keep the
+    /// numbers the run gave them, `rows` aligned with the list: the offered
+    /// rows and the set-aside rows each number their own.
+    pub(super) fn of_verdict(
+        list: &[MetadataResult],
+        groups: &[ReleaseGroup],
+        rows: &[u32],
+        offered: usize,
+    ) -> Self {
+        assert_eq!(list.len(), rows.len(), "each release of a verdict's list names its row");
+        Self::laid_out(
+            list,
+            groups,
+            |first, _| rows[first],
+            |first| if first < offered { "offered" } else { "narrowed_out" },
+        )
+    }
+
+    /// `number` names a row from the list place of its first record and its
+    /// rank among the rows by that place; `listing` says what a row is listed
+    /// as from the same place.
+    fn laid_out(
+        list: &[MetadataResult],
+        groups: &[ReleaseGroup],
+        number: impl Fn(usize, u32) -> u32,
+        listing: impl Fn(usize) -> &'static str,
+    ) -> Self {
         let at: HashMap<(LookupCatalog, &str), usize> = list
             .iter()
             .enumerate()
@@ -89,8 +128,8 @@ impl ListLayout {
         let mut by_first: Vec<usize> = (0..found.len()).collect();
         by_first.sort_by_key(|&row| first_of(&found[row].records));
         let mut pressing_of = vec![0u32; found.len()];
-        for (number, row) in by_first.into_iter().enumerate() {
-            pressing_of[row] = number as u32;
+        for (rank, row) in by_first.into_iter().enumerate() {
+            pressing_of[row] = number(first_of(&found[row].records), rank as u32);
         }
         let mut card_first = vec![usize::MAX; groups.len()];
         for row in &found {
@@ -124,6 +163,7 @@ impl ListLayout {
             .iter()
             .enumerate()
             .map(|(row, found)| RowStatements {
+                listing: listing(first_of(&found.records)),
                 pressing: pressing_of[row],
                 statements: found.pressing.statements().clone(),
             })
@@ -152,6 +192,21 @@ pub(super) struct ListOwner<'a> {
 }
 
 impl<'a> ListOwner<'a> {
+    /// A verdict's or a run's own list.
+    pub(super) fn verdict(owner: super::verdict_rows::Owner<'a>) -> Self {
+        Self {
+            content_hash: match owner {
+                super::verdict_rows::Owner::Candidate(content_hash) => Some(content_hash),
+                super::verdict_rows::Owner::Run(_) => None,
+            },
+            identify_run: owner.run(),
+            search_run: None,
+            step: "",
+            position: 0,
+            cell: 0,
+        }
+    }
+
     /// A search's own list.
     pub(super) fn search(run: i64) -> Self {
         Self {
@@ -166,11 +221,10 @@ impl<'a> ListOwner<'a> {
 }
 
 /// Write `layout`'s card text and row statements as `owner`'s, in place of
-/// what its list held. `listing` is what the rows of the list are listed as.
+/// what its list held.
 pub(super) fn store_list_text(
     sql: &CovenWrite<'_>,
     owner: ListOwner<'_>,
-    listing: &str,
     layout: &ListLayout,
 ) -> Result<(), DbError> {
     let ListOwner { content_hash, identify_run, search_run, step, position, cell } = owner;
@@ -231,7 +285,7 @@ pub(super) fn store_list_text(
                         step,
                         position,
                         cell,
-                        listing,
+                        row.listing,
                         row.pressing,
                         fact,
                         ordinal_column(line)?,
@@ -291,7 +345,7 @@ pub(super) fn lay_out_search_on(
     // Typed search: nothing was judged against the candidate's own text, so
     // the rows keep the pressing-year order alone.
     let groups = group_results(unranked(results.clone()), None);
-    let layout = ListLayout::of(&results, &groups);
+    let layout = ListLayout::of(&results, &groups, "returned");
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {
         sql.execute(
             "UPDATE import_candidate_match \
@@ -312,7 +366,7 @@ pub(super) fn lay_out_search_on(
         )?;
         store_album_link_rows(sql, MatchOwner::Search(run), row.position, &result.album_links)?;
     }
-    store_list_text(sql, ListOwner::search(run), "returned", &layout)?;
+    store_list_text(sql, ListOwner::search(run), &layout)?;
     Ok(read)
 }
 

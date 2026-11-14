@@ -329,13 +329,13 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
                 )?,
                 query(
                     "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
-                     FROM import_candidate_card_text WHERE content_hash = ? \
+                     FROM import_candidate_card_text WHERE content_hash = ? AND step <> '' \
                      ORDER BY card, kind, ordinal",
                 )?,
                 query(
                     "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
                             || value || ' ' || catalogs \
-                     FROM import_candidate_row_statement WHERE content_hash = ? \
+                     FROM import_candidate_row_statement WHERE content_hash = ? AND step <> '' \
                      ORDER BY pressing, fact, line, ordinal",
                 )?,
             ))

@@ -271,13 +271,7 @@ pub(super) fn save_preparation_on(
         }
         None => return Err(PreparationRefusal::NoState(content_hash.to_string()).into()),
     };
-    if stored.identification != prep.identification {
-        match &prep.identification {
-            Some(identification) => store_verdict(sql, content_hash, identification)?,
-            // The matches hang off the verdict row, so this clears them too.
-            None => delete_verdict(sql, content_hash)?,
-        }
-    }
+    // The signals before the verdict: its rows are judged against their text.
     if stored.signals != prep.signals {
         match &prep.signals {
             Some(signals) => {
@@ -285,6 +279,13 @@ pub(super) fn save_preparation_on(
             }
             // The values hang off the header, so this clears them too.
             None => delete_signals(sql, content_hash)?,
+        }
+    }
+    if stored.identification != prep.identification {
+        match &prep.identification {
+            Some(identification) => store_verdict(sql, content_hash, identification)?,
+            // The matches hang off the verdict row, so this clears them too.
+            None => delete_verdict(sql, content_hash)?,
         }
     }
     if stored.link != prep.link {

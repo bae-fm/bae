@@ -219,7 +219,8 @@ pub(super) fn store_signals(
             ],
         )?;
     }
-    Ok(())
+    // The rows this owner's verdict lists are judged against this text.
+    super::verdict_layout::lay_out_matches_on(sql, owner)
 }
 
 fn free_text(text: &TextSignal) -> &[String] {

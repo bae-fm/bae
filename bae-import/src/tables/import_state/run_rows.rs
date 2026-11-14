@@ -142,11 +142,12 @@ fn store_run_on(
     // Each run is minted for one key.
     assert!(stored_key.as_ref() == Some(key), "run {run} of {key} is stored as another key's");
     let owner = Owner::Run(run);
-    store_outcome(sql, owner, Outcome::of(outcome), false)?;
-    crate::tables::source_releases::store_named_releases_on(sql, releases)?;
+    // The signals first: the outcome's rows are judged against their text.
     if let Some(signals) = signals {
         store_signals(sql, owner, signals)?;
     }
+    store_outcome(sql, owner, Outcome::of(outcome), false)?;
+    crate::tables::source_releases::store_named_releases_on(sql, releases)?;
     Ok(())
 }
 

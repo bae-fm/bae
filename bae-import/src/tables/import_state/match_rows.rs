@@ -73,14 +73,23 @@ impl MatchOwner<'_> {
     }
 }
 
+/// Where a release of a verdict-shaped owner stands in its list as the
+/// rules laid the list out, and what the folder's text agrees with about it.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Placed {
+    pub(super) card: u32,
+    pub(super) record_order: u32,
+    pub(super) agreements: bae_identify::Agreements,
+}
+
 /// Where a stored release is listed, with what an offered or narrowed-out
-/// one carries: its pressing row, and for an offered one the note the
-/// folder's text names its row by. A search's release is returned, and no
-/// pick has read it when it lands.
+/// one carries: its pressing row, where the list's layout puts it, and for an
+/// offered one the note the folder's text names its row by. A search's
+/// release is returned, and no pick has read it when it lands.
 #[derive(Clone, Copy)]
 pub(super) enum Written<'a> {
-    Offered(u32, Option<&'a str>),
-    NarrowedOut(u32),
+    Offered(u32, Placed, Option<&'a str>),
+    NarrowedOut(u32, Placed),
     Unlisted,
     Returned,
 }
@@ -147,30 +156,39 @@ pub(super) fn store_match(
     let position = ordinal_column(position)?;
     // A search's release is written alone in its row and card, and the write
     // that lands it lays the whole list out before it ends.
-    let (listing, pressing, named_note, own_card) = match (owner, listing) {
-        (MatchOwner::Verdict(_), Written::Offered(pressing, named_note)) => {
-            (LISTING_OFFERED, Some(i64::from(pressing)), named_note, None)
+    let (listing, pressing, named_note, placed) = match (owner, listing) {
+        (MatchOwner::Verdict(_), Written::Offered(pressing, placed, named_note)) => {
+            (LISTING_OFFERED, Some(i64::from(pressing)), named_note, Some(placed))
         }
-        (MatchOwner::Verdict(_), Written::NarrowedOut(pressing)) => {
-            (LISTING_NARROWED_OUT, Some(i64::from(pressing)), None, None)
+        (MatchOwner::Verdict(_), Written::NarrowedOut(pressing, placed)) => {
+            (LISTING_NARROWED_OUT, Some(i64::from(pressing)), None, Some(placed))
         }
         (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None, None),
-        (MatchOwner::Search(_), Written::Returned) => {
-            (LISTING_RETURNED, Some(position), None, Some(position))
-        }
+        (MatchOwner::Search(_), Written::Returned) => (
+            LISTING_RETURNED,
+            Some(position),
+            None,
+            Some(Placed {
+                card: to_u32(position, "a search release's place in its list")?,
+                record_order: 0,
+                agreements: bae_identify::Agreements::NONE,
+            }),
+        ),
         (MatchOwner::Verdict(_), Written::Returned)
         | (
             MatchOwner::Search(_),
-            Written::Offered(..) | Written::NarrowedOut(_) | Written::Unlisted,
+            Written::Offered(..) | Written::NarrowedOut(..) | Written::Unlisted,
         ) => panic!("{owner:?} stores a release listed as no owner of its kind lists one"),
     };
+    let own_card = placed.map(|placed| i64::from(placed.card));
+    let record_order = placed.map(|placed| i64::from(placed.record_order));
+    let agrees = placed.map(|placed| placed.agreements).unwrap_or(bae_identify::Agreements::NONE);
     // A search's release hangs off the part that answered with it, which
     // holds releases only while it stands answered.
     let search_state = match owner {
         MatchOwner::Search(_) => Some(SEARCH_STATE_DONE),
         MatchOwner::Verdict(_) => None,
     };
-    let record_order = own_card.map(|_| 0_i64);
     let cover = result.cover_art.as_ref();
     let cover_label = cover.map(|cover| cover_labels::label_json(&cover.label)).transpose()?;
     let (tracks_kind, tracks_count) = match &result.source_tracks {
@@ -198,17 +216,24 @@ pub(super) fn store_match(
         &format!(
             "INSERT INTO import_candidate_match \
              (content_hash, identify_run, search_run, search_state, position, pressing, card, \
-              record_order, source, release_id, title, credits, year, \
+              record_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, \
+              agrees_year, agrees_country, agrees_title, agrees_artist, \
+              source, release_id, title, credits, year, \
               country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?) \
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, card = excluded.card, \
-             record_order = excluded.record_order, source = excluded.source, \
+             record_order = excluded.record_order, \
+             agrees_disc_id = excluded.agrees_disc_id, agrees_barcode = excluded.agrees_barcode, \
+             agrees_catalog = excluded.agrees_catalog, agrees_label = excluded.agrees_label, \
+             agrees_year = excluded.agrees_year, agrees_country = excluded.agrees_country, \
+             agrees_title = excluded.agrees_title, agrees_artist = excluded.agrees_artist, \
+             source = excluded.source, \
              release_id = excluded.release_id, title = excluded.title, \
              credits = excluded.credits, year = excluded.year, \
              country = excluded.country, region = excluded.region, status = excluded.status, \
@@ -233,6 +258,14 @@ pub(super) fn store_match(
             pressing,
             own_card,
             record_order,
+            agrees.disc_id,
+            agrees.barcode,
+            agrees.catalog,
+            agrees.label,
+            agrees.year,
+            agrees.country,
+            agrees.title,
+            agrees.artist,
             result.source.as_str(),
             result.release_id,
             result.title,
@@ -825,6 +858,37 @@ pub(super) fn load_run_matches_on(
     for (run, found) in rows {
         let (columns, entries) = found?;
         matches.entry(run).or_default().rows.push(match_of(columns, entries.entries()?)?);
+    }
+    Ok(matches)
+}
+
+/// The releases the verdict-shaped `owner` holds, in position order.
+pub(super) fn load_owner_matches_on(
+    sql: &impl coven::SqlRead,
+    owner: Owner<'_>,
+) -> Result<StoredMatches, DbError> {
+    let column = owner.column();
+    let rows = sql.query(
+        &format!(
+            "SELECT COALESCE(found.content_hash, 'run ' || found.identify_run) AS content_hash, \
+                    {MATCH_COLUMNS}, {entries} \
+             FROM import_candidate_match AS found \
+             LEFT JOIN source_release AS fetched \
+                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
+             WHERE found.{column} = ? \
+             ORDER BY found.position",
+            entries = match_entries_columns(),
+        ),
+        params![owner],
+        |row| {
+            Ok(read_match_row(row)
+                .and_then(|columns| Ok((columns, read_match_entries(row).map_err(DbError::from)?))))
+        },
+    )?;
+    let mut matches = StoredMatches::default();
+    for found in rows {
+        let (columns, entries) = found?;
+        matches.rows.push(match_of(columns, entries.entries()?)?);
     }
     Ok(matches)
 }

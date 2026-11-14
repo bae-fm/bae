@@ -50,6 +50,6 @@ pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use verdict_summary::{FolderCheck, VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
-    IdentifyRunView, IdentifyStateView, IsrcStepView, LookupView, ProviderCell, PublishedRun,
-    RowAgreements, RunOutcome, SearchStepView, SignalValueRow,
+    IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings, LookupView, ProviderCell,
+    PublishedRun, RowAgreements, RunOutcome, SearchStepView, SignalValueRow,
 };
