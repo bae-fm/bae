@@ -79,13 +79,12 @@ pub fn insert_on(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Ident
         });
         rows.album_artists.push(DbAlbumArtist::new(&coven::UuidIds, &album, &artist, 0, at));
         rows.releases.push(DbRelease { created_at: at, ..DbRelease::new_test(&album, &release) });
-        rows.mediums.push(DbReleaseMedium::new(
-            &coven::UuidIds,
-            &release,
-            std::num::NonZeroU16::MIN,
-            bae_types::mediums::ReleaseMedium::one_sided(None),
-            at,
-        ));
+        // The track names its release's first medium by the derived id.
+        rows.mediums.push(DbReleaseMedium {
+            medium: bae_types::mediums::ReleaseMedium::one_sided(None),
+            created_at: at,
+            ..DbReleaseMedium::new_test(&release)
+        });
         rows.tracks.push(DbTrack {
             created_at: at,
             ..DbTrack::new_test(&release, &track, &format!("Track {i:06}"), 1)
