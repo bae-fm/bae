@@ -20,6 +20,7 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import uniffi.bae_bridge.BridgeUndoneStorageSetup
+import uniffi.bae_bridge.BridgeUnsentWork
 
 class SyncStatusStoreTest {
     private val errors =
@@ -87,6 +88,19 @@ class SyncStatusStoreTest {
         assertEquals(UndoneSetup(7, DisplayError("line for $why", "detail of $why")), sync.undoneSetup.value)
     }
 
+    /** A copy behind another installation of its device shows what it will not keep until the status drops it. */
+    @Test
+    fun aCopyBehindShowsWhatItWillNotKeep() {
+        val sync = SyncStatusStore()
+        val unsent = BridgeUnsentWork(writes = 3uL, files = 1uL)
+
+        sync.apply(status(synced), errors, bugs)
+        assertEquals(null, sync.copyBehind.value)
+
+        sync.apply(status(synced).copy(copyBehind = unsent), errors, bugs)
+        assertEquals(unsent, sync.copyBehind.value)
+    }
+
     /** A phone has no record of files it sends or of a source file to restore: such a record is a bug, kept out of the list. */
     @Test
     fun aRecordOnlyAMacCanHaveIsDropped() {
@@ -125,5 +139,6 @@ class SyncStatusStoreTest {
             pending = emptyList(),
             setupRunning = false,
             undoneSetup = null,
+            copyBehind = null,
         )
 }

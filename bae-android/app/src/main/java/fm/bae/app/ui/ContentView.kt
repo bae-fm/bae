@@ -48,6 +48,7 @@ import fm.bae.app.ui.onboarding.WelcomeLibraryActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
@@ -171,6 +172,14 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.LibraryOpen -> {
+            // Another installation uses this device's id and this copy is the one behind: reset at once, without
+            // asking. The reset runs in the screen's scope, which outlives this session's screens as it closes.
+            LaunchedEffect(current.session) {
+                current.session.syncStatusStore.copyBehind.filterNotNull().collectLatest { unsent ->
+                    val libraryId = current.session.libraryId
+                    scope.launch { AppSessionHolder.resetCopyBehind(context, libraryId, unsent, onScreen) }
+                }
+            }
             SessionScreen(current.session) {
                 LibraryOpenScreen(
                     session = current.session,

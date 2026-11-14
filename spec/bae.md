@@ -4245,10 +4245,10 @@ its control says so in core's words for that transfer.
   waits to be sent.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
-sync can find that this installation is another copy of the device, such as
-Carol's phone restored from a backup
+sync can find that another installation replaced this one
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)),
-which coven reports as the last pass's failure. There, and only there, bae
+which coven reports as the last pass's failure. There, and only there (a copy
+behind another installation resets at once, below), bae
 offers Reset from cloud: load the library from storage again under a fresh
 device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
@@ -4261,6 +4261,26 @@ the open library, to the Mac's library list, or on a phone with no library
 open, to onboarding. A reset that fails returns to that screen saying
 "Could not reset from cloud", with *Retry*, which resets again without the
 warning the person already accepted.
+
+**A copy behind another installation resets at once.** When sync stops with
+coven's reason *Device ID in use* (`ResetReason::DeviceIdInUse`: this copy
+found another installation of its device, such as a restored backup or a
+cloned disk, using its device id, and this copy is the one behind), bae asks
+nothing. The sync status snapshot carries the edits and files this copy had
+not sent (`copy_behind`). The app closes the open library, which stops
+playback for the few seconds the reset takes, and calls coven's reset, showing
+the reset's steps on the screen a reset shows. The reset registers this copy as
+a new device of the same member and replaces nothing, so the other
+installation keeps its id and keeps syncing. When the library opens again the
+app shows one notice: "Another copy of this device was ahead of this one, so
+bae reset this copy from the cloud.", then "bae did not keep N edits that had
+not synced." when N is above zero, then "bae did not keep M files that had not
+uploaded." when M is above zero, each with its own plural forms in every
+language. The counts come from the snapshot. With none unsent, no notice shows. A reset
+that fails returns to the screen that offers Reset from cloud, saying why. A
+device another installation replaced (`ResetReason::Replaced`) and replaced
+member keys still ask first. The app starts this reset once for each open
+library.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
 person's current code, loads the new copy beside this device's copy, records

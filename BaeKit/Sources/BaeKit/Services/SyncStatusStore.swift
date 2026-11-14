@@ -25,9 +25,20 @@ public final class SyncStatusStore {
     }
     /// What coven is waiting on; nil until the status is first read.
     public var pending: [BridgePendingRecord]? { snapshot?.pending }
+    /// Called once, with what this copy will not keep, when the status says
+    /// another installation uses this device's id and this copy is the one
+    /// behind: the app resets the device at once, without asking.
+    public var onCopyBehind: ((BridgeUnsentWork) -> Void)?
+    private var copyBehindHandled = false
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {
         self.snapshot = snapshot
         readError = nil
+        if let unsent = snapshot.copyBehind, !copyBehindHandled,
+            let handler = onCopyBehind
+        {
+            copyBehindHandled = true
+            handler(unsent)
+        }
     }
     public func fail(_ error: any Error) {
         readError = DisplayError(error)

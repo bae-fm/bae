@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
+import uniffi.bae_bridge.BridgeUnsentWork
 
 /**
  * A storage setup that ended undone with no setup screen there to hear it, such as one bae was stopped partway
@@ -58,6 +59,13 @@ class SyncStatusStore {
     private val _undoneSetup = MutableStateFlow<UndoneSetup?>(null)
     val undoneSetup: StateFlow<UndoneSetup?> = _undoneSetup.asStateFlow()
 
+    /**
+     * What this copy will not keep when it resets, while another installation uses this device's id and this copy is
+     * the one behind: the app resets the device at once, without asking.
+     */
+    private val _copyBehind = MutableStateFlow<BridgeUnsentWork?>(null)
+    val copyBehind: StateFlow<BridgeUnsentWork?> = _copyBehind.asStateFlow()
+
     fun apply(
         status: BridgeSyncStatusSnapshot,
         errors: ErrorDisplays,
@@ -68,6 +76,7 @@ class SyncStatusStore {
         _pending.value = taken.listed
         _recordsDropped.value = taken.onlyAMacHas.isNotEmpty()
         _setupRunning.value = status.setupRunning
+        _copyBehind.value = status.copyBehind
         _undoneSetup.value =
             status.undoneSetup?.let { undone ->
                 errors.display(undone.error)?.let { shown -> UndoneSetup(undone.operation, shown) }

@@ -252,6 +252,19 @@ impl SyncStatusSnapshot {
         )
     }
 
+    /// What this copy will not keep when it resets: set while another
+    /// installation uses this device's id and this copy is the one behind,
+    /// which the app answers by resetting at once without asking. The work
+    /// is the edits and files this copy never sent.
+    pub fn copy_behind(&self) -> Option<coven::UnsentWork> {
+        match self.coven.state {
+            coven::SyncState::NeedsReset { reason: coven::ResetReason::DeviceIdInUse, unsent } => {
+                Some(unsent)
+            }
+            _ => None,
+        }
+    }
+
     /// A pass is moving, or a file is being sent or downloaded, as coven's
     /// sync state says.
     pub fn syncing(&self) -> bool {

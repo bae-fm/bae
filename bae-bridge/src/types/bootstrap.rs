@@ -568,3 +568,56 @@ pub fn bridge_recovery_lines() -> BridgeRecoveryLines {
         reset_warning: "core.sync.reset_device.warning".to_string(),
     }
 }
+
+/// The notice after a copy that found its device id in use reset at once: its
+/// first sentence, then one sentence for each kind of unsent work the copy did
+/// not keep. The app words each by its `Core` table key and joins them with a
+/// space. `counts` is empty when nothing was unsent, and then the app shows no
+/// notice.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCopyResetNotice {
+    pub intro_key: String,
+    pub counts: Vec<crate::BridgeCountLabel>,
+}
+
+/// The notice for a reset that did not keep `unsent`.
+#[uniffi::export]
+pub fn bridge_copy_reset_notice(unsent: super::BridgeUnsentWork) -> BridgeCopyResetNotice {
+    let part = |key: &str, count: u64| {
+        (count > 0).then(|| crate::BridgeCountLabel {
+            key: key.to_string(),
+            count: u32::try_from(count).unwrap_or(u32::MAX),
+        })
+    };
+    BridgeCopyResetNotice {
+        intro_key: "core.sync.copy_reset.notice".to_string(),
+        counts: [
+            part("core.sync.copy_reset.edits", unsent.writes),
+            part("core.sync.copy_reset.files", unsent.files),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
+    }
+}
+
+#[cfg(test)]
+mod copy_reset_notice_tests {
+    use super::*;
+
+    /// A count of zero has no sentence, and no unsent work has no notice.
+    #[test]
+    fn the_notice_names_only_what_was_not_kept() {
+        let keys = |writes, files| {
+            bridge_copy_reset_notice(super::super::BridgeUnsentWork { writes, files })
+                .counts
+                .into_iter()
+                .map(|label| (label.key, label.count))
+                .collect::<Vec<_>>()
+        };
+        assert!(keys(0, 0).is_empty());
+        assert_eq!(keys(2, 0), vec![("core.sync.copy_reset.edits".to_string(), 2)]);
+        assert_eq!(keys(0, 1), vec![("core.sync.copy_reset.files".to_string(), 1)]);
+        assert_eq!(keys(3, 1).len(), 2);
+    }
+}

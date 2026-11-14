@@ -23,6 +23,30 @@ struct SyncStatusStoreTests {
         #expect(sync.shown?.status == .notSynced)
     }
 
+    /// A copy behind another installation of its device resets at once, and
+    /// the later statuses that still say so don't start a second reset.
+    @MainActor
+    @Test("a copy behind another installation is reported once")
+    func aCopyBehindIsReportedOnce() {
+        let sync = SyncStatusStore()
+        var reported: [BridgeUnsentWork] = []
+        sync.onCopyBehind = { reported.append($0) }
+
+        sync.apply(status(.fixtureSynced))
+        #expect(reported.isEmpty)
+
+        let behind = BridgeSyncStatusSnapshot(
+            shown: .fixtureSynced,
+            pending: [],
+            setupRunning: false,
+            undoneSetup: nil,
+            copyBehind: BridgeUnsentWork(writes: 3, files: 1)
+        )
+        sync.apply(behind)
+        sync.apply(behind)
+        #expect(reported == [BridgeUnsentWork(writes: 3, files: 1)])
+    }
+
     /// Before the status is first read the page shows nothing in its block,
     /// never that the library is synced, and the list waits.
     @MainActor
@@ -85,7 +109,8 @@ struct SyncStatusStoreTests {
                 shown: .fixtureSynced,
                 pending: [record],
                 setupRunning: false,
-                undoneSetup: nil
+                undoneSetup: nil,
+                copyBehind: nil
             )
         )
 
@@ -148,7 +173,8 @@ struct SyncStatusStoreTests {
             shown: shown,
             pending: [],
             setupRunning: false,
-            undoneSetup: nil
+            undoneSetup: nil,
+            copyBehind: nil
         )
     }
 

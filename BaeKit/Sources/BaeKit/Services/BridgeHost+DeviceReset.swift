@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 
 extension BridgeHost {
@@ -50,6 +51,19 @@ extension BridgeHost {
                 "a device reset reads no code and runs on a library this device lists"
             )
         }
+    }
+}
+
+extension BridgeUnsentWork {
+    /// The notice after a copy that found its id in use reset at once, which
+    /// names the edits and files it did not keep; nil when it had none.
+    public var copyResetNotice: String? {
+        let notice = bridgeCopyResetNotice(unsent: self)
+        guard !notice.counts.isEmpty else { return nil }
+        return
+            ([localizedCoreString(notice.introKey)]
+            + notice.counts.map(\.localizedLine))
+            .joined(separator: " ")
     }
 }
 

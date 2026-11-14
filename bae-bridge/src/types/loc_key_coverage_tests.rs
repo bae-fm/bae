@@ -68,6 +68,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.cast.ended",
     // The recovery screens' reset warning (`bridge_recovery_lines`).
     "core.sync.reset_device.warning",
+    // The notice after a reset the app ran at once (`bridge_copy_reset_notice`).
+    "core.sync.copy_reset.notice",
+    "core.sync.copy_reset.edits",
+    "core.sync.copy_reset.files",
     // The Settings fix that offers Reset from cloud.
     "core.sync.reset_from_cloud",
     // The warning before restoring over this device's copy with a code.

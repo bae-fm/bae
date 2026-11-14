@@ -56,7 +56,9 @@ import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
+import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.OpenedLibrary
+import uniffi.bae_bridge.bridgeCopyResetNotice
 import uniffi.bae_bridge.bridgeRecoveryLines
 import uniffi.bae_bridge.initApp
 
@@ -596,6 +598,37 @@ object AppSessionHolder {
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
     ) = resetDevice(context, libraryId, reset, onScreen) { AppScreen.ResetOffered(libraryId, it) }
+
+    /**
+     * Another installation uses this device's id and this copy is the one behind: reset [libraryId] at once, without
+     * the warning, closing its open session first. Once the library opens again, a notice names the [unsent] edits
+     * and files this copy had not sent and did not keep, when there were any. A failed reset shows the screen that
+     * offers it, with why.
+     */
+    suspend fun resetCopyBehind(
+        context: Context,
+        libraryId: String,
+        unsent: BridgeUnsentWork,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val parts = bridgeCopyResetNotice(unsent)
+        val notice =
+            if (parts.counts.isEmpty()) {
+                null
+            } else {
+                (listOf(context.coreString(parts.introKey)) + parts.counts.map(context::coreString)).joinToString(" ")
+            }
+        resetDevice(context, libraryId, prepareDeviceReset(context, libraryId).reset, onScreen) {
+            AppScreen.ResetOffered(libraryId, it)
+        }
+        // A reset that opened the library leaves its session current; one that failed leaves none.
+        notice?.let { text ->
+            current
+                ?.takeIf { it.libraryId == libraryId }
+                ?.messages
+                ?.show(DisplayError(text, detail = null, offersRetry = false))
+        }
+    }
 
     /**
      * Reset from cloud after the person accepted [reset]'s warning: the

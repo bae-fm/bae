@@ -335,6 +335,17 @@ fn a_copy_that_finds_its_id_in_use_says_so() {
     assert!(detail.contains("another installation uses this device's id"), "{detail}");
 }
 
+/// Only a copy that found its id in use is reset at once, and the snapshot
+/// carries what it will not keep.
+#[test]
+fn only_a_copy_behind_another_installation_resets_at_once() {
+    let unsent = coven::UnsentWork { writes: 2, files: 1 };
+    let behind = coven::SyncState::NeedsReset { reason: coven::ResetReason::DeviceIdInUse, unsent };
+    assert_eq!(alone(behind).copy_behind(), Some(unsent));
+    assert_eq!(alone(needs_reset_state()).copy_behind(), None);
+    assert_eq!(alone(synced()).copy_behind(), None);
+}
+
 /// An S3 request that never reached the provider, as coven reports it to
 /// the retry that waited on it: its class, and a cause whose message names
 /// each layer below it.

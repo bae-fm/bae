@@ -310,6 +310,15 @@ extension AppDelegate {
     /// showing the error a partly finished restore or join reported once the
     /// library is up.
     func openOpenedLibrary(_ library: OpenedLibrary, warning: BridgeError?) {
+        openOpenedLibrary(library, warning: warning, notice: nil)
+    }
+
+    /// As above, and once the library is up, shows `notice`.
+    func openOpenedLibrary(
+        _ library: OpenedLibrary,
+        warning: BridgeError?,
+        notice: String?
+    ) {
         loadError = nil
         screen = .loading(.opening)
         // The store is already open, so no open runs a step.
@@ -330,7 +339,8 @@ extension AppDelegate {
                     .applyOpenOutcome(
                         outcome,
                         libraryId: libraryId,
-                        warning: warning
+                        warning: warning,
+                        notice: notice
                     )
             }
         )
@@ -339,13 +349,17 @@ extension AppDelegate {
     private func applyOpenOutcome(
         _ outcome: LibrarySessionOpener<AppHandle, AppService>.Outcome,
         libraryId: String,
-        warning: BridgeError?
+        warning: BridgeError?,
+        notice: String? = nil
     ) {
         switch outcome {
         case .opened(let service):
             landOpenedService(service)
             if let warning {
                 uiStore.showError(warning)
+            }
+            if let notice {
+                uiStore.showError(notice)
             }
         case .keychainLocked:
             deferOpenForLockedKeychain(libraryId: libraryId)
@@ -443,7 +457,7 @@ extension AppDelegate {
     /// from storage again under a fresh device id. The person saw the warning
     /// before choosing, so nothing is shown after. A failed reset returns to
     /// the screen it was started from, with why.
-    func resetDevice(libraryId: String) {
+    func resetDevice(libraryId: String, notice: String? = nil) {
         let host = requiredApplicationServices.host
         let deviceName = requiredApplicationServices.deviceName
         let startedFrom = screen
@@ -470,7 +484,11 @@ extension AppDelegate {
                     deviceName: deviceName,
                     setup: steps.setup
                 )
-                self.openOpenedLibrary(reset.library, warning: reset.warning)
+                self.openOpenedLibrary(
+                    reset.library,
+                    warning: reset.warning,
+                    notice: notice
+                )
             }
             catch {
                 baeAppLogger.error(
@@ -480,6 +498,17 @@ extension AppDelegate {
                 self.screen = startedFrom
             }
         }
+    }
+
+    /// Another installation uses this Mac's device id and this copy is the one
+    /// behind: close the library and reset it at once, without asking.
+    /// Playback stops. Once the library opens again, a notice names the edits
+    /// and files this copy had not sent and did not keep.
+    func resetCopyBehind(libraryId: String, unsent: BridgeUnsentWork) {
+        baeAppLogger.info(
+            "Another installation uses this device's id; resetting at once"
+        )
+        resetDevice(libraryId: libraryId, notice: unsent.copyResetNotice)
     }
 
     /// Finish a reset of this Mac's copy of a library that stopped partway,
@@ -544,6 +573,10 @@ extension AppDelegate {
             host: requiredApplicationServices.host
         )
         service.wireUp()
+        let libraryId = config.libraryId
+        service.onCopyBehind { [weak self] unsent in
+            self?.resetCopyBehind(libraryId: libraryId, unsent: unsent)
+        }
         return service
     }
 

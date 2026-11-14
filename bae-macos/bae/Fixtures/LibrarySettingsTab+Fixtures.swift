@@ -55,7 +55,8 @@ func librarySettingsTabPreview(
                 shown: shown,
                 pending: [],
                 setupRunning: false,
-                undoneSetup: nil
+                undoneSetup: nil,
+                copyBehind: nil
             )
         )
     )
@@ -87,7 +88,8 @@ func syncSettingsPagePreview(
             shown: shown,
             pending: pending,
             setupRunning: false,
-            undoneSetup: undoneSetup
+            undoneSetup: undoneSetup,
+            copyBehind: nil
         )
     )
     let uiStore = UiStore()
