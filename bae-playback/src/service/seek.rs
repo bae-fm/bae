@@ -75,6 +75,19 @@ impl PlaybackService {
             return;
         }
 
+        // The seek is accepted: its target is the track's position from now,
+        // so a bar draws it at once and no earlier position follows while the
+        // stream is rebuilt. The `Seeked` below says the rebuild is done.
+        emit_progress(
+            &self.progress_tx,
+            PlaybackProgress::position_update(
+                cur.prepared.timeline,
+                track_id.clone(),
+                position,
+                self.renderer.play_rate(),
+            ),
+        );
+
         // On AirPlay, decode is local so the rebuild below re-fills the sink at the
         // new position; FLUSH the receiver's stale buffer now and re-anchor once
         // the rebuilt stream is installed.

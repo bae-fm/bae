@@ -420,10 +420,7 @@ pub(crate) fn preview_position(
                 let held = positions.positions();
                 match held.preview {
                     Some(position) => writer.set_only(BridgeFastValue::PreviewPosition {
-                        position: crate::types::BridgePreviewPosition::from_core(
-                            position,
-                            held.preview_seek_revision,
-                        ),
+                        position: crate::types::BridgePreviewPosition::from_core(position),
                     }),
                     None => writer.remove_only(),
                 }

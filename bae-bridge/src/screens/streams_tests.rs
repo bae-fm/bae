@@ -253,7 +253,6 @@ fn the_position_stream_holds_a_new_anchor_only_as_playback_leaves_its_line() {
         seek_revision: 0,
         playing: false,
         preview: None,
-        preview_seek_revision: 0,
     };
     let mut at = |now_ms: u64, position_ms: i64, playing: bool, seek_revision: u64| {
         positions.library = Some(bae_playback::PlaybackPosition {
@@ -282,10 +281,7 @@ fn the_position_stream_holds_a_new_anchor_only_as_playback_leaves_its_line() {
     }
 
     let seeked = at(4_200, 90_000, true, 1);
-    assert_eq!(
-        (seeked.position_ms, seeked.seek_revision, seeked.anchored_at_ns),
-        (90_000, 1, 4_200 * MS)
-    );
+    assert_eq!((seeked.position_ms, seeked.anchored_at_ns), (90_000, 4_200 * MS));
 
     let paused = at(4_400, 90_000, false, 1);
     assert_eq!((paused.position_ms, paused.rate), (90_000, 0.0));

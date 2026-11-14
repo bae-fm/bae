@@ -78,8 +78,7 @@ struct NowPlayingStorageWaitTests {
                             positionMs: 0,
                             rate: 0,
                             anchoredAtNs: 0,
-                            durationMs: 200_000,
-                            seekRevision: 0
+                            durationMs: 200_000
                         )
                     ]
                 )

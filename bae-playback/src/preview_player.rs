@@ -304,6 +304,11 @@ impl PreviewPlayer {
         let buffer = source.buffer.clone();
         let timeline = source.timeline();
 
+        // The seek is accepted: its target is the preview's position from now,
+        // so a bar draws it at once and no earlier position follows while the
+        // stream is rebuilt.
+        emit_progress(&self.progress_tx, PlaybackProgress::preview_position(timeline, position));
+
         let was_paused = self
             .audio_output
             .as_ref()
@@ -339,9 +344,8 @@ impl PreviewPlayer {
             return;
         }
 
-        // The seek is applied: tell where, so the bar that held the person's
-        // drop shows it from core now. A paused preview fires no tick to carry
-        // the position, and a playing one's listener ticks on from here.
+        // The seek is applied: tell where. A paused preview fires no tick to
+        // carry the position, and a playing one's listener ticks on from here.
         emit_progress(&self.progress_tx, PlaybackProgress::preview_seeked(timeline, position));
     }
 

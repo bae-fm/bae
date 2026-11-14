@@ -73,10 +73,6 @@ final class SeekBarNSView: NSView {
     }
     /// What the stream last said; `nil` while it holds nothing.
     private var position: PlaybackAnchor?
-    /// Holds a seek the person makes in front of the stream's position
-    /// until core applies it, and draws the stream again at once; `nil`
-    /// while the bar draws a shot or nothing, whose seeks are not held.
-    private var holdSeek: ((Double) -> Void)?
     /// Set while the user drags the slider: the dropped position, shown until
     /// the drag ends. Nil means the leading label follows playback.
     private var draggingPositionMs: Int64?
@@ -153,27 +149,18 @@ final class SeekBarNSView: NSView {
         switch source {
         case .track(let source, let held):
             previews.stop()
-            holdSeek = { [weak self] progress in
-                source.holdSeek(at: progress)
-                self?.tracks.frame()
-            }
             tracks.follow(source)
             buffered.follow(held)
         case .preview(let source):
             tracks.stop()
             buffered.stop()
             slider.held = []
-            holdSeek = { [weak self] progress in
-                source.holdSeek(at: progress)
-                self?.previews.frame()
-            }
             previews.follow(source)
         case nil:
             tracks.stop()
             buffered.stop()
             previews.stop()
             slider.held = []
-            holdSeek = nil
             show(nil)
         }
     }
@@ -254,12 +241,10 @@ final class SeekBarNSView: NSView {
         updateLabels()
     }
 
-    /// A seek on the playing track or the preview is held in its position
-    /// stream, so every view drawing it shows where the person dropped it
-    /// until core applies it; this bar draws it at once.
+    /// Core names the seek's target as the position when it accepts the seek,
+    /// so every view drawing the track shows it from the next frame.
     private func seekCompleted(_ value: Double) {
         draggingPositionMs = nil
-        holdSeek?(value)
         onSeek?(value)
         updateLabels()
     }

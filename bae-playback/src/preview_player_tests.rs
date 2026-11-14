@@ -182,6 +182,19 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
         )),
         "the applied seek is told at its position: {told:?}"
     );
+    // The target is the position from the moment the seek is accepted, before
+    // the stream is rebuilt.
+    let positions: Vec<_> = told
+        .iter()
+        .filter_map(|event| match event {
+            PlaybackProgress::PreviewPositionUpdate { position_ms, .. } => {
+                Some(("tick", *position_ms))
+            }
+            PlaybackProgress::PreviewSeeked { position_ms, .. } => Some(("seeked", *position_ms)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(positions.first(), Some(&("tick", 500)), "{positions:?}");
     let mut seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
     player.toggle_pause();
     let captured = seeked_capture.wait_for_samples(1_000).await;

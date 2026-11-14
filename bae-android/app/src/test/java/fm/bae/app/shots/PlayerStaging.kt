@@ -39,7 +39,6 @@ internal class PlayerStaging(
             rate = 0.0,
             anchoredAtNs = 0uL,
             durationMs = DURATION_MS.toULong(),
-            seekRevision = 0uL,
         )
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
     val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)

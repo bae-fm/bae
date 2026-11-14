@@ -17,7 +17,6 @@ fn position(track_id: &str, position_ms: i64) -> PlaybackPositions {
         seek_revision: 0,
         playing: false,
         preview: None,
-        preview_seek_revision: 0,
     }
 }
 

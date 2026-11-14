@@ -99,3 +99,29 @@ async fn a_seek_by_ratio_leaves_a_track_with_no_length_where_it_is() {
     assert!(matches!(cur.phase, TrackPhase::Playing));
     assert_eq!(cur.position, StreamPosition::from_millis(10_000));
 }
+
+/// A seek names its target as the track's position when the service accepts
+/// it, before the stream is rebuilt, so a bar draws the target at once and
+/// shows no earlier position while the rebuild runs; the applied seek follows.
+#[tokio::test]
+async fn a_seek_names_its_target_as_the_position_when_it_is_accepted() {
+    let (_home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track(FINISHED_TRACK, buffer), TrackPhase::Playing);
+
+    service.seek(StreamPosition::from_duration(std::time::Duration::from_millis(500))).await;
+
+    let mut positions = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        match progress {
+            PlaybackProgress::PositionUpdate { position_ms, .. } => {
+                positions.push(("tick", position_ms));
+            }
+            PlaybackProgress::Seeked { position_ms, .. } => positions.push(("seeked", position_ms)),
+            _ => {}
+        }
+    }
+    assert_eq!(positions, [("tick", 500), ("seeked", 500)]);
+}

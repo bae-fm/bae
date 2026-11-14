@@ -4544,8 +4544,9 @@ shows follows the dragged position: the elapsed time, and the remaining time
 where the bar counts down. The playing position, which keeps moving while
 they drag, doesn't move the time, and neither the time nor the fill steps
 back to it between the drop and the seek landing. On release the player
-seeks there; the dropped position stays (§9.4) until core has applied the
-seek, and then the time is the playing position again. A seek that fails
+seeks there; playback names the seek's target as the position when it accepts
+the seek (§9.4), so the bar shows it from the next frame, and the playing
+position follows from there. A seek that fails
 ends playback with its error, as any failure of the player does (§7.6), and
 the bar then shows no time, as it does when nothing plays: the dropped
 position is never left standing.
@@ -5227,8 +5228,7 @@ a `KeyedValueStream` (§10.2), under the track's id, as an anchor: the
 track-relative position at a moment on the frame clock (the clock a display's
 frames are timed on, which core stamps the anchor with), the rate it moves on
 at (one while the track plays here, a receiver's stated rate while it plays
-there, zero while it is paused or loading), the track's length, and the seeks
-applied so far. Core folds the positions the output reports, a few times a
+there, zero while it is paused or loading), and the track's length. Core folds the positions the output reports, a few times a
 second, into the anchor and writes a new one only as playback leaves the line
 the anchor puts it on: a seek (even one that lands where the line was), a
 pause or resume, a new rate, another track or length, or a position more than
@@ -5238,14 +5238,15 @@ plus the time since the anchor times the rate, held to the track's length, from
 the frame's own time, so the position moves with no value arriving. A preview's
 position, which moves as audio plays, a value each time the output has
 played as much audio as the interval the app opened the library with, however
-fast the device takes it, reaches an app in a `KeyedValueStream` too, with the
-preview's seeks applied so far. So do the parts of the playing track its buffer holds (§7.6), as
+fast the device takes it, reaches an app in a `KeyedValueStream` too. So do the parts of the playing track its buffer holds (§7.6), as
 fractions of its length under its id, and the playing track's wait on
 storage, under its id while the person waits on its load and it reads from
-storage. A seek the person
-drops is held in front of the track's position, or the preview's, until core has applied it (a
-preview's seek is applied when its stream is rebuilt at the new position), so every view drawing that
-track — the seek bar, the queue's strip — or that preview shows where they dropped it meanwhile.
+storage. When playback accepts a seek the person made, it reports the seek's
+target as the track's position, or the preview's, before it rebuilds the
+stream, so the anchor, or the preview's position, moves to the target at once,
+every view drawing that track (the seek bar, the queue's strip) or that preview
+shows where they dropped it meanwhile, and no earlier position follows it. No
+view keeps the drop.
 
 Playback's thread outlives the service it runs. A service that ends on a bug
 of its own, or because the audio output won't open as it starts, is told once:

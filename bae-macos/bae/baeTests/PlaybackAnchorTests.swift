@@ -73,8 +73,7 @@ struct PlaybackAnchorTests {
             positionMs: 45_000,
             rate: 1,
             anchoredAtNs: 5 * Self.second,
-            durationMs: 180_000,
-            seekRevision: 3
+            durationMs: 180_000
         )
         #expect(
             position.anchor

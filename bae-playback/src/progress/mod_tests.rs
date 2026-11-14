@@ -214,39 +214,22 @@ fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
     );
 }
 
-/// A preview seek moves the position and counts as applied, as a track's
-/// does; ticks and another clip starting leave the count where it is, so a
-/// bar holding a drop can tell its seek from an earlier one.
+/// A preview seek moves the position, and is no track's seek.
 #[test]
-fn an_applied_preview_seek_moves_the_position_and_is_counted() {
+fn an_applied_preview_seek_moves_the_position() {
     let playing = PlaybackPositions::initial()
         .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
             target: preview_target("/tmp/first.flac"),
             duration_ms: 120_000,
         }))
         .expect("the clip plays");
-    assert_eq!(playing.preview_seek_revision, 0);
 
     let seeked = playing
         .applying(&PlaybackProgress::PreviewSeeked { position_ms: 60_000, progress: 0.5 })
         .expect("a preview seek is folded");
-    assert_eq!(seeked.preview_seek_revision, 1);
     let preview = seeked.preview.as_ref().expect("the clip is loaded");
     assert_eq!((preview.position_ms, preview.progress), (60_000, 0.5));
     assert_eq!(seeked.seek_revision, 0, "a preview seek is not a track's");
-
-    let ticked = seeked
-        .applying(&PlaybackProgress::PreviewPositionUpdate { position_ms: 61_000, progress: 0.51 })
-        .expect("a tick is folded");
-    assert_eq!(ticked.preview_seek_revision, 1);
-
-    let next_clip = ticked
-        .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
-            target: preview_target("/tmp/second.flac"),
-            duration_ms: 60_000,
-        }))
-        .expect("another clip plays");
-    assert_eq!(next_clip.preview_seek_revision, 1);
 
     assert!(
         PlaybackPositions::initial()

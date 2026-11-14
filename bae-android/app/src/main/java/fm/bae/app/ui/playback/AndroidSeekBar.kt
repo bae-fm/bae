@@ -234,9 +234,6 @@ internal class PlaybackProgressView(
     /** What the stream last said; null while it holds nothing. */
     private var position: BridgeTrackPosition? = null
 
-    /** The seek the person made, shown until a position of a later applied seek arrives. */
-    private var projected: BridgeTrackPosition? = null
-
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
@@ -308,11 +305,8 @@ internal class PlaybackProgressView(
         this.state = state
         if (position == null) {
             following.stop()
-            projected = null
             show(null)
         } else {
-            // A seek made on another track is not this one's.
-            if (!following.follows(position)) projected = null
             following.follow(position)
             showShown()
         }
@@ -324,21 +318,16 @@ internal class PlaybackProgressView(
         }
     }
 
-    /** A position the stream holds; a seek the person made shows until one of a later applied seek. */
+    /** A position the stream holds; core names a seek's target as the position when it accepts the seek. */
     private fun show(position: BridgeTrackPosition?) {
         this.position = position
-        val projected = projected
-        if (projected != null && position?.seekRevision != projected.seekRevision) this.projected = null
         showShown()
     }
 
-    /**
-     * What the labels and fill show: the dragged position while the person drags, else the
-     * seek they dropped until core applies it, else the stream's position.
-     */
+    /** What the labels and fill show: the dragged position while the person drags, else the stream's position. */
     private fun showShown(frameTimeNanos: Long = FrameClock.nowNanos()) {
         setPosition(
-            state(if (isDragging) positionAt(draggedRatio()) ?: position else projected ?: position, frameTimeNanos),
+            state(if (isDragging) positionAt(draggedRatio()) ?: position else position, frameTimeNanos),
         )
     }
 
@@ -358,7 +347,6 @@ internal class PlaybackProgressView(
     internal fun finishTracking() {
         val ratio = draggedRatio()
         isDragging = false
-        projected = positionAt(ratio) ?: projected
         showShown()
         onSeekRatio(ratio)
     }

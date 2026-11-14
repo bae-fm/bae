@@ -10,7 +10,7 @@ class PlaybackAnchorTest {
         positionMs: Long = 10_000,
         rate: Double = 1.0,
         durationMs: ULong? = 180_000uL,
-    ) = BridgeTrackPosition(positionMs, rate, 5uL * SECOND.toULong(), durationMs, 0uL)
+    ) = BridgeTrackPosition(positionMs, rate, 5uL * SECOND.toULong(), durationMs)
 
     @Test
     fun aFrameShowsTheAnchorPlusTheTimeSinceItTimesTheRate() {

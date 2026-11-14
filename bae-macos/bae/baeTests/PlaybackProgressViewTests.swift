@@ -9,15 +9,13 @@ import Testing
 private func position(
     _ positionMs: Int64,
     of durationMs: UInt64?,
-    progress: Double,
-    seekRevision: UInt64 = 0
+    progress: Double
 ) -> BridgeTrackPosition {
     BridgeTrackPosition(
         positionMs: positionMs,
         rate: 0,
         anchoredAtNs: 0,
-        durationMs: durationMs,
-        seekRevision: seekRevision
+        durationMs: durationMs
     )
 }
 
@@ -149,10 +147,11 @@ struct PlaybackProgressViewTests {
         }
     }
 
-    /// A seek shows where the person dropped it until a position of a later
-    /// applied seek arrives; positions of the seeks before it do not move it.
-    @Test("a seek shows its dropped position until core applies it")
-    func seekHoldsUntilApplied() async throws {
+    /// A seek the person drops on the bar changes nothing the bar draws: core
+    /// names the seek's target as the track's position when it accepts the
+    /// seek, and the bar draws each position the stream holds.
+    @Test("a seek leaves the bar drawing the stream's position")
+    func seekLeavesTheBarOnTheStream() async throws {
         let positions = LatestStream<BridgeTrackPosition>.written()
         positions.set(
             position(45_000, of: 180_000, progress: 0.25),
@@ -181,56 +180,14 @@ struct PlaybackProgressViewTests {
             try clickMiddle(of: slider, in: window)
             #expect(seeks.count == 1)
             #expect(abs(try #require(seeks.first) - 0.5) < 0.01)
-            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
+            #expect(labels.map(\.stringValue) == ["0:45", "3:00"])
 
             positions.set(
-                position(46_000, of: 180_000, progress: 0.26),
-                for: "track"
-            )
-            bar.tracks.frame()
-            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
-
-            positions.set(
-                position(92_000, of: 180_000, progress: 0.51, seekRevision: 1),
+                position(92_000, of: 180_000, progress: 0.51),
                 for: "track"
             )
             bar.tracks.frame()
             #expect(labels.map(\.stringValue) == ["1:32", "3:00"])
-        }
-    }
-
-    /// A seek held on one track is that track's: the next track shows where
-    /// it is, though core has applied no seek since.
-    @Test("a seek held on one track is not shown on the next")
-    func heldSeekStaysWithItsTrack() async throws {
-        let positions = LatestStream<BridgeTrackPosition>.written()
-        positions.set(position(45_000, of: 180_000, progress: 0.25), for: "a")
-        positions.set(position(10_000, of: 180_000, progress: 0.05), for: "b")
-        func content(_ track: String) -> some View {
-            PlaybackProgressView(
-                position: positions.stream.source(for: track),
-                buffered: LatestStream.trackBuffered().source(for: track),
-                showRemainingTime: false,
-                onSeek: { _ in },
-                onToggleRemainingTime: {}
-            )
-        }
-        try await SnapshotTestSupport.withHostedWindow(
-            content("a"),
-            size: NSSize(width: 460, height: 40)
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            let descendants = SnapshotTestSupport.descendants(of: host)
-            let slider = try #require(
-                descendants.compactMap { $0 as? SeekSlider }.first
-            )
-            let labels = descendants.compactMap { $0 as? NSTextField }
-            try clickMiddle(of: slider, in: window)
-            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
-
-            host.rootView = content("b")
-            try await SnapshotTestSupport.settle(host)
-            #expect(labels.map(\.stringValue) == ["0:10", "3:00"])
         }
     }
 
@@ -263,8 +220,7 @@ struct PlaybackProgressViewTests {
                     target: target,
                     durationMs: 180_000,
                     positionMs: 45_000,
-                    progress: 0.25,
-                    seekRevision: 0
+                    progress: 0.25
                 )
             )
             try await Wait.untilText(of: labels, is: ["0:45", "3:00"])
@@ -275,8 +231,7 @@ struct PlaybackProgressViewTests {
                     target: target,
                     durationMs: 240_000,
                     positionMs: 120_000,
-                    progress: 0.5,
-                    seekRevision: 0
+                    progress: 0.5
                 )
             )
             bar.previews.frame()
@@ -338,65 +293,6 @@ struct SeekBarDragTests {
                 labels.map(\.stringValue)
                     == [showRemaining ? "-1:30" : "1:30", "3:00"]
             )
-        }
-    }
-}
-
-@Suite("Preview seek bar drop", .serialized)
-@MainActor
-struct PreviewSeekBarDropTests {
-    /// A preview seek shows where the person dropped it until a position of
-    /// a later applied seek arrives, as a track's does.
-    @Test("a preview seek shows its dropped position until core applies it")
-    func previewDropHeldUntilApplied() async throws {
-        let target = BridgePreviewTarget(
-            path: Data("/Music/Track.flac".utf8),
-            name: "Track.flac",
-            startSample: 0,
-            endSample: nil
-        )
-        func preview(
-            _ positionMs: UInt64,
-            progress: Double,
-            seekRevision: UInt64
-        ) -> BridgePreviewPosition {
-            BridgePreviewPosition(
-                target: target,
-                durationMs: 180_000,
-                positionMs: positionMs,
-                progress: progress,
-                seekRevision: seekRevision
-            )
-        }
-        let stream = LatestStream<BridgePreviewPosition>.written()
-        stream.set(preview(45_000, progress: 0.25, seekRevision: 0))
-        var seeks: [Double] = []
-        try await SnapshotTestSupport.withHostedWindow(
-            PreviewProgressView(onSeek: { seeks.append($0) })
-                .environment(\.previewPosition, stream.stream.only),
-            size: NSSize(width: 460, height: 40)
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            let descendants = SnapshotTestSupport.descendants(of: host)
-            let slider = try #require(
-                descendants.compactMap { $0 as? SeekSlider }.first
-            )
-            let bar = try #require(
-                descendants.compactMap { $0 as? SeekBarNSView }.first
-            )
-            let labels = descendants.compactMap { $0 as? NSTextField }
-            try clickMiddle(of: slider, in: window)
-            #expect(seeks.count == 1)
-            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
-
-            stream.set(preview(46_000, progress: 0.26, seekRevision: 0))
-            bar.previews.frame()
-            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
-            #expect(abs(slider.doubleValue - 0.5) < 0.01)
-
-            stream.set(preview(92_000, progress: 0.51, seekRevision: 1))
-            bar.previews.frame()
-            #expect(labels.map(\.stringValue) == ["1:32", "3:00"])
         }
     }
 }
@@ -464,8 +360,7 @@ struct ProgressStripTests {
                 positionMs: 45_000,
                 rate: 1,
                 anchoredAtNs: FrameClock.nowNs() - 30_000_000_000,
-                durationMs: 180_000,
-                seekRevision: 0
+                durationMs: 180_000
             ),
             for: "track"
         )
@@ -479,11 +374,10 @@ struct ProgressStripTests {
         strip.stopFollowing()
     }
 
-    /// A seek the person makes on the bar is held in the track's stream, so
-    /// the queue's strip, drawing the same track, shows it too until core
-    /// applies it.
-    @Test("the queue strip shows a seek held on its track")
-    func stripShowsAHeldSeek() throws {
+    /// The strip draws each position its track's stream holds, the target of
+    /// a seek among them.
+    @Test("the queue strip draws its track's stream")
+    func stripDrawsTheStream() throws {
         let positions = LatestStream<BridgeTrackPosition>.written()
         positions.set(
             position(45_000, of: 180_000, progress: 0.25),
@@ -497,19 +391,8 @@ struct ProgressStripTests {
         )
         #expect(label.stringValue == "0:45")
 
-        positions.stream.source(for: "track").holdSeek(at: 0.5)
-        strip.following.frame()
-        #expect(label.stringValue == "1:30")
-
         positions.set(
-            position(46_000, of: 180_000, progress: 0.26),
-            for: "track"
-        )
-        strip.following.frame()
-        #expect(label.stringValue == "1:30")
-
-        positions.set(
-            position(92_000, of: 180_000, progress: 0.51, seekRevision: 1),
+            position(92_000, of: 180_000, progress: 0.51),
             for: "track"
         )
         strip.following.frame()

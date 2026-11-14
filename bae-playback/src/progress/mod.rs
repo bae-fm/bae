@@ -108,9 +108,6 @@ pub struct PlaybackPositions {
     pub playing: bool,
     /// `None` while no preview is loaded.
     pub preview: Option<PreviewPosition>,
-    /// Monotonic acknowledgement of an applied preview seek, kept like
-    /// [`Self::seek_revision`] across ordinary preview ticks and across clips.
-    pub preview_seek_revision: u64,
 }
 
 /// Where playback is going, for the cast surfaces: the speaker button's state,
@@ -200,13 +197,7 @@ impl PlaybackValues {
 
 impl PlaybackPositions {
     pub(super) fn initial() -> Self {
-        Self {
-            library: None,
-            seek_revision: 0,
-            playing: false,
-            preview: None,
-            preview_seek_revision: 0,
-        }
+        Self { library: None, seek_revision: 0, playing: false, preview: None }
     }
 
     /// These positions after `event`, or `None` when `event` is not about
@@ -290,10 +281,6 @@ impl PlaybackPositions {
                 };
                 preview.position_ms = *position_ms;
                 preview.progress = *progress;
-                next.preview_seek_revision = next
-                    .preview_seek_revision
-                    .checked_add(1)
-                    .expect("preview seek revision overflow");
             }
             PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }

@@ -76,8 +76,7 @@ extension ShotScene {
                         positionMs: 102_000,
                         rate: 0,
                         anchoredAtNs: 0,
-                        durationMs: 303_000,
-                        seekRevision: 0
+                        durationMs: 303_000
                     )
                 ]
             ),

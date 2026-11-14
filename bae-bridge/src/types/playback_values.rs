@@ -217,9 +217,6 @@ pub struct BridgeTrackPosition {
     pub anchored_at_ns: u64,
     /// `None` when the track's length is unknown.
     pub duration_ms: Option<u64>,
-    /// The applied seeks so far, so a bar that projected a seek knows when
-    /// core applied it.
-    pub seek_revision: u64,
 }
 
 /// The parts of the playing track whose bytes this device holds, as its
@@ -254,9 +251,6 @@ pub struct BridgePreviewPosition {
     pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
-    /// The applied preview seeks so far, so a bar that projected a seek
-    /// knows when core applied it.
-    pub seek_revision: u64,
 }
 
 /// What the operating-system media surface shows. Mirrors
@@ -395,16 +389,10 @@ mirror_enum! {
 
 #[cfg(desktop)]
 impl BridgePreviewPosition {
-    /// The preview's position, with the preview seeks applied so far.
-    pub(crate) fn from_core(position: bae_playback::PreviewPosition, seek_revision: u64) -> Self {
+    /// The preview's position.
+    pub(crate) fn from_core(position: bae_playback::PreviewPosition) -> Self {
         let bae_playback::PreviewPosition { target, duration_ms, position_ms, progress } = position;
-        Self {
-            target: BridgePreviewTarget::from_core(target),
-            duration_ms,
-            position_ms,
-            progress,
-            seek_revision,
-        }
+        Self { target: BridgePreviewTarget::from_core(target), duration_ms, position_ms, progress }
     }
 }
 
@@ -438,10 +426,10 @@ impl BridgeTrackPosition {
             position_ms,
             duration_ms,
             rate,
-            seek_revision,
+            seek_revision: _,
             at_ns,
         } = anchor;
-        Self { position_ms, rate, anchored_at_ns: at_ns, duration_ms, seek_revision }
+        Self { position_ms, rate, anchored_at_ns: at_ns, duration_ms }
     }
 }
 

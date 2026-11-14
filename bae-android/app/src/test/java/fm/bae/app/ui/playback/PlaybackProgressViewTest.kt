@@ -51,9 +51,9 @@ class PlaybackProgressViewTest {
         assertEquals(7_000, view.seekBar.progress)
     }
 
-    /** The time follows the dragged position, not the playing one, and is not stepped back at the drop. */
+    /** The time follows the dragged position, not the playing one, and shows the stream's once the drag ends. */
     @Test
-    fun theTimeFollowsTheDragAndStaysAtTheDropUntilCoreAppliesIt() {
+    fun theTimeFollowsTheDragThenTheStreamsPosition() {
         val view = attachedView()
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write(KEY, position(10_000))
@@ -71,10 +71,10 @@ class PlaybackProgressViewTest {
         assertEquals(7_500, view.seekBar.progress)
 
         view.finishTracking()
-        assertEquals("75000", view.leadingTextView.text.toString())
-        assertEquals(7_500, view.seekBar.progress)
+        assertEquals("11000", view.leadingTextView.text.toString())
+        assertEquals(1_100, view.seekBar.progress)
 
-        positions.write(KEY, position(76_000, seekRevision = 1uL))
+        positions.write(KEY, position(76_000))
         shadowOf(Looper.getMainLooper()).idleFor(FRAME)
         assertEquals("76000", view.leadingTextView.text.toString())
     }
@@ -134,9 +134,9 @@ class PlaybackProgressViewTest {
         assertEquals(5_000, view.seekBar.progress)
     }
 
-    /** A seek shows where the person dropped it until a position of a later applied seek arrives. */
+    /** A seek drops back to the stream's position: core names the seek's target as the position when it accepts the seek. */
     @Test
-    fun aSeekShowsItsDroppedPositionUntilCoreAppliesIt() {
+    fun aSeekLeavesTheBarOnTheStreamsPosition() {
         val view = attachedView()
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write(KEY, position(10_000))
@@ -148,33 +148,11 @@ class PlaybackProgressViewTest {
         view.finishTracking()
 
         assertEquals(listOf(0.75), ratios)
-        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals("10000", view.leadingTextView.text.toString())
 
-        positions.write(KEY, position(11_000))
+        positions.write(KEY, position(75_000))
         shadowOf(Looper.getMainLooper()).idleFor(FRAME)
         assertEquals("75000", view.leadingTextView.text.toString())
-
-        positions.write(KEY, position(76_000, seekRevision = 1uL))
-        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
-        assertEquals("76000", view.leadingTextView.text.toString())
-    }
-
-    /** A seek held on one track is that track's: the next track shows where it is. */
-    @Test
-    fun aSeekHeldOnOneTrackIsNotShownOnTheNext() {
-        val view = attachedView()
-        val positions = LatestStream.written<BridgeTrackPosition>()
-        positions.write("first", position(10_000))
-        positions.write("second", position(20_000))
-        view.bind(positions.source("first"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
-        view.beginTracking()
-        view.seekBar.progress = 7_500
-        view.finishTracking()
-        assertEquals("75000", view.leadingTextView.text.toString())
-
-        view.bind(positions.source("second"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
-
-        assertEquals("20000", view.leadingTextView.text.toString())
     }
 
     /** The bar draws the parts of its track the buffered stream holds, and each change after. */
@@ -213,10 +191,7 @@ class PlaybackProgressViewTest {
             SeekBarState(it.progressAt(frameTimeNanos), it.positionAt(frameTimeNanos).toString(), "", seekable = it.durationMs != null)
         } ?: SeekBarState(0.0, "", "", seekable = false)
 
-    private fun position(
-        positionMs: Long,
-        seekRevision: ULong = 0uL,
-    ) = BridgeTrackPosition(positionMs, 0.0, 0uL, DURATION_MS.toULong(), seekRevision)
+    private fun position(positionMs: Long) = BridgeTrackPosition(positionMs, 0.0, 0uL, DURATION_MS.toULong())
 
     private companion object {
         const val KEY = "track"

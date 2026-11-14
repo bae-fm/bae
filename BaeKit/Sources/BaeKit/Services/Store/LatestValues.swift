@@ -33,19 +33,9 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         case fed(KeyedValueStream)
     }
 
-    /// A value the app shows in place of a key's own, while each value of
-    /// the key's own leaves it standing.
-    private struct Hold: Sendable {
-        let value: Value
-        let stands: @Sendable (Value) -> Bool
-    }
-
     let activity = KeyActivity()
     private let read: @Sendable (BridgeFastValue) -> Value?
     private let backing: OSAllocatedUnfairLock<Backing>
-    private let holds = OSAllocatedUnfairLock<[Data: Hold]>(
-        initialState: [:]
-    )
 
     private init(
         holding values: [Data: Value],
@@ -76,30 +66,13 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
         )
     }
 
-    /// The key's latest value: one the app holds in front of it while it
-    /// stands, else the key's own.
+    /// The key's latest value.
     func latest(for key: Data) -> Value? {
-        let own = own(for: key)
-        return holds.withLock { holds in
-            guard let hold = holds[key] else { return own }
-            if let own, hold.stands(own) { return hold.value }
-            holds[key] = nil
-            return own
-        }
-    }
-
-    /// Show `value` for `key` in place of its own, until one of its own
-    /// values does not leave it `standing`; a key holding none drops it.
-    fileprivate func hold(
-        _ value: Value,
-        for key: Data,
-        while standing: @escaping @Sendable (Value) -> Bool
-    ) {
-        holds.withLock { $0[key] = Hold(value: value, stands: standing) }
+        own(for: key)
     }
 
     /// What the key's feed, or the preview, holds for it.
-    fileprivate func own(for key: Data) -> Value? {
+    private func own(for key: Data) -> Value? {
         switch backing.withLockUnchecked({ $0 }) {
         case .unfed:
             return nil
@@ -709,38 +682,6 @@ extension LatestStream where Value == BridgeTrackPosition {
     public func feed(from appHandle: AppHandle) -> LatestFeed {
         fed { appHandle.feedPlaybackPositions() }
     }
-
-    /// Show `key` standing at `progress` of its length, as the seek the
-    /// person just made there, until an anchor of a later applied seek
-    /// arrives, for every view drawing that track. Nothing while the key holds no
-    /// position of a known length.
-    fileprivate func holdSeek(_ key: Data, at progress: Double) {
-        guard let current = own(for: key),
-            let durationMs = current.durationMs
-        else {
-            return
-        }
-        let progress = max(0, min(1, progress))
-        let seekRevision = current.seekRevision
-        hold(
-            BridgeTrackPosition(
-                positionMs: Int64(progress * Double(durationMs)),
-                rate: 0,
-                anchoredAtNs: 0,
-                durationMs: durationMs,
-                seekRevision: seekRevision
-            ),
-            for: key
-        ) { $0.seekRevision == seekRevision }
-    }
-}
-
-extension LatestSource where Value == BridgeTrackPosition {
-    /// Show this track at `progress` of its length, as the seek the person
-    /// just made, until core has applied it.
-    public func holdSeek(at progress: Double) {
-        stream.holdSeek(key, at: progress)
-    }
 }
 
 extension LatestStream where Value == BridgeTrackBuffered {
@@ -813,33 +754,6 @@ extension LatestStream where Value == BridgePreviewPosition {
             fed { appHandle.feedPreviewPosition() }
         }
     #endif
-
-    /// Show `key` at `progress` of its length, as the seek the person just
-    /// made there, until a position of a later applied seek arrives.
-    /// Nothing while the key holds no position.
-    fileprivate func holdSeek(_ key: Data, at progress: Double) {
-        guard let current = own(for: key) else { return }
-        let progress = max(0, min(1, progress))
-        let seekRevision = current.seekRevision
-        hold(
-            BridgePreviewPosition(
-                target: current.target,
-                durationMs: current.durationMs,
-                positionMs: UInt64(progress * Double(current.durationMs)),
-                progress: progress,
-                seekRevision: seekRevision
-            ),
-            for: key
-        ) { $0.seekRevision == seekRevision }
-    }
-}
-
-extension LatestSource where Value == BridgePreviewPosition {
-    /// Show this preview at `progress` of its length, as the seek the person
-    /// just made, until core has applied it.
-    public func holdSeek(at progress: Double) {
-        stream.holdSeek(key, at: progress)
-    }
 }
 
 /// One key of a fast stream, which a view hands to the native view that

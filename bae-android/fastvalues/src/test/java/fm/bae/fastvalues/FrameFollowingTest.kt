@@ -32,7 +32,7 @@ class FrameFollowingTest {
 
         override fun latest(key: ByteArray): BridgeFastValue? {
             reads += 1
-            return BridgeFastValue.TrackPosition(BridgeTrackPosition(1, 0.0, 0uL, 10uL, 0uL))
+            return BridgeFastValue.TrackPosition(BridgeTrackPosition(1, 0.0, 0uL, 10uL))
         }
 
         override fun moving(key: ByteArray): Boolean = moving
@@ -77,7 +77,7 @@ class FrameFollowingTest {
         ShadowChoreographer.setPaused(true)
         ShadowChoreographer.setFrameDelay(FRAME)
         val positions = LatestStream.written<BridgeTrackPosition>()
-        positions.write("track", BridgeTrackPosition(1, 0.0, 0uL, 10uL, 0uL))
+        positions.write("track", BridgeTrackPosition(1, 0.0, 0uL, 10uL))
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val view = View(activity)
         activity.setContentView(view)
@@ -88,7 +88,7 @@ class FrameFollowingTest {
         repeat(3) { looper.idleFor(FRAME) }
         assertEquals(listOf<Long?>(1L), shown)
 
-        positions.write("track", BridgeTrackPosition(5, 0.0, 0uL, 10uL, 0uL))
+        positions.write("track", BridgeTrackPosition(5, 0.0, 0uL, 10uL))
         looper.idleFor(FRAME)
         assertEquals(listOf<Long?>(1L, 5L), shown)
     }

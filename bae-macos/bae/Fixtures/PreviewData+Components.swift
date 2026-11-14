@@ -18,8 +18,7 @@ extension PreviewData {
                     positionMs: positionMs,
                     rate: 0,
                     anchoredAtNs: 0,
-                    durationMs: durationMs,
-                    seekRevision: 0
+                    durationMs: durationMs
                 )
             ]
         )
@@ -38,8 +37,7 @@ extension PreviewData {
                             positionMs: 73_000,
                             rate: 0,
                             anchoredAtNs: 0,
-                            durationMs: 214_000,
-                            seekRevision: 0
+                            durationMs: 214_000
                         )
                     )
                 },
@@ -68,8 +66,7 @@ extension PreviewData {
                 ),
                 durationMs: durationMs,
                 positionMs: positionMs,
-                progress: Double(positionMs) / Double(durationMs),
-                seekRevision: 0
+                progress: Double(positionMs) / Double(durationMs)
             )
         )
         .only
