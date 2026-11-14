@@ -18,8 +18,7 @@ struct PreviewOverlay: View {
                     HStack {
                         Text(name)
                             .themeText(.body)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                            .cutLine(.fileName)
                         Spacer()
                         Button {
                             previewAudio.previewStop()

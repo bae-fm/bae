@@ -142,8 +142,7 @@ private struct SavedCodeRow: View {
                 Text(verbatim: detail)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.prose)
             }
             Spacer(minLength: ThemeSpace.group)
             if case .readable(let saved) = entry {

@@ -262,8 +262,7 @@ struct MacProgress<Bar: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(title)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .cutLine(.prose)
                 .foregroundStyle(.secondary)
             bar
                 .frame(height: ProgressTrackNSView.trackHeight)

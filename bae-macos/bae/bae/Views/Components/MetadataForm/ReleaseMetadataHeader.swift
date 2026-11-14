@@ -500,8 +500,7 @@ struct ArtistAssignmentLabel: View {
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             Text(assignment.displayName)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.prose)
             if let standing {
                 StatusChip(verbatim: standing.label)
                     .fixedSize()
@@ -584,8 +583,7 @@ struct ArtistAssignmentsField: View {
         ) {
             HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .cutLine(.prose)
                 if let label = summary.identityLabel {
                     StatusChip(verbatim: label)
                         .fixedSize()

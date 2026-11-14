@@ -118,8 +118,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
                 .foregroundStyle(
                     summary.titleIsPlaceholder ? .secondary : .primary
                 )
-                .lineLimit(1)
-                .truncationMode(style.titleTruncation)
+                .cutLine(.prose)
             titleAccessory()
                 .layoutPriority(1)
         }
@@ -131,8 +130,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
             Text(artist)
                 .themeText(style.artistText)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.prose)
         }
     }
 }
@@ -176,13 +174,6 @@ extension ImportReleaseSummaryView.Style {
         switch self {
         case .sidebar: 0
         case .card: nil
-        }
-    }
-
-    fileprivate var titleTruncation: Text.TruncationMode {
-        switch self {
-        case .sidebar: .middle
-        case .card: .tail
         }
     }
 }

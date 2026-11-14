@@ -60,6 +60,16 @@ extension BridgeMappingFile {
 }
 
 extension BridgeSheetBound {
+    /// A container's name is cut like a folder name; every other bound reads
+    /// as a sentence.
+    var lineCut: LineCut {
+        switch self {
+        case .describes: .fileName
+        case .describesFiles, .unresolved, .refusedCodec, .refusedTiming:
+            .prose
+        }
+    }
+
     var descriptionText: String {
         switch self {
         case .describes(let container): container.name

@@ -112,8 +112,7 @@ struct ImportListGroupHeader: View {
                 Text(group.name)
                     .themeText(.strong)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.fileName)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)

@@ -324,8 +324,7 @@ private struct ReadOnlyCandidateMappingTable: View {
             }
             Text(sourceName(source))
                 .themeText(.mono)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
         }
     }
 

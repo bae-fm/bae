@@ -119,8 +119,7 @@ private struct UnreadableInstallationRow: View {
                 Text(verbatim: libraryId)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.prose)
             }
             Spacer(minLength: ThemeSpace.group)
             Button("Discard…") { onDiscard(libraryId) }

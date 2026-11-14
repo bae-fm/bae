@@ -82,8 +82,7 @@ struct ImportSheetCaptionRow: View {
         Text(sheet.bound.descriptionText)
             .themeText(.mono)
             .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
+            .cutLine(sheet.bound.lineCut)
             .help(sheet.bound.descriptionText)
     }
 
@@ -130,8 +129,7 @@ struct ImportSheetCaptionRow: View {
                 .themeText(.mono)
                 .foregroundStyle(.primary)
                 .underline(hoveringName)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
         }
         .buttonStyle(.accentPlain)
         .layoutPriority(1)

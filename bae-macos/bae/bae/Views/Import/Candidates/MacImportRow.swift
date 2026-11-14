@@ -128,8 +128,7 @@ struct MacImportRow: View {
                 Text(statusLine)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.prose)
             }
         }
     }

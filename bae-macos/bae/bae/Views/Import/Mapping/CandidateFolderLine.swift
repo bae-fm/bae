@@ -49,8 +49,7 @@ struct CandidateFolderLine: View {
             Text(folderName)
                 .themeText(.heading)
                 .textSelection(.enabled)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
             Spacer(minLength: 0)
         }
     }

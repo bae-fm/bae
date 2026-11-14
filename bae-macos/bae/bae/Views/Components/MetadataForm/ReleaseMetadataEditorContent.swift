@@ -239,8 +239,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 let name = item.context.source.name
                 Text(verbatim: name)
                     .themeText(.mono)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.fileName)
                     .help(name)
             }
         }
@@ -255,8 +254,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 .foregroundStyle(.tertiary)
             Text(source.name)
                 .themeText(.mono)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
                 .help(source.name)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)

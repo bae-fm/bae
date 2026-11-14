@@ -77,8 +77,7 @@ struct IdentifierChip<Trailing: View>: View {
                     .themeText(.mono)
                     .strikethrough(style == .struck)
                     .foregroundStyle(valueStyle)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.prose)
                     .frame(maxWidth: identifierValueWidth, alignment: .leading)
             }
             trailing

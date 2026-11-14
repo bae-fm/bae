@@ -308,8 +308,7 @@ struct ReleaseFactsLine: View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             ForEach(Array(shownLines.enumerated()), id: \.offset) { _, line in
                 Text(line)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .cutLine(.prose)
             }
         }
         .themeText(.detail)

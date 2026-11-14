@@ -28,8 +28,7 @@ struct InvalidCandidateRow: View {
                 Text(invalid.reason.localizedText)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.prose)
             }
         }
         .contentShape(Rectangle())

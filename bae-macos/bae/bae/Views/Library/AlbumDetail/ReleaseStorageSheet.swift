@@ -196,7 +196,7 @@ struct ReleaseStorageSheet: View {
                 value: \.originalFilename,
                 comparator: .localizedStandard
             ) { file in
-                Text(file.originalFilename).lineLimit(1)
+                Text(file.originalFilename).cutLine(.fileName)
             }
             TableColumn(localizedCoreString("core.audio.label")) { file in
                 // Non-audio files (images, cue) leave the cell empty.

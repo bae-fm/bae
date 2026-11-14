@@ -186,7 +186,7 @@ struct FolderScanProgressIndicator: View {
                 ForEach(activity.folders, id: \.watchedFolderPath) { folder in
                     HStack(spacing: ThemeSpace.group) {
                         Text(verbatim: folder.watchedFolderName)
-                            .lineLimit(1)
+                            .cutLine(.fileName)
                         Spacer(minLength: ThemeSpace.group)
                         StreamLabel(
                             stream: .scanFoundCount(

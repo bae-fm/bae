@@ -57,8 +57,7 @@ struct ImportFolderNameLine<Accessory: View>: View {
             Text(folderName)
                 .themeText(.mono)
                 .foregroundStyle(.primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
             accessory()
                 .layoutPriority(1)
         }

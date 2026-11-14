@@ -33,8 +33,7 @@ struct ImportSheetUnboundMenu: View {
             Text(localizedCoreString("ui.import.sheet.choose_audio"))
                 .themeText(.mono)
                 .foregroundStyle(Theme.warning)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.prose)
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.line)
                 .background(

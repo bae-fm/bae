@@ -70,8 +70,7 @@ struct ImportMappingSourceCell: View {
     private func nameLine(_ file: BridgeMappingFile) -> some View {
         Text(file.name)
             .themeText(.mono)
-            .lineLimit(1)
-            .truncationMode(.middle)
+            .cutLine(.fileName)
     }
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
@@ -88,8 +87,7 @@ struct ImportMappingSourceCell: View {
             }
             Text(entry.title ?? "")
                 .themeText(.body)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .cutLine(.prose)
             Spacer(minLength: 0)
         }
     }

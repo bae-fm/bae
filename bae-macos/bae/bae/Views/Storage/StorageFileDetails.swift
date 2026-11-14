@@ -17,8 +17,7 @@ struct StorageFileDetails: View {
             HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
                 Text(file.name)
                     .themeText(.heading)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .cutLine(.fileName)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle")

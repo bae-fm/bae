@@ -87,8 +87,7 @@ struct AlbumSectionHeading: View {
         HStack(spacing: ThemeSpace.related) {
             Text(album.title)
                 .themeText(.strong)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .cutLine(.prose)
             AlbumSourceLink(source: album.source)
         }
         .padding(.top, ThemeSpace.related)

@@ -89,8 +89,7 @@ struct ReleaseFilesView: View {
         HStack(spacing: ThemeSpace.group) {
             Text(name)
                 .themeText(.mono)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
             Spacer(minLength: 0)
             Text(size)
                 .themeText(.fine)

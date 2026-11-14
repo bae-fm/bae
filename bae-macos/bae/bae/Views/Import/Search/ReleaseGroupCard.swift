@@ -23,14 +23,12 @@ struct ReleaseGroupCard: View {
             VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 Text(group.title)
                     .themeText(.heading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .cutLine(.prose)
                 if !attribution.isEmpty {
                     Text(attribution)
                         .themeText(.body)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .cutLine(.prose)
                 }
                 ForEach(Array(group.sources.enumerated()), id: \.offset) {
                     _,

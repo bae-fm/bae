@@ -184,8 +184,7 @@ struct ImportSearchResultRow: View {
                     )
                     .themeText(.body)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .cutLine(.prose)
                 }
                 ForEach(
                     Array(label.catalogNumbers.enumerated()),
@@ -318,15 +317,13 @@ extension ImportSearchResultRow {
                     StatedValuesText(parts: [pressing.media, pressing.areas])
                         .themeText(.detail)
                         .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .cutLine(.prose)
                 }
                 if !details.isEmpty {
                     Text(details)
                         .themeText(.detail)
                         .foregroundStyle(.quaternary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .cutLine(.prose)
                 }
             }
         }
@@ -341,8 +338,7 @@ extension ImportSearchResultRow {
                 .themeText(.detail)
                 .italic()
                 .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .cutLine(.prose)
         }
     }
 }

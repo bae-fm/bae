@@ -16,8 +16,7 @@ struct StorageInspectorFileRow: View {
                 .frame(width: ThemeSize.lead, height: ThemeSize.lead)
         } content: {
             Text(row.file.originalFilename)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .cutLine(.fileName)
                 .foregroundStyle(nameStyle)
         } trail: {
             Text(row.file.fileSizeText)
