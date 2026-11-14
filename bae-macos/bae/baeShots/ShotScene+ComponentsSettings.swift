@@ -187,7 +187,10 @@ extension ShotScene {
                         }
                         .fixedSize()
                     }
-                    Toggle("Keep the pregap", isOn: .constant(false))
+                    SettingToggleRow(
+                        title: "Keep the pregap",
+                        isOn: .constant(false)
+                    )
                 } label: {
                     Text("Advanced")
                 }
