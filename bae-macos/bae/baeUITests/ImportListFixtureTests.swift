@@ -42,7 +42,7 @@ final class ImportListFixtureTests: XCTestCase {
         let window = app.windows.firstMatch
         // The section switch, which the window shows once the library is
         // open, not while it opens it.
-        let importSection = window.buttons["Import"]
+        let importSection = window.sectionTab("Import")
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
         let list = app.tables["import-list"]

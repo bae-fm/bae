@@ -30,7 +30,7 @@ final class EditMenuSelectAllTests: XCTestCase {
 
         // The section switch, which the window shows once the library is
         // open, not while it opens it.
-        let importSection = app.windows.firstMatch.buttons["Import"]
+        let importSection = app.windows.firstMatch.sectionTab("Import")
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
         let list = app.tables["import-list"]

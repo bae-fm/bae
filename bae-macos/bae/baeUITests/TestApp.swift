@@ -226,12 +226,32 @@ extension XCTestCase {
         // The window says "Loading…" until the library opens, and only then
         // shows the title bar's Library section.
         guard
-            app.windows.firstMatch.buttons["Library"]
+            app.windows.firstMatch.sectionTab("Library")
                 .waitForExistence(timeout: 30)
         else {
             throw LibraryDidNotOpen()
         }
         return app
+    }
+}
+
+extension XCUIElement {
+    /// The title bar's tab that selects the section named `name`: the strip
+    /// reports each tab as a tab (a radio button with the tab subrole), which
+    /// XCUIElement files under a type of its own, so this matches by label
+    /// across both.
+    func sectionTab(_ name: String) -> XCUIElement {
+        descendants(matching: .any)
+            .matching(
+                NSPredicate(
+                    format:
+                        "label == %@ AND (elementType == %d OR elementType == %d)",
+                    name,
+                    XCUIElement.ElementType.tab.rawValue,
+                    XCUIElement.ElementType.radioButton.rawValue
+                )
+            )
+            .firstMatch
     }
 }
 

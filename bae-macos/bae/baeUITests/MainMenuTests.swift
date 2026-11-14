@@ -90,7 +90,7 @@ final class MainMenuTests: XCTestCase {
         )
         XCTAssertEqual(app.windows.count, 1, file: file, line: line)
 
-        primaryWindow.buttons[start.segment].click()
+        primaryWindow.sectionTab(start.segment).click()
         XCTAssertTrue(
             primaryWindow.staticTexts[start.shows]
                 .waitForExistence(timeout: 20),

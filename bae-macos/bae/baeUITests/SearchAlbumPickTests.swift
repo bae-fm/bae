@@ -25,7 +25,7 @@ final class SearchAlbumPickTests: XCTestCase {
         )
 
         // Import unmounts the library.
-        window.buttons["Import"].click()
+        window.sectionTab("Import").click()
         XCTAssertTrue(grid.scrollView.waitForNonExistence(timeout: 10))
         pickSearchResult(Self.picked, in: app)
         XCTAssertTrue(
@@ -34,7 +34,7 @@ final class SearchAlbumPickTests: XCTestCase {
             },
             "the album is in view, open"
         )
-        XCTAssertTrue(window.buttons["Library"].isSelected)
+        XCTAssertTrue(window.sectionTab("Library").isSelected)
         XCTAssertTrue(grid.shows(Self.newest), "the grid stays at its top")
     }
 }

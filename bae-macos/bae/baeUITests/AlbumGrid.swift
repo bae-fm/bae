@@ -96,8 +96,18 @@ extension XCTestCase {
     /// Search for `title` in the title bar and pick the result it titles.
     @MainActor
     func pickSearchResult(_ title: String, in app: XCUIApplication) {
-        let field = app.textFields
-            .matching(NSPredicate(format: "placeholderValue == %@", "Search"))
+        // The field reports as a search field, which XCUIElement files apart
+        // from the text fields.
+        let field = app.descendants(matching: .any)
+            .matching(
+                NSPredicate(
+                    format:
+                        "placeholderValue == %@ AND (elementType == %d OR elementType == %d)",
+                    "Search",
+                    XCUIElement.ElementType.textField.rawValue,
+                    XCUIElement.ElementType.searchField.rawValue
+                )
+            )
             .firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.click()
