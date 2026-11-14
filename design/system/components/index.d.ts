@@ -107,7 +107,7 @@ export declare function MacNote(props: MacNoteProps): React.ReactElement;
 
 // ---- Android ----
 
-/** A screen: the top bar with Back and the title, then the content. Without title, no top bar. A dialog inside covers the whole screen. */
+/** A screen: the top bar with Back and the title, then the content. Without title, no top bar. An AndroidDialog or AndroidSheet among the children is drawn last, over the whole screen. */
 export interface AndroidScreenProps { title?: string; back?: boolean; keyboard?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidScreen(props: AndroidScreenProps): React.ReactElement;
 
@@ -165,7 +165,7 @@ export declare function AndroidTextField(props: AndroidTextFieldProps): React.Re
 export interface AndroidRadioProps { label: string; checked?: boolean }
 export declare function AndroidRadio(props: AndroidRadioProps): React.ReactElement;
 
-/** A dialog over a dimmed screen: title, content, and AndroidDialogActions last. */
+/** A dialog over a dimmed screen: title, content, and AndroidDialogActions last. Put it among the children of the screen it opens over (AndroidScreen, AndroidLibraryScreen, AndroidDetailScreen); the screen draws it over everything, bars included. */
 export interface AndroidDialogProps { title?: string; message?: string; width?: number; children?: React.ReactNode }
 export declare function AndroidDialog(props: AndroidDialogProps): React.ReactElement;
 

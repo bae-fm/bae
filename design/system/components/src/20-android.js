@@ -1,11 +1,23 @@
   // ---- Android ----
 
+  // A dialog or sheet among a screen's content is not content: the screen draws it last, as its own child, so its scrim covers the whole screen (bars and sheets included) and the dialog centres on the screen, however the content is wrapped.
+  function splitOverlays(children) {
+    var content = [], over = [];
+    kids(children).forEach(function (c) {
+      var t = inner(c) && inner(c).type;
+      (t === AndroidDialog || t === AndroidSheet ? over : content).push(c);
+    });
+    return { content: content, over: over };
+  }
+
   function AndroidScreen(props) {
+    var split = splitOverlays(props.children);
     var top = [
       props.title ? h('header', { key: 'top', className: 'bae-a-topbar' },
         props.back ? h(AndroidIconButton, { icon: 'back', label: 'Back' }) : null,
         h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title)) : null,
-      h('main', { key: 'main', className: 'bae-a-main' }, props.children)];
+      h('main', { key: 'main', className: 'bae-a-main' }, split.content),
+      split.over.length ? h(React.Fragment, { key: 'over' }, split.over) : null];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
     return h('div', { className: 'bae-a-screen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       props.keyboard ? h(React.Fragment, null, h('div', { className: 'bae-a-screen-above' }, top), h(AndroidKeyboard)) : top);

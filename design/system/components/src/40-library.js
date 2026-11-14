@@ -299,6 +299,7 @@
 
   function AndroidLibraryScreen(props) {
     var collapsed = !!props.collapsed;
+    var split = splitOverlays(props.children);
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       props.searching ? h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }),
           h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 20 }) : null))
@@ -309,18 +310,21 @@
           props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', tone: 'warning' }) : null,
           props.sync === 'paused' ? h(AndroidIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(AndroidIconButton, { icon: 'more', label: 'More options' })),
-      h('main', { className: 'bae-a-libbody' }, props.children),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }));
+      h('main', { className: 'bae-a-libbody' }, split.content),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
+      split.over);
   }
 
   function AndroidDetailScreen(props) {
+    var split = splitOverlays(props.children);
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h('header', { className: 'bae-a-detailbar' },
         h(AndroidIconButton, { icon: 'back', label: props.back ? 'Back to ' + props.back : 'Back to Library' }),
         h('span', { style: { flex: 1 } }),
         props.menu ? h(AndroidIconButton, { icon: 'more', label: 'Album options' }) : null),
-      h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, props.children),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }));
+      h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, split.content),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
+      split.over);
   }
 
   function AndroidAlbumGrid(props) {
