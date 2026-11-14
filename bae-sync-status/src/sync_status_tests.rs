@@ -320,6 +320,21 @@ fn another_copy_of_this_device_is_answered_by_a_reset() {
     );
 }
 
+/// A copy that finds another installation using its device id is answered by
+/// a reset too, and its failure line names that cause.
+#[test]
+fn a_copy_that_finds_its_id_in_use_says_so() {
+    let state = coven::SyncState::NeedsReset {
+        reason: coven::ResetReason::DeviceIdInUse,
+        unsent: coven::UnsentWork { writes: 2, files: 1 },
+    };
+    let Some(UiError::Diagnostic { category, detail }) = alone(state).failure() else {
+        panic!("a state that needs a reset is a failure");
+    };
+    assert_eq!(category, bae_diagnostics::UiErrorCategory::DeviceResetRequired);
+    assert!(detail.contains("another installation uses this device's id"), "{detail}");
+}
+
 /// An S3 request that never reached the provider, as coven reports it to
 /// the retry that waited on it: its class, and a cause whose message names
 /// each layer below it.

@@ -78,6 +78,9 @@ fn reset_text(reason: coven::ResetReason) -> &'static str {
         coven::ResetReason::Replaced => {
             "a reset or restore registered another installation in this one's place"
         }
+        coven::ResetReason::DeviceIdInUse => {
+            "another installation uses this device's id, and this copy is the one behind"
+        }
         coven::ResetReason::MemberKeysReplaced { .. } => {
             "the member's keys were replaced with a pair this device does not hold"
         }
