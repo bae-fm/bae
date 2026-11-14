@@ -15,7 +15,7 @@ struct PlaylistsContent: View {
     var body: some View {
         Group {
             if let listing {
-                if listing.listed.isEmpty {
+                if listing.total == 0 {
                     PlaceholderTitle(
                         listing.canCreate
                             ? "No playlists"

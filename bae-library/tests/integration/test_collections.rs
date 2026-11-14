@@ -292,6 +292,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     detail_matching(&mut detail, |detail| detail.is_none()).await;
     let gone = value_matching(&mut listing, |listing| listing.listed.is_empty()).await;
     assert!(gone.add_targets.is_empty());
+    assert_eq!(gone.total, 0);
     library.manager().close().await.unwrap();
 }
 
@@ -321,6 +322,7 @@ async fn playlists_list_by_name_in_the_devices_language() {
     let mut listing = views.subscribe_playlists();
     let root = value_matching(&mut listing, |listing| listing.listed.len() == 3).await;
     assert_eq!(names(&root), ["Ängel", "Apa", "Zebra"]);
+    assert_eq!(root.total, 3);
 
     views.set_sort_language("sv").await.unwrap();
     let swedish = value_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;

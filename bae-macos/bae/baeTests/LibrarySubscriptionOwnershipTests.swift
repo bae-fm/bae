@@ -343,6 +343,7 @@ private final class PlaylistListingFeed: @unchecked Sendable {
                 return BridgePlaylistListing(
                     listed: [],
                     addTargets: [],
+                    total: 0,
                     canCreate: true
                 )
             }

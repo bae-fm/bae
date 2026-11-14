@@ -17,6 +17,7 @@ extension LibraryView {
                 BridgePlaylistListing(
                     listed: [],
                     addTargets: [],
+                    total: 0,
                     canCreate: true
                 )
             )

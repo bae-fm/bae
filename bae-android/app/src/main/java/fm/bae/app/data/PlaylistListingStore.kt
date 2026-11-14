@@ -36,7 +36,7 @@ internal class PlaylistListingStore(
     override var error by mutableStateOf<PageError?>(null)
         private set
     override val hasRows: Boolean get() = totalCount > 0
-    override val totalCount: Int get() = listing?.listed?.size ?: 0
+    override val totalCount: Int get() = listing?.total?.toInt() ?: 0
     private var deliveries: ScreenSubscription<BridgePlaylistListing>? = null
 
     fun activate() {

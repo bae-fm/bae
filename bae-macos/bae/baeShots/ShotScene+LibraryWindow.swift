@@ -52,6 +52,7 @@ extension ShotScene {
                     BridgePlaylistListing(
                         listed: playlists,
                         addTargets: playlists.filter(\.yours),
+                        total: UInt64(playlists.count),
                         canCreate: true
                     )
                 )

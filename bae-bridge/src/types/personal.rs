@@ -241,15 +241,19 @@ pub struct BridgePlaylistListing {
     /// The person's own playlists, by name: where Add to playlist can put a
     /// track.
     pub add_targets: Vec<BridgePlaylistSummary>,
+    /// How many playlists this device holds.
+    pub total: u64,
     /// Whether the person has a profile, which making a playlist needs.
     pub can_create: bool,
 }
 impl BridgePlaylistListing {
     pub(crate) fn from_core(value: bae_views::playlists::PlaylistListing) -> Self {
-        let bae_views::playlists::PlaylistListing { listed, add_targets, can_create } = value;
+        let bae_views::playlists::PlaylistListing { listed, add_targets, total, can_create } =
+            value;
         Self {
             listed: listed.into_iter().map(BridgePlaylistSummary::from_core).collect(),
             add_targets: add_targets.into_iter().map(BridgePlaylistSummary::from_core).collect(),
+            total,
             can_create,
         }
     }

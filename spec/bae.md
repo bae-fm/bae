@@ -2821,7 +2821,9 @@ own and the household ones others made, never another person's private ones
 owner, who sees it, and a picture. The picture is the covers of the first four
 different releases its entries are on, as a 2×2 square; a playlist on fewer
 than four releases shows its first entry's cover, and one with no entries
-shows the missing-art tile. A playlist's page shows its owner, count, length
+shows the missing-art tile. The list comes with how many playlists the device
+holds, counted by the database, which both apps read to tell an empty list from
+one that has rows. A playlist's page shows its owner, count, length
 and who sees it, then its tracks in order, each with its credit line (§2.3),
 album and release cover. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.

@@ -59,6 +59,8 @@ pub struct PlaylistListing {
     /// The person's own playlists, by name then id: where Add to playlist
     /// can put a track.
     pub add_targets: Vec<PlaylistSummary>,
+    /// How many playlists this device holds: the length of `listed`.
+    pub total: u64,
     /// Whether the person has a profile, which a playlist needs to have an
     /// owner.
     pub can_create: bool,
@@ -138,6 +140,10 @@ pub(crate) fn playlist_entries_sql() -> String {
     )
 }
 
+/// How many playlists [`playlists_sql`] lists.
+pub(crate) const PLAYLIST_TOTAL_SQL: &str = "SELECT COUNT(*) FROM playlists AS pl \
+     JOIN people AS owner ON owner.id = pl.person_id";
+
 /// Whether the person using this device has a profile.
 pub(crate) const CAN_CREATE_SQL: &str = "SELECT EXISTS (SELECT 1 FROM coven_members AS m \
      JOIN people AS p ON p.id = m.member WHERE m.is_self AND NOT m.removed)";
@@ -195,6 +201,7 @@ fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbEr
             [],
             playlist_row,
         )?,
+        total: sql.query_row(PLAYLIST_TOTAL_SQL, [], |row| row.get(0))?,
         can_create: sql.query_row(CAN_CREATE_SQL, [], |row| row.get(0))?,
     })
 }

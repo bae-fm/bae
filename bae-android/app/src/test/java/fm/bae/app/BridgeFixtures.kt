@@ -201,7 +201,8 @@ object BridgeFixtures {
     fun playlistListing(
         listed: List<BridgePlaylistSummary> = listOf(playlistSummary()),
         canCreate: Boolean = true,
-    ): BridgePlaylistListing = BridgePlaylistListing(listed = listed, addTargets = listed, canCreate = canCreate)
+    ): BridgePlaylistListing =
+        BridgePlaylistListing(listed = listed, addTargets = listed, total = listed.size.toULong(), canCreate = canCreate)
 
     fun playlistEntry(
         positionId: String,
