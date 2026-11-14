@@ -23,7 +23,7 @@ struct ShotScene {
         welcomeScenes + componentScenes + syncSettingsScenes
         + storageSettingsScenes + alertScenes + importListScenes
         + adminChangeScenes + menuScenes + playlistScenes + castingScenes
-        + addDeviceScenes + peopleScenes
+        + addDeviceScenes + peopleScenes + albumCoverScenes
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows
