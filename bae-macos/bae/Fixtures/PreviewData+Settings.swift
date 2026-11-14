@@ -29,8 +29,9 @@ extension PreviewData {
         )
     )
 
-    /// This device's person, an admin, whose earlier registration of this
-    /// device was replaced, and one other member with a removable device
+    /// This device's person, an admin, with this Mac and a phone, whose
+    /// earlier registration of this Mac was replaced and whose old phone was
+    /// removed, and one other member with a removable device
     /// and two removed ones, each reaching `storage` as its members do:
     /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
     /// iCloud. Ids are arbitrary UUIDs.
@@ -73,17 +74,28 @@ extension PreviewData {
                 activeDevices: [
                     BridgeActiveDevice(
                         id: 3,
-                        name: "Person A's Mac",
+                        name: "This Mac",
                         isSelf: true,
                         canRemove: false
-                    )
+                    ),
+                    BridgeActiveDevice(
+                        id: 6,
+                        name: "Phone",
+                        isSelf: false,
+                        canRemove: true
+                    ),
                 ],
                 formerDevices: [
                     BridgeFormerDevice(
                         id: 1,
-                        name: "Person A's Mac",
+                        name: "Old Mac",
                         state: .replaced
-                    )
+                    ),
+                    BridgeFormerDevice(
+                        id: 7,
+                        name: "Old phone",
+                        state: .removed
+                    ),
                 ]
             )
         ),
@@ -108,7 +120,7 @@ extension PreviewData {
                 activeDevices: [
                     BridgeActiveDevice(
                         id: 2,
-                        name: "Person B's Phone",
+                        name: "Tablet",
                         isSelf: false,
                         canRemove: true
                     )

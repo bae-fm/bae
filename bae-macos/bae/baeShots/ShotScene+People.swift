@@ -265,7 +265,7 @@ extension ShotScene {
     /// The shot people with the other person named Ben, who has a tablet.
     private static func peopleWithBen(role: BridgeMemberRole) -> [BridgePerson]
     {
-        PreviewData.members(reaching: PreviewData.previewStorage)
+        PreviewData.members(reaching: PreviewData.previewDropboxStorage)
             .map {
                 person in
                 guard person.membership.id == otherMemberId else {
@@ -313,11 +313,13 @@ extension ShotScene {
                     subpage: .person(memberId: otherMemberId)
                 )
                 .environment(
-                    PreviewData.previewSync(storage: PreviewData.previewStorage)
+                    PreviewData.previewSync(
+                        storage: PreviewData.previewDropboxStorage
+                    )
                 )
                 .environment(
                     PreviewData.connectedConfigStore(
-                        storage: PreviewData.previewStorage
+                        storage: PreviewData.previewDropboxStorage
                     )
                 )
                 .environment(membership)
@@ -392,11 +394,13 @@ extension ShotScene {
             shown: shown,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(
-                    PreviewData.previewSync(storage: PreviewData.previewStorage)
+                    PreviewData.previewSync(
+                        storage: PreviewData.previewDropboxStorage
+                    )
                 )
                 .environment(
                     PreviewData.connectedConfigStore(
-                        storage: PreviewData.previewStorage
+                        storage: PreviewData.previewDropboxStorage
                     )
                 )
                 .environment(membership)
