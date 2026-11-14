@@ -50,8 +50,9 @@ pub(super) fn update_artist_external_ids_row(
     .map_err(DbError::from)
 }
 
-// Callers: the test writes, and the debug build's seeded albums.
-#[cfg(any(test, feature = "test-utils", all(debug_assertions, desktop)))]
+// Callers: a records change that files a release under a new album, the test
+// writes, and the debug build's seeded albums.
+#[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn insert_album_row(conn: &CovenWrite<'_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
