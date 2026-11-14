@@ -193,6 +193,10 @@ public struct Notice: View {
         .notice(tone, look: look)
     }
 
+    /// The height of a button at the regular control size, design token
+    /// `size-control`: the box Details takes beside Retry.
+    private static let buttonHeight: CGFloat = 24
+
     /// The glyph is 1.19 times the notice's text, which the boards draw it at.
     private static var glyphFont: Font { glyphFont(scaledTo: .body) }
 
@@ -381,7 +385,9 @@ extension Notice {
             }
             HStack(spacing: ThemeSpace.group) {
                 if let details {
-                    detailsButton(details)
+                    // Details has the padding and height of the button beside
+                    // it, as the boards draw its box.
+                    detailsButton(details, boxed: true)
                 }
                 if let secondary {
                     actionButton(secondary)
@@ -408,13 +414,34 @@ extension Notice {
     /// Details opens an alert, which only AppKit has; the iOS app has no
     /// screens that show a notice.
     @ViewBuilder
-    private func detailsButton(_ details: ErrorDetails) -> some View {
+    private func detailsButton(_ details: ErrorDetails, boxed: Bool = false)
+        -> some View
+    {
         #if canImport(AppKit)
-            colouredButton(
-                Button("Details") { showErrorDetails(details) }
-                    .buttonStyle(.accentBorderless),
-                borderless: true
-            )
+            if boxed {
+                // The button's own box, which is what the accessibility frame
+                // and the click reach: the borderless style measures the words
+                // alone, so this one draws no style of its own.
+                colouredButton(
+                    Button {
+                        showErrorDetails(details)
+                    } label: {
+                        Text("Details")
+                            .padding(.horizontal, ThemeSpace.group)
+                            .frame(height: Self.buttonHeight)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.accentPlain),
+                    borderless: true
+                )
+            }
+            else {
+                colouredButton(
+                    Button("Details") { showErrorDetails(details) }
+                        .buttonStyle(.accentBorderless),
+                    borderless: true
+                )
+            }
         #endif
     }
 
@@ -423,7 +450,8 @@ extension Notice {
         switch action.kind {
         case .button(let perform):
             colouredButton(
-                Button(action: perform) { action.title },
+                Button(action: perform) { actionLabel(action) }
+                    .buttonStyle(SecondaryButtonStyle().accentFocus()),
                 borderless: false
             )
             .disabled(action.isDisabled)
@@ -463,6 +491,22 @@ extension Notice {
                 )
                 .disabled(action.isDisabled)
             #endif
+        }
+    }
+
+    /// The action's words. A centred notice's Retry takes the grey of the
+    /// words beside it, inside the control fill; the button style sets the
+    /// primary colour, so the colour goes on the words.
+    @ViewBuilder
+    private func actionLabel(_ action: ErrorAction) -> some View {
+        if look == .centered {
+            action.title.foregroundStyle(.secondary)
+        }
+        else if look == .centeredOnStage {
+            action.title.foregroundStyle(Theme.onFillSecondary)
+        }
+        else {
+            action.title
         }
     }
 
