@@ -37,7 +37,7 @@ if [ "${#DIRECT[@]}" -gt 0 ]; then
 elif grep -qxE 'Cargo\.toml|Cargo\.lock' <<< "$CHANGED_FILES"; then
     # A change to the workspace manifest or lockfile reaches every crate.
     ARGS+=(--workspace)
-    LIBRARY_ARGS=(check --workspace --lib --bins)
+    LIBRARY_ARGS=(check --workspace)
 else
     echo "no Rust crate changed; nothing to compile"
     exit 0

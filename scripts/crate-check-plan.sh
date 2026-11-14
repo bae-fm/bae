@@ -114,11 +114,11 @@ PLAN
 # the crates of a crate_check_plan on stdin without the test features the
 # clippy over --all-targets turns on. The bridges and apps build the crates
 # that way, and a `pub use` of a test-only item without its `#[cfg]` gate
-# compiles in a build with `test-utils` and fails in theirs.
+# compiles in a build with `test-utils` and fails in theirs. A check with no
+# target named builds each crate's library and binaries, and a crate with only
+# binaries (bae-shots) is refused by `--lib`.
 library_check_args() {
     echo check
-    echo --lib
-    echo --bins
     local kind value
     while read -r kind value; do
         case "$kind" in
