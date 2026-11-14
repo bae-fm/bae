@@ -184,12 +184,7 @@ extension ShotScene {
             ShotStage(
                 OverWindow.alert(
                     DeviceResetConfirmation.alert {},
-                    over: ShotScenes.deviceReset(
-                        error: LoadError(
-                            .resetOffered,
-                            PreviewData.resetRequiredError
-                        )
-                    )
+                    over: ShotScenes.deviceReset(error: nil)
                 )
             )
         },
