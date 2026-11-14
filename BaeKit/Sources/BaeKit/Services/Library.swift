@@ -68,6 +68,13 @@ public final class Library: Sendable, Observable {
     public let storageSelection:
         @Sendable (_ filter: BridgeStorageFilter, _ search: String)
             -> StorageSelectionQuery
+    /// Whether the Storage Manager list under one filter and search text
+    /// holds every one of the releases.
+    public let storageHoldsAll:
+        @Sendable (
+            _ filter: BridgeStorageFilter, _ search: String,
+            _ releaseIds: [String]
+        ) async throws -> Bool
     /// The transfer queues holding work, as the Storage Manager shows them.
     public let storageQueues: @Sendable () -> PulledValues<BridgeStorageQueues>
     /// Open the Storage Manager inspector's live read of the release it
@@ -174,6 +181,10 @@ public final class Library: Sendable, Observable {
             -> StorageSelectionQuery = { _, _ in
                 fatalError("Library storage selection is not installed")
             },
+        storageHoldsAll:
+            @escaping @Sendable (BridgeStorageFilter, String, [String])
+            async
+            throws -> Bool = { _, _, _ in throw StubError.notImplemented },
         storageQueues:
             @escaping @Sendable () -> PulledValues<BridgeStorageQueues> = {
                 fatalError("Library storage queues are not installed")
@@ -222,6 +233,7 @@ public final class Library: Sendable, Observable {
         self.artistSearch = artistSearch
         self.storageList = storageList
         self.storageSelection = storageSelection
+        self.storageHoldsAll = storageHoldsAll
         self.storageQueues = storageQueues
         self.storageInspector = storageInspector
         self.releaseFiles = releaseFiles
@@ -275,6 +287,13 @@ extension Library {
                             filter: $0,
                             search: $1
                         )
+                    )
+                },
+                storageHoldsAll: {
+                    try await handle.storageHoldsAll(
+                        filter: $0,
+                        search: $1,
+                        releaseIds: $2
                     )
                 },
                 storageQueues: {

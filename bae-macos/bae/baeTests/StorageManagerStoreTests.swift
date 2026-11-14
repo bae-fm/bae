@@ -56,6 +56,7 @@ private final class OpenedReads: @unchecked Sendable {
                     values: fixed.values
                 )
             },
+            storageHoldsAll: Library.fixedStorageHoldsAll(rows),
             storageQueues: {
                 .fixed(
                     BridgeStorageQueues(
@@ -146,8 +147,16 @@ struct StorageManagerStoreTests {
                 == commonActions(of: [rows[0], rows[1]])
         )
         #expect(
-            store.heldIds == selected,
-            "the releases core answered for are the ones the list holds"
+            store.soleRelease == nil,
+            "two releases held have no sole one"
+        )
+        #expect(
+            try await store.holdsAll(Array(selected)),
+            "the list holds the releases core answered for"
+        )
+        #expect(
+            try await !store.holdsAll(["no-such-release"]),
+            "the list doesn't hold a release it lacks"
         )
         #expect(
             store.answered(for: selected.union([rows[2].id])) == nil,
@@ -157,6 +166,27 @@ struct StorageManagerStoreTests {
             reads.selected.last == selected.sorted(),
             "the selection is asked about the releases selected"
         )
+        store.cancel()
+    }
+
+    @MainActor
+    @Test("the inspector's release is the one release the list holds")
+    func soleReleaseIsCoresAnswer() async throws {
+        let reads = OpenedReads()
+        let rows = Array(PreviewData.storageRows.prefix(3))
+        let store = StorageManagerStore(
+            library: reads.library(rows: rows),
+            onError: { _ in }
+        )
+        store.update(filter: .all, sort: byTitle, search: "")
+        store.select([rows[0].id])
+        try await Wait.until { store.soleRelease == rows[0].id }
+
+        store.select([rows[0].id, rows[1].id])
+        try await Wait.until {
+            store.answered(for: [rows[0].id, rows[1].id]) != nil
+        }
+        #expect(store.soleRelease == nil)
         store.cancel()
     }
 

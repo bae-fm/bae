@@ -121,6 +121,22 @@ impl LibraryViews {
         })
     }
 
+    /// Whether the Storage Manager list under `filter` and the `search` text
+    /// holds every one of the `release_ids`: the check before a storage
+    /// action acts on releases chosen earlier.
+    pub async fn storage_holds_all(
+        &self,
+        filter: StorageFilter,
+        search: &str,
+        release_ids: BTreeSet<String>,
+    ) -> Result<bool, DbError> {
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
+        self.store
+            .read(move |sql| storage_holds_all_on(&sql, filter, pattern.as_deref(), &release_ids))
+            .await
+    }
+
     /// The key of the release at `position` of the Storage Manager list, or
     /// of its last row when it ends before it; `None` for an empty list.
     pub async fn storage_key_at(
@@ -153,11 +169,8 @@ impl LibraryViews {
         filter: StorageFilter,
         search: &str,
         initial: BTreeSet<String>,
-    ) -> coven::ReconfigurableLiveQuery<
-        BTreeSet<String>,
-        (Vec<DbStorageRow>, crate::DbSelectionActions),
-        bae_store::DbError,
-    > {
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, DbStorageSelection, bae_store::DbError>
+    {
         let pattern =
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
@@ -165,9 +178,10 @@ impl LibraryViews {
                 let rows = storage_selected_on(&sql, filter, pattern.as_deref(), selected)?;
                 let actions =
                     storage_selection_actions_on(&sql, filter, pattern.as_deref(), selected)?;
-                Ok((rows, actions))
+                let sole = storage_sole_selected_on(&sql, filter, pattern.as_deref(), selected)?;
+                Ok((rows, actions, sole))
             })
-            .process(|(rows, actions)| Ok((process_storage_rows(rows)?, actions)))
+            .process(|(rows, actions, sole)| Ok((process_storage_rows(rows)?, actions, sole)))
     }
 
     /// Follow the transfer queues holding work, as the Storage Manager shows
@@ -178,6 +192,11 @@ impl LibraryViews {
         self.store.subscribe(|sql| storage_queues_on(&sql))
     }
 }
+
+/// What the Storage Manager's selection read returns: the rows of the selected
+/// releases the list holds, what all of them allow, and the one release the
+/// list holds among them when it holds exactly one.
+pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbSelectionActions, Option<String>);
 
 /// How many releases the Storage Manager list holds, their files' total size,
 /// and whether a search narrows it.
@@ -202,10 +221,11 @@ pub fn resolve_storage_window(read: WindowRead<DbStorageRow>) -> crate::ListWind
 /// be cancelled.
 pub fn resolve_storage_selection(
     asked: &BTreeSet<String>,
-    (rows, actions): (Vec<DbStorageRow>, crate::DbSelectionActions),
+    (rows, actions, sole): DbStorageSelection,
 ) -> crate::StorageSelection {
     crate::StorageSelection {
         asked: asked.iter().cloned().collect(),
+        sole,
         selected: rows.into_iter().map(StorageRow::from_raw).collect(),
         selection_actions: actions.list(),
         cancel_only: actions.cancel_only,
@@ -565,6 +585,60 @@ pub(crate) fn storage_selected_on(
         params.push((":search", pattern));
     }
     Ok(sql.query(&query, params.as_slice(), storage_row_parts)?)
+}
+
+/// Whether the list under `filter` and the search `pattern` holds every one of
+/// the `release_ids`.
+pub(crate) fn storage_holds_all_on(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+    release_ids: &BTreeSet<String>,
+) -> Result<bool, DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let ids = serde_json::to_string(release_ids)
+        .map_err(|error| DbError::encode("release ids", error))?;
+    let statement = format!(
+        "SELECT NOT EXISTS ( \
+            SELECT 1 FROM json_each(:ids) wanted \
+            WHERE wanted.value NOT IN ( \
+                SELECT listing.release_id FROM release_listing listing \
+                WHERE {filter} AND {searched}))",
+        filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
+    );
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":ids", &ids)];
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
+    }
+    Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
+}
+
+/// The one release of the `release_ids` the list under `filter` and the
+/// search `pattern` holds, when it holds exactly one of them; none for no
+/// release or several.
+pub(crate) fn storage_sole_selected_on(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+    release_ids: &BTreeSet<String>,
+) -> Result<Option<String>, DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let selected = serde_json::to_string(release_ids)
+        .map_err(|error| DbError::encode("selected release ids", error))?;
+    let statement = format!(
+        "SELECT CASE WHEN COUNT(*) = 1 THEN MIN(listing.release_id) END \
+         FROM release_listing listing \
+         WHERE {filter} AND {searched} \
+            AND listing.release_id IN (SELECT value FROM json_each(:selected))",
+        filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
+    );
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":selected", &selected)];
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
+    }
+    Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
 }
 
 /// What every one of the `release_ids` the list under `filter` and the search

@@ -12,6 +12,9 @@ pub struct BridgeStorageSelection {
     /// selection this answers.
     pub asked: Vec<String>,
     pub selected: Vec<BridgeStorageRow>,
+    /// The one release the list holds among those asked about, when it holds
+    /// exactly one.
+    pub sole: Option<String>,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
     /// Whether a selected release is mid-transition or its move failed: the
     /// selection offers only cancelling.
@@ -65,6 +68,7 @@ impl BridgeStorageSelection {
         Self {
             asked: selection.asked,
             selected: selection.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
+            sole: selection.sole,
             selection_actions: selection
                 .selection_actions
                 .into_iter()

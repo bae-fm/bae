@@ -12,6 +12,9 @@ pub struct StorageSelection {
     /// selection this answers.
     pub asked: Vec<String>,
     pub selected: Vec<crate::album_detail::StorageRow>,
+    /// The one release the list holds among those asked about, when it holds
+    /// exactly one: the release the inspector shows.
+    pub sole: Option<String>,
     pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
     /// Whether some selected release is mid-transition or its move failed:
     /// the selection offers only cancelling, which ends those.

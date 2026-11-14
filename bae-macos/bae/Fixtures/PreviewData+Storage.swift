@@ -504,6 +504,7 @@ extension PreviewData {
             storageSelection: { _, _ in
                 .fixed(rows, answers: answers)
             },
+            storageHoldsAll: Library.fixedStorageHoldsAll(rows),
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }

@@ -2413,7 +2413,11 @@ release does (the least of each column over the selected rows), and only
 cancelling when a selected release is moving or its move failed (the greatest
 of those two flags over them). The answer names the releases it was asked
 about, so the Mac's menu acts on the rows core answered for the selection it
-shows and offers nothing while the answer is for an earlier one. A release in a download is the download queue's entry for it
+shows and offers nothing while the answer is for an earlier one. The answer
+also names the one release the list holds among them when it holds exactly one,
+which the inspector shows, and before an action runs the app asks core whether
+the list still holds every release it will act on; neither searches the rows in
+the app. A release in a download is the download queue's entry for it
 (§4.3, §4.4), a pin or a move-to-this-device, ended in the write that changes its
 files, so the entry and coven's change commit together and the release never
 shows a download its files have finished. The storage rows and the album and

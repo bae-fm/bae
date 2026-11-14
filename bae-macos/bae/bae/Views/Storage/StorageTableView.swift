@@ -417,7 +417,7 @@ extension StorageTableView.Coordinator {
         }
         let isOpenForRelease =
             inspectorPresented.wrappedValue
-            && storageManagerStore.heldIds == [releaseId]
+            && storageManagerStore.soleRelease == releaseId
         setInspectorPresented(!isOpenForRelease, releaseId: releaseId)
     }
 
@@ -570,7 +570,7 @@ extension StorageTableView.Coordinator {
             entries.append(
                 .item(
                     MacMenuItem(verbatim: action.label) { [runner] in
-                        runner.run(action, releaseIds: releaseIds)
+                        runner.run(action, targets: targets.rows)
                     }
                 )
             )
@@ -595,9 +595,9 @@ extension StorageTableView.Coordinator {
         return entries
     }
 
-    /// If the clicked release is among the ones core answered for the
-    /// selection, act on those, with the storage actions core says they all
-    /// allow; otherwise act on and select that release, with its own. Each
+    /// If the clicked release is in the selection, act on the rows core
+    /// answered for it, with the storage actions core says they all allow;
+    /// otherwise act on and select that release, with its own. Each
     /// target is the row the list's query returned for it.
     private func menuTargets(
         forClickedRelease clickedId: String
@@ -605,7 +605,7 @@ extension StorageTableView.Coordinator {
         if let answer = storageManagerStore.answered(
             for: selection.wrappedValue
         ),
-            answer.selected.contains(where: { $0.id == clickedId })
+            selection.wrappedValue.contains(clickedId)
         {
             return MenuTargets(
                 rows: answer.selected,

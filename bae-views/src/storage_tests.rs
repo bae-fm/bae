@@ -790,3 +790,47 @@ fn a_media_edit_from_another_device_sorts_its_release() {
         assert_eq!(key.as_deref(), Some("vinyl:00002,cd:00001"));
     });
 }
+
+/// The Storage Manager's selection tells in SQL which of the releases asked
+/// about the list holds, whether it holds all of a set, and the one release
+/// it holds when only one: the apps read these and never search the rows.
+#[tokio::test]
+async fn a_storage_selection_answers_which_releases_the_list_holds() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let records = test_records(&db);
+    write_library(&records).await;
+    let views = crate::LibraryViews::new(db.clone());
+    let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<BTreeSet<_>>();
+    let answer = |filter: StorageFilter, asked: BTreeSet<String>| {
+        let views = views.clone();
+        async move {
+            let mut live = views.subscribe_storage_selection(filter, "", asked.clone());
+            let value = live.next().await.expect("the query stays open").result.unwrap();
+            crate::storage::resolve_storage_selection(&asked, value)
+        }
+    };
+
+    let both = answer(StorageFilter::All, ids(&[RELEASE_EARLY, RELEASE_LATE])).await;
+    assert_eq!(both.selected.len(), 2);
+    assert_eq!(both.sole, None, "two held releases have no sole one");
+
+    let one = answer(StorageFilter::All, ids(&[RELEASE_EARLY])).await;
+    assert_eq!(one.sole.as_deref(), Some(RELEASE_EARLY));
+
+    let unknown = answer(StorageFilter::All, ids(&[RELEASE_LATE, "no-such-release"])).await;
+    assert_eq!(unknown.sole.as_deref(), Some(RELEASE_LATE), "a release the list lacks is not held");
+
+    let filtered_out = answer(StorageFilter::Remote, ids(&[RELEASE_EARLY])).await;
+    assert_eq!(filtered_out.sole, None);
+    assert!(filtered_out.selected.is_empty());
+
+    let holds = |filter: StorageFilter, search: &'static str, asked: BTreeSet<String>| {
+        let views = views.clone();
+        async move { views.storage_holds_all(filter, search, asked).await.unwrap() }
+    };
+    assert!(holds(StorageFilter::All, "", ids(&[RELEASE_EARLY, RELEASE_LATE])).await);
+    assert!(holds(StorageFilter::All, "", ids(&[])).await);
+    assert!(!holds(StorageFilter::All, "", ids(&[RELEASE_EARLY, "no-such-release"])).await);
+    assert!(!holds(StorageFilter::Remote, "", ids(&[RELEASE_EARLY])).await);
+    assert!(!holds(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await);
+}

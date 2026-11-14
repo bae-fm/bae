@@ -226,6 +226,19 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
+    /// Whether the Storage Manager list under `filter` and the `search` text
+    /// holds every one of the releases.
+    fn storage_holds_all(
+        filter: crate::types::BridgeStorageFilter,
+        search: String,
+        release_ids: Vec<String>,
+    ) -> bool {
+        this.services
+            .storage_holds_all(filter.into_core(), &search, release_ids.into_iter().collect())
+            .await
+            .map_err(BridgeError::from)
+    }
+
     fn set_primary_release(album_id: String, release_id: String) -> () {
         this.services
             .set_album_primary_release(&album_id, &release_id)

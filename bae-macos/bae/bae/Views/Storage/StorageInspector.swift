@@ -6,11 +6,6 @@ struct StorageInspector: View {
     /// The file whose details open with the first release shown.
     let initialSelectedFileId: String?
 
-    static func releaseId(in selection: Set<String>) -> String? {
-        guard selection.count == 1 else { return nil }
-        return selection.first
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             if let releaseId {

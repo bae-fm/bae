@@ -130,6 +130,21 @@
         }
     }
 
+    extension Library {
+        /// Whether `rows` hold every release asked about, for shots and
+        /// tests: the stand-in for core's answer under any filter and search.
+        public static func fixedStorageHoldsAll(
+            _ rows: [BridgeStorageRow]
+        )
+            -> @Sendable (BridgeStorageFilter, String, [String]) async throws
+            -> Bool
+        {
+            { _, _, releaseIds in
+                Set(releaseIds).isSubset(of: rows.map(\.id))
+            }
+        }
+    }
+
     extension StorageSelectionQuery {
         /// A selection over fixed `rows`, for shots and tests: every set of
         /// ids is answered with the rows among `rows` it names, beside the
@@ -149,6 +164,9 @@
                         return BridgeStorageSelection(
                             asked: Array(ids),
                             selected: selected,
+                            // The fixture's stand-in for core's answer: the
+                            // selected release, when exactly one.
+                            sole: selected.count == 1 ? selected[0].id : nil,
                             // The fixture's stand-in for core's answer: the
                             // actions every selected row lists.
                             selectionActions: selected.first.map { first in

@@ -255,6 +255,12 @@ internal open class FakeAppHandle(
         search: String,
     ): StorageSelectionSubscription = unfaked("subscribeStorageSelection")
 
+    override suspend fun storageHoldsAll(
+        filter: BridgeStorageFilter,
+        search: String,
+        releaseIds: List<String>,
+    ): Boolean = unfaked("storageHoldsAll")
+
     override fun subscribeStorageQueues(): StorageQueuesSubscription = unfaked("subscribeStorageQueues")
 
     override fun subscribeAlbumDetail(): AlbumDetailSubscription =
