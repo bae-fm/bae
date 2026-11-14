@@ -56,7 +56,7 @@ private struct LibraryCount: View {
             case .listed(let libraries):
                 Text(verbatim: "\(libraries.count) libraries on this device.")
                 ForEach(libraries, id: \.id) { library in
-                    Text(verbatim: library.name)
+                    Text(verbatim: library.name ?? library.id)
                         .foregroundStyle(.secondary)
                 }
             case .failed(let error):
