@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Ομαδοποίηση ανά καλλιτέχνη</string>
+    <string name="menu_item_chosen">Επιλεγμένο</string>
     <string name="album_credited_with">με %1$s</string>
     <string name="album_year_credited_with">%1$s · με %2$s</string>
     <string name="back">Πίσω</string>

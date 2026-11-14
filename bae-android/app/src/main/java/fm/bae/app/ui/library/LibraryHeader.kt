@@ -36,8 +36,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.lerp
 import androidx.compose.ui.text.style.TextOverflow
@@ -213,6 +213,8 @@ internal fun AndroidMenuItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    // The choice that is on is told as the item's state in words; the design draws a menu item with no selected state.
+    val chosen = stringResource(R.string.menu_item_chosen)
     DropdownMenuItem(
         text = {
             Text(
@@ -222,6 +224,6 @@ internal fun AndroidMenuItem(
             )
         },
         onClick = onClick,
-        modifier = Modifier.semantics { this.selected = selected },
+        modifier = Modifier.semantics { if (selected) stateDescription = chosen },
     )
 }

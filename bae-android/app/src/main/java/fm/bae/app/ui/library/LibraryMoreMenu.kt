@@ -18,8 +18,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.toggleableState
-import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -240,10 +239,12 @@ internal fun GroupByArtistItem(
     grouped: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
+    // The design draws the item with no toggle state; the item says on or off in words.
+    val state = stringResource(if (grouped) R.string.settings_summary_on else R.string.settings_summary_off)
     DropdownMenuItem(
         text = { Text(stringResource(R.string.group_by_artist)) },
         onClick = { onChange(!grouped) },
-        modifier = Modifier.semantics { toggleableState = ToggleableState(grouped) },
+        modifier = Modifier.semantics { stateDescription = state },
         trailingIcon = {
             Icon(
                 imageVector = Icons.Filled.Check,
