@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -217,7 +217,7 @@ private fun DownloadedControl(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            DownloadActionButton(stringResource(R.string.unpin), Icons.Outlined.PushPin) {
+            DownloadActionButton(stringResource(R.string.unpin), ImageVector.vectorResource(R.drawable.ic_keep_off)) {
                 if (asksBeforeUnpinning) asking = true else onUnpin(false)
             }
         }
