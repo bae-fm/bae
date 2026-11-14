@@ -20,10 +20,26 @@ extension ShotScene {
         },
     ]
 
+    /// The cover a scene's albums show: placeholder art named after the album.
+    private static func cover(_ title: String) -> BridgeImageRef {
+        BridgeImageRef(id: title, version: "1", imageType: .cover)
+    }
+
+    private static func coverStore() -> ImageStore {
+        ImageStore(
+            fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+        )
+    }
+
     /// `MacAlbumTile` in a row of four, the first at rest, the third open,
     /// the fourth selected; and `ArtistAlbumCard`.
     private static let albumTileScenes: [ShotScene] = [
-        component("mac.component.album-tile.default", width: 720, height: 270) {
+        component(
+            "mac.component.album-tile.default",
+            width: 720,
+            height: 270,
+            images: coverStore()
+        ) {
             let menu = AlbumCardMenu(
                 targetCount: 1,
                 onPlay: {},
@@ -54,25 +70,40 @@ extension ShotScene {
                     menu: menu
                 )
             }
-            .environment(ImageStore.stub())
         },
         component(
             "mac.component.artist-album-tile.default",
             width: 540,
-            height: 250
+            height: 250,
+            images: coverStore()
         ) {
             HStack(alignment: .top, spacing: ThemeSpace.group) {
-                ForEach(0..<3, id: \.self) { index in
-                    ArtistAlbumCard(
-                        album: PreviewData.albums[index],
-                        onTap: {}
-                    )
-                    .frame(width: 160)
-                }
+                artistAlbumCard("Low Tide Hours", 1992)
+                artistAlbumCard("Field Recordings", 1979)
+                artistAlbumCard("Northbound", 1974)
             }
-            .environment(ImageStore.stub())
         },
     ]
+
+    private static func artistAlbumCard(
+        _ title: String,
+        _ year: Int32
+    ) -> some View {
+        ArtistAlbumCard(
+            album: BridgeAlbum(
+                id: title,
+                title: title,
+                year: year,
+                isCompilation: false,
+                artistLine: .named("Mara Quill"),
+                releaseIds: [],
+                primaryReleaseId: title,
+                cover: cover(title)
+            ),
+            onTap: {}
+        )
+        .frame(width: 160)
+    }
 
     private static func albumTile(
         _ title: String,
@@ -86,7 +117,7 @@ extension ShotScene {
             title: title,
             artistNames: artist,
             year: year,
-            cover: nil,
+            cover: cover(title),
             isExpanded: open,
             isSelected: selected,
             size: 160,
@@ -125,7 +156,12 @@ extension ShotScene {
                     row: inspectorFile(
                         "01 Harbor Lights.flac",
                         size: 34_100_000,
-                        kind: .audio(format: "FLAC")
+                        kind: .audio(format: "FLAC"),
+                        upload: BridgeFileUpload(
+                            fileId: "01 Harbor Lights.flac",
+                            state: .uploading,
+                            pending: nil
+                        )
                     )
                 )
                 StorageInspectorFileRow(
@@ -149,6 +185,7 @@ extension ShotScene {
                 )
             }
             .frame(width: 380)
+            .environment(OutboxStore(uploadsPaused: false))
         },
         component("mac.component.file-details.default", height: 220) {
             StorageFileDetails(

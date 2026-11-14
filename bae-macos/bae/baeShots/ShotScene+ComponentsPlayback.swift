@@ -30,10 +30,16 @@ extension ShotScene {
             id: id,
             size: CGSize(width: 1100, height: 100)
         ) {
-            ShotStage(
+            let images = ImageStore(
+                fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+            )
+            return ShotStage(
                 NowPlayingBarPreview(
                     trackTitle: title,
                     artistNames: title == nil ? nil : "Mara Quill",
+                    cover: title.map {
+                        BridgeImageRef(id: $0, version: "1", imageType: .cover)
+                    },
                     isPlaying: playing,
                     held: load.held,
                     waitsOnStorage: load.waiting,
@@ -42,10 +48,11 @@ extension ShotScene {
                     hasPosition: load.hasPosition,
                     progress: load.progress
                 )
-                .environment(ImageStore.stub())
+                .environment(images)
                 .environment(PreviewData.queueStore(manualCount: 2))
                 .environment(Queue.stub())
-                .frame(maxHeight: .infinity, alignment: .top)
+                .frame(maxHeight: .infinity, alignment: .top),
+                images: images
             )
         }
     }
@@ -59,7 +66,7 @@ extension ShotScene {
             playing: true,
             load: BarLoad(
                 held: [BridgeTrackSpan(start: 0, end: 0.6)],
-                progress: 0.35
+                progress: 102.0 / 303.0
             )
         ),
         nowPlayingBar(
@@ -69,7 +76,7 @@ extension ShotScene {
             load: BarLoad(
                 held: [BridgeTrackSpan(start: 0, end: 0.04)],
                 waiting: true,
-                progress: 0.02
+                progress: 5.4 / 303.0
             )
         ),
         nowPlayingBar(
@@ -89,7 +96,7 @@ extension ShotScene {
             MacSeekBar(
                 source: .track(
                     PreviewData.trackPosition(
-                        positionMs: Int64(position * 303_000),
+                        positionMs: Int64((position * 303_000).rounded()),
                         durationMs: 303_000
                     ),
                     buffered:
@@ -114,12 +121,12 @@ extension ShotScene {
     private static let seekBarScenes: [ShotScene] = [
         seekBar(
             "mac.component.seek-bar.playing",
-            position: 0.35,
+            position: 102.0 / 303.0,
             held: [BridgeTrackSpan(start: 0, end: 0.6)]
         ),
         seekBar(
             "mac.component.seek-bar.holes",
-            position: 0.2,
+            position: 61.0 / 303.0,
             held: [
                 BridgeTrackSpan(start: 0, end: 0.3),
                 BridgeTrackSpan(start: 0.55, end: 0.7),
@@ -164,7 +171,10 @@ extension ShotScene {
     ]
 
     private static func queueRow(_ id: String, hover: Bool) -> ShotScene {
-        component(id, height: 90) {
+        let images = ImageStore(
+            fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+        )
+        return component(id, height: 90, images: images) {
             QueueItemRow(
                 item: BridgeQueueEntry(
                     entryId: "e-harbor-lights",
@@ -175,7 +185,11 @@ extension ShotScene {
                         albumId: "a-01",
                         releaseId: "r-01",
                         albumTitle: "Low Tide Hours",
-                        coverImage: nil
+                        coverImage: BridgeImageRef(
+                            id: "Low Tide Hours",
+                            version: "1",
+                            imageType: .cover
+                        )
                     ),
                     durationClock: bridgeLengthClock(ms: 272_000)
                 ),
@@ -185,7 +199,7 @@ extension ShotScene {
                 onRemove: { _ in }
             )
             .frame(width: 380)
-            .environment(ImageStore.stub())
+            .environment(images)
         }
     }
 

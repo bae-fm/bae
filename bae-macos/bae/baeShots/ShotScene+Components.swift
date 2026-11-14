@@ -128,23 +128,29 @@ extension ShotScene {
 
     /// A component's state: `view` at the top left of a frame `width` points
     /// wide, which is the preview's column with the 8pt it leaves round a
-    /// row.
+    /// row, over the elevated surface the preview draws every component on.
     static func component<Content: View>(
         _ id: String,
         width: CGFloat = 396,
         height: CGFloat,
+        images: ImageStore? = nil,
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
-            ShotStage(
-                view()
-                    .padding(8)
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .topLeading
-                    )
-            )
+            let content = view()
+                .padding(8)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .topLeading
+                )
+                .background(Theme.surfaceElevated)
+            // Every view that draws art reads the store from the
+            // environment, as the app's window passes it.
+            guard let images else {
+                return ShotStage(content.environment(ImageStore.stub()))
+            }
+            return ShotStage(content.environment(images), images: images)
         }
     }
 }

@@ -11,6 +11,8 @@ import SwiftUI
 struct NowPlayingBarPreview: View {
     let trackTitle: String?
     let artistNames: String?
+    /// The cover of the playing track, if the track has one.
+    var cover: BridgeImageRef?
     let isPlaying: Bool
     /// The parts of the track whose bytes are here.
     var held = [BridgeTrackSpan(start: 0, end: 1)]
@@ -35,12 +37,12 @@ struct NowPlayingBarPreview: View {
         MacNowPlayingBar(
             trackTitle: trackTitle,
             secondaryLine: artistNames,
-            cover: nil,
+            cover: cover.map { .libraryImage($0) },
             isPlaying: isPlaying,
             position: hasPosition
                 ? PreviewData.trackPosition(
-                    positionMs: Int64(progress * 222_000),
-                    durationMs: 222_000
+                    positionMs: Int64(progress * 303_000),
+                    durationMs: 303_000
                 )
                 : nil,
             buffered: hasPosition
@@ -79,8 +81,11 @@ struct NowPlayingBarPreview: View {
             onDropToQueue: { _ in },
             onNavigateToAlbum: {},
             queueAddPublisher: Empty().eraseToAnyPublisher(),
-            castControl: AnyView(EmptyView()),
+            castControl: AnyView(CastButton()),
         )
+        .environment(Cast.stub())
+        .environment(CastStart.stub())
+        .environment(CastStore())
         .frame(width: 1100)
     }
 }
