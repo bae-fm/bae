@@ -72,8 +72,12 @@ fn stored_outcome(
 
 /// How many folders each scan still under way has stored, by its root: the
 /// roots whose current generation has stored no outcome.
-const SCAN_FOUND_COUNTS: &str = "SELECT watched_folder_path, found_count \
-     FROM folder_scan_roots WHERE status IS NULL";
+const SCAN_FOUND_COUNTS: &str = "SELECT roots.watched_folder_path, \
+            (SELECT COUNT(*) FROM scan_candidate AS candidate \
+             WHERE candidate.watched_folder_path = roots.watched_folder_path \
+               AND candidate.generation = roots.generation \
+               AND candidate.source_kind = 'folder') \
+     FROM folder_scan_roots AS roots WHERE roots.status IS NULL";
 
 fn load_scan_found_counts_on(sql: &SqlReadContext<'_>) -> Result<ScanFoundCounts, DbError> {
     sql.query(SCAN_FOUND_COUNTS, [], |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)))?
