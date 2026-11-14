@@ -2245,7 +2245,7 @@ A release is *uploaded* once every one of its files is in storage.
 In the apps' words the library's place in storage is *the cloud*: a release
 there reads In cloud (Cloud in the Storage manager's Storage column), the
 move is Move to cloud, and no screen says "storage"
-alone for it. Where sync is set up, the place itself, the folder or bucket on
+alone for it. Where sync is set up, the place itself, the folder or S3 storage on
 the household's provider that coven's store lives in, is the person's *cloud
 home*: the Sync settings section and the setup steps. The Storage manager and a
 release's Storage sheet keep "Storage", since they cover the files on this
@@ -3225,7 +3225,7 @@ code without the spaces (`restore_code::entered`). A scanned code starts at once
 confirm it, and a typed code starts when the person chooses **Continue**: the
 person scanned or entered it to add this device, or to join. Only an S3 code
 without the key stops first, to ask for it on a second sheet, **S3 key**, in a
-few words ("Enter your credentials for the S3 bucket.") over the access key's
+few words ("Enter your credentials for your S3 storage.") over the access key's
 two fields, with **Back** to the code and **Add**. The running restore takes the
 window in place of the sheet, with its step, a bar and **Cancel**, and a running
 join takes it with its wait for approval. A code that doesn't read, and a
@@ -3312,7 +3312,7 @@ from the end of its last check, and when it doesn't, on coven's doubling waits
 (a provider's cooldown holds either). Every other state of a running join (opening,
 connecting, loading, registering, committing, an error) is the same step with the library's
 name as its headline, the progress line under it, and **Cancel** while it can cancel. When
-his request arrives, Ana's laptop shows a dialog titled "Dan wants to join", with the name Dan typed, asks her to make sure this code is showing, and shows
+his request arrives, Ana's laptop shows a dialog titled "Dan wants to join", with the name Dan typed, says "Approve them if their screen shows this code:", and shows
 the same number under it, with **Approve** and **Decline**. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,
@@ -3454,7 +3454,7 @@ The saved-code list sits on the first screen under Your libraries, titled
 phone, with a line under it saying what the codes are. Each row ends in a ⋯
 menu (⋮ on Android). The list shows each code under its library's name as Carol's
 devices last saw it (§5.1), over where the library is stored: the provider and
-account. Dropbox and OneDrive show the account's email; S3 shows the bucket and
+account. Dropbox and OneDrive show the account's email; S3 shows the S3 storage's name and
 endpoint; iCloud shows iCloud. Two libraries can share a name, and a rename
 none of her devices has seen yet leaves the old one, so the location is what
 tells them apart. On a Mac a row has a **Restore** button, and the restore screen for a saved code shows both. On
@@ -3467,7 +3467,7 @@ scanned code carries no name, so its screens show only where the library is
 stored until the tablet has loaded it, then the library's current name.
 
 **Deleting a saved code.** Carol once tried a library on S3, then deleted its
-bucket, and her new tablet still offers it. Each code in the saved-code list
+S3 storage, and her new tablet still offers it. Each code in the saved-code list
 has **Delete…** in its menu. It asks first, saying that it removes the saved code from
 iCloud Keychain on all her Apple devices, or on Android from this device only,
 and doesn't delete the library, or anything on this device or in her storage;
@@ -3496,7 +3496,7 @@ than looking like a device with no saved codes. An Android phone without
 Google Play services has no Block Store and keeps no saved codes, so its first
 screen lists none.
 
-**The S3 key.** On S3 a restore code doesn't reach the bucket alone: the device
+**The S3 key.** On S3 a restore code doesn't reach the S3 storage alone: the device
 also needs Carol's S3 access key. No restore code holds it, whether typed or
 scanned: the new device asks for the key
 ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
@@ -3603,7 +3603,7 @@ storage (§4.2).
 
 ### 6.2 Storage
 
-A library's *storage* is where coven stores it: an S3-compatible bucket,
+A library's *storage* is where coven stores it: S3-compatible storage,
 Dropbox, OneDrive, or iCloud on Apple devices. A library can
 also have none and stay on one device, on a Mac. A phone joins a library and
 never makes one, so a phone's library always has a cloud home: a phone never
@@ -3615,26 +3615,45 @@ Every kind of storage holds the same thing: encrypted objects under random names
 [Part VI](https://github.com/bae-fm/coven/blob/main/spec/coven.md#part-vi-storage)
 says what each provider needs.
 
-**S3 setup.** Dan, on the baeium edition, sets up a library on a Cloudflare R2
-bucket. The form asks for the endpoint, region and bucket, then the access key
+**S3 setup.** Dan, on the baeium edition, sets up a library in S3 storage on
+Cloudflare R2. The form asks for the endpoint, region and bucket, then the access key
 ID and secret access key, and nothing else: no profile, no key prefix, as the
-library takes the whole bucket. coven knows R2 by its endpoint's host and fills
+library takes all of the S3 storage. coven knows R2 by its endpoint's host and fills
 in how to talk to it
 ([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
 When coven refuses a setup, bae says why in plain words, and the form stays as
-typed. A region or endpoint that doesn't match the bucket shows its reason under
-Region; a bucket that isn't there, or that holds other files, under Bucket;
+typed. A region or endpoint that doesn't match the S3 storage shows its reason under
+Region; S3 storage that isn't there, or that holds other files, under Bucket;
 any other reason at the top of the form, above the fields. The reason
 sits in its field's own row. A
 refused key reads "This key was not accepted. Check the access key ID and secret
-access key.", and a key the bucket doesn't allow reads "This key cannot use the
-bucket. Give it read and write access, or use another key."
+access key.", and a key the S3 storage doesn't allow reads "This key cannot use this
+S3 storage. Give it read and write access, or use another key."
+
+**Replacing the S3 key.** The Sync page of an S3 library, on the Mac and on
+Android, shows the id of the library's access key in its Cloud home rows (the
+secret never shows), with **Replace key…** (on Android, **Replace key**). It
+opens the S3 key sheet: *Enter a key that can use this library's S3 storage.*
+over Access key ID and Secret access key, with **Cancel** and **Save**, which
+stays off until both fields hold text. The welcome's S3 key sheet draws the same
+two fields. **Save** calls coven's one call for a new S3 key, which checks the
+key with S3 storage and replaces the one the library uses; while it checks, the
+sheet says *Checking the key with S3 storage…* in place of the fields, with only
+**Cancel**. A key S3 storage refuses keeps the typed text and says *This key was
+not accepted.* / *Check the access key ID and secret access key.* above the
+fields. After a save the sheet closes, the page shows the new key's id, and a
+line the person can dismiss says *Saved the new S3 key.* / *Delete the old key,
+AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming the old key's id.
+bae never deletes the old key and keeps no record of its id once the line is
+dismissed or the page closes
+([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
+The words for the place are always "S3 storage", never "bucket".
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
 providers this build offers, in the order iCloud, Dropbox, OneDrive and
 S3-compatible, one row each with a line saying what it is (iCloud
 uses the Apple Account the Mac is signed in to; Dropbox, a shared folder in the
-person's Dropbox; OneDrive, a folder in their OneDrive; S3, a bucket they
+person's Dropbox; OneDrive, a folder in their OneDrive; S3, S3 storage they
 manage), and choosing a row only selects it. *Continue* opens the selected
 provider's screen: the S3 form, iCloud's one line, or, for Dropbox and OneDrive,
 the browser's sign-in, which opens as that screen does and has no button of its
@@ -3702,15 +3721,15 @@ dismisses it. Starting a setup while another runs, a call still under way or
 one from before that sync finishes, is refused, saying to try again once it
 has. A cancel counts from the moment the setup's call starts.
 
-Every library has its storage location to itself: an S3 bucket, a Dropbox
+Every library has its storage location to itself: S3 storage, a Dropbox
 shared folder or a OneDrive folder
 ([coven §20.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#203-where-a-store-lives)).
 coven can't tell how far an S3 access key reaches, so it takes every key to
-reach the whole bucket, and every member of a Dropbox or OneDrive library
+reach all of the S3 storage, and every member of a Dropbox or OneDrive library
 reaches all of its folder: a member of one library could otherwise delete
 another's objects. Setting a new library up refuses a location holding
 anything but that library's own folder and coven's marker naming it, with a
-line saying to use an empty bucket or folder only this library uses.
+line saying to use empty S3 storage or a folder only this library uses.
 Reconnecting, restoring and joining read only the marker, and refuse a
 location whose marker is missing or names another library.
 
@@ -3970,7 +3989,9 @@ storage* where the line names the place the library is kept.
     you sign in to iCloud in System Settings.*, with *Open System Settings…*.
   - Signed out of S3, while storage refuses the library's access key: *Your
     changes stay on this Mac until you sign in to S3 storage.*, with *Sign in to
-    S3…*.
+    S3…* (on Android, *Sign in to S3*), which opens the same S3 key sheet as
+    *Replace key…* (§6.2). The page keeps showing the recorded key's id, and a
+    saved key shows the same line about deleting the old one.
   - A sign-in that expired reads the same as none saved.
 - **Red.**
   - Removed from the library, when an admin removed this device: *An admin
@@ -4073,7 +4094,7 @@ coven then reports the state Signed out, with no cause
 ([coven F.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#f4-opening-closing-and-sync)),
 and the Sync page shows it as it shows any sign-out: the recorded storage's
 rows and the fix that connects that location again, never other storage: a
-new access key for its S3 bucket, the provider's sign-in for Dropbox and
+new access key for its S3 storage, the provider's sign-in for Dropbox and
 OneDrive, iCloud's own setup for iCloud. On a Mac, a library with no recorded location
 is Not synced, and offers setting up sync instead.
 
@@ -4109,9 +4130,9 @@ is about another device's upload.
 Ben's laptop has two problems: Dropbox wants him to sign in again, which the
 Sync page's status says with *Sign in*, and a file of his vinyl rip moved
 before it uploaded, which its release's row in Storage Manager names. *Sign in*: core signs in with the access the library's folder needs, then
-connects that location again. On a library in an S3
-bucket, *Sign in* asks for a new access key for that bucket instead, the same
-form Settings shows a device that lost its key, and connects the bucket again
+connects that location again. On a library in
+S3 storage, *Sign in* asks for a new access key for that S3 storage instead, the same
+form Settings shows a device that lost its key, and connects the S3 storage again
 with it. The release's row
 offers to restore the file: put it back where it was imported from, and coven
 retries the upload. A file that changed instead stops its release's move to
@@ -6667,7 +6688,7 @@ with one of these categories and a detail:
 | `Export`, `Save` | reads the detail |
 | `Storage` | does what coven's provider reason, which the line names, asks: frees space, fixes this device's clock, signs in again, retries the network |
 | `StorageCheck` | changes what the check of the storage it failed names |
-| `S3VersioningUnknown`, `S3VersioningUnsupported` | uses a bucket whose versioning coven can read and work with |
+| `S3VersioningUnknown`, `S3VersioningUnsupported` | uses S3 storage whose versioning coven can read and work with |
 | `StorageLocationChangeUnsupported` | keeps the library's storage location; it can't move |
 | `StoreOwnerAccount` | signs in with the account that holds the library's storage: setting up its storage again or restoring it as the person whose account holds it, under another account, is refused, since their access can't move to another account ([coven §20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)) |
 | `Credentials` | fixes the storage settings |

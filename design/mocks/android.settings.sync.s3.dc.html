@@ -14,28 +14,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;background:var(--background)}
 a{color:var(--accent)}a:hover{color:#F6BFD9}
-.ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
-.ib svg{fill:currentColor}
-.row{display:flex;flex-direction:column;justify-content:center;min-height:72px;padding:12px 16px;color:var(--text-primary);text-decoration:none;box-sizing:border-box}
-.rt{font-size:16px;line-height:24px}
-.sec{margin:0;padding:24px 32px 8px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary)}
-.sw{width:52px;height:32px;border-radius:16px;flex:none;position:relative;border:0;cursor:pointer}
-.foot{padding:0 16px 8px;font-size:12px;line-height:16px;color:var(--text-secondary)}
-.rs{font-size:14px;line-height:20px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}.card:first-child{margin-top:16px}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
   <dc-import name="android.parts.sync-status" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
-  <x-import component-from-global-scope="Bae.AndroidSection" title="Cloud home"></x-import>
-  <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="S3-compatible"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Endpoint" subtitle="https://s3.home.lan"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Region" subtitle="us-east-1"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Bucket" subtitle="my-bucket"></x-import>
-  </x-import>
+  <dc-import name="android.parts.s3-cloud-home" key-id="AKIA4EXAMPLEOLD" hint-size="100%,400px"></dc-import>
   <dc-import name="android.parts.restore-code" s3="true" hint-size="100%,260px"></dc-import>
 </x-import>
 </x-dc>

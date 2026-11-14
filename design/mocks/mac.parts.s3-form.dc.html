@@ -42,13 +42,13 @@ class Component extends DCLogic {
     const error = this.props.error ?? 'none';
     const top = {
       key: 'This key wasn\u2019t accepted. Check the access key ID and secret access key.',
-      denied: 'This key can\u2019t use the bucket. Give it read and write access, or use another key.'
+      denied: 'This key cannot use this S3 storage. Give it read and write access, or use another key.'
     }[error] || '';
     const bucketError = {
       bucket: 'The cloud home was not found.',
-      occupied: 'Use an empty bucket or folder that only this library uses.'
+      occupied: 'Use empty S3 storage or a folder that only this library uses.'
     }[error] || '';
-    const regionError = error === 'region' ? 'The region or endpoint doesn\u2019t match this bucket.' : '';
+    const regionError = error === 'region' ? 'The region or endpoint does not match this S3 storage.' : '';
     return {
       yes: true,
       topError: top,

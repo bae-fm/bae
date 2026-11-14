@@ -1941,7 +1941,7 @@
   "mac.settings.sync-setup.s3-access-denied.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, key can’t use the bucket",
+   "title": "macOS: Set up sync: S3-compatible, key can’t use the S3 storage",
    "w": 690,
    "x": 6930,
    "y": 6692
@@ -1949,7 +1949,7 @@
   "mac.settings.sync-setup.s3-bucket-not-empty.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, bucket not empty",
+   "title": "macOS: Set up sync: S3-compatible, S3 storage not empty",
    "w": 690,
    "x": 9240,
    "y": 6692
@@ -1957,7 +1957,7 @@
   "mac.settings.sync-setup.s3-bucket-not-found.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, bucket not found",
+   "title": "macOS: Set up sync: S3-compatible, S3 storage not found",
    "w": 690,
    "x": 8470,
    "y": 6692
@@ -4306,6 +4306,134 @@
    "w": 412,
    "x": 1968,
    "y": 6828
+  },
+  "mac.settings.sync.s3-replace-key.checking.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3, replace key, checking",
+   "w": 690,
+   "x": 11240,
+   "y": 7652
+  },
+  "mac.settings.sync.s3-replace-key.filled.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3, replace key, filled",
+   "w": 690,
+   "x": 10470,
+   "y": 7652
+  },
+  "android.settings.sync.s3-key-replaced.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3, key replaced",
+   "w": 412,
+   "x": 11668,
+   "y": 8652
+  },
+  "mac.settings.sync.s3-replace-key.refused.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3, replace key, refused",
+   "w": 690,
+   "x": 12010,
+   "y": 7652
+  },
+  "android.settings.sync.s3-replace-key.filled.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3, replace key, filled",
+   "w": 412,
+   "x": 10192,
+   "y": 8652
+  },
+  "mac.settings.sync.s3-key-replaced.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3, key replaced",
+   "w": 690,
+   "x": 12780,
+   "y": 7652
+  },
+  "mac.settings.sync.signed-out-s3.sign-in.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: signed out (S3), sign in",
+   "w": 690,
+   "x": 13550,
+   "y": 7652
+  },
+  "android.settings.sync.s3-replace-key.empty.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3, replace key, empty",
+   "w": 412,
+   "x": 9700,
+   "y": 8652
+  },
+  "android.settings.sync.signed-out-s3.sign-in.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: signed out (S3), sign in",
+   "w": 412,
+   "x": 12160,
+   "y": 8652
+  },
+  "android.settings.sync.s3-replace-key.refused.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3, replace key, refused",
+   "w": 412,
+   "x": 11176,
+   "y": 8652
+  },
+  "mac.parts.s3-cloud-home.dc.html": {
+   "h": 300,
+   "page": "shared",
+   "title": "macOS: S3 cloud home",
+   "w": 650,
+   "x": 540,
+   "y": 2300
+  },
+  "mac.settings.sync.s3-replace-key.empty.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Sync: S3, replace key, empty",
+   "w": 690,
+   "x": 9700,
+   "y": 7652
+  },
+  "android.parts.s3-cloud-home.dc.html": {
+   "h": 420,
+   "page": "shared",
+   "title": "S3 cloud home",
+   "w": 412,
+   "x": 1642,
+   "y": 2300
+  },
+  "mac.parts.s3-key-fields.dc.html": {
+   "h": 140,
+   "page": "shared",
+   "title": "macOS: S3 key fields",
+   "w": 460,
+   "x": 0,
+   "y": 2300
+  },
+  "android.parts.s3-key-fields.dc.html": {
+   "h": 170,
+   "page": "shared",
+   "title": "S3 key fields",
+   "w": 292,
+   "x": 1270,
+   "y": 2300
+  },
+  "android.settings.sync.s3-replace-key.checking.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Sync: S3, replace key, checking",
+   "w": 412,
+   "x": 10684,
+   "y": 8652
   }
  },
  "createdOnFiles": {
@@ -4468,6 +4596,9 @@
   "row-welcome-create",
   "code-welcome-create",
   "code-welcome-damaged-join",
+  "row-library-s3-key",
+  "row-shared-s3key",
+  "code-s3-key",
   "row-play-pin-android",
   "row-play-pin-mac",
   "code-casting-pin"
@@ -4540,7 +4671,7 @@
   "code-invite": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list is followed by the invite: on macOS an “Invite…” button under the box, on the right (today “Invite a person…”, MembersSection.swift:100), “Invite” with a + on Android (today a filled “Invite a person” button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, “Their account email” or keys, In person or Send, an expiry, “Create invitation” (InvitePersonSheet.swift, InviteDialog.kt). coven change (§13.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm §14.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and “Sharing the library with <email>…”; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (“Expires in 7 days”, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and “Sharing the library. The code shows once this library syncs.” online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today “Check for requests” (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: “<name> wants to join”, then “Make sure this code is showing:”, the code, Decline and Approve. Today the request sheet shows the invitee's name, “Confirmation number” and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: “Cancel this invite?” with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec §13.2). Its row becomes a notice, “Couldn’t invite: Dropbox has no account for it”, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued in the work queue: coven items (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), then the bae item after the coven pin moves.",
+   "text": "What the code needs for the invite boards (refs are main as of Nov 6):\n- The People list is followed by the invite: on macOS an “Invite…” button under the box, on the right (today “Invite a person…”, MembersSection.swift:100), “Invite” with a + on Android (today a filled “Invite a person” button after the list, MembersScreen.kt:356, strings.xml:347). bae change.\n- The form asks only what the storage shares with: their Dropbox, Microsoft or Apple Account email, or on S3 an access key, with a line saying why; on S3, Use my key instead (under the fields on Android, left of the footer on macOS) hands them your own key, saying that removing them later means a new key on each of your devices; then Create invite. No name, no role (everyone joins as Member), no in person or sent, a week to expire. Today: name, role, “Their account email” or keys, In person or Send, an expiry, “Create invitation” (InvitePersonSheet.swift, InviteDialog.kt). coven change (§13.2: the join request carries the name, not the invite; one kind of invite, always approved by comparing the number; confirm §14.3 lets two members share one S3 key), then bae; the spec's walk-through (spec/bae.md:2369) changes with it.\n- The invite screen, titled Invite: while sharing, a bar and “Sharing the library with <email>…”; offline, that the code shows once this device is online; then one MacScanCode or AndroidScanCode: what to do, the QR code alone (no code text beside it), Copy code and Share, how long until it expires (“Expires in 7 days”, relative, as InviteCodeSheet.swift does today) and that the request shows up within seconds. The code has no such shared view yet: InviteCodeSheet.swift and InviteShownDialog.kt each lay out the QR code themselves. Today one spinner and “Sharing the library. The code shows once this library syncs.” online or not (InviteCodeSheet.swift:89, strings.xml:401); an in-person invite shows only the QR code, a sent one only the code; the title is the invitee's name. bae change.\n- While the invite screen is open, the app asks sync to check every 5 seconds, as Add device does (bae-library/src/manager/people.rs, sync_often). Today nothing does for invites. bae change.\n- An open invite's row: its email (its key on S3), Invited, and a chevron that opens its screen; Shares access once online while offline; Joining once approved. No refresh button: today “Check for requests” (MembersSection.swift:448, MembersScreen.kt InviteRow). bae change.\n- Their request: “<name> wants to join”, then “Approve them if their screen shows this code:”, the code, Decline and Approve. Today the request sheet shows the invitee's name, “Confirmation number” and the number, Close, Decline, Approve (MembersSection.swift JoinRequestSheet). bae change.\n- Cancel invite asks first: “Cancel this invite?” with Keep. Today the same confirmation with core's words (core.invite.cancel_confirm.*). Matches; words only.\n- S3: the code screen also shows the key's ID and says to delete the key if nobody uses the invite (spec/bae.md:2412). Built (InviteCodeSheet.swift keyLine); not drawn yet.\n- A sharing failure a retry can't fix (no such account, say) ends the invite by itself, as a failed request check does (coven spec §13.2). Its row becomes a notice, “Couldn’t invite: Dropbox has no account for it”, with Dismiss; there is no failed screen to cancel from. A failure a retry can fix keeps retrying, the invite still Sharing. Today the invite stays open with coven's held reason, in its row and screen, until it is cancelled (InviteCodeSheet.swift:80, MembersSection.swift InviteRow). coven change (end the invite on a permanent sharing failure, keeping why for the app), then bae.\n- Queued: plans/invites.md; coven in todo.md §2 #214 (one kind of invite, the name in the request, a permanent sharing failure ends the invite, two members on one S3 key), bae in #215 after the coven pin bump.",
    "w": 420,
    "x": 7558,
    "y": 15560
@@ -4572,7 +4703,7 @@
   "code-people": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code. The code screen is a MacScanCode or AndroidScanCode: “Scan or enter the code on the new device.”, the QR code alone, Copy code and Share, and “Works while this stays open. Once the new device enters it, its request shows up here within seconds.” The request replaces it in place: “Tablet wants to join”, then “Add it if its screen shows this code:”, the code, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then adding: on macOS an “Add device…” button under the box, on the right; on Android an “Add device” row with a +, last. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- “Remove from library”. Today Android reads “Remove person” (strings.xml:335) and macOS a trash glyph, “Remove from the library” (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says “this device”, never “this phone”: today “Changes from this phone”, “Saved on this phone” and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
+   "text": "What the code needs for these boards (refs are main as of Nov 6):\nPeople and devices\n- Two sections, You and People. Under You: a read-only Role row and a Devices row that opens Your devices. Today one People section with a You marker (MembersSection.swift:61, :292). bae change.\n- Add device pairs like an invite instead of showing the restore code (plans/add-device-pairing.md; coven todo.md §2 #227, bae #228). The code screen is a MacScanCode or AndroidScanCode: “Scan or enter the code on the new device.”, the QR code alone, Copy code and Share, and “Works while this stays open. Once the new device enters it, its request shows up here within seconds.” The request replaces it in place: “Tablet wants to join”, then “Add it if its screen shows this code:”, the code, Decline and Add. Closing the screen ends the pairing. On S3 only the QR code carries the access key; a device that enters the copied code asks for it. Today the screen shows the restore code as a QR code and text, with the S3 key line (AddDeviceSheet.swift, AddDeviceDialog.kt). coven change, then bae.\n- Your devices: each device, this one reading This device with no Remove (it leaves by removing the library from it, ActiveDevice::removable, bae-people/src/membership.rs:91); then adding: on macOS an “Add device…” button under the box, on the right; on Android an “Add device” row with a +, last. bae change.\n- Each other person is one row (role, device count) that opens their page: Role with Make admin or Make member, Remove from library in red, their devices. Today macOS lists people with their devices and buttons in one box (MembersSection.swift:63, :326), Android in one list (MembersScreen.kt:437). bae change.\n- “Remove from library”. Today Android reads “Remove person” (strings.xml:335) and macOS a trash glyph, “Remove from the library” (MembersSection.swift:313). bae change.\n- A member's person rows open nothing. coven lets a member read every person's devices; bae leaves that page out on purpose: a member has nothing to do there.\n- Android: Listening history is a choice of AndroidRadio rows in an AndroidDialog; the code has no radio row yet. bae change.\n- Android says “this device”, never “this phone”: today “Changes from this phone”, “Saved on this phone” and the recovery-code lines (strings.xml:384-397, :419). bae change, every locale.",
    "w": 420,
    "x": 7732,
    "y": 11672
@@ -5490,7 +5621,7 @@
   "setup-code-gaps": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for these boards:\n- Restore code at the end of setup: the bridge already returns it (BridgeStorageSetup.restore_code), but the macOS sheet drops it (SyncSetupWizard.swift connected). bae change.\n- Done lands on the Sync page with Restore code on it: bae change. The code can be fetched again any time (generate_restore_code).\n- Cancel while setup runs: coven can't stop a setup once it starts. Journaling setup (coven list) makes this Cancel real, and lets a crash resume or undo. coven change, then bae.\n- Not synced page, Sync page and their states: bae change, over coven's sync state, as the Sync row's boards and their note show.\n- Choose then Continue, and the browser opening on Continue: today each provider is a row that opens its form, and Dropbox and OneDrive wait for Sign in…. bae change.\n- S3 row reads “A bucket you manage.” Today the app’s line lists storage services by name (BridgeCloudProvider+Setup.swift:13), Backblaze among them, which setup refuses (coven notes/providers.md). bae change.\n- Choose an empty folder: after Set up, setup checks the folder first (Checking the folder…) and, if it holds anything, stops and returns to the list saying so. coven now refuses a Dropbox or OneDrive folder or an S3 bucket that holds anything else (StorageFailure::OwnLocationRequired, coven spec §20.3). bae change: the check before Set up and the words.\n- New folder… on Dropbox (makes the folder and shares it): coven can't make and share a Dropbox folder; it calls sharing/share_folder only in its live tests (dropbox_live.rs:122). coven change, then bae.\n- One folder picker for Dropbox and OneDrive, the same view on each platform: the list, the empty-folder line, New folder… and its naming row, checking, not empty. Only the provider's facts differ: OneDrive folders open into others (where you are, ›), Dropbox's shared folders are one flat list and a new one is shared. Today macOS keeps one state for both (StorageFolderBrowser.swift) but draws two different lists (OAuthFolderSetup.swift:78-119), and Android has OneDriveBrowser.kt beside ProviderFolderChoice.kt. bae change.\n- S3 form: Endpoint, Region, Bucket, the key, in the Sync page's order; no Advanced. Today the form is Bucket, Region, Endpoint, keys (S3SetupForm.swift:43-52), with Profile and Detect settings in Advanced (:55-73); Key prefix is already gone. bae change.\n- S3 setup failing: the form comes back as typed. A region that doesn’t match (RegionMismatch) shows under Region, a missing bucket (ContainerNotFound) and a bucket holding other files (OwnLocationRequired) under Bucket; any other failure at the top of the form. Today every failure shows below the fields, above Set up (SyncSetupWizard.swift:286), in the catalog’s more general words (catalog.toml core.error.cloud_setup.*, core.error.category.credentials). bae change.\n- An S3 library takes a whole bucket that holds nothing else, as a Dropbox or OneDrive folder must. Built in coven (OwnLocationRequired); key prefixes are gone.\n- Everything else, the steps and their words, is what the code does today.\n- macOS: every sheet ends in a MacSheetFooter, the one primary button on the right. The code has no shared sheet footer yet. bae change.\n- Restore code view (setup's last step and the Sync page, its one home): masked with Copy, plus Show and Hide; shown, the code reads in groups of four (“CVR1 ABCD EFGH …”) for writing on paper, and typed entry drops the spaces before decoding (coven has one spelling, format.md “As text”). Caption: “Print this code or save it in a password manager. It gets you back into your library if you lose all your devices.”; on S3 Android’s “You’ll also need your S3 access key and secret.” stays. Today Android calls it “recovery code” (recovery_code_title, RecoveryCodeSection.kt) and shows it ungrouped; macOS has no Show (RecoveryCodeRevealTests.swift). Print… (Print on Android) prints one page: the QR code, the grouped code, the provider and account as decode_code_info gives them (never the library's name, which can change: coven §13.1), the date, and how to use and keep it; the real code is about 250 characters. On S3 the printed code holds no access key. bae change, every locale.",
+   "text": "What the code needs for these boards:\n- Restore code at the end of setup: the bridge already returns it (BridgeStorageSetup.restore_code), but the macOS sheet drops it (SyncSetupWizard.swift connected). bae change.\n- Done lands on the Sync page with Restore code on it: bae change. The code can be fetched again any time (generate_restore_code).\n- Cancel while setup runs: coven can't stop a setup once it starts. Journaling setup (coven list) makes this Cancel real, and lets a crash resume or undo. coven change, then bae.\n- Not synced page, Sync page and their states: bae change, over coven's sync state, as the Sync row's boards and their note show.\n- Choose then Continue, and the browser opening on Continue: today each provider is a row that opens its form, and Dropbox and OneDrive wait for Sign in…. bae change.\n- S3 row reads “S3 storage you manage.” Today the app’s line lists storage services by name (BridgeCloudProvider+Setup.swift:13), Backblaze among them, which setup refuses (coven notes/providers.md). bae change.\n- Choose an empty folder: after Set up, setup checks the folder first (Checking the folder…) and, if it holds anything, stops and returns to the list saying so. coven now refuses a Dropbox or OneDrive folder or S3 storage that holds anything else (StorageFailure::OwnLocationRequired, coven spec §20.3). bae change: the check before Set up and the words.\n- New folder… on Dropbox (makes the folder and shares it): coven can't make and share a Dropbox folder; it calls sharing/share_folder only in its live tests (dropbox_live.rs:122). coven change, then bae.\n- One folder picker for Dropbox and OneDrive, the same view on each platform: the list, the empty-folder line, New folder… and its naming row, checking, not empty. Only the provider's facts differ: OneDrive folders open into others (where you are, ›), Dropbox's shared folders are one flat list and a new one is shared. Today macOS keeps one state for both (StorageFolderBrowser.swift) but draws two different lists (OAuthFolderSetup.swift:78-119), and Android has OneDriveBrowser.kt beside ProviderFolderChoice.kt. bae change.\n- S3 form: Endpoint, Region, Bucket, the key, in the Sync page's order; no Advanced. Today the form is Bucket, Region, Endpoint, keys (S3SetupForm.swift:43-52), with Profile and Detect settings in Advanced (:55-73); Key prefix is already gone. bae change.\n- S3 setup failing: the form comes back as typed. A region that doesn’t match (RegionMismatch) shows under Region, missing S3 storage (ContainerNotFound) and S3 storage holding other files (OwnLocationRequired) under Bucket; any other failure at the top of the form. Today every failure shows below the fields, above Set up (SyncSetupWizard.swift:286), in the catalog’s more general words (catalog.toml core.error.cloud_setup.*, core.error.category.credentials). bae change.\n- An S3 library takes all of an S3 storage that holds nothing else, as a Dropbox or OneDrive folder must. Built in coven (OwnLocationRequired); key prefixes are gone.\n- Everything else, the steps and their words, is what the code does today.\n- macOS: every sheet ends in a MacSheetFooter, the one primary button on the right. The code has no shared sheet footer yet. bae change.\n- Restore code view (setup's last step and the Sync page, its one home): masked with Copy, plus Show and Hide; shown, the code reads in groups of four (“CVR1 ABCD EFGH …”) for writing on paper, and typed entry drops the spaces before decoding (coven has one spelling, format.md “As text”). Caption: “Print this code or save it in a password manager. It gets you back into your library if you lose all your devices.”; on S3 Android’s “You’ll also need your S3 access key and secret.” stays. Today Android calls it “recovery code” (recovery_code_title, RecoveryCodeSection.kt) and shows it ungrouped; macOS has no Show (RecoveryCodeRevealTests.swift). Print… (Print on Android) prints one page: the QR code, the grouped code, the provider and account as decode_code_info gives them (never the library's name, which can change: coven §13.1), the date, and how to use and keep it; the real code is about 250 characters. On S3 the printed code holds no access key. bae change, every locale.",
    "w": 380,
    "x": 1190,
    "y": 2852
@@ -5535,7 +5666,7 @@
    "fill": "blue",
    "page": "library",
    "size": 24,
-   "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Cloud full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is desktop only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same bucket. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
+   "text": "How the sync states behave:\n- coven gives the state; bae picks the words and the fix.\n- When several hold, the first shows: Not synced, Removed from the library, Device needs reset, Update needed, Signed out, No access, Folder missing, Clock is wrong, Cloud full, Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync, Synced.\n- Not synced is desktop only: a phone joins a library and never makes one.\n- Syncing… only while something is sent or received, not on quiet passes.\n- Waiting to sync: online, with changes held back. Gray when uploads are paused or an upload waits to retry; amber when the provider asked bae to wait, saying when it resumes. Android never uploads files, so its only reason is the provider's wait.\n- Synced means data and files both: a file still uploading is Syncing….\n- Offline with changes waiting is Offline · unsent changes, with no count.\n- Signed out names the provider and its sign-in: Dropbox and OneDrive sign in from bae; iCloud from System Settings. S3 has no sign-in: it reads Access key not accepted and asks for a new key for the same S3 storage. An expired sign-in reads the same as none saved.\n- Sync failed: any failure with no state of its own, its cause in plain words, always with Retry now; it also retries by itself. A file that can't be uploaded (missing, or changed since import) names the file until it's back as it was; nothing skips it. Phones never upload, so their causes are local ones, a provider error or a damaged change.\n- The Library page's Sync row shows the state only. The top of the Sync page shows the state, its cause and its fix, then Last synced under a problem state (never under Synced), then the storage details.\n- Settings' Library row (Android) and the settings sidebar's Library item (macOS) show the state only when it's amber or red.\n- No Sync stopped, no Checking sync… and no Disconnect anywhere.\n- No raw ids on the Sync page: a row shows a name or isn't there.",
    "w": 460,
    "x": 8470,
    "y": 7652
@@ -5825,6 +5956,31 @@
    "x": 3936,
    "y": 6828,
    "text": "What the code needs for these boards:\n- A cast to an AirPlay receiver that asks for a PIN or a password does not fail: core answers with the code it needs and why, and the app opens the sheet (macOS, on the main window, since the cast connecting is the app's) or the dialog (Android: over the picker or the Casting page, whichever is open, else over the app). Closing either picker leaves the sheet open. Cancel closes it, casts nothing and asks core nothing.\n- The PIN field is PinField: one box per digit, the digit count from core (4 today), digits shown as typed, digits only, leading zeros kept. Pair is off until every box is filled; a password's Pair is off while the field is empty. The password field is a secure text field. Android uses the number pad for the PIN.\n- The line under the title comes from core with the request, in every language: first pairing, asks every cast, no longer knows this device, and the PIN or password variants. The title is Pair with and the receiver's name.\n- A wrong code keeps the sheet open: the line becomes Enter the PIN that Kitchen shows now, the boxes and the line under them turn red, the typed digits stay for the person to correct. A new PIN is on the receiver by then.\n- Pairing in progress: the field is off, a spinner and Pairing… show under it, Pair is off, Cancel works. The sheet closes when the cast connects, or becomes the next state (a wrong code, or a refusal as an alert or in the picker).\n- Refusals are alerts on macOS titled Could not cast to the receiver's name, with core's line as the message and OK. On Android the same title and line are a quiet danger notice at the top of the picker while it is open, and the line alone is a snackbar otherwise. Each line is a core string in every language; Back off carries its duration formatted for the language.\n- A pairing lost while casting is the playback error line, shown as every playback error is.\nEvery locale."
+  },
+  "row-library-s3-key": {
+   "kind": "title1",
+   "maxW": 4700,
+   "page": "library",
+   "text": "Sync: replace the S3 key",
+   "w": 240,
+   "x": 9700,
+   "y": 7412
+  },
+  "code-s3-key": {
+   "page": "library",
+   "size": 24,
+   "w": 420,
+   "x": 14400,
+   "y": 7652,
+   "text": "What the code needs for these boards:\n- An S3 library’s Sync page shows the key’s id in the Cloud home rows, with Replace key… (Android: Replace key). The signed-out page shows the same rows. bae change; today neither shows it.\n- Replace key… and Sign in to S3… (Android: Sign in to S3) open the same S3 key sheet: Cancel, and Save, which stays off until both fields hold text. The welcome’s S3 key sheet draws its fields from the same part.\n- Save checks the key with S3 storage and shows Checking the key with S3 storage… with only Cancel. A refused key keeps what was typed and says “This key was not accepted.” above the fields. coven’s one call for a new key does the check and the change.\n- After a save the sheet closes, the page shows the new key’s id, and a dismissable line says to delete the old key, naming its id. bae keeps no record of the old id once the person dismisses the line or leaves the page. bae change."
+  },
+  "row-shared-s3key": {
+   "kind": "title1",
+   "page": "shared",
+   "text": "S3 key",
+   "w": 240,
+   "x": 0,
+   "y": 2140
   }
  },
  "order": [
@@ -5965,6 +6121,22 @@
   "mac.settings.sync.signed-out-dropbox.dc.html",
   "mac.settings.sync.signed-out-icloud.dc.html",
   "mac.settings.sync.signed-out-s3.dc.html",
+  "android.settings.sync.s3-replace-key.empty.dc.html",
+  "android.settings.sync.s3-replace-key.filled.dc.html",
+  "android.settings.sync.s3-replace-key.checking.dc.html",
+  "android.settings.sync.s3-replace-key.refused.dc.html",
+  "android.settings.sync.s3-key-replaced.dc.html",
+  "android.settings.sync.signed-out-s3.sign-in.dc.html",
+  "mac.settings.sync.s3-replace-key.empty.dc.html",
+  "mac.settings.sync.s3-replace-key.filled.dc.html",
+  "mac.settings.sync.s3-replace-key.checking.dc.html",
+  "mac.settings.sync.s3-replace-key.refused.dc.html",
+  "mac.settings.sync.s3-key-replaced.dc.html",
+  "mac.settings.sync.signed-out-s3.sign-in.dc.html",
+  "mac.parts.s3-key-fields.dc.html",
+  "mac.parts.s3-cloud-home.dc.html",
+  "android.parts.s3-key-fields.dc.html",
+  "android.parts.s3-cloud-home.dc.html",
   "android.library.more-menu.libraries.dc.html",
   "android.library.libraries.dc.html",
   "android.parts.sync-status.dc.html",
