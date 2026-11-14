@@ -78,6 +78,14 @@ pub async fn plain_cost(
     params: Vec<rusqlite::types::Value>,
 ) -> usize {
     let sql = sql.to_string();
+    plans(db, metric, {
+        let (sql, params) = (sql.clone(), params.clone());
+        move |read| {
+            read.query(&sql, rusqlite::params_from_iter(params), |_| Ok(()))?;
+            Ok(())
+        }
+    })
+    .await;
     let first = Instant::now();
     let rows = {
         let sql = sql.clone();
@@ -363,6 +371,38 @@ pub async fn prepared_write_cost<P, PFut, W, WFut, T>(
         runs.push(started.elapsed());
     }
     report_unbarred(metric, median(runs));
+}
+
+/// Run `read` once and print the plan of each statement it ran, returning
+/// the lines: a `PLAN` line per step of `EXPLAIN QUERY PLAN`, the statement
+/// numbered in the order it ran and cut to its first 200 characters on one
+/// line.
+pub async fn plans<R, F>(db: &Store, metric: &str, read: F) -> Vec<String>
+where
+    R: Send + 'static,
+    F: FnOnce(&SqlReadContext<'_>) -> Result<R, DbError> + Send + 'static,
+{
+    let log = db.record_statements_for_test().await.expect("record the read's statements");
+    db.read(move |sql| read(&sql)).await.expect("the planned read");
+    let mut lines = Vec::new();
+    for (n, statement) in log.take().into_iter().enumerate() {
+        let explained = format!("EXPLAIN QUERY PLAN {statement}");
+        let steps: Vec<String> = db
+            .read(move |sql| {
+                sql.query(&explained, [], |row| row.get::<_, String>(3)).map_err(Into::into)
+            })
+            .await
+            .expect("explain a recorded statement");
+        let shown: String =
+            statement.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
+        for step in steps {
+            lines.push(format!("PLAN metric={metric} n={n} sql={shown} step={step}"));
+        }
+    }
+    for line in &lines {
+        eprintln!("{line}");
+    }
+    lines
 }
 
 #[cfg(test)]

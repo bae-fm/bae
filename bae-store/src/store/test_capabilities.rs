@@ -16,6 +16,15 @@ impl Store {
         Ok(counter)
     }
 
+    /// Record the statements this store's reads and live queries run from
+    /// here on, in order with their bound values written in, until the log
+    /// returned drops. Writes are not recorded.
+    pub async fn record_statements_for_test(&self) -> Result<coven::StatementLog, DbError> {
+        let log = coven::StatementLog::new();
+        self.inner.handle.test_record_statements(log.clone()).await.map_err(DbError::from)?;
+        Ok(log)
+    }
+
     /// How many rows of `table` have `column` equal to `value`.
     pub async fn count_rows_for_test(
         &self,
