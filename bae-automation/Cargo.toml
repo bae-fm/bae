@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The `desktop` cfg, defined once in bae-util's build script for every crate
-# with desktop-only code.
-build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_automation"
 path = "src/lib.rs"
+
+[build-dependencies]
+# Sets the `desktop` cfg for the crate's desktop-only code.
+bae-desktop-cfg = { workspace = true }
 
 [dependencies]
 # The app's services over an open library, which this crate calls.

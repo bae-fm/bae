@@ -5,13 +5,14 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The `desktop` cfg, defined once in bae-util's build script for every crate
-# with desktop-only code.
-build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_import"
 path = "src/lib.rs"
+
+[build-dependencies]
+# Sets the `desktop` cfg for the crate's desktop-only code.
+bae-desktop-cfg = { workspace = true }
 
 [dependencies]
 # The decode, probe and transcode an import reads its files with.
@@ -62,7 +63,7 @@ libc = { workspace = true }
 tempfile = { workspace = true }
 
 # The import pipeline's dependencies. The predicate is the pipeline's own, the
-# `desktop` cfg's (bae-util/build.rs): a mobile build compiles only import's
+# `desktop` cfg's (bae-desktop-cfg): a mobile build compiles only import's
 # error, session and release-edit types, and none of this.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 lofty = { workspace = true }

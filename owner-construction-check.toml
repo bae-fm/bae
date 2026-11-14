@@ -19,6 +19,7 @@ tools = ["bae-uniffi-bindgen"]
 # only on crates before it. bae-views sits below bae-library because the
 # library's tests read the views.
 crate_order = [
+    "bae-desktop-cfg",
     "bae-shots",
     "bae-loc",
     "bae-mirror",

@@ -13,6 +13,7 @@ members = [
     "bae-records",
     "bae-store",
     "bae-desktop",
+    "bae-desktop-cfg",
     "bae-diagnostics",
     "bae-identify",
     "bae-import",
@@ -89,6 +90,7 @@ bae-sync-status = { path = "bae-sync-status" }
 bae-records = { path = "bae-records" }
 bae-store = { path = "bae-store" }
 bae-desktop = { path = "bae-desktop" }
+bae-desktop-cfg = { path = "bae-desktop-cfg" }
 bae-diagnostics = { path = "bae-diagnostics" }
 bae-identify = { path = "bae-identify" }
 bae-import = { path = "bae-import" }

@@ -10,6 +10,10 @@ publish = false
 name = "bae_util"
 path = "src/lib.rs"
 
+[build-dependencies]
+# Sets the `desktop` cfg for the crate's desktop-only code.
+bae-desktop-cfg = { workspace = true }
+
 [dependencies]
 # Work apart from its caller whose panic comes back as a value
 # (src/task_failure.rs re-exports `coven::task`).

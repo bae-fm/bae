@@ -5,13 +5,14 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The `desktop` cfg, defined once in bae-util's build script for every crate
-# with desktop-only code.
-build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_types"
 path = "src/lib.rs"
+
+[build-dependencies]
+# Sets the `desktop` cfg for the crate's desktop-only code.
+bae-desktop-cfg = { workspace = true }
 
 [dependencies]
 # Every pressing value is stored and serialized by its key.
@@ -25,7 +26,7 @@ unicode-normalization = { workspace = true }
 
 # Album and track titles are read for the brackets that name an edition
 # (src/text_match/title.rs), which only the import pipeline compares; the
-# predicate is the `desktop` cfg's (bae-util/build.rs), which gates the module.
+# predicate is the `desktop` cfg's (bae-desktop-cfg), which gates the module.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 regex = { workspace = true }
 

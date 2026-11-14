@@ -5,13 +5,14 @@ authors = ["dima"]
 edition = "2021"
 license = "LicenseRef-UNLICENSED"
 publish = false
-# The `desktop` cfg, defined once in bae-util's build script for every crate
-# with desktop-only code.
-build = "../bae-util/build.rs"
 
 [lib]
 name = "bae_transfers"
 path = "src/lib.rs"
+
+[build-dependencies]
+# Sets the `desktop` cfg for the crate's desktop-only code.
+bae-desktop-cfg = { workspace = true }
 
 [dependencies]
 # The store the queues' tables and the transitions live in, and the list
