@@ -82,16 +82,20 @@
         /// (images, the release editor, storage) — render without a
         /// missing-environment trap. Eight `.stub` domain services, a
         /// `Library` whose album read answers from the shot albums, the
-        /// four the modals reach (`Importer`, `ImportStore`, `OutboxStore`,
-        /// `ConfigStore`), and fresh `PlaybackStore`/`UiStore`. Nothing about
-        /// the view is reconstructed.
+        /// projection store over it, the four the modals reach (`Importer`,
+        /// `ImportStore`, `OutboxStore`, `ConfigStore`), and fresh
+        /// `PlaybackStore`/`UiStore`. Nothing about the view is
+        /// reconstructed.
         @MainActor
         func albumDetailPreviewEnvironment() -> some View {
-            self
+            let library = PreviewData.albumDetailLibrary()
+            return
+                self
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
                 .environment(Queue.stub())
-                .environment(PreviewData.albumDetailLibrary())
+                .environment(library)
+                .environment(LibraryProjectionStore(library: library))
                 .environment(ReleaseEditor.stub())
                 .environment(Sync.stub())
                 .environment(Downloads.stub())
