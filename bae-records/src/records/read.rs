@@ -88,7 +88,7 @@ fn joined_credit_name(
     }
 }
 
-/// [`joined_credit_name`] of a row's `key` and `name` columns, read in a row
+/// The `joined_credit_name` of a row's `key` and `name` columns, read in a row
 /// closure.
 pub fn credit_name_column(
     row: &Row,

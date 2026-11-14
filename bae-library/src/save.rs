@@ -13,7 +13,7 @@ use tracing::{debug, warn};
 
 /// Render a saved track's filename stem (no extension) from the file name
 /// pattern and the track's tag data: each value filled in, the pattern's text
-/// as typed (see [`rendered_name`]). If that leaves nothing, fall back to the
+/// as typed (see `rendered_name`). If that leaves nothing, fall back to the
 /// sanitized title, then to "track". The stem is text: a file takes it through
 /// `save_file_name`. A pattern that can't make a name is refused with its
 /// error.
@@ -78,7 +78,7 @@ pub struct SaveFolderTags {
 
 /// Render the folder name (one name, no extension) a release save writes into
 /// from the folder name pattern and the release's data, as a file's is
-/// ([`rendered_name`]). A pattern that renders nothing usable falls back to the
+/// (`rendered_name`). A pattern that renders nothing usable falls back to the
 /// album, then to "release". The name is text: the folder takes it through
 /// `coven`'s rule for a stored name. A pattern that can't make a name is
 /// refused with its error.

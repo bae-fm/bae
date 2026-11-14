@@ -230,7 +230,7 @@ pub struct BridgeTrackBuffered {
 }
 
 /// A stretch of a track, as fractions of its length: the unit of
-/// [`BridgeTrackPosition::progress`]. Mirrors
+/// [`BridgeTrackBuffered::ranges`]. Mirrors
 /// `bae_playback::TrackSpan`.
 #[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeTrackSpan {

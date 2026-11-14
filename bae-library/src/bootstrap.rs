@@ -219,7 +219,7 @@ impl JoinControl {
     }
 
     /// Whether the join's waiting screen shows. While it does, the join
-    /// checks for approval every [`WAITING_SCREEN_CHECK_INTERVAL`] from the
+    /// checks for approval every `WAITING_SCREEN_CHECK_INTERVAL` from the
     /// end of its last check, and otherwise on coven's doubling waits.
     pub fn set_screen_shown(&self, shown: bool) {
         let mut often = self.often.lock().expect("the check hold's lock is never poisoned");
