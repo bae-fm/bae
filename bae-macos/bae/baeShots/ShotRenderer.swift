@@ -48,7 +48,11 @@ enum ShotRenderer {
         window.isReleasedWhenClosed = false
         switch scene.frame {
         case .content:
+            // Key without being ordered to the front: the window sits past
+            // every display, and a field a scene focuses draws its ring only
+            // in a key window.
             window.orderFront(nil)
+            window.makeKey()
         case .window:
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
