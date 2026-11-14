@@ -30,6 +30,9 @@ public struct MacSpinner: View {
         }
         else {
             ProgressView().controlSize(.small)
+                .accessibilityLabel(
+                    Text("Loading", tableName: "Controls", bundle: .module)
+                )
         }
     }
 
