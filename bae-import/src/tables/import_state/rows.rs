@@ -5,8 +5,7 @@
 
 use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
-use super::match_record::{match_record_sql, match_row_of};
-use super::match_rows::{MatchRow, StoredMatches};
+use super::match_record::{match_record_sql, match_rows_of};
 use super::pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
@@ -26,20 +25,14 @@ struct StoredCandidate {
     link: Option<StoredReleaseLink>,
     lookup_choices: Option<super::lookup_choice_rows::StoredLookupChoices>,
     verdict: Option<VerdictRow>,
-    matches: StoredMatches,
+    /// The candidate's matches in position order, a JSON array.
+    matches: String,
 }
 
-/// One row of [`load_states_rows_on`]'s read: the candidate's columns on the
-/// first row of each candidate, and the match the row joins, if any.
-struct StateReadRow {
-    candidate: Option<Result<StoredCandidate, DbError>>,
-    found: Option<Result<MatchRow, DbError>>,
-}
-
-/// The candidate `content_hash` as the first of its rows reads it.
-fn read_candidate(row: &Row<'_>, content_hash: String) -> Result<StoredCandidate, DbError> {
+/// The candidate one row of [`load_states_rows_on`]'s read holds.
+fn read_candidate(row: &Row<'_>) -> Result<StoredCandidate, DbError> {
     Ok(StoredCandidate {
-        content_hash,
+        content_hash: row.get("content_hash")?,
         candidate_key: row.get("candidate_key")?,
         metadata_revision: row.get("metadata_revision")?,
         author: row.get("draft_author")?,
@@ -49,16 +42,8 @@ fn read_candidate(row: &Row<'_>, content_hash: String) -> Result<StoredCandidate
         link: read_release_link(row)?,
         lookup_choices: super::lookup_choice_rows::read_lookup_choices(row)?,
         verdict: read_verdict_row(row)?,
-        matches: StoredMatches::default(),
+        matches: row.get("candidate_matches")?,
     })
-}
-
-/// The match a row joins, if it joins one.
-fn read_found(row: &Row<'_>) -> Result<Option<MatchRow>, DbError> {
-    let Some(record) = row.get::<_, Option<String>>("record")? else {
-        return Ok(None);
-    };
-    match_row_of(&row.get::<_, String>("content_hash")?, &record).map(Some)
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
@@ -71,74 +56,50 @@ pub(crate) fn load_states_on(
 }
 
 /// The candidates `only` names in one read: each state row with the rows
-/// that hang off it one-to-one joined onto it once, then joined to its
-/// matches in position order, one row per match.
+/// that hang off it one-to-one joined onto it, and its matches, in position
+/// order, nested in it as one JSON array.
 pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let filter = only.filter("state.content_hash");
-    let mut previous: Option<String> = None;
     let rows = sql.query(
         &format!(
-            "WITH candidate AS MATERIALIZED ( \
-                 SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
-                        edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
-                        {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
-                        {verdict} \
-                 FROM import_candidate_state AS state \
-                 LEFT JOIN import_candidate_edit AS edit \
-                     ON edit.content_hash = state.content_hash \
-                 LEFT JOIN import_candidate_signals AS signals \
-                     ON signals.content_hash = state.content_hash \
-                 LEFT JOIN import_candidate_draft_provenance AS provenance \
-                     ON provenance.content_hash = state.content_hash \
-                 LEFT JOIN import_candidate_release_link AS link \
-                     ON link.content_hash = state.content_hash \
-                 LEFT JOIN import_candidate_lookup_choices AS choices \
-                     ON choices.content_hash = state.content_hash \
-                 LEFT JOIN import_candidate_verdict AS verdict \
-                     ON verdict.content_hash = state.content_hash \
-                 {clause}) \
-             SELECT candidate.*, \
-                    CASE WHEN found.position IS NULL THEN NULL ELSE {record} END AS record \
-             FROM candidate \
-             LEFT JOIN import_candidate_match AS found \
-                 ON found.content_hash = candidate.content_hash \
-             ORDER BY candidate.content_hash, found.position",
+            "SELECT state.content_hash, state.candidate_key, state.metadata_revision, \
+                    edit.author AS draft_author, {FILE_EDITS_COLUMNS}, {signals}, \
+                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {LOOKUP_CHOICES_COLUMNS}, \
+                    {verdict}, \
+                    (SELECT json_group_array({record} ORDER BY found.position) \
+                     FROM import_candidate_match AS found \
+                     WHERE found.content_hash = state.content_hash) AS candidate_matches \
+             FROM import_candidate_state AS state \
+             LEFT JOIN import_candidate_edit AS edit \
+                 ON edit.content_hash = state.content_hash \
+             LEFT JOIN import_candidate_signals AS signals \
+                 ON signals.content_hash = state.content_hash \
+             LEFT JOIN import_candidate_draft_provenance AS provenance \
+                 ON provenance.content_hash = state.content_hash \
+             LEFT JOIN import_candidate_release_link AS link \
+                 ON link.content_hash = state.content_hash \
+             LEFT JOIN import_candidate_lookup_choices AS choices \
+                 ON choices.content_hash = state.content_hash \
+             LEFT JOIN import_candidate_verdict AS verdict \
+                 ON verdict.content_hash = state.content_hash \
+             {clause}",
             signals = super::signal_rows::signals_read_columns(),
             verdict = verdict_columns(),
             record = match_record_sql("found"),
             clause = filter.clause,
         ),
         filter.params().as_slice(),
-        |row| {
-            let content_hash: String = row.get("content_hash")?;
-            let candidate = if previous.as_deref() == Some(content_hash.as_str()) {
-                None
-            } else {
-                previous = Some(content_hash.clone());
-                Some(read_candidate(row, content_hash))
-            };
-            Ok(StateReadRow { candidate, found: read_found(row).transpose() })
-        },
+        |row| Ok(read_candidate(row)),
     )?;
     Ok(Box::new(move || {
-        let mut candidates: Vec<StoredCandidate> = Vec::new();
-        for row in rows {
-            if let Some(candidate) = row.candidate {
-                candidates.push(candidate?);
-            }
-            let Some(found) = row.found else {
-                continue;
-            };
-            let candidate =
-                candidates.last_mut().expect("a match row follows its candidate's first row");
-            candidate.matches.rows.push(found?);
-        }
-        candidates
-            .into_iter()
-            .map(|candidate| Ok((candidate.content_hash.clone(), candidate.state()?)))
+        rows.into_iter()
+            .map(|candidate| {
+                let candidate = candidate?;
+                Ok((candidate.content_hash.clone(), candidate.state()?))
+            })
             .collect()
     }))
 }
@@ -176,16 +137,18 @@ impl StoredCandidate {
             )
         })?;
         let identify = match verdict {
-            Some(verdict) => Some(identification_of(verdict, matches)?),
+            Some(verdict) => Some(identification_of(verdict, match_rows_of(&content_hash, &matches)?)?),
             // The match rows hang off the verdict row, so a candidate
             // without one has none.
-            None if matches.rows.is_empty() => None,
-            None => {
-                return Err(DbError::unreadable(
-                    format!("the matches of candidate {content_hash}, which holds no verdict"),
-                    matches.rows.len(),
-                ))
-            }
+            None => match match_rows_of(&content_hash, &matches)?.rows.len() {
+                0 => None,
+                held => {
+                    return Err(DbError::unreadable(
+                        format!("the matches of candidate {content_hash}, which holds no verdict"),
+                        held,
+                    ))
+                }
+            },
         };
         Ok(DbImportCandidateState {
             signals: signals.map(|stored| stored.signals()).transpose()?,

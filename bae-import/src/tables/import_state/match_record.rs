@@ -310,6 +310,19 @@ pub(super) fn match_row_of(content_hash: &str, json: &str) -> Result<MatchRow, D
         .match_row(content_hash)
 }
 
+/// The matches a JSON array of [`match_record_sql`] objects holds, in its
+/// order.
+pub(super) fn match_rows_of(content_hash: &str, json: &str) -> Result<StoredMatches, DbError> {
+    let records = serde_json::from_str::<Vec<StoredRecord>>(json)
+        .map_err(|error| DbError::unreadable_json("a candidate's stored matches", json, error))?;
+    Ok(StoredMatches {
+        rows: records
+            .into_iter()
+            .map(|record| record.match_row(content_hash))
+            .collect::<Result<_, _>>()?,
+    })
+}
+
 /// The releases the verdict-shaped `owner` holds, in position order.
 pub(super) fn load_owner_matches_on(
     sql: &impl coven::SqlRead,

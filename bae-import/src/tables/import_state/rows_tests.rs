@@ -69,3 +69,58 @@ async fn a_run_starts_from_no_candidate_without_state() {
 
     assert!(tables.load_candidate_run_start("unscanned").await.unwrap().is_none());
 }
+
+/// Candidates read in one statement keep each their own matches, in position
+/// order: one with a candidate row and no verdict, one with a verdict of a
+/// single match, one with a verdict of three.
+#[tokio::test]
+async fn candidates_read_together_each_hold_their_own_matches() {
+    use bae_identify::{Findings, NarrowedOut, TerminalVerdict};
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let mut hashes = Vec::new();
+    for (size, release_ids) in [(1, &[][..]), (2, &["a"][..]), (3, &["b", "c", "d"][..])] {
+        let candidate = track_files_candidate(&[("01 Track.flac", size)]);
+        let hash = candidate.content_hash();
+        let matches: Vec<_> = release_ids
+            .iter()
+            .map(|id| {
+                let mut found = sample_match();
+                found.release_id = id.to_string();
+                found
+            })
+            .collect();
+        let verdict = TerminalVerdict::Found {
+            findings: Findings {
+                pressings: bae_identify::release_group::form_rows(&matches),
+                matches,
+                narrowed_out: NarrowedOut::default(),
+                medium_conflict: None,
+                named_notes: Vec::new(),
+            },
+            track_count: 1,
+            ledger: None,
+        };
+        let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
+        store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
+        if !release_ids.is_empty() {
+            tables.store_verdict(&row).await.unwrap();
+        }
+        hashes.push((hash, release_ids));
+    }
+
+    let loaded = tables.load_import_candidate_states().await.unwrap();
+    assert_eq!(loaded.len(), 3);
+    for (hash, release_ids) in hashes {
+        let read = match loaded[&hash].identify.as_ref() {
+            None => Vec::new(),
+            Some(identify) => {
+                let TerminalVerdict::Found { findings, .. } = &identify.verdict else {
+                    panic!("the stored verdict found releases");
+                };
+                findings.matches.iter().map(|found| found.release_id.as_str()).collect()
+            }
+        };
+        assert_eq!(read, release_ids, "{hash}'s matches");
+    }
+}
