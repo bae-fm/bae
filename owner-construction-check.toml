@@ -1730,7 +1730,6 @@ frozen = [
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::next", shape = "kept-state", count = 2, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "groups `sending.files` by release in a `BTreeMap`" },
     { path = "bae-playback/src/tables/now.rs", item = "playback_now.failures", shape = "reset-counter", count = 1, finding = "`playback_now.failures` is counted up and reset, so a live query reads again (found by the audit: forced rerun)" },
-    { path = "bae-playback/src/tables/queue.rs", item = "playback_queue.additions", shape = "reset-counter", count = 1, finding = "`playback_queue.additions` is counted up and reset, so a live query reads again (found by the audit: forced rerun)" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "filter", count = 1, finding = "`album_id_for_records` filters with `filter_map` (found by the check)" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "pick", count = 2, finding = "`album_id_for_records` picks with `find_map` (found by the check)" },
     { path = "bae-records/src/records/artist_resolution.rs", item = "ArtistCredits::resolve_on", shape = "group", count = 1, finding = "`ArtistCredits::resolve_on` groups into a `HashSet` (found by the check)" },
