@@ -144,3 +144,13 @@ pub mod library;
 pub mod live_query;
 pub mod shaped_library;
 pub mod storage_listing;
+
+/// Drop the triggers keeping `release_storage` from a closed library file, to
+/// time a write without them.
+pub fn drop_release_storage_triggers(directory: &std::path::Path) {
+    bae_store::test_fixtures::planted_damage::drop_triggers_of(
+        directory,
+        "release_storage",
+        include_str!("release_storage.sql"),
+    );
+}

@@ -145,12 +145,23 @@ impl KeptSeeds {
     /// A copy of the kept seed of size `n`, opened. The `TempDir` owns the
     /// copy, so it must outlive the store.
     pub async fn seeded_copy(&self, n: u64) -> (Store, tempfile::TempDir) {
+        self.seeded_copy_planted(n, |_| ()).await
+    }
+
+    /// [`Self::seeded_copy`] with `plant` run on the closed copy's folder
+    /// before it is opened: damage, or a family of triggers dropped.
+    pub async fn seeded_copy_planted(
+        &self,
+        n: u64,
+        plant: impl FnOnce(&Path),
+    ) -> (Store, tempfile::TempDir) {
         let seed = self.kept(n).await;
         let tmp = tempfile::TempDir::new().expect("create the copy's folder");
         let app = tmp.path().join("app");
         let keychain = tmp.path().join("keychain");
         copy_dir(&seed.join("app"), &app);
         std::fs::copy(seed.join("keychain"), &keychain).expect("copy the keychain");
+        plant(&app);
         let store =
             open_kept(self.schema, &app, &keychain, read_store_id(&seed), kept_clock()).await;
         (store, tmp)

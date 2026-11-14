@@ -9,3 +9,4 @@ mod playlists;
 mod seed;
 mod storage;
 mod transfers;
+mod writes;

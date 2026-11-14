@@ -194,6 +194,11 @@ SCENARIOS: tuple[Scenario, ...] = (
         "the transfer queues and the bytes waiting to upload as plain queries",
     ),
     Scenario(
+        "screen-writes",
+        test_command("bae-app", ("--test", "integration"), ("test_screen_cost::writes::",)),
+        "what writes cost at M, with and without each family of triggers",
+    ),
+    Scenario(
         "library-create",
         test_command("bae-library", ("--test", "integration"), ("test_library_create_cost::",)),
         "creating a library",

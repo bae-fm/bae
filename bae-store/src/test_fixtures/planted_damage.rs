@@ -44,3 +44,32 @@ pub fn plant_in_library_file(directory: &std::path::Path, table: &str, damage: &
     }
     assert!(planted, "the library under the directory holds {table}");
 }
+
+/// Take out every trigger `sql_text` (a domain's SQL file) creates, from the
+/// library file under `directory` that holds `table`: a family of triggers
+/// removed from a closed copy, to time a write without it. An INSTEAD OF
+/// trigger, which other triggers call through its view, is replaced by one
+/// that does nothing, so those callers still run.
+pub fn drop_triggers_of(directory: &std::path::Path, table: &str, sql_text: &str) {
+    const CREATE: &str = "CREATE TRIGGER IF NOT EXISTS ";
+    const INSTEAD_OF: &str = " INSTEAD OF INSERT ON ";
+    let damage: String = sql_text
+        .match_indices(CREATE)
+        .map(|(at, _)| {
+            let rest = &sql_text[at + CREATE.len()..];
+            let name: String =
+                rest.chars().take_while(|c| c.is_ascii_alphanumeric() || *c == '_').collect();
+            let header = &rest[..rest.find("BEGIN").expect("a trigger has a body")];
+            let mut statement = format!("DROP TRIGGER IF EXISTS {name};");
+            if let Some(view) = header.split(INSTEAD_OF).nth(1) {
+                let view = view.trim();
+                statement.push_str(&format!(
+                    "CREATE TRIGGER {name} INSTEAD OF INSERT ON {view} BEGIN SELECT 1; END;"
+                ));
+            }
+            statement
+        })
+        .collect();
+    assert!(!damage.is_empty(), "{table}'s SQL creates no trigger");
+    plant_in_library_file(directory, table, &damage);
+}

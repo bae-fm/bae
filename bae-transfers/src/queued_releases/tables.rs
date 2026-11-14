@@ -680,6 +680,16 @@ pub mod worker_moves {
 /// The download queue at the sizes the lists' window costs are measured at.
 #[cfg(any(test, feature = "test-utils"))]
 pub mod bulk {
+    /// Drop the triggers keeping the transfer queues' tables from a closed
+    /// library file, to time a write without them.
+    pub fn drop_queue_triggers(directory: &std::path::Path) {
+        bae_store::test_fixtures::planted_damage::drop_triggers_of(
+            directory,
+            "download_queue",
+            super::SQL,
+        );
+    }
+
     use super::*;
 
     /// Queue the releases `start..end` to download, release `i` at place `i`
