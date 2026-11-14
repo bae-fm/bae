@@ -60,8 +60,6 @@ bae-util = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
-# The key naming the kept seeds the window-cost measurement reuses.
-sha2 = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]

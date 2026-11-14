@@ -27,6 +27,7 @@ pub use values::{LiveSource, LiveValues, NextValue};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.
+#[derive(Debug)]
 pub struct LiveQueryCancelled;
 
 /// Why a subscription's read or request got no answer. `E` is the error its

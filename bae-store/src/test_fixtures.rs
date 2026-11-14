@@ -82,5 +82,6 @@ pub mod kept_store;
 pub mod live_query;
 pub mod planted_damage;
 pub mod schema_checks;
+pub mod screen_cost;
 pub mod trigger_order;
 pub mod window_cost;

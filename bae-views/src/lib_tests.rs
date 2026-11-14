@@ -324,125 +324,27 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
 /// ```
 mod window_cost {
     use bae_records::test_fixtures::bulk_library;
-    use bae_store::test_fixtures::kept_store::{create_kept, open_kept};
+    use bae_store::test_fixtures::kept_store::KeptSeeds;
     use bae_store::test_fixtures::window_cost::*;
 
     use crate::*;
-    use std::time::Instant;
 
     /// Bumped when `seed` writes different rows, so the kept seeds are made
     /// again.
     const SEED_VERSION: u32 = 1;
 
-    /// The folder holding the kept seeds for this schema, this seed and this
-    /// coven: each is made once and every run opens a copy of it. A change to
-    /// the schema's SQL, to `seed` (`SEED_VERSION`) or to the coven pin
-    /// names another folder, and the seeds are made again there.
-    fn seed_root() -> std::path::PathBuf {
-        use sha2::{Digest, Sha256};
-        let mut key = Sha256::new();
-        for sql in TEST_SCHEMA.sql() {
-            key.update(sql.len().to_le_bytes());
-            key.update(sql);
-        }
-        key.update(SEED_VERSION.to_le_bytes());
-        let mut pin: Vec<&str> = include_str!("../../Cargo.lock")
-            .lines()
-            .filter(|line| line.contains("bae-fm/coven"))
-            .collect();
-        pin.sort_unstable();
-        pin.dedup();
-        assert!(!pin.is_empty(), "Cargo.lock names no coven pin");
-        for line in pin {
-            key.update(line);
-        }
-        let key: String = key.finalize().iter().take(8).map(|byte| format!("{byte:02x}")).collect();
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../target/bench-seed").join(key)
-    }
+    /// The kept seeds of `SIZES`: each size is a copy of the one before,
+    /// grown to its size, so the 100,000 seed holds the rows of the 20,000
+    /// and 50,000 ones.
+    const SEEDS: KeptSeeds = KeptSeeds {
+        schema: TEST_SCHEMA,
+        version: SEED_VERSION,
+        sizes: &SIZES,
+        seed: |store, originals, start, end| Box::pin(seed(store, originals, start, end)),
+    };
 
-    fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
-        std::fs::create_dir_all(to).unwrap();
-        for entry in std::fs::read_dir(from).unwrap() {
-            let entry = entry.unwrap();
-            let target = to.join(entry.file_name());
-            let kind = entry.file_type().unwrap();
-            if kind.is_dir() {
-                copy_dir(&entry.path(), &target);
-            } else {
-                assert!(
-                    kind.is_file(),
-                    "{} is neither a file nor a folder",
-                    entry.path().display()
-                );
-                std::fs::copy(entry.path(), target).unwrap();
-            }
-        }
-    }
-
-    fn kept_clock() -> coven::ClockRef {
-        std::sync::Arc::new(coven::FixedClock::new(bae_store::test_fixtures::fixed_now().into()))
-    }
-
-    /// The kept seed of `SIZES`' size `n`, a folder holding the closed store's
-    /// folder (`app`), its keychain file and its id, made if it is not there:
-    /// each size is a copy of the one before, grown to its size, so the
-    /// 100,000 seed holds the rows of the 20,000 and 50,000 ones. It appears
-    /// whole or not at all.
-    async fn kept_seed(n: u64) -> std::path::PathBuf {
-        let root = seed_root();
-        let mut previous: Option<(u64, std::path::PathBuf)> = None;
-        for size in SIZES.into_iter().take_while(|size| *size <= n) {
-            let dir = root.join(size.to_string());
-            if !dir.exists() {
-                let started = Instant::now();
-                let building = root.join(format!("{size}.building"));
-                if building.exists() {
-                    std::fs::remove_dir_all(&building).unwrap();
-                }
-                std::fs::create_dir_all(&building).unwrap();
-                let app = building.join("app");
-                let keychain = building.join("keychain");
-                let (store, from) = match &previous {
-                    Some((from, before)) => {
-                        copy_dir(&before.join("app"), &app);
-                        let id = read_store_id(before);
-                        std::fs::copy(before.join("keychain"), &keychain).unwrap();
-                        let store = open_kept(TEST_SCHEMA, &app, &keychain, id, kept_clock()).await;
-                        (store, *from)
-                    }
-                    None => (create_kept(TEST_SCHEMA, &app, &keychain, kept_clock()).await, 0),
-                };
-                seed(&store, &root.join("originals"), from, size).await;
-                store.close().await.unwrap();
-                std::fs::write(building.join("store-id"), store.store_id().to_string()).unwrap();
-                std::fs::rename(&building, &dir).unwrap();
-                eprintln!(
-                    "WINDOW_COST seeded n={size} in {:.1} s",
-                    started.elapsed().as_secs_f64()
-                );
-            }
-            previous = Some((size, dir));
-        }
-        previous.expect("SIZES holds n").1
-    }
-
-    fn read_store_id(seed: &std::path::Path) -> coven::StoreId {
-        let text = std::fs::read_to_string(seed.join("store-id")).unwrap();
-        coven::StoreId(uuid::Uuid::parse_str(text.trim()).unwrap())
-    }
-
-    /// A copy of the kept seed of size `n`, opened. The `TempDir` owns the
-    /// copy, so it must outlive the store.
     async fn seeded_copy(n: u64) -> (Store, tempfile::TempDir) {
-        let seed = kept_seed(n).await;
-        let tmp = tempfile::TempDir::new().unwrap();
-        let app = tmp.path().join("app");
-        let keychain = tmp.path().join("keychain");
-        copy_dir(&seed.join("app"), &app);
-        std::fs::copy(seed.join("keychain"), &keychain).unwrap();
-        let store =
-            open_kept(TEST_SCHEMA, &app, &keychain, read_store_id(&seed), kept_clock()).await;
-        (store, tmp)
+        SEEDS.seeded_copy(n).await
     }
 
     async fn measure_albums(db: &Store, n: u64) {
