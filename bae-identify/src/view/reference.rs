@@ -8,7 +8,6 @@ use crate::combine::Findings;
 use crate::release_group::{group_formed_rows, Judgements, Pressing};
 use crate::row_facts::FolderFacts;
 use crate::state::IdentifyState;
-use crate::SharedAlbum;
 
 /// Judge `findings` against `text` and fold them into cards, as the rules
 /// do, with every row's badges. `ledger` is the run's, whose disc-ID lookups
@@ -59,7 +58,9 @@ pub fn reference_cards(
         .collect();
     let narrowed_out_count = cards.iter().map(|group| group.narrowed_out().count() as u32).sum();
     VerdictCards {
-        shared_album: SharedAlbum::of(&cards),
+        // The album several offered rows share is answered by the stored
+        // layout's statement alone, so the reference does not fold it.
+        shared_album: None,
         groups: cards,
         agreements,
         narrowed_out_count,

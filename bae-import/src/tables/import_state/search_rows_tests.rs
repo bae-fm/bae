@@ -42,7 +42,13 @@ async fn scanned() -> (ImportTables, CandidateKey, tempfile::TempDir) {
 /// The search `key` holds, with the run it is on.
 async fn stored(tables: &ImportTables, key: &CandidateKey) -> Option<(SearchRun, CandidateSearch)> {
     let key = key.clone();
-    tables.store.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key))).await.unwrap()
+    tables
+        .store
+        .read(move |sql| {
+            Ok(load_on(&sql, Some(&key))?.into_iter().next().map(|(_, run, search)| (run, search)))
+        })
+        .await
+        .unwrap()
 }
 
 /// The search `key` holds.

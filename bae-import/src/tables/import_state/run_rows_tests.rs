@@ -9,6 +9,7 @@ use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candida
 use crate::Admission;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_store::test_fixtures::empty_db;
+use std::collections::BTreeMap;
 
 /// Tables over a library whose scan holds one folder candidate, its key and
 /// the files it is identified as.

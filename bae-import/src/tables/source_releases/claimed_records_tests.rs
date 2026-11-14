@@ -125,8 +125,8 @@ async fn claimed_records_statement_puts_the_applied_catalog_first() {
 async fn claimed_records_statement_lists_an_album_link_records() {
     let (db, _tmp, root) = watched_root().await;
     let link = bae_identify::AlbumLink::new([
-        MetadataRef::new(Catalog::Discogs, "909090".to_owned()),
         MetadataRef::new(Catalog::MusicBrainz, "mb-group".to_owned()),
+        MetadataRef::new(Catalog::Discogs, "909090".to_owned()),
     ])
     .unwrap();
     let hash = linked(&db, &root, crate::ReleaseLink::Album(link), &[]).await.files.content_hash();

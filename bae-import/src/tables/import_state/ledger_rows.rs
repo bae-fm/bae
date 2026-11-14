@@ -356,6 +356,47 @@ fn column(index: usize) -> Result<i64, DbError> {
     to_i64(index, "a ledger row's place in its list")
 }
 
+/// The ledger's rows as one JSON object holding a list of rows under each
+/// step that has any, each row with its lookups in cell order, for a read
+/// that joins its verdict as `verdict`.
+fn ledger_rows_sql() -> String {
+    format!(
+    "(SELECT json_group_object(by_step.step, json(by_step.rows)) \
+      FROM (SELECT ledger_row.step AS step, json_group_array(json_object( \
+          'step', ledger_row.step, 'value', ledger_row.value, \
+          'excluded', ledger_row.excluded, \
+          'cells', json((SELECT json_group_array(json_object( \
+              'catalog', lookup.catalog, \
+              'answer', CASE WHEN lookup.answer = 'answered' AND NOT EXISTS ( \
+                                   SELECT 1 FROM import_candidate_lookup_release AS found \
+                                   WHERE found.content_hash IS lookup.content_hash \
+                                     AND found.identify_run IS lookup.identify_run \
+                                     AND found.step = lookup.step \
+                                     AND found.position = lookup.position \
+                                     AND found.cell = lookup.cell) \
+                             THEN 'no_match' ELSE lookup.answer END, \
+              'reason', lookup.not_asked_reason, 'failure', lookup.failure, \
+              'status', lookup.failure_status, \
+              'count', (SELECT COUNT(DISTINCT found.pressing) \
+                        FROM import_candidate_lookup_release AS found \
+                        WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
+                          AND found.step = lookup.step \
+                          AND found.position = lookup.position \
+                          AND found.cell = lookup.cell), \
+              'cards', json({cards})) \
+              ORDER BY lookup.cell) \
+              FROM import_candidate_lookup AS lookup \
+              WHERE lookup.content_hash IS ledger_row.content_hash AND lookup.identify_run IS ledger_row.identify_run \
+                AND lookup.step = ledger_row.step \
+                AND lookup.position = ledger_row.position))) \
+          ORDER BY ledger_row.position) AS rows \
+      FROM import_candidate_lookup_value AS ledger_row \
+      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run \
+        GROUP BY ledger_row.step) AS by_step)",
+    cards = cell_cards_sql("lookup"),
+    )
+}
+
 /// A verdict's ledger as columns of a read that joins its row as `verdict`:
 /// the step columns, and the ledger's lists riding on them as JSON arrays —
 /// the providers, the ISRCs and the offered catalog numbers in order, and
@@ -387,37 +428,8 @@ pub(super) fn ledger_columns() -> String {
      (SELECT json_group_array(offered.value ORDER BY offered.position) \
       FROM import_candidate_lookup_offered_catalog AS offered \
       WHERE offered.content_hash IS verdict.content_hash AND offered.identify_run IS verdict.identify_run) AS ledger_offered_catalogs, \
-     (SELECT json_group_array(json_object( \
-          'step', ledger_row.step, 'value', ledger_row.value, \
-          'excluded', ledger_row.excluded, \
-          'cells', json((SELECT json_group_array(json_object( \
-              'catalog', lookup.catalog, \
-              'answer', CASE WHEN lookup.answer = 'answered' AND NOT EXISTS ( \
-                                   SELECT 1 FROM import_candidate_lookup_release AS found \
-                                   WHERE found.content_hash IS lookup.content_hash \
-                                     AND found.identify_run IS lookup.identify_run \
-                                     AND found.step = lookup.step \
-                                     AND found.position = lookup.position \
-                                     AND found.cell = lookup.cell) \
-                             THEN 'no_match' ELSE lookup.answer END, \
-              'reason', lookup.not_asked_reason, 'failure', lookup.failure, \
-              'status', lookup.failure_status, \
-              'count', (SELECT COUNT(DISTINCT found.pressing) \
-                        FROM import_candidate_lookup_release AS found \
-                        WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
-                          AND found.step = lookup.step \
-                          AND found.position = lookup.position \
-                          AND found.cell = lookup.cell), \
-              'cards', json({cards})) \
-              ORDER BY lookup.cell) \
-              FROM import_candidate_lookup AS lookup \
-              WHERE lookup.content_hash IS ledger_row.content_hash AND lookup.identify_run IS ledger_row.identify_run \
-                AND lookup.step = ledger_row.step \
-                AND lookup.position = ledger_row.position))) \
-          ORDER BY ledger_row.step, ledger_row.position) \
-      FROM import_candidate_lookup_value AS ledger_row \
-      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run) AS ledger_rows",
-    cards = cell_cards_sql("lookup"),
+     {rows} AS ledger_rows",
+    rows = ledger_rows_sql(),
     )
 }
 
@@ -454,6 +466,22 @@ pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
         offered_catalogs: row.get("ledger_offered_catalogs")?,
         rows: row.get("ledger_rows")?,
     })
+}
+
+/// The rows of each ledger step, as [`ledger_columns`] holds them: a list under
+/// the name of each step that has rows.
+#[derive(serde::Deserialize)]
+struct StoredSteps {
+    #[serde(default)]
+    disc_id: Vec<StoredRow>,
+    #[serde(default)]
+    barcode: Vec<StoredRow>,
+    #[serde(default)]
+    catalog: Vec<StoredRow>,
+    #[serde(default)]
+    isrc: Vec<StoredRow>,
+    #[serde(default)]
+    search: Vec<StoredRow>,
 }
 
 /// One ledger row as [`ledger_columns`] holds it.
@@ -508,7 +536,13 @@ impl StoredLedger {
         let providers = list(&providers, "providers")?;
         let isrcs = list(&isrcs, "ISRCs")?;
         let offered = list(&offered_catalogs, "offered catalog numbers")?;
-        let rows: Vec<StoredRow> = serde_json::from_str(&rows).map_err(|error| {
+        let StoredSteps {
+            disc_id: disc_rows,
+            barcode: barcode_rows,
+            catalog: catalog_rows,
+            isrc: isrc_rows,
+            search: search_rows,
+        } = serde_json::from_str(&rows).map_err(|error| {
             DbError::unreadable_json(
                 format!("the stored ledger rows of {content_hash}"),
                 &rows,
@@ -518,20 +552,20 @@ impl StoredLedger {
         let (Some(disc_id), Some(barcode), Some(catalog), Some(isrc), Some(search)) =
             (disc_id, barcode, catalog, isrc, search)
         else {
-            if !providers.is_empty() || !isrcs.is_empty() || !offered.is_empty() || !rows.is_empty()
+            if !providers.is_empty()
+                || !isrcs.is_empty()
+                || !offered.is_empty()
+                || ![&disc_rows, &barcode_rows, &catalog_rows, &isrc_rows, &search_rows]
+                    .iter()
+                    .all(|rows| rows.is_empty())
             {
                 return Err(DbError::unreadable(
                     format!("the ledger of {content_hash}, whose verdict records none"),
-                    (&providers, &isrcs, &offered, rows.len()),
+                    (&providers, &isrcs, &offered),
                 ));
             }
             return Ok(None);
         };
-        let mut by_step: HashMap<String, Vec<StoredRow>> = HashMap::new();
-        for row in rows {
-            by_step.entry(row.step.clone()).or_default().push(row);
-        }
-        let mut take = |step: &str| by_step.remove(step).unwrap_or_default();
         let lookup = |stored: StoredLookup| lookup_of(stored);
         let one_lookup = |row: StoredRow, what: &str| {
             let mut cells = row.cells.into_iter();
@@ -591,7 +625,6 @@ impl StoredLedger {
             ))
         };
 
-        let disc_rows = take(STEP_DISC_ID);
         let disc_id = match disc_id.as_str() {
             "read" => DiscIdStepView::Read {
                 discs: disc_rows
@@ -619,7 +652,6 @@ impl StoredLedger {
                 return Err(DbError::unreadable("import_candidate_verdict.disc_id_step", other))
             }
         };
-        let barcode_rows = take(STEP_BARCODE);
         let barcode = match barcode.as_str() {
             stood @ ("rows" | "scanning") => BarcodeStepView::Rows {
                 scanning: stood == "scanning",
@@ -636,7 +668,6 @@ impl StoredLedger {
                 return Err(DbError::unreadable("import_candidate_verdict.barcode_step", other))
             }
         };
-        let catalog_rows = take(STEP_CATALOG);
         let catalog = match catalog.as_str() {
             stood @ ("numbers" | "scanning") => CatalogStepView::Numbers {
                 scanning: stood == "scanning",
@@ -660,7 +691,6 @@ impl StoredLedger {
                 return Err(DbError::unreadable("import_candidate_verdict.catalog_step", other))
             }
         };
-        let isrc_rows = take(STEP_ISRC);
         let isrc = match isrc.as_str() {
             "read" => {
                 let count = isrc_rows.len();
@@ -688,7 +718,6 @@ impl StoredLedger {
             }
             other => return Err(DbError::unreadable("import_candidate_verdict.isrc_step", other)),
         };
-        let search_rows = take(STEP_SEARCH);
         let search = match (search.as_str(), search_album, search_artist) {
             ("searched", Some(album), Some(artist)) => {
                 let count = search_rows.len();
@@ -716,9 +745,6 @@ impl StoredLedger {
                 return Err(DbError::unreadable("import_candidate_verdict.search_step", other))
             }
         };
-        if let Some(step) = by_step.keys().next() {
-            return Err(DbError::unreadable("import_candidate_lookup.step", step));
-        }
         let ledger = IdentifyRunView {
             providers: providers
                 .iter()

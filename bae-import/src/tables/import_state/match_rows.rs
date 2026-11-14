@@ -5,7 +5,6 @@
 
 pub(super) const SQL: &str = include_str!("match_rows.sql");
 
-use super::match_record::{match_record_sql, match_row_of};
 use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
@@ -622,40 +621,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         other => return Err(DbError::unreadable("import_candidate_match.listing", other)),
     };
     Ok(MatchRow { position, result, listing })
-}
-
-/// The releases of every run in flight, or of `key`'s runs alone, by run,
-/// each run's in position order.
-pub(super) fn load_run_matches_on(
-    sql: &impl coven::SqlRead,
-    key: Option<&crate::CandidateKey>,
-) -> Result<HashMap<i64, StoredMatches>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT 'run ' || found.identify_run AS content_hash, \
-                    found.identify_run AS match_run, {record} AS record \
-             FROM import_candidate_match AS found \
-             JOIN import_identify_run AS run ON run.identify_run = found.identify_run \
-             WHERE ?1 IS NULL OR run.candidate_key = ?1 \
-             ORDER BY found.identify_run, found.position",
-            record = match_record_sql("found"),
-        ),
-        params![key],
-        |row| {
-            Ok((
-                row.get::<_, i64>("match_run")?,
-                match_row_of(
-                    &row.get::<_, String>("content_hash")?,
-                    &row.get::<_, String>("record")?,
-                ),
-            ))
-        },
-    )?;
-    let mut matches: HashMap<i64, StoredMatches> = HashMap::new();
-    for (run, found) in rows {
-        matches.entry(run).or_default().rows.push(found?);
-    }
-    Ok(matches)
 }
 
 #[cfg(test)]

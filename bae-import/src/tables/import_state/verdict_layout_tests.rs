@@ -218,25 +218,92 @@ async fn verdict_cards_statement_matches_the_rules() {
     assert_eq!(read, expected);
 }
 
-/// Two offered rows on one album are several pressings of it: the statement
-/// answers the album and each row's lead as the rules fold them, in the
-/// cards' order.
-#[tokio::test]
-async fn verdict_cards_statement_answers_the_album_its_pressings_share() {
-    let one_album = |release_id: &str, catalog: &str| MetadataResult {
-        source_group_id: Some("group-shared".to_string()),
+/// A found verdict offering each of `matches` as its own row.
+fn each_its_own_row(matches: Vec<MetadataResult>) -> TerminalVerdict {
+    let pressings = (0..matches.len() as u32).collect();
+    found(matches, pressings, None, 11)
+}
+
+/// A release of the album `album`, which `source` files under that album.
+fn of_album(
+    source: LookupCatalog,
+    release_id: &str,
+    album: Option<&str>,
+    catalog: &str,
+) -> MetadataResult {
+    MetadataResult {
+        source,
+        source_group_id: album.map(str::to_string),
         ..release(release_id, catalog)
+    }
+}
+
+/// What the statement answers as the album `verdict`'s offered rows share.
+async fn shared_album_of(verdict: TerminalVerdict) -> Option<bae_identify::SharedAlbum> {
+    let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
+    stored_cards(&db, &hash, &verdict).await.shared_album
+}
+
+/// Two offered rows on one album are several pressings of it: the statement
+/// answers the album and each row's lead, the row the folder's text agrees
+/// with first.
+#[tokio::test]
+async fn several_pressings_of_one_album_name_it_in_each_catalog() {
+    let mb = |release_id: &str, catalog: &str| {
+        of_album(LookupCatalog::MusicBrainz, release_id, Some("group-1"), catalog)
     };
-    let verdict = TerminalVerdict::Found {
-        findings: Findings {
-            matches: vec![one_album("b", "CAT-B"), one_album("a", "CAT-A")],
-            pressings: vec![0, 1],
-            named_notes: Vec::new(),
-            ..sample_findings()
-        },
-        track_count: 11,
-        ledger: None,
+    let shared = shared_album_of(each_its_own_row(vec![mb("b", "CAT-B"), mb("a", "CAT-A")]))
+        .await
+        .expect("two pressings of one album");
+    assert_eq!(
+        shared.link.albums(),
+        [bae_catalogs::records::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            "group-1"
+        )]
+    );
+    assert_eq!(
+        shared.leads,
+        vec![
+            bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "a"),
+            bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "b"),
+        ],
+        "the rows as the cards order them"
+    );
+}
+
+#[tokio::test]
+async fn one_pressing_offers_no_album_to_be_unsure_about() {
+    let mb = of_album(LookupCatalog::MusicBrainz, "a", Some("group-1"), "CAT-A");
+    assert_eq!(shared_album_of(each_its_own_row(vec![mb])).await, None);
+}
+
+#[tokio::test]
+async fn pressings_of_two_albums_share_none() {
+    let verdict = each_its_own_row(vec![
+        of_album(LookupCatalog::MusicBrainz, "a", Some("group-1"), "CAT-A"),
+        of_album(LookupCatalog::MusicBrainz, "b", Some("group-2"), "CAT-B"),
+    ]);
+    assert_eq!(shared_album_of(verdict).await, None);
+}
+
+#[tokio::test]
+async fn pressings_no_catalog_files_under_an_album_share_none() {
+    let verdict = each_its_own_row(vec![
+        of_album(LookupCatalog::Discogs, "a", None, "CAT-A"),
+        of_album(LookupCatalog::Discogs, "b", None, "CAT-B"),
+    ]);
+    assert_eq!(shared_album_of(verdict).await, None);
+}
+
+/// The cards as the statement reads them are the cards as the rules fold
+/// them, within one card the rows ordered by what the text agrees with.
+#[tokio::test]
+async fn verdict_cards_order_the_rows_of_one_card_by_agreement() {
+    let one_album = |release_id: &str, catalog: &str| {
+        of_album(LookupCatalog::MusicBrainz, release_id, Some("group-shared"), catalog)
     };
+    let verdict = each_its_own_row(vec![one_album("b", "CAT-B"), one_album("a", "CAT-A")]);
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
 
     let read = stored_cards(&db, &hash, &verdict).await;
@@ -244,10 +311,7 @@ async fn verdict_cards_statement_answers_the_album_its_pressings_share() {
     let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
     let expected =
         bae_identify::view::reference_cards_of(&bae_identify::RunOutcome::Answered(verdict), &text);
-    let shared = read.shared_album.clone().expect("two rows of one album are several pressings");
-    assert_eq!(shared.leads.len(), 2);
     assert_eq!(read.groups, expected.groups);
-    assert_eq!(read.shared_album, expected.shared_album);
 }
 
 /// A card that offers a row with more agreements comes before one that

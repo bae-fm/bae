@@ -203,12 +203,13 @@ impl StoredPart {
 fn load_on(
     sql: &impl coven::SqlRead,
     key: Option<&CandidateKey>,
-) -> Result<HashMap<CandidateKey, (SearchRun, CandidateSearch)>, DbError> {
+) -> Result<Vec<(CandidateKey, SearchRun, CandidateSearch)>, DbError> {
     let searches = sql.query(
         &format!(
             "SELECT search_run, candidate_key, mode, artist, album, catalog_number, barcode, \
                     {cards} AS cards, {parts} AS parts \
-             FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1",
+             FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1 \
+             ORDER BY search_run",
             cards = search_cards_sql("import_candidate_search.search_run"),
             parts = parts_column("import_candidate_search.search_run"),
         ),
@@ -223,7 +224,7 @@ fn load_on(
             ))
         },
     )?;
-    let mut loaded = HashMap::new();
+    let mut loaded = Vec::with_capacity(searches.len());
     for (run, key, query, cards, parts) in searches {
         let query = query?;
         let groups = groups_of(&cards)?;
@@ -233,7 +234,7 @@ fn load_on(
             .into_iter()
             .map(|part| part.part(&format!("{key}'s search")))
             .collect::<Result<Vec<_>, DbError>>()?;
-        loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, groups)));
+        loaded.push((key, SearchRun::of(run), CandidateSearch::of(query, sources, groups)));
     }
     Ok(loaded)
 }
@@ -344,14 +345,14 @@ pub(super) fn load_search_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<Option<CandidateSearch>, DbError> {
-    Ok(load_on(sql, Some(key))?.remove(key).map(|(_, search)| search))
+    Ok(load_on(sql, Some(key))?.into_iter().next().map(|(_, _, search)| search))
 }
 
 /// Every key's search.
 pub(super) fn load_searches_on(
     sql: &impl coven::SqlRead,
-) -> Result<HashMap<CandidateKey, CandidateSearch>, DbError> {
-    Ok(load_on(sql, None)?.into_iter().map(|(key, (_, search))| (key, search)).collect())
+) -> Result<Vec<(CandidateKey, CandidateSearch)>, DbError> {
+    Ok(load_on(sql, None)?.into_iter().map(|(key, _, search)| (key, search)).collect())
 }
 
 /// End, inside the caller's scan write, `key`'s search unless it is of
@@ -632,7 +633,7 @@ impl ImportTables {
         let release = release.clone();
         self.store
             .call(move |sql| {
-                let Some((run, search)) = load_on(sql, Some(&key))?.remove(&key) else {
+                let Some((_, run, search)) = load_on(sql, Some(&key))?.into_iter().next() else {
                     return Ok(());
                 };
                 let Some(group) = search.pickable_group(&release) else {
