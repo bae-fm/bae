@@ -5075,7 +5075,8 @@ Reads come two ways:
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
   ends the subscription. The album grid, the artist and composer lists, a composer's page, the
-  download queue and an artist picker's search are shown as windows, each its
+  download queue, the Storage manager and an artist picker's search are shown
+  as windows, each its
   own live query, with its count and the position of a key in it live queries
   of their own, the same objects for every list (a list is a value naming it,
   and one handle call each opens a window, a count or a position). A window is
@@ -5101,7 +5102,7 @@ Reads come two ways:
   reads the sort values of the row at a position once, by offset, and starts a
   chain there. A row whose sort values move it from one window to its
   neighbour can show in both or in neither until the second window's value
-  arrives. The Storage manager and the import list page by cursor: a window carries the sort
+  arrives. The import list pages by cursor: a window carries the sort
   values of the row at the screen's edge, the first or last
   row of a window the screen was delivered, and is read from them through the
   index, starting just past that row or ending just short of it, so its cost
@@ -5128,10 +5129,13 @@ Reads come two ways:
   then those whose name starts with it, then the rest, by name and id, and a
   window of it is a range of that order read as the others are, from every
   artist its text finds.
-  The Storage manager's list is also told
-  which releases are selected in it, and each of its values carries the row
-  of each one the list holds, on screen or not, and the storage actions every
-  one of those allows: a selection is offered only those. Its inspector
+  The Storage manager's count delivers its row count and its files' total
+  size, and whether a search narrows it; a new sort, filter or search is new
+  queries. Its selection is a live query of its own, told which releases are
+  selected, whose each value carries the row of each one the list holds, on
+  screen or not, and the storage actions every one of those allows: a
+  selection is offered only those. The transfer queues holding work are
+  another. Its inspector
   shows, and its storage actions act on, a selected release only while the
   list holds it: a release
   that finishes uploading out of the Local list, no longer matches the filter,

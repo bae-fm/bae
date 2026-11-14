@@ -8,7 +8,6 @@ mod detail;
 mod import_candidate;
 #[cfg(desktop)]
 mod release_files;
-mod storage;
 #[cfg(desktop)]
 mod storage_inspector;
 
@@ -17,7 +16,6 @@ pub use detail::*;
 pub use import_candidate::LiveImportCandidate;
 #[cfg(desktop)]
 pub use release_files::*;
-pub use storage::*;
 #[cfg(desktop)]
 pub use storage_inspector::*;
 
@@ -43,12 +41,10 @@ where
     })
 }
 
-/// A live read of the Storage Manager list. The view changes in place
-/// through [`LiveRead::set`]; the upload
-/// queue, pin markers, and sync state the rows are resolved against move the
-/// same read.
-pub type LiveStorageBrowse =
-    LiveRead<bae_views::StorageBrowseRequest, bae_views::StorageBrowseSnapshot>;
+/// A live read of the rows of the selected releases the Storage Manager list
+/// holds. The selection changes in place through [`LiveRead::set`].
+pub type LiveStorageSelection =
+    LiveRead<std::collections::BTreeSet<String>, bae_views::StorageSelection>;
 
 /// A live read of one release's files in one order. The release and order
 /// change in place through

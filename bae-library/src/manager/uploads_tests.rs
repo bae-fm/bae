@@ -217,16 +217,15 @@ async fn a_storage_row_counts_the_file_being_sent() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut browse = views(manager).subscribe_storage_browse(bae_views::StorageBrowseRequest {
-        sort: bae_views::StorageSortCriterion {
+    let mut browse = views(manager).subscribe_storage_window(
+        &bae_views::StorageSortCriterion {
             field: bae_views::StorageSortField::AlbumTitle,
             direction: bae_store::SortDirection::Ascending,
         },
-        filter: bae_views::StorageFilter::All,
-        search: String::new(),
-        windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-        selected: Default::default(),
-    });
+        bae_views::StorageFilter::All,
+        "",
+        bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
+    );
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_creation(
@@ -243,7 +242,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         loop {
             let event = browse.next().await.expect("the browse query answers");
             let projection = event.result.unwrap();
-            let sending = projection.windows.iter().flat_map(|window| &window.rows).any(|row| {
+            let sending = projection.rows.iter().any(|(row, _)| {
                 row.release.id == release.id
                     && row.release.upload.as_ref().is_some_and(|upload| upload.sending == 1)
             });

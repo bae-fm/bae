@@ -44,6 +44,8 @@ pub enum ListRows {
     Downloads(Vec<bae_transfers::DownloadRow>),
     /// The artists an artist picker's text finds.
     ArtistSearch(Vec<crate::album_detail::ArtistSearchResult>),
+    /// The Storage Manager's rows, each a release beside its album.
+    Storage(Vec<crate::album_detail::StorageRow>),
 }
 
 /// One delivery of a list's window: the request it answers, its rows, the
@@ -84,6 +86,12 @@ pub enum ListCountExtra {
     /// count: an album shows once under each of its artists.
     AlbumGrid {
         albums: u64,
+    },
+    /// The Storage Manager's total size of its releases' files, and whether
+    /// a search narrows the list.
+    Storage {
+        total_size: u64,
+        searching: bool,
     },
 }
 

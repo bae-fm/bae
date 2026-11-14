@@ -53,7 +53,7 @@ pub use release_files::{
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, SEARCH_RESULT_LIMIT,
 };
-pub use storage_browse::{ReleaseQueueRun, StorageBrowseSnapshot, StorageQueues, UploadQueueRun};
+pub use storage_browse::{ReleaseQueueRun, StorageQueues, StorageSelection, UploadQueueRun};
 pub use sync_activity::{
     DownloadQueueActivity, DownloadQueueCounts, SyncActivity, SyncActivityRows, TransferBatch,
     UploadQueueActivity, UploadQueueCounts,
@@ -66,7 +66,7 @@ pub use composer::WorkDetailProjection;
 pub use composer_detail::ComposerDetailProjection;
 pub use models::*;
 pub use release::ReleaseDetailProjection;
-pub use storage::{StorageBrowseProjection, StorageBrowseRequest};
+pub use storage::StorageCounts;
 
 use artist::{artist_listing_query, row_to_artist_summary};
 use composer::{
@@ -82,9 +82,7 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{
-    key_at, read_windows, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm,
-};
+use bae_store::list_windows::{key_at, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;
 use bae_store::syncs_on;
 use bae_store::*;

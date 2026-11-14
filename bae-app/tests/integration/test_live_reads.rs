@@ -270,25 +270,16 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     manager.manager().upload_release(&release.id).await.unwrap();
     manager.manager().drain_uploads_expecting_work().await.unwrap();
 
-    let values = bae_app::live_reads::subscribe_storage_browse(
+    let values = crate::storage_list::storage_top(
         manager.manager(),
         &views(&manager),
-        bae_views::StorageBrowseRequest {
-            sort: bae_views::StorageSortCriterion {
-                field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_store::SortDirection::Ascending,
-            },
-            filter: bae_views::StorageFilter::All,
-            search: String::new(),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-            selected: Default::default(),
-        },
+        &crate::storage_list::by_title(),
+        bae_views::StorageFilter::All,
+        50,
     );
-    let pinned = |value: &bae_views::StorageBrowseSnapshot| {
-        value
-            .windows
+    let pinned = |value: &bae_views::ListWindowValue| {
+        crate::storage_list::storage_rows(value)
             .iter()
-            .flat_map(|window| &window.rows)
             .find(|row| row.release.id == release.id)
             .map(|row| {
                 matches!(
@@ -313,71 +304,62 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     }
 }
 
-async fn next_storage_value(
-    values: &bae_app::live_reads::LiveStorageBrowse,
-) -> bae_views::StorageBrowseSnapshot {
+async fn next_storage_value(values: &bae_views::LiveListWindow) -> bae_views::ListWindowValue {
     tokio::time::timeout(HANG_GUARD, values.next())
         .await
-        .expect("the storage view delivers")
-        .expect("the storage view resolves")
+        .expect("the storage window delivers")
+        .expect("the storage window resolves")
 }
 
-/// The Storage Manager reads through one subscription: moving its windows,
-/// its sort, or its filter delivers the new view on the same subscription,
-/// with the filtered set's count and total size beside every value.
+/// The Storage Manager reads each window of its list as a live read of its
+/// own: moving a window's bounds delivers the new range on the same
+/// subscription, a new sort or filter is another list, and the filtered
+/// set's count and total size are a read of their own.
 #[tokio::test]
-async fn the_storage_view_moves_one_subscription() {
+async fn a_storage_window_moves_in_place_and_the_count_is_its_own() {
     let (manager, _storage, _temp_dir) = open_library().await;
     seed_albums(&manager, 3).await;
-    let window = |offset, limit| bae_store::LibraryPageWindow::at(offset, limit);
-    let view = |direction, filter, windows: &[bae_store::LibraryPageWindow]| {
-        bae_views::StorageBrowseRequest {
-            sort: bae_views::StorageSortCriterion {
-                field: bae_views::StorageSortField::AlbumTitle,
-                direction,
-            },
-            filter,
-            search: String::new(),
-            windows: windows.iter().cloned().collect(),
-            selected: Default::default(),
-        }
-    };
-    let titles = |value: &bae_views::StorageBrowseSnapshot| {
-        value
-            .windows
+    let views = views(&manager);
+    let titles = |value: &bae_views::ListWindowValue| {
+        crate::storage_list::storage_rows(value)
             .iter()
-            .map(|window| window.rows.iter().map(|row| row.album.title.clone()).collect::<Vec<_>>())
+            .map(|row| row.album.title.clone())
             .collect::<Vec<_>>()
     };
-    let ascending = bae_store::SortDirection::Ascending;
+    let ascending = crate::storage_list::by_title();
     let all = bae_views::StorageFilter::All;
-    let values = bae_app::live_reads::subscribe_storage_browse(
-        manager.manager(),
-        &views(&manager),
-        view(ascending, all, &[window(0, 2)]),
-    );
+    let values = crate::storage_list::storage_top(manager.manager(), &views, &ascending, all, 2);
+    let counts = crate::storage_list::storage_count(manager.manager(), &views, all);
 
     let first = next_storage_value(&values).await;
-    assert_eq!(titles(&first), vec![vec!["Album 0", "Album 1"]]);
-    assert_eq!(first.total_count, 3);
+    assert_eq!(titles(&first), vec!["Album 0", "Album 1"]);
+    assert_eq!(counts.next().await.unwrap().rows, 3, "one count answers every window");
+    let beyond = first.beyond.clone().expect("the limit cut the window short");
 
-    values.set(view(ascending, all, &[window(0, 1), window(2, 1)])).unwrap();
+    values
+        .set(bae_store::ListWindow::Forward { from: Some(beyond), until: None, limit: 2 })
+        .unwrap();
     let scrolled = next_storage_value(&values).await;
-    assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
-    assert_eq!(scrolled.total_count, 3, "one count answers every window");
+    assert_eq!(titles(&scrolled), vec!["Album 2"]);
 
-    let descending = bae_store::SortDirection::Descending;
-    values.set(view(descending, all, &[window(0, 2)])).unwrap();
-    let resorted = next_storage_value(&values).await;
-    assert_eq!(resorted.sort.direction, descending);
-    assert_eq!(titles(&resorted), vec![vec!["Album 2", "Album 1"]]);
+    let descending = bae_views::StorageSortCriterion {
+        direction: bae_store::SortDirection::Descending,
+        ..ascending
+    };
+    let resorted = crate::storage_list::storage_top(manager.manager(), &views, &descending, all, 2);
+    assert_eq!(titles(&next_storage_value(&resorted).await), vec!["Album 2", "Album 1"]);
 
     let local = bae_views::StorageFilter::Local;
-    values.set(view(descending, local, &[window(0, 2)])).unwrap();
-    let filtered = next_storage_value(&values).await;
-    assert_eq!(filtered.filter, local);
-    assert_eq!(filtered.total_count, views(&manager).get_storage_count(local).await.unwrap());
-    assert_eq!(filtered.total_size, views(&manager).get_storage_total_size(local).await.unwrap());
+    let local_counts = crate::storage_list::storage_count(manager.manager(), &views, local);
+    let counted = local_counts.next().await.unwrap();
+    assert_eq!(counted.rows, views.get_storage_count(local).await.unwrap());
+    assert_eq!(
+        counted.extra,
+        bae_views::ListCountExtra::Storage {
+            total_size: views.get_storage_total_size(local).await.unwrap(),
+            searching: false,
+        }
+    );
 }
 
 /// A release queued to be moved to this device reaches the album detail, the release
@@ -405,19 +387,12 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
     album_detail.set(Some(album_id)).unwrap();
     let release_detail = bae_app::live_reads::subscribe_release_detail(manager.manager(), &views);
     release_detail.set(Some(release_id.clone())).unwrap();
-    let storage_browse = bae_app::live_reads::subscribe_storage_browse(
+    let storage_browse = crate::storage_list::storage_top(
         manager.manager(),
         &views,
-        bae_views::StorageBrowseRequest {
-            sort: bae_views::StorageSortCriterion {
-                field: bae_views::StorageSortField::AlbumTitle,
-                direction: bae_store::SortDirection::Ascending,
-            },
-            filter: bae_views::StorageFilter::All,
-            search: String::new(),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-            selected: Default::default(),
-        },
+        &crate::storage_list::by_title(),
+        bae_views::StorageFilter::All,
+        50,
     );
     let waiting = Some(bae_views::album_detail::MoveToThisDeviceStatus::Queued);
     let album_shows = |status: Option<bae_views::album_detail::MoveToThisDeviceStatus>| {
@@ -437,8 +412,8 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
         }
     };
     let row_shows = |status: StorageRowStatus| {
-        move |snapshot: &bae_views::StorageBrowseSnapshot| {
-            snapshot.windows.iter().flat_map(|window| &window.rows).any(|row| row.status == status)
+        move |value: &bae_views::ListWindowValue| {
+            crate::storage_list::storage_rows(value).iter().any(|row| row.status == status)
         }
     };
 

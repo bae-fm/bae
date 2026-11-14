@@ -497,9 +497,22 @@ extension PreviewData {
         )
         return Library(
             releaseDetail: { .fixed(answers: answers) { details[$0] } },
-            storageBrowse: { _, _ in
-                .fixed(rows, queues: queues, answers: answers)
+            storageList: { _, _, search in
+                .fixed(
+                    rows,
+                    answers: answers,
+                    extra: .storage(
+                        totalSize: rows.reduce(UInt64(0)) {
+                            $0 + $1.release.totalSize
+                        },
+                        searching: !search.isEmpty
+                    )
+                )
             },
+            storageSelection: { _, _ in
+                .fixed(rows, answers: answers)
+            },
+            storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }
             }

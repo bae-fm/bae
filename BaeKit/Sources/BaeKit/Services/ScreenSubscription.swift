@@ -190,7 +190,8 @@ extension ReleaseDetailSubscription: PulledSubscription {}
 extension ArtistDetailSubscription: PulledSubscription {}
 extension ComposerDetailSubscription: PulledSubscription {}
 extension WorkDetailSubscription: PulledSubscription {}
-extension StorageBrowseSubscription: PulledSubscription {}
+extension StorageSelectionSubscription: PulledSubscription {}
+extension StorageQueuesSubscription: PulledSubscription {}
 extension QueueUpcomingSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}

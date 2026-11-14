@@ -3,14 +3,10 @@
 //! A release becomes Remote when attached, including while uploads are pending.
 //! Pins independently keep its audio available offline; covers remain shared.
 
-use bae_app::live_reads::LiveStorageBrowse;
 use bae_library::LibraryManager;
-use bae_store::SortDirection;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
-use bae_views::StorageBrowseRequest;
-use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use coven::MemoryStorage;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -441,7 +437,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
 // ---------------------------------------------------------------------------
 
 async fn next_storage_release(
-    subscription: &LiveStorageBrowse,
+    subscription: &bae_views::LiveListWindow,
     release_id: &str,
 ) -> bae_views::album_detail::ReleaseSummary {
     loop {
@@ -449,13 +445,11 @@ async fn next_storage_release(
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves");
-        if let Some(row) = value
-            .windows
-            .into_iter()
-            .flat_map(|window| window.rows)
+        if let Some(row) = crate::storage_list::storage_rows(&value)
+            .iter()
             .find(|row| row.release.id == release_id)
         {
-            return row.release;
+            return row.release.clone();
         }
     }
 }
@@ -473,19 +467,12 @@ async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
         crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"a")]).await;
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
-    let values = bae_app::live_reads::subscribe_storage_browse(
+    let values = crate::storage_list::storage_top(
         mgr.manager(),
         &views,
-        StorageBrowseRequest {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::All,
-            search: String::new(),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-            selected: Default::default(),
-        },
+        &crate::storage_list::by_title(),
+        bae_views::StorageFilter::All,
+        50,
     );
     let before = next_storage_release(&values, &release_id).await;
     assert!(before.storage_actions.is_empty(), "no storage → no storage actions");

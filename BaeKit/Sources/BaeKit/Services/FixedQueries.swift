@@ -130,69 +130,39 @@
         }
     }
 
-    extension StorageBrowseQuery {
-        /// A query over a fixed, already-sorted list, for shots and tests:
-        /// every view is answered with its windows' slices of `rows`, whatever
-        /// the sort, filter and search, beside `queues`.
+    extension StorageSelectionQuery {
+        /// A selection over fixed `rows`, for shots and tests: every set of
+        /// ids is answered with the rows among `rows` it names, beside the
+        /// actions all of them allow.
         public static func fixed(
             _ rows: [BridgeStorageRow],
-            queues: BridgeStorageQueues,
             answers: UnansweredCount
-        ) -> StorageBrowseQuery {
-            let requests = FixedRequests<StorageBrowseView>(answers: answers)
-            return StorageBrowseQuery(
-                setView: { requests.request($0) },
+        ) -> StorageSelectionQuery {
+            let requests = FixedRequests<[String]>(answers: answers)
+            requests.request([])
+            return StorageSelectionQuery(
+                setSelected: { requests.request($0) },
                 values: PulledValues(
                     read: {
-                        snapshot(
-                            for: try await requests.take(),
-                            rows: rows,
-                            queues: queues
+                        let ids = Set(try await requests.take())
+                        let selected = rows.filter { ids.contains($0.id) }
+                        return BridgeStorageSelection(
+                            selected: selected,
+                            // The fixture's stand-in for core's answer: the
+                            // actions every selected row lists.
+                            selectionActions: selected.first.map { first in
+                                first.release.storageActions.filter { action in
+                                    selected.allSatisfy {
+                                        $0.release.storageActions.contains(
+                                            action
+                                        )
+                                    }
+                                }
+                            } ?? []
                         )
                     },
                     cancel: { requests.close() }
                 )
-            )
-        }
-
-        /// What the fixture answers `view` with: its windows' slices of
-        /// `rows`, beside `queues`.
-        private static func snapshot(
-            for view: StorageBrowseView,
-            rows: [BridgeStorageRow],
-            queues: BridgeStorageQueues
-        ) -> BridgeStorageBrowseSnapshot {
-            let selected = rows.filter { view.selected.contains($0.id) }
-            return BridgeStorageBrowseSnapshot(
-                sort: view.sort,
-                filter: view.filter,
-                search: view.search,
-                // The fixture's stand-in for core's answer: any text narrows
-                // the list.
-                searching: !view.search.isEmpty,
-                windows: view.windows.map { window in
-                    let start = min(Int(window.offset), rows.count)
-                    let end = min(start + Int(window.limit), rows.count)
-                    return BridgeStorageBrowseWindow(
-                        window: window,
-                        rows: Array(rows[start..<end]),
-                        first: nil,
-                        last: nil
-                    )
-                },
-                totalCount: UInt64(rows.count),
-                totalSize: rows.reduce(UInt64(0)) { $0 + $1.release.totalSize },
-                selected: selected,
-                // The fixture's stand-in for core's answer: the actions every
-                // selected row lists.
-                selectionActions: selected.first.map { first in
-                    first.release.storageActions.filter { action in
-                        selected.allSatisfy {
-                            $0.release.storageActions.contains(action)
-                        }
-                    }
-                } ?? [],
-                queues: queues
             )
         }
     }
@@ -290,10 +260,12 @@
             _ rows: [Row],
             answers: UnansweredCount,
             itemCount: Int? = nil,
-            sections: [BridgeLibraryBrowseSection] = []
+            sections: [BridgeLibraryBrowseSection] = [],
+            extra countExtra: BridgeListCountExtra? = nil
         ) -> BridgeListQueries<Row> {
             let extra: BridgeListCountExtra =
-                itemCount.map {
+                countExtra
+                ?? itemCount.map {
                     BridgeListCountExtra.albumGrid(albums: UInt64($0))
                 }
                 ?? BridgeListCountExtra.none

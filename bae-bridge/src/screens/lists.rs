@@ -79,6 +79,13 @@ impl BridgeList {
         sort.into_iter().map(crate::types::BridgeComposerSortCriterion::into_core).collect()
     }
 
+    /// The Storage Manager's sort in core's terms.
+    pub(crate) fn storage_sort(
+        sort: crate::types::BridgeStorageSort,
+    ) -> bae_views::StorageSortCriterion {
+        sort.into_core()
+    }
+
     /// What an artist picker's text searches for: a blank text is no search.
     pub(crate) fn artist_search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {
         bae_views::LibrarySearchQuery::parse(text)
@@ -149,6 +156,9 @@ impl BridgeListWindowValue {
                         .map(crate::types::BridgeArtistSearchResult::from_core)
                         .collect(),
                 },
+                bae_views::ListRows::Storage(rows) => BridgeListRows::Storage {
+                    rows: rows.into_iter().map(crate::types::BridgeStorageRow::from_core).collect(),
+                },
             },
             first: value.first.as_ref().map(BridgeSortValue::of_key),
             beyond: value.beyond.as_ref().map(BridgeSortValue::of_key),
@@ -164,6 +174,9 @@ impl BridgeListCount {
                 bae_views::ListCountExtra::None => BridgeListCountExtra::None,
                 bae_views::ListCountExtra::AlbumGrid { albums } => {
                     BridgeListCountExtra::AlbumGrid { albums }
+                }
+                bae_views::ListCountExtra::Storage { total_size, searching } => {
+                    BridgeListCountExtra::Storage { total_size, searching }
                 }
             },
         }

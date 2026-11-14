@@ -62,106 +62,163 @@ impl LibraryViews {
             .await
     }
 
-    /// Follow the Storage Manager list: every window the request names under
-    /// its sort, filter and search, each read from its cursor when it has one
-    /// (`list_windows`), with the filtered set's count and total
-    /// size and the rows of the selected releases it holds read once per run.
-    /// A new sort, filter, search, window set, selection, or upload queue
-    /// points the same query at it through its request handle.
+    /// Follow one window of the Storage Manager list under `sort`, `filter`
+    /// and the search text `search`: a range of its order (`list_windows`),
+    /// each row beside whether storage is set up, which resolves it. Coven
+    /// reruns it for a write inside its range alone.
     ///
-    /// A search's count is read first, from what it finds: it decides
-    /// whether each window is read from those releases or through the
+    /// A search is counted first, from what it finds: that decides whether
+    /// each seek of the window reads those releases or goes through the
     /// order's index (`StorageSearch`).
-    pub fn subscribe_storage_browse(
+    pub fn subscribe_storage_window(
         &self,
-        initial: StorageBrowseRequest,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        search: &str,
+        initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<
-        StorageBrowseRequest,
-        StorageBrowseProjection,
+        ListWindow,
+        WindowRead<(DbStorageRow, bool)>,
         bae_store::DbError,
     > {
+        let order = storage_order(sort);
+        let read_order = order.clone();
+        let query = crate::LibrarySearchQuery::parse(search);
         self.store
-            .subscribe_reconfigurable(initial, move |request, sql| {
-                let order = storage_order(&request.sort);
-                let query = crate::LibrarySearchQuery::parse(&request.search);
-                let (total_count, total_size, search) =
-                    storage_totals_on(&sql, request.filter, query.as_ref())?;
-                let windows = read_windows(&order, &request.windows, |seek, limit, offset| {
-                    storage_rows_on(
-                        &sql,
-                        &order,
-                        request.filter,
-                        search.as_ref(),
-                        seek,
-                        limit,
-                        offset,
-                    )
-                })?;
-                let selected =
-                    storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)?;
-                let queues = storage_queues_on(&sql)?;
-                let syncs = syncs_on(&sql)?;
-                let searching = search.is_some();
-                Ok((
-                    request.clone(),
-                    searching,
-                    windows,
-                    total_count,
-                    total_size,
-                    selected,
-                    queues,
-                    syncs,
-                ))
+            .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+                let (.., found) = storage_totals_on(sql, filter, query.as_ref())?;
+                let syncs = syncs_on(sql)?;
+                Ok(storage_rows_on(sql, &read_order, filter, found.as_ref(), seek, limit, offset)?
+                    .into_iter()
+                    .map(|(parts, key)| ((parts, syncs), key))
+                    .collect())
             })
-            .process(
-                |(
-                    request,
-                    searching,
-                    windows,
-                    total_count,
-                    total_size,
-                    selected,
-                    queues,
-                    syncs,
-                )| {
-                    let windows = windows
-                        .into_iter()
-                        .map(|window| window.into_browse().try_convert_rows(process_storage_rows))
-                        .collect::<Result<Vec<_>, DbError>>()?;
-                    Ok(StorageBrowseProjection {
-                        sort: request.sort,
-                        filter: request.filter,
-                        search: request.search,
-                        searching,
-                        windows,
-                        total_count,
-                        total_size,
-                        selected: process_storage_rows(selected)?,
-                        queues,
-                        syncs,
-                    })
-                },
-            )
+            .process(|window| {
+                window.try_map_rows(|(parts, syncs)| Ok((process_storage_row(parts)?, syncs)))
+            })
+    }
+
+    /// Follow how many releases the Storage Manager list holds under `filter`
+    /// and `search`, and their files' total size. Its own query, never beside
+    /// a window's rows: every release added or removed moves it.
+    pub fn subscribe_storage_count(
+        &self,
+        filter: StorageFilter,
+        search: &str,
+    ) -> coven::LiveQuery<StorageCounts, bae_store::DbError> {
+        let query = crate::LibrarySearchQuery::parse(search);
+        self.store.subscribe(move |sql| {
+            let (rows, total_size, _) = storage_totals_on(&sql, filter, query.as_ref())?;
+            Ok(StorageCounts { rows, total_size, searching: query.is_some() })
+        })
+    }
+
+    /// Follow how many releases of the Storage Manager list come before the
+    /// row at a key, a count over index ranges that moves in place with the
+    /// key.
+    pub fn subscribe_storage_position(
+        &self,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        search: &str,
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let order = storage_order(sort);
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            rows_before(&order, key, |seek| {
+                storage_seek_count_on(&sql, filter, pattern.as_deref(), &order, seek)
+            })
+        })
+    }
+
+    /// The key of the release at `position` of the Storage Manager list, or
+    /// of its last row when it ends before it; `None` for an empty list.
+    pub async fn storage_key_at(
+        &self,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        search: &str,
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let order = storage_order(sort);
+        let query = crate::LibrarySearchQuery::parse(search);
+        self.store
+            .read(move |sql| {
+                let (.., found) = storage_totals_on(&sql, filter, query.as_ref())?;
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    storage_rows_on(&sql, &order, filter, found.as_ref(), seek, limit, offset)
+                })
+            })
+            .await
+    }
+
+    /// Follow the rows of the releases `initial` names that the Storage
+    /// Manager list under `filter` and `search` holds, wherever in it they
+    /// sit, with the storage actions every one of them allows. A selected
+    /// release the list no longer holds is absent, so the inspector never
+    /// shows, and the storage actions never act on, a release the list
+    /// doesn't. The selection moves in place through the request handle.
+    pub fn subscribe_storage_selection(
+        &self,
+        filter: StorageFilter,
+        search: &str,
+        initial: BTreeSet<String>,
+    ) -> coven::ReconfigurableLiveQuery<
+        BTreeSet<String>,
+        (Vec<DbStorageRow>, bool),
+        bae_store::DbError,
+    > {
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
+        self.store
+            .subscribe_reconfigurable(initial, move |selected, sql| {
+                let rows = storage_selected_on(&sql, filter, pattern.as_deref(), selected)?;
+                Ok((rows, syncs_on(&sql)?))
+            })
+            .process(|(rows, syncs)| Ok((process_storage_rows(rows)?, syncs)))
+    }
+
+    /// Follow the transfer queues holding work, as the Storage Manager shows
+    /// them.
+    pub fn subscribe_storage_queues(
+        &self,
+    ) -> coven::LiveQuery<crate::StorageQueues, bae_store::DbError> {
+        self.store.subscribe(|sql| storage_queues_on(&sql))
     }
 }
 
-/// One delivery of the Storage Manager list as it shows it.
-pub fn resolve_storage_browse(projection: StorageBrowseProjection) -> crate::StorageBrowseSnapshot {
-    let syncs = projection.syncs;
-    let resolve = |raw: DbStorageRow| StorageRow::from_raw(raw, syncs);
-    let windows = projection.windows.into_iter().map(|window| window.map_rows(&resolve)).collect();
-    let selected: Vec<StorageRow> = projection.selected.into_iter().map(&resolve).collect();
-    crate::StorageBrowseSnapshot {
-        sort: projection.sort,
-        filter: projection.filter,
-        search: projection.search,
-        searching: projection.searching,
-        windows,
-        total_count: projection.total_count,
-        total_size: projection.total_size,
+/// How many releases the Storage Manager list holds, their files' total size,
+/// and whether a search narrows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageCounts {
+    pub rows: u64,
+    pub total_size: u64,
+    /// Whether the search text narrows the list: it is a library search, not
+    /// blank.
+    pub searching: bool,
+}
+
+/// One delivery of a Storage Manager window as the list shows it.
+pub fn resolve_storage_window(read: WindowRead<(DbStorageRow, bool)>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, |rows| {
+        crate::ListRows::Storage(
+            rows.into_iter().map(|(raw, syncs)| StorageRow::from_raw(raw, syncs)).collect(),
+        )
+    })
+}
+
+/// The rows of the selected releases the Storage Manager list holds, and the
+/// storage actions every one of them allows.
+pub fn resolve_storage_selection(
+    (rows, syncs): (Vec<DbStorageRow>, bool),
+) -> crate::StorageSelection {
+    let selected: Vec<StorageRow> =
+        rows.into_iter().map(|raw| StorageRow::from_raw(raw, syncs)).collect();
+    crate::StorageSelection {
         selection_actions: crate::album_detail::common_storage_actions(&selected),
         selected,
-        queues: projection.queues,
     }
 }
 
@@ -617,17 +674,13 @@ pub(crate) fn storage_rows_on(
 pub(crate) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
-    rows.into_iter()
-        .map(|(release, release_cover_version, album, status, date_added)| {
-            Ok(DbStorageRow {
-                release,
-                date_added,
-                release_cover_version,
-                album: album.process()?,
-                status,
-            })
-        })
-        .collect()
+    rows.into_iter().map(process_storage_row).collect()
+}
+
+fn process_storage_row(
+    (release, release_cover_version, album, status, date_added): StorageRowParts,
+) -> Result<DbStorageRow, DbError> {
+    Ok(DbStorageRow { release, date_added, release_cover_version, album: album.process()?, status })
 }
 
 /// How many releases the Storage Manager list holds under `filter`.
@@ -661,12 +714,42 @@ pub(crate) fn storage_total_size_query(filter: StorageFilter) -> String {
     listing_totals_sum_query("total_size", filter)
 }
 
-/// The rows of the `release_ids` the list under `filter` and `search`
-/// holds, wherever in it they sit, by release id.
+/// How many releases of the Storage Manager list under `filter` (narrowed to
+/// the albums the search `pattern` finds, with one) come before the rows `seek`
+/// reads, each album tested alone as the order's index reaches it.
+fn storage_seek_count_on(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let rows = match pattern {
+        Some(_) => StorageRows::SearchedInOrder,
+        None => StorageRows::Listed,
+    };
+    let (listing, searched) = storage_listing(rows);
+    let statement = format!(
+        "SELECT COUNT(*) FROM {listing} WHERE {filter} AND {searched} AND ({condition})",
+        filter = storage_filter(filter),
+        condition = order.condition(seek),
+    );
+    let mut params = seek.params();
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
+    }
+    Ok(sql
+        .query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
+}
+
+/// The rows of the `release_ids` the list under `filter` and the search
+/// `pattern` (see [`search_pattern`]) holds, wherever in it they sit, by
+/// release id.
 pub(crate) fn storage_selected_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
-    search: Option<&StorageSearch>,
+    pattern: Option<&str>,
     release_ids: &BTreeSet<String>,
 ) -> Result<Vec<StorageRowParts>, DbError> {
     if release_ids.is_empty() {
@@ -674,10 +757,10 @@ pub(crate) fn storage_selected_on(
     }
     let selected = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("selected release ids", error))?;
-    let query = storage_selected_query(filter, search.is_some());
+    let query = storage_selected_query(filter, pattern.is_some());
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":selected", &selected)];
-    if let Some(search) = search {
-        params.push((":search", &search.pattern));
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
     }
     let mut rows = sql.query(&query, params.as_slice(), storage_row_parts)?;
     for (release, ..) in &mut rows {
@@ -730,54 +813,6 @@ pub(crate) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
     }
     terms.push(SortTerm::ascending("listing.release_id"));
     ListOrder::new(terms)
-}
-
-/// What the Storage Manager shows, and its list reads: the list under one
-/// sort, filter and search text, the windows of it on screen, and the
-/// releases selected in it. The search narrows the list to the releases whose
-/// album library search finds (§2.3); text that is no search (blank) narrows
-/// nothing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StorageBrowseRequest {
-    pub sort: StorageSortCriterion,
-    pub filter: StorageFilter,
-    pub search: String,
-    pub windows: bae_store::LibraryPageWindows,
-    pub selected: BTreeSet<String>,
-}
-
-/// Each window a read names holds that window's rows of the list it was read
-/// under, so a read for other windows still answers; one under another
-/// sort, filter, search or selection reads another list.
-impl bae_store::live_query::LiveRequest for StorageBrowseRequest {
-    fn still_answers(&self, current: &Self) -> bool {
-        self.sort == current.sort
-            && self.filter == current.filter
-            && self.search == current.search
-            && self.selected == current.selected
-    }
-}
-
-/// Every requested window of the Storage Manager list under the sort, filter
-/// and search text it was read for, the filtered set's count and total size,
-/// and the rows of the selected releases the filtered set holds, by release
-/// id.
-#[derive(Debug, Clone, PartialEq)]
-pub struct StorageBrowseProjection {
-    pub sort: StorageSortCriterion,
-    pub filter: StorageFilter,
-    pub search: String,
-    /// Whether the search text narrows the list: it is a library search,
-    /// not blank.
-    pub searching: bool,
-    pub windows: Vec<bae_store::LibraryBrowseWindow<DbStorageRow>>,
-    pub total_count: u64,
-    pub total_size: u64,
-    pub selected: Vec<DbStorageRow>,
-    pub queues: crate::StorageQueues,
-    /// Whether storage is set up on this device, as coven's sync status
-    /// says.
-    pub syncs: bool,
 }
 
 #[cfg(test)]

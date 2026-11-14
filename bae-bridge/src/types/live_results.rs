@@ -85,6 +85,13 @@ pub enum BridgeList {
     Downloads,
     /// The artists an artist picker's `text` finds; blank text finds none.
     ArtistSearch { text: String },
+    /// The Storage Manager's releases under `sort` and `filter`, narrowed by
+    /// the library search `search` finds when it is not blank.
+    Storage {
+        sort: crate::types::BridgeStorageSort,
+        filter: crate::types::BridgeStorageFilter,
+        search: String,
+    },
 }
 
 /// A window of a list: a range of its order, bounded by the sort values of a
@@ -108,6 +115,7 @@ pub enum BridgeListRows {
     ComposerPage { rows: Vec<crate::types::BridgeComposerDetailRow> },
     Downloads { rows: Vec<crate::types::BridgeDownloadOp> },
     ArtistSearch { rows: Vec<crate::types::BridgeArtistSearchResult> },
+    Storage { rows: Vec<crate::types::BridgeStorageRow> },
 }
 
 /// One delivery of a list's window.
@@ -142,6 +150,12 @@ pub enum BridgeListCountExtra {
     /// rows.
     AlbumGrid {
         albums: u64,
+    },
+    /// The Storage Manager's total size of its releases' files, and whether
+    /// a search narrows the list.
+    Storage {
+        total_size: u64,
+        searching: bool,
     },
 }
 

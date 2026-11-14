@@ -5,6 +5,7 @@
 //! Run one area with a filter on its module: `scripts/cargo.sh test -p
 //! bae-app --features test-utils --test integration -- test_startup_sync::`.
 
+mod storage_list;
 mod test_bootstrap_fixture;
 mod test_bootstrap_pointer;
 mod test_close_open_files;

@@ -104,6 +104,11 @@ forward! { async this => {
                 .artist_search_key_at(BridgeList::artist_search_query(&text), position)
                 .await
                 .map_err(BridgeError::from)?,
+            BridgeList::Storage { sort, filter, search } => this
+                .services
+                .storage_key_at(&BridgeList::storage_sort(sort), filter.into_core(), &search, position)
+                .await
+                .map_err(BridgeError::from)?,
         };
         Ok(key.as_ref().map(BridgeSortValue::of_key))
     }

@@ -1,30 +1,15 @@
-//! The Storage Manager list, read through one live query whose sort, filter,
-//! search text and windows change in place.
+//! What the Storage Manager shows beside its list's windows, count and
+//! positions: its selection and the transfer queues holding work.
 
-use bae_store::LibraryBrowseWindow;
-
-/// Every window of the list read under one sort, filter and search text —
-/// the ones named here, which a UI that has since moved on drops — with the
-/// filtered set's row count and total size, the row of each selected release
-/// the filtered set holds, in a window or not, by release id, and the storage
-/// actions every one of those allows: a selected release the list no longer
-/// holds is absent, so the inspector never shows, and the storage actions
-/// never act on, a release the list doesn't. Beside the list, the transfer
-/// queues that hold work.
+/// The rows of the selected releases the Storage Manager list holds,
+/// wherever in it they sit, and the storage actions every one of them
+/// allows: a selected release the list no longer holds is absent, so the
+/// inspector never shows, and the storage actions never act on, a release the
+/// list doesn't.
 #[derive(Debug, Clone)]
-pub struct StorageBrowseSnapshot {
-    pub sort: crate::StorageSortCriterion,
-    pub filter: crate::StorageFilter,
-    pub search: String,
-    /// Whether the search text narrows the list: it is a library search,
-    /// not blank.
-    pub searching: bool,
-    pub windows: Vec<LibraryBrowseWindow<crate::album_detail::StorageRow>>,
-    pub total_count: u64,
-    pub total_size: u64,
+pub struct StorageSelection {
     pub selected: Vec<crate::album_detail::StorageRow>,
     pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
-    pub queues: StorageQueues,
 }
 
 /// The transfer queues holding files waiting or on the move, each with what

@@ -5,9 +5,6 @@ import Observation
 @Observable
 public final class StorageManagerStore {
     public private(set) var list: StorageList?
-    public private(set) var totalSize: UInt64?
-    /// Whether the search text narrows the list, by core's last answer.
-    public private(set) var searching = false
     /// The transfer queues holding work, by core's last answer; `nil` until
     /// it answers.
     public private(set) var queues: BridgeStorageQueues?
@@ -26,11 +23,20 @@ public final class StorageManagerStore {
     private var rebuildTask: Task<Void, Never>?
     @ObservationIgnored
     private var generation = 0
-    /// The manager's one live read, opened by the first `update` and kept
-    /// across sort, filter and search changes until `cancel`.
+    /// The rows of the selection the list holds, read live for the list
+    /// shown: a new sort, filter or search opens another.
     @ObservationIgnored
-    private var pageSource: StorageBrowsePageSource?
-    /// The releases selected in the list, which the query is asked about.
+    private var selectionQuery: StorageSelectionQuery?
+    @ObservationIgnored
+    private var selectionDeliveries:
+        ScreenSubscription<PulledValues<BridgeStorageSelection>>?
+    /// The queues' one live read, opened by the first `update` and kept until
+    /// `cancel`.
+    @ObservationIgnored
+    private var queueDeliveries:
+        ScreenSubscription<PulledValues<BridgeStorageQueues>>?
+    /// The releases selected in the list, which the selection read is asked
+    /// about.
     @ObservationIgnored
     private var selection: Set<String> = []
 
@@ -40,6 +46,24 @@ public final class StorageManagerStore {
     ) {
         self.library = library
         self.onError = onError
+    }
+
+    /// The total size of the files of the releases the list holds, by its
+    /// count's last answer; `nil` until the list has answered.
+    public var totalSize: UInt64? {
+        guard let list, case .storage(let size, _)? = list.countExtra else {
+            return nil
+        }
+        return size
+    }
+
+    /// Whether the search text narrows the list, by core's last answer.
+    public var searching: Bool {
+        guard let list, case .storage(_, let searching)? = list.countExtra
+        else {
+            return false
+        }
+        return searching
     }
 
     /// Show the list under `filter`, `sort` and the `search` text, which
@@ -54,36 +78,10 @@ public final class StorageManagerStore {
         list?.cancel()
         generation += 1
         let currentGeneration = generation
-        totalSize = nil
-        // The answer belongs to the view it was read under.
-        selectedRows = [:]
-        selectedActions = []
-        let pageSource: StorageBrowsePageSource
-        if let existing = self.pageSource {
-            existing.setView(sort: sort, filter: filter, search: search)
-            pageSource = existing
-        }
-        else {
-            pageSource = StorageBrowsePageSource(
-                library: library,
-                sort: sort,
-                filter: filter,
-                search: search,
-                selected: selection,
-                onListValue: { [weak self] value in
-                    self?.searching = value.searching
-                    self?.totalSize = value.totalSize
-                    self?.queues = value.queues
-                    self?.selectedRows = Dictionary(
-                        uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
-                    )
-                    self?.selectedActions = value.selectionActions
-                }
-            )
-            self.pageSource = pageSource
-        }
+        openQueues()
+        openSelection(filter: filter, search: search)
         let newList = StorageList(
-            pageSource: pageSource,
+            queries: library.storageList(sort, filter, search),
             onError: onError
         )
         rebuildTask = Task { [weak self] in
@@ -98,7 +96,46 @@ public final class StorageManagerStore {
     /// Ask the list for the rows of `selection` it holds.
     public func select(_ selection: Set<String>) {
         self.selection = selection
-        pageSource?.setSelection(selection)
+        setSelected()
+    }
+
+    private func openQueues() {
+        guard queueDeliveries == nil else { return }
+        queueDeliveries = ScreenSubscription(
+            library.storageQueues(),
+            onValue: { [weak self] queues in self?.queues = queues },
+            onError: { [weak self] error in self?.onError(error) }
+        )
+    }
+
+    /// Read the selection's rows under `filter` and `search`, from the next
+    /// value on: the answer belongs to the list it was read under.
+    private func openSelection(filter: BridgeStorageFilter, search: String) {
+        selectionDeliveries?.stop()
+        selectedRows = [:]
+        selectedActions = []
+        let query = library.storageSelection(filter, search)
+        selectionQuery = query
+        selectionDeliveries = ScreenSubscription(
+            query.values,
+            onValue: { [weak self] value in
+                self?.selectedRows = Dictionary(
+                    uniqueKeysWithValues: value.selected.map { ($0.id, $0) }
+                )
+                self?.selectedActions = value.selectionActions
+            },
+            onError: { [weak self] error in self?.onError(error) }
+        )
+        setSelected()
+    }
+
+    private func setSelected() {
+        do {
+            try selectionQuery?.setSelected(Array(selection))
+        }
+        catch {
+            onError(error)
+        }
     }
 
     /// The part of `selection` the list holds: a row it has loaded, or a
@@ -136,7 +173,10 @@ public final class StorageManagerStore {
         rebuildTask?.cancel()
         rebuildTask = nil
         list?.cancel()
-        pageSource?.close()
-        pageSource = nil
+        selectionDeliveries?.stop()
+        selectionDeliveries = nil
+        selectionQuery = nil
+        queueDeliveries?.stop()
+        queueDeliveries = nil
     }
 }

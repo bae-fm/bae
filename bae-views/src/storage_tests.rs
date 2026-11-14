@@ -15,7 +15,6 @@ use bae_store::test_fixtures::trigger_order::{
 // The listing's albums, not the root fixtures' of the same names.
 use bae_records::test_fixtures::storage_listing::{ALBUM_A, ALBUM_B};
 use bae_records::test_fixtures::*;
-use bae_store::{LibraryPageWindow, LibraryPageWindows};
 
 /// The Storage Manager list's release ids in `field` order, ascending.
 async fn page(db: &Store, field: StorageSortField) -> Vec<String> {
@@ -511,40 +510,23 @@ async fn every_search_read_finds_the_same_releases() {
     }
 }
 
-/// The ids in each window of the Storage Manager list `request` reads, as
-/// the next value of `query` once it is pointed there.
-async fn read_storage(
-    query: &mut coven::ReconfigurableLiveQuery<
-        StorageBrowseRequest,
-        StorageBrowseProjection,
-        bae_store::DbError,
-    >,
-    request: StorageBrowseRequest,
-) -> (u64, Vec<Vec<String>>) {
-    query.requests().set(request.clone()).unwrap();
-    loop {
-        let event = query.next().await.unwrap();
-        if event.request == request {
-            let value = event.result.unwrap();
-            return (
-                value.total_count,
-                value
-                    .windows
-                    .into_iter()
-                    .map(|window| window.rows.into_iter().map(|row| row.release.id).collect())
-                    .collect(),
-            );
-        }
-    }
+/// The ids in the five rows of the Storage Manager list narrowed by `text`
+/// that a window starting at `from` holds.
+fn window_of_five_from(from: bae_store::list_windows::OrderKey) -> ListWindow {
+    ListWindow::Forward { from: Some(from), until: None, limit: 5 }
 }
 
-/// A live Storage Manager list narrowed by a search and scrolled a window at
-/// a time holds what a read with nothing to start from holds at each window;
-/// and so it does after a name an album's credit prints brings the album into
-/// what the search finds above the window it scrolls from, which moves no row
-/// of the listing itself.
+fn ids_of(read: &WindowRead<(DbStorageRow, bool)>) -> Vec<String> {
+    read.rows.iter().map(|(row, _)| row.release.id.clone()).collect()
+}
+
+/// A live Storage Manager window narrowed by a search and started at a key
+/// holds what a fresh read from that key holds, and keeps holding it after a
+/// name an album's credit prints brings an album into what the search finds
+/// above the window, which moves no row of the listing itself: the window is
+/// a range of the order from its key, wherever that key then sits.
 #[tokio::test]
-async fn a_scrolled_search_holds_its_offsets_rows_across_a_printed_name() {
+async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
     let (db, _tmp) = library().await;
     let records = test_records(&db);
     // The first artist's albums sort by its sort name from now on, filled in
@@ -559,35 +541,42 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_printed_name() {
         .await
         .unwrap();
     assert_eq!(met, [artist]);
-    let request = |offset| StorageBrowseRequest {
-        sort: StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
-        },
-        filter: StorageFilter::All,
-        search: "album 1".to_string(),
-        windows: LibraryPageWindows::from([LibraryPageWindow::at(offset, 5)]),
-        selected: Default::default(),
+    let views = crate::LibraryViews::new(db.clone());
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
     };
-    let fresh = |offset| {
-        let db = &db;
+    let from = views
+        .storage_key_at(&sort, StorageFilter::All, "album 1", 10)
+        .await
+        .unwrap()
+        .expect("the search finds more than ten releases");
+    let fresh = |from: bae_store::list_windows::OrderKey| {
+        let views = &views;
+        let sort = &sort;
         async move {
-            let mut query =
-                crate::LibraryViews::new(db.clone()).subscribe_storage_browse(request(offset));
-            read_storage(&mut query, request(offset)).await
+            let mut query = views.subscribe_storage_window(
+                sort,
+                StorageFilter::All,
+                "album 1",
+                window_of_five_from(from),
+            );
+            ids_of(&query.next().await.unwrap().result.unwrap())
         }
     };
-    let mut query = crate::LibraryViews::new(db.clone()).subscribe_storage_browse(request(0));
-    query.next().await.unwrap().result.unwrap();
-    let (count, _) = fresh(0).await;
-    assert!(count > 20, "the search finds {count} releases");
-    for offset in [5, 10, 15, 10, 5] {
-        assert_eq!(
-            read_storage(&mut query, request(offset)).await,
-            fresh(offset).await,
-            "at {offset}"
-        );
-    }
+    let mut live = views.subscribe_storage_window(
+        &sort,
+        StorageFilter::All,
+        "album 1",
+        window_of_five_from(from.clone()),
+    );
+    let mut count = views.subscribe_storage_count(StorageFilter::All, "album 1");
+    let before = ids_of(&live.next().await.unwrap().result.unwrap());
+    let found = count.next().await.unwrap().unwrap();
+    assert!(found.rows > 20, "the search finds {} releases", found.rows);
+    assert_eq!(before.len(), 5);
+    assert_eq!(before, fresh(from.clone()).await);
+
     records
         .save_release_metadata_for_test(&bulk_library::release_id(0), |rows| {
             rows.album_artists[0].credit =
@@ -595,11 +584,16 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_printed_name() {
         })
         .await
         .unwrap();
-    for offset in [10, 5] {
-        let read = read_storage(&mut query, request(offset)).await;
-        assert_eq!(read.0, count + 1, "the album printing the new name joins the list");
-        assert_eq!(read, fresh(offset).await, "at {offset} after the new name");
-    }
+    let counted = loop {
+        let counted = count.next().await.unwrap().unwrap();
+        if counted.rows != found.rows {
+            break counted;
+        }
+    };
+    assert_eq!(counted.rows, found.rows + 1, "the album printing the new name joins the list");
+    // The window starts at the same key, so the rows it holds are the ones it
+    // held, whichever position that key has now.
+    assert_eq!(fresh(from).await, before);
 }
 
 #[tokio::test]

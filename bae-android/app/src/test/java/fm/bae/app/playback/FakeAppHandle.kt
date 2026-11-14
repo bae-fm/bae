@@ -62,7 +62,6 @@ import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeStorageFilter
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
-import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
@@ -90,7 +89,8 @@ import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.QueueUpcomingSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
-import uniffi.bae_bridge.StorageBrowseSubscription
+import uniffi.bae_bridge.StorageQueuesSubscription
+import uniffi.bae_bridge.StorageSelectionSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
 import uniffi.bae_bridge.UnmeteredOnlySubscription
@@ -243,10 +243,17 @@ internal open class FakeAppHandle(
                 ) { FakeComposerPage(composerDetailRows[list.artistId].orEmpty()) }
             }
 
-            is BridgeList.Artists, BridgeList.Downloads, is BridgeList.ArtistSearch -> {
+            is BridgeList.Artists, BridgeList.Downloads, is BridgeList.ArtistSearch, is BridgeList.Storage -> {
                 unfaked("the list $list")
             }
         }
+
+    override fun subscribeStorageSelection(
+        filter: BridgeStorageFilter,
+        search: String,
+    ): StorageSelectionSubscription = unfaked("subscribeStorageSelection")
+
+    override fun subscribeStorageQueues(): StorageQueuesSubscription = unfaked("subscribeStorageQueues")
 
     override fun subscribeAlbumDetail(): AlbumDetailSubscription =
         FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it] }).also(albumDetailSubscriptions::add)
@@ -780,11 +787,6 @@ internal open class FakeAppHandle(
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
-
-    override fun subscribeStorageBrowse(
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-    ): StorageBrowseSubscription = unfaked("subscribeStorageBrowse")
 
     override suspend fun cancelReleaseTransition(releaseId: String) {
         unfaked("cancelReleaseTransition")

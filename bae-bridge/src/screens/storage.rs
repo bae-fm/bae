@@ -1,34 +1,14 @@
-//! The Storage Manager's list as it pulls it: one live read for as long as
-//! the manager is open, whose view moves in place.
+//! What the Storage Manager pulls beside its list's windows, count and
+//! positions: the rows of its selection, and the transfer queues holding work.
 
-use crate::types::{BridgeError, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort};
+use crate::types::{BridgeError, BridgeStorageRow};
 
-browse_window! {
-    /// One requested window of the Storage Manager list, with its rows.
-    window: BridgeStorageBrowseWindow,
-    row: bae_views::album_detail::StorageRow => BridgeStorageRow,
-}
-
-/// Every requested window of the Storage Manager list under the sort, filter
-/// and search text it was read for — a UI that has since moved to another
-/// drops it — with the filtered set's row count and total size, the row of
-/// each selected release the filtered set holds, in a window or not, by
-/// release id, the storage actions every one of those allows, and the
-/// transfer queues holding work.
+/// The rows of the selected releases the Storage Manager list holds, in a
+/// window or not, and the storage actions every one of them allows.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeStorageBrowseSnapshot {
-    pub sort: BridgeStorageSort,
-    pub filter: BridgeStorageFilter,
-    pub search: String,
-    /// Whether the search text narrows the list: it is a library search,
-    /// not blank.
-    pub searching: bool,
-    pub windows: Vec<BridgeStorageBrowseWindow>,
-    pub total_count: u64,
-    pub total_size: u64,
+pub struct BridgeStorageSelection {
     pub selected: Vec<BridgeStorageRow>,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
-    pub queues: BridgeStorageQueues,
 }
 
 /// The transfer queues holding files waiting or on the move, each with
@@ -73,64 +53,45 @@ impl BridgeStorageQueues {
     }
 }
 
-impl BridgeStorageBrowseSnapshot {
-    fn from_core(snapshot: bae_views::StorageBrowseSnapshot) -> Self {
+impl BridgeStorageSelection {
+    fn from_core(selection: bae_views::StorageSelection) -> Self {
         Self {
-            sort: BridgeStorageSort::from_core(snapshot.sort),
-            filter: BridgeStorageFilter::from_core(snapshot.filter),
-            search: snapshot.search,
-            searching: snapshot.searching,
-            windows: snapshot
-                .windows
-                .into_iter()
-                .map(BridgeStorageBrowseWindow::from_core)
-                .collect(),
-            total_count: snapshot.total_count,
-            total_size: snapshot.total_size,
-            selected: snapshot.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
-            selection_actions: snapshot
+            selected: selection.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
+            selection_actions: selection
                 .selection_actions
                 .into_iter()
                 .map(crate::types::BridgeReleaseStorageAction::from_core)
                 .collect(),
-            queues: BridgeStorageQueues::from_core(snapshot.queues),
         }
     }
 }
 
 pulled_read! {
-    /// The Storage Manager list read live: one query for as long as the
-    /// manager is open, whose sort, filter, search text and windows move in
-    /// place. It starts under the sort and filter it was opened with,
-    /// searching for nothing, reading no windows and holding no selection
-    /// until `set_view` names them.
-    StorageBrowseSubscription:
-        bae_app::live_reads::LiveStorageBrowse => BridgeStorageBrowseSnapshot,
-    converted by BridgeStorageBrowseSnapshot::from_core,
-    built by storage_browse
+    /// The rows of the selected releases the Storage Manager list holds, read
+    /// live: the selection moves in place with `set_selected`, and starts
+    /// empty.
+    StorageSelectionSubscription:
+        bae_app::live_reads::LiveStorageSelection => BridgeStorageSelection,
+    converted by BridgeStorageSelection::from_core,
+    built by storage_selection
 }
 
 #[uniffi::export]
-impl StorageBrowseSubscription {
-    /// Read `windows` of the list under `sort`, `filter` and the `search`
-    /// text, and the rows of the `selected` releases it holds, from now on.
-    pub fn set_view(
-        &self,
-        sort: BridgeStorageSort,
-        filter: BridgeStorageFilter,
-        search: String,
-        windows: Vec<crate::types::BridgeLibraryPageWindow>,
-        selected: Vec<String>,
-    ) -> Result<(), BridgeError> {
+impl StorageSelectionSubscription {
+    /// Read the rows of the `selected` releases the list holds from now on.
+    pub fn set_selected(&self, selected: Vec<String>) -> Result<(), BridgeError> {
         self.inner
-            .set(bae_views::StorageBrowseRequest {
-                sort: sort.into_core(),
-                filter: filter.into_core(),
-                search,
-                windows: super::core_windows(windows),
-                selected: selected.into_iter().collect(),
-            })
+            .set(selected.into_iter().collect())
             .map(|_revision| ())
             .map_err(BridgeError::from)
     }
+}
+
+pulled_read! {
+    /// The transfer queues holding work, as the Storage Manager shows them,
+    /// read live.
+    StorageQueuesSubscription:
+        bae_store::live_query::LiveValues<bae_views::StorageQueues> => BridgeStorageQueues,
+    converted by BridgeStorageQueues::from_core,
+    built by storage_queues
 }

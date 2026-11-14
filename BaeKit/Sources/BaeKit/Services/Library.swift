@@ -57,11 +57,19 @@ public final class Library: Sendable, Observable {
     /// The artists an artist picker's text finds: each text is a list of its
     /// own.
     public let artistSearch: ArtistSearchOpener
-    /// The Storage Manager list under a first sort and filter, read through
-    /// one query whose view moves in place.
-    public let storageBrowse:
-        @Sendable (_ sort: BridgeStorageSort, _ filter: BridgeStorageFilter)
-            -> StorageBrowseQuery
+    /// The Storage Manager list under one sort, filter and search text.
+    public let storageList:
+        @Sendable (
+            _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
+            _ search: String
+        ) -> BridgeListQueries<BridgeStorageRow>
+    /// The rows of the releases selected in the Storage Manager list under
+    /// one filter and search text that the list holds.
+    public let storageSelection:
+        @Sendable (_ filter: BridgeStorageFilter, _ search: String)
+            -> StorageSelectionQuery
+    /// The transfer queues holding work, as the Storage Manager shows them.
+    public let storageQueues: @Sendable () -> PulledValues<BridgeStorageQueues>
     /// Open the Storage Manager inspector's live read of the release it
     /// shows: its files beside their uploads and its entry in each transfer
     /// queue, read in core.
@@ -152,10 +160,20 @@ public final class Library: Sendable, Observable {
         artistSearch: @escaping ArtistSearchOpener = { _ in
             fatalError("Library artist search is not installed")
         },
-        storageBrowse:
-            @escaping @Sendable (BridgeStorageSort, BridgeStorageFilter)
-            -> StorageBrowseQuery = { _, _ in
-                fatalError("Library storage browse is not installed")
+        storageList:
+            @escaping @Sendable (
+                BridgeStorageSort, BridgeStorageFilter, String
+            ) -> BridgeListQueries<BridgeStorageRow> = { _, _, _ in
+                fatalError("Library storage list is not installed")
+            },
+        storageSelection:
+            @escaping @Sendable (BridgeStorageFilter, String)
+            -> StorageSelectionQuery = { _, _ in
+                fatalError("Library storage selection is not installed")
+            },
+        storageQueues:
+            @escaping @Sendable () -> PulledValues<BridgeStorageQueues> = {
+                fatalError("Library storage queues are not installed")
             },
         storageInspector:
             @escaping @Sendable () -> DetailQuery<BridgeStorageInspector> = {
@@ -196,7 +214,9 @@ public final class Library: Sendable, Observable {
         self.playlistDetail = playlistDetail
         self.albumSelection = albumSelection
         self.artistSearch = artistSearch
-        self.storageBrowse = storageBrowse
+        self.storageList = storageList
+        self.storageSelection = storageSelection
+        self.storageQueues = storageQueues
         self.storageInspector = storageInspector
         self.releaseFiles = releaseFiles
         self.resolveToTrackIds = resolveToTrackIds
@@ -241,10 +261,17 @@ extension Library {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
                 artistSearch: Self.artistSearch(handle),
-                storageBrowse: {
-                    StorageBrowseQuery(
-                        handle.subscribeStorageBrowse(sort: $0, filter: $1)
+                storageList: Self.storageList(handle),
+                storageSelection: {
+                    StorageSelectionQuery(
+                        handle.subscribeStorageSelection(
+                            filter: $0,
+                            search: $1
+                        )
                     )
+                },
+                storageQueues: {
+                    PulledValues(handle.subscribeStorageQueues())
                 },
                 storageInspector: {
                     DetailQuery(handle.subscribeStorageInspector())
@@ -455,6 +482,35 @@ extension Library {
                     rows: Self.artistSearchRows
                 )
             }
+        }
+
+        /// The Storage Manager list under each sort, filter and search text
+        /// asked for, read through `handle`.
+        private static func storageList(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (
+                BridgeStorageSort, BridgeStorageFilter, String
+            ) -> BridgeListQueries<BridgeStorageRow>
+        {
+            { sort, filter, search in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .storage(sort: sort, filter: filter, search: search),
+                    rows: Self.storageRows
+                )
+            }
+        }
+
+        private static func storageRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeStorageRow] {
+            guard case .storage(let rows) = rows else {
+                preconditionFailure(
+                    "the Storage Manager delivered rows of another list"
+                )
+            }
+            return rows
         }
 
         private static func composerRows(

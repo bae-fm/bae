@@ -24,10 +24,19 @@ where Row.ID: Sendable {
     /// How many rows the list has, from its count's last value.
     public private(set) var totalCount: Int = 0
 
+    /// What the list's count carries beside its rows, as its last value gave
+    /// it: the album grid's album count, or the Storage Manager's total size;
+    /// `nil` until the count has answered.
+    public private(set) var countExtra: BridgeListCountExtra?
+
     /// How many distinct items the list's count carries when a row can show an
     /// item more than once; the row count otherwise. `nil` until the count has
     /// answered.
-    public private(set) var itemCount: Int?
+    public var itemCount: Int? {
+        guard let countExtra else { return nil }
+        if case .albumGrid(let albums) = countExtra { return Int(albums) }
+        return totalCount
+    }
 
     /// The artist headings of the album grid grouped by artist, from their own
     /// read.
@@ -181,19 +190,12 @@ where Row.ID: Sendable {
             initialLoadError = nil
         }
         let total = Int(count.rows)
-        let items: Int
-        switch count.extra {
-        case .albumGrid(let albums):
-            items = Int(albums)
-        default:
-            items = total
-        }
         if total != totalCount {
             totalCount = total
             contentRevision += 1
         }
-        if itemCount != items {
-            itemCount = items
+        if countExtra != count.extra {
+            countExtra = count.extra
         }
         countAnswered = true
         settled()
@@ -356,7 +358,7 @@ where Row.ID: Sendable {
         public func preloadRows(rows: [Row]) {
             placed = rows.isEmpty ? [] : [Placed(start: 0, rows: rows)]
             totalCount = rows.count
-            itemCount = rows.count
+            countExtra = BridgeListCountExtra.none
             countAnswered = true
         }
     #endif

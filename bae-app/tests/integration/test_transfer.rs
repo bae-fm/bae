@@ -2,15 +2,12 @@
 //! Coven uses MemoryStorage for cloud reads and writes; bae owns the release
 //! transitions, their progress, and their subscribed storage values.
 
-use bae_app::live_reads::LiveStorageBrowse;
 use bae_library::storage::transfer::TransferProgress;
 use bae_library::LibraryManager;
 use bae_records::GallerySource;
-use bae_store::SortDirection;
 use bae_util::test_channels::HANG_GUARD;
 use bae_views::album_detail::ReleaseStorageState;
-use bae_views::StorageBrowseRequest;
-use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
+use bae_views::StorageFilter;
 use std::path::Path;
 use tempfile::TempDir;
 
@@ -112,7 +109,7 @@ fn failed(events: &[TransferProgress]) -> bool {
 }
 
 async fn expect_storage_state(
-    subscription: &LiveStorageBrowse,
+    subscription: &bae_views::LiveListWindow,
     release_id: &str,
     expected: ReleaseStorageState,
 ) {
@@ -121,10 +118,8 @@ async fn expect_storage_state(
             .await
             .expect("storage subscription delivers a value")
             .expect("storage projection resolves");
-        if value
-            .windows
+        if crate::storage_list::storage_rows(&value)
             .iter()
-            .flat_map(|window| &window.rows)
             .any(|row| row.release.id == release_id && row.release.storage_state == expected)
         {
             return;
@@ -466,19 +461,12 @@ async fn transition_completions_deliver_storage_values() {
         crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"round-trip-bytes")])
             .await;
     let views = bae_views::LibraryViews::new(mgr.store().clone());
-    let values = bae_app::live_reads::subscribe_storage_browse(
+    let values = crate::storage_list::storage_top(
         mgr.manager(),
         &views,
-        StorageBrowseRequest {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::All,
-            search: String::new(),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-            selected: Default::default(),
-        },
+        &crate::storage_list::by_title(),
+        StorageFilter::All,
+        50,
     );
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 
@@ -521,31 +509,27 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
-    let values = bae_app::live_reads::subscribe_storage_browse(
+    // One row on screen, so one selected release sits outside it.
+    let values = crate::storage_list::storage_top(
         mgr.manager(),
         &views,
-        StorageBrowseRequest {
-            sort: StorageSortCriterion {
-                field: StorageSortField::AlbumTitle,
-                direction: SortDirection::Ascending,
-            },
-            filter: StorageFilter::Local,
-            search: String::new(),
-            // One row on screen, so one selected release sits outside it.
-            windows: [bae_store::LibraryPageWindow::at(0, 1)].into_iter().collect(),
-            selected: selected.clone(),
-        },
+        &crate::storage_list::by_title(),
+        StorageFilter::Local,
+        1,
     );
-    let next = || async {
-        tokio::time::timeout(HANG_GUARD, values.next())
-            .await
-            .expect("storage subscription delivers a value")
-            .expect("storage projection resolves")
-    };
+    let counts = crate::storage_list::storage_count(mgr.manager(), &views, StorageFilter::Local);
+    let selection =
+        crate::storage_list::storage_selection(mgr.manager(), &views, StorageFilter::Local);
+    selection.set(selected.clone()).unwrap();
 
-    let queued = next().await;
-    assert_eq!(queued.total_count, 2);
-    assert_eq!(queued.windows[0].rows.len(), 1);
+    let window = tokio::time::timeout(HANG_GUARD, values.next())
+        .await
+        .expect("storage window delivers")
+        .expect("storage window resolves");
+    let shown = crate::storage_list::storage_rows(&window);
+    assert_eq!(counts.next().await.unwrap().rows, 2);
+    assert_eq!(shown.len(), 1);
+    let queued = next_selection_with(&selection, |value| value.selected.len() == 2).await;
     let selected_ids = queued
         .selected
         .iter()
@@ -558,7 +542,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     let outside = queued
         .selected
         .iter()
-        .find(|row| row.release.id != queued.windows[0].rows[0].release.id)
+        .find(|row| row.release.id != shown[0].release.id)
         .expect("one selected release sits outside the window");
     assert_eq!(
         (outside.album.title.as_str(), outside.release.file_count),
@@ -568,13 +552,33 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
 
     mgr.manager().drain_uploads_expecting_work().await.unwrap();
     loop {
-        let value = next().await;
-        if value.total_count == 0 {
+        let counted = tokio::time::timeout(HANG_GUARD, counts.next())
+            .await
+            .expect("the count follows the uploads")
+            .unwrap();
+        if counted.rows == 0 {
+            let value = next_selection_with(&selection, |value| value.selected.is_empty()).await;
             assert!(
                 value.selected.is_empty(),
                 "an uploaded release is no longer in the Local list"
             );
             break;
+        }
+    }
+}
+
+/// The next value of `selection` that `holds`.
+async fn next_selection_with(
+    selection: &bae_app::live_reads::LiveStorageSelection,
+    holds: impl Fn(&bae_views::StorageSelection) -> bool,
+) -> bae_views::StorageSelection {
+    loop {
+        let value = tokio::time::timeout(HANG_GUARD, selection.next())
+            .await
+            .expect("storage selection delivers a value")
+            .expect("storage selection resolves");
+        if holds(&value) {
+            return value;
         }
     }
 }
@@ -604,42 +608,22 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     pin_with_events(&mgr, &pinned).await.1.expect("pin task completes");
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
-    let view = |selected: &[&String]| StorageBrowseRequest {
-        sort: StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
-        },
-        filter: StorageFilter::All,
-        search: String::new(),
-        // One row on screen, so one selected release sits outside it.
-        windows: [bae_store::LibraryPageWindow::at(0, 1)].into_iter().collect(),
-        selected: selected.iter().map(|id| (*id).clone()).collect(),
+    let selection =
+        crate::storage_list::storage_selection(mgr.manager(), &views, StorageFilter::All);
+    let select = |selected: &[&String]| {
+        selection.set(selected.iter().map(|id| (*id).clone()).collect()).unwrap();
     };
-    let values = bae_app::live_reads::subscribe_storage_browse(
-        mgr.manager(),
-        &views,
-        view(&[&pinned, &unpinned]),
-    );
-    let next = || async {
-        tokio::time::timeout(HANG_GUARD, values.next())
-            .await
-            .expect("storage subscription delivers a value")
-            .expect("storage projection resolves")
-    };
+    select(&[&pinned, &unpinned]);
 
     use bae_types::release_storage::ReleaseStorageAction::{MoveToThisDevice, Pin};
+    let both = next_selection_with(&selection, |value| value.selected.len() == 2).await;
     assert_eq!(
-        next().await.selection_actions,
+        both.selection_actions,
         [MoveToThisDevice],
         "a pinned and an unpinned release share only detaching their audio"
     );
 
-    values.set(view(&[&unpinned])).unwrap();
-    loop {
-        let value = next().await;
-        if value.selected.len() == 1 {
-            assert_eq!(value.selection_actions, [Pin, MoveToThisDevice]);
-            break;
-        }
-    }
+    select(&[&unpinned]);
+    let one = next_selection_with(&selection, |value| value.selected.len() == 1).await;
+    assert_eq!(one.selection_actions, [Pin, MoveToThisDevice]);
 }

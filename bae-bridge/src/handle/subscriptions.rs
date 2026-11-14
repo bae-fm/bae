@@ -29,6 +29,12 @@ impl AppHandle {
                 self.services.subscribe_composer_page_window(&artist_id, window)
             }
             BridgeList::Downloads => self.services.subscribe_download_window(window),
+            BridgeList::Storage { sort, filter, search } => self.services.subscribe_storage_window(
+                &BridgeList::storage_sort(sort),
+                filter.into_core(),
+                &search,
+                window,
+            ),
             BridgeList::ArtistSearch { text } => self
                 .services
                 .subscribe_artist_search_window(BridgeList::artist_search_query(&text), window),
@@ -48,6 +54,9 @@ impl AppHandle {
                 self.services.subscribe_composer_page_count(&artist_id)
             }
             BridgeList::Downloads => self.services.subscribe_download_count(),
+            BridgeList::Storage { filter, search, .. } => {
+                self.services.subscribe_storage_count(filter.into_core(), &search)
+            }
             BridgeList::ArtistSearch { text } => {
                 self.services.subscribe_artist_search_count(BridgeList::artist_search_query(&text))
             }
@@ -76,6 +85,14 @@ impl AppHandle {
                 self.services.subscribe_composer_page_position(&artist_id, key)
             }
             BridgeList::Downloads => self.services.subscribe_download_position(key),
+            BridgeList::Storage { sort, filter, search } => {
+                self.services.subscribe_storage_position(
+                    &BridgeList::storage_sort(sort),
+                    filter.into_core(),
+                    &search,
+                    key,
+                )
+            }
             BridgeList::ArtistSearch { text } => self
                 .services
                 .subscribe_artist_search_position(BridgeList::artist_search_query(&text), key),
@@ -151,22 +168,24 @@ impl AppHandle {
         crate::screens::work_detail(self.services.subscribe_work_detail(), self.runtime.clone())
     }
 
-    /// The Storage Manager list under `sort` and `filter`, searching for
-    /// nothing, reading no windows and holding no selection until `set_view`
-    /// names them.
-    pub fn subscribe_storage_browse(
+    /// The rows of the releases selected in the Storage Manager list under
+    /// `filter` and `search` that it holds, with the storage actions every
+    /// one allows, holding no selection until `set_selected` names it.
+    pub fn subscribe_storage_selection(
         &self,
-        sort: BridgeStorageSort,
         filter: BridgeStorageFilter,
-    ) -> Arc<crate::StorageBrowseSubscription> {
-        crate::screens::storage_browse(
-            self.services.subscribe_storage_browse(bae_views::StorageBrowseRequest {
-                sort: sort.into_core(),
-                filter: filter.into_core(),
-                search: String::new(),
-                windows: Default::default(),
-                selected: Default::default(),
-            }),
+        search: String,
+    ) -> Arc<crate::StorageSelectionSubscription> {
+        crate::screens::storage_selection(
+            self.services.subscribe_storage_selection(filter.into_core(), &search),
+            self.runtime.clone(),
+        )
+    }
+
+    /// The transfer queues holding work, as the Storage Manager shows them.
+    pub fn subscribe_storage_queues(&self) -> Arc<crate::StorageQueuesSubscription> {
+        crate::screens::storage_queues(
+            self.services.subscribe_storage_queues(),
             self.runtime.clone(),
         )
     }
