@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
@@ -82,7 +79,7 @@ private val StatusTone.noticeFill: Color
 
 /** Whether a filled notice in this tone has its own fill, under `onNotice` text: the tones with a glyph. */
 private val StatusTone.hasNoticeFill: Boolean
-    get() = icon(outline = false) != null
+    get() = icon != null
 
 /** Whether the content sits on a filled notice's own fill. */
 private val LocalOnNoticeFill = compositionLocalOf { false }
@@ -96,14 +93,15 @@ internal val noticeButtonColor: Color
     get() =
         if (LocalOnNoticeFill.current) MaterialTheme.colorScheme.primary else LocalContentColor.current
 
-/** The glyph a notice in this tone leads with: a filled circle with its mark, or its outline when [outline]. */
-private fun StatusTone.icon(outline: Boolean): ImageVector? =
-    when (this) {
-        StatusTone.INFO -> if (outline) Icons.Outlined.Info else Icons.Filled.Info
-        StatusTone.SUCCESS -> if (outline) Icons.Outlined.CheckCircle else Icons.Filled.CheckCircle
-        StatusTone.WARNING, StatusTone.DANGER -> if (outline) Icons.Outlined.ErrorOutline else Icons.Filled.Error
-        StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
-    }
+/** The glyph a notice in this tone leads with: the outline of a circle with its mark. */
+private val StatusTone.icon: ImageVector?
+    get() =
+        when (this) {
+            StatusTone.INFO -> Icons.Outlined.Info
+            StatusTone.SUCCESS -> Icons.Outlined.CheckCircle
+            StatusTone.WARNING, StatusTone.DANGER -> Icons.Outlined.ErrorOutline
+            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
+        }
 
 /** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
 private val StatusTone.iconColor: Color
@@ -126,10 +124,9 @@ fun StatusGlyph(
     tone: StatusTone,
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.medium,
-    outline: Boolean = false,
     muted: Boolean = false,
 ) {
-    tone.icon(outline)?.let { icon ->
+    tone.icon?.let { icon ->
         Icon(
             icon,
             contentDescription = null,
@@ -208,7 +205,7 @@ internal fun NoticeFrame(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            if (tone.icon(outline = false) != null) {
+            if (tone.icon != null) {
                 FirstLineGlyph(tone)
             }
             content()
@@ -222,10 +219,10 @@ private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
 internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.related
 
-/** The tone's glyph, always as an outline, in a [FirstLineBox], so it centres on the first line. */
+/** The tone's glyph in a [FirstLineBox], so it centres on the first line. */
 @Composable
 private fun FirstLineGlyph(tone: StatusTone) {
-    FirstLineBox { StatusGlyph(tone, size = NoticeGlyphSize, outline = true) }
+    FirstLineBox { StatusGlyph(tone, size = NoticeGlyphSize) }
 }
 
 /**

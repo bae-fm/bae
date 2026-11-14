@@ -67,7 +67,7 @@ struct CandidateListMenu: View {
                         .offset(x: 2, y: -2)
                 }
                 if state.hasScanProblem {
-                    Image(systemName: "exclamationmark.circle.fill")
+                    Image(systemName: "exclamationmark.circle")
                         .themeIcon(.badge)
                         .foregroundStyle(Theme.danger)
                         .offset(x: 3, y: -3)

@@ -59,19 +59,8 @@ public enum StatusTone: Sendable, Equatable {
         color.opacity(ThemeOpacity.tint)
     }
 
-    /// The filled form of the tone's glyph, for a chip.
+    /// The tone's glyph: always an outline.
     public var symbol: String? {
-        switch self {
-        case .info: "info.circle.fill"
-        case .success: "checkmark.circle.fill"
-        case .warning: "exclamationmark.circle.fill"
-        case .danger: "exclamationmark.circle.fill"
-        case .neutral, .accent, .activity: nil
-        }
-    }
-
-    /// The outline form of the glyph, which every notice draws.
-    public var outlineSymbol: String? {
         switch self {
         case .info: "info.circle"
         case .success: "checkmark.circle"
@@ -98,28 +87,25 @@ public enum NoticeLook: Sendable, Equatable {
     case centeredOnStage
 }
 
-/// A tone's glyph in the tone's icon colour, filled or as an outline; nothing
+/// A tone's glyph, an outline, in the tone's icon colour; nothing
 /// for a tone with no glyph. The token carries the calmer danger: still red,
 /// quieter beside a warning's amber.
 public struct StatusGlyph: View {
     private let tone: StatusTone
-    private let outline: Bool
     private let muted: Bool
 
     /// `muted` draws the glyph in the grey of the words beside it (secondary
     /// text), for a failure that should not call attention to itself.
     public init(
         _ tone: StatusTone,
-        outline: Bool = false,
         muted: Bool = false
     ) {
         self.tone = tone
-        self.outline = outline
         self.muted = muted
     }
 
     public var body: some View {
-        if let symbol = outline ? tone.outlineSymbol : tone.symbol {
+        if let symbol = tone.symbol {
             Image(systemName: symbol)
                 .foregroundStyle(color)
         }

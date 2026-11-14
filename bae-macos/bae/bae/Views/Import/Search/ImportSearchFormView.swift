@@ -134,7 +134,7 @@ struct ImportSearchFormView: View {
                 Label {
                     Text(verbatim: signalFailure.detail)
                 } icon: {
-                    Image(systemName: "exclamationmark.circle.fill")
+                    Image(systemName: "exclamationmark.circle")
                         .accessibilityHidden(true)
                 }
                 .themeText(.body)

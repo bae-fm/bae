@@ -284,7 +284,7 @@ struct ImportSearchResultRow: View {
     /// The "In library" tag, hidden by opacity so the column keeps its width.
     private var libraryMarker: some View {
         HStack(spacing: ThemeSpace.inline) {
-            Image(systemName: "checkmark.circle.fill")
+            Image(systemName: "checkmark.circle")
                 .foregroundStyle(Theme.success)
             Text("In library")
         }

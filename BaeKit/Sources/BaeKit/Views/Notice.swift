@@ -178,7 +178,7 @@ public struct Notice: View {
         Group {
             if tone.symbol != nil {
                 RowItem {
-                    StatusGlyph(tone, outline: true)
+                    StatusGlyph(tone)
                         .font(Self.glyphFont)
                         .accessibilityHidden(true)
                 } content: {
@@ -356,14 +356,14 @@ extension Notice {
                 alignment: .firstTextBaseline,
                 spacing: ThemeSpace.compact
             ) {
-                if onStage, let symbol = tone.outlineSymbol {
+                if onStage, let symbol = tone.symbol {
                     Image(systemName: symbol)
                         .font(Self.glyphFont(scaledTo: .heading))
                         .foregroundStyle(Theme.onFillSecondary)
                         .accessibilityHidden(true)
                 }
                 else {
-                    StatusGlyph(tone, outline: true, muted: true)
+                    StatusGlyph(tone, muted: true)
                         .font(Self.glyphFont(scaledTo: .heading))
                         .accessibilityHidden(true)
                 }

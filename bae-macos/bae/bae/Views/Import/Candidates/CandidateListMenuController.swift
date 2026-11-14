@@ -193,7 +193,7 @@ final class CandidateListMenuController {
             )
         case .failed(let detail), .notWatched(let detail):
             accessory = MacMenuAccessory(
-                symbol: "exclamationmark.circle.fill",
+                symbol: "exclamationmark.circle",
                 tone: .danger,
                 help: [detail, networkLine].compactMap { $0 }
                     .joined(separator: "\n")
