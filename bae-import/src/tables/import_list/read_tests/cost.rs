@@ -106,7 +106,7 @@ async fn measure_view(
 
 /// The sizes the import list is measured at: a queue as large as any library
 /// a person holds reaches the last.
-const SIZES: [u64; 3] = [20_000, 100_000, 500_000];
+pub(super) const SIZES: [u64; 3] = [20_000, 100_000, 500_000];
 
 /// What one window of the import list costs to read, at the top, the middle
 /// and the end of the list, at [`SIZES`],
@@ -173,7 +173,7 @@ async fn import_list_search_window_cost() {
 }
 
 /// How many rows a list holding `view` shows, headers included.
-async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
+pub(super) async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     let tables = crate::tables::ImportTables::new(db.clone());
     let list = tables.open_import_list(view).await.unwrap();
     let request = crate::ImportListRequest {
@@ -185,7 +185,7 @@ async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     total
 }
 
-fn found_view(
+pub(super) fn found_view(
     filter_text: &str,
     pending_filter: crate::PendingFilter,
     order: crate::ImportListOrder,

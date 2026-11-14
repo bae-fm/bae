@@ -179,6 +179,11 @@ SCENARIOS: tuple[Scenario, ...] = (
         "the Storage Manager's windows, totals, search, selection and inspector as plain queries",
     ),
     Scenario(
+        "screen-import",
+        test_command("bae-import", ("--lib",), ("import_list_plain_cost",)),
+        "the import list's windows, counts, search and reveal as plain queries, at 20k, 100k and 500k folders",
+    ),
+    Scenario(
         "screen-playback",
         test_command("bae-app", ("--test", "integration"), ("test_screen_cost::playback::",)),
         "now playing, the queue head and the upcoming window, plain and as they read today",
