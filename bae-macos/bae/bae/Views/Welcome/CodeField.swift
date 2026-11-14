@@ -22,6 +22,6 @@ struct CodeField: View {
         .labelsHidden()
         .lineLimit(3...)
         .themeText(.mono)
-        .boxedTextField(multiline: true)
+        .boxedTextField(multiline: true, focusesOnAppear: true)
     }
 }
