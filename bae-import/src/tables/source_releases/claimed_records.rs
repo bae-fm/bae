@@ -15,11 +15,16 @@
 
 use super::*;
 
-/// The merged records as a JSON array of `{catalog, kind, key, album}`
-/// objects, in the order surfaces list them, for the candidate bound to
-/// `:hash`. Usable as a column of a larger statement.
-pub(crate) const CLAIMED_RECORDS_SQL: &str = "
-WITH claimed (claim_pos, catalog, release_id) AS (
+/// The statements' shared first tables, for the candidate bound to `:hash`:
+/// `claimed` (the releases its pressing link claims, the primary at
+/// `claim_pos` 0), `stated` (each claimed release's own record and what its
+/// rows say about other catalogs), `albums` (the albums each names) and
+/// `joined` (the album a kept statement joins to each, on a catalog its
+/// records do not reach). Ends with a comma so a statement continues the list.
+macro_rules! claimed_tables {
+    () => {
+        "
+claimed (claim_pos, catalog, release_id) AS (
     SELECT 0, l.source, l.release_id
     FROM import_candidate_release_link AS l
     WHERE l.content_hash = :hash AND l.kind = 'pressing'
@@ -76,6 +81,18 @@ joined (claim_pos, record_catalog, key) AS (
                               AND s.record_catalog = j.joined_catalog))
     WHERE nth = 1
 ),
+        "
+    };
+}
+pub(super) use claimed_tables;
+
+/// The merged records as a JSON array of `{catalog, kind, key, album}`
+/// objects, in the order surfaces list them, for the candidate bound to
+/// `:hash`. Usable as a column of a larger statement.
+pub(crate) const CLAIMED_RECORDS_SQL: &str = concat!(
+    "WITH ",
+    claimed_tables!(),
+    "
 records (claim_pos, own, record_catalog, kind, key, album_key) AS (
     SELECT claim_pos, record_catalog = catalog, record_catalog, kind, key, album_key
     FROM stated
@@ -97,7 +114,8 @@ SELECT json_group_array(json_object('catalog', record_catalog, 'kind', kind,
                                     'key', key, 'album', album_key)
        ORDER BY record_catalog IS NOT (SELECT catalog FROM claimed WHERE claim_pos = 0),
                 bae_catalog_rank(record_catalog))
-FROM ranked WHERE nth = 1";
+FROM ranked WHERE nth = 1"
+);
 
 #[derive(serde::Deserialize)]
 struct RecordColumns {
@@ -134,4 +152,4 @@ pub(crate) fn claimed_records_on<S: coven::SqlRead>(
 
 #[cfg(test)]
 #[path = "claimed_records_tests.rs"]
-mod tests;
+pub(super) mod tests;

@@ -14,7 +14,9 @@ use crate::tables::import_state::{
     load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{claimed_records_on, load_source_release_on};
+use crate::tables::source_releases::{
+    claimed_records_on, load_source_release_on, offered_covers_on,
+};
 use crate::{DraftProjection, ProjectedStage};
 use crate::{ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
@@ -141,10 +143,10 @@ fn draft_rows_on(
         pane_rows.draft.credits(),
         |credit| bae_records::records::artist_resolution::resolve_credit_on(sql, credit),
     )?;
-    // The linked pressing's stored releases: what names its records and
-    // checks it against the library.
-    let claimed =
-        claimed_releases_on(sql, candidate, release_link.as_ref().and_then(ReleaseLink::pressing))?;
+    // The linked pressing's stored primary release, which the library check
+    // reads.
+    let primary =
+        primary_release_on(sql, candidate, release_link.as_ref().and_then(ReleaseLink::pressing))?;
     // Every catalog record of what the candidate is linked to, merged in one
     // statement over the stored releases: the linked pressing's releases
     // describe it, an album names its own.
@@ -152,8 +154,11 @@ fn draft_rows_on(
         Some(_) => claimed_records_on(sql, content_hash)?,
         None => Vec::new(),
     };
-    let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
-    let picked_library_status = match claimed.first() {
+    let cover_options = match current {
+        Some(_) => offered_covers_on(sql, content_hash)?,
+        None => Vec::new(),
+    };
+    let picked_library_status = match primary.as_ref() {
         Some(release) => {
             check_releases_in_library_on(sql, &[bae_records::LibraryCheck::of_release(release)])?
                 .into_iter()
@@ -280,60 +285,26 @@ impl CandidateDetailRows {
     }
 }
 
-/// Read every release the linked pressing claims in the pane's SQL snapshot,
-/// the primary first and then its partners. None for a candidate linked to no
+/// Read the release the linked pressing names first, the one the draft is
+/// read from, in the pane's SQL snapshot. None for a candidate linked to no
 /// pressing.
 ///
-/// The primary is what the draft was read from and what the pane leads with;
-/// together with the partners it is what the release's records are read off.
-/// A stored pick always has its releases — the pick write fetches them first,
-/// for the primary and every partner alike — so a missing one is stated
-/// rather than served as half a pane.
-fn claimed_releases_on(
+/// A stored pick always has its releases — the pick write fetches them first —
+/// so a missing one is stated rather than served as half a pane.
+fn primary_release_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
     link: Option<&PressingLink>,
-) -> Result<Vec<bae_catalogs::source_release::SourceRelease>, DbError> {
+) -> Result<Option<bae_catalogs::source_release::SourceRelease>, DbError> {
     let Some(link) = link else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
-    link.claimed()
-        .map(|release| {
-            load_source_release_on(sql, release)?.ok_or_else(|| {
-                DbError::unreadable(
-                    format!("the source release {} claimed for {}", release.key, candidate.key()),
-                    None::<String>,
-                )
-            })
-        })
-        .collect()
-}
-
-/// The covers the picker offers: those the linked pressing's releases offer
-/// (see [`bae_catalogs::source_release::pick_covers`]), read from the stored
-/// releases as they stand, while the draft is the one read from that
-/// pressing. A draft read from the files' tags, typed in or cleared, or a
-/// candidate linked to an album or to nothing, is offered none.
-fn offered_covers(
-    current: Option<&DbImportCandidateState>,
-    link: Option<&ReleaseLink>,
-    claimed: &[bae_catalogs::source_release::SourceRelease],
-) -> Vec<bae_catalogs::remote_image::RemoteCover> {
-    let read_from_link = match (
-        current.and_then(|state| state.metadata_provenance.as_ref()),
-        link.and_then(ReleaseLink::pressing),
-    ) {
-        (Some(crate::MetadataProvenance::ExternalRelease { record }), Some(pressing)) => {
-            *record == pressing.record
-        }
-        _ => false,
-    };
-    match claimed.split_first() {
-        Some((primary, partners)) if read_from_link => {
-            bae_catalogs::source_release::pick_covers(primary, partners)
-        }
-        _ => Vec::new(),
-    }
+    load_source_release_on(sql, &link.record)?.map(Some).ok_or_else(|| {
+        DbError::unreadable(
+            format!("the source release {} claimed for {}", link.record.key, candidate.key()),
+            None::<String>,
+        )
+    })
 }
 
 impl ImportTables {

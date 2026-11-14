@@ -14,7 +14,7 @@ use bae_catalogs::test_documents::musicbrainz_release_with_relations;
 use bae_store::Store;
 
 /// A MusicBrainz release in `mb-group` that says its Discogs release is 1111.
-fn musicbrainz_primary() -> SourceRelease {
+pub(crate) fn musicbrainz_primary() -> SourceRelease {
     ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
         musicbrainz_release_with_relations(
@@ -30,7 +30,7 @@ fn musicbrainz_primary() -> SourceRelease {
 }
 
 /// A Discogs release filed under `master`.
-fn discogs_release(id: u64, master: u64) -> SourceRelease {
+pub(crate) fn discogs_release(id: u64, master: u64) -> SourceRelease {
     ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, id.to_string()),
         serde_json::json!({ "id": id, "title": "Album Title", "master_id": master }).to_string(),
@@ -41,21 +41,20 @@ fn discogs_release(id: u64, master: u64) -> SourceRelease {
 }
 
 /// A candidate with a stored state, linked as `link` says, with `releases`
-/// stored; its content hash.
-async fn linked(
+/// stored.
+pub(crate) async fn linked(
     db: &Store,
     root: &std::path::Path,
     link: crate::ReleaseLink,
     releases: &[SourceRelease],
-) -> String {
+) -> crate::folder_scanner::FolderCandidate {
     let candidate = scanned(db, root, "Album").await;
     save_verdict(db, &candidate, "mb-verdict").await;
-    let content_hash = candidate.files.content_hash();
     crate::tables::ImportTables::new(db.clone())
-        .replace_link(&content_hash, Some(&link), releases)
+        .replace_link(&candidate.files.content_hash(), Some(&link), releases)
         .await
         .unwrap();
-    content_hash
+    candidate
 }
 
 async fn statement_records(
@@ -73,7 +72,7 @@ async fn statement_records(
         .collect()
 }
 
-fn pressing(record: LookupRef, partners: Vec<LookupRef>) -> crate::ReleaseLink {
+pub(crate) fn pressing(record: LookupRef, partners: Vec<LookupRef>) -> crate::ReleaseLink {
     crate::ReleaseLink::Pressing(bae_identify::PressingLink { record, partners })
 }
 
@@ -89,7 +88,9 @@ async fn claimed_records_statement_prefers_each_release_own_record() {
         ),
         &[musicbrainz_primary(), discogs_release(2222, 909090)],
     )
-    .await;
+    .await
+    .files
+    .content_hash();
     assert_eq!(
         statement_records(&db, &hash).await,
         vec![
@@ -112,7 +113,9 @@ async fn claimed_records_statement_puts_the_applied_catalog_first() {
         ),
         &[discogs_release(2222, 909090), musicbrainz_primary()],
     )
-    .await;
+    .await
+    .files
+    .content_hash();
     let catalogs: Vec<Catalog> =
         statement_records(&db, &hash).await.into_iter().map(|record| record.0).collect();
     assert_eq!(catalogs, vec![Catalog::Discogs, Catalog::MusicBrainz]);
@@ -126,7 +129,7 @@ async fn claimed_records_statement_lists_an_album_link_records() {
         MetadataRef::new(Catalog::MusicBrainz, "mb-group".to_owned()),
     ])
     .unwrap();
-    let hash = linked(&db, &root, crate::ReleaseLink::Album(link), &[]).await;
+    let hash = linked(&db, &root, crate::ReleaseLink::Album(link), &[]).await.files.content_hash();
     assert_eq!(
         statement_records(&db, &hash).await,
         vec![
@@ -156,7 +159,9 @@ async fn claimed_records_statement_matches_claimed_records() {
         pressing(primary.clone(), vec![partner.clone()]),
         &[musicbrainz_primary(), discogs_release(2222, 909090)],
     )
-    .await;
+    .await
+    .files
+    .content_hash();
     let tables = crate::tables::ImportTables::new(db.clone());
     let claimed = [
         tables.load_source_release(&primary).await.unwrap().unwrap().records(),

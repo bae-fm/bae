@@ -37,7 +37,9 @@ use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMe
 use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_roles, Numbering};
 
 mod claimed_records;
+mod offered_covers;
 pub(crate) use claimed_records::claimed_records_on;
+pub(crate) use offered_covers::offered_covers_on;
 mod tracklist;
 
 /// The tables under `source_release`, children before the tables they hang

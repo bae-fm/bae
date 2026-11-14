@@ -27,6 +27,8 @@ mod album;
 pub use album::PrimaryReleaseError;
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
+mod release_group_cover;
+pub(crate) use release_group_cover::RELEASE_GROUP_COVER;
 mod artist;
 pub mod artist_credit_names;
 use artist_credit_names::settle_credit_name;
@@ -145,7 +147,7 @@ pub const SCHEMA: bae_store::SchemaPart =
         .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
 /// The SQL functions `records.sql` names.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&CATALOG_RANK];
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&CATALOG_RANK, &RELEASE_GROUP_COVER];
 
 /// The collations `records.sql` names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];

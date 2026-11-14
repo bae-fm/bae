@@ -1892,7 +1892,9 @@ so having a picture comes before which picture it is.
 While the draft is the one read from the pressing
 the candidate is linked to, the picker offers that pressing's covers: every
 claimed release's own images, then their albums', read from the stored
-releases as they stand, so a later fetch that stored more shows it. The
+releases as they stand in one statement, so a later fetch that stored more
+shows it, and a MusicBrainz release group a kept statement joins to a claimed
+release offers its front image after that release's own album images. The
 first is the draft's cover when the release is applied, until the person
 picks another. Core names each image by pieces, and each app words them in its
 language: the service that serves it (the Cover Art Archive, Discogs), the
