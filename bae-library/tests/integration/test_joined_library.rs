@@ -59,12 +59,24 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
             .await
             .unwrap()
             .is_empty());
+        // The library opens before it has applied anything, as the app opens
+        // it, and nothing it does at open is a synced write, which would fail
+        // as not registered: nothing waits to send, and the person has no
+        // profile yet.
+        let library_dir = tempfile::tempdir().unwrap();
+        let library = household.library(handle.clone(), library_dir.path()).await;
+        assert_eq!(handle.unsent_work().await.unwrap().writes, 0);
+        assert!(library.people().own_person().await.unwrap().is_none());
+        assert!(matches!(
+            library.people().create_profile("Rowan").await,
+            Err(bae_people::people::ProfileError::NotRegistered)
+        ));
         handle.start_sync().await.unwrap();
         let answer = handle.retry_now().await.unwrap().await;
         assert!(matches!(answer, coven::RetryOutcome::Failed(_)), "{answer:?}");
         let state = handle.sync_status().await.unwrap().state;
         assert!(matches!(state, coven::SyncState::NoAccess(_)), "{state:?}");
-        handle.close().await.unwrap();
+        library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });
 }
