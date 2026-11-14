@@ -82,6 +82,21 @@
     return h('div', { className: 'bae-m-portfield' }, h(MacTextField, { label: props.label || 'Port', labelHidden: true, value: props.value, state: props.state }));
   }
 
+  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states), the digits shown as typed. The box where the next digit goes is ringed while the field is `focused`. `state`: normal, focused, error, off. What's wrong goes under the boxes, in red.
+  function MacPinField(props) {
+    var state = props.state || 'normal';
+    var n = props.digits || 4;
+    var value = String(props.value || '');
+    var isError = state === 'error';
+    var cells = [];
+    for (var i = 0; i < n; i++) {
+      cells.push(h('span', { key: i, 'aria-hidden': true, className: cx('bae-m-pin-cell', state === 'focused' && i === Math.min(value.length, n - 1) && 'bae-m-pin-cell-focused', isError && 'bae-m-pin-cell-error') }, value.charAt(i)));
+    }
+    return h('div', { className: cx('bae-m-pin', state === 'off' && 'bae-off') },
+      h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', 'aria-disabled': state === 'off' ? true : null, className: 'bae-m-pin-cells' }, cells),
+      isError && props.error ? h('div', { className: 'bae-m-field-note bae-m-field-note-error bae-m-pin-note' }, props.error) : null);
+  }
+
   // Text someone may want to paste elsewhere (an address, an id): selectable, with a copy button after it that shows while the pointer is over the text or the button has focus. `after`: words that follow the text but aren't copied (“(Wi-Fi)”), before the button. `hover` draws that state.
   function MacCopyText(props) {
     return h('span', { className: cx('bae-m-copytext', props.hover && 'bae-m-copytext-hover') },

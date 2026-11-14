@@ -4860,26 +4860,84 @@ where it was until its next status.
 
 **AirPlay** receivers of both generations play. An AirPlay 2 receiver that asks
 for no PIN or password pairs with the password-less transient pairing. A
-receiver that asks for a PIN (on every connection or once), a password, or
-AirPlay 1 device verification, or one that offers only an encryption bae doesn't
-implement, is refused with that reason before bae connects. So is a receiver
-whose AirPlay advertisement says it plays only from people in its home, only
-from its home's admins, or only from its owner's account; an AirPlay 1 receiver
-takes that from its AirPlay advertisement too.
+receiver that asks for a PIN (on every cast, or once), a password, or AirPlay 1
+device verification pairs when the person enters the code it asks for, as
+described under Pairing below. A receiver that offers only an encryption bae
+doesn't implement is refused with that reason before bae connects. So is a
+receiver whose AirPlay advertisement says it plays only from people in its home,
+only from its home's admins, or only from its owner's account; an AirPlay 1
+receiver takes that from its AirPlay advertisement too.
 
 A receiver that advertises on both AirPlay service types is one entry, whichever
 advertisement arrives first. An AirPlay 1 receiver is connected at the port and
 with the encryption its RAOP advertisement states; its AirPlay advertisement
 states neither, so a receiver seen only there is not offered.
 
-bae pairs with an AirPlay 2 receiver when the cast starts, before playback
-moves, so a receiver that refuses says why where the cast was asked for: it is
-locked after too many wrong PINs, busy pairing with another device, asking to
-wait a stated time (bae doesn't wait or try again itself), not accepting new
-pairings, or paired with as many devices as it allows; a reply that doesn't
-check out fails the pairing, and a receiver that can't be reached says so, apart
-from a refusal. A receiver whose first pairing step is answered with HTTP 470 is
-one that asks for a PIN.
+**Pairing.** bae pairs with an AirPlay receiver when the cast starts, before
+playback moves. A receiver that asks for a PIN or a password does not fail the
+cast: bae asks the person for the code in a sheet (macOS) or a dialog
+(Android), and the cast goes on when the receiver accepts it. On macOS the
+sheet sits on the main window, since the cast connecting is the app's. On
+Android the dialog sits over the cast picker or the Casting page, whichever is
+open, and otherwise over the app. Closing the picker or the page leaves it
+open. Cancel closes it, casts nothing, and leaves the receiver showing its PIN
+until the receiver ends it.
+
+The sheet is titled Pair with and the receiver's name, with a line under the
+title that says why it asks and what to enter, a field, Cancel and Pair.
+A PIN field has one box for each digit, as many as the receiver's PIN has (four
+today, stated by core, never by the app), takes digits only, and keeps leading
+zeros. A password field shows dots. Pair stays off until the PIN has all its
+digits, or the password has a character. The lines under the title are:
+
+- first pairing: "Enter the PIN that Kitchen shows."
+- a receiver that asks for a PIN every time: "Kitchen asks for a PIN every
+  time. Enter the PIN that it shows."
+- a receiver that no longer knows this device: "Kitchen no longer knows this
+  device. Enter the PIN that it shows." A receiver that asks for a password
+  says "Kitchen no longer knows this device. Enter the password set on it."
+- a password receiver: "Enter the password set on Kitchen."
+
+A wrong code keeps the sheet open, with the digits as typed, every box and the
+line under them in red, and the line under the title changed to "Enter the PIN
+that Kitchen shows now." under "That PIN did not match." (a password says "That
+password did not work." under its field), since a wrong PIN makes the receiver
+show a new one. bae never tries again by itself. While bae pairs, the field is
+off, "Pairing…" shows under it with a spinner, Pair is off and Cancel still
+works. A code of the wrong shape is refused before connecting, with "Enter the
+4-digit PIN." or "Enter the password." under the field.
+
+A receiver that refuses fails the cast with a line that says what is wrong and
+what to do. macOS shows it in an alert titled "Could not cast to" and the
+receiver's name, with OK, wherever the person is. Android shows it in the cast
+picker while the picker is open, as a notice with the same title, and in a
+snackbar otherwise. The lines are:
+
+- locked after too many wrong PINs: "Kitchen refuses more PIN attempts. Reset
+  it, then cast again."
+- busy pairing with another device: "Kitchen is pairing with another device.
+  Cast again when it is done."
+- asking to wait a stated time (bae doesn't wait or try again itself): "Kitchen
+  asks to wait 30 seconds before another try. Cast again after that."
+- not accepting new pairings: "Kitchen is not accepting new pairings. Allow
+  pairing on it, then cast again."
+- paired with as many devices as it allows: "Kitchen is paired with as many
+  devices as it allows. Remove one in its settings, then cast again."
+- plays only from people in its home: "Kitchen plays only from people in its
+  home. Join that home to cast to it."
+- plays only from the admins of its home: "Kitchen plays only from the admins
+  of its home. Change who can play on it in its settings."
+- plays only from the account it is set up with: "Kitchen plays only from the
+  account it is set up with. Change who can play on it in its settings."
+- a reply that doesn't check out: "Kitchen did not complete the pairing. Cast
+  to it again."
+- a receiver that can't be reached: "Kitchen did not answer. Check that it is
+  on and on this network, then cast again."
+
+A receiver that forgets this device while casting ends the session on this
+device with the playback error "The AirPlay speaker no longer accepts this
+device. Cast to it again to pair." A receiver whose first pairing step is
+answered with HTTP 470 is one that asks for a PIN.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.

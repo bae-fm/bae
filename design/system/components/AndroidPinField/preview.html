@@ -1,0 +1,14 @@
+<!-- @dsCard group="Android" height=480 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidPinField</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Empty', h(B.AndroidPinField, null)), N('Focused', h(B.AndroidPinField, { state: 'focused', value: '48' })), N('Filled', h(B.AndroidPinField, { value: '4821' })), N('Error', h(B.AndroidPinField, { state: 'error', value: '4821', error: 'That PIN did not match.' })), N('Six digits', h(B.AndroidPinField, { digits: 6, value: '482' }))));
+</script>
+</body>
+</html>

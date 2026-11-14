@@ -42,6 +42,9 @@ export declare function MacInfoTip(props: { label?: string }): React.ReactElemen
 export declare function MacFileNameField(props: { label?: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 /** A port number: a field five digits wide, digits only, its label hidden. What's wrong with it goes on the row's second line. */
+/** A PIN as one box per digit (digits, from core); value is what is typed so far. error is shown under the boxes when state is error. */
+export interface MacPinFieldProps { digits?: number; value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off'; error?: string }
+export declare function MacPinField(props: MacPinFieldProps): React.ReactElement;
 export declare function MacPortField(props: { value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off' }): React.ReactElement;
 /** Text someone may paste elsewhere (an address): selectable, with a copy button after it while the pointer is over it. `hover` draws that state. */
 export declare function MacCopyText(props: { text?: string; after?: string; label?: string; hover?: boolean; children?: React.ReactNode }): React.ReactElement;
@@ -158,7 +161,10 @@ export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
-export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; code?: boolean; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
+/** A PIN as one box per digit (digits, from core); value is what is typed so far. error is shown under the boxes when state is error. */
+export interface AndroidPinFieldProps { digits?: number; value?: string; label?: string; state?: 'normal' | 'focused' | 'error'; error?: string }
+export declare function AndroidPinField(props: AndroidPinFieldProps): React.ReactElement;
+export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; code?: boolean; secret?: boolean; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
 export declare function AndroidTextField(props: AndroidTextFieldProps): React.ReactElement;
 
 /** One choice of several, in a dialog. */

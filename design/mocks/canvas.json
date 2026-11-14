@@ -4186,6 +4186,126 @@
    "w": 412,
    "x": 2850,
    "y": 25888
+  },
+  "mac.playback.cast-pin.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: pair, asking for the PIN",
+   "w": 1200,
+   "x": 0,
+   "y": 8224
+  },
+  "android.playback.cast-pin.pairing-lost.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "A pairing lost while casting",
+   "w": 412,
+   "x": 3444,
+   "y": 6828
+  },
+  "android.playback.cast-pin.wrong-code.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Pair: a wrong PIN",
+   "w": 412,
+   "x": 984,
+   "y": 6828
+  },
+  "mac.playback.cast-pin.pairing.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: pair, pairing in progress",
+   "w": 1200,
+   "x": 3840,
+   "y": 8224
+  },
+  "mac.playback.cast-pin.wrong-code.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: pair, a wrong PIN",
+   "w": 1200,
+   "x": 1280,
+   "y": 8224
+  },
+  "all.playback.cast-pin.words-table.dc.html": {
+   "h": 1128,
+   "page": "loading",
+   "title": "Every platform: pairing with an AirPlay receiver, every line",
+   "w": 1300,
+   "x": 0,
+   "y": 9224
+  },
+  "android.playback.cast-pin.refused-snackbar.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "A receiver refuses the cast: in a snackbar",
+   "w": 412,
+   "x": 2952,
+   "y": 6828
+  },
+  "android.playback.cast-pin.refused.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "A receiver refuses the cast: in the cast picker",
+   "w": 412,
+   "x": 2460,
+   "y": 6828
+  },
+  "android.playback.cast-pin.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Pair, asking for the PIN: over the cast picker",
+   "w": 412,
+   "x": 0,
+   "y": 6828
+  },
+  "mac.playback.cast-pin.password.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: pair, asking for a password",
+   "w": 1200,
+   "x": 2560,
+   "y": 8224
+  },
+  "android.playback.cast-pin.password.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Pair: asking for a password",
+   "w": 412,
+   "x": 1476,
+   "y": 6828
+  },
+  "mac.playback.cast-pin.refused.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: a receiver refuses the cast",
+   "w": 1200,
+   "x": 5120,
+   "y": 8224
+  },
+  "mac.playback.cast-pin.pairing-lost.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: a pairing lost while casting",
+   "w": 1200,
+   "x": 6400,
+   "y": 8224
+  },
+  "android.playback.cast-pin.over-app.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Pair, asking for the PIN: over the app, picker closed",
+   "w": 412,
+   "x": 492,
+   "y": 6828
+  },
+  "android.playback.cast-pin.pairing.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "Pair: pairing in progress",
+   "w": 412,
+   "x": 1968,
+   "y": 6828
   }
  },
  "createdOnFiles": {
@@ -4347,7 +4467,10 @@
   "code-set-storage",
   "row-welcome-create",
   "code-welcome-create",
-  "code-welcome-damaged-join"
+  "code-welcome-damaged-join",
+  "row-play-pin-android",
+  "row-play-pin-mac",
+  "code-casting-pin"
  ],
  "notes": {
   "canvas-key-library": {
@@ -5676,6 +5799,32 @@
    "w": 420,
    "x": 5894,
    "y": 15556
+  },
+  "row-play-pin-android": {
+   "kind": "title1",
+   "maxW": 3900,
+   "page": "loading",
+   "text": "Pairing with an AirPlay receiver: Android",
+   "w": 240,
+   "x": 0,
+   "y": 6588
+  },
+  "row-play-pin-mac": {
+   "kind": "title1",
+   "maxW": 7600,
+   "page": "loading",
+   "text": "Pairing with an AirPlay receiver: macOS",
+   "w": 240,
+   "x": 0,
+   "y": 7984
+  },
+  "code-casting-pin": {
+   "page": "loading",
+   "size": 24,
+   "w": 420,
+   "x": 3936,
+   "y": 6828,
+   "text": "What the code needs for these boards:\n- A cast to an AirPlay receiver that asks for a PIN or a password does not fail: core answers with the code it needs and why, and the app opens the sheet (macOS, on the main window, since the cast connecting is the app's) or the dialog (Android: over the picker or the Casting page, whichever is open, else over the app). Closing either picker leaves the sheet open. Cancel closes it, casts nothing and asks core nothing.\n- The PIN field is PinField: one box per digit, the digit count from core (4 today), digits shown as typed, digits only, leading zeros kept. Pair is off until every box is filled; a password's Pair is off while the field is empty. The password field is a secure text field. Android uses the number pad for the PIN.\n- The line under the title comes from core with the request, in every language: first pairing, asks every cast, no longer knows this device, and the PIN or password variants. The title is Pair with and the receiver's name.\n- A wrong code keeps the sheet open: the line becomes Enter the PIN that Kitchen shows now, the boxes and the line under them turn red, the typed digits stay for the person to correct. A new PIN is on the receiver by then.\n- Pairing in progress: the field is off, a spinner and Pairing… show under it, Pair is off, Cancel works. The sheet closes when the cast connects, or becomes the next state (a wrong code, or a refusal as an alert or in the picker).\n- Refusals are alerts on macOS titled Could not cast to the receiver's name, with core's line as the message and OK. On Android the same title and line are a quiet danger notice at the top of the picker while it is open, and the line alone is a snackbar otherwise. Each line is a core string in every language; Back off carries its duration formatted for the language.\n- A pairing lost while casting is the playback error line, shown as every playback error is.\nEvery locale."
   }
  },
  "order": [
@@ -6201,7 +6350,22 @@
   "android.welcome.libraries.damaged-join.dc.html",
   "android.welcome.libraries.discard-join.dc.html",
   "mac.welcome.opening.uncounted.dc.html",
-  "android.welcome.opening.uncounted.dc.html"
+  "android.welcome.opening.uncounted.dc.html",
+  "android.playback.cast-pin.dc.html",
+  "android.playback.cast-pin.over-app.dc.html",
+  "android.playback.cast-pin.wrong-code.dc.html",
+  "android.playback.cast-pin.password.dc.html",
+  "android.playback.cast-pin.pairing.dc.html",
+  "android.playback.cast-pin.refused.dc.html",
+  "android.playback.cast-pin.refused-snackbar.dc.html",
+  "android.playback.cast-pin.pairing-lost.dc.html",
+  "mac.playback.cast-pin.dc.html",
+  "mac.playback.cast-pin.wrong-code.dc.html",
+  "mac.playback.cast-pin.password.dc.html",
+  "mac.playback.cast-pin.pairing.dc.html",
+  "mac.playback.cast-pin.refused.dc.html",
+  "mac.playback.cast-pin.pairing-lost.dc.html",
+  "all.playback.cast-pin.words-table.dc.html"
  ],
  "pages": [
   {

@@ -114,8 +114,23 @@
         props.code
           ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, 'aria-placeholder': props.placeholder || null, className: 'bae-a-input bae-a-codetext' },
               props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, props.placeholder))
-          : h('input', { className: 'bae-a-input', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
+          : h('input', { className: 'bae-a-input', type: props.secret ? 'password' : 'text', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
+  }
+
+  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states), the digits shown as typed. The box where the next digit goes is outlined in the accent while the field is `focused`. `state`: normal, focused, error. What's wrong goes under the boxes, in red.
+  function AndroidPinField(props) {
+    var state = props.state || 'normal';
+    var n = props.digits || 4;
+    var value = String(props.value || '');
+    var isError = state === 'error';
+    var cells = [];
+    for (var i = 0; i < n; i++) {
+      cells.push(h('span', { key: i, 'aria-hidden': true, className: cx('bae-a-pin-cell', state === 'focused' && i === Math.min(value.length, n - 1) && 'bae-a-pin-cell-focused', isError && 'bae-a-pin-cell-error') }, value.charAt(i)));
+    }
+    return h('div', { className: 'bae-a-pin' },
+      h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', className: 'bae-a-pin-cells' }, cells),
+      isError && props.error ? h('div', { className: 'bae-a-field-line bae-a-pin-note' }, props.error) : null);
   }
 
   // A screen that walks through one step, centred in the space above the keyboard or the screen's foot: a headline, an optional line under it, then the step's own content and its buttons, a section apart. The buttons follow what they act on rather than sitting at the bottom.
