@@ -29,68 +29,87 @@ use std::str::FromStr;
 /// release's match row), `card`, `pressing`, `record_order`, `kind` (the
 /// listing the row is of), `source`, `release_id`, `title`, `year`,
 /// `source_group_id`, `album_links`, `cover_url`, `cover_standing`, `links` (a
-/// JSON list of the albums its statements name), `record` (the release as
-/// [`match_record_sql`] holds it, which a card carries whole), `named_note`, and the eight
+/// JSON list of the albums its statements name), `named_note`, and the eight
 /// flags `a_disc_id`, `a_barcode`, `a_catalog`, `a_label`, `a_year`,
 /// `a_country`, `a_title` and `a_artist` the folder's text agrees with it by
-/// (all 0 for a list nothing judges). `text_owner` is
-/// a condition over `t` selecting the list's rows of the card text and row
-/// statement tables.
-pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
+/// (all 0 for a list nothing judges). `records` selects the same releases'
+/// `ord` and `record` (the release as [`match_record_sql`] holds it, which a
+/// card carries whole). `text_owner` is a condition over `t` selecting the
+/// list's rows of the card text and row statement tables.
+///
+/// The statement names each of its WITH names as few times as it can, because
+/// SQLite copies a WITH name's whole definition at every reference, and a
+/// statement that holds many copies stops with "VIEWs and/or subqueries
+/// nested too deep" once its cursors pass `SQLITE_LIMIT_EXPR_DEPTH` (1000).
+/// So `recs` holds every per-release fact the later names read (bucket,
+/// album index, whether the card splits), and the releases' JSON comes in at
+/// the two places that carry it, through `records`, never through `recs`.
+pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> String {
     format!(
         "(WITH \
-          m AS ({members}), \
-          bk AS (SELECT m.*, CASE WHEN m.source_group_id IS NULL THEN '#' || m.ord \
-                                  ELSE m.source || ':' || m.source_group_id END AS bucket \
-                 FROM m), \
-          buckets AS ( \
-              SELECT card, bucket, source, source_group_id AS group_id, MIN(ord) AS first_ord, \
-                     MAX(album_links = 'unread') AS unread, \
-                     ROW_NUMBER() OVER (PARTITION BY card \
-                                        ORDER BY bae_catalog_rank(source), MIN(ord)) AS bidx \
-              FROM bk GROUP BY card, bucket), \
-          recs AS (SELECT bk.*, buckets.bidx FROM bk JOIN buckets USING (card, bucket)), \
-          splits AS (SELECT card, COUNT(*) > COUNT(DISTINCT source) AS splits \
-                     FROM buckets GROUP BY card), \
+          recs AS ( \
+              SELECT w.*, MAX(w.bucket_nth) OVER (PARTITION BY w.card) > 1 AS splits \
+              FROM (SELECT v.*, \
+                           DENSE_RANK() OVER (PARTITION BY v.card \
+                                              ORDER BY bae_catalog_rank(v.source), \
+                                                       v.first_ord) AS bidx, \
+                           DENSE_RANK() OVER (PARTITION BY v.card, v.source \
+                                              ORDER BY v.first_ord) AS bucket_nth \
+                    FROM (SELECT b.*, \
+                                 MIN(b.ord) OVER (PARTITION BY b.card, b.bucket) AS first_ord, \
+                                 MAX(b.album_links = 'unread') \
+                                     OVER (PARTITION BY b.card, b.bucket) AS unread, \
+                                 FIRST_VALUE(b.title) \
+                                     OVER (PARTITION BY b.card, b.bucket ORDER BY b.ord) \
+                                     AS bucket_title \
+                          FROM (SELECT m.*, \
+                                       CASE WHEN m.source_group_id IS NULL THEN '#' || m.ord \
+                                            ELSE m.source || ':' || m.source_group_id END \
+                                       AS bucket \
+                                FROM ({members}) AS m) AS b) AS v) AS w), \
           pressings AS ( \
-              SELECT card, pressing, kind, MIN(bidx) AS album, \
-                     MIN(bidx * 4294967296 + ord) AS place, \
-                     MAX(year) FILTER (WHERE record_order = 0) AS lead_year, \
-                     json_group_array(json(record) ORDER BY record_order) AS records, \
-                     MAX(json_object('catalog', source, 'key', release_id)) \
-                         FILTER (WHERE record_order = 0) AS lead, \
-                     MAX(a_disc_id) + MAX(a_barcode) + MAX(a_catalog) + MAX(a_label) \
-                         + MAX(a_year) + MAX(a_country) AS agreements, \
-                     json_object('disc_id', MAX(a_disc_id), 'barcode', MAX(a_barcode), \
-                                 'catalog', MAX(a_catalog), 'label', MAX(a_label), \
-                                 'year', MAX(a_year), 'country', MAX(a_country), \
-                                 'title', MAX(a_title), 'artist', MAX(a_artist)) AS agreed \
-              FROM recs GROUP BY card, pressing, kind), \
+              SELECT r.card, r.pressing, r.kind, MIN(r.bidx) AS album, MAX(r.splits) AS splits, \
+                     MIN(r.bidx * 4294967296 + r.ord) AS place, \
+                     MAX(r.year) FILTER (WHERE r.record_order = 0) AS lead_year, \
+                     json_group_array(json(rc.record) ORDER BY r.record_order) AS records, \
+                     MAX(json_object('catalog', r.source, 'key', r.release_id)) \
+                         FILTER (WHERE r.record_order = 0) AS lead, \
+                     MAX(r.a_disc_id) + MAX(r.a_barcode) + MAX(r.a_catalog) + MAX(r.a_label) \
+                         + MAX(r.a_year) + MAX(r.a_country) AS agreements, \
+                     json_object('disc_id', MAX(r.a_disc_id), 'barcode', MAX(r.a_barcode), \
+                                 'catalog', MAX(r.a_catalog), 'label', MAX(r.a_label), \
+                                 'year', MAX(r.a_year), 'country', MAX(r.a_country), \
+                                 'title', MAX(r.a_title), 'artist', MAX(r.a_artist)) AS agreed, \
+                     (json_group_array(json_object( \
+                          'title', r.bucket_title, 'catalog', r.source, \
+                          'group_url', bae_catalog_group_url(r.source, r.source_group_id), \
+                          'unread', r.unread) ORDER BY r.bidx, r.ord)) ->> 0 AS album_json \
+              FROM recs AS r JOIN ({records}) AS rc ON rc.ord = r.ord \
+              GROUP BY r.card, r.pressing, r.kind), \
+          notes AS ( \
+              SELECT g.card, g.pressing, g.kind, \
+                     json_group_array(json_object( \
+                         'note', g.note, \
+                         'catalogs', json(CASE WHEN g.noted > 1 THEN g.catalogs ELSE '[]' END)) \
+                         ORDER BY g.first) AS notes \
+              FROM (SELECT h.*, COUNT(*) OVER (PARTITION BY h.card, h.pressing, h.kind) AS noted \
+                    FROM (SELECT d.card, d.pressing, d.kind, d.named_note AS note, \
+                                 MIN(d.first) AS first, \
+                                 json_group_array(d.source ORDER BY bae_catalog_rank(d.source)) \
+                                     AS catalogs \
+                          FROM (SELECT DISTINCT r.card, r.pressing, r.kind, r.named_note, \
+                                       r.source, \
+                                       MIN(r.record_order) OVER (PARTITION BY r.card, r.pressing, \
+                                                                 r.kind, r.named_note) AS first \
+                                FROM recs AS r WHERE r.named_note IS NOT NULL) AS d \
+                          GROUP BY d.card, d.pressing, d.kind, d.named_note) AS h) AS g \
+              GROUP BY g.card, g.pressing, g.kind), \
           rowj AS ( \
-              SELECT p.*, s.splits, \
+              SELECT p.*, \
                      json_object( \
                          'records', json(p.records), \
                          'agreed', json(p.agreed), \
-                         'notes', json((SELECT json_group_array(json_object( \
-                                 'note', n.note, 'catalogs', json(n.catalogs)) ORDER BY n.first) \
-                             FROM (SELECT r.named_note AS note, MIN(r.record_order) AS first, \
-                                          CASE WHEN (SELECT COUNT(DISTINCT x.named_note) \
-                                                     FROM recs AS x \
-                                                     WHERE x.card = p.card AND x.pressing = p.pressing \
-                                                       AND x.kind = p.kind) > 1 \
-                                               THEN (SELECT json_group_array(c.source \
-                                                         ORDER BY bae_catalog_rank(c.source)) \
-                                                     FROM (SELECT DISTINCT y.source AS source \
-                                                           FROM recs AS y \
-                                                           WHERE y.card = p.card \
-                                                             AND y.pressing = p.pressing \
-                                                             AND y.kind = p.kind \
-                                                             AND y.named_note = r.named_note) AS c) \
-                                               ELSE '[]' END AS catalogs \
-                                   FROM recs AS r \
-                                   WHERE r.card = p.card AND r.pressing = p.pressing \
-                                     AND r.kind = p.kind AND r.named_note IS NOT NULL \
-                                   GROUP BY r.named_note) AS n)), \
+                         'notes', json(COALESCE(n.notes, '[]')), \
                          'statements', json((SELECT json_group_array(json_object( \
                                  'fact', t.fact, 'line', t.line, 'ordinal', t.ordinal, \
                                  'value', t.value, 'catalogs', json(t.catalogs)) \
@@ -98,43 +117,66 @@ pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
                              FROM import_candidate_row_statement AS t \
                              WHERE {text_owner} AND t.listing = p.kind \
                                AND t.pressing = p.pressing))) AS row \
-              FROM pressings AS p JOIN splits AS s USING (card)), \
+              FROM pressings AS p \
+              LEFT JOIN notes AS n \
+                  ON n.card = p.card AND n.pressing = p.pressing AND n.kind = p.kind), \
           secj AS ( \
               SELECT r.card, CASE WHEN r.splits THEN r.album ELSE 0 END AS section_no, \
                      json_object( \
-                         'album', CASE WHEN r.splits THEN json((SELECT json_object( \
-                                 'title', (SELECT x.title FROM bk AS x WHERE x.ord = b.first_ord), \
-                                 'catalog', b.source, \
-                                 'group_url', bae_catalog_group_url(b.source, b.group_id), \
-                                 'unread', b.unread) \
-                             FROM buckets AS b WHERE b.card = r.card AND b.bidx = r.album)) END, \
+                         'album', CASE WHEN r.splits THEN json(r.album_json) END, \
                          'pressings', json((json_group_array(json(r.row) \
                              ORDER BY r.agreements DESC, r.lead_year IS NULL, r.lead_year, r.place) \
                              FILTER (WHERE r.kind <> 'narrowed_out'))), \
                          'narrowed_out', json((json_group_array(json(r.row) \
                              ORDER BY r.agreements DESC, r.lead_year IS NULL, r.lead_year, r.place) \
-                             FILTER (WHERE r.kind = 'narrowed_out')))) AS section \
+                             FILTER (WHERE r.kind = 'narrowed_out')))) AS section, \
+                     json_group_array(json(r.lead) \
+                         ORDER BY r.agreements DESC, r.lead_year IS NULL, r.lead_year, r.place) \
+                         FILTER (WHERE r.kind <> 'narrowed_out') AS leads, \
+                     MAX(r.kind <> 'narrowed_out') AS offers, \
+                     MAX(r.agreements) FILTER (WHERE r.kind <> 'narrowed_out') AS best_offered, \
+                     MAX(r.agreements) AS best_any \
               FROM rowj AS r GROUP BY r.card, CASE WHEN r.splits THEN r.album ELSE 0 END), \
-          extras AS ( \
-              SELECT recs.card, json_extract(link.value, '$.catalog') AS catalog, \
-                     json_extract(link.value, '$.key') AS key, \
-                     ROW_NUMBER() OVER (PARTITION BY recs.card, json_extract(link.value, '$.catalog') \
-                                        ORDER BY recs.bidx, recs.ord, link.key) AS nth, \
-                     recs.bidx * 1000000000000 + recs.ord * 1000 + link.key AS seen \
-              FROM recs, json_each(recs.links) AS link), \
-          ranked AS ( \
-              SELECT card, MAX(kind <> 'narrowed_out') AS offers, \
-                     COALESCE(MAX(agreements) FILTER (WHERE kind <> 'narrowed_out'), \
-                              MAX(agreements)) AS best \
-              FROM pressings GROUP BY card), \
-          cards AS (SELECT DISTINCT card FROM bk) \
+          card_secs AS ( \
+              SELECT s.card, json_group_array(json(s.section) ORDER BY s.section_no) AS sections, \
+                     json_group_array(json(s.leads) ORDER BY s.section_no) AS leads, \
+                     MAX(s.offers) AS offers, \
+                     COALESCE(MAX(s.best_offered), MAX(s.best_any)) AS best \
+              FROM secj AS s GROUP BY s.card), \
+          card_rows AS ( \
+              SELECT r.card, MIN(r.year) AS year_min, MAX(r.year) AS year_max, \
+                     COALESCE( \
+                         (json_group_array(r.source_group_id ORDER BY r.bidx, r.ord) \
+                              FILTER (WHERE r.source_group_id IS NOT NULL)) ->> 0, \
+                         (json_group_array(r.release_id ORDER BY r.bidx, r.ord)) ->> 0) AS id, \
+                     (json_group_array(r.ord ORDER BY r.cover_standing = 'stated' DESC, \
+                                       r.bidx, r.ord) \
+                          FILTER (WHERE r.cover_url IS NOT NULL)) ->> 0 AS cover_ord \
+              FROM recs AS r GROUP BY r.card), \
+          card_sources AS ( \
+              SELECT y.card, \
+                     json_group_array(json_object('catalog', y.catalog, \
+                                                  'group_url', y.group_url, \
+                                                  'unread', y.unread) \
+                                      ORDER BY bae_catalog_rank(y.catalog), y.seen) AS sources \
+              FROM (SELECT x.*, \
+                           MIN(x.extra) OVER (PARTITION BY x.card, x.catalog) AS lowest, \
+                           ROW_NUMBER() OVER (PARTITION BY x.card, x.catalog, x.extra \
+                                              ORDER BY x.seen) AS nth \
+                    FROM (SELECT r.card, r.source AS catalog, \
+                                 bae_catalog_group_url(r.source, r.source_group_id) AS group_url, \
+                                 r.unread AS unread, r.bidx AS seen, 0 AS extra \
+                          FROM recs AS r WHERE r.ord = r.first_ord \
+                          UNION ALL \
+                          SELECT r.card, json_extract(l.value, '$.catalog'), \
+                                 bae_catalog_group_url(json_extract(l.value, '$.catalog'), \
+                                                       json_extract(l.value, '$.key')), \
+                                 0, r.bidx * 1000000000000 + r.ord * 1000 + l.key, 1 \
+                          FROM recs AS r, json_each(r.links) AS l) AS x) AS y \
+              WHERE y.extra = 0 OR (y.lowest = 1 AND y.nth = 1) \
+              GROUP BY y.card) \
           SELECT json_group_array(json_object( \
-              'id', COALESCE((SELECT b.group_id FROM buckets AS b \
-                              WHERE b.card = c.card AND b.group_id IS NOT NULL \
-                              ORDER BY b.bidx LIMIT 1), \
-                             (SELECT x.release_id FROM bk AS x \
-                              WHERE x.ord = (SELECT b.first_ord FROM buckets AS b \
-                                             WHERE b.card = c.card AND b.bidx = 1))), \
+              'id', c.id, \
               'titles', json((SELECT json_group_array(t.text ORDER BY t.ordinal) \
                               FROM import_candidate_card_text AS t \
                               WHERE {text_owner} AND t.card = c.card AND t.kind = 'title')), \
@@ -144,58 +186,47 @@ pub(super) fn cards_sql(members: &str, text_owner: &str) -> String {
               'labels', json((SELECT json_group_array(t.text ORDER BY t.ordinal) \
                               FROM import_candidate_card_text AS t \
                               WHERE {text_owner} AND t.card = c.card AND t.kind = 'label')), \
-              'cover', json((SELECT json(r.record) FROM recs AS r \
-                             WHERE r.card = c.card AND r.cover_url IS NOT NULL \
-                             ORDER BY r.cover_standing = 'stated' DESC, r.bidx, r.ord LIMIT 1)), \
-              'leads', json((SELECT json_group_array(json(r.lead) \
-                                 ORDER BY CASE WHEN r.splits THEN r.album ELSE 0 END, \
-                                          r.agreements DESC, r.lead_year IS NULL, r.lead_year, \
-                                          r.place) \
-                             FROM rowj AS r \
-                             WHERE r.card = c.card AND r.kind <> 'narrowed_out')), \
-              'sources', json((SELECT json_group_array(json_object( \
-                                  'catalog', s.catalog, 'group_url', s.group_url, \
-                                  'unread', s.unread) \
-                                  ORDER BY bae_catalog_rank(s.catalog), s.seen) \
-                  FROM (SELECT b.source AS catalog, \
-                               bae_catalog_group_url(b.source, b.group_id) AS group_url, \
-                               b.unread AS unread, b.bidx AS seen \
-                        FROM buckets AS b WHERE b.card = c.card \
-                        UNION ALL \
-                        SELECT e.catalog, bae_catalog_group_url(e.catalog, e.key), 0, e.seen \
-                        FROM extras AS e \
-                        WHERE e.card = c.card AND e.nth = 1 \
-                          AND e.catalog NOT IN (SELECT b.source FROM buckets AS b \
-                                                WHERE b.card = c.card)) AS s)), \
-              'year_min', (SELECT MIN(year) FROM m WHERE m.card = c.card), \
-              'year_max', (SELECT MAX(year) FROM m WHERE m.card = c.card), \
-              'sections', json((SELECT json_group_array(json(secj.section) ORDER BY secj.section_no) \
-                                FROM secj WHERE secj.card = c.card))) \
-              ORDER BY k.offers DESC, k.best DESC, c.card) \
-          FROM cards AS c JOIN ranked AS k ON k.card = c.card)"
+              'cover', json((SELECT json(rc.record) FROM ({records}) AS rc \
+                             WHERE rc.ord = c.cover_ord)), \
+              'leads', json((SELECT json_group_array(json(lead.value)) \
+                             FROM json_each(cs.leads) AS sec, json_each(sec.value) AS lead)), \
+              'sources', json(COALESCE(srcs.sources, '[]')), \
+              'year_min', c.year_min, 'year_max', c.year_max, \
+              'sections', json(cs.sections)) \
+              ORDER BY cs.offers DESC, cs.best DESC, c.card) \
+          FROM card_rows AS c JOIN card_secs AS cs ON cs.card = c.card \
+          LEFT JOIN card_sources AS srcs ON srcs.card = c.card)"
     )
 }
 
 /// The SQL of a scalar subquery reading the cards of the typed search whose
 /// number `search_run` names, the SQL of a column of the search's own row.
 pub(super) fn search_cards_sql(search_run: &str) -> String {
+    let from = format!(
+        "FROM import_candidate_match AS found \
+         JOIN import_candidate_search_source AS part \
+           ON part.search_run = found.search_run AND part.catalog = found.source \
+         WHERE found.search_run = {search_run}"
+    );
+    let ord = "ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1";
     cards_sql(
         &format!(
-            "SELECT ROW_NUMBER() OVER (ORDER BY part.position, found.position) - 1 AS ord, \
+            "SELECT {ord} AS ord, \
                     found.position, found.card, found.pressing, found.record_order, \
                     'returned' AS kind, found.source, found.release_id, found.title, \
                     found.year, found.source_group_id, found.album_links, found.cover_url, \
-                    found.cover_standing, {record} AS record, 0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
-                    0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, \
+                    found.cover_standing, 0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, \
+                    0 AS a_label, 0 AS a_year, 0 AS a_country, 0 AS a_title, 0 AS a_artist, \
+                    NULL AS named_note, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, 'key', link.key) \
                                              ORDER BY link.ordinal) \
                      FROM import_candidate_match_album_link AS link \
                      WHERE link.search_run = found.search_run \
                        AND link.position = found.position) AS links \
-             FROM import_candidate_match AS found \
-             JOIN import_candidate_search_source AS part \
-               ON part.search_run = found.search_run AND part.catalog = found.source \
-             WHERE found.search_run = {search_run}",
+             {from}"
+        ),
+        &format!(
+            "SELECT {ord} AS ord, {record} AS record {from}",
             record = match_record_sql("found"),
         ),
         &format!("t.search_run = {search_run} AND t.step = ''"),
@@ -211,13 +242,22 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
          AND {{table}}.step = {lookup}.step AND {{table}}.position = {lookup}.position \
          AND {{table}}.cell = {lookup}.cell"
     );
+    let from = format!(
+        "FROM import_candidate_lookup_release AS found \
+         JOIN import_candidate_match AS matched \
+           ON matched.content_hash IS found.content_hash \
+          AND matched.identify_run IS found.identify_run \
+          AND matched.position = found.match_position \
+         WHERE {found}",
+        found = owner.replace("{table}", "found"),
+    );
     cards_sql(
         &format!(
             "SELECT found.ordinal AS ord, found.match_position AS position, found.card, \
                     found.pressing, found.record_order, 'answered' AS kind, matched.source, \
                     matched.release_id, matched.title, matched.year, matched.source_group_id, \
                     matched.album_links, matched.cover_url, matched.cover_standing, \
-                    {record} AS record, 0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
+                    0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
                     0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, \
                                                          'key', link.key) \
@@ -226,13 +266,10 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
                      WHERE link.content_hash IS matched.content_hash \
                        AND link.identify_run IS matched.identify_run \
                        AND link.position = matched.position) AS links \
-             FROM import_candidate_lookup_release AS found \
-             JOIN import_candidate_match AS matched \
-               ON matched.content_hash IS found.content_hash \
-              AND matched.identify_run IS found.identify_run \
-              AND matched.position = found.match_position \
-             WHERE {found}",
-            found = owner.replace("{table}", "found"),
+             {from}"
+        ),
+        &format!(
+            "SELECT found.ordinal AS ord, {record} AS record {from}",
             record = match_record_sql("matched"),
         ),
         &owner.replace("{table}", "t"),
@@ -253,12 +290,13 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     );
     let found = owner.replace("{table}", "found");
     let listed = format!("{found} AND found.listing IN ('offered', 'narrowed_out')");
+    let from = format!("FROM import_candidate_match AS found WHERE {listed}");
     let cards = cards_sql(
         &format!(
             "SELECT found.position AS ord, found.position, found.card, found.pressing, \
                     found.record_order, found.listing AS kind, found.source, found.release_id, \
                     found.title, found.year, found.source_group_id, found.album_links, \
-                    found.cover_url, found.cover_standing, {record} AS record, \
+                    found.cover_url, found.cover_standing, \
                     found.agrees_disc_id AS a_disc_id, found.agrees_barcode AS a_barcode, \
                     found.agrees_catalog AS a_catalog, found.agrees_label AS a_label, \
                     found.agrees_year AS a_year, found.agrees_country AS a_country, \
@@ -270,7 +308,10 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                      WHERE link.content_hash IS found.content_hash \
                        AND link.identify_run IS found.identify_run \
                        AND link.position = found.position) AS links \
-             FROM import_candidate_match AS found WHERE {listed}",
+             {from}"
+        ),
+        &format!(
+            "SELECT found.position AS ord, {record} AS record {from}",
             record = match_record_sql("found"),
         ),
         &format!("{} AND t.step = ''", owner.replace("{table}", "t")),
