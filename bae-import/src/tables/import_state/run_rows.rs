@@ -15,11 +15,14 @@
 
 pub(super) const SQL: &str = include_str!("run_rows.sql");
 
+use super::column_list::{json_text, JsonColumns};
 use super::match_record::{match_record_sql, StoredRecord};
 use super::match_rows::StoredMatches;
-use super::search_rows::{load_search_on, load_searches_on};
+use super::search_rows::{search_in, search_object_sql};
 use super::signal_rows::{read_signals, signals_read_columns, store_signals};
-use super::standing_rows::{change_identification_on, load_standing_on, load_standings_on};
+use super::standing_rows::{
+    change_identification_on, StandingColumns, COLUMNS as STANDING_COLUMNS,
+};
 use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_columns};
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
@@ -30,49 +33,23 @@ use bae_catalogs::source_release::SourceRelease;
 use bae_identify::signals::Signals;
 use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
 
-/// What every run in flight, or `key`'s runs alone, last published, with the
-/// signals each last read, a row for each run in key and run order.
-fn load_runs_on(
-    sql: &impl coven::SqlRead,
-    key: Option<&CandidateKey>,
-) -> Result<Vec<(CandidateKey, IdentifyRunId, PublishedRun)>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT run.candidate_key AS run_key, run.identify_run AS run_number, \
-                    {verdict}, {signals}, {cards} AS run_cards, \
-                    (SELECT json_group_array(json({record}) ORDER BY found.position) \
-                     FROM import_candidate_match AS found \
-                     WHERE found.identify_run = run.identify_run) AS run_matches \
-             FROM import_identify_run AS run \
-             JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run \
-             LEFT JOIN import_candidate_signals AS signals \
-                 ON signals.identify_run = run.identify_run \
-             WHERE ?1 IS NULL OR run.candidate_key = ?1 \
-             ORDER BY run.candidate_key, run.identify_run",
-            record = match_record_sql("found"),
-            verdict = verdict_columns(),
-            signals = signals_read_columns(),
-            cards = super::cards_read::verdict_cards_sql("verdict"),
-        ),
-        params![key],
-        |row| {
-            Ok((
-                row.get::<_, CandidateKey>("run_key")?,
-                row.get::<_, i64>("run_number")?,
-                read_verdict_row(row),
-                read_signals(row)?,
-                row.get::<_, String>("run_cards")?,
-                row.get::<_, String>("run_matches")?,
-            ))
-        },
-    )?;
-    let mut runs = Vec::with_capacity(rows.len());
-    for (key, run, verdict, signals, cards, matches) in rows {
-        let verdict = verdict?.ok_or_else(|| {
+/// One run of a key as [`load_runtimes_on`] nests it.
+#[derive(serde::Deserialize)]
+struct StoredRun {
+    run: i64,
+    verdict: JsonColumns,
+    signals: JsonColumns,
+    cards: serde_json::Value,
+    matches: Vec<StoredRecord>,
+}
+
+impl StoredRun {
+    /// What the run last published, under the key it is of.
+    fn published(self, key: &CandidateKey) -> Result<(IdentifyRunId, PublishedRun), DbError> {
+        let Self { run, verdict, signals, cards, matches } = self;
+        let verdict = read_verdict_row(&verdict)?.ok_or_else(|| {
             DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
         })?;
-        let matches: Vec<StoredRecord> = serde_json::from_str(&matches)
-            .map_err(|error| DbError::unreadable_json("a run's stored matches", &matches, error))?;
         let found = StoredMatches {
             rows: matches
                 .into_iter()
@@ -80,22 +57,104 @@ fn load_runs_on(
                 .collect::<Result<_, _>>()?,
         };
         let (outcome, _) = outcome_of(verdict, found)?;
-        let signals = signals.map(|stored| stored.signals()).transpose()?;
+        let signals = read_signals(&signals)?.map(|stored| stored.signals()).transpose()?;
         let cards = match &outcome {
             RunOutcome::Running { .. } => true,
             RunOutcome::Answered(verdict) => verdict.findings().is_some(),
         }
-        .then(|| super::cards_read::verdict_cards_of(&cards))
+        .then(|| super::cards_read::verdict_cards_of(&json_text(&cards)))
         .transpose()?
         .unwrap_or_default();
         let number = to_u64(run, &format!("{key}'s run number"))?;
-        runs.push((
-            key,
-            IdentifyRunId::of_number(number),
-            PublishedRun { outcome, signals, cards },
-        ));
+        Ok((IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards }))
     }
-    Ok(runs)
+}
+
+/// The runs of the key a read names, as one JSON list column.
+fn runs_column(key: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+                  'run', run.identify_run, \
+                  'verdict', {verdict}, \
+                  'signals', {signals}, \
+                  'cards', json({cards}), \
+                  'matches', json((SELECT json_group_array(json({record}) ORDER BY found.position) \
+                                   FROM import_candidate_match AS found \
+                                   WHERE found.identify_run = run.identify_run))) \
+                  ORDER BY run.identify_run) \
+          FROM import_identify_run AS run \
+          JOIN import_candidate_verdict AS verdict ON verdict.identify_run = run.identify_run \
+          LEFT JOIN import_candidate_signals AS signals \
+              ON signals.identify_run = run.identify_run \
+          WHERE run.candidate_key = {key})",
+        record = match_record_sql("found"),
+        verdict = verdict_columns().object(),
+        signals = signals_read_columns().object(),
+        cards = super::cards_read::verdict_cards_sql("verdict"),
+    )
+}
+
+/// Every key something is running for, or `key` alone, as one statement
+/// reads it: its standing, each run in flight that published a verdict with
+/// the verdict, signals, cards and releases nested in it, and its typed
+/// search nested as one object.
+fn load_runtimes_on(
+    sql: &impl coven::SqlRead,
+    key: Option<&CandidateKey>,
+) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
+    let rows = sql.query(
+        &format!(
+            "SELECT keys.candidate_key AS runtime_key, \
+                    {STANDING_COLUMNS}, \
+                    {runs} AS runtime_runs, \
+                    (SELECT {search} FROM import_candidate_search AS typed \
+                     WHERE typed.candidate_key = keys.candidate_key) AS runtime_search \
+             FROM (SELECT candidate_key FROM import_candidate_standing \
+                   UNION SELECT run.candidate_key FROM import_identify_run AS run \
+                         JOIN import_candidate_verdict AS verdict \
+                             ON verdict.identify_run = run.identify_run \
+                   UNION SELECT candidate_key FROM import_candidate_search) AS keys \
+             LEFT JOIN import_candidate_standing AS standing \
+                 ON standing.candidate_key = keys.candidate_key \
+             WHERE ?1 IS NULL OR keys.candidate_key = ?1 \
+             ORDER BY keys.candidate_key",
+            STANDING_COLUMNS = STANDING_COLUMNS,
+            search = search_object_sql(),
+            runs = runs_column("keys.candidate_key"),
+        ),
+        params![key],
+        |row| {
+            Ok((
+                row.get::<_, CandidateKey>("runtime_key")?,
+                StandingColumns::read(row, 1)?,
+                row.get::<_, String>("runtime_runs")?,
+                row.get::<_, Option<String>>("runtime_search")?,
+            ))
+        },
+    )?;
+    rows.into_iter()
+        .map(|(key, standing, runs, search)| {
+            let stored: Vec<StoredRun> = serde_json::from_str(&runs)
+                .map_err(|error| DbError::unreadable_json("a key's stored runs", &runs, error))?;
+            let search = search
+                .map(|json| {
+                    let columns: JsonColumns = serde_json::from_str(&json).map_err(|error| {
+                        DbError::unreadable_json("a key's stored search", &json, error)
+                    })?;
+                    search_in(&key, &columns)
+                })
+                .transpose()?;
+            let runtime = StoredRuntime {
+                standing: standing.standing(&key)?,
+                runs: stored
+                    .into_iter()
+                    .map(|run| run.published(&key))
+                    .collect::<Result<_, DbError>>()?,
+                search,
+            };
+            Ok((key, runtime))
+        })
+        .collect()
 }
 
 /// Where `key` stands, what each of its runs in flight last published, and
@@ -104,18 +163,13 @@ pub(crate) fn load_stored_runtime_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
-    Ok(StoredRuntime {
-        standing: load_standing_on(sql, key)?,
-        runs: load_runs_on(sql, Some(key))?
-            .into_iter()
-            .map(|(_, run, published)| (run, published))
-            .collect(),
-        search: load_search_on(sql, key)?,
-    })
+    Ok(load_runtimes_on(sql, Some(key))?
+        .into_iter()
+        .next()
+        .map(|(_, runtime)| runtime)
+        .unwrap_or_default())
 }
 
-/// Every key something is running for: where it stands, what each of its
-/// runs in flight last published, and its typed search.
 /// Delete every run's published state: nothing a run published outlives
 /// the process that ran it.
 pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
@@ -123,20 +177,12 @@ pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
     Ok(())
 }
 
+/// Every key something is running for: where it stands, what each of its
+/// runs in flight last published, and its typed search.
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
-) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
-    let mut runtimes: HashMap<CandidateKey, StoredRuntime> = load_standings_on(sql)?
-        .into_iter()
-        .map(|(key, standing)| (key, StoredRuntime { standing, ..StoredRuntime::default() }))
-        .collect();
-    for (key, run, published) in load_runs_on(sql, None)? {
-        runtimes.entry(key).or_default().runs.insert(run, published);
-    }
-    for (key, search) in load_searches_on(sql)? {
-        runtimes.entry(key).or_default().search = Some(search);
-    }
-    Ok(runtimes)
+) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
+    load_runtimes_on(sql, None)
 }
 
 /// Store `outcome` as how `run` of `key` stands, with each of `releases`
@@ -235,7 +281,7 @@ impl ImportTables {
     /// reads each.
     pub(crate) async fn load_candidate_runtimes(
         &self,
-    ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
+    ) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
         self.store.read(|sql| load_stored_runtimes_on(&sql)).await
     }
 
@@ -257,10 +303,10 @@ impl ImportTables {
                      JOIN import_candidate_signals AS signals \
                          ON signals.identify_run = run.identify_run \
                      WHERE run.candidate_key = ?1 AND run.identify_run = ?2",
-                        signals = signals_read_columns(),
+                        signals = signals_read_columns().select(),
                     ),
                     params![key, run],
-                    read_signals,
+                    |row| read_signals(row),
                 )?;
                 stored.into_iter().next().flatten().map(|stored| stored.signals()).transpose()
             })

@@ -361,3 +361,79 @@ async fn a_run_s_rows_go_with_it() {
         );
     }
 }
+
+/// A search of one query with every catalog asked, as a person types it.
+fn typed_search() -> crate::candidate_search::CandidateSearch {
+    let availability: Vec<_> = LookupCatalog::ALL
+        .into_iter()
+        .map(|catalog| bae_preferences::CatalogAvailability {
+            catalog,
+            state: bae_preferences::SourceAvailability::On,
+        })
+        .collect();
+    crate::candidate_search::CandidateSearch::started(
+        bae_catalogs::search::SearchQuery::General {
+            artist: "Artist Name".to_string(),
+            album: "Album Title".to_string(),
+        },
+        &availability,
+    )
+}
+
+/// One statement answers every key together: a folder candidate holding only
+/// its standing and a search, a release holding two runs, a release holding
+/// one, and a release holding only a search; each under its own key, its
+/// runs in run order, and the keys in key order.
+#[tokio::test]
+async fn every_key_read_together_holds_what_it_holds_alone() {
+    let (tables, key, files, _tmp) = scanned().await;
+    admit(&tables, &key, &files, Admission::Automatic).await;
+    let first = CandidateKey::reidentify("release-1");
+    let second = CandidateKey::reidentify("release-2");
+    let third = CandidateKey::reidentify("release-3");
+    // Published out of order: the read gives them back in run order.
+    tables.publish_release_run(&first, run(2), &search_waiting(), None).await.unwrap();
+    tables
+        .publish_release_run(&first, run(1), &barcode_half_answered(), Some(&scanning_signals()))
+        .await
+        .unwrap();
+    tables.publish_release_run(&second, run(3), &search_waiting(), None).await.unwrap();
+    tables.start_candidate_search(&key, &typed_search()).await.unwrap();
+    tables.start_candidate_search(&third, &typed_search()).await.unwrap();
+
+    let together = tables.load_candidate_runtimes().await.unwrap();
+    let keys: Vec<_> = together.iter().map(|(held, _)| held.clone()).collect();
+    let mut sorted = keys.clone();
+    sorted.sort();
+    assert_eq!(keys, sorted, "the keys come in key order");
+    assert_eq!(keys.len(), 4);
+    let of = |key: &CandidateKey| together.iter().find(|(held, _)| held == key).map(|(_, r)| r);
+
+    let folder = of(&key).unwrap();
+    assert!(folder.runs.is_empty());
+    assert!(folder.standing.identification.is_some());
+    assert_eq!(folder.search.as_ref(), Some(&typed_search()));
+
+    let two = of(&first).unwrap();
+    assert_eq!(two.runs.keys().copied().collect::<Vec<_>>(), vec![run(1), run(2)]);
+    assert_eq!(two.runs[&run(2)], published(search_waiting()));
+    assert!(two.runs[&run(1)].signals.is_some());
+    assert!(two.search.is_none());
+
+    let one = of(&second).unwrap();
+    assert_eq!(one.runs, BTreeMap::from([(run(3), published(search_waiting()))]));
+
+    let search_only = of(&third).unwrap();
+    assert!(search_only.runs.is_empty());
+    assert!(search_only.standing.identification.is_none());
+    assert_eq!(search_only.search.as_ref(), Some(&typed_search()));
+
+    for key in &keys {
+        assert_eq!(of(key).unwrap(), &tables.load_candidate_runtime(key).await.unwrap());
+    }
+    assert_eq!(
+        tables.load_candidate_runtime(&CandidateKey::reidentify("nothing")).await.unwrap(),
+        StoredRuntime::default(),
+        "a key with nothing running reads as nothing"
+    );
+}

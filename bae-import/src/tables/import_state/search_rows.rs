@@ -17,6 +17,7 @@
 pub(super) const SQL: &str = include_str!("search_rows.sql");
 
 use super::cards_read::{groups_of, search_cards_sql};
+use super::column_list::{ColumnList, Columns, JsonColumns};
 use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_record::{match_record_sql, StoredRecord};
@@ -62,10 +63,10 @@ fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
 }
 
 /// The query a search row's columns hold.
-fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
+fn query_of(row: &impl Columns) -> Result<SearchQuery, DbError> {
     let mode: String = row.get("mode")?;
     let value = |column: &str| {
-        row.get::<_, Option<String>>(column)?.ok_or_else(|| {
+        row.get::<Option<String>>(column)?.ok_or_else(|| {
             DbError::unreadable(
                 format!("import_candidate_search.{column} of a {mode} search"),
                 None::<String>,
@@ -226,17 +227,54 @@ fn load_on(
     )?;
     let mut loaded = Vec::with_capacity(searches.len());
     for (run, key, query, cards, parts) in searches {
-        let query = query?;
-        let groups = groups_of(&cards)?;
-        let stored: Vec<StoredPart> = serde_json::from_str(&parts)
-            .map_err(|error| DbError::unreadable_json("a search's stored parts", &parts, error))?;
-        let sources = stored
-            .into_iter()
-            .map(|part| part.part(&format!("{key}'s search")))
-            .collect::<Result<Vec<_>, DbError>>()?;
-        loaded.push((key, SearchRun::of(run), CandidateSearch::of(query, sources, groups)));
+        loaded.push((key.clone(), SearchRun::of(run), search_of(&key, query?, &cards, &parts)?));
     }
     Ok(loaded)
+}
+
+/// The search of `key` its query, cards and parts columns hold.
+fn search_of(
+    key: &CandidateKey,
+    query: SearchQuery,
+    cards: &str,
+    parts: &str,
+) -> Result<CandidateSearch, DbError> {
+    let groups = groups_of(cards)?;
+    let stored: Vec<StoredPart> = serde_json::from_str(parts)
+        .map_err(|error| DbError::unreadable_json("a search's stored parts", parts, error))?;
+    let sources = stored
+        .into_iter()
+        .map(|part| part.part(&format!("{key}'s search")))
+        .collect::<Result<Vec<_>, DbError>>()?;
+    Ok(CandidateSearch::of(query, sources, groups))
+}
+
+/// The search of the key a read joins as `keys`, as one JSON object holding
+/// the columns [`search_in`] reads, NULL for a key with none.
+pub(super) fn search_object_sql() -> String {
+    ColumnList(vec![
+        ("mode", "typed.mode".to_string()),
+        ("artist", "typed.artist".to_string()),
+        ("album", "typed.album".to_string()),
+        ("catalog_number", "typed.catalog_number".to_string()),
+        ("barcode", "typed.barcode".to_string()),
+        ("cards", search_cards_sql("typed.search_run")),
+        ("parts", parts_column("typed.search_run")),
+    ])
+    .object()
+}
+
+/// The search a [`search_object_sql`] object holds.
+pub(super) fn search_in(
+    key: &CandidateKey,
+    search: &JsonColumns,
+) -> Result<CandidateSearch, DbError> {
+    search_of(
+        key,
+        query_of(search)?,
+        &search.get::<String>("cards")?,
+        &search.get::<String>("parts")?,
+    )
 }
 
 /// A MusicBrainz result a pick read: what its documents state its album is on
@@ -338,21 +376,6 @@ fn store_pick_on(
         )?;
     }
     Ok(())
-}
-
-/// `key`'s search; `None` when it has none.
-pub(super) fn load_search_on(
-    sql: &impl coven::SqlRead,
-    key: &CandidateKey,
-) -> Result<Option<CandidateSearch>, DbError> {
-    Ok(load_on(sql, Some(key))?.into_iter().next().map(|(_, _, search)| search))
-}
-
-/// Every key's search.
-pub(super) fn load_searches_on(
-    sql: &impl coven::SqlRead,
-) -> Result<Vec<(CandidateKey, CandidateSearch)>, DbError> {
-    Ok(load_on(sql, None)?.into_iter().map(|(key, _, search)| (key, search)).collect())
 }
 
 /// End, inside the caller's scan write, `key`'s search unless it is of

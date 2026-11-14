@@ -14,6 +14,7 @@
 pub(super) const SQL: &str = include_str!("ledger_rows.sql");
 
 use super::cards_read::{cell_cards_sql, groups_from, StoredCard};
+use super::column_list::Columns;
 use super::layout::{store_list_text, ListLayout, ListOwner};
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::Owner;
@@ -405,32 +406,45 @@ fn ledger_rows_sql() -> String {
 /// (each card holding its releases), its answer 'no_match' where it answered
 /// with none. The position of an unlisted match no lookup found rides on them
 /// too.
-pub(super) fn ledger_columns() -> String {
-    format!(
-    "verdict.disc_id_step AS ledger_disc_id_step, \
-     verdict.barcode_step AS ledger_barcode_step, \
-     verdict.catalog_step AS ledger_catalog_step, verdict.isrc_step AS ledger_isrc_step, \
-     verdict.search_step AS ledger_search_step, verdict.search_album AS ledger_search_album, \
-     verdict.search_artist AS ledger_search_artist, \
-     (SELECT MIN(unlisted.position) FROM import_candidate_match AS unlisted \
-      WHERE unlisted.content_hash IS verdict.content_hash \
-        AND unlisted.identify_run IS verdict.identify_run AND unlisted.listing = 'unlisted' \
-        AND NOT EXISTS (SELECT 1 FROM import_candidate_lookup_release AS found \
-                        WHERE found.content_hash IS verdict.content_hash \
-                          AND found.identify_run IS verdict.identify_run \
-                          AND found.match_position = unlisted.position)) AS ledger_stray_unlisted, \
-     (SELECT json_group_array(provider.catalog ORDER BY provider.position) \
-      FROM import_candidate_lookup_provider AS provider \
-      WHERE provider.content_hash IS verdict.content_hash AND provider.identify_run IS verdict.identify_run) AS ledger_providers, \
-     (SELECT json_group_array(isrc.isrc ORDER BY isrc.position) \
-      FROM import_candidate_lookup_isrc AS isrc \
-      WHERE isrc.content_hash IS verdict.content_hash AND isrc.identify_run IS verdict.identify_run) AS ledger_isrcs, \
-     (SELECT json_group_array(offered.value ORDER BY offered.position) \
-      FROM import_candidate_lookup_offered_catalog AS offered \
-      WHERE offered.content_hash IS verdict.content_hash AND offered.identify_run IS verdict.identify_run) AS ledger_offered_catalogs, \
-     {rows} AS ledger_rows",
-    rows = ledger_rows_sql(),
-    )
+pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
+    let list = |value: &str, table: &str, order: &str| {
+        format!(
+            "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
+              WHERE entry.content_hash IS verdict.content_hash \
+                AND entry.identify_run IS verdict.identify_run)"
+        )
+    };
+    vec![
+        ("ledger_disc_id_step", "verdict.disc_id_step".to_string()),
+        ("ledger_barcode_step", "verdict.barcode_step".to_string()),
+        ("ledger_catalog_step", "verdict.catalog_step".to_string()),
+        ("ledger_isrc_step", "verdict.isrc_step".to_string()),
+        ("ledger_search_step", "verdict.search_step".to_string()),
+        ("ledger_search_album", "verdict.search_album".to_string()),
+        ("ledger_search_artist", "verdict.search_artist".to_string()),
+        (
+            "ledger_stray_unlisted",
+            "(SELECT MIN(unlisted.position) FROM import_candidate_match AS unlisted \
+              WHERE unlisted.content_hash IS verdict.content_hash \
+                AND unlisted.identify_run IS verdict.identify_run \
+                AND unlisted.listing = 'unlisted' \
+                AND NOT EXISTS (SELECT 1 FROM import_candidate_lookup_release AS found \
+                                WHERE found.content_hash IS verdict.content_hash \
+                                  AND found.identify_run IS verdict.identify_run \
+                                  AND found.match_position = unlisted.position))"
+                .to_string(),
+        ),
+        (
+            "ledger_providers",
+            list("entry.catalog", "import_candidate_lookup_provider", "entry.position"),
+        ),
+        ("ledger_isrcs", list("entry.isrc", "import_candidate_lookup_isrc", "entry.position")),
+        (
+            "ledger_offered_catalogs",
+            list("entry.value", "import_candidate_lookup_offered_catalog", "entry.position"),
+        ),
+        ("ledger_rows", ledger_rows_sql()),
+    ]
 }
 
 /// One verdict's [`ledger_columns`] as SQLite hands them over, its lists
@@ -451,7 +465,7 @@ pub(super) struct StoredLedger {
     rows: String,
 }
 
-pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
+pub(super) fn read_ledger(row: &impl Columns) -> rusqlite::Result<StoredLedger> {
     Ok(StoredLedger {
         disc_id: row.get("ledger_disc_id_step")?,
         barcode: row.get("ledger_barcode_step")?,

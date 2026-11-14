@@ -86,8 +86,8 @@ pub(crate) fn load_states_rows_on(
              LEFT JOIN import_candidate_verdict AS verdict \
                  ON verdict.content_hash = state.content_hash \
              {clause}",
-            signals = super::signal_rows::signals_read_columns(),
-            verdict = verdict_columns(),
+            signals = super::signal_rows::signals_read_columns().select(),
+            verdict = verdict_columns().select(),
             record = match_record_sql("found"),
             clause = filter.clause,
         ),
@@ -137,7 +137,9 @@ impl StoredCandidate {
             )
         })?;
         let identify = match verdict {
-            Some(verdict) => Some(identification_of(verdict, match_rows_of(&content_hash, &matches)?)?),
+            Some(verdict) => {
+                Some(identification_of(verdict, match_rows_of(&content_hash, &matches)?)?)
+            }
             // The match rows hang off the verdict row, so a candidate
             // without one has none.
             None => match match_rows_of(&content_hash, &matches)?.rows.len() {

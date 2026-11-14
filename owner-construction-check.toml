@@ -1704,8 +1704,6 @@ frozen = [
     { path = "bae-import/src/tables/import_state/file_decision_rows.rs", item = "load_stored_candidate_edits_on", shape = "group", count = 1, finding = "`load_stored_candidate_edits_on` groups with `collect::<HashMap>` (found by the check)" },
     { path = "bae-import/src/tables/import_state/pane_rows.rs", item = "load_drafts_on", shape = "group", count = 2, finding = "`load_drafts_on` returns a `HashMap` (found by the check)" },
     { path = "bae-import/src/tables/import_state/rows.rs", item = "load_states_on", shape = "group", count = 1, finding = "`load_states_on` returns a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/run_rows.rs", item = "load_stored_runtimes_on", shape = "group", count = 4, finding = "merges standings, runs and searches by key in `HashMap`s in Rust" },
-    { path = "bae-import/src/tables/import_state/standing_rows.rs", item = "load_standings_on", shape = "group", count = 1, finding = "`load_standings_on` returns a `HashMap` (found by the check)" },
     { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "aggregate", count = 1, finding = "`outcome_of` aggregates with `count` (found by the check)" },
     { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "filter", count = 1, finding = "`outcome_of` filters with `filter` (found by the check)" },
     { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "pick", count = 2, finding = "`outcome_of` picks with `find` (found by the check)" },
@@ -1772,6 +1770,9 @@ frozen = [
     { path = "bae-views/src/storage_inspector.rs", item = "inspector_files_on", shape = "pick", count = 1, finding = "filters coven's pending records by their decoded subject and joins them to files by path in Rust" },
 ]
 allowed = [
+    { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
+    { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
+    { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
     { path = "bae-import/src/folder_scanner/files.rs", item = "content_hash_of", shape = "sort", count = 1, reason = "orders the scanned files' relative paths to fingerprint a folder as the scan found it on disk; the files, not rows" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::key_at", shape = "pick", count = 1, reason = "finds a part's place in the tab's fixed list of parts; parts, not rows" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::position_where", shape = "length-branch", count = 1, reason = "tests whether a part is the tab's last, by position in its fixed list of parts; parts, not rows" },

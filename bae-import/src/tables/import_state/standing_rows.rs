@@ -33,11 +33,11 @@ use crate::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads
 /// them.
-const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
+pub(super) const COLUMNS: &str = "identification, content_hash, file_edit_revision, admission, \
      identify_run, import_asked, save_failure_error, import_step, import_id";
 
 /// One row's columns as SQLite holds them.
-struct StandingColumns {
+pub(super) struct StandingColumns {
     identification: Option<String>,
     content_hash: Option<String>,
     file_edit_revision: Option<i64>,
@@ -50,7 +50,7 @@ struct StandingColumns {
 }
 
 impl StandingColumns {
-    fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
         Ok(Self {
             identification: row.get(first)?,
             content_hash: row.get(first + 1)?,
@@ -67,7 +67,7 @@ impl StandingColumns {
     /// The standing these columns hold for `key`. The table's checks hold
     /// every column a stage needs, so one missing is a row the checks let
     /// through, which is refused here as broken.
-    fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
+    pub(super) fn standing(self, key: &CandidateKey) -> Result<StoredStanding, DbError> {
         let broken =
             |what: &str| DbError::unreadable(format!("import_candidate_standing of {key}"), what);
         let identification = match self.identification.as_deref() {
@@ -222,24 +222,6 @@ impl RuntimeFactColumns {
                 .map_err(|unknown| broken(&unknown))?,
         })
     }
-}
-
-/// Where every candidate something is running for stands, by key. A key with
-/// no entry has nothing running.
-pub(crate) fn load_standings_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
-    sql.query(
-        &format!("SELECT candidate_key, {COLUMNS} FROM import_candidate_standing"),
-        [],
-        |row| Ok((row.get::<_, CandidateKey>(0)?, StandingColumns::read(row, 1)?)),
-    )?
-    .into_iter()
-    .map(|(key, columns)| {
-        let standing = columns.standing(&key)?;
-        Ok((key, standing))
-    })
-    .collect()
 }
 
 /// Where `candidate_key` stands, as its row says, inside a write or outside
@@ -503,15 +485,6 @@ impl ImportTables {
             .await
     }
 
-    /// Where every candidate something is running for stands, by key, for a
-    /// test.
-    #[cfg(test)]
-    pub(crate) async fn load_candidate_standings(
-        &self,
-    ) -> Result<HashMap<CandidateKey, StoredStanding>, DbError> {
-        self.store.read(|sql| load_standings_on(&sql)).await
-    }
-
     /// Where `candidate_key` stands.
     pub(crate) async fn load_candidate_standing(
         &self,
@@ -519,19 +492,6 @@ impl ImportTables {
     ) -> Result<StoredStanding, DbError> {
         let candidate_key = candidate_key.clone();
         self.store.read(move |sql| load_standing_on(&sql, &candidate_key)).await
-    }
-
-    /// Where every candidate with a standing stands, live: a test waits on
-    /// the write that moves one instead of reading again until it shows.
-    #[cfg(test)]
-    pub(crate) fn subscribe_candidate_facts(
-        &self,
-    ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, bae_store::DbError> {
-        self.store.subscribe(|sql| {
-            load_standings_on(&sql).map(|standings| {
-                standings.into_iter().map(|(key, standing)| (key, standing.facts())).collect()
-            })
-        })
     }
 
     /// How far the batch of identifications in flight has got, for a test;

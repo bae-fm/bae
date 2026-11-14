@@ -6,6 +6,7 @@
 
 pub(super) const SQL: &str = include_str!("signal_rows.sql");
 
+use super::column_list::{ColumnList, Columns};
 use super::verdict_rows::Owner;
 use super::*;
 use bae_catalogs::{
@@ -44,36 +45,40 @@ fn signal_list_sql(list: &str, value: &str) -> String {
 /// header row as `signals`, each list and the text lines riding on it as a
 /// JSON array; a Disc ID or barcode with the file it was read off. A
 /// candidate with no header row reads `signals_row` as NULL.
-pub(super) fn signals_read_columns() -> String {
+pub(super) fn signals_read_columns() -> ColumnList {
     let sourced = "json_object('value', listed.value, 'origin_path', listed.origin_path)";
-    format!(
-        "COALESCE(signals.content_hash, 'run ' || signals.identify_run) AS signals_row, \
-         signals.audio_source AS signals_audio_source, \
-         signals.cd_rip_proof AS signals_cd_rip_proof, \
-         signals.download_proof AS signals_download_proof, \
-         signals.audio_source_file AS signals_audio_source_file, \
-         signals.not_cd_rate AS signals_not_cd_rate, \
-         signals.disc_id_state AS signals_disc_id_state, \
-         signals.disc_id_failure AS signals_disc_id_failure, \
-         signals.barcode_state AS signals_barcode_state, \
-         signals.barcode_failure AS signals_barcode_failure, \
-         signals.text_state AS signals_text_state, \
-         signals.text_failure AS signals_text_failure, \
-         {discs} AS signals_discs, {barcodes} AS signals_barcodes, \
-         {catalogs} AS signals_catalogs, {free_text} AS signals_free_text, \
-         {isrcs} AS signals_isrcs, {track_titles} AS signals_track_titles, \
-         (SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
-                                  ORDER BY line.position) \
-          FROM import_candidate_text_line AS line \
-          WHERE line.content_hash IS signals.content_hash \
-            AND line.identify_run IS signals.identify_run) AS signals_text_pool",
-        discs = signal_list_sql("disc_id", sourced),
-        barcodes = signal_list_sql("barcode", sourced),
-        catalogs = signal_list_sql("catalog", "listed.value"),
-        free_text = signal_list_sql("free_text", "listed.value"),
-        isrcs = signal_list_sql("isrc", "listed.value"),
-        track_titles = signal_list_sql("track_title", "listed.value"),
-    )
+    ColumnList(vec![
+        (
+            "signals_row",
+            "COALESCE(signals.content_hash, 'run ' || signals.identify_run)".to_string(),
+        ),
+        ("signals_audio_source", "signals.audio_source".to_string()),
+        ("signals_cd_rip_proof", "signals.cd_rip_proof".to_string()),
+        ("signals_download_proof", "signals.download_proof".to_string()),
+        ("signals_audio_source_file", "signals.audio_source_file".to_string()),
+        ("signals_not_cd_rate", "signals.not_cd_rate".to_string()),
+        ("signals_disc_id_state", "signals.disc_id_state".to_string()),
+        ("signals_disc_id_failure", "signals.disc_id_failure".to_string()),
+        ("signals_barcode_state", "signals.barcode_state".to_string()),
+        ("signals_barcode_failure", "signals.barcode_failure".to_string()),
+        ("signals_text_state", "signals.text_state".to_string()),
+        ("signals_text_failure", "signals.text_failure".to_string()),
+        ("signals_discs", signal_list_sql("disc_id", sourced)),
+        ("signals_barcodes", signal_list_sql("barcode", sourced)),
+        ("signals_catalogs", signal_list_sql("catalog", "listed.value")),
+        ("signals_free_text", signal_list_sql("free_text", "listed.value")),
+        ("signals_isrcs", signal_list_sql("isrc", "listed.value")),
+        ("signals_track_titles", signal_list_sql("track_title", "listed.value")),
+        (
+            "signals_text_pool",
+            "(SELECT json_group_array(json_object('text', line.text, 'origin', line.origin) \
+                                      ORDER BY line.position) \
+              FROM import_candidate_text_line AS line \
+              WHERE line.content_hash IS signals.content_hash \
+                AND line.identify_run IS signals.identify_run)"
+                .to_string(),
+        ),
+    ])
 }
 
 /// Every signal row under `content_hash`. The values cascade from the header.
@@ -256,8 +261,8 @@ pub(super) struct StoredSignals {
 
 /// The [`signals_read_columns`] of `row`; none for a candidate whose signals
 /// were never settled.
-pub(super) fn read_signals(row: &Row<'_>) -> rusqlite::Result<Option<StoredSignals>> {
-    if row.get::<_, Option<String>>("signals_row")?.is_none() {
+pub(super) fn read_signals(row: &impl Columns) -> rusqlite::Result<Option<StoredSignals>> {
+    if row.get::<Option<String>>("signals_row")?.is_none() {
         return Ok(None);
     }
     Ok(Some(StoredSignals {

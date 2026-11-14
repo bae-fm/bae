@@ -13,6 +13,7 @@
 
 pub(super) const SQL: &str = include_str!("verdict_rows.sql");
 
+use super::column_list::{ColumnList, Columns};
 use super::ledger_rows::{
     delete_ledger, ledger_columns, read_ledger, step_columns, store_ledger, MatchPositions,
     StoredLedger,
@@ -372,22 +373,27 @@ pub(super) struct VerdictRow {
 /// A candidate's verdict as columns of a read that joins its row as
 /// `verdict`, its ledger's beside them. A candidate with none reads
 /// `verdict_row` as NULL.
-pub(super) fn verdict_columns() -> String {
-    format!(
-        "COALESCE(verdict.content_hash, 'run ' || verdict.identify_run) AS verdict_row, \
-         verdict.kind AS verdict_kind, verdict.track_count AS verdict_track_count, \
-         verdict.failures_json AS verdict_failures_json, \
-         verdict.error_detail AS verdict_error_detail, \
-         verdict.medium_conflict AS verdict_medium_conflict, \
-         verdict.kept_own_draft AS verdict_kept_own_draft, {ledger}",
-        ledger = ledger_columns(),
-    )
+pub(super) fn verdict_columns() -> ColumnList {
+    let mut columns = vec![
+        (
+            "verdict_row",
+            "COALESCE(verdict.content_hash, 'run ' || verdict.identify_run)".to_string(),
+        ),
+        ("verdict_kind", "verdict.kind".to_string()),
+        ("verdict_track_count", "verdict.track_count".to_string()),
+        ("verdict_failures_json", "verdict.failures_json".to_string()),
+        ("verdict_error_detail", "verdict.error_detail".to_string()),
+        ("verdict_medium_conflict", "verdict.medium_conflict".to_string()),
+        ("verdict_kept_own_draft", "verdict.kept_own_draft".to_string()),
+    ];
+    columns.extend(ledger_columns());
+    ColumnList(columns)
 }
 
 /// The [`verdict_columns`] of `row`; none for a candidate no verdict stands
 /// for.
-pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbError> {
-    let Some(content_hash) = row.get::<_, Option<String>>("verdict_row")? else {
+pub(super) fn read_verdict_row(row: &impl Columns) -> Result<Option<VerdictRow>, DbError> {
+    let Some(content_hash) = row.get::<Option<String>>("verdict_row")? else {
         return Ok(None);
     };
     Ok(Some(VerdictRow {

@@ -131,7 +131,7 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
             &format!(
                 "SELECT {verdict} FROM import_candidate_verdict AS verdict \
                  WHERE verdict.{column} = ?",
-                verdict = verdict_columns(),
+                verdict = verdict_columns().select(),
             ),
             params![owner],
             |row| Ok(read_verdict_row(row)),
