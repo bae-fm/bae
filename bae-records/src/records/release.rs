@@ -295,23 +295,37 @@ impl Records {
         &self,
         files: Vec<(NewReleaseFile, std::path::PathBuf)>,
     ) -> Result<Vec<coven::FileId>, IdentityWriteError> {
+        self.insert_files_placed_for_test(
+            files
+                .into_iter()
+                .map(|(file, original)| (file, original, coven::Place::DeviceOnly))
+                .collect(),
+        )
+        .await
+    }
+
+    /// [`Self::insert_files_for_test`] with each file's place: `Cloud` queues
+    /// its upload, which waits while the store has no storage.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_files_placed_for_test(
+        &self,
+        files: Vec<(NewReleaseFile, std::path::PathBuf, coven::Place)>,
+    ) -> Result<Vec<coven::FileId>, IdentityWriteError> {
         let mut rows = Vec::with_capacity(files.len());
         let mut prepared = Vec::with_capacity(files.len());
-        for (file, original) in files {
-            prepared
-                .push(coven::prepare_user_file(&original, |_| ()).await.map_err(DbError::from)?);
+        for (file, original, place) in files {
+            prepared.push((
+                coven::prepare_user_file(&original, |_| ()).await.map_err(DbError::from)?,
+                place,
+            ));
             rows.push(file);
         }
         self.store
             .write(move |sql| {
                 let mut staged = Vec::with_capacity(rows.len());
-                for (file, original) in rows.iter().zip(prepared) {
+                for (file, (original, place)) in rows.iter().zip(prepared) {
                     let id = sql
-                        .put_user_file(
-                            crate::synced::RELEASE_FILES_NAMESPACE,
-                            original,
-                            coven::Place::DeviceOnly,
-                        )
+                        .put_user_file(crate::synced::RELEASE_FILES_NAMESPACE, original, place)
                         .map_err(DbError::from)?;
                     insert_release_file_row(&sql, file, id)?;
                     staged.push(id);

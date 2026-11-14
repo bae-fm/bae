@@ -410,6 +410,61 @@ fn insert_chunk(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Identi
     Ok(())
 }
 
+/// A file of the shaped library: the row, how large its original is, and
+/// whether it is put in the cloud (its upload queued) or kept on this device
+/// only.
+pub struct ShapedFile {
+    pub file: crate::NewReleaseFile,
+    pub size: u64,
+    pub queued_to_upload: bool,
+}
+
+/// Whether the files of album `i`'s first release are one audio file per
+/// track: the box sets, and every seventh album. Other releases hold one
+/// audio file.
+pub fn has_file_per_track(i: u64) -> bool {
+    track_count(i) > 12 || i.is_multiple_of(7)
+}
+
+/// The files of albums `start..end`: for each release its audio, a cover
+/// image and a document. One release in twenty is put in the cloud, its
+/// uploads queued; the others stay on this device only.
+pub fn files_of(start: u64, end: u64) -> Vec<ShapedFile> {
+    use crate::{NewReleaseFile, ReleaseFileRole};
+    use bae_util::content_type::ContentType;
+    let mut files = Vec::new();
+    for i in start..end {
+        for r in 0..release_count(i) {
+            let release = release_id(i, r);
+            let queued = mix(i * 4 + r, 30).is_multiple_of(20);
+            let per_track = r == 0 && has_file_per_track(i);
+            let audio = if per_track { track_count(i) } else { 1 };
+            let kinds = (0..audio)
+                .map(|k| (format!("{k:03}.flac"), ContentType::Flac, 20_000 + k % 7 * 3_000))
+                .chain([
+                    ("cover.jpg".to_string(), ContentType::Jpeg, 80_000),
+                    ("notes.pdf".to_string(), ContentType::Pdf, 12_000),
+                ]);
+            for (n, (name, content_type, size)) in kinds.enumerate() {
+                files.push(ShapedFile {
+                    file: NewReleaseFile {
+                        id: id(7, i * 4 + r, n as u64),
+                        release_id: release.clone(),
+                        original_filename: name,
+                        content_type,
+                        role: ReleaseFileRole::Other,
+                        source_audio: None,
+                        created_at: at(i),
+                    },
+                    size,
+                    queued_to_upload: queued,
+                });
+            }
+        }
+    }
+    files
+}
+
 #[cfg(test)]
 #[path = "shaped_library_tests.rs"]
 mod tests;

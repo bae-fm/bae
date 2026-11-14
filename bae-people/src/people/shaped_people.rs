@@ -42,7 +42,7 @@ pub fn insert_on(
         for n in 0..=PLAYLISTS {
             let entries = if n == PLAYLISTS { LONG_PLAYLIST } else { 10 + (n * 37) % 491 };
             sql.execute(
-                "INSERT INTO playlists (id, person_id, name, audience) VALUES (?1, ?2, ?3, 'private')",
+                "INSERT INTO playlists (id, person_id, name, audience) VALUES (?1, ?2, ?3, 'store')",
                 rusqlite::params![playlist_id(n), person_id(0), format!("Playlist {n:03}")],
             )?;
             sql.execute_batch(&format!(
