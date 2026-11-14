@@ -395,7 +395,6 @@
     <string name="settings_history_private">Doar eu</string>
     <string name="settings_history_household">Toată lumea</string>
     <string name="settings_history_note">Cine vede ce asculți, sau Oprit pentru a nu păstra nicio înregistrare. O modificare se aplică redărilor de acum încolo; cele anterioare păstrează cine le putea vedea.</string>
-    <string name="settings_stored_in">Stocat în</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Cheia ta de acces S3 a venit odată cu codul scanat.</string>

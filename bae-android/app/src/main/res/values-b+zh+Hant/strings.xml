@@ -381,7 +381,6 @@
     <string name="settings_history_private">僅自己</string>
     <string name="settings_history_household">所有人</string>
     <string name="settings_history_note">誰能看到你播放的內容，選擇關閉則不保留紀錄。變更對之後的播放生效；之前的播放維持原本的可見範圍。</string>
-    <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s（%3$s）</string>
     <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>

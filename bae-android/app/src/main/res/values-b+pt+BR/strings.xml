@@ -395,7 +395,6 @@
     <string name="settings_history_private">Só eu</string>
     <string name="settings_history_household">Todos</string>
     <string name="settings_history_note">Quem vê o que você toca, ou Desativado para não guardar nenhum registro. Uma alteração vale para as reproduções a partir de agora; as anteriores mantêm quem podia vê-las.</string>
-    <string name="settings_stored_in">Armazenado em</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Sua chave de acesso do S3 veio com o código escaneado.</string>

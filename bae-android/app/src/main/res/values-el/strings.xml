@@ -387,7 +387,6 @@
     <string name="settings_history_private">Μόνο εγώ</string>
     <string name="settings_history_household">Όλοι</string>
     <string name="settings_history_note">Ποιος βλέπει τι ακούτε, ή Ανενεργό για να μην κρατείται καταγραφή. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες διατηρούν όσους μπορούσαν να τις δουν.</string>
-    <string name="settings_stored_in">Αποθηκεύεται σε</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό.</string>

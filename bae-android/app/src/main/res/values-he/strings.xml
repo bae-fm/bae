@@ -397,7 +397,6 @@
     <string name="settings_history_private">רק אני</string>
     <string name="settings_history_household">כולם</string>
     <string name="settings_history_note">מי רואה מה אתם מנגנים, או כבוי כדי לא לשמור שום רישום. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות שומרות על מי שיכול היה לראות אותן.</string>
-    <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>

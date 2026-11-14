@@ -389,7 +389,6 @@
     <string name="settings_history_private">Yalnızca ben</string>
     <string name="settings_history_household">Herkes</string>
     <string name="settings_history_note">Çaldıklarınızı kimin gördüğü ya da hiçbir kayıt tutulmaması için Kapalı. Bir değişiklik bundan sonraki çalmalar için geçerlidir; önceki çalmalar onları kimin görebildiğini korur.</string>
-    <string name="settings_stored_in">Depolandığı yer</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>

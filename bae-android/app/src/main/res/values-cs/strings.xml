@@ -405,7 +405,6 @@
     <string name="settings_history_private">Jen já</string>
     <string name="settings_history_household">Všichni</string>
     <string name="settings_history_note">Kdo vidí, co posloucháte, nebo Vypnuto, aby se nic neukládalo. Změna platí pro přehrání od teď; dřívější přehrání si ponechají, kdo je mohl vidět.</string>
-    <string name="settings_stored_in">Uloženo v</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Váš přístupový klíč S3 přišel spolu s naskenovaným kódem.</string>

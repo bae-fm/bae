@@ -387,7 +387,6 @@
     <string name="settings_history_private">Vain minä</string>
     <string name="settings_history_household">Kaikki</string>
     <string name="settings_history_note">Kuka näkee, mitä kuuntelet, tai Pois, jos mitään ei tallenneta. Muutos koskee toistoja tästä eteenpäin; aiemmat toistot säilyttävät sen, ketkä ne näkivät.</string>
-    <string name="settings_stored_in">Tallennettu</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">S3-käyttöavaimesi tuli skannatun koodin mukana.</string>

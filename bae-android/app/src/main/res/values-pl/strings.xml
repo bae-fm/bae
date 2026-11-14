@@ -405,7 +405,6 @@
     <string name="settings_history_private">Tylko ja</string>
     <string name="settings_history_household">Wszyscy</string>
     <string name="settings_history_note">Kto widzi, czego słuchasz, albo Wyłączone, aby nic nie zapisywać. Zmiana dotyczy odtworzeń od teraz; wcześniejsze zachowują to, kto mógł je zobaczyć.</string>
-    <string name="settings_stored_in">Przechowywane w</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem.</string>

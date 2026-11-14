@@ -395,7 +395,6 @@
     <string name="settings_history_private">Solo yo</string>
     <string name="settings_history_household">Todos</string>
     <string name="settings_history_note">Quién ve lo que reproduces, o Desactivado para no guardar ningún registro. Un cambio se aplica a las reproducciones a partir de ahora; las anteriores conservan quién podía verlas.</string>
-    <string name="settings_stored_in">Guardado en</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Tu clave de acceso de S3 venía con el código escaneado.</string>

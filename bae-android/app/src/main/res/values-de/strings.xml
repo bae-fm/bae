@@ -389,7 +389,6 @@
     <string name="settings_history_private">Nur ich</string>
     <string name="settings_history_household">Alle</string>
     <string name="settings_history_note">Wer sieht, was du abspielst, oder Aus, um nichts aufzuzeichnen. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
-    <string name="settings_stored_in">Gespeichert in</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Dein S3-Zugriffsschlüssel kam mit dem gescannten Code.</string>

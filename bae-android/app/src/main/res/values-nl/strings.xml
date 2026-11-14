@@ -389,7 +389,6 @@
     <string name="settings_history_private">Alleen ik</string>
     <string name="settings_history_household">Iedereen</string>
     <string name="settings_history_note">Wie ziet wat je afspeelt, of Uit om niets te bewaren. Een wijziging geldt voor afspeelbeurten vanaf nu; eerdere blijven zichtbaar voor wie ze kon zien.</string>
-    <string name="settings_stored_in">Opgeslagen in</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Je S3-toegangssleutel kwam mee met de gescande code.</string>

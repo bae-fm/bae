@@ -3161,7 +3161,7 @@ when the person chooses **Restore**, not as it is typed, so a half-typed code
 shows no error; **Restore** is off until the field holds something. A scanned code on Android starts at once, as an invite does, and
 only an S3 code without the key stops first, to ask for it over the access
 key's two fields. A code that doesn't read says so on the code screen, and a
-restore that fails shows its error beside **Add**, to try again.
+restore that fails shows its error beside **Add**, to try again. The code screens on both platforms do not show where the library is stored.
 
 **A restore that stops partway.** Just before coven adds the new device to the
 library, the restore records itself on the device: the code, the device's name,

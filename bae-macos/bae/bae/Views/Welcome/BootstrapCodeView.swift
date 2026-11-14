@@ -147,10 +147,6 @@ struct BootstrapCodeView: View {
         if let saved = form.saved {
             Section("Saved restore code") {
                 LabeledContent("Library", value: saved.info.name)
-                LabeledContent(
-                    "Stored in",
-                    value: saved.info.location.accountLine
-                )
             }
         }
         else {
@@ -180,10 +176,6 @@ private struct AttemptDetailsSection: View {
             case .restoreSaved:
                 EmptyView()
             case .restore(_, let metadata), .pair(_, let metadata):
-                LabeledContent(
-                    "Stored in",
-                    value: metadata.location.accountLine
-                )
                 signInNote(metadata)
                 if metadata.provider == .s3 && metadata.carriesS3Key {
                     Text("Your S3 access key came with the scanned code.")
@@ -192,10 +184,6 @@ private struct AttemptDetailsSection: View {
                 }
             case .join(_, let invite), .resume(_, let invite):
                 LabeledContent("Library", value: invite.libraryName)
-                LabeledContent(
-                    "Stored in",
-                    value: invite.metadata.location.accountLine
-                )
                 signInNote(invite.metadata)
             }
             if attempt.needsS3Key {

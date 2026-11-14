@@ -32,7 +32,6 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
-import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeS3Credentials
 
@@ -85,10 +84,6 @@ internal fun RestoreForm(
 ) {
     val text = RestoreText.of(step.entry)
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
-        AndroidRow(
-            title = stringResource(R.string.settings_stored_in),
-            value = storageLocationLabel(step.metadata.location),
-        )
         if (step.metadata.provider == BridgeCloudProvider.S3 && step.metadata.carriesS3Key) {
             Text(
                 text = stringResource(R.string.onboarding_s3_key_scanned),
@@ -158,7 +153,7 @@ internal fun S3KeyDialog(
 
 /**
  * A restore code saved on this phone, picked from the welcome's list: the
- * library's saved name and where it is stored, with the S3 key fields when no
+ * library's saved name, with the S3 key fields when no
  * key is saved beside the code. A failed restore returns here, to try again.
  */
 @Composable
@@ -172,7 +167,6 @@ internal fun SavedRestoreForm(
     val text = RestoreText.RESTORE
     OnboardingForm(title = stringResource(text.title), error = error, onBack = onBack) {
         AndroidRow(title = stringResource(R.string.onboarding_saved_library), value = info.name)
-        AndroidRow(title = stringResource(R.string.settings_stored_in), value = storageLocationLabel(info.location))
         RestoreAction(needsKey = step.saved.needsS3Key, action = text.action, onRestore = onRestore)
     }
 }

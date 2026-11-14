@@ -421,7 +421,6 @@
     <string name="settings_history_private">أنا فقط</string>
     <string name="settings_history_household">الجميع</string>
     <string name="settings_history_note">من يرى ما تشغّله، أو إيقاف لعدم الاحتفاظ بأي سجل. يسري أي تغيير على التشغيلات من الآن فصاعدًا؛ وتحتفظ التشغيلات السابقة بمن كان يمكنه رؤيتها.</string>
-    <string name="settings_stored_in">مخزّن في</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح.</string>

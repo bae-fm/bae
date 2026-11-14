@@ -387,7 +387,6 @@
     <string name="settings_history_private">Kun mig</string>
     <string name="settings_history_household">Alle</string>
     <string name="settings_history_note">Hvem der kan se, hvad du afspiller, eller Fra for ikke at gemme noget. En ændring gælder afspilninger fra nu af; tidligere afspilninger beholder, hvem der kunne se dem.</string>
-    <string name="settings_stored_in">Gemt i</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Din S3-adgangsnøgle fulgte med den scannede kode.</string>

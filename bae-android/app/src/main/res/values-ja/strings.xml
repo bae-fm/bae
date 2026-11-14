@@ -381,7 +381,6 @@
     <string name="settings_history_private">自分のみ</string>
     <string name="settings_history_household">全員</string>
     <string name="settings_history_note">再生した内容を誰に見せるか。履歴を残さない場合はオフを選びます。変更は今後の再生に適用され、これまでの再生は当時の公開範囲のままです。</string>
-    <string name="settings_stored_in">保存先</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s（%3$s）</string>
     <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>

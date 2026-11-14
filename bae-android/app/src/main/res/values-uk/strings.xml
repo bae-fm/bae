@@ -405,7 +405,6 @@
     <string name="settings_history_private">Лише я</string>
     <string name="settings_history_household">Усі</string>
     <string name="settings_history_note">Хто бачить, що ви слухаєте, або Вимкнено, щоб нічого не записувати. Зміна стосується відтворень відтепер; попередні зберігають тих, хто міг їх бачити.</string>
-    <string name="settings_stored_in">Зберігається в</string>
     <string name="storage_location_account">%1$s · %2$s</string>
     <string name="storage_location_bucket">%1$s · %2$s (%3$s)</string>
     <string name="onboarding_s3_key_scanned">Ваш ключ доступу до S3 надійшов разом із відсканованим кодом.</string>
