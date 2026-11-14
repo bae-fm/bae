@@ -141,10 +141,7 @@ fun AlbumDetailScreen(
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
                 }
-                // Derived rather than stored, so a release list that arrives
-                // later needs no correction: the one chosen, else the main one.
-                val release =
-                    loaded.releases.firstOrNull { it.id == selectedReleaseId } ?: loaded.releases.firstOrNull()
+                val release = loaded.chosenOrMainRelease(selectedReleaseId)
                 if (release == null) {
                     MissingMainReleaseNotice(loaded)
                 } else {
@@ -161,6 +158,13 @@ fun AlbumDetailScreen(
         }
     }
 }
+
+/**
+ * The release chosen, else the main one. Derived rather than stored, so a release list that arrives later needs
+ * no correction.
+ */
+private fun BridgeAlbumDetail.chosenOrMainRelease(chosenId: String?): BridgeRelease? =
+    releases.firstOrNull { it.id == chosenId } ?: releases.firstOrNull()
 
 /** What the album page shows while it has no album to draw. */
 internal sealed interface AlbumDetailPlaceholder {
@@ -245,19 +249,24 @@ private fun buildAlbumDetailCallbacks(
         }
     }
 
+    /** An add to Up Next: the snackbar confirms how many tracks the add answered it put in. */
     fun runReleaseTransportCommand(
         operation: String,
-        command: suspend (String) -> Unit,
+        command: suspend (String) -> UInt,
     ) {
-        session.messages.perform("$operation ${release.id}") { command(release.id) }
+        session.messages.perform("$operation ${release.id}") {
+            session.playback.onTracksAdded(command(release.id).toInt())
+        }
     }
 
     fun runTrackTransportCommand(
         trackId: String,
         operation: String,
-        command: suspend (List<String>) -> Unit,
+        command: suspend (List<String>) -> UInt,
     ) {
-        session.messages.perform("$operation $trackId") { command(listOf(trackId)) }
+        session.messages.perform("$operation $trackId") {
+            session.playback.onTracksAdded(command(listOf(trackId)).toInt())
+        }
     }
 
     return AlbumDetailCallbacks(

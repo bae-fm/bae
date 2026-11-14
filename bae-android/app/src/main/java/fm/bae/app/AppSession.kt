@@ -179,7 +179,6 @@ class OpenLibrary internal constructor(
         streamFeeds +=
             stores.syncActivity.bars.feed(appHandle, scope) { bugs.report("read the Activity transfer bars", it) }
         screenSubscriptions += playbackValues(scope)
-        screenSubscriptions += queueAdditions(scope)
         screenSubscriptions += playbackTimeline(scope)
         streamFeeds +=
             playback.trackPositions.feed(appHandle, scope) { bugs.report("read the playing track's position", it) }
@@ -260,15 +259,6 @@ class OpenLibrary internal constructor(
             scope,
             onValue = playback::applyTimeline,
             onError = { error -> subscriptionFailed("playback timeline", error)?.let(messages::show) },
-        )
-
-    /** Each time tracks go into Up Next, which the snackbar confirms. */
-    private fun queueAdditions(scope: CoroutineScope) =
-        ScreenSubscription(
-            appHandle.subscribeQueueAdditions().let { pulled(it::next, it::cancel) },
-            scope,
-            onValue = playback::onQueueAddition,
-            onError = { error -> subscriptionFailed("queue additions", error)?.let(messages::show) },
         )
 
     /**

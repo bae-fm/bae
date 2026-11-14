@@ -164,15 +164,15 @@ pub(crate) enum PlaybackCommand {
     /// announced or stored until the drag's final `SetVolume`.
     SetVolumeLive(crate::Volume),
     /// Add tracks to the end of Up Next.
-    AddToQueue(Vec<String>, QueueEditReply<()>),
+    AddToQueue(Vec<String>, QueueEditReply<usize>),
     /// Add tracks to the front of Up Next.
-    AddNext(Vec<String>, QueueEditReply<()>),
+    AddNext(Vec<String>, QueueEditReply<usize>),
     /// Add a release's tracks to the end of Up Next.
-    AddReleaseToQueue(String, QueueEditReply<()>),
+    AddReleaseToQueue(String, QueueEditReply<usize>),
     /// Add a release's tracks to the front of Up Next.
-    AddReleaseNext(String, QueueEditReply<()>),
+    AddReleaseNext(String, QueueEditReply<usize>),
     /// Insert tracks into Up Next before the entry at the index.
-    InsertInQueue(Vec<String>, usize, QueueEditReply<()>),
+    InsertInQueue(Vec<String>, usize, QueueEditReply<usize>),
     /// Remove the queue row with this id.
     RemoveFromQueue {
         entry_id: QueueEntryId,
@@ -569,13 +569,13 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await.map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
     }
-    /// Add tracks to the end of Up Next, answering once they are in or why
-    /// they are not. The command is sent at the call, in order with the
+    /// Add tracks to the end of Up Next, answering how many went in once they
+    /// are, or why they did not. The command is sent at the call, in order with the
     /// commands sent before and after it.
     pub fn add_to_queue(
         &self,
         track_ids: Vec<String>,
-    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::AddToQueue(track_ids, reply), answer)
     }
@@ -584,7 +584,7 @@ impl PlaybackHandle {
     pub fn add_next(
         &self,
         track_ids: Vec<String>,
-    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::AddNext(track_ids, reply), answer)
     }
@@ -593,7 +593,7 @@ impl PlaybackHandle {
     pub fn add_release_to_queue(
         &self,
         release_id: String,
-    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::AddReleaseToQueue(release_id, reply), answer)
     }
@@ -602,7 +602,7 @@ impl PlaybackHandle {
     pub fn add_release_next(
         &self,
         release_id: String,
-    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::AddReleaseNext(release_id, reply), answer)
     }
@@ -612,7 +612,7 @@ impl PlaybackHandle {
         &self,
         track_ids: Vec<String>,
         index: usize,
-    ) -> impl std::future::Future<Output = Result<(), QueueEditError>> + Send + 'static {
+    ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::InsertInQueue(track_ids, index, reply), answer)
     }

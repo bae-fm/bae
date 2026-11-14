@@ -13,17 +13,16 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 
-    /// Tracks went into Up Next, or the write failed.
+    /// Tracks went into Up Next, or the write failed. The answer is how many
+    /// went in, which the screen that asked confirms.
     pub(super) async fn queue_added(
         &mut self,
         added: Result<usize, bae_store::DbError>,
-    ) -> Result<(), QueueEditError> {
+    ) -> Result<usize, QueueEditError> {
         match added {
-            // The write counted the addition on the queue row, which the
-            // screens confirming it read.
-            Ok(_) => {
+            Ok(count) => {
                 self.on_queue_mutated().await;
-                Ok(())
+                Ok(count)
             }
             Err(e) => Err(self.queue_add_failed("add tracks to the queue", e)),
         }
@@ -35,7 +34,7 @@ impl PlaybackService {
         &mut self,
         release_id: &str,
         place: ManualPlace,
-    ) -> Result<(), QueueEditError> {
+    ) -> Result<usize, QueueEditError> {
         let track_ids = match self.records.get_track_ids_for_release(release_id).await {
             Ok(track_ids) => track_ids,
             Err(e) => {
@@ -43,7 +42,7 @@ impl PlaybackService {
             }
         };
         if track_ids.is_empty() {
-            return Ok(());
+            return Ok(0);
         }
         let added = match place {
             ManualPlace::Front => self.playback_queue.add_next(track_ids).await,

@@ -23,7 +23,6 @@ struct QueueRowRemovalTests {
                 itemAt: { index in
                     items.indices.contains(index) ? items[index] : nil
                 },
-                holdsEntry: { id in items.contains { $0.id == id } },
                 loadEpoch: nil,
                 holdRow: nil,
                 acceptsExternalDrops: false,

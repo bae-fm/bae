@@ -159,7 +159,6 @@ public struct PulledValues<Value: Sendable>: PulledSubscription {
 // `LatestValues.swift`, the one file that touches it.
 extension PlaybackValuesSubscription: PulledSubscription {}
 extension PlaybackTimelineSubscription: PulledSubscription {}
-extension QueueAdditionsSubscription: PulledSubscription {}
 extension CastReceiversSubscription: PulledSubscription {}
 extension ConfigSubscription: PulledSubscription {}
 extension QueueSubscription: PulledSubscription {}

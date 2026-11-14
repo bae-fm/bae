@@ -50,24 +50,33 @@ struct PlaybackFailureDisplayTests {
 @MainActor
 @Suite("Queue additions", .serialized)
 struct QueueAdditionTests {
-    @Test("each pulled queue addition reaches the badge with its track count")
-    func queueAdditionReachesBadge() async throws {
+    @Test(
+        "each add confirms the count it answered, and an add of none confirms nothing"
+    )
+    func addAnswersReachTheBadge() async throws {
         let handle = FakeAppHandle()
-        let appService = makeAppService(handle: handle)
+        let store = PlaybackStore()
         var addedCounts: [Int] = []
-        let subscription = appService.queueItemsAddedPublisherForTesting
+        let subscription = store.queueItemsAddedPublisher
             .sink {
                 addedCounts.append($0)
                 Wait.happened()
             }
         defer { subscription.cancel() }
-        appService.startCommonSubscriptions()
+        let queue = Queue(
+            handle: handle,
+            show: { _ in },
+            confirmAdded: { store.publishQueueItemsAdded($0) }
+        )
 
-        // Two additions alike in their count are two badges.
-        handle.deliverQueueAddition(BridgeQueueAddition(number: 1, tracks: 3))
-        handle.deliverQueueAddition(BridgeQueueAddition(number: 2, tracks: 3))
-
+        // Two adds alike in their count are two badges.
+        queue.addToQueue(["a", "b", "c"])
+        queue.insertInQueue(["a", "b", "c"], 1)
         try await Wait.until { addedCounts == [3, 3] }
+
+        queue.addNext(["missing"])
+        queue.addNext(["a"])
+        try await Wait.until { addedCounts == [3, 3, 1] }
     }
 }
 
@@ -508,7 +517,6 @@ private var emptySeed: LibrarySessionSeed {
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let queue = FakeQueue()
     private let playbackValues = FakePlaybackValues()
-    private let queueAdditions = FakeQueueAdditions()
     private let timeline = FakePlaybackTimeline()
     private let syncStatus = FakeSyncStatus()
     private let syncActivity = FakeSyncActivity()
@@ -576,8 +584,23 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         playbackValues
     }
 
-    override func subscribeQueueAdditions() -> QueueAdditionsSubscription {
-        queueAdditions
+    /// The library holds every track but "missing", which an add leaves out.
+    private func tracksAdded(_ trackIds: [String]) -> UInt32 {
+        UInt32(trackIds.filter { $0 != "missing" }.count)
+    }
+
+    override func addToQueue(trackIds: [String]) async throws -> UInt32 {
+        tracksAdded(trackIds)
+    }
+
+    override func addNext(trackIds: [String]) async throws -> UInt32 {
+        tracksAdded(trackIds)
+    }
+
+    override func insertInQueue(trackIds: [String], index: UInt32) async throws
+        -> UInt32
+    {
+        tracksAdded(trackIds)
     }
 
     override func subscribePlaybackTimeline() -> PlaybackTimelineSubscription {
@@ -670,10 +693,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     func deliverPlayback(_ value: BridgePlaybackValues) {
         playbackValues.deliver(value)
-    }
-
-    func deliverQueueAddition(_ addition: BridgeQueueAddition) {
-        queueAdditions.deliver(addition)
     }
 
     func deliverTimeline(_ timeline: BridgePlaybackTimeline) {

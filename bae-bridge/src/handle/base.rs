@@ -19,15 +19,6 @@ impl AppHandle {
         crate::screens::queue(self.services.subscribe_queue_values(), self.runtime.clone())
     }
 
-    /// Each time tracks go into Up Next, with how many, for the screens that
-    /// confirm an addition.
-    pub fn subscribe_queue_additions(&self) -> std::sync::Arc<crate::QueueAdditionsSubscription> {
-        crate::screens::queue_additions(
-            self.services.subscribe_queue_additions(),
-            self.runtime.clone(),
-        )
-    }
-
     /// What playback is doing, apart from where it is in what it plays: the
     /// first value at once, then one after each change.
     pub fn subscribe_playback_values(&self) -> std::sync::Arc<crate::PlaybackValuesSubscription> {
@@ -440,61 +431,73 @@ impl AppHandle {
             .await
     }
 
-    /// Add tracks to the end of Up Next, answering once they are in. The
+    /// Add tracks to the end of Up Next, answering how many went in once they
+    /// are, which the screen that asked confirms. The
     /// command is sent before the call first waits, so commands sent one after
     /// another reach the queue in that order.
     pub async fn add_to_queue(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
-    ) -> Result<(), BridgeError> {
+    ) -> Result<u32, BridgeError> {
         let answer = self.services.playback_add_to_queue(track_ids);
-        self.run_exported("AppHandle.add_to_queue", move |_| async move { Ok(answer.await?) }).await
-    }
-
-    /// Add tracks to the front of Up Next, answering once they are in.
-    pub async fn add_next(
-        self: std::sync::Arc<Self>,
-        track_ids: Vec<String>,
-    ) -> Result<(), BridgeError> {
-        let answer = self.services.playback_add_next(track_ids);
-        self.run_exported("AppHandle.add_next", move |_| async move { Ok(answer.await?) }).await
-    }
-
-    /// Add a release's tracks to the end of Up Next, answering once they are
-    /// in.
-    pub async fn add_release_to_queue(
-        self: std::sync::Arc<Self>,
-        release_id: String,
-    ) -> Result<(), BridgeError> {
-        let answer = self.services.playback_add_release_to_queue(release_id);
         self.run_exported(
-            "AppHandle.add_release_to_queue",
-            move |_| async move { Ok(answer.await?) },
+            "AppHandle.add_to_queue",
+            move |_| async move { Ok(answer.await? as u32) },
         )
         .await
     }
 
-    /// Add a release's tracks to the front of Up Next, answering once they
-    /// are in.
-    pub async fn add_release_next(
+    /// Add tracks to the front of Up Next, answering how many went in once
+    /// they are.
+    pub async fn add_next(
         self: std::sync::Arc<Self>,
-        release_id: String,
-    ) -> Result<(), BridgeError> {
-        let answer = self.services.playback_add_release_next(release_id);
-        self.run_exported("AppHandle.add_release_next", move |_| async move { Ok(answer.await?) })
+        track_ids: Vec<String>,
+    ) -> Result<u32, BridgeError> {
+        let answer = self.services.playback_add_next(track_ids);
+        self.run_exported("AppHandle.add_next", move |_| async move { Ok(answer.await? as u32) })
             .await
     }
 
-    /// Insert tracks into Up Next before the entry at `index`, answering once
-    /// they are in.
+    /// Add a release's tracks to the end of Up Next, answering how many went
+    /// in once they are.
+    pub async fn add_release_to_queue(
+        self: std::sync::Arc<Self>,
+        release_id: String,
+    ) -> Result<u32, BridgeError> {
+        let answer = self.services.playback_add_release_to_queue(release_id);
+        self.run_exported("AppHandle.add_release_to_queue", move |_| async move {
+            Ok(answer.await? as u32)
+        })
+        .await
+    }
+
+    /// Add a release's tracks to the front of Up Next, answering how many
+    /// went in once they are.
+    pub async fn add_release_next(
+        self: std::sync::Arc<Self>,
+        release_id: String,
+    ) -> Result<u32, BridgeError> {
+        let answer = self.services.playback_add_release_next(release_id);
+        self.run_exported(
+            "AppHandle.add_release_next",
+            move |_| async move { Ok(answer.await? as u32) },
+        )
+        .await
+    }
+
+    /// Insert tracks into Up Next before the entry at `index`, answering how
+    /// many went in once they are.
     pub async fn insert_in_queue(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
         index: u32,
-    ) -> Result<(), BridgeError> {
+    ) -> Result<u32, BridgeError> {
         let answer = self.services.playback_insert_in_queue(track_ids, index as usize);
-        self.run_exported("AppHandle.insert_in_queue", move |_| async move { Ok(answer.await?) })
-            .await
+        self.run_exported(
+            "AppHandle.insert_in_queue",
+            move |_| async move { Ok(answer.await? as u32) },
+        )
+        .await
     }
 
     /// Set how the queue repeats, answering once it is set.
@@ -576,8 +579,8 @@ mod tests;
 mod playback_values_tests;
 
 #[cfg(test)]
-#[path = "queue_additions_tests.rs"]
-mod queue_additions_tests;
+#[path = "queue_adds_tests.rs"]
+mod queue_adds_tests;
 
 #[cfg(test)]
 #[path = "playback_timeline_tests.rs"]

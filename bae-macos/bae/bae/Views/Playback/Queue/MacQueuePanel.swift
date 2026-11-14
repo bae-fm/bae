@@ -8,7 +8,6 @@ struct QueueUpcoming {
     let total: Int
     /// `nil` for a row not yet read.
     let itemAt: (Int) -> BridgeQueueEntry?
-    let holds: (String) -> Bool
     /// Names the list the rows are read from; `nil` while none is open.
     let epoch: LoadEpoch?
     let holdRow: @MainActor (_ index: Int) async -> Void
@@ -24,7 +23,6 @@ extension QueueUpcoming {
         self.init(
             total: store.upcomingTotal,
             itemAt: { store.upcomingItem(at: $0) },
-            holds: { store.upcomingHolds(entryId: $0) },
             epoch: store.upcomingEpoch,
             holdRow: { await store.holdUpcoming(at: $0) },
             failure: store.upcomingFailure,
@@ -134,9 +132,6 @@ struct MacQueuePanel: View {
                                 manual.indices.contains(index)
                                     ? manual[index] : nil
                             },
-                            holdsEntry: { id in
-                                manual.contains { $0.id == id }
-                            },
                             loadEpoch: nil,
                             holdRow: nil,
                             acceptsExternalDrops: true,
@@ -160,7 +155,6 @@ struct MacQueuePanel: View {
                                 shuffled: shuffled,
                                 count: upcoming.total,
                                 itemAt: upcoming.itemAt,
-                                holdsEntry: upcoming.holds,
                                 loadEpoch: upcoming.epoch,
                                 holdRow: upcoming.holdRow,
                                 acceptsExternalDrops: false,

@@ -13,7 +13,6 @@ final class CommonSubscriptions {
     private var playbackValues: ScreenSubscription<PlaybackValuesSubscription>?
     private var playbackTimeline:
         ScreenSubscription<PlaybackTimelineSubscription>?
-    private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     private var castReceivers: ScreenSubscription<CastReceiversSubscription>?
     private var config: ScreenSubscription<ConfigSubscription>?
     private var queue: ScreenSubscription<QueueSubscription>?
@@ -49,8 +48,6 @@ final class CommonSubscriptions {
             @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
         applyTimeline:
             @escaping @MainActor @Sendable (BridgePlaybackTimeline) -> Void,
-        applyQueueAddition:
-            @escaping @MainActor @Sendable (BridgeQueueAddition) -> Void,
         applyQueue:
             @escaping @MainActor @Sendable (BridgeQueueSnapshot) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
@@ -64,11 +61,6 @@ final class CommonSubscriptions {
         playbackTimeline = ScreenSubscription(
             appHandle.subscribePlaybackTimeline(),
             onValue: applyTimeline,
-            onError: onError
-        )
-        queueAdditions = ScreenSubscription(
-            appHandle.subscribeQueueAdditions(),
-            onValue: applyQueueAddition,
             onError: onError
         )
         castReceivers = ScreenSubscription(

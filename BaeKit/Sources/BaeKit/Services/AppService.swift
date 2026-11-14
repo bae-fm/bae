@@ -292,9 +292,6 @@ open class AppService: @unchecked Sendable, Observable {
             applyTimeline: { [weak self] timeline in
                 self?.mediaControlService.applyTimeline(timeline)
             },
-            applyQueueAddition: { [weak self] addition in
-                self?.playbackValues.applyQueueAddition(addition)
-            },
             applyQueue: { [weak self] snapshot in
                 self?.playbackValues.applyQueueSnapshot(snapshot)
                 self?.mediaControlService

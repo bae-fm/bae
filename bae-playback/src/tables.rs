@@ -32,10 +32,8 @@ pub use queue::lose_up_next_for_test;
 pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables};
 pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart, TracksStart};
-#[cfg(any(test, feature = "test-utils"))]
-pub use queue_reads::queue_addition;
 pub use queue_reads::queue_value;
-pub use queue_reads::{subscribe_queue_addition, subscribe_queue_value};
+pub use queue_reads::subscribe_queue_value;
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue_upcoming::queue_upcoming;
 pub use queue_upcoming::{

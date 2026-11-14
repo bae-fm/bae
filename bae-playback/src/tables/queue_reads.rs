@@ -1,7 +1,6 @@
 //! The queue screens' reads of the playback queue tables: the queue value,
-//! with Up Next whole and what the context lane plays from, and the last
-//! addition to Up Next. The context lane's upcoming tracks are read as a list
-//! (`queue_upcoming`).
+//! with Up Next whole and what the context lane plays from. The context
+//! lane's upcoming tracks are read as a list (`queue_upcoming`).
 
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
@@ -13,21 +12,6 @@ pub fn subscribe_queue_value(
     store: &Store,
 ) -> coven::LiveQuery<crate::ResolvedQueueSnapshot, bae_store::DbError> {
     store.subscribe(|sql| queue_value_on(&sql))
-}
-
-/// Follow the queue's last addition to Up Next; `None` until there is one
-/// since playback started with the library.
-pub fn subscribe_queue_addition(
-    store: &Store,
-) -> coven::LiveQuery<Option<crate::QueueAddition>, bae_store::DbError> {
-    store.subscribe(|sql| queue_addition_on(&sql))
-}
-
-/// The queue's last addition to Up Next, as `subscribe_queue_addition` reads
-/// it.
-#[cfg(any(test, feature = "test-utils"))]
-pub async fn queue_addition(store: &Store) -> Result<Option<crate::QueueAddition>, DbError> {
-    store.read(|sql| queue_addition_on(&sql)).await
 }
 
 /// The queue as its screens show it now.
@@ -98,15 +82,6 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
         _ => None,
     };
     Ok(QueueHead { shuffled, context })
-}
-
-fn queue_addition_on(sql: &SqlReadContext<'_>) -> Result<Option<crate::QueueAddition>, DbError> {
-    let (number, added_tracks): (u64, Option<u32>) =
-        sql.query_row("SELECT additions, added_tracks FROM playback_queue", [], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })?;
-    // The table's CHECK sets the count exactly when there was an addition.
-    Ok(added_tracks.map(|tracks| crate::QueueAddition { number, tracks }))
 }
 
 fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapshot, DbError> {

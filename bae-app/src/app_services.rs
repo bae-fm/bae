@@ -642,48 +642,48 @@ impl AppServices {
         self.inner.playback.set_shuffle(on)
     }
 
-    /// Add tracks to the end of Up Next, sent at this call; the future answers once they are in or why they are not.
+    /// Add tracks to the end of Up Next, sent at this call; the future answers how many went in, or why none did.
     pub fn playback_add_to_queue(
         &self,
         track_ids: Vec<String>,
-    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.add_to_queue(track_ids)
     }
 
-    /// Add tracks to the front of Up Next, sent at this call; the future answers once they are in or why they are not.
+    /// Add tracks to the front of Up Next, sent at this call; the future answers how many went in, or why none did.
     pub fn playback_add_next(
         &self,
         track_ids: Vec<String>,
-    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.add_next(track_ids)
     }
 
-    /// Add a release's tracks to the end of Up Next, sent at this call; the future answers once they are in or why they are not.
+    /// Add a release's tracks to the end of Up Next, sent at this call; the future answers how many went in, or why none did.
     pub fn playback_add_release_to_queue(
         &self,
         release_id: String,
-    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.add_release_to_queue(release_id)
     }
 
-    /// Add a release's tracks to the front of Up Next, sent at this call; the future answers once they are in or why they are not.
+    /// Add a release's tracks to the front of Up Next, sent at this call; the future answers how many went in, or why none did.
     pub fn playback_add_release_next(
         &self,
         release_id: String,
-    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.add_release_next(release_id)
     }
 
-    /// Insert tracks into Up Next before the entry at `index`, sent at this call; the future answers once they are in or why they are not.
+    /// Insert tracks into Up Next before the entry at `index`, sent at this call; the future answers how many went in, or why none did.
     pub fn playback_insert_in_queue(
         &self,
         track_ids: Vec<String>,
         index: usize,
-    ) -> impl std::future::Future<Output = Result<(), bae_playback::QueueEditError>> + Send + 'static
+    ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
         self.inner.playback.insert_in_queue(track_ids, index)
     }

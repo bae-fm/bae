@@ -30,13 +30,6 @@ impl LibraryManager {
         bae_playback::tables::subscribe_queue_value(&self.store)
     }
 
-    /// Follow the queue's last addition to Up Next.
-    pub fn subscribe_queue_addition(
-        &self,
-    ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>, bae_store::DbError> {
-        bae_playback::tables::subscribe_queue_addition(&self.store)
-    }
-
     /// Follow one window of the upcoming tracks, a range of the order the
     /// context lane reads in (`shuffled` picks which).
     pub fn subscribe_upcoming_window(

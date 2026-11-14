@@ -76,19 +76,6 @@ async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     );
 }
 
-/// The count and the number of the addition it belongs to are set together.
-#[tokio::test]
-async fn the_schema_refuses_a_count_without_an_addition() {
-    let (db, _tmp, _tracks) = release_db(1).await;
-    for sql in [
-        "UPDATE playback_queue SET added_tracks = 2",
-        "UPDATE playback_queue SET additions = 1",
-        "UPDATE playback_queue SET additions = 1, added_tracks = 0",
-    ] {
-        assert!(rejects(&db, sql).await, "{sql}");
-    }
-}
-
 /// The same track queued twice shows twice, in order, each with its own
 /// entry id.
 #[tokio::test]

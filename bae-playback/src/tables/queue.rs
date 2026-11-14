@@ -3,7 +3,7 @@
 //! named by its entry number and ordered by its position, so a track queued
 //! twice is two rows. The one `playback_queue` row says what the context lane
 //! plays from, which of its rows is playing, how the queue repeats and
-//! whether it shuffles, and the additions to Up Next since playback started with the library. The
+//! whether it shuffles. The
 //! playback service is the only writer, each change one transaction; the queue
 //! screens read the same tables through live queries. Its tables, `playback_state`
 //! included, are `queue.sql`.
@@ -93,8 +93,7 @@ impl PlaybackQueueTables {
 /// played. A library with nothing to resume opens with an empty queue, and
 /// one opened with "restore on launch" off forgets what it played. Either
 /// way `playback_now` starts stopped, at the resumed volume or at full
-/// volume, `playback_timeline` holds no line, and the queue's count of
-/// additions starts at none. A bulk write, so emptying a library-sized lane
+/// volume, and `playback_timeline` holds no line. A bulk write, so emptying a library-sized lane
 /// takes one step.
 pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), DbError> {
     store
@@ -103,9 +102,6 @@ pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), Db
                 sql.query_row("SELECT 1 FROM playback_state", [], |_| Ok(())).optional()?.is_some();
             super::now::reset_playback_now_on(sql, resume && stored)?;
             super::timeline::reset_playback_timeline_on(sql)?;
-            // No addition outlives the playback that made it, so a resumed
-            // queue confirms none of its earlier ones again.
-            sql.execute("UPDATE playback_queue SET additions = 0, added_tracks = NULL", [])?;
             if resume && stored {
                 return Ok(());
             }
@@ -561,13 +557,7 @@ fn add_manual_on(
              FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
         params![track_ids, base, start],
     )?;
-    // The addition is counted in the write that makes it, so the screens
-    // confirming additions read exactly the ones that happened.
-    sql.execute(
-        "UPDATE playback_queue \
-         SET next_entry = ?, additions = additions + 1, added_tracks = ?",
-        params![base + count, count],
-    )?;
+    sql.execute("UPDATE playback_queue SET next_entry = ?", params![base + count])?;
     Ok(count as usize)
 }
 

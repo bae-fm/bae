@@ -1,6 +1,4 @@
-//! The additions to Up Next, as the app pulls them.
-
-use bae_util::test_channels::HANG_GUARD;
+//! The answers of the commands that add to Up Next.
 
 /// A handle over a fresh library holding one album of `tracks` tracks, and
 /// the album's track ids in order.
@@ -42,33 +40,17 @@ fn handle_over_one_album(
     (super::super::tests::start_test_handle(runtime, library, root), track_ids)
 }
 
-/// An addition reaches the app as a value of its own, with how many tracks
-/// it put in, even after one alike; cancelling ends the pulls.
+/// Each add answers how many tracks it put in, which the screen that asked
+/// confirms.
 #[test]
-fn each_addition_reaches_the_app_once() {
-    let (handle, tracks) = handle_over_one_album("queue-additions", &["One", "Two"]);
-    let additions = handle.handle().subscribe_queue_additions();
-    let pull = || {
-        handle.handle().runtime.block_on(async {
-            tokio::time::timeout(HANG_GUARD, additions.clone().next())
-                .await
-                .expect("an addition in time")
-                .expect("the pull reads")
-        })
-    };
+fn each_add_answers_how_many_tracks_went_in() {
+    let (handle, tracks) = handle_over_one_album("queue-adds", &["One", "Two"]);
+    let runtime = &handle.handle().runtime;
 
-    let add_to_queue = handle.handle().clone().add_to_queue(tracks.clone());
-    handle.handle().runtime.block_on(add_to_queue).expect("the tracks are added");
-    assert_eq!(pull(), crate::types::BridgeQueueAddition { number: 1, tracks: 2 });
-    for (number, track) in [(2, &tracks[0]), (3, &tracks[1])] {
-        let add_next = handle.handle().clone().add_next(vec![track.clone()]);
-        handle.handle().runtime.block_on(add_next).expect("the track is added");
-        assert_eq!(pull(), crate::types::BridgeQueueAddition { number, tracks: 1 });
-    }
-
-    handle.handle().runtime.block_on(additions.clone().cancel()).unwrap();
-    assert!(matches!(
-        handle.handle().runtime.block_on(additions.clone().next()),
-        Err(crate::types::BridgeError::Cancelled)
-    ));
+    let added = runtime.block_on(handle.handle().clone().add_to_queue(tracks.clone()));
+    assert_eq!(added.expect("the tracks are added"), 2);
+    let added = runtime.block_on(handle.handle().clone().add_next(vec![tracks[0].clone()]));
+    assert_eq!(added.expect("the track is added"), 1);
+    let added = runtime.block_on(handle.handle().clone().insert_in_queue(tracks, 1));
+    assert_eq!(added.expect("the tracks are inserted"), 2);
 }

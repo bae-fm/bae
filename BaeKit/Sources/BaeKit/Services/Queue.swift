@@ -70,20 +70,27 @@ public final class Queue: Sendable, Observable {
     }
 
     /// Queue commands over `handle`. An add, an insert or a shuffle has no
-    /// caller waiting on it: why one failed goes to `show`.
+    /// caller waiting on it: why one failed goes to `show`, and how many
+    /// tracks an add or an insert put in goes to `confirmAdded`, which the
+    /// queue button's badge shows.
     public convenience init(
         handle: any AppHandleProtocol,
-        show: @escaping @MainActor @Sendable (DisplayError) -> Void
+        show: @escaping @MainActor @Sendable (DisplayError) -> Void,
+        confirmAdded: @escaping @MainActor @Sendable (Int) -> Void
     ) {
         self.init(
             addToQueue: { trackIds in
                 answerCommand(show) {
                     try await handle.addToQueue(trackIds: trackIds)
+                } confirm: {
+                    confirmAdded(Int($0))
                 }
             },
             addNext: { trackIds in
                 answerCommand(show) {
                     try await handle.addNext(trackIds: trackIds)
+                } confirm: {
+                    confirmAdded(Int($0))
                 }
             },
             insertInQueue: { trackIds, index in
@@ -92,6 +99,8 @@ public final class Queue: Sendable, Observable {
                         trackIds: trackIds,
                         index: index
                     )
+                } confirm: {
+                    confirmAdded(Int($0))
                 }
             },
             removeEntry: { try await handle.removeEntry(entryId: $0) },

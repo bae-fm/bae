@@ -37,7 +37,6 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
-import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -504,9 +503,12 @@ class BaeCorePlayer(
         positionModel.reset()
     }
 
-    /** Tracks went into Up Next: confirm how many to whoever collects [queueItemsAdded] now. */
-    fun onQueueAddition(addition: BridgeQueueAddition) {
-        _queueItemsAdded.tryEmit(addition.tracks.toInt())
+    /**
+     * [count] tracks went into Up Next: confirm how many to whoever collects [queueItemsAdded] now. An add that
+     * put none in confirms nothing.
+     */
+    fun onTracksAdded(count: Int) {
+        if (count > 0) _queueItemsAdded.tryEmit(count)
     }
 
     fun onQueueValue(value: BridgeQueueSnapshot) {

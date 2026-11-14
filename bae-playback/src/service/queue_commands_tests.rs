@@ -4,9 +4,9 @@ use crate::service::tests::*;
 /// A queue command whose write fails answers the failure to its caller: the
 /// queue is as it was, and the caller shows why. Each command's own reply is
 /// read here with the queue's writes failing.
-async fn answer_with_failing_writes(
-    command: impl FnOnce(QueueEditReply<()>) -> PlaybackCommand,
-) -> Result<(), QueueEditError> {
+async fn answer_with_failing_writes<T: Send + 'static>(
+    command: impl FnOnce(QueueEditReply<T>) -> PlaybackCommand,
+) -> Result<T, QueueEditError> {
     let (store, mut service, _progress_rx) =
         seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
@@ -14,6 +14,41 @@ async fn answer_with_failing_writes(
     let (reply, answer) = oneshot::channel();
     let _served = service.handle_command(command(reply)).await;
     answer.await.expect("the command answers")
+}
+
+/// Each add answers how many tracks it put in, so the screen that asked
+/// confirms exactly those: a track the library lacks is left out.
+#[tokio::test]
+async fn each_add_answers_how_many_tracks_went_in() {
+    let (_store, mut service, _progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
+    fill_test_release(&mut service, LOADING_RELEASE).await;
+    let missing = bae_util::test_ids::test_uuid("missing-track");
+    let tracks = vec![FINISHED_TRACK.to_string(), missing, NEXT_TRACK.to_string()];
+
+    let (reply, answer) = oneshot::channel();
+    let _served = service.handle_command(PlaybackCommand::AddToQueue(tracks.clone(), reply)).await;
+    assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
+
+    let (reply, answer) = oneshot::channel();
+    let _served = service.handle_command(PlaybackCommand::AddNext(tracks.clone(), reply)).await;
+    assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
+
+    let (reply, answer) = oneshot::channel();
+    let _served = service.handle_command(PlaybackCommand::InsertInQueue(tracks, 1, reply)).await;
+    assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
+
+    let (reply, answer) = oneshot::channel();
+    let _served = service
+        .handle_command(PlaybackCommand::AddReleaseToQueue(LOADING_RELEASE.to_string(), reply))
+        .await;
+    assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
+
+    let (reply, answer) = oneshot::channel();
+    let _served = service
+        .handle_command(PlaybackCommand::AddToQueue(vec!["not-a-track".to_string()], reply))
+        .await;
+    assert_eq!(answer.await.expect("the command answers").unwrap(), 0);
 }
 
 #[tokio::test]

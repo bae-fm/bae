@@ -36,12 +36,3 @@ pub struct ResolvedQueueSnapshot {
     pub has_next: bool,
     pub has_previous: bool,
 }
-
-/// The last time tracks went into Up Next since playback started with the
-/// library: which addition it was, counting from one, and how many tracks it
-/// put in. Two additions alike in their count are still two values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct QueueAddition {
-    pub number: u64,
-    pub tracks: u32,
-}

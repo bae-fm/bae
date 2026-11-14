@@ -368,31 +368,6 @@ final class SilentAdminChanges: AdminChangesSubscription,
     override func cancel() async throws { values.cancel() }
 }
 
-/// Queue additions a test hands the app one at a time.
-final class FakeQueueAdditions: QueueAdditionsSubscription,
-    @unchecked Sendable
-{
-    private let additions = PullQueue<BridgeQueueAddition>()
-
-    init() {
-        super.init(noHandle: QueueAdditionsSubscription.NoHandle())
-    }
-
-    required init(unsafeFromHandle handle: UInt64) {
-        super.init(unsafeFromHandle: handle)
-    }
-
-    func deliver(_ addition: BridgeQueueAddition) {
-        additions.deliver(addition)
-    }
-
-    override func next() async throws -> BridgeQueueAddition {
-        try await additions.next()
-    }
-
-    override func cancel() async throws { additions.cancel() }
-}
-
 /// A stream nothing feeds, which holds nothing: a pull waits until the
 /// stream is cancelled, then answers that it was.
 final class NoopKeyedValueStream: KeyedValueStream,

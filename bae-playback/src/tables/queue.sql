@@ -22,21 +22,13 @@ CREATE TABLE IF NOT EXISTS playback_queue (
     -- keeps its playing track whichever order it reads in.
     ordered_cursor    INTEGER,
     shuffled_cursor   INTEGER,
-    -- How many times tracks went into Up Next since playback started with
-    -- the library, and how many tracks the last of those put in, NULL before
-    -- the first. The write that adds the tracks counts them here, so a
-    -- screen confirming each addition reads one value per addition, even
-    -- two alike in a row. Starting playback with the library zeroes both.
-    additions    INTEGER NOT NULL CHECK (additions >= 0),
-    added_tracks INTEGER CHECK (added_tracks > 0),
     CHECK ((source_kind IS NULL) = (ordered_cursor IS NULL)),
     CHECK ((ordered_cursor IS NULL) = (shuffled_cursor IS NULL)),
-    CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL)),
-    CHECK ((additions = 0) = (added_tracks IS NULL))
+    CHECK ((source_kind IS 'release') = (source_release_id IS NOT NULL))
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_queue (singleton, repeat, shuffled, next_entry, additions)
-VALUES (1, 'off', 0, 1, 0);
+INSERT OR IGNORE INTO playback_queue (singleton, repeat, shuffled, next_entry)
+VALUES (1, 'off', 0, 1);
 
 -- Up Next: tracks queued by hand, drained first, in position order. Each is an
 -- entry of its own, so a track queued twice is two rows. Positions are only an

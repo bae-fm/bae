@@ -13,7 +13,6 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
-import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
@@ -25,7 +24,6 @@ import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
-import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
 
@@ -172,21 +170,6 @@ internal class FakePlaybackValuesSubscription : PlaybackValuesSubscription(NoHan
 
     override fun close() {
         values.close(BridgeException.Cancelled())
-    }
-}
-
-/** Queue additions nothing delivers: each pull waits until cancelled. */
-internal class FakeQueueAdditionsSubscription : QueueAdditionsSubscription(NoHandle) {
-    private val additions = Channel<BridgeQueueAddition>(Channel.UNLIMITED)
-
-    override suspend fun next(): BridgeQueueAddition = additions.receive()
-
-    override suspend fun cancel() {
-        additions.close(BridgeException.Cancelled())
-    }
-
-    override fun close() {
-        additions.close(BridgeException.Cancelled())
     }
 }
 

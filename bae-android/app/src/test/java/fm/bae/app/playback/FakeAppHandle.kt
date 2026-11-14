@@ -85,7 +85,6 @@ import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.PlaylistDetailSubscription
 import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.ProfilesSubscription
-import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
@@ -176,8 +175,6 @@ internal open class FakeAppHandle(
     val playbackValues = FakePlaybackValuesSubscription()
 
     override fun subscribePlaybackValues(): PlaybackValuesSubscription = playbackValues
-
-    override fun subscribeQueueAdditions(): QueueAdditionsSubscription = FakeQueueAdditionsSubscription()
 
     /** The playback timeline the handle answers, which a test delivers to. */
     val playbackTimeline = FakePlaybackTimelineSubscription()
@@ -331,19 +328,19 @@ internal open class FakeAppHandle(
 
     override fun subscribeAlbumSelection(): AlbumSelectionSubscription = unfaked("subscribeAlbumSelection")
 
-    override suspend fun addNext(trackIds: List<String>) {
+    override suspend fun addNext(trackIds: List<String>): UInt {
         unfaked("addNext")
     }
 
-    override suspend fun addReleaseNext(releaseId: String) {
+    override suspend fun addReleaseNext(releaseId: String): UInt {
         unfaked("addReleaseNext")
     }
 
-    override suspend fun addReleaseToQueue(releaseId: String) {
+    override suspend fun addReleaseToQueue(releaseId: String): UInt {
         unfaked("addReleaseToQueue")
     }
 
-    override suspend fun addToQueue(trackIds: List<String>) {
+    override suspend fun addToQueue(trackIds: List<String>): UInt {
         unfaked("addToQueue")
     }
 
@@ -396,7 +393,7 @@ internal open class FakeAppHandle(
     override suspend fun insertInQueue(
         trackIds: List<String>,
         index: UInt,
-    ) {
+    ): UInt {
         unfaked("insertInQueue")
     }
 

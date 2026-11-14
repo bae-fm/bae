@@ -394,7 +394,7 @@ fn answer_play(reply: PlayReply, played: Result<PlayOutcome, PlayError>) {
 
 /// Tell a queue command's caller what it did. A caller that stopped waiting
 /// has no one to tell.
-fn answer_queue_edit(reply: QueueEditReply<()>, answer: Result<(), QueueEditError>, what: &str) {
+fn answer_queue_edit<T>(reply: QueueEditReply<T>, answer: Result<T, QueueEditError>, what: &str) {
     if reply.send(answer).is_err() {
         debug!("{what} answered a caller that stopped waiting");
     }

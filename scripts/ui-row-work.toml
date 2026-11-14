@@ -28,7 +28,6 @@ frozen = [
     { path = "bae-macos/bae/bae/Views/Import/Mapping/ImportSheetCaptionRow.swift", operation = "filter", count = 2, finding = "splits the reference options into bound and unbound in the app (found by the check)" },
     { path = "bae-macos/bae/bae/Views/Import/Search/FindOnlineAutomaticSection.swift", operation = "filter", count = 1, finding = "filters failure lines by whether a search failed in the app (found by the check)" },
     { path = "bae-macos/bae/bae/Views/Library/AlbumDetail/AlbumTrackListView.swift", operation = "sorted", count = 1, finding = "deduplicates and sorts the tracks' position texts to size a column; unsettled (found by the check)" },
-    { path = "bae-macos/bae/bae/Views/Playback/Queue/QueueSection.swift", operation = "filter", count = 1, finding = "hides removed queue rows locally until core answers (found by the audit: optimistic overlay)" },
     { path = "bae-macos/bae/bae/Views/Settings/Formats/FormatsSettingsTab.swift", operation = "filter", count = 1, finding = "filters a preset out of the saved presets before writing the list back; whether it is row work is unsettled (found by the check)" },
     { path = "bae-macos/bae/bae/Views/Settings/Formats/SaveNameField.swift", operation = "filter", count = 1, finding = "filters the offered pieces against the values already held (found by the audit: filter)" },
     { path = "bae-macos/bae/bae/Views/Settings/Formats/SavePresetEditor.swift", operation = "filter", count = 1, finding = "lists the other presets' names to check against; unsettled (found by the check)" },

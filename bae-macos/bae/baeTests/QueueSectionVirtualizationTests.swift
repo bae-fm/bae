@@ -22,7 +22,6 @@ struct QueueSectionVirtualizationTests {
                     shuffled: false,
                     count: 5_000,
                     itemAt: { _ in nil },
-                    holdsEntry: { _ in false },
                     loadEpoch: nil,
                     holdRow: { index in
                         recorder.record(index)

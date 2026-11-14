@@ -63,7 +63,7 @@ The Xcode build runs `build-macos.sh` for the same configuration: Debug builds t
 
     bae-macos/test.sh             # every baeTests test
     bae-macos/test.sh PlaybackFailureDisplayTests \
-        'QueueAdditionTests/queueAdditionReachesBadge()'   # only these
+        'QueueAdditionTests/addAnswersReachTheBadge()'   # only these
 
 A name is a Swift test type (`Type`, or `Type/test` for one test), not a file
 name: one file can hold several types. xcodebuild passes a filter that matches

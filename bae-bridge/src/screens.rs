@@ -206,19 +206,6 @@ pulled_read! {
     built by playback_timeline
 }
 
-pulled_read! {
-    /// Each time tracks go into Up Next, with how many: one value per
-    /// addition, none before the first since playback started with the
-    /// library.
-    QueueAdditionsSubscription:
-        LiveValues<Option<bae_playback::QueueAddition>> => crate::types::BridgeQueueAddition,
-    converted by |addition: Option<bae_playback::QueueAddition>| {
-        addition.map(crate::types::BridgeQueueAddition::from_core)
-    },
-    when present,
-    built by queue_additions
-}
-
 #[cfg(desktop)]
 pulled_read! {
     /// How far the identifications and imports in flight have got.

@@ -1,6 +1,5 @@
 //! The playback queue's live reads on [`AppServices`]: the queue value, the
-//! upcoming tracks as a list past it, and the last addition to Up Next, all
-//! read from the queue tables.
+//! upcoming tracks as a list past it, all read from the queue tables.
 
 use super::*;
 
@@ -12,17 +11,6 @@ impl AppServices {
     ) -> bae_store::live_query::LiveValues<bae_playback::ResolvedQueueSnapshot> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_queue_value())
-    }
-
-    /// The last time tracks went into Up Next, as the screens confirming
-    /// each addition read it: the first value at once, then one per
-    /// addition. `None` until there is one since playback started with the
-    /// library.
-    pub fn subscribe_queue_additions(
-        &self,
-    ) -> bae_store::live_query::LiveValues<Option<bae_playback::QueueAddition>> {
-        let manager = &self.inner.manager;
-        manager.values_until_closed(manager.subscribe_queue_addition())
     }
 
     /// One window of the upcoming tracks as the queue draws them, a range of

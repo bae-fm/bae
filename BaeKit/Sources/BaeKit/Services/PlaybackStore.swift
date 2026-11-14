@@ -163,7 +163,12 @@ public class PlaybackStore {
         setNowPlaying(.playing(track))
     }
 
-    func publishQueueItemsAdded(_ count: Int) {
+    /// Tracks went into Up Next: the queue button's badge shows how many.
+    /// Nothing is shown when none went in.
+    public func publishQueueItemsAdded(_ count: Int) {
+        guard count > 0 else {
+            return
+        }
         queueItemsAddedSubject.send(count)
     }
 
@@ -200,12 +205,6 @@ extension PlaybackStore {
     @MainActor
     public func upcomingItem(at index: Int) -> BridgeQueueEntry? {
         upcoming?.row(at: index)
-    }
-
-    /// Whether a read upcoming row is the entry `entryId`.
-    @MainActor
-    public func upcomingHolds(entryId: String) -> Bool {
-        upcoming?.position(of: entryId) != nil
     }
 
     /// Names the open upcoming list, which changes when a new one replaces it

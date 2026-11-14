@@ -38,9 +38,6 @@ struct QueueSection: View {
     let shuffled: Bool
     let count: Int
     let itemAt: (Int) -> BridgeQueueEntry?
-    /// Whether a loaded row of the lane is the entry of this id: what tells a
-    /// collapsed row its removal has landed.
-    let holdsEntry: (String) -> Bool
     /// Names the list the lane reads, which restarts the rows' holds when the
     /// list is replaced. `nil` for the manual lane, which is never windowed.
     let loadEpoch: LoadEpoch?
@@ -75,7 +72,8 @@ struct QueueSection: View {
     @State
     private var dropInsertIndex: Int?
     /// Rows collapsed before core confirms the removal, so the click responds
-    /// at once; cleared when the entry leaves the lane.
+    /// at once. An entry id never names a later row, so an id left here after
+    /// its entry left the lane matches nothing.
     @State
     private var removingEntryIds: Set<String> = []
 
@@ -208,13 +206,6 @@ struct QueueSection: View {
                 coordinator.releaseHold(laneId)
             }
         }
-        // Drop only ids whose rows are gone: a still-present row would jump
-        // back open.
-        .onChange(of: removalsLanded, initial: true) {
-            if removalsLanded {
-                removingEntryIds = removingEntryIds.filter(holdsEntry)
-            }
-        }
         // Drop the hover when a drag starts, since `.onHover` won't fire again
         // until it ends.
         .onChange(of: coordinator.isDragging) {
@@ -227,11 +218,6 @@ struct QueueSection: View {
 
 /// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
-    /// Whether a row collapsing for removal has left the lane.
-    private var removalsLanded: Bool {
-        !removingEntryIds.allSatisfy(holdsEntry)
-    }
-
     /// Whether the lane's rows show the reorder the coordinator holds.
     private var holdEnded: Bool {
         coordinator.holdEnded(laneId, count: count) { itemAt($0)?.id }
