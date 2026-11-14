@@ -26,6 +26,10 @@ impl BridgeLibrary {
     ) -> Result<Vec<Self>, BridgeError> {
         let mut libraries =
             infos.into_iter().map(Self::from_core_info).collect::<Result<Vec<_>, _>>()?;
+        let several = libraries.len() > 1;
+        for library in &mut libraries {
+            library.has_other_libraries = several;
+        }
         let openable: Vec<usize> = libraries
             .iter()
             .enumerate()
@@ -59,6 +63,7 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
+            has_other_libraries: false,
             next_openable_id: None,
             previous_openable_id: None,
             state: match state {

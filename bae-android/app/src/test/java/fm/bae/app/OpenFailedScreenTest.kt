@@ -62,6 +62,7 @@ class OpenFailedScreenTest {
             "/libraries/library",
             BridgeLibraryState.Openable(storage),
             isActive = false,
+            hasOtherLibraries = false,
             nextOpenableId = null,
             previousOpenableId = null,
         )

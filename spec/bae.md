@@ -3661,7 +3661,9 @@ instead of failing the listing, with no Open either. Launch and switching
 libraries pass over it. Core decides which library a switch to the next or
 previous one opens: the list names, on the active library, the library after
 and the library before it among those that open (wrapping at the ends), and
-names none when no other library opens. Switching keeps the open library until the next one
+names none when no other library opens. Each listed library also says whether
+another is listed beside it, which is when the switcher shows, and the phone lists
+again after each open so the active library is the one core names. Switching keeps the open library until the next one
 has opened; a switch whose open fails leaves the open library on screen with
 the failure shown over it.
 

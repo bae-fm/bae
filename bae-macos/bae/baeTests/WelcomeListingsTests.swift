@@ -84,6 +84,7 @@ struct WelcomeListingsTests {
             path: "/libraries/library-1",
             state: .openable(storage: nil),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         )

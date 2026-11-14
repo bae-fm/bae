@@ -14,6 +14,7 @@ struct OpenFailureOfferTests {
             path: "/libraries/library-1",
             state: state,
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         )

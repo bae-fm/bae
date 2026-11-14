@@ -25,6 +25,7 @@ extension PreviewData {
                 )
             ),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -34,6 +35,7 @@ extension PreviewData {
             path: "/Users/preview/Music/bae/Local Library",
             state: .openable(storage: nil),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -48,6 +50,7 @@ extension PreviewData {
                 )
             ),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -60,6 +63,7 @@ extension PreviewData {
                 lineKey: "core.error.replacement_unfinished.restore"
             ),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -71,6 +75,7 @@ extension PreviewData {
                 lineKey: "core.error.deletion_unfinished"
             ),
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -81,6 +86,7 @@ extension PreviewData {
                 "/Users/preview/Music/bae/6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
             state: .nameUnreadable,
             isActive: false,
+            hasOtherLibraries: false,
             nextOpenableId: nil,
             previousOpenableId: nil
         ),
@@ -102,6 +108,7 @@ extension PreviewData {
             )
         ),
         isActive: false,
+        hasOtherLibraries: false,
         nextOpenableId: nil,
         previousOpenableId: nil
     )

@@ -168,6 +168,10 @@ pub struct BridgeLibrary {
     pub path: String,
     pub state: BridgeLibraryState,
     pub is_active: bool,
+    /// Whether another library is listed beside this one, which the
+    /// switcher needs to show: one that opens, or one that offers to finish
+    /// a reset, a restore or a removal.
+    pub has_other_libraries: bool,
     /// On the active library, when another listed library opens: the id of
     /// the next library that opens after it in the list, wrapping to the
     /// first. `None` on every other library.

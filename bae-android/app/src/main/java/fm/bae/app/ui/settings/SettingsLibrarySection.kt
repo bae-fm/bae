@@ -52,7 +52,6 @@ private val logger = BaeLogger("bae.SettingsLibrarySection")
 /** The switch to another library on this device, when there is another. */
 @Composable
 internal fun SettingsLibrarySwitcher(
-    session: OpenLibrary,
     listing: LibraryListing,
     onReloadLibraries: () -> Unit,
     onSwitchLibrary: (BridgeLibrary) -> Unit,
@@ -63,14 +62,13 @@ internal fun SettingsLibrarySwitcher(
         }
 
         is LibraryListing.Listed -> {
-            if (listing.libraries.size > 1) {
+            if (listing.libraries.any { it.hasOtherLibraries }) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
                     verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                 ) {
                     LibrarySwitcher(
                         libraries = listing.libraries,
-                        activeLibraryId = session.libraryId,
                         onSwitchLibrary = onSwitchLibrary,
                     )
                 }
@@ -97,7 +95,6 @@ internal fun SettingsLibrarySwitcher(
 @Composable
 private fun LibrarySwitcher(
     libraries: List<BridgeLibrary>,
-    activeLibraryId: String,
     onSwitchLibrary: (BridgeLibrary) -> Unit,
 ) {
     Text(
@@ -107,8 +104,7 @@ private fun LibrarySwitcher(
     )
     AndroidCard {
         libraries.forEach { library ->
-            // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
-            val isActive = library.id == activeLibraryId
+            val isActive = library.isActive
             val detail = libraryDetail(library)
             AndroidRow(
                 title = library.title(),

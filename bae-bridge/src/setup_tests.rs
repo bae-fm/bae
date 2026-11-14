@@ -82,6 +82,17 @@ fn the_active_library_names_its_neighbours_that_open() {
     );
 }
 
+/// Every library says whether another is listed beside it.
+#[test]
+fn a_library_says_whether_another_is_listed_beside_it() {
+    let alone = BridgeLibrary::list_from_core(vec![listed("a", true, true)]).unwrap();
+    assert!(!alone[0].has_other_libraries);
+    let pair =
+        BridgeLibrary::list_from_core(vec![listed("a", true, true), listed("b", false, false)])
+            .unwrap();
+    assert!(pair.iter().all(|library| library.has_other_libraries));
+}
+
 /// With no other library that opens, or an active library that doesn't open,
 /// nobody names a neighbour.
 #[test]

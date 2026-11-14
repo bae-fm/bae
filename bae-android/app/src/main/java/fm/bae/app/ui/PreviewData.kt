@@ -354,6 +354,7 @@ object PreviewData {
             path = "/tmp/$id",
             state = BridgeLibraryState.Openable(BridgeStorageLocation.S3("music", "us-east-1", null, null)),
             isActive = isActive,
+            hasOtherLibraries = false,
             nextOpenableId = null,
             previousOpenableId = null,
         )

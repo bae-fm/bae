@@ -88,7 +88,6 @@ internal fun SettingsScreen(
                 onPush = onPush,
             ) {
                 SettingsLibrarySwitcher(
-                    session = session,
                     listing = listing,
                     onReloadLibraries = actions.reloadLibraries,
                     onSwitchLibrary = actions.switchLibrary,

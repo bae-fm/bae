@@ -454,7 +454,10 @@ object AppSessionHolder {
                         )
                     }
                 }
-            onScreen(AppScreen.LibraryOpen(installSession(libraryId, handle, app.diagnostics, context, onScreen)))
+            val session = installSession(libraryId, handle, app.diagnostics, context, onScreen)
+            // Core names this library active now, so the switcher's listing follows the switch.
+            refreshLibraries(app.host, context)
+            onScreen(AppScreen.LibraryOpen(session))
         } catch (e: CancellationException) {
             // A newer openLibrary (or leaving the screen) cancelled us; let it
             // propagate so cooperative cancellation works and we don't report a

@@ -43,6 +43,7 @@ private func library(_ state: BridgeLibraryState) -> BridgeLibrary {
         path: "/libraries/library-1",
         state: state,
         isActive: false,
+        hasOtherLibraries: false,
         nextOpenableId: nil,
         previousOpenableId: nil
     )

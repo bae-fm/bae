@@ -375,6 +375,7 @@ internal fun WelcomeLibrariesSceneContent(
                         "/tmp/lib-1",
                         dropbox,
                         isActive = false,
+                        hasOtherLibraries = false,
                         nextOpenableId = null,
                         previousOpenableId = null,
                     ),
