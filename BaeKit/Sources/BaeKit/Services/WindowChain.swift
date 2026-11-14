@@ -139,6 +139,7 @@ final class WindowChain<Row: Sendable & Equatable> {
         window.rows = delivery.rows
         window.first = delivery.first
         window.beyond = delivery.beyond
+        window.leadingHeader = delivery.leadingHeader
         window.answered = true
         hasAnswered = true
         settle(window)
@@ -299,17 +300,31 @@ final class WindowChain<Row: Sendable & Equatable> {
                 if index == 0, case .backward = window.request { continue }
                 break
             }
-            next.append(Placed(start: position, rows: window.rows))
+            next.append(
+                Placed(
+                    start: position,
+                    rows: window.rows,
+                    leadingHeader: window.leadingHeader
+                )
+            )
             position += window.rows.count
         }
         placed = next
     }
 }
 
-/// The rows of one window, with the position of the first.
+/// The rows of one window, with the position of the first and the row that
+/// belongs above them, when the list has one.
 struct Placed<Row: Equatable>: Equatable {
     let start: Int
     let rows: [Row]
+    var leadingHeader: Row?
+
+    init(start: Int, rows: [Row], leadingHeader: Row? = nil) {
+        self.start = start
+        self.rows = rows
+        self.leadingHeader = leadingHeader
+    }
 }
 
 /// One window of the chain: its request, its subscription, and what its last
@@ -323,6 +338,7 @@ final class ChainWindow<Row: Sendable> {
     var rows: [Row] = []
     var first: [BridgeSortValue]?
     var beyond: [BridgeSortValue]?
+    var leadingHeader: Row?
     /// Whether any delivery has landed. A window moved to a new request keeps
     /// its last delivery until the new one replaces it whole.
     var answered = false

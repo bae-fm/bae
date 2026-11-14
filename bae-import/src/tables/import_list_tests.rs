@@ -5,20 +5,19 @@
 
 use super::*;
 use crate::folder_scanner::{FolderCandidate, ScanItem};
+use crate::list::ImportListRead;
 use crate::selection::SelectionChange;
 use crate::tables::folder_scans::{ScanItemSeed, ScanItemToWrite};
 use crate::tables::tests::*;
 use crate::FolderReleaseDecisionKey;
 use crate::PendingFilterEntry;
 use crate::{
-    ImportListId, ImportListItem, ImportListOrder, ImportListProjection, ImportListRequest,
-    ImportListView, PendingFilter, TriageTab,
+    ImportListId, ImportListItem, ImportListOrder, ImportListView, PendingFilter, TriageTab,
 };
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_identify::TerminalVerdict;
 use bae_store::test_fixtures::{empty_db, exec_batch};
-use bae_store::LibraryPageWindow;
 
 #[path = "import_list_tests/preparations.rs"]
 mod preparations;
@@ -95,7 +94,7 @@ impl Library {
         bae_records::test_fixtures::test_records(&self.db)
     }
 
-    fn tables(&self) -> ImportTables {
+    pub(crate) fn tables(&self) -> ImportTables {
         ImportTables::new(self.db.clone())
     }
 
@@ -317,22 +316,12 @@ impl Library {
         self.tables().open_import_list(view).await.unwrap()
     }
 
-    /// One read of `list` through `window`. A searching or folded list's
-    /// items read from its tab's rows and by its other read must agree, since
-    /// its windows are read by either.
-    pub(crate) async fn read_through(
-        &self,
-        list: ImportListId,
-        window: LibraryPageWindow,
-    ) -> ImportListProjection {
+    /// One read of `list` through one window over every item. A searching
+    /// or folded list's items read from its tab's rows and by its other read
+    /// must agree, since its windows are read by either.
+    pub(crate) async fn read(&self, list: ImportListId) -> ImportListRead {
         let tables = self.tables();
-        let read = tables
-            .load_import_list(ImportListRequest {
-                list,
-                windows: std::iter::once(window).collect(),
-            })
-            .await
-            .unwrap();
+        let read = tables.read_import_list_for_test(list).await.unwrap();
         if let Some((walked, other)) = tables.import_list_read_both_ways(list).await.unwrap() {
             assert_eq!(
                 walked, other,
@@ -343,13 +332,28 @@ impl Library {
         read
     }
 
-    /// One read of `list` through one window over every item.
-    pub(crate) async fn read(&self, list: ImportListId) -> ImportListProjection {
-        self.read_through(list, LibraryPageWindow::at(0, u64::MAX)).await
+    /// The window of `limit` items from the item at `offset`, read as a chain
+    /// of windows reads it after a jump: the key at the offset, then the range
+    /// from it.
+    pub(crate) async fn window_at(
+        &self,
+        list: ImportListId,
+        offset: u64,
+        limit: u64,
+    ) -> crate::ImportWindow {
+        let tables = self.tables();
+        let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
+        tables
+            .read_import_window(
+                list,
+                bae_store::ListWindow::Forward { from: Some(key), until: None, limit },
+            )
+            .await
+            .unwrap()
     }
 
     /// One read of a list opened on `view`.
-    pub(crate) async fn shown(&self, view: ImportListView) -> ImportListProjection {
+    pub(crate) async fn shown(&self, view: ImportListView) -> ImportListRead {
         let list = self.open(view).await;
         self.read(list).await
     }
@@ -359,10 +363,10 @@ impl Library {
         sequence(&self.shown(view).await)
     }
 
-    /// Change `list`'s selection, and answer with the revision.
-    pub(crate) async fn select(&self, list: ImportListId, change: SelectionChange) -> u64 {
+    /// Change `list`'s selection.
+    pub(crate) async fn select(&self, list: ImportListId, change: SelectionChange) {
         match self.tables().change_import_list_selection(list, change).await.unwrap() {
-            crate::tables::SelectionWrite::Changed { revision } => revision,
+            crate::tables::SelectionWrite::Changed => {}
             crate::tables::SelectionWrite::RunNotShown => {
                 panic!("the run's ends are shown")
             }
@@ -386,11 +390,14 @@ pub(crate) fn view(tab: TriageTab) -> ImportListView {
 /// The items one read holds, one readable line each: a header by its
 /// group's name, a release or a folder that failed validation by its display
 /// path.
-pub(crate) fn sequence(projection: &ImportListProjection) -> Vec<String> {
-    projection
-        .windows
+pub(crate) fn sequence(projection: &ImportListRead) -> Vec<String> {
+    projection.windows.iter().flat_map(|window| items_sequence(&window.rows)).collect()
+}
+
+/// `items`, one readable line each, as [`sequence`] gives them.
+pub(crate) fn items_sequence(items: &[ImportListItem]) -> Vec<String> {
+    items
         .iter()
-        .flat_map(|window| &window.rows)
         .map(|item| match item {
             ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
             ImportListItem::Candidate { row, .. } => format!("candidate {}", row.display_path),
@@ -403,7 +410,7 @@ pub(crate) fn sequence(projection: &ImportListProjection) -> Vec<String> {
 
 /// The release row one read holds at `display_path`.
 pub(crate) fn row_at<'a>(
-    projection: &'a ImportListProjection,
+    projection: &'a ImportListRead,
     display_path: &str,
 ) -> (&'a crate::TriageRow, &'a crate::CandidateLiveState) {
     projection
@@ -561,7 +568,7 @@ pub(crate) fn musicbrainz_release(release_id: &str, title: &str) -> serde_json::
     })
 }
 
-pub(crate) fn rows(projection: &crate::ImportListProjection) -> Vec<crate::TriageRow> {
+pub(crate) fn rows(projection: &ImportListRead) -> Vec<crate::TriageRow> {
     projection
         .windows
         .iter()
@@ -573,20 +580,28 @@ pub(crate) fn rows(projection: &crate::ImportListProjection) -> Vec<crate::Triag
         .collect()
 }
 
-/// One read of a list: its view, its windows, and the rows it has selected.
+/// The release rows one window holds.
+pub(crate) fn window_rows(window: &crate::ImportWindow) -> Vec<crate::TriageRow> {
+    window
+        .read
+        .rows
+        .iter()
+        .filter_map(|item| match item {
+            ImportListItem::Candidate { row, .. } => Some(row.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// One read of a list: its view, and the rows it has selected.
 pub(crate) struct ListRead {
     pub(crate) view: ImportListView,
-    pub(crate) windows: bae_store::LibraryPageWindows,
     pub(crate) selected: Vec<crate::CandidateKey>,
 }
 
-/// The first fifty items of `tab`, nothing selected.
+/// `tab`, nothing selected.
 pub(crate) async fn request(tab: TriageTab) -> ListRead {
-    ListRead {
-        view: ImportListView { tab, ..ImportListView::default() },
-        windows: std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
-        selected: Vec::new(),
-    }
+    ListRead { view: ImportListView { tab, ..ImportListView::default() }, selected: Vec::new() }
 }
 
 impl ImportTables {
@@ -594,7 +609,7 @@ impl ImportTables {
     pub(crate) async fn load_import_list_read(
         &self,
         read: ListRead,
-    ) -> Result<crate::ImportListProjection, ImportListError> {
+    ) -> Result<ImportListRead, ImportListError> {
         let list = self.open_import_list(read.view).await?;
         if !read.selected.is_empty() {
             self.change_import_list_selection(
@@ -603,10 +618,9 @@ impl ImportTables {
             )
             .await?;
         }
-        let projection =
-            self.load_import_list(crate::ImportListRequest { list, windows: read.windows }).await;
+        let projection = self.read_import_list_for_test(list).await;
         self.close_import_list(list).await?;
-        projection
+        Ok(projection?)
     }
 
     /// Every item a list shows, read from its tab's rows in order — Found's
@@ -621,11 +635,12 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
-                let everything = bae_store::LibraryPageWindow::at(0, u64::MAX);
+                let everything =
+                    bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)
-                        .window(&sql, &everything)?
+                        .range(&sql, &everything)?
                         .keys
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
@@ -657,24 +672,17 @@ impl ImportTables {
     }
 }
 
-/// The import list's request carries the view and the windows, so every test
-/// below states both.
-/// A list opened on `tab` in path order, read through `windows`.
-pub(crate) async fn list_request(
-    db: &Store,
-    tab: crate::TriageTab,
-    windows: impl IntoIterator<Item = (u64, u64)>,
-) -> crate::ImportListRequest {
+/// A list opened on `tab` in path order.
+pub(crate) async fn open_in_path_order(db: &Store, tab: crate::TriageTab) -> ImportListId {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let list = tables
+    tables
         .open_import_list(crate::ImportListView {
             tab,
             order: crate::ImportListOrder::PathAscending,
             ..crate::ImportListView::default()
         })
         .await
-        .unwrap();
-    through(list, windows)
+        .unwrap()
 }
 
 /// Store `name`'s candidate under `root` as one finished scan of it, and
@@ -697,18 +705,4 @@ pub(crate) async fn scan_finished(
     tables.save_folder_scan_item(std::path::Path::new(root), generation, &item).await.unwrap();
     tables.finish_folder_scan(std::path::Path::new(root), generation, None).await.unwrap();
     candidate
-}
-
-/// The list `list` read through `windows`.
-pub(crate) fn through(
-    list: crate::ImportListId,
-    windows: impl IntoIterator<Item = (u64, u64)>,
-) -> crate::ImportListRequest {
-    crate::ImportListRequest {
-        list,
-        windows: windows
-            .into_iter()
-            .map(|(offset, limit)| bae_store::LibraryPageWindow::at(offset, limit))
-            .collect(),
-    }
 }

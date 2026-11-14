@@ -1,17 +1,19 @@
-//! The import tab's list as it pulls it, with the selection the list owns
-//! and the bulk actions over it.
+//! The import tab's list as the app holds it open: its view and folds, the
+//! selection it owns and the bulk actions over it, and the live reads of its
+//! windows, count, position and chrome.
 
-use crate::types::BridgeError;
+use crate::types::{BridgeError, BridgeSortValue};
 
-/// The import tab's list, reconfigurable by view and by window, and the
-/// selection it owns.
-///
-/// The same shape as [`AlbumBrowseSubscription`](crate::AlbumBrowseSubscription):
-/// one object per list, `set_view` and `set_windows` reconfigure it, `next`
-/// waits for the value that answers. The selection only ever holds rows the
-/// list shows, so changing it and acting on it are this list's to do.
+/// The import tab's open list. Its windows, count and position are the same
+/// live reads every list has (`subscribe_list_window`, `subscribe_list_count`,
+/// `subscribe_list_position` and `list_key_at`), opened from the list because
+/// they read the list's own view, folds and selection; the chrome around
+/// them, Found's filter entries and the selection are reads of their own.
+/// Every read opened from it ends when it is cancelled. The selection only
+/// ever holds rows the list shows, so changing it and acting on it are this
+/// list's to do.
 #[derive(uniffi::Object)]
-pub struct ImportListSubscription {
+pub struct ImportList {
     inner: bae_import::LiveImportList,
     services: bae_app::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
@@ -24,8 +26,8 @@ pub(crate) fn import_list(
     inner: bae_import::LiveImportList,
     services: bae_app::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
-) -> std::sync::Arc<ImportListSubscription> {
-    std::sync::Arc::new(ImportListSubscription {
+) -> std::sync::Arc<ImportList> {
+    std::sync::Arc::new(ImportList {
         inner,
         services,
         selection_progress: crate::keyed_values::ProgressStream::new(runtime.clone()),
@@ -34,7 +36,7 @@ pub(crate) fn import_list(
 }
 
 #[uniffi::export]
-impl ImportListSubscription {
+impl ImportList {
     /// The stream the bulk actions over the selection report how far they
     /// have got in, from now until it is cancelled: its one key, `""`, while
     /// an action runs, and nothing once it ends. A stream handed out before
@@ -45,48 +47,163 @@ impl ImportListSubscription {
     ) -> std::sync::Arc<crate::keyed_values::KeyedValueStream> {
         self.selection_progress.feed()
     }
+
+    /// `window` of the list, a range of its order, read live from now on.
+    pub fn subscribe_list_window(
+        &self,
+        window: crate::types::BridgeListWindow,
+    ) -> std::sync::Arc<crate::ListWindowSubscription> {
+        crate::screens::list_window(
+            bae_app::import_list_window(&self.inner, window.into_core()),
+            self.runtime.clone(),
+        )
+    }
+
+    /// How many items the list holds and how many its narrowing keeps, read
+    /// live.
+    pub fn subscribe_list_count(&self) -> std::sync::Arc<crate::ListCountSubscription> {
+        crate::screens::list_count(bae_app::import_list_count(&self.inner), self.runtime.clone())
+    }
+
+    /// How many items come before the one at `key`, read live.
+    pub fn subscribe_list_position(
+        &self,
+        key: Vec<BridgeSortValue>,
+    ) -> std::sync::Arc<crate::ListPositionSubscription> {
+        crate::screens::list_position(
+            bae_app::import_list_position(&self.inner, crate::screens::order_key(key)),
+            self.runtime.clone(),
+        )
+    }
+
+    /// The watched folders, whether Found has groups and what the view
+    /// narrows by, read live.
+    pub fn subscribe_summary(&self) -> std::sync::Arc<ImportSummarySubscription> {
+        import_summary(bae_app::import_list_summary(&self.inner), self.runtime.clone())
+    }
+
+    /// Every entry of Found's filter and how many of Found's rows it holds,
+    /// read live.
+    pub fn subscribe_filter_entries(&self) -> std::sync::Arc<ImportFilterEntriesSubscription> {
+        import_filter_entries(
+            bae_app::import_list_filter_entries(&self.inner),
+            self.runtime.clone(),
+        )
+    }
+
+    /// What the selection holds and can be told to do, read live.
+    pub fn subscribe_selection(&self) -> std::sync::Arc<ImportSelectionSubscription> {
+        import_selection(bae_app::import_list_selection(&self.inner), self.runtime.clone())
+    }
+}
+
+pulled_read! {
+    /// The chrome around the import list: its watched folders, whether Found
+    /// has groups, and what the view narrows by.
+    ImportSummarySubscription:
+        bae_store::live_query::LiveValues<bae_import::ImportQueueSummary>
+            => crate::types::BridgeImportQueueSummary,
+    converted by crate::types::BridgeImportQueueSummary::from_core,
+    built by import_summary
+}
+
+pulled_read! {
+    /// Every entry of Found's filter, with how many of Found's rows it holds.
+    ImportFilterEntriesSubscription:
+        bae_store::live_query::LiveValues<Vec<bae_import::PendingFilterEntry>>
+            => Vec<crate::types::BridgePendingFilterEntry>,
+    converted by |entries: Vec<bae_import::PendingFilterEntry>| {
+        entries.into_iter().map(crate::types::BridgePendingFilterEntry::from_core).collect::<Vec<_>>()
+    },
+    built by import_filter_entries
+}
+
+pulled_read! {
+    /// What the import list's selection holds and can be told to do.
+    ImportSelectionSubscription:
+        bae_store::live_query::LiveValues<bae_import::selection::SelectionSummary>
+            => crate::types::BridgeSelectionSummary,
+    converted by crate::types::BridgeSelectionSummary::from_core,
+    built by import_selection
 }
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
-impl ImportListSubscription {
-    /// Show `view`, and return the view revision of the list value that
-    /// reflects it.
+impl ImportList {
+    /// Show `view`, and answer where it opens: its first selected row, by
+    /// key and position, or its top. Nothing when it is the view the list
+    /// already shows. The app drops the windows it holds and opens new ones
+    /// from that place.
     pub async fn set_view(
         self: std::sync::Arc<Self>,
         view: crate::types::BridgeImportListView,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<Option<crate::types::BridgeImportListOpening>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.set_view", move || async move {
-                self.inner.set_view(view.into_core()).await.map_err(list_error)
+            .run("ImportList.set_view", move || async move {
+                Ok(self
+                    .inner
+                    .set_view(view.into_core())
+                    .await
+                    .map_err(list_error)?
+                    .map(crate::types::BridgeImportListOpening::from_core))
             })
             .await
     }
 
-    /// Fold one group shut, or open it, and return the view revision of the
-    /// list value that reflects it.
+    /// The key of the item at `position`, or of the last item when the list
+    /// ends before it; none for a list with no items. A jump reads it once
+    /// and starts its windows there.
+    pub async fn list_key_at(
+        self: std::sync::Arc<Self>,
+        position: u64,
+    ) -> Result<Option<Vec<BridgeSortValue>>, BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("ImportList.list_key_at", move || async move {
+                Ok(self
+                    .inner
+                    .key_at(position)
+                    .await
+                    .map_err(list_error)?
+                    .as_ref()
+                    .map(BridgeSortValue::of_key))
+            })
+            .await
+    }
+
+    /// Close the list: every read opened from it ends, and its folds and
+    /// selection go.
+    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("ImportList.cancel", move || async move {
+                self.inner.cancel().await.map_err(list_error)
+            })
+            .await
+    }
+
+    /// Fold one group shut, or open it.
     pub async fn set_group_folded(
         self: std::sync::Arc<Self>,
         group: crate::types::BridgeFolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.set_group_folded", move || async move {
+            .run("ImportList.set_group_folded", move || async move {
                 self.inner.set_group_folded(group.into_core()?, folded).await.map_err(list_error)
             })
             .await
     }
 
-    /// Fold every group shut, or open them all, and return the view revision
-    /// of the list value that reflects it.
+    /// Fold every group shut, or open them all.
     pub async fn set_all_groups_folded(
         self: std::sync::Arc<Self>,
         folded: bool,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.set_all_groups_folded", move || async move {
+            .run("ImportList.set_all_groups_folded", move || async move {
                 self.inner.set_all_groups_folded(folded).await.map_err(list_error)
             })
             .await
@@ -100,7 +217,7 @@ impl ImportListSubscription {
     ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.locate_candidate", move || async move {
+            .run("ImportList.locate_candidate", move || async move {
                 Ok(self
                     .inner
                     .locate_candidate(&candidate_key.into())
@@ -117,7 +234,7 @@ impl ImportListSubscription {
     ) -> Result<Option<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.first_identifying_candidate", move || async move {
+            .run("ImportList.first_identifying_candidate", move || async move {
                 Ok(self
                     .inner
                     .first_identifying_candidate()
@@ -128,33 +245,25 @@ impl ImportListSubscription {
             .await
     }
 
-    pub fn set_windows(
-        &self,
-        windows: Vec<crate::types::BridgeLibraryPageWindow>,
-    ) -> Result<(), BridgeError> {
-        self.inner.set_windows(super::core_windows(windows)).map_err(list_error)
-    }
-
-    /// Apply a change a person made by pointing at rows of the list, and
-    /// return the selection revision of the list value that reflects it.
+    /// Apply a change a person made by pointing at rows of the list. The
+    /// windows holding the rows it changed show it.
     pub async fn change_selection(
         self: std::sync::Arc<Self>,
         change: crate::types::BridgeSelectionChange,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.change_selection", move || async move {
+            .run("ImportList.change_selection", move || async move {
                 self.inner.change_selection(change.into_core()).await.map_err(list_error)
             })
             .await
     }
 
-    /// Select every row the list shows, loaded by the surface or not, and
-    /// return the selection revision of the list value that reflects it.
-    pub async fn select_all(self: std::sync::Arc<Self>) -> Result<u64, BridgeError> {
+    /// Select every row the list shows, loaded by the surface or not.
+    pub async fn select_all(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.select_all", move || async move {
+            .run("ImportList.select_all", move || async move {
                 self.inner.select_all().await.map_err(list_error)
             })
             .await
@@ -167,7 +276,7 @@ impl ImportListSubscription {
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.selection_source_folders", move || async move {
+            .run("ImportList.selection_source_folders", move || async move {
                 Ok(self
                     .services
                     .import_selection_source_folders(
@@ -187,7 +296,7 @@ impl ImportListSubscription {
     pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<Vec<u8>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.combine_selection", move || async move {
+            .run("ImportList.combine_selection", move || async move {
                 let key = self
                     .services
                     .combine_import_selection(&self.inner.selected().await.map_err(list_error)?)
@@ -211,7 +320,7 @@ impl ImportListSubscription {
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.separate_selection", move || async move {
+            .run("ImportList.separate_selection", move || async move {
                 let keys = self
                     .services
                     .separate_import_selection(&self.inner.selected().await.map_err(list_error)?)
@@ -238,7 +347,7 @@ impl ImportListSubscription {
     ) -> Result<Vec<crate::types::BridgeSelectionActionFailure>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportListSubscription.run_selection_action", move || async move {
+            .run("ImportList.run_selection_action", move || async move {
                 let progress = self.selection_progress.writer();
                 let failures = self
                     .services
@@ -269,30 +378,12 @@ impl ImportListSubscription {
     }
 }
 
-pulled_read_calls! {
-    ImportListSubscription => crate::types::BridgeImportListSnapshot,
-    converted by crate::types::BridgeImportListSnapshot::from_core
-}
-
-impl super::PulledRead for bae_import::LiveImportList {
-    type Value = bae_import::ImportListSnapshot;
-
-    async fn next(&self) -> Result<bae_import::ImportListSnapshot, BridgeError> {
-        bae_import::LiveImportList::next(self).await.map_err(list_error)
-    }
-
-    async fn cancel(&self) -> Result<(), BridgeError> {
-        bae_import::LiveImportList::cancel(self).await.map_err(list_error)
-    }
-}
-
-fn list_error(error: bae_import::LiveImportListError) -> BridgeError {
+fn list_error(error: bae_import::ImportListFailure) -> BridgeError {
     match error {
-        bae_import::LiveImportListError::Cancelled => BridgeError::Cancelled,
-        error @ bae_import::LiveImportListError::RunNotShown => {
+        bae_import::ImportListFailure::Closed => BridgeError::Cancelled,
+        error @ bae_import::ImportListFailure::RunNotShown => {
             BridgeError::internal(error.to_string())
         }
-        bae_import::LiveImportListError::Query(error) => BridgeError::database_query(error),
-        bae_import::LiveImportListError::Database(error) => BridgeError::from(error),
+        bae_import::ImportListFailure::Database(error) => BridgeError::from(error),
     }
 }

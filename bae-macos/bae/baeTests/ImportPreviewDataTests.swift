@@ -25,16 +25,16 @@ struct ImportPreviewDataTests {
             }
         )
 
-        let headerPositions = items[(groupIndex + 1)...]
+        let headerKeys = items[(groupIndex + 1)...]
             .compactMap { item in
-                if case .candidate(_, _, let headerPosition) = item {
-                    return headerPosition
+                if case .candidate(_, _, let headerKey) = item {
+                    return headerKey
                 }
                 return nil
             }
 
-        #expect(!headerPositions.isEmpty)
-        #expect(headerPositions.allSatisfy { $0 == UInt64(groupIndex) })
+        #expect(!headerKeys.isEmpty)
+        #expect(headerKeys.allSatisfy { $0 == items[groupIndex].id })
     }
 
     @MainActor

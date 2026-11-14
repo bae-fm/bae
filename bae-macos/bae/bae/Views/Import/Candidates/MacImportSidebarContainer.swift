@@ -150,7 +150,7 @@ struct MacImportSidebarContainer: View {
             activeTab: activeTabBinding,
             counts: importStore.tabCounts,
             filterText: filterTextBinding,
-            narrowed: summary?.narrowedCount(under: shownNarrowing),
+            narrowed: listSlot.narrowedCount(under: shownNarrowing),
             answersView: listSlot.answersView
         ) {
             IdentificationProgressSlot(
@@ -201,7 +201,7 @@ struct MacImportSidebarContainer: View {
             )
         }
         .background {
-            ImportCoverWarmer(importStore: importStore)
+            ImportCoverWarmer(listSlot: listSlot)
         }
         .onDisappear {
             cancelReveal()
@@ -226,10 +226,9 @@ struct MacImportSidebarContainer: View {
 
     @ViewBuilder
     private var tabList: some View {
-        if let list = listSlot.list, let summary = importStore.summary {
+        if let list = listSlot.list, importStore.summary != nil {
             ImportCandidateTable(
                 list: list,
-                summary: summary,
                 importStore: importStore,
                 listSlot: listSlot,
                 actions: entryActions,
@@ -323,7 +322,7 @@ extension MacImportSidebarContainer {
 /// scrolled to is not a column of spinners. A view of its own so that the
 /// covers moving redraws this and not the list's chrome.
 private struct ImportCoverWarmer: View {
-    let importStore: ImportStore
+    let listSlot: ImportListSlot
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -332,9 +331,9 @@ private struct ImportCoverWarmer: View {
 
     var body: some View {
         Color.clear
-            .task(id: importStore.loadedCovers) {
+            .task(id: listSlot.list?.covers ?? []) {
                 await imageStore.warm(
-                    Array(importStore.loadedCovers),
+                    Array(listSlot.list?.covers ?? []),
                     pointSize: MacImportRow.coverPointSize,
                     displayScale: displayScale
                 )
@@ -354,15 +353,14 @@ private struct ImportCandidateListSwitch<Table: View>: View {
     let table: () -> Table
 
     var body: some View {
-        if let list = listSlot.list, let summary = importStore.summary {
+        if let list = listSlot.list, importStore.summary != nil {
             if list.totalCount > 0 {
                 table()
             }
             else if listSlot.answersView {
                 ContentUnavailableView {
                     Text(
-                        summary.narrowed == nil
-                            ? "Nothing here yet" : "No matches"
+                        list.isNarrowed ? "No matches" : "Nothing here yet"
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

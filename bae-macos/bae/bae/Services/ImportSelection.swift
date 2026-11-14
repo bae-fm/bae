@@ -16,9 +16,7 @@ struct RunningSelectionAction {
 /// The calls the selection makes, as values a test can replace. Each goes to
 /// the import list that owns the selection.
 struct ImportSelectionOperations: Sendable {
-    /// Returns the selection revision of the list value that reflects the
-    /// change.
-    let change: @Sendable (BridgeSelectionChange) async throws -> UInt64
+    let change: @Sendable (BridgeSelectionChange) async throws -> Void
     let selectAll: @Sendable () async throws -> Void
     let sourceFolders: @Sendable () async throws -> [Data]
     let combine: @Sendable () async throws -> Data
@@ -59,7 +57,7 @@ struct ImportSelectionOperations: Sendable {
     /// Operations that change nothing, for shots and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
-        change: { _ in 0 },
+        change: { _ in },
         selectAll: {},
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
@@ -69,20 +67,20 @@ struct ImportSelectionOperations: Sendable {
     )
 }
 
-/// The import list the selection belongs to: core's list subscription owns
-/// the selection beside the rows it shows, so what a person does to the
+/// The import list the selection belongs to: core's open list owns the
+/// selection beside the rows it shows, so what a person does to the
 /// selection goes to the list the sidebar reads now. A list rebuilt after a
 /// failed read is a new list, with a selection of its own.
 final class ImportListSelectionOwner: @unchecked Sendable {
     private let lock = NSLock()
-    private var list: (any ImportListSubscriptionProtocol)?
+    private var list: (any ImportListProtocol)?
 
     /// Make `list` the one the selection's calls go to.
-    func own(_ list: any ImportListSubscriptionProtocol) {
+    func own(_ list: any ImportListProtocol) {
         lock.withLock { self.list = list }
     }
 
-    func current() throws -> any ImportListSubscriptionProtocol {
+    func current() throws -> any ImportListProtocol {
         guard let list = lock.withLock({ self.list }) else {
             throw ImportListSelectionOwnerError.noList
         }
@@ -98,7 +96,7 @@ enum ImportListSelectionOwnerError: Error {
 /// The import list's selection. Core's import list holds it, and only ever
 /// with rows the list shows, so a selection of any size is one core call to
 /// change and one to act on; what it holds and can be told to do arrives here
-/// with each of the list's values, and this keeps no selection of its own.
+/// as its own read, and this keeps no selection of its own.
 @MainActor
 @Observable
 final class ImportSelection {
@@ -127,10 +125,8 @@ final class ImportSelection {
         self.summary = summary
     }
 
-    /// Apply `change`, and return the selection revision of the list value
-    /// that reflects it.
-    @discardableResult
-    func change(_ change: BridgeSelectionChange) async throws -> UInt64 {
+    /// Apply `change`; the windows holding the rows it changed show it.
+    func change(_ change: BridgeSelectionChange) async throws {
         try await operations.change(change)
     }
 

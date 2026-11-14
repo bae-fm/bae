@@ -265,11 +265,13 @@ pub use identification::IdentificationHandle;
 pub use identify_service::{IdentifyRunId, IdentifyService};
 #[cfg(desktop)]
 pub use import_failure::{ImportFailure, ImportFailureReason};
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use list::{FollowedImportList, ImportListRead};
 #[cfg(desktop)]
 pub use list::{
-    ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
-    ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView,
-    ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount, PendingFilter,
+    ImportCandidateListLocation, ImportCounts, ImportListCount, ImportListFailure, ImportListId,
+    ImportListItem, ImportListNarrowing, ImportListOpening, ImportListOrder, ImportListView,
+    ImportQueueSummary, ImportWindow, LiveImportList, NarrowedCount, PendingFilter,
     PendingFilterEntry,
 };
 #[cfg(desktop)]

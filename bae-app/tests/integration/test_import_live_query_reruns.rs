@@ -1,8 +1,10 @@
 //! How often the import screen's live queries rerun while a scan writes
 //! folders, with the screen open on one candidate: the pane's read of that
-//! candidate, the list, and the scans' progress. The pane reads only its
-//! candidate's rows, so a scan writing other folders must leave it alone; the
-//! list and the progress show every folder and rerun with each write. Each
+//! candidate, the list's count and two of its windows, and the scans'
+//! progress. The pane reads only its candidate's rows, so a scan writing other
+//! folders must leave it alone; the count and the progress show every folder
+//! and rerun with each write, and a window reruns for the writes its range
+//! can hold. Each
 //! folder holds one file of a size no other folder's file has, so each write
 //! stores rows of its own, as a real scan's folders do. Run explicitly:
 //!
@@ -24,7 +26,7 @@ use bae_import::RelativeFolder;
 use bae_import::{
     CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };
-use bae_store::LibraryPageWindow;
+use bae_store::ListWindow;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -122,26 +124,50 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let key = CandidateKey::folder(&seed_candidate.path);
     tables.save_folder_scan_item(&root, generation, &seed).await.unwrap();
 
-    // The screen: the list's first page in path order, the scans' progress,
+    // The screen: the list in path order, as its count and two windows of
+    // its own: the one before the seed, which the scan's folders sort after,
+    // and the one from the seed on, which they land in; the scans' progress,
     // and the pane on the seed, each read as the app reads it.
-    let list = Arc::new(
-        services
-            .subscribe_import_list(ImportListView {
-                tab: TriageTab::Pending,
-                order: ImportListOrder::PathAscending,
-                ..ImportListView::default()
-            })
-            .await
-            .unwrap(),
-    );
-    list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
-    let (list_tx, mut list_seen) = tokio::sync::watch::channel(0_u64);
-    let reading = list.clone();
-    tokio::spawn(async move {
-        while let Ok(snapshot) = reading.next().await {
-            list_tx.send_replace(snapshot.total_count);
+    let list = services
+        .subscribe_import_list(ImportListView {
+            tab: TriageTab::Pending,
+            order: ImportListOrder::PathAscending,
+            ..ImportListView::default()
+        })
+        .await
+        .unwrap();
+    let seed_key = list.key_at(0).await.unwrap().expect("the seed is listed");
+    let mut count = list.subscribe_count();
+    let (count_tx, mut list_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
+    let count_reader = tokio::spawn(async move {
+        while let Some(read) = count.next().await {
+            let shown = read.expect("the count reads");
+            count_tx.send_replace(Some((shown.rows, Counted::of(&count.runs()))));
         }
     });
+    let mut windows = Vec::new();
+    for (name, window) in [
+        (
+            "window above the scan",
+            ListWindow::Forward { from: None, until: Some(seed_key.clone()), limit: 50 },
+        ),
+        (
+            "window the scan lands in",
+            ListWindow::Forward { from: Some(seed_key.clone()), until: None, limit: 50 },
+        ),
+    ] {
+        let window = list.until_closed(list.subscribe_window(window));
+        let (tx, seen) = tokio::sync::watch::channel(0_u64);
+        let window = Arc::new(window);
+        let reading = window.clone();
+        let reader = tokio::spawn(async move {
+            while let Ok(event) = reading.next().await {
+                let delivered = event.result.expect("the window reads").read.rows.len();
+                tx.send_replace(delivered as u64);
+            }
+        });
+        windows.push((name, window, seen, reader));
+    }
 
     // The scans' found counts, each beside how often the query had run when
     // it returned it: this scan is written straight to the tables, with no
@@ -173,10 +199,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    settle(&mut list_seen, "the list", |total| *total == 1).await;
+    settle(&mut list_seen, "the count", |seen| matches!(seen, Some((1, _)))).await;
     settle(&mut progress_seen, "the progress", |seen| matches!(seen, Some((1, _)))).await;
     settle(&mut pane_seen, "the pane", |shown| matches!(shown, Some((false, _)))).await;
-    let list_before = Counted::of(&list.runs_for_test());
+    let window_runs = || -> Vec<Counted> {
+        windows.iter().map(|(_, window, _, _)| Counted::of(&window.runs())).collect()
+    };
+    let windows_before = window_runs();
+    let count_before = list_seen.borrow().expect("the count showed the seed").1;
     let progress_before = progress_seen.borrow().expect("the progress showed the seed").1;
     let pane_before = pane_seen.borrow().expect("the pane showed the candidate").1;
 
@@ -190,14 +220,25 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
             .await
             .unwrap();
     }
-    settle(&mut list_seen, "the list", |total| *total == WRITES + 1).await;
+    settle(
+        &mut list_seen,
+        "the count",
+        |seen| matches!(seen, Some((rows, _)) if *rows == WRITES + 1),
+    )
+    .await;
     settle(
         &mut progress_seen,
         "the progress",
         |seen| matches!(seen, Some((found, _)) if *found == WRITES + 1),
     )
     .await;
-    let list_counted = Counted::of(&list.runs_for_test()).since(list_before);
+    let count_counted =
+        list_seen.borrow().expect("the count showed the writes").1.since(count_before);
+    let windows_counted: Vec<Counted> = window_runs()
+        .into_iter()
+        .zip(windows_before)
+        .map(|(after, before)| after.since(before))
+        .collect();
     let progress_counted =
         progress_seen.borrow().expect("the progress showed the writes").1.since(progress_before);
 
@@ -216,9 +257,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     };
 
     println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
-    for (name, counted) in
-        [("candidate pane", pane_counted), ("list", list_counted), ("progress", progress_counted)]
-    {
+    let measured = [
+        ("candidate pane", pane_counted),
+        ("count", count_counted),
+        ("window above the scan", windows_counted[0]),
+        ("window the scan lands in", windows_counted[1]),
+        ("progress", progress_counted),
+    ];
+    for (name, counted) in measured {
         println!("  {name:14} {:5} ({:5}, {:5})", counted.runs, counted.writes, counted.equal);
         let metric = name.replace(' ', "_");
         for (kind, count) in [("runs", counted.runs), ("caused_by_a_write", counted.writes)] {
@@ -241,7 +287,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     list.cancel().await.unwrap();
     // The pane's and the progress's queries end with the store, so they go
     // first.
-    for reader in [pane_reader, progress_reader] {
+    for reader in [pane_reader, progress_reader, count_reader] {
         reader.abort();
         assert!(reader.await.unwrap_err().is_cancelled());
     }

@@ -22,7 +22,7 @@ extension ShotScene {
                 importStore: ImportStore(),
                 uiStore: UiStore(),
                 selection: ImportSelection(),
-                makeSource: { _ in
+                makeHandle: { _ in
                     throw BridgeError.Diagnostic(
                         category: .databaseBusy,
                         detail: LibraryView.unreadableDetail

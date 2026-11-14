@@ -30,7 +30,7 @@ struct ImportListPlace: Equatable {
     /// Where the row sits in `list` now, when `list` has loaded it.
     @MainActor
     func loadedPosition(
-        in list: OffsetPaginatedList<BridgeImportListItem>
+        in list: PaginatedList<BridgeImportListItem>
     ) -> Int? {
         switch row {
         case .candidate(let stableKey, _), .entry(let stableKey):
@@ -41,11 +41,9 @@ struct ImportListPlace: Equatable {
     }
 }
 
-/// What a delivery of the list's content was read as: the revision it
-/// brought the list to, what the view narrowed it by, and the row its view
-/// opened at.
+/// What the table reads of the list's content: what the view narrowed it by,
+/// and the row its view opened at.
 struct ImportCandidateListContentRead: Equatable {
-    let revision: UInt64
     let narrowing: BridgeImportListNarrowing
     let openedAt: Int
 }
@@ -58,7 +56,7 @@ enum ImportListContentScroll: Equatable {
     case showOnTop(Int)
 }
 
-/// The content the table last took, which a new delivery is read against.
+/// The content the table last took, which a new read is compared against.
 struct ImportCandidateTableContent {
     private var taken: ImportCandidateListContentRead
 
@@ -70,20 +68,21 @@ struct ImportCandidateTableContent {
     var narrowing: BridgeImportListNarrowing { taken.narrowing }
 
     /// Take `read`, and say where the table scrolls for it: nowhere while a
-    /// reveal does the scrolling or the rows are the ones already shown.
-    /// Narrowed anew — a different tab, filter text or filter entry — the
-    /// list shows the row its view opened at, its first selected row or its
-    /// top: the row on top before may be gone, or anywhere. Otherwise it
-    /// keeps the person's place.
+    /// reveal does the scrolling. Narrowed anew — a different tab, filter
+    /// text or filter entry — the list shows the row its view opened at, its
+    /// first selected row or its top: the row on top before may be gone, or
+    /// anywhere. Otherwise the person's place is kept while the rows move,
+    /// and nothing scrolls while they stand.
     mutating func take(
         _ read: ImportCandidateListContentRead,
-        revealing: Bool
+        revealing: Bool,
+        rowsChanged: Bool
     ) -> ImportListContentScroll? {
         defer { taken = read }
-        guard !revealing, read.revision != taken.revision else { return nil }
+        guard !revealing else { return nil }
         if read.narrowing != taken.narrowing {
             return .showOnTop(read.openedAt)
         }
-        return .keepPlace
+        return rowsChanged ? .keepPlace : nil
     }
 }

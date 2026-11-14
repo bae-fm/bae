@@ -1,18 +1,6 @@
 import BaeKit
 import SwiftUI
 
-extension BridgeImportQueueSummary {
-    /// How many of the tab's rows the list shows, when this summary counted
-    /// them under `narrowing` — the filter the field holds now — and nothing
-    /// while it counted them under another: a count stands only beside the
-    /// filter it is for.
-    func narrowedCount(
-        under narrowing: BridgeImportListNarrowing
-    ) -> BridgeNarrowedCount? {
-        narrowing == self.narrowing ? narrowed : nil
-    }
-}
-
 /// The list's filter field: the typed text, and while the text or the filter
 /// entry narrows the list, how many of the tab's rows it shows.
 struct ImportListFilterField: View {

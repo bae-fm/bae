@@ -149,26 +149,23 @@ impl DecisionFixture {
         settled: &[&str],
     ) -> Vec<Vec<String>> {
         let tables = self.test.tables().clone();
-        let mut live = tables.subscribe_import_list(crate::ImportListRequest {
-            list: self
-                .test
-                .tables()
-                .open_import_list(crate::ImportListView {
-                    order: crate::ImportListOrder::PathAscending,
-                    ..crate::ImportListView::default()
-                })
-                .await
-                .unwrap(),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-        });
+        let list = tables
+            .open_import_list(crate::ImportListView {
+                order: crate::ImportListOrder::PathAscending,
+                ..crate::ImportListView::default()
+            })
+            .await
+            .unwrap();
+        let whole = bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+        let mut live = tables.subscribe_import_window(list, whole);
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {
             loop {
-                let projection = live.next().await.expect("the query stays open").result.unwrap();
-                let names: Vec<String> = projection
-                    .windows
+                let window = live.next().await.expect("the query stays open").result.unwrap();
+                let names: Vec<String> = window
+                    .read
+                    .rows
                     .iter()
-                    .flat_map(|window| &window.rows)
                     .filter_map(|item| match item {
                         crate::ImportListItem::Candidate { row, .. } => {
                             Some(row.folder_name.clone())

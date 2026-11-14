@@ -12,17 +12,23 @@ public struct ListWindowDelivery<Row: Sendable>: Sendable {
     /// The sort values of the row past the window's far end; nil when the
     /// window reached its bound, the list's end or the list's top.
     public let beyond: [BridgeSortValue]?
+    /// A row that belongs above the window's first row without being in the
+    /// window: the import list's header of the group the window starts
+    /// inside. Nil for a list with no such row.
+    public let leadingHeader: Row?
 
     public init(
         window: BridgeListWindow,
         rows: [Row],
         first: [BridgeSortValue]?,
-        beyond: [BridgeSortValue]?
+        beyond: [BridgeSortValue]?,
+        leadingHeader: Row? = nil
     ) {
         self.window = window
         self.rows = rows
         self.first = first
         self.beyond = beyond
+        self.leadingHeader = leadingHeader
     }
 }
 
@@ -91,6 +97,51 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
 }
 
 #if os(macOS)
+    /// The four list calls, which `AppHandle` and the import list's handle
+    /// both make.
+    protocol ListCalls: Sendable {
+        func subscribeListWindow(window: BridgeListWindow)
+            -> ListWindowSubscription
+        func subscribeListCount() -> ListCountSubscription
+        func subscribeListPosition(key: [BridgeSortValue])
+            -> ListPositionSubscription
+        func listKeyAt(position: UInt64) async throws -> [BridgeSortValue]?
+    }
+
+    extension AppHandleProtocol {
+        /// The calls of `list`, as `ListCalls` makes them.
+        func calls(of list: BridgeList) -> any ListCalls {
+            AppHandleListCalls(handle: self, list: list)
+        }
+    }
+
+    private struct AppHandleListCalls: ListCalls {
+        let handle: any AppHandleProtocol
+        let list: BridgeList
+
+        func subscribeListWindow(window: BridgeListWindow)
+            -> ListWindowSubscription
+        {
+            handle.subscribeListWindow(list: list, window: window)
+        }
+
+        func subscribeListCount() -> ListCountSubscription {
+            handle.subscribeListCount(list: list)
+        }
+
+        func subscribeListPosition(key: [BridgeSortValue])
+            -> ListPositionSubscription
+        {
+            handle.subscribeListPosition(list: list, key: key)
+        }
+
+        func listKeyAt(position: UInt64) async throws -> [BridgeSortValue]? {
+            try await handle.listKeyAt(list: list, position: position)
+        }
+    }
+
+    extension ImportList: ListCalls {}
+
     extension BridgeListQueries {
         /// The reads of `list` through `handle`, taking its rows out of the
         /// variant of `BridgeListRows` they come in.
@@ -104,9 +155,38 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
             rows: @escaping @Sendable (BridgeListRows) -> [Row]
         ) {
             self.init(
+                calls: handle.calls(of: list),
+                sections: sections,
+                rows: rows,
+                leadingHeader: nil
+            )
+        }
+
+        /// The reads of the import list `list`, which names its own list.
+        public init(
+            importList list: ImportList,
+            rows: @escaping @Sendable (BridgeListRows) -> [Row],
+            leadingHeader: @escaping @Sendable (BridgeListRows) -> Row?
+        ) {
+            self.init(
+                calls: list,
+                sections: nil,
+                rows: rows,
+                leadingHeader: leadingHeader
+            )
+        }
+
+        private init(
+            calls: any ListCalls,
+            sections: (
+                @Sendable () -> PulledValues<[BridgeLibraryBrowseSection]>
+            )?,
+            rows: @escaping @Sendable (BridgeListRows) -> [Row],
+            leadingHeader: (@Sendable (BridgeListRows) -> Row?)?
+        ) {
+            self.init(
                 window: { window in
-                    let subscription = handle.subscribeListWindow(
-                        list: list,
+                    let subscription = calls.subscribeListWindow(
                         window: window
                     )
                     return ListWindowQuery(
@@ -116,26 +196,24 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
                                 window: value.window,
                                 rows: rows(value.rows),
                                 first: value.first,
-                                beyond: value.beyond
+                                beyond: value.beyond,
+                                leadingHeader: leadingHeader?(value.rows)
                             )
                         }
                     )
                 },
                 count: {
-                    PulledValues(handle.subscribeListCount(list: list))
+                    PulledValues(calls.subscribeListCount())
                 },
                 position: { key in
-                    let subscription = handle.subscribeListPosition(
-                        list: list,
-                        key: key
-                    )
+                    let subscription = calls.subscribeListPosition(key: key)
                     return ListPositionQuery(
                         setKey: { try subscription.setKey(key: $0) },
                         values: PulledValues(subscription)
                     )
                 },
                 keyAt: {
-                    try await handle.listKeyAt(list: list, position: $0)
+                    try await calls.listKeyAt(position: $0)
                 },
                 sections: sections
             )

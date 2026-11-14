@@ -224,7 +224,8 @@
         /// range, where the keys are positions.
         static func fixedDelivery(
             of window: BridgeListWindow,
-            rows: [Row]
+            rows: [Row],
+            leadingHeader: @Sendable (_ position: Int) -> Row? = { _ in nil }
         ) -> ListWindowDelivery<Row> {
             switch window {
             case .forward(let from, let until, let limit):
@@ -238,7 +239,8 @@
                     window: window,
                     rows: start < stop ? Array(rows[start..<stop]) : [],
                     first: start < stop ? fixedKey(start) : nil,
-                    beyond: stop < end ? fixedKey(stop) : nil
+                    beyond: stop < end ? fixedKey(stop) : nil,
+                    leadingHeader: start < stop ? leadingHeader(start) : nil
                 )
             case .backward(let until, let limit):
                 let end = min(fixedPosition(until), rows.count)
@@ -247,7 +249,36 @@
                     window: window,
                     rows: start < end ? Array(rows[start..<end]) : [],
                     first: start < end ? fixedKey(start) : nil,
-                    beyond: start > 0 ? fixedKey(start - 1) : nil
+                    beyond: start > 0 ? fixedKey(start - 1) : nil,
+                    leadingHeader: start < end ? leadingHeader(start) : nil
+                )
+            }
+        }
+
+        /// The window read of a fixed list: each request counts in `answers`
+        /// until it is answered with its range of `rows`.
+        private static func fixedWindow(
+            of rows: [Row],
+            answers: UnansweredCount,
+            leadingHeader: @escaping @Sendable (_ position: Int) -> Row?
+        ) -> @Sendable (BridgeListWindow) -> ListWindowQuery<Row> {
+            { first in
+                let requests = FixedRequests<BridgeListWindow>(answers: answers)
+                requests.request(first)
+                let values = PulledValues<ListWindowDelivery<Row>>(
+                    read: {
+                        let asked = try await requests.take()
+                        return Self.fixedDelivery(
+                            of: asked,
+                            rows: rows,
+                            leadingHeader: leadingHeader
+                        )
+                    },
+                    cancel: { requests.close() }
+                )
+                return ListWindowQuery(
+                    setWindow: { requests.request($0) },
+                    values: values
                 )
             }
         }
@@ -261,7 +292,10 @@
             answers: UnansweredCount,
             itemCount: Int? = nil,
             sections: [BridgeLibraryBrowseSection] = [],
-            extra countExtra: BridgeListCountExtra? = nil
+            extra countExtra: BridgeListCountExtra? = nil,
+            leadingHeader: @escaping @Sendable (_ position: Int) -> Row? = {
+                _ in nil
+            }
         ) -> BridgeListQueries<Row> {
             let extra: BridgeListCountExtra =
                 countExtra
@@ -269,22 +303,11 @@
                     BridgeListCountExtra.albumGrid(albums: UInt64($0))
                 }
                 ?? BridgeListCountExtra.none
-            let window: @Sendable (BridgeListWindow) -> ListWindowQuery<Row> = {
-                first in
-                let requests = FixedRequests<BridgeListWindow>(answers: answers)
-                requests.request(first)
-                let values = PulledValues<ListWindowDelivery<Row>>(
-                    read: {
-                        let asked = try await requests.take()
-                        return Self.fixedDelivery(of: asked, rows: rows)
-                    },
-                    cancel: { requests.close() }
-                )
-                return ListWindowQuery(
-                    setWindow: { requests.request($0) },
-                    values: values
-                )
-            }
+            let window = Self.fixedWindow(
+                of: rows,
+                answers: answers,
+                leadingHeader: leadingHeader
+            )
             let count: @Sendable () -> PulledValues<BridgeListCount> = {
                 let value = BridgeListCount(
                     rows: UInt64(rows.count),
@@ -354,6 +377,92 @@
             )
         }
     }
+
+    #if os(macOS)
+        extension ImportListHandle {
+            /// An import list over fixed, already-ordered `items`, for shots and
+            /// tests: every window is answered with its range of them, a view
+            /// or fold changes nothing, and a candidate is found where `items`
+            /// holds it, on `tab`.
+            public static func fixed(
+                items: [BridgeImportListItem],
+                tab: BridgeTriageTab,
+                answers: UnansweredCount = UnansweredCount(),
+                summary: BridgeImportQueueSummary? = nil
+            ) -> ImportListHandle {
+                let queries = BridgeListQueries<BridgeImportListItem>
+                    .fixed(
+                        items,
+                        answers: answers,
+                        extra: BridgeListCountExtra.import(narrowed: nil)
+                    )
+                return ImportListHandle(
+                    queries: queries,
+                    summary: {
+                        PulledValues<BridgeImportQueueSummary>
+                            .fixed(
+                                summary
+                                    ?? BridgeImportQueueSummary(
+                                        watchedFolders: [],
+                                        hasGroups: false,
+                                        narrowing: BridgeImportListNarrowing(
+                                            tab: tab,
+                                            filterText: "",
+                                            pendingFilter: .all
+                                        )
+                                    )
+                            )
+                    },
+                    filterEntries: {
+                        PulledValues<[BridgePendingFilterEntry]>.fixed([])
+                    },
+                    selection: {
+                        PulledValues<BridgeSelectionSummary>
+                            .fixed(
+                                BridgeSelectionSummary(
+                                    count: 0,
+                                    single: nil,
+                                    offers: []
+                                )
+                            )
+                    },
+                    setView: { _ in nil },
+                    setGroupFolded: { _, _ in },
+                    setAllGroupsFolded: { _ in },
+                    locateCandidate: { locate($0, in: items, on: tab) },
+                    firstIdentifyingCandidate: { nil }
+                )
+            }
+
+            /// Where the candidate `key` sits in the fixed `items`, on `tab`.
+            private static func locate(
+                _ key: Data,
+                in items: [BridgeImportListItem],
+                on tab: BridgeTriageTab
+            ) -> BridgeImportCandidateListLocation? {
+                items.firstIndex { item in
+                    switch item {
+                    case .candidate(_, let row, _):
+                        row.candidateKey == key
+                    case .invalid(_, let invalid, _):
+                        invalid.candidateKey == key
+                    case .groupHeader:
+                        false
+                    }
+                }
+                .map {
+                    BridgeImportCandidateListLocation(
+                        stableKey: items[$0].id,
+                        tab: tab,
+                        groupKey: nil,
+                        visiblePosition: UInt64($0),
+                        key: BridgeListQueries<BridgeImportListItem>
+                            .fixedKey($0)
+                    )
+                }
+            }
+        }
+    #endif
 
     extension AlbumList {
         /// A pre-populated list for shots and tests, seeded with

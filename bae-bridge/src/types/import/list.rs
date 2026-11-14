@@ -73,9 +73,9 @@ pub enum BridgeImportListItem {
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
-        /// Where the header of the group it is listed under sits in the
-        /// list, for a member of a group, whichever window holds the header.
-        header_position: Option<u64>,
+        /// The stable key of the header of the group it is listed under, for
+        /// a member of a group, whichever window holds the header.
+        header_key: Option<String>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.
@@ -87,13 +87,7 @@ pub enum BridgeImportListItem {
     },
 }
 
-crate::screens::browse_window! {
-    /// One requested window of the import list, with the items that landed in it.
-    window: BridgeImportListWindow,
-    row: bae_import::ImportListItem => BridgeImportListItem,
-}
-
-/// The list view and position that reveal one candidate at its current
+/// The list view and place that reveal one candidate at its current
 /// placement.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidateListLocation {
@@ -101,27 +95,33 @@ pub struct BridgeImportCandidateListLocation {
     pub tab: BridgeTriageTab,
     pub group_key: Option<BridgeFolderReleaseDecisionKey>,
     pub visible_position: u64,
+    /// Where the candidate sits in that view, as a window's bound: a chain
+    /// of windows that starts at it shows it.
+    pub key: Vec<BridgeSortValue>,
 }
 
-/// Everything the chrome around the list shows, read with the items, so none
-/// of it can drift from them. Where the folder scans stand
-/// is [`BridgeFolderScans`], sent on its own: a scan's progress moves no row.
-/// How many entries each tab holds is a stream of its own, the tab counts.
+/// Where a list's view opens once it is set.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeImportListOpening {
+    /// The list's top: the view showed no selected row.
+    Top,
+    /// Its first selected row, as the write that set the view found it: the
+    /// key a chain of windows starts at, and the position the row sits at.
+    At { key: Vec<BridgeSortValue>, position: u64 },
+}
+
+/// What the chrome around the list shows beside its rows and counts. Where
+/// the folder scans stand is [`BridgeFolderScans`], sent on its own: a scan's
+/// progress moves no row. How many entries each tab holds is a stream of its
+/// own, the tab counts.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
     pub watched_folders: Vec<BridgeWatchedFolder>,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
-    /// How many of the tab's entries the list shows, of how many it has,
-    /// while the text filter or the filter entry narrows it; absent while
-    /// nothing does.
-    pub narrowed: Option<BridgeNarrowedCount>,
     /// What the view asked the rows to be narrowed by when this read was
-    /// made: the filter `narrowed` counts under.
+    /// made: the filter the count's `narrowed` counts under.
     pub narrowing: BridgeImportListNarrowing,
-    /// Where the list's view opened: the position its first selected row had
-    /// when the view was set, or its top (0) while it showed no selected row.
-    pub opened_at: u64,
 }
 
 /// What a view narrows its rows by. Mirrors
@@ -174,25 +174,6 @@ pub struct BridgeFolderScanActivity {
 pub struct BridgeActiveFolderScan {
     pub watched_folder_path: Vec<u8>,
     pub watched_folder_name: String,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportListSnapshot {
-    pub windows: Vec<BridgeImportListWindow>,
-    pub total_count: u64,
-    pub summary: BridgeImportQueueSummary,
-    /// Every entry of Found's filter, in the menu's order, with how many of
-    /// Found's rows it holds.
-    pub pending_filter_entries: Vec<BridgePendingFilterEntry>,
-    /// The changes to the selection the rows' `selected` reflects.
-    pub selection_revision: u64,
-    /// What the selection holds and can be told to do: only ever rows this
-    /// list shows.
-    pub selection: BridgeSelectionSummary,
-    /// The changes to the view, its folds included, the rows reflect: what
-    /// `set_view` and the folds answer with.
-    pub view_revision: u64,
-    pub cause: BridgeLiveQueryCause,
 }
 
 /// One candidate as the pane reads it, whole: the folder with its files, what

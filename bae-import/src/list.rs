@@ -4,11 +4,11 @@
 //! Each surface's list is a row of its own (`import_list`), holding its view,
 //! the groups it folds shut and the rows it has selected, and what the list
 //! shows is a query over that row and the placement the import tables keep
-//! (`import_list_placement`): the requested windows, the tab counts, Found's
-//! filter entries and what the selection offers all come from one read, so
-//! none of it can disagree with the rows. Changing the view, folding a group
-//! or selecting rows is a write the list's live query answers; the windows
-//! are the query's request.
+//! (`import_list_placement`). Each window of it is a live query of its own
+//! whose request is a range of the list's order, and the count, the summary,
+//! Found's filter entries and what the selection offers are live queries of
+//! their own: a write reruns what it changed. Changing the view, folding a
+//! group or selecting rows is a write the list's live queries answer.
 //!
 //! What is running for a candidate right now — a run queued or in flight, an
 //! import that owns it — is in the standings table the candidate runtime
@@ -18,16 +18,21 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::triage::{CandidateLiveState, TriageGroup, TriageRow};
 use super::watched_folder::WatchedFolder;
-use bae_store::{LibraryBrowseWindow, LibraryPageWindows};
+use bae_store::list_windows::OrderKey;
+use bae_store::WindowRead;
 
 mod path_order;
 mod pending_filter;
 mod subscription;
+#[cfg(any(test, feature = "test-utils"))]
+mod test_read;
 
 pub(crate) use path_order::release_keys_in_path_order;
 pub(crate) use pending_filter::pending_filter_entries;
 pub use pending_filter::{PendingFilter, PendingFilterEntry};
-pub use subscription::{LiveImportList, LiveImportListError};
+pub use subscription::{ImportListFailure, LiveImportList};
+#[cfg(any(test, feature = "test-utils"))]
+pub use test_read::{FollowedImportList, ImportListRead};
 
 pub use super::triage::TriageTab;
 
@@ -69,15 +74,7 @@ pub enum ImportListOrder {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImportListId(pub(crate) i64);
 
-/// What one read of a list answers: the list, and the windows of it to load.
-/// Everything else the read is a function of is in the tables.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportListRequest {
-    pub list: ImportListId,
-    pub windows: LibraryPageWindows,
-}
-
-/// One item in the list, at one offset.
+/// One item in the list.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportListItem {
     GroupHeader {
@@ -96,12 +93,11 @@ pub enum ImportListItem {
         /// What is running for the candidate, as the read found it, and the
         /// commands and state the row has with it.
         live: CandidateLiveState,
-        /// Where the header of the group it is listed under sits in the
-        /// list, for a member of a group: before it, and before every member
-        /// between them. Read with the row whichever window holds the
-        /// header, so the header the row sits under is known as soon as the
-        /// row is.
-        header_position: Option<u64>,
+        /// The stable key of the header of the group it is listed under,
+        /// for a member of a group. Read with the row, so the header the
+        /// row sits under is known as soon as the row is, whichever window
+        /// holds the header.
+        header_key: Option<String>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.
@@ -110,6 +106,15 @@ pub enum ImportListItem {
         /// Whether the person has selected the row.
         selected: bool,
     },
+}
+
+/// The stable key of a group's header item.
+pub(crate) fn group_stable_key(group: &FolderReleaseDecisionKey) -> String {
+    format!(
+        "group:{}:{}",
+        hex::encode(coven::path_bytes(&group.watched_folder_path)),
+        hex::encode(group.relative_folder.as_bytes())
+    )
 }
 
 /// The stable key of a candidate's item, whichever tab places it.
@@ -125,11 +130,7 @@ impl ImportListItem {
     /// unambiguous.
     pub fn stable_key(&self) -> String {
         match self {
-            Self::GroupHeader { group, .. } => format!(
-                "group:{}:{}",
-                hex::encode(coven::path_bytes(&group.key.watched_folder_path)),
-                hex::encode(group.key.relative_folder.as_bytes())
-            ),
+            Self::GroupHeader { group, .. } => group_stable_key(&group.key),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", hex::encode(coven::path_bytes(&candidate.path)))
@@ -138,7 +139,7 @@ impl ImportListItem {
     }
 }
 
-/// The list view and position that reveal one candidate at its current
+/// The list view and place that reveal one candidate at its current
 /// placement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateListLocation {
@@ -147,27 +148,54 @@ pub struct ImportCandidateListLocation {
     /// The Pending group that has to be open for this candidate to be visible.
     pub group_key: Option<FolderReleaseDecisionKey>,
     pub visible_position: u64,
+    /// Where the candidate sits in that view, as a window's bound: a chain of
+    /// windows that starts at it shows it.
+    pub key: OrderKey,
 }
 
-/// Everything the chrome around the list shows, read with the items so none
-/// of it can drift from them.
+/// What the chrome around the list shows beside its rows and counts. Its
+/// own live query: a scan's rows move none of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
     pub watched_folders: Vec<WatchedFolder>,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
+    /// What the view asked the rows to be narrowed by when this read was
+    /// made: what the count's `narrowed` counts under, so a surface shows
+    /// the count only beside the filter it is for.
+    pub narrowing: ImportListNarrowing,
+}
+
+/// How many items the list holds, and how many of its tab's entries its
+/// narrowing keeps. Its own live query: the count that sizes the list's
+/// scroll view, which every scan commit moves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ImportListCount {
+    pub rows: u64,
     /// How many of the tab's entries the list shows, of how many it has,
     /// while the text filter or the filter entry narrows it; `None` while
     /// nothing does.
     pub narrowed: Option<NarrowedCount>,
-    /// What the view asked the rows to be narrowed by when this read was
-    /// made: what `narrowed` counts under, so a surface shows the count only
-    /// beside the filter it is for.
-    pub narrowing: ImportListNarrowing,
-    /// Where the list's view opened: the position its first selected row had
-    /// in it when the view was set, or its top (0) while it showed no
-    /// selected row. What a list narrowed anew shows on top.
-    pub opened_at: u64,
+}
+
+/// Where a list's view opens once it is set: what a list narrowed anew shows
+/// on top.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ImportListOpening {
+    /// The list's top: the view showed no selected row.
+    Top,
+    /// Its first selected row, as the write that set the view found it: the
+    /// key a chain of windows starts at, and the position the row sits at.
+    At { key: OrderKey, position: u64 },
+}
+
+/// One window of the list as it is read: its items, and the header of the
+/// group the first of them is a member of when the window starts inside the
+/// group, so a pinned header has it whichever windows are loaded.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportWindow {
+    pub read: WindowRead<ImportListItem>,
+    pub leading_header: Option<ImportListItem>,
 }
 
 /// What a view narrows its rows by: the tab, the text filter and the filter
@@ -198,47 +226,4 @@ pub struct ImportCounts {
     pub admitted: u32,
     /// How many candidates an import holds, waiting for the worker or running.
     pub imports_in_flight: u32,
-}
-
-/// One read of the list: the requested windows, the total, and the chrome, as
-/// the tables hold them.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportListProjection {
-    pub windows: Vec<LibraryBrowseWindow<ImportListItem>>,
-    pub total_count: u64,
-    pub summary: ImportQueueSummary,
-    /// Every entry of Found's filter, in the menu's order, with how many of
-    /// Found's rows it holds, whatever the view shows.
-    pub pending_filter_entries: Vec<PendingFilterEntry>,
-    /// What the selection holds and can be told to do, with what is running
-    /// for each selected row.
-    pub selection: crate::selection::SelectionSummary,
-    /// The changes to the list's view, its folds included, this read
-    /// reflects.
-    pub view_revision: u64,
-    /// The changes to the list's selection this read reflects: the person's,
-    /// and those that took out a row the list stopped showing.
-    pub selection_revision: u64,
-}
-
-/// A projection, and what woke the live query.
-#[derive(Debug, Clone)]
-pub struct ImportListSnapshot {
-    /// The requested windows whose rows differ from what the last snapshot
-    /// delivered for them, and every window asked for since; a window not
-    /// named holds the rows the surface already has.
-    pub windows: Vec<LibraryBrowseWindow<ImportListItem>>,
-    pub total_count: u64,
-    pub summary: ImportQueueSummary,
-    /// Every entry of Found's filter, in the menu's order, with how many of
-    /// Found's rows it holds.
-    pub pending_filter_entries: Vec<PendingFilterEntry>,
-    /// The changes to the selection the rows' `selected` reflects.
-    pub selection_revision: u64,
-    /// What the selection holds and can be told to do: the selected rows
-    /// this snapshot shows, with what is running for them.
-    pub selection: crate::selection::SelectionSummary,
-    /// The changes to the view, its folds included, the rows reflect.
-    pub view_revision: u64,
-    pub cause: coven::LiveQueryCause,
 }

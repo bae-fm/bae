@@ -461,7 +461,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     let key = crate::CandidateKey::folder(&dir);
     fixture.identify_ready(&dir, "mb-standing-import", "rg-standing-import").await;
 
-    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&list).await;
     assert!(!page_rows(&initial)[&key].1.facts.importing());
     let tables = crate::tables::ImportTables::new(fixture.db.clone());

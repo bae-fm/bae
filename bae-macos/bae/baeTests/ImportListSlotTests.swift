@@ -8,31 +8,44 @@ import XCTest
 
 private struct ReadFailed: Error {}
 
-extension ImportListPages {
-    /// Pages over `source` whose view changes, folds and reads are the given
-    /// stand-ins, and change nothing otherwise.
+extension ImportListHandle {
+    /// A handle over `items` whose view changes, folds and reads are the
+    /// given stand-ins, and change nothing otherwise.
     static func stub(
-        source: any PageSource<BridgeImportListItem>,
-        setView: @escaping @Sendable (BridgeImportListView) -> Void = { _ in },
-        waitForView:
-            @escaping @Sendable (BridgeImportListView) async throws -> Void = {
-                _ in
-            },
+        items: [BridgeImportListItem] = [],
+        queries: BridgeListQueries<BridgeImportListItem>? = nil,
+        setView:
+            @escaping @Sendable (BridgeImportListView) async throws
+            -> BridgeImportListOpening? = { _ in nil },
+        setGroupFolded:
+            @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool)
+            async throws -> Void = { _, _ in },
+        setAllGroupsFolded: @escaping @Sendable (Bool) async throws -> Void = {
+            _ in
+        },
         locateCandidate:
             @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
         firstIdentifyingCandidate:
             @escaping @Sendable () async throws -> Data? = { nil }
-    ) -> ImportListPages {
-        ImportListPages(
-            source: source,
+    ) -> ImportListHandle {
+        let fixed = ImportListHandle.fixed(items: items, tab: .pending)
+        return ImportListHandle(
+            queries: queries ?? fixed.queries,
+            summary: fixed.summary,
+            filterEntries: fixed.filterEntries,
+            selection: fixed.selection,
             setView: setView,
-            waitForView: waitForView,
-            setGroupFolded: { _, _ in },
-            setAllGroupsFolded: { _ in },
+            setGroupFolded: setGroupFolded,
+            setAllGroupsFolded: setAllGroupsFolded,
             locateCandidate: locateCandidate,
             firstIdentifyingCandidate: firstIdentifyingCandidate
         )
+    }
+
+    /// A handle whose every window read fails.
+    static func failing() -> ImportListHandle {
+        stub(queries: .failing(ReadFailed(), answers: UnansweredCount()))
     }
 }
 
@@ -45,39 +58,11 @@ private final class RecordedImportView: @unchecked Sendable {
     }
 
     func set(_ view: BridgeImportListView) {
-        lock.withLock { self.view = view }
+        lock.recording { self.view = view }
     }
 }
 
-/// A source whose every page fails immediately.
-private struct FailingPageSource: PageSource {
-    typealias Row = BridgeImportListItem
-
-    func subscribe(
-        offset _: Int,
-        limit _: Int,
-        onValue _: @escaping @MainActor @Sendable ([Row], Int) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        let task = Task { @MainActor in onError(ReadFailed()) }
-        return TaskBackedSubscription(task: task)
-    }
-
-    var pages: ImportListPages {
-        .stub(source: self)
-    }
-}
-
-private final class TaskBackedSubscription: PageSubscription,
-    @unchecked Sendable
-{
-    private let task: Task<Void, Never>
-
-    init(task: Task<Void, Never>) { self.task = task }
-
-    func cancel() { task.cancel() }
-}
-
+/// A view change that waits until the test lets it answer.
 private final class AppliedViewResolver: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Never>?
@@ -133,7 +118,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             reading: .unidentified,
             selected: false
         ),
-        headerPosition: nil
+        headerKey: nil
     )
 }
 
@@ -147,30 +132,29 @@ private func candidateStableKey(_ key: Data) -> String {
     "candidate:" + key.map { String(format: "%02x", $0) }.joined()
 }
 
-/// The import tab picks its pane before drawing one, so a failed first page
+/// The import tab picks its pane before drawing one, so a failed first window
 /// read has to reach it as `initialLoadError`.
 @MainActor
 @Suite("Import list slot read failures")
 struct ImportListSlotTests {
-    @Test("sort choices update the source and survive recreating the slot")
+    @Test("sort choices update the view and survive recreating the slot")
     func sortPreferenceReconfiguresAndPersists() async throws {
         let suite = "ImportListSlotTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let requests = RecordedImportView()
-        let source = FixedImportListPageSource(items: [])
         func makeSlot() -> ImportListSlot {
             ImportListSlot(
                 importStore: ImportStore(),
                 uiStore: UiStore(),
                 selection: ImportSelection(),
                 defaults: defaults,
-                makeSource: { view in
+                makeHandle: { view in
                     requests.set(view)
-                    return .stub(
-                        source: source,
-                        setView: { requests.set($0) }
-                    )
+                    return .stub(setView: {
+                        requests.set($0)
+                        return nil
+                    })
                 }
             )
         }
@@ -185,7 +169,7 @@ struct ImportListSlotTests {
         ] {
             slot.setSortOrder(order)
             #expect(slot.sortOrder == order)
-            #expect(requests.last?.order == order)
+            try await Wait.until { requests.last?.order == order }
             let reopened = makeSlot()
             #expect(reopened.sortOrder == order)
             reopened.startLoad()
@@ -194,14 +178,14 @@ struct ImportListSlotTests {
         }
     }
 
-    @Test("a failed first page becomes the slot's failure and an alert")
-    func aFailedFirstPageIsSurfaced() async throws {
+    @Test("a failed first window becomes the slot's failure and an alert")
+    func aFailedFirstWindowIsSurfaced() async throws {
         let uiStore = UiStore()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in FailingPageSource().pages }
+            makeHandle: { _ in .failing() }
         )
 
         #expect(slot.loadFailure == nil)
@@ -222,23 +206,15 @@ struct ImportListSlotTests {
         uiStore.setImportCandidateTab(.done)
         uiStore.setImportCandidateFilterText("hidden")
         let target = candidateKey(61)
-        let pageSource = FixedImportListPageSource(
-            items: (0..<80).map(candidateItem)
-        )
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in
+            makeHandle: { _ in
                 .stub(
-                    source: pageSource,
+                    items: (0..<80).map(candidateItem),
                     locateCandidate: { key in
-                        BridgeImportCandidateListLocation(
-                            stableKey: candidateStableKey(key),
-                            tab: .pending,
-                            groupKey: nil,
-                            visiblePosition: 61
-                        )
+                        located(key, at: 61, tab: .pending)
                     },
                     firstIdentifyingCandidate: { target }
                 )
@@ -263,11 +239,9 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in
+            makeHandle: { _ in
                 .stub(
-                    source: FixedImportListPageSource(
-                        items: (0..<80).map(candidateItem)
-                    ),
+                    items: (0..<80).map(candidateItem),
                     locateCandidate: { _ in
                         Issue.record("nothing to locate")
                         return nil
@@ -295,7 +269,6 @@ struct ImportListSlotTests {
                     toggleEntered.continuation.yield(())
                     for await _ in releaseToggle.stream { break }
                     writes.record("toggle")
-                    return 1
                 },
                 selectAll: { writes.record("select all") }
             )
@@ -304,19 +277,11 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: selection,
-            makeSource: { _ in
-                FixedImportListPageSource(
-                    items: (0..<80).map(candidateItem)
-                )
-                .pages
-            }
+            makeHandle: { _ in .stub(items: (0..<80).map(candidateItem)) }
         )
 
         let album = Data("/music/Album".utf8)
-        slot.changeSelection(
-            .toggle(add: [album], remove: []),
-            showing: [album]
-        )
+        slot.changeSelection(.toggle(add: [album], remove: []))
         var entered = toggleEntered.stream.makeAsyncIterator()
         await entered.next()
         slot.selectAllShown()
@@ -336,16 +301,12 @@ struct ImportListSlotTests {
             watchedFolderPath: Data("/library".utf8),
             relativeFolder: Data("Box".utf8)
         )
-        let source = FixedImportListPageSource(items: [])
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeSource: { _ in
-                ImportListPages(
-                    source: source,
-                    setView: { _ in },
-                    waitForView: { _ in },
+            makeHandle: { _ in
+                .stub(
                     setGroupFolded: { group, folded in
                         let folder =
                             String(bytes: group.relativeFolder, encoding: .utf8)
@@ -354,9 +315,7 @@ struct ImportListSlotTests {
                     },
                     setAllGroupsFolded: { folded in
                         folds.record("all \(folded)")
-                    },
-                    locateCandidate: { _ in nil },
-                    firstIdentifyingCandidate: { nil }
+                    }
                 )
             }
         )
@@ -372,23 +331,30 @@ struct ImportListSlotTests {
 
         #expect(folds.all == ["Box true", "Box false", "all true"])
     }
+}
 
-    /// Another tab is another view: until the read that reflects it lands,
-    /// the rows the list holds are the tab's before it, which the slot does
-    /// not take as this one's.
-    @Test("a new tab's rows are the list's only once the read for it lands")
+/// A view change: the write that sets it, the windows read after it and the
+/// row the table shows.
+@MainActor
+@Suite("Import list slot view changes")
+struct ImportListSlotViewChangeTests {
+    /// Another tab is another view: until the write that sets it answers and
+    /// the windows read after it land, the rows the list holds are the tab's
+    /// before it, which the slot does not take as this one's.
+    @Test("a new tab's rows are the list's only once its windows land")
     func aNewTabIsAnsweredByItsOwnRead() async throws {
         let delivery = AppliedViewResolver()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeSource: { _ in
+            makeHandle: { _ in
                 .stub(
-                    source: FixedImportListPageSource(
-                        items: (0..<3).map(candidateItem)
-                    ),
-                    waitForView: { view in await delivery.wait(for: view) }
+                    items: (0..<3).map(candidateItem),
+                    setView: { view in
+                        await delivery.wait(for: view)
+                        return nil
+                    }
                 )
             }
         )
@@ -405,37 +371,88 @@ struct ImportListSlotTests {
         try await Wait.until { slot.answersView }
     }
 
+    /// The write that sets a view answers where it opens; the windows are
+    /// read again from there, and the table is told which row to show.
+    @Test("a view change opens its windows at the row the write answers")
+    func aViewChangeOpensAtItsOpening() async throws {
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeHandle: { _ in
+                .stub(
+                    items: (0..<80).map(candidateItem),
+                    setView: { _ in
+                        .at(
+                            key: BridgeListQueries<BridgeImportListItem>
+                                .fixedKey(60),
+                            position: 60
+                        )
+                    }
+                )
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list?.idAt(0) != nil }
+        #expect(slot.opened.position == 0)
+
+        slot.setTab(.done)
+        try await Wait.until { slot.answersView && slot.opened.position == 60 }
+
+        #expect(slot.opened.narrowing.tab == .done)
+        #expect(slot.list?.row(at: 60) != nil)
+        #expect(slot.list?.row(at: 0) == nil)
+    }
+
     /// The slot asks core for the list under the entry the person chose, and
     /// keeps it as the sidebar's own.
     @Test("a chosen entry narrows the view")
     func aChosenEntryNarrowsTheView() async throws {
         let requests = RecordedImportView()
         let uiStore = UiStore()
-        let source = FixedImportListPageSource(items: [])
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { view in
+            makeHandle: { view in
                 requests.set(view)
-                return .stub(
-                    source: source,
-                    setView: { requests.set($0) }
-                )
+                return .stub(setView: {
+                    requests.set($0)
+                    return nil
+                })
             }
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
-        #expect(requests.last?.pendingFilter == .all)
+        #expect(requests.last?.pendingFilter == BridgePendingFilter.all)
 
         slot.setPendingFilter(.needsYou)
-        #expect(requests.last?.pendingFilter == .needsYou)
+        try await Wait.until {
+            requests.last?.pendingFilter == BridgePendingFilter.needsYou
+        }
         #expect(uiStore.importCandidatePendingFilter == .needsYou)
 
         slot.setPendingFilter(.all)
-        #expect(requests.last?.pendingFilter == .all)
+        try await Wait.until {
+            requests.last?.pendingFilter == BridgePendingFilter.all
+        }
         #expect(uiStore.importCandidatePendingFilter == .all)
     }
+}
+
+/// Where core says the candidate `key` sits in the fixed list.
+private func located(
+    _ key: Data,
+    at position: Int,
+    tab: BridgeTriageTab
+) -> BridgeImportCandidateListLocation {
+    BridgeImportCandidateListLocation(
+        stableKey: candidateStableKey(key),
+        tab: tab,
+        groupKey: nil,
+        visiblePosition: UInt64(position),
+        key: BridgeListQueries<BridgeImportListItem>.fixedKey(position)
+    )
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {
@@ -445,26 +462,20 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         uiStore.setImportCandidateTab(.pending)
         uiStore.setImportCandidateFilterText("hidden")
         let targetKey = candidateKey(61)
-        let items = (0..<80).map(candidateItem)
-        let pageSource = FixedImportListPageSource(items: items)
         let delivery = AppliedViewResolver()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in
+            makeHandle: { _ in
                 .stub(
-                    source: pageSource,
-                    waitForView: { view in
+                    items: (0..<80).map(candidateItem),
+                    setView: { view in
                         await delivery.wait(for: view)
+                        return nil
                     },
                     locateCandidate: { key in
-                        BridgeImportCandidateListLocation(
-                            stableKey: candidateStableKey(key),
-                            tab: .done,
-                            groupKey: nil,
-                            visiblePosition: 61
-                        )
+                        located(key, at: 61, tab: .done)
                     }
                 )
             }
@@ -517,7 +528,7 @@ struct ImportListSlotSavedOrderTests {
             uiStore: UiStore(),
             selection: ImportSelection(),
             defaults: defaults,
-            makeSource: { _ in FailingPageSource().pages }
+            makeHandle: { _ in .failing() }
         )
 
         #expect(slot.sortOrder == .newestFirst)

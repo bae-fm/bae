@@ -584,7 +584,7 @@ extension PreviewData {
                 + triageGroupedRows.map {
                     candidateItem(
                         $0,
-                        headerPosition: UInt64(importTabPendingRows.count)
+                        headerKey: groupHeaderStableKey(importTabGroupKey)
                     )
                 }
         case .done:

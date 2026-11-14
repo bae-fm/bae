@@ -10,35 +10,32 @@ impl ImportServiceHandle {
         self.services.diagnostics.bug_sink()
     }
 
-    /// Open an import list showing `view` through `windows`, with nothing
-    /// folded and nothing selected. Closing the library ends it.
+    /// Open an import list showing `view`, with nothing folded and nothing
+    /// selected. Closing the library ends it.
     pub async fn open_list(
         &self,
         view: crate::ImportListView,
-        windows: bae_store::LibraryPageWindows,
     ) -> Result<crate::LiveImportList, crate::ImportError> {
         Ok(crate::LiveImportList::open(
             self.services.tables.clone(),
             self.services.closing.child_token(),
             self.bugs(),
             view,
-            windows,
         )
         .await?)
     }
 
-    /// One read of a list showing `view` through `windows`, for a caller
-    /// with no list open: a list opened for the read and closed after it.
+    /// Every item of the list showing `view`, once, for a caller with no
+    /// list open: a list opened for the read and closed after it.
     pub async fn load_list(
         &self,
         view: crate::ImportListView,
-        windows: bae_store::LibraryPageWindows,
-    ) -> Result<crate::ImportListProjection, crate::ImportError> {
+    ) -> Result<Vec<crate::ImportListItem>, crate::ImportError> {
         let list = self.services.tables.open_import_list(view).await?;
-        let projection =
-            self.services.tables.load_import_list(crate::ImportListRequest { list, windows }).await;
+        let window = bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+        let read = self.services.tables.read_import_window(list, window).await;
         self.services.tables.close_import_list(list).await?;
-        Ok(projection?)
+        Ok(read?.read.rows)
     }
 
     /// Where each watched folder's scan stands: the first value at once, then
@@ -150,26 +147,6 @@ impl ImportServiceHandle {
         self.services.tables.subscribe_invalid_candidate(initial)
     }
 
-    /// The import list for `view` as one window over every item, for a test
-    /// that watches it change.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn subscribe_whole_list(&self, view: crate::ImportListView) -> crate::LiveImportList {
-        self.subscribe_list_window(view, bae_store::LibraryPageWindow::at(0, u64::MAX)).await
-    }
-
-    /// The import list for `view` through one window, for a test that
-    /// watches what changes off the page.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn subscribe_list_window(
-        &self,
-        view: crate::ImportListView,
-        window: bae_store::LibraryPageWindow,
-    ) -> crate::LiveImportList {
-        self.open_list(view, std::iter::once(window).collect())
-            .await
-            .expect("the import list opens")
-    }
-
     /// The first tab counts `accept` admits, waiting through the query's
     /// values until one does. The counts land after the commit they reflect,
     /// so a test that just observed a scan event waits here for the read.
@@ -187,20 +164,46 @@ impl ImportServiceHandle {
         }
     }
 
-    /// The list for `view`, read through every row, once `accept` admits one
-    /// of its values. The list lands after the commit it reflects, so a test
-    /// that just observed a scan event waits here for the read.
+    /// The list for `view` followed through one window over every item, for
+    /// a test that watches it change.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn subscribe_whole_list(
+        &self,
+        view: crate::ImportListView,
+    ) -> crate::list::FollowedImportList {
+        self.follow_list(
+            view,
+            bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX },
+        )
+        .await
+    }
+
+    /// The list for `view` followed through `window`, for a test that
+    /// watches what changes off the window.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn follow_list(
+        &self,
+        view: crate::ImportListView,
+        window: bae_store::ListWindow,
+    ) -> crate::list::FollowedImportList {
+        let list = self.open_list(view).await.expect("the import list opens");
+        crate::list::FollowedImportList::follow(list, window)
+    }
+
+    /// The list for `view`, read through every row, once `accept` admits
+    /// it. The list lands after the commit it reflects, so a test that just
+    /// observed a scan event waits here for the read.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_list(
         &self,
         view: crate::ImportListView,
-        mut accept: impl FnMut(&crate::ImportListSnapshot) -> bool,
-    ) -> crate::ImportListSnapshot {
-        let subscription = self.subscribe_whole_list(view).await;
+        mut accept: impl FnMut(&crate::list::ImportListRead) -> bool,
+    ) -> crate::list::ImportListRead {
+        let list = self.subscribe_whole_list(view).await;
         loop {
-            let snapshot = subscription.next().await.expect("the import list query stays open");
-            if accept(&snapshot) {
-                return snapshot;
+            let read = list.next().await;
+            if accept(&read) {
+                return read;
             }
         }
     }

@@ -27,19 +27,19 @@ extension PreviewData {
     static func candidateItem(
         _ row: BridgeTriageRow
     ) -> BridgeImportListItem {
-        candidateItem(row, headerPosition: nil)
+        candidateItem(row, headerKey: nil)
     }
 
-    /// `row` listed under the group header at `headerPosition`, or in
-    /// no group.
+    /// `row` listed under the group header with the stable key `headerKey`,
+    /// or in no group.
     static func candidateItem(
         _ row: BridgeTriageRow,
-        headerPosition: UInt64?
+        headerKey: String?
     ) -> BridgeImportListItem {
         .candidate(
             stableKey: "candidate:\(hex(row.candidateKey))",
             row: row,
-            headerPosition: headerPosition
+            headerKey: headerKey
         )
     }
 
@@ -53,6 +53,13 @@ extension PreviewData {
         )
     }
 
+    /// The stable key core gives the header of the group `key` names.
+    static func groupHeaderStableKey(
+        _ key: BridgeFolderReleaseDecisionKey
+    ) -> String {
+        "group:\(hex(key.watchedFolderPath)):\(hex(key.relativeFolder))"
+    }
+
     static func groupHeaderItem(
         key: BridgeFolderReleaseDecisionKey,
         name: String,
@@ -61,8 +68,7 @@ extension PreviewData {
         entryCount: UInt32
     ) -> BridgeImportListItem {
         .groupHeader(
-            stableKey:
-                "group:\(hex(key.watchedFolderPath)):\(hex(key.relativeFolder))",
+            stableKey: groupHeaderStableKey(key),
             group: BridgeTriageGroup(
                 key: key,
                 name: name,
@@ -111,19 +117,16 @@ extension PreviewData {
     static func importQueueSummary(
         watchedFolders: [BridgeWatchedFolder],
         hasGroups: Bool = false,
-        narrowed: BridgeNarrowedCount? = nil,
         filterText: String = ""
     ) -> BridgeImportQueueSummary {
         BridgeImportQueueSummary(
             watchedFolders: watchedFolders,
             hasGroups: hasGroups,
-            narrowed: narrowed,
             narrowing: BridgeImportListNarrowing(
                 tab: .pending,
                 filterText: filterText,
                 pendingFilter: .all
-            ),
-            openedAt: 0
+            )
         )
     }
 

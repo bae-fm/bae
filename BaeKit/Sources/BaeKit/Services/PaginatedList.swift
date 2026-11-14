@@ -109,11 +109,23 @@ where Row.ID: Sendable {
     /// Read the top of the list and its count, and wait for both. Called when
     /// the list is first mounted, and again to retry a failed first read.
     public func loadInitial() async {
+        await reopen(at: nil, position: 0)
+    }
+
+    /// Read the list again from `key` (its top when nil), standing `position`
+    /// in for the count of rows before it until that count answers, and wait
+    /// for the first window and the count. The windows, the count and the
+    /// headings read before are dropped for new ones, so every value that
+    /// answers was read after whatever write made the reopen necessary.
+    public func reopen(at key: [BridgeSortValue]?, position: Int) async {
         initialLoadError = nil
         countAnswered = false
+        jump?.cancel()
+        jump = nil
+        jumpId = UUID()
         openCount()
         openSections()
-        startChain(at: nil, position: 0)
+        startChain(at: key, position: position)
         await firstAnswerWaiting.wait(
             unless: (firstAnswered && countAnswered) || initialLoadError != nil
         )
@@ -186,9 +198,6 @@ where Row.ID: Sendable {
     }
 
     private func apply(_ count: BridgeListCount) {
-        if initialLoadError != nil {
-            initialLoadError = nil
-        }
         let total = Int(count.rows)
         if total != totalCount {
             totalCount = total
@@ -350,7 +359,9 @@ where Row.ID: Sendable {
         logger.error("Live list read failed: \(String(reflecting: error))")
         onError(error)
     }
+}
 
+extension PaginatedList {
     // MARK: - Test/Preview support
 
     #if DEBUG
@@ -389,6 +400,17 @@ extension PaginatedList {
             }
         }
         return nil
+    }
+
+    /// The row that belongs above a window's rows without being among them,
+    /// when `id` is that row of a window the list holds.
+    public func leadingHeader(of id: Row.ID) -> Row? {
+        placed.lazy.compactMap(\.leadingHeader).first { $0.id == id }
+    }
+
+    /// Every row the list holds, in order.
+    public var loadedRows: [Row] {
+        placed.flatMap(\.rows)
     }
 
     /// The row of `id` the list holds, or nil if no window holds it. A row

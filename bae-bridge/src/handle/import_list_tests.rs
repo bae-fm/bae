@@ -1,18 +1,25 @@
 //! The import list's selection through the bridge object the macOS app holds.
 
 use crate::types::{
-    BridgeImportListItem, BridgeImportListOrder, BridgeImportListSnapshot, BridgeImportListView,
-    BridgeLibraryPageWindow, BridgePendingFilter, BridgeSelectionChange, BridgeTriageTab,
+    BridgeImportListItem, BridgeImportListOrder, BridgeImportListView, BridgeListRows,
+    BridgeListWindow, BridgeListWindowValue, BridgePendingFilter, BridgeSelectionChange,
+    BridgeSelectionSummary, BridgeTriageTab,
 };
 use std::sync::Arc;
 
-/// The candidate keys the snapshot's page shows, and those it shows selected,
-/// top to bottom.
-fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
-    let shown: Vec<_> = snapshot
-        .windows
+/// The first fifty items of the list, a window of its own.
+fn page() -> BridgeListWindow {
+    BridgeListWindow::Forward { from: None, until: None, limit: 50 }
+}
+
+/// The candidate keys the window shows, and those it shows selected, top to
+/// bottom.
+fn rows(value: &BridgeListWindowValue) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
+    let BridgeListRows::Import { items, .. } = &value.rows else {
+        panic!("the import list's window holds the import list's rows");
+    };
+    let shown: Vec<_> = items
         .iter()
-        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             BridgeImportListItem::Candidate { row, .. } => Some(row),
             _ => None,
@@ -24,23 +31,43 @@ fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
     )
 }
 
-/// The list's values until one `accept` admits.
+/// The window's values until one `accept` admits.
 fn until(
     handle: &crate::handle::AppHandle,
-    list: &Arc<crate::ImportListSubscription>,
-    accept: impl Fn(&BridgeImportListSnapshot) -> bool,
-) -> BridgeImportListSnapshot {
+    window: &Arc<crate::ListWindowSubscription>,
+    accept: impl Fn(&BridgeListWindowValue) -> bool,
+) -> BridgeListWindowValue {
     handle.runtime.block_on(async {
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
-                let snapshot = list.clone().next().await.expect("the list answers");
-                if accept(&snapshot) {
-                    return snapshot;
+                let value = window.clone().next().await.expect("the window answers");
+                if accept(&value) {
+                    return value;
                 }
             }
         })
         .await
-        .expect("the list gets there")
+        .expect("the window gets there")
+    })
+}
+
+/// The selection's values until one `accept` admits.
+fn until_selected(
+    handle: &crate::handle::AppHandle,
+    selection: &Arc<crate::ImportSelectionSubscription>,
+    accept: impl Fn(&BridgeSelectionSummary) -> bool,
+) -> BridgeSelectionSummary {
+    handle.runtime.block_on(async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            loop {
+                let value = selection.clone().next().await.expect("the selection answers");
+                if accept(&value) {
+                    return value;
+                }
+            }
+        })
+        .await
+        .expect("the selection gets there")
     })
 }
 
@@ -77,29 +104,29 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50, cursor: None }]).unwrap();
-    until(handle.handle(), &list, |snapshot| rows(snapshot).0 == parts);
+    let window = list.subscribe_list_window(page());
+    let selection = list.subscribe_selection();
+    until(handle.handle(), &window, |value| rows(value).0 == parts);
 
-    let revision = handle
+    handle
         .handle()
         .runtime
         .block_on(
             list.clone().change_selection(BridgeSelectionChange::Replace { keys: parts.clone() }),
         )
         .unwrap();
-    until(handle.handle(), &list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 2
-    });
+    until_selected(handle.handle(), &selection, |summary| summary.count == 2);
     let combined = handle.handle().runtime.block_on(list.clone().combine_selection()).unwrap();
-    until(handle.handle(), &list, |snapshot| {
-        rows(snapshot) == (vec![combined.clone()], vec![combined.clone()])
+    until_selected(handle.handle(), &selection, |summary| summary.count == 1);
+    until(handle.handle(), &window, |value| {
+        rows(value) == (vec![combined.clone()], vec![combined.clone()])
     });
 
     let returned = handle.handle().runtime.block_on(list.clone().separate_selection()).unwrap();
     assert_eq!(returned, parts);
-    let separated =
-        until(handle.handle(), &list, |snapshot| rows(snapshot) == (parts.clone(), parts.clone()));
-    assert_eq!(separated.selection.count, 2);
+    until(handle.handle(), &window, |value| rows(value) == (parts.clone(), parts.clone()));
+    let separated = until_selected(handle.handle(), &selection, |summary| summary.count == 2);
+    assert_eq!(separated.count, 2);
     handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
@@ -130,9 +157,10 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50, cursor: None }]).unwrap();
-    until(handle.handle(), &list, |snapshot| rows(snapshot).0 == [key.clone()]);
-    let revision = handle
+    let window = list.subscribe_list_window(page());
+    let selection = list.subscribe_selection();
+    until(handle.handle(), &window, |value| rows(value).0 == [key.clone()]);
+    handle
         .handle()
         .runtime
         .block_on(
@@ -140,9 +168,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
                 .change_selection(BridgeSelectionChange::Replace { keys: vec![key.clone()] }),
         )
         .unwrap();
-    until(handle.handle(), &list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 1
-    });
+    until_selected(handle.handle(), &selection, |summary| summary.count == 1);
 
     let progress = list.selection_action_progress();
     handle

@@ -7,7 +7,7 @@ import Testing
 
 /// The list's rows selected through its table: each press and key reaches
 /// core as the selection change it is, the table highlights what core holds,
-/// a click is never undone by a list read from before it, and Select All
+/// and Select All
 /// asks core for every row the list shows.
 @Suite("Import list selection")
 struct ImportListSelectionTests {
@@ -31,22 +31,17 @@ struct ImportListSelectionTests {
         uiStore.setImportCandidateTab(.pending)
         let store = PreviewData.importTabScene().store
         let changes = CallLog<BridgeSelectionChange>()
-        let slot = ImportListSlot.preview(
-            importStore: store,
-            uiStore: uiStore,
+        let slot = try await Self.selectingSlot(
             items: (grouped ? [Self.groupHeader] : [])
                 + [
                     PreviewData.candidateItem(
                         PreviewData.triageRowIdentified,
-                        headerPosition: grouped ? 0 : nil
+                        headerKey: grouped ? Self.groupHeader.id : nil
                     )
                 ],
-            selection: ImportSelection(
-                operations: .stub(change: { change in
-                    changes.record(change)
-                    return 1
-                })
-            )
+            store: store,
+            uiStore: uiStore,
+            changes: changes
         )
         try await ImportListHosting.withList(
             store: store,
@@ -64,38 +59,34 @@ struct ImportListSelectionTests {
                     ])
                 ]
             )
-            #expect(table.selectedRowIndexes == [row])
+            // The highlight is what core's windows hold once they deliver.
+            try await Wait.until(notices: [.selection(of: table)]) {
+                table.selectedRowIndexes == [row]
+                    && slot.list?.selectedKeys == [
+                        PreviewData.triageRowIdentified.candidateKey
+                    ]
+            }
         }
     }
 
-    /// A click shows the clicked row selected at once. Core's list catches up
-    /// only after the click's write lands, and a list read taken before that —
-    /// still selecting the row the click replaced — must not put that row back.
+    /// The table highlights the rows its list holds as selected: a click
+    /// writes the selection, and the highlight follows once the windows
+    /// holding the rows the click changed deliver them.
     @MainActor
-    @Test(
-        "a click stays selected, and a list read from before it can't undo it"
-    )
-    func aClickIsNotUndoneByAnOlderListRead() async throws {
+    @Test("the highlight follows the selected rows the list delivers")
+    func theHighlightFollowsTheListsRows() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let first = Self.row(PreviewData.triageRowIdentified, selected: true)
-        let second = Self.row(
-            PreviewData.triageRowUnidentified,
-            selected: false
-        )
-        let written = AsyncStream<Void>.makeStream()
-        let slot = ImportListSlot.preview(
-            importStore: store,
+        let changes = CallLog<BridgeSelectionChange>()
+        let slot = try await Self.selectingSlot(
+            items: [
+                Self.row(PreviewData.triageRowIdentified, selected: true),
+                Self.row(PreviewData.triageRowUnidentified, selected: false),
+            ],
+            store: store,
             uiStore: uiStore,
-            items: [first, second],
-            selection: ImportSelection(
-                operations: .stub(change: { _ in
-                    for await _ in written.stream { break }
-                    return 2
-                })
-            )
+            changes: changes
         )
-        store.applySelectionRevision(1)
         try await ImportListHosting.withList(
             store: store,
             slot: slot,
@@ -105,27 +96,14 @@ struct ImportListSelectionTests {
             let secondKey = PreviewData.triageRowUnidentified.candidateKey
 
             try ImportListHosting.press(row: 1, in: table)
+            try await Wait.until { !changes.all.isEmpty }
+            #expect(changes.all == [.replace(keys: [secondKey])])
+
+            // The windows holding the two rows the click changed deliver.
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [1]
+                    && slot.list?.selectedKeys == [secondKey]
             }
-
-            // A list read from before the click's write: the first row still
-            // selected, at the revision the click started from.
-            store.ingest([first, second])
-            store.applySelectionRevision(1)
-            try await Wait.untilSteady { table.selectedRowIndexes }
-            #expect(table.selectedRowIndexes == [1])
-
-            // The write lands, and the list read that reflects it.
-            written.continuation.yield(())
-            store.ingest([
-                Self.row(PreviewData.triageRowIdentified, selected: false),
-                Self.row(PreviewData.triageRowUnidentified, selected: true),
-            ])
-            store.applySelectionRevision(2)
-            try await Wait.untilSteady { table.selectedRowIndexes }
-            #expect(table.selectedRowIndexes == [1])
-            #expect(store.shownSelectedKeys == [secondKey])
         }
     }
 
@@ -136,19 +114,14 @@ struct ImportListSelectionTests {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
         let changes = CallLog<BridgeSelectionChange>()
-        let slot = ImportListSlot.preview(
-            importStore: store,
-            uiStore: uiStore,
+        let slot = try await Self.selectingSlot(
             items: [
                 Self.row(PreviewData.triageRowIdentified, selected: true),
                 Self.row(PreviewData.triageRowUnidentified, selected: false),
             ],
-            selection: ImportSelection(
-                operations: .stub(change: { change in
-                    changes.record(change)
-                    return 1
-                })
-            )
+            store: store,
+            uiStore: uiStore,
+            changes: changes
         )
         try await ImportListHosting.withList(
             store: store,
@@ -188,23 +161,18 @@ struct ImportListSelectionTests {
             name: "Group",
             entryCount: 1
         )
-        let slot = ImportListSlot.preview(
-            importStore: store,
-            uiStore: uiStore,
+        let slot = try await Self.selectingSlot(
             items: [
                 Self.row(PreviewData.triageRowIdentified, selected: true),
                 header,
                 PreviewData.candidateItem(
                     PreviewData.triageRowUnidentified,
-                    headerPosition: 1
+                    headerKey: header.id
                 ),
             ],
-            selection: ImportSelection(
-                operations: .stub(change: { change in
-                    changes.record(change)
-                    return 1
-                })
-            )
+            store: store,
+            uiStore: uiStore,
+            changes: changes
         )
         try await ImportListHosting.withList(
             store: store,
@@ -272,6 +240,35 @@ struct ImportListSelectionTests {
         }
     }
 
+    /// A slot over a list that takes each selection change the way core does:
+    /// it records the change, marks the rows, and delivers them, so the
+    /// table's highlight is what the delivered windows say.
+    @MainActor
+    private static func selectingSlot(
+        items: [BridgeImportListItem],
+        store: ImportStore,
+        uiStore: UiStore,
+        changes: CallLog<BridgeSelectionChange>
+    ) async throws -> ImportListSlot {
+        let source = MutableImportList(items: items)
+        let slot = ImportListSlot(
+            importStore: store,
+            uiStore: uiStore,
+            selection: ImportSelection(
+                operations: .stub(change: { change in
+                    changes.record(change)
+                    await source.apply(change)
+                })
+            ),
+            makeHandle: { _ in source.handle }
+        )
+        slot.startLoad()
+        try await Wait.until {
+            slot.list?.row(at: items.count - 1) != nil
+        }
+        return slot
+    }
+
     private static func row(
         _ row: BridgeTriageRow,
         selected: Bool
@@ -331,13 +328,11 @@ enum ImportListHosting {
     static let settledSummary = BridgeImportQueueSummary(
         watchedFolders: [],
         hasGroups: false,
-        narrowed: nil,
         narrowing: BridgeImportListNarrowing(
             tab: .pending,
             filterText: "",
             pendingFilter: .all
-        ),
-        openedAt: 0
+        )
     )
 
     /// Host the list, wait for its table to lay out its rows, and hand the

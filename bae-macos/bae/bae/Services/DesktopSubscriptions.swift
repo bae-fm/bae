@@ -210,7 +210,6 @@ final class DesktopSubscriptions {
         )
         self.importSelection = importSelection
         let applySelection = Self.selectionSink(
-            importStore: importStore,
             importSelection: importSelection,
             observations: (selectionObservation, invalidSelectionObservation)
         )
@@ -224,36 +223,24 @@ final class DesktopSubscriptions {
             importStore: importStore,
             uiStore: uiStore,
             selection: importSelection,
-            makeSource: { view in
+            onSelection: applySelection,
+            makeHandle: { view in
                 let list = try await appHandle.subscribeImportList(view: view)
                 selectionOwner.own(list)
-                return ImportListPageSource(
-                    subscription: list,
-                    onSummary: { summary in
-                        importStore.applySummary(summary)
-                    },
-                    onPendingFilterEntries: { entries in
-                        importStore.applyPendingFilterEntries(entries)
-                    },
-                    onSelection: applySelection
-                )
-                .pages
+                return ImportListHandle(list: list)
             }
         )
     }
 
     /// Where the list's selection goes with each of its values: the
-    /// selection the panes read, the revision the rows reflect, and the read
-    /// behind the one selected row.
+    /// selection the panes read, and the read behind the one selected row.
     private static func selectionSink(
-        importStore: ImportStore,
         importSelection: ImportSelection,
         observations: (
             ImportSelectionObservation, InvalidCandidateSelectionObservation
         )
-    ) -> @MainActor @Sendable (BridgeSelectionSummary, UInt64) -> Void {
-        { summary, revision in
-            importStore.applySelectionRevision(revision)
+    ) -> @MainActor @Sendable (BridgeSelectionSummary) -> Void {
+        { summary in
             importSelection.apply(summary)
             observations.0.selectionChanged(
                 single: summary.single?.candidateKey

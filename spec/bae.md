@@ -1113,20 +1113,32 @@ previous view's, nor "No matches" for them.
 A list narrowed anew — another tab, filter or search — shows on top the row
 its view opened at: its first selected row as it sat when the view was set,
 or its top while no selected row is shown. The write that sets the view
-works that place out and keeps it on the list, so no read of the list looks
-for the selected row; selecting rows since moves no place, and the list
-otherwise keeps the person's place as rows come and go. The write finds the
-first selected row among the selected rows alone, and counts the rows before
-it by the same index seeks a window is read beside a row by, as a count over
-index ranges and not a numbering of each row, and a view with nothing selected
-opens at its top without reading its rows.
+works that place out and answers with it, as the row's key and its position,
+or its top, and nothing when the view did not change; the screen drops the
+windows and counts it holds and opens new ones from that place, so a read
+opened after the write sees the new view from its first value and no read
+carries a revision. Nothing keeps the place on the list: selecting rows
+since moves no place, and the list otherwise keeps the person's place as rows
+come and go. The write finds the first selected row among the selected rows
+alone, and counts the rows before it by the same index seeks a window is read
+beside a row by, as a count over index ranges and not a numbering of each row,
+and a view with nothing selected opens at its top without reading its rows.
 
 Revealing a candidate — the first one still being identified, or one the
 person asks for — shows it on the tab its placement puts it on, with the
 filters cleared and its group opened, the list's other folds kept.
 
-Everything the list shows is read from tables, one read for its rows, its
-counts and its selection: each release's tab, state, group, dates, shown text
+Everything the list shows is read from tables, each piece its own live query:
+each window of its rows (a range of its order, bounded by the sort values of a
+row at each end), how many items it holds and how many its filters keep, where
+a key sits in it, the chrome around it (watched folders, whether Found has
+groups, what the view narrows by), Found's filter entries, and what its
+selection holds and offers. A row carries whether it is selected, so a
+selection write reruns the windows holding the rows it changed and the
+selection's own read. Folding a group reruns the windows holding it. A fold
+and a selection answer nothing, and the screen keeps no selection of its own:
+the rows it holds say which are selected, so a click shows once the windows
+holding the rows it changed deliver them. Each release's tab, state, group, dates, shown text
 and what its commands are decided from are kept beside it as it changes
 (Appendix A.7), so the list reads the rows it shows and not the whole queue.
 A row reads none of its folder's files, so a folder on a slow or unreachable
@@ -1141,23 +1153,34 @@ embedded covers name in one statement each, not one per row.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are kept beside the placement as rows move, so reading them costs
-the same however long the queue is. Each tab's count is not part of the
-list's value: it moves with every commit of a scan, so it is a read of its
-own, sent on a stream keyed by tab, and the tab bar's labels read it each
-display frame. A search counts the rows its index finds in every read of the list:
+the same however long the queue is. The list's count, with the narrowed count
+it carries, is a live query of its own and never beside the rows: a scan's
+commit moves it without resending every window. Each tab's count is a read of
+its own as well, sent on a stream keyed by tab, and the tab bar's labels read
+it each display frame. Coven bounds a window's read by its range only where
+the statement compares a column with the window's keys; the list's items read
+a group's header through a correlated subquery of the placement, so a scan item
+or a fold reruns every window of the list, and a window that delivers the
+rows it held sends nothing; a selection write reruns only the windows holding
+its rows. A search counts the rows its index finds in every read of the list:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the
-index. A window that carries a cursor, the sort values of the row the screen holds
-beside it, is read through the order's index starting just past that row (or
-ending just short of it), running on into the next part of the tab, or back
-into the one before it, when its part holds too few rows; a window without one,
-a jump, is read by its offset from the top of the tab. A search reads each
-row the list's order passes and tests it; one that finds few rows reads a
-window from the rows it finds instead, sorted, when that reads fewer rows
-than the order would pass from the top or end of the list.
-The header of the group a window starts inside is placed by counting the
-group's rows before the window, not the list's. Found reads its windows past
+index. A window is a range of the order: from the sort values of one row to
+those of another, each bound optional, read through the order's index and
+running on into the next part of the tab, or back into the one before it, when
+its part holds too few rows. A key leads with the number of its part (Done's
+queued uploads are the first part, its other rows the second, every other tab
+one), so a range may start in one part and end in another. A jump to a
+position reads the key of the item there by offset from the top of the tab,
+once, and starts a chain of windows from it. A search reads each
+row the list's order passes and tests it; a jump of a search that finds few
+rows reads the key from the rows it finds instead, sorted, when that reads fewer
+rows than the order would pass from the top or end of the list.
+A member of a group names its header by the header's stable key, and a window
+that starts inside a group delivers that header beside its rows (the leading
+header), so the pinned header has it whichever windows are loaded and no read
+counts the rows above a window. Found reads its windows past
 the members of the groups it folds shut, so
 with every group folded a window costs about the headers it shows; and whether
 a header offers to read its folder as one release is kept on the header as the
@@ -5102,15 +5125,10 @@ Reads come two ways:
   reads the sort values of the row at a position once, by offset, and starts a
   chain there. A row whose sort values move it from one window to its
   neighbour can show in both or in neither until the second window's value
-  arrives. The import list pages by cursor: a window carries the sort
-  values of the row at the screen's edge, the first or last
-  row of a window the screen was delivered, and is read from them through the
-  index, starting just past that row or ending just short of it, so its cost
-  does not grow with how deep in the list it is. Every delivered window
-  carries the sort values of its first and last rows, which the screen sends
-  back for the window beside it. Nothing about where rows sit is kept between
-  reads. Any other window, such as one a jump to the middle of the list
-  reaches, is read by its offset, past every row before it. The playback queue's upcoming tracks are read by offset alone: the
+  arrives. The import list is read the same way: each of its windows, its count, the
+  position of a key and the chrome around it is a live read of its own,
+  opened from the open list, whose keys lead with the number of the part of
+  the tab a row is in. Nothing about where rows sit is kept between reads. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
   so a deep window costs little. The Storage manager's search counts what it
   finds first: from library search's indexes when its text is in fewer
@@ -6071,7 +6089,7 @@ Beside them, keyed by the release an import made:
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order, holding Done's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list_tab_count`, `import_list_entry_count`, `import_list_group_entry_count` | how many placement rows each tab holds of each kind, how many of Found's releases each filter entry holds, and how many of each group's releases each entry holds, kept by triggers on the placement in the write that moves a row, so the list's counts read these and not the placement |
-| `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
+| `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
 

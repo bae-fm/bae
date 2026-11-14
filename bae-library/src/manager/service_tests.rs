@@ -105,11 +105,11 @@ async fn done_with_two_uploading(
 }
 
 /// The release names one read of a list shows, in order.
-fn done_names(projection: &bae_import::ImportListProjection) -> Vec<String> {
-    projection
-        .windows
+fn done_names(window: &bae_import::ImportWindow) -> Vec<String> {
+    window
+        .read
+        .rows
         .iter()
-        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
@@ -122,26 +122,22 @@ fn done_names(projection: &bae_import::ImportListProjection) -> Vec<String> {
 async fn open_list(
     manager: &TestLibrary,
     view: bae_import::ImportListView,
-    windows: bae_store::LibraryPageWindows,
 ) -> Result<bae_import::LiveImportList, bae_import::ImportError> {
-    manager.start_import().await?.open_list(view, windows).await
+    manager.start_import().await?.open_list(view).await
 }
 
-/// One read of `list` through `offset` and `limit`.
+/// `limit` items of `list` from the item at `offset`: the key a jump to the
+/// offset reads, and the range from it.
 async fn read_list(
     db: &bae_store::Store,
     list: bae_import::ImportListId,
     offset: u64,
     limit: u64,
-) -> bae_import::ImportListProjection {
+) -> bae_import::ImportWindow {
     let tables = bae_import::tables::ImportTables::new(db.clone());
-    tables
-        .load_import_list(bae_import::ImportListRequest {
-            list,
-            windows: std::iter::once(bae_store::LibraryPageWindow::at(offset, limit)).collect(),
-        })
-        .await
-        .unwrap()
+    let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
+    let window = bae_store::ListWindow::Forward { from: Some(key), until: None, limit };
+    tables.read_import_window(list, window).await.unwrap()
 }
 
 /// Done runs the releases coven still has uploads queued for first, the first
@@ -176,7 +172,19 @@ async fn done_runs_the_releases_still_uploading_first() {
         tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager.store, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
-    assert_eq!(across.total_count, 4);
+    assert_eq!(tables.read_import_list_for_test(list).await.unwrap().total_count, 4);
+    assert!(across.read.beyond.is_some(), "A lies past the window");
+    // A key leads with the number of the part its row is in: C and B are
+    // still uploading, A and D are not.
+    let part = |key: &bae_store::list_windows::OrderKey| key.values()[0].clone();
+    let first = across.read.first.as_ref().expect("a window holding rows has a first key");
+    assert_eq!(
+        part(first),
+        bae_store::list_windows::SortValue::Integer(0),
+        "B is in the first part"
+    );
+    let beyond = across.read.beyond.as_ref().unwrap();
+    assert_eq!(part(beyond), bae_store::list_windows::SortValue::Integer(1), "A is in the second");
     assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let location =
@@ -189,12 +197,14 @@ async fn done_runs_the_releases_still_uploading_first() {
         )
         .await
         .unwrap();
-    tables
+    let opening = tables
         .set_import_list_view(list, done(bae_import::ImportListOrder::OldestFirst))
         .await
         .unwrap();
-    let selected = read_list(&manager.store, list, 0, 0).await;
-    assert_eq!(selected.summary.opened_at, 1, "the view opens at B, still uploading, behind C");
+    assert!(
+        matches!(opening, Some(bae_import::ImportListOpening::At { position: 1, .. })),
+        "the view opens at B, still uploading, behind C: {opening:?}"
+    );
     assert_eq!(
         tables
             .load_import_list_selected(list)
@@ -211,11 +221,12 @@ async fn done_runs_the_releases_still_uploading_first() {
 
 /// Each Done row's name and how its release's upload stands, in order.
 fn done_uploads(
-    windows: &[bae_store::LibraryBrowseWindow<bae_import::ImportListItem>],
+    window: &bae_import::ImportWindow,
 ) -> Vec<(String, Option<bae_records::UploadProgress>)> {
-    windows
+    window
+        .read
+        .rows
         .iter()
-        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => {
                 Some((row.folder_name.clone(), row.upload.clone()))
@@ -233,20 +244,24 @@ async fn a_done_row_carries_its_release_upload() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     done_with_two_uploading(&test, temp_dir.path()).await;
-    let subscription = open_list(
+    let list = open_list(
         &test.library,
         bae_import::ImportListView {
             tab: bae_import::TriageTab::Done,
             order: bae_import::ImportListOrder::PathAscending,
             ..bae_import::ImportListView::default()
         },
-        std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
     )
     .await
     .unwrap();
+    let subscription = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
+        from: None,
+        until: None,
+        limit: 50,
+    }));
     let waiting = Some(bae_records::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
-        done_uploads(&subscription.next().await.unwrap().windows),
+        done_uploads(&subscription.next().await.unwrap().result.unwrap()),
         [
             ("C".to_string(), waiting.clone()),
             ("B".to_string(), waiting),
@@ -271,7 +286,7 @@ async fn a_done_row_carries_its_release_upload() {
     });
     let sending = Some(bae_records::UploadProgress { queued: 0, uploading: 1 });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while !done_uploads(&subscription.next().await.unwrap().windows)
+        while !done_uploads(&subscription.next().await.unwrap().result.unwrap())
             .iter()
             .any(|(_, upload)| *upload == sending)
         {}
@@ -282,7 +297,7 @@ async fn a_done_row_carries_its_release_upload() {
     resume.send(()).unwrap();
     drain.await.unwrap().unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while done_uploads(&subscription.next().await.unwrap().windows)
+        while done_uploads(&subscription.next().await.unwrap().result.unwrap())
             .iter()
             .any(|(_, upload)| upload.is_some())
         {}
@@ -329,58 +344,55 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
     );
 }
 
-/// The windows are the query's request: asking for one reruns the read as a
-/// request change, and leaves the view's revision where it was.
+/// A window is the query's request: moving it reruns the read as a request
+/// change, and a window set after a view change reads the new view from its
+/// first value.
 #[tokio::test]
-async fn setting_the_windows_reruns_the_list_as_a_request_change() {
+async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let (test, _temp_dir) = setup_test_manager().await;
-    let subscription = open_list(
-        &test.library,
-        bae_import::ImportListView::default(),
-        bae_store::LibraryPageWindows::default(),
-    )
-    .await
-    .unwrap();
-    let initial = subscription.next().await.expect("the initial value");
+    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
+    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
+        from: None,
+        until: None,
+        limit: 0,
+    }));
+    let initial = window.next().await.expect("the initial value");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
-    assert!(initial.windows.is_empty());
+    assert!(initial.result.unwrap().read.rows.is_empty());
 
-    subscription
-        .set_windows(std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect())
-        .expect("the first window is requested");
-    let requested = subscription.next().await.expect("the requested value");
+    window
+        .set(bae_store::ListWindow::Forward { from: None, until: None, limit: 50 })
+        .expect("the window is requested");
+    let requested = window.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
-    assert_eq!(requested.windows.len(), 1);
-    assert_eq!(requested.view_revision, initial.view_revision);
 
-    let revision = subscription
+    let opening = list
         .set_view(bae_import::ImportListView {
             tab: bae_import::TriageTab::Done,
             ..bae_import::ImportListView::default()
         })
         .await
         .unwrap();
-    let moved = subscription.next().await.expect("the view's value");
-    assert_eq!(moved.view_revision, revision);
-    assert_eq!(moved.summary.narrowing.tab, bae_import::TriageTab::Done);
+    assert!(matches!(opening, Some(bae_import::ImportListOpening::Top)));
+    let summary = list.subscribe_summary().next().await.expect("the summary").unwrap();
+    assert_eq!(summary.narrowing.tab, bae_import::TriageTab::Done);
 }
 
 /// Cancelling settles a pending read and closes the list: its row goes, and a
-/// later change to it answers that the subscription was cancelled.
+/// later change to it answers that the list was closed.
 #[tokio::test]
 async fn cancelling_closes_the_list() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let subscription = open_list(
-        &test.library,
-        bae_import::ImportListView::default(),
-        bae_store::LibraryPageWindows::default(),
-    )
-    .await
-    .unwrap();
-    subscription.next().await.expect("the initial value");
+    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
+    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
+        from: None,
+        until: None,
+        limit: 50,
+    }));
+    window.next().await.expect("the initial value");
 
-    subscription.cancel().await.unwrap();
+    list.cancel().await.unwrap();
 
     assert!(manager
         .store
@@ -389,10 +401,10 @@ async fn cancelling_closes_the_list() {
         .unwrap()
         .is_empty());
     assert!(matches!(
-        subscription.set_view(bae_import::ImportListView::default()).await,
-        Err(bae_import::LiveImportListError::Cancelled)
+        list.set_view(bae_import::ImportListView::default()).await,
+        Err(bae_import::ImportListFailure::Closed)
     ));
-    assert!(matches!(subscription.next().await, Err(bae_import::LiveImportListError::Cancelled)));
+    assert!(window.next().await.is_err(), "the window's read ended with the list");
 }
 
 /// Closing the library ends a list's waiting read before the store closes:
@@ -401,19 +413,17 @@ async fn cancelling_closes_the_list() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let (test, _temp_dir) = setup_test_manager().await;
-    let subscription = Arc::new(
-        open_list(
-            &test.library,
-            bae_import::ImportListView::default(),
-            bae_store::LibraryPageWindows::default(),
-        )
-        .await
-        .unwrap(),
-    );
+    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
+    let subscription =
+        Arc::new(list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
+            from: None,
+            until: None,
+            limit: 50,
+        })));
     subscription.next().await.expect("the initial value");
     let waiting = tokio::spawn({
         let subscription = subscription.clone();
-        async move { subscription.next().await }
+        async move { subscription.next().await.map(|_| ()) }
     });
 
     test.library.manager().close().await.unwrap();
@@ -422,14 +432,8 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         .await
         .expect("the waiting read ends")
         .unwrap();
-    assert!(
-        matches!(read, Err(bae_import::LiveImportListError::Cancelled)),
-        "the waiting read is cancelled: {read:?}"
-    );
-    assert!(
-        matches!(subscription.next().await, Err(bae_import::LiveImportListError::Cancelled)),
-        "a read after the close is cancelled too"
-    );
+    assert!(read.is_err(), "the waiting read is cancelled");
+    assert!(subscription.next().await.is_err(), "a read after the close is cancelled too");
 }
 
 /// Closing the library ends a live read's waiting `next` before the store

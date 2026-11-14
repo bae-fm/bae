@@ -13,9 +13,7 @@ import SwiftUI
 /// clicks, Command- and Shift-clicks, arrow keys, typing a row's first
 /// letters, Select All — goes to core as the change it is.
 struct ImportCandidateTable: NSViewRepresentable {
-    let list: OffsetPaginatedList<BridgeImportListItem>
-    /// The queue's summary, which names the narrowing the rows answer.
-    let summary: BridgeImportQueueSummary
+    let list: PaginatedList<BridgeImportListItem>
     let importStore: ImportStore
     /// Holds the person's place in the list across tab switches.
     let listSlot: ImportListSlot
@@ -118,11 +116,10 @@ struct ImportCandidateTable: NSViewRepresentable {
             list: list,
             rows: rows,
             read: ImportCandidateListContentRead(
-                revision: rows.revision,
-                narrowing: summary.narrowing,
-                openedAt: Int(summary.openedAt)
+                narrowing: listSlot.opened.narrowing,
+                openedAt: listSlot.opened.position
             ),
-            shownSelected: importStore.shownSelectedKeys,
+            shownSelected: list.selectedKeys,
             revealing: revealInProgress
         )
     }

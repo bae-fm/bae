@@ -390,14 +390,15 @@ async fn import_list_plain_cost() {
             ))
             .await
             .unwrap();
-        let today_first: Vec<String> = import_items(
-            &db,
-            crate::ImportListRequest {
+        let today_first: Vec<String> = tables
+            .read_import_window(
                 list,
-                windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: LIMIT }]),
-            },
-        )
-        .await[0]
+                bae_store::ListWindow::Forward { from: None, until: None, limit: LIMIT },
+            )
+            .await
+            .unwrap()
+            .read
+            .rows
             .iter()
             .filter_map(|item| match item {
                 crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.to_string()),

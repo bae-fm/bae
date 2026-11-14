@@ -10,7 +10,8 @@
 
 use super::*;
 use crate::handle::tests::*;
-use crate::{ImportListSnapshot, ImportListView, PendingFilter, TriageRow, TriageTab};
+use crate::list::ImportListRead;
+use crate::{ImportListView, PendingFilter, TriageRow, TriageTab};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_discogs_pressing;
 use bae_util::test_channels::HANG_GUARD;
@@ -18,7 +19,7 @@ use tempfile::TempDir;
 
 /// Every candidate row a snapshot holds, with whether it reads as being
 /// identified.
-fn rows(snapshot: &ImportListSnapshot) -> Vec<(TriageRow, bool)> {
+fn rows(snapshot: &ImportListRead) -> Vec<(TriageRow, bool)> {
     snapshot
         .windows
         .iter()
@@ -42,16 +43,12 @@ async fn decision_never_beside_identifying(
     decided: impl Fn(&[(TriageRow, bool)]) -> bool,
 ) {
     let list = handle.subscribe_whole_list(view).await;
-    tokio::time::timeout(HANG_GUARD, list.next())
-        .await
-        .expect("the list delivers")
-        .expect("the list answers");
+    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers");
     let decision = tokio::spawn(decide);
     loop {
         let snapshot = tokio::time::timeout(HANG_GUARD, list.next())
             .await
-            .expect("the list delivers the decision")
-            .expect("the list answers");
+            .expect("the list delivers the decision");
         let rows = rows(&snapshot);
         if !decided(&rows) {
             continue;

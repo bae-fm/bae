@@ -3,8 +3,6 @@
 # count. `allowed` holds uses over values that are not a screen's rows.
 
 frozen = [
-    { path = "BaeKit/Sources/BaeKit/Services/OffsetPaginatedList.swift", operation = "filter", count = 1, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
-    { path = "BaeKit/Sources/BaeKit/Services/OffsetPaginatedList.swift", operation = "sorted", count = 2, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "max", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "sorted", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "BaeKit/Sources/BaeKit/Services/StorageManagerStore.swift", operation = "Dictionary(uniqueKeysWithValues:", count = 1, finding = "joins the selection to the rows the list holds and keeps them by id in the app (found by the audit: filter and join in the Storage Manager)" },
@@ -22,7 +20,6 @@ frozen = [
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/settings/PeoplePages.kt", operation = "shown-count", count = 4, finding = "drops the person who is self from the list, and counts a person's active devices in the app (found by the audit: filter and count)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/ui/sync/ActivityProblems.kt", operation = "filter", count = 1, finding = "drops dismissed problems from the merged list in the app (found by the audit: join and filter of four sources)" },
     { path = "bae-ios/bae/bae/LaunchView.swift", operation = "shown-count", count = 1, finding = "counts the libraries on the device for a line of text in the app; the list is the host's (found by the check)" },
-    { path = "bae-macos/bae/bae/Services/ImportStore.swift", operation = "filter", count = 2, finding = "keeps a keyed row cache beside the paged list and filters it against the loaded ids (found by the audit: cache and join in the import list)" },
     { path = "bae-macos/bae/bae/Services/ReleaseMetadataEditSession.swift", operation = "Dictionary(uniqueKeysWithValues:", count = 1, finding = "joins tracks to sides by id in the app (found by the audit: join and group)" },
     { path = "bae-macos/bae/bae/Services/Store/Candidate.swift", operation = "reduce", count = 1, finding = "builds a map of the candidate's files to their cover choices in the app; unsettled (found by the check)" },
     { path = "bae-macos/bae/bae/Views/Chrome/ActivityProblems.swift", operation = "filter", count = 1, finding = "drops dismissed problems from the merged list in the app (found by the audit: join and filter of four sources)" },
@@ -62,7 +59,6 @@ allowed = [
     { path = "BaeKit/Sources/BaeKit/BaeCrashReporting.swift", operation = "filter", count = 1, reason = "the names of build settings that are unset, listed in a warning the app logs; no row is read" },
     { path = "BaeKit/Sources/BaeKit/ImageLoader.swift", operation = "shown-count", count = 1, reason = "the byte length of an image in its debug description; not shown on a screen" },
     { path = "BaeKit/Sources/BaeKit/Services/FixedQueries.swift", operation = "filter", count = 2, reason = "a fixture that stands in for core's answer in previews and tests, so it does the work core's query does there" },
-    { path = "BaeKit/Sources/BaeKit/Services/ImportListPageSource.swift", operation = "sorted", count = 1, reason = "the order of the request's own windows (offset, limit), which the app sends; not rows" },
     { path = "BaeKit/Sources/BaeKit/Services/Store/LatestValues.swift", operation = "Dictionary(uniqueKeysWithValues:", count = 2, reason = "preview values a fixture stream holds by key; no rows read from core" },
     { path = "BaeKit/Sources/BaeKit/Services/Store/ReleaseDetail.swift", operation = "filter", count = 2, reason = "drops empty text pieces before joining them into one line of text; no rows" },
     { path = "BaeKit/Sources/BaeKit/Views/MacMenuSession.swift", operation = "filter", count = 1, reason = "the choosable entries of a menu the app draws itself, for arrow-key highlight; not core rows" },

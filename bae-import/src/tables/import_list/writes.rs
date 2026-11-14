@@ -1,33 +1,21 @@
 //! The list a surface has open (`import_list`) and the groups it folds
 //! (`import_list_collapsed`): opening and closing it, changing its view and
-//! folding its groups. Each is one write the list's live query answers, and
-//! each answers with the view revision the read that reflects it carries.
+//! folding its groups. Each is one write the list's live queries answer; a
+//! view change answers where the new view opens, and a fold answers nothing.
 
 use super::order::Shown;
 use super::views::{order_column, tab_column};
 use super::*;
-use crate::FolderReleaseDecisionKey;
+use crate::{FolderReleaseDecisionKey, ImportListOpening};
 
-/// The view revision of `list`, which the write found open.
-fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let revision =
-        sql.query_row("SELECT view_revision FROM import_list WHERE id = ?", [list.0], |row| {
-            row.get::<_, i64>(0)
-        })?;
-    to_u64(revision, "a list's view revision")
-}
-
-/// The view moved: a fold folded or opened something.
-fn view_moved(sql: &CovenWrite<'_>, list: ImportListId) -> Result<(), DbError> {
-    sql.execute("UPDATE import_list SET view_revision = view_revision + 1 WHERE id = ?", [list.0])?;
-    Ok(())
-}
-
-/// Where the list's view opens: the position of its first selected row, or
-/// its top with no selected row shown. The write found the list open.
-fn opened_at(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
+/// Where the list's view opens: its first selected row, as the write found
+/// it, or its top with no selected row shown. The write found the list open.
+fn opening(sql: &CovenWrite<'_>, list: ImportListId) -> Result<ImportListOpening, DbError> {
     let row = list_row(sql, list)?.expect("the write found the list open");
-    Ok(row.items(Shown::View).position_of_first_selected(sql)?.unwrap_or(0))
+    Ok(match row.items(Shown::View).position_of_first_selected(sql)? {
+        Some((position, key)) => ImportListOpening::At { key, position },
+        None => ImportListOpening::Top,
+    })
 }
 
 impl ImportTables {
@@ -71,15 +59,15 @@ impl ImportTables {
             .await
     }
 
-    /// Show `view` in `list`, and answer with the view revision the read
-    /// that shows it carries. The rows it stops showing leave the selection
-    /// in the same write, and the view opens at its first selected row. The
-    /// view it already shows changes nothing.
+    /// Show `view` in `list`, and answer with where the new view opens. The
+    /// rows it stops showing leave the selection in the same write, and the
+    /// view opens at its first selected row. The view it already shows
+    /// changes nothing and answers nothing.
     pub async fn set_import_list_view(
         &self,
         list: ImportListId,
         view: ImportListView,
-    ) -> Result<u64, ImportListError> {
+    ) -> Result<Option<ImportListOpening>, ImportListError> {
         self.store
             .call(move |sql| {
                 if list_row(sql, list)?.is_none() {
@@ -88,7 +76,7 @@ impl ImportTables {
                 let changed = sql.execute(
                     "UPDATE import_list \
                  SET tab = :tab, pending_filter = :filter, filter_text = :text, \
-                     list_order = :order, view_revision = view_revision + 1 \
+                     list_order = :order \
                  WHERE id = :list \
                    AND (tab, pending_filter, filter_text, list_order) \
                        IS NOT (:tab, :filter, :text, :order)",
@@ -100,22 +88,16 @@ impl ImportTables {
                         ":order": order_column(view.order),
                     },
                 )?;
-                if changed > 0 {
-                    let opened_at =
-                        to_i64(opened_at(sql, list)?, "the place an import list opened at")?;
-                    sql.execute(
-                        "UPDATE import_list SET opened_at = ? WHERE id = ?",
-                        params![opened_at, list.0],
-                    )?;
-                }
-                Ok(Some(view_revision(sql, list)?))
+                Ok(Some(match changed > 0 {
+                    true => Some(opening(sql, list)?),
+                    false => None,
+                }))
             })
             .await?
             .ok_or(ImportListError::Closed(list))
     }
 
-    /// Fold the group `group` shut in `list`, or open it, and answer with the
-    /// view revision the read that shows it carries. A folded group's
+    /// Fold the group `group` shut in `list`, or open it. A folded group's
     /// selected releases leave the selection. A group the list no longer has
     /// is no group to fold.
     pub(crate) async fn set_import_list_group_folded(
@@ -123,12 +105,12 @@ impl ImportTables {
         list: ImportListId,
         group: FolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<u64, ImportListError> {
+    ) -> Result<(), ImportListError> {
         self.store.call(move |sql| {
             if list_row(sql, list)?.is_none() {
                 return Ok(None);
             }
-            let changed = match folded {
+            match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
                      SELECT ?, watched_folder_path, key FROM import_list_placement \
@@ -150,27 +132,23 @@ impl ImportTables {
                     ],
                 )?,
             };
-            if changed > 0 {
-                view_moved(sql, list)?;
-            }
-            Ok(Some(view_revision(sql, list)?))
+            Ok(Some(()))
         })
         .await?
         .ok_or(ImportListError::Closed(list))
     }
 
-    /// Fold every group of `list` shut, or open them all, in one write, and
-    /// answer with the view revision the read that shows it carries.
+    /// Fold every group of `list` shut, or open them all, in one write.
     pub(crate) async fn set_import_list_groups_folded(
         &self,
         list: ImportListId,
         folded: bool,
-    ) -> Result<u64, ImportListError> {
+    ) -> Result<(), ImportListError> {
         self.store.call(move |sql| {
             if list_row(sql, list)?.is_none() {
                 return Ok(None);
             }
-            let changed = match folded {
+            match folded {
                 true => sql.execute(
                     "INSERT INTO import_list_collapsed (list_id, watched_folder_path, group_folder) \
                      SELECT ?, watched_folder_path, key FROM import_list_placement \
@@ -183,10 +161,7 @@ impl ImportTables {
                     [list.0],
                 )?,
             };
-            if changed > 0 {
-                view_moved(sql, list)?;
-            }
-            Ok(Some(view_revision(sql, list)?))
+            Ok(Some(()))
         })
         .await?
         .ok_or(ImportListError::Closed(list))

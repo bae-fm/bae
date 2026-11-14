@@ -841,6 +841,8 @@ impl AppServices {
 mod detail_reads;
 #[cfg(desktop)]
 mod import;
+#[cfg(desktop)]
+mod import_list_reads;
 mod list_reads;
 #[cfg(desktop)]
 mod pane;
@@ -859,6 +861,8 @@ mod storage_reads;
 mod tests;
 
 mod personal;
+#[cfg(desktop)]
+pub use import_list_reads::*;
 pub use personal::PlayPlaylistError;
 
 mod removal;

@@ -4,11 +4,11 @@
 
 use super::*;
 use crate::handle::tests::*;
+use crate::list::{FollowedImportList, ImportListRead};
 use crate::selection::{SelectionChange, SingleSelection};
 use crate::{
-    ArtistAssignment, CandidateEditField, Credited, DraftFieldEdit, ImportListItem,
-    ImportListSnapshot, ImportListView, LiveImportList, PendingFilter, PressingFactEdit,
-    RawLabelEdit,
+    ArtistAssignment, CandidateEditField, Credited, DraftFieldEdit, ImportListItem, ImportListView,
+    PendingFilter, PressingFactEdit, RawLabelEdit,
 };
 use bae_util::test_channels::HANG_GUARD;
 
@@ -120,15 +120,12 @@ async fn the_draft_keeps_its_label_rows_as_typed() {
 }
 
 /// The next snapshot the list delivers.
-async fn delivered(list: &LiveImportList) -> ImportListSnapshot {
-    tokio::time::timeout(HANG_GUARD, list.next())
-        .await
-        .expect("the list delivers")
-        .expect("the list answers")
+async fn delivered(list: &FollowedImportList) -> ImportListRead {
+    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers")
 }
 
 /// The candidate rows `snapshot` holds: each one's stable key, and its row.
-fn candidate_rows(snapshot: &ImportListSnapshot) -> Vec<(String, &crate::TriageRow)> {
+fn candidate_rows(snapshot: &ImportListRead) -> Vec<(String, &crate::TriageRow)> {
     snapshot
         .windows
         .iter()
@@ -175,11 +172,10 @@ async fn edits_under(view: ImportListView) {
         vec![stable_key.clone()],
         "the view shows the identified row"
     );
-    let selected_at =
-        list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
+    list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
     let selected = loop {
         let snapshot = delivered(&list).await;
-        if snapshot.selection_revision >= selected_at {
+        if snapshot.selection.count == 1 {
             break snapshot;
         }
     };
@@ -231,11 +227,8 @@ async fn edits_under(view: ImportListView) {
     );
     assert!(rows[0].1.selected, "the row stays selected");
     assert_eq!(edited.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
-    assert_eq!(
-        edited.selection_revision, selected.selection_revision,
-        "no edit moved the selection"
-    );
-    assert_eq!(edited.view_revision, selected.view_revision, "no edit moved the view");
+    assert_eq!(edited.selection, selected.selection, "no edit moved the selection");
+    assert_eq!(edited.summary.narrowing, selected.summary.narrowing, "no edit moved the view");
     let draft = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(draft.pressing.year, "1998");
     shut_down(handle).await;

@@ -317,19 +317,15 @@ async fn a_selection_holds_only_rows_the_list_shows() {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.skip("E") + lib.linked("D")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let opened = lib.read(list).await.selection_revision;
-    let revision = lib
-        .select(
-            list,
-            SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("D"), lib.key("E")] },
-        )
-        .await;
+    lib.select(
+        list,
+        SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("D"), lib.key("E")] },
+    )
+    .await;
     let read = lib.read(list).await;
     assert_eq!(read.selection.count, 2, "E is on Skipped, which the list does not show");
-    assert_eq!(read.selection_revision, revision);
-    assert!(revision > opened, "the change moves the selection's revision");
 
-    let narrowed = tables
+    tables
         .set_import_list_view(
             list,
             ImportListView {
@@ -340,10 +336,8 @@ async fn a_selection_holds_only_rows_the_list_shows() {
         .await
         .unwrap();
     let read = lib.read(list).await;
-    assert_eq!(read.view_revision, narrowed);
     assert_eq!(read.selection.count, 1, "A left the selection as the view hid it");
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("D") }));
-    assert!(read.selection_revision > revision);
 
     tables
         .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))

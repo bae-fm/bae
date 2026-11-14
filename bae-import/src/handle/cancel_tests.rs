@@ -158,10 +158,7 @@ async fn nothing_importing_is_nothing_to_cancel() {
 }
 
 /// Everything an import could leave behind: every row the library holds, and
-/// every file under its directory apart from the database's own. The counts
-/// of how often the import list's rows moved (`import_list_versions`) are left
-/// out: an import moves its release through the import list's states and
-/// back, and those moves count however the import ends.
+/// every file under its directory apart from the database's own.
 #[derive(Debug, PartialEq)]
 struct StoreState {
     rows: std::collections::BTreeMap<String, Vec<String>>,
@@ -185,8 +182,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
         }
     }
     files.sort();
-    let mut rows = handle.services.store.every_row_for_test().await.unwrap();
-    rows.remove("import_list_versions").expect("the store holds the import list's move count");
+    let rows = handle.services.store.every_row_for_test().await.unwrap();
     StoreState { rows, files }
 }
 

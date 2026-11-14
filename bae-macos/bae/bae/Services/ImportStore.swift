@@ -11,9 +11,8 @@ private let importStoreLogger = Logger.bae("ImportStore")
 /// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
 /// per store.
 ///
-/// The list itself is paged: `items` holds the entries the sidebar has loaded,
-/// keyed by the stable key core computes, and `selectedCandidates` holds the
-/// whole folder for each row the user selected. Keys are unique across the
+/// The list itself is the list slot's: `selectedCandidates` holds the whole
+/// folder for each row the user selected. Keys are unique across the
 /// selected folders and the re-identify sessions (a folder path or
 /// `reidentify:{releaseId}`), so the cross-type helpers below look a candidate
 /// up by key without knowing its source.
@@ -24,21 +23,8 @@ class ImportStore {
     @MainActor
     init() {}
 
-    /// The list entries the sidebar has loaded, by stable key. The paged list
-    /// holds the order; this holds what each key renders as.
-    var items: [String: BridgeImportListItem] = [:]
-
-    /// The last click on the list's rows whose write core's list has not
-    /// reflected yet. See `shownSelectedKeys`.
-    private var pendingClick: PendingSelectionClick?
-    /// The selection revision the loaded rows reflect.
-    @ObservationIgnored
-    private var listedSelectionRevision: UInt64 = 0
-    @ObservationIgnored
-    private var clickCount: UInt64 = 0
-
-    /// Everything the chrome around the list shows: the watched folders,
-    /// whether Found has groups to fold, and the narrowed count. `nil` until
+    /// Everything the chrome around the list shows: the watched folders and
+    /// whether Found has groups to fold. `nil` until
     /// the first delivery: a queue with no watched folders is a different
     /// thing from a queue not read yet, and each surface says which.
     ///
@@ -179,112 +165,6 @@ class ImportStore {
     func candidate(forKey key: Data) -> Candidate? {
         selectedCandidates[key] ?? reIdentifyCandidates[key]
     }
-
-    // MARK: - The paged list
-
-    /// Hold one page of list entries. Called by the list as each page lands.
-    /// Only the entries that differ from the ones held are written: every
-    /// row the list draws reads `items`, so an equal write would redraw them
-    /// all.
-    func ingest(_ entries: [BridgeImportListItem]) {
-        let changed = entries.filter { items[$0.id] != $0 }
-        guard !changed.isEmpty else { return }
-        var next = items
-        for entry in changed {
-            next[entry.id] = entry
-        }
-        items = next
-        updateSelectedLoadedKeys()
-        updateLoadedCovers()
-    }
-
-    /// The keys of the loaded rows the person has selected, as core's rows
-    /// say — what the list's table highlights. Rows past the loaded pages may
-    /// be selected too; core holds the whole selection. Kept as the rows land
-    /// rather than worked out on each read: the table reads it on every
-    /// update.
-    private(set) var selectedLoadedKeys: Set<Data> = []
-
-    private func updateSelectedLoadedKeys() {
-        let next = Set(
-            items.values.compactMap { item -> Data? in
-                switch item {
-                case .candidate(_, let row, _):
-                    row.selected ? row.candidateKey : nil
-                case .invalid(_, let invalid, let selected):
-                    selected ? invalid.candidateKey : nil
-                case .groupHeader:
-                    nil
-                }
-            }
-        )
-        if next != selectedLoadedKeys {
-            selectedLoadedKeys = next
-        }
-    }
-
-    /// The keys of the loaded rows the list shows selected: core's, except
-    /// from a click until core's list reflects the write it made, when they
-    /// are the click's. The rows core delivers in that time were read before
-    /// the write, and showing them would put back the rows the click replaced.
-    var shownSelectedKeys: Set<Data> {
-        pendingClick?.keys ?? selectedLoadedKeys
-    }
-
-    /// Show `keys` as the selection until the write this click makes is
-    /// reflected, and return the click to report that write against.
-    func beginSelectionClick(_ keys: Set<Data>) -> UInt64 {
-        clickCount += 1
-        pendingClick = PendingSelectionClick(
-            id: clickCount,
-            keys: keys,
-            revision: nil
-        )
-        return clickCount
-    }
-
-    /// The click `id` wrote the selection at `revision`. Once the rows reflect
-    /// it they are the selection shown; a newer click has taken over already.
-    func selectionClickWritten(_ id: UInt64, revision: UInt64) {
-        guard pendingClick?.id == id else { return }
-        if listedSelectionRevision >= revision {
-            pendingClick = nil
-        }
-        else {
-            pendingClick?.revision = revision
-        }
-    }
-
-    /// The click `id` wrote nothing, so the rows core has are the selection.
-    func selectionClickFailed(_ id: UInt64) {
-        guard pendingClick?.id == id else { return }
-        pendingClick = nil
-    }
-
-    /// The loaded rows now reflect the selection at `revision`.
-    func applySelectionRevision(_ revision: UInt64) {
-        listedSelectionRevision = revision
-        if let written = pendingClick?.revision, written <= revision {
-            pendingClick = nil
-        }
-    }
-
-    /// Drop entries the list no longer holds a position for, so a page the
-    /// list evicted stops occupying memory.
-    func retainItems(_ loadedKeys: [String]) {
-        let loaded = Set(loadedKeys)
-        guard items.keys.contains(where: { !loaded.contains($0) }) else {
-            return
-        }
-        items = items.filter { loaded.contains($0.key) }
-        updateSelectedLoadedKeys()
-        updateLoadedCovers()
-    }
-
-    /// The covers the loaded rows draw, to decode before they are on screen.
-    /// Kept as the rows land and leave, and written only when the set moves:
-    /// a view reading it is not redrawn by a row whose cover is already in.
-    private(set) var loadedCovers: Set<ImageContent> = []
 
     /// The effective cover resolved by core for this row.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
@@ -434,18 +314,6 @@ class ImportStore {
 }
 
 extension ImportStore {
-    private func updateLoadedCovers() {
-        let next = Set(
-            items.values.compactMap { item -> ImageContent? in
-                guard case .candidate(_, let row, _) = item else { return nil }
-                return sidebarCover(for: row)
-            }
-        )
-        if next != loadedCovers {
-            loadedCovers = next
-        }
-    }
-
     private func mutateSelectedCandidate(
         key: Data,
         _ mutate: (inout Candidate) -> Void
@@ -596,14 +464,6 @@ extension ImportStore {
             reportFailure(error)
         }
     }
-}
-
-/// A click on the list's rows: the keys it selected among the loaded rows, and
-/// the selection revision its write made once core has said.
-private struct PendingSelectionClick {
-    let id: UInt64
-    let keys: Set<Data>
-    var revision: UInt64?
 }
 
 extension ImportStore {

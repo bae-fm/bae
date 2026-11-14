@@ -497,7 +497,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     fixture.route_disc_id_match(&dir, "mb-standing", "rg-standing", 2);
     fixture.scan(1).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&list).await;
     let (_, at_rest) = &page_rows(&initial)[&key];
     assert_eq!(at_rest.facts.identification, None);

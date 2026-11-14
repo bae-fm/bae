@@ -109,13 +109,35 @@ pub enum BridgeListWindow {
 /// The rows of a window, by the list they belong to.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeListRows {
-    Albums { rows: Vec<crate::types::BridgeAlbumAppearance> },
-    Artists { rows: Vec<crate::types::BridgeArtistSummary> },
-    Composers { rows: Vec<crate::types::BridgeComposerSummary> },
-    ComposerPage { rows: Vec<crate::types::BridgeComposerDetailRow> },
-    Downloads { rows: Vec<crate::types::BridgeDownloadOp> },
-    ArtistSearch { rows: Vec<crate::types::BridgeArtistSearchResult> },
-    Storage { rows: Vec<crate::types::BridgeStorageRow> },
+    Albums {
+        rows: Vec<crate::types::BridgeAlbumAppearance>,
+    },
+    Artists {
+        rows: Vec<crate::types::BridgeArtistSummary>,
+    },
+    Composers {
+        rows: Vec<crate::types::BridgeComposerSummary>,
+    },
+    ComposerPage {
+        rows: Vec<crate::types::BridgeComposerDetailRow>,
+    },
+    Downloads {
+        rows: Vec<crate::types::BridgeDownloadOp>,
+    },
+    ArtistSearch {
+        rows: Vec<crate::types::BridgeArtistSearchResult>,
+    },
+    Storage {
+        rows: Vec<crate::types::BridgeStorageRow>,
+    },
+    /// The import list's items, and the header of the group the first of
+    /// them is a member of when the window starts inside the group, which
+    /// the window does not hold.
+    #[cfg(desktop)]
+    Import {
+        items: Vec<crate::types::BridgeImportListItem>,
+        leading_header: Option<crate::types::BridgeImportListItem>,
+    },
 }
 
 /// One delivery of a list's window.
@@ -156,6 +178,12 @@ pub enum BridgeListCountExtra {
     Storage {
         total_size: u64,
         searching: bool,
+    },
+    /// How many of the import list's tab entries its filters keep, while
+    /// they narrow it.
+    #[cfg(desktop)]
+    Import {
+        narrowed: Option<crate::types::BridgeNarrowedCount>,
     },
 }
 

@@ -7,7 +7,7 @@ impl AppHandle {
     pub async fn subscribe_import_list(
         &self,
         view: crate::types::BridgeImportListView,
-    ) -> Result<std::sync::Arc<crate::ImportListSubscription>, BridgeError> {
+    ) -> Result<std::sync::Arc<crate::ImportList>, BridgeError> {
         let runtime = self.runtime.clone();
         let services = self.services.clone();
         runtime

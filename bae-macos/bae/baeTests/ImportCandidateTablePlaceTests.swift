@@ -17,7 +17,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("the row on top stays on top when rows land above it")
     func deliveryKeepsTheRowOnTop() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<80).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -47,7 +47,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("coming back to the tab finds the row that was on top")
     func remountFindsThePlace() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<80).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -81,7 +81,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("coming back to a list narrowed anew opens it at its top")
     func remountUnderANewNarrowingOpensAtTheTop() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<80).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -97,24 +97,26 @@ struct ImportCandidateTablePlaceTests {
             try await Wait.until { slot.place?.position == 30 }
         }
 
-        store.applySummary(Self.summary(narrowedBy: "release"))
+        slot.setFilterText("release")
+        try await Wait.until {
+            slot.answersView && slot.opened.narrowing.filterText == "release"
+        }
         try await ImportListHosting.withList(
             store: store,
             slot: slot,
             uiStore: uiStore,
             size: Self.size
         ) { table in
-            try await Wait.until {
-                slot.place?.narrowing.filterText == "release"
+            try await Wait.until(notices: [.scroll(of: table)]) {
+                Self.topRow(of: table) == 0
             }
-            #expect(Self.topRow(of: table) == 0)
         }
     }
 
     @MainActor
     @Test("the rows in view hold their pages")
     func rowsInViewHoldTheirPages() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<200).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -139,7 +141,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("a row drawn off screen loads its page")
     func rowDrawnOffScreenLoadsItsPage() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<200).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -152,8 +154,9 @@ struct ImportCandidateTablePlaceTests {
             size: Self.size
         ) { table in
             _ = table.view(atColumn: 0, row: 150, makeIfNecessary: true)
-            try await Wait.until { slot.list?.idAt(150) != nil }
-            #expect(slot.list?.idAt(150) == Self.stableKey(150))
+            // The list lets the page go once the ask is answered, so the
+            // answer is what the wait reads: the window holding the row.
+            try await Wait.until { source.hasDelivered(Self.stableKey(150)) }
             #expect(Self.topRow(of: table) == 0)
         }
     }
@@ -163,7 +166,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("a row added below the view draws no cell")
     func aRowBelowTheViewDrawsNoCell() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<200).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -181,7 +184,7 @@ struct ImportCandidateTablePlaceTests {
             await source.replaceItems(
                 (0..<200).map(Self.candidateItem) + [Self.candidateItem(200)]
             )
-            try await Wait.until { table.numberOfRows == 201 }
+            try await Wait.untilLaidOut(table) { table.numberOfRows == 201 }
             #expect(coordinator.cellsShown == drawn)
         }
     }
@@ -189,7 +192,7 @@ struct ImportCandidateTablePlaceTests {
     @MainActor
     @Test("a value changing one row draws that row's cell only")
     func aChangedRowDrawsItsCellOnly() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<200).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -207,70 +210,13 @@ struct ImportCandidateTablePlaceTests {
             items[2] = Self.candidateItem(2, folderName: "Renamed")
 
             await source.replaceItems(items)
-            try await Wait.until { coordinator.cellsShown > drawn }
+            try await Wait.untilLaidOut(table) {
+                coordinator.cellsShown > drawn
+            }
             // Let any further cell the same delivery asks for be drawn.
             try await Wait.until { slot.list?.row(at: 2) == items[2] }
             #expect(coordinator.cellsShown == drawn + 1)
         }
-    }
-
-    // MARK: Where a delivery scrolls
-
-    @Test("a delivery under the same narrowing keeps the place")
-    func sameNarrowingKeepsThePlace() {
-        var content = ImportCandidateTableContent(Self.read(1))
-        #expect(content.take(Self.read(1), revealing: false) == nil)
-        #expect(content.take(Self.read(2), revealing: false) == .keepPlace)
-    }
-
-    /// Narrowed anew — the text changed — the list opens at its top, where
-    /// the first rows and their group header are, not at the row it showed
-    /// before; with a selected row still in the result, at that row.
-    @Test("a list narrowed anew opens at its first selected row, or its top")
-    func narrowedAnewOpensAtItsTop() {
-        var content = ImportCandidateTableContent(Self.read(1))
-        #expect(
-            content.take(
-                Self.read(2, filterText: "title"),
-                revealing: false
-            ) == .showOnTop(0)
-        )
-        #expect(
-            content.take(
-                Self.read(3, pendingFilter: .needsYou, openedAt: 4),
-                revealing: false
-            ) == .showOnTop(4)
-        )
-    }
-
-    /// A reveal scrolls to its own row; the deliveries it brings are taken
-    /// without a scroll of their own, and do not scroll once it has landed.
-    @Test("a reveal's deliveries scroll nothing")
-    func revealOwnsItsScroll() {
-        var content = ImportCandidateTableContent(Self.read(1))
-        #expect(
-            content.take(Self.read(2, tab: .done), revealing: true) == nil
-        )
-        #expect(content.take(Self.read(2, tab: .done), revealing: false) == nil)
-        #expect(
-            content.take(Self.read(3, tab: .done), revealing: false)
-                == .keepPlace
-        )
-    }
-
-    /// A narrowing that leaves the rows as they were moves nothing, and the
-    /// next delivery is read against it.
-    @Test("a narrowing with the same rows scrolls nothing")
-    func narrowingWithTheSameRowsScrollsNothing() {
-        var content = ImportCandidateTableContent(Self.read(1))
-        #expect(
-            content.take(Self.read(1, filterText: "t"), revealing: false)
-                == nil
-        )
-        #expect(
-            content.take(Self.read(2, filterText: "t"), revealing: false)
-                == .keepPlace
-        )
     }
 }
 
@@ -283,7 +229,7 @@ extension ImportCandidateTablePlaceTests {
     @MainActor
     @Test("a header is pinned over its group until the group leaves")
     func headerPinnedWhileItsGroupLeaves() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: Self.groupedItems(headersAt: [0, 20])
         )
         let store = ImportStore()
@@ -297,7 +243,7 @@ extension ImportCandidateTablePlaceTests {
         ) { table in
             let coordinator = try Self.coordinator(of: table)
             let clipView = try #require(table.enclosingScrollView?.contentView)
-            try await Wait.until {
+            try await Wait.untilLaidOut(table) {
                 table.rect(ofRow: 0).height
                     == ImportCandidateTableLayout.headerRowHeight
                     && table.rect(ofRow: 1).height
@@ -309,7 +255,7 @@ extension ImportCandidateTablePlaceTests {
             Self.scroll(table, toRow: 20)
             try await Wait.until { slot.place?.position == 20 }
             #expect(Self.topRow(of: table) == 20)
-            #expect(coordinator.pinnedHeader()?.position == 20)
+            #expect(coordinator.pinnedHeader()?.key == Self.headerItem(20).id)
             #expect(!coordinator.pinnedStrip.isHidden)
             #expect(
                 coordinator.pinnedStrip.frame.height
@@ -324,7 +270,7 @@ extension ImportCandidateTablePlaceTests {
             table.enclosingScrollView?.reflectScrolledClipView(clipView)
             #expect(Self.topRow(of: table) == 19)
             let pinned = try #require(coordinator.pinnedHeader())
-            #expect(pinned.position == 0)
+            #expect(pinned.key == Self.headerItem(0).id)
             #expect(pinned.header != nil)
             #expect(pinned.ends(below: 19) { coordinator.item(at: $0) })
             #expect(!coordinator.pinnedStrip.isHidden)
@@ -336,7 +282,7 @@ extension ImportCandidateTablePlaceTests {
     @MainActor
     @Test("a row above the view changing height moves nothing in view")
     func heightChangeAboveTheViewKeepsTheViewStill() async throws {
-        let source = MutableImportListPageSource(
+        let source = MutableImportList(
             items: (0..<80).map(Self.candidateItem)
         )
         let store = ImportStore()
@@ -357,7 +303,7 @@ extension ImportCandidateTablePlaceTests {
             var items = (0..<80).map(Self.candidateItem)
             items[5] = Self.headerItem(5)
             await source.replaceItems(items)
-            try await Wait.until {
+            try await Wait.untilLaidOut(table) {
                 table.rect(ofRow: 5).height
                     == ImportCandidateTableLayout.headerRowHeight
             }
@@ -375,10 +321,10 @@ extension ImportCandidateTablePlaceTests {
 extension ImportCandidateTablePlaceTests {
     private static let size = NSSize(width: 460, height: 600)
 
-    /// A slot over `source` whose first page has landed.
+    /// A slot over `source` whose first window has landed.
     @MainActor
     private static func loadedSlot(
-        _ source: MutableImportListPageSource,
+        _ source: MutableImportList,
         _ store: ImportStore,
         _ uiStore: UiStore
     ) async throws -> ImportListSlot {
@@ -386,7 +332,7 @@ extension ImportCandidateTablePlaceTests {
             importStore: store,
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeSource: { _ in source.pages }
+            makeHandle: { _ in source.handle }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(30) != nil }
@@ -458,7 +404,7 @@ extension ImportCandidateTablePlaceTests {
                 return candidateItem(
                     index,
                     folderName: "Release \(index)",
-                    headerPosition: header.map(UInt64.init)
+                    headerKey: header.map { headerItem($0).id }
                 )
             }
     }
@@ -466,7 +412,7 @@ extension ImportCandidateTablePlaceTests {
     private static func candidateItem(
         _ index: Int,
         folderName: String,
-        headerPosition: UInt64? = nil
+        headerKey: String? = nil
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -492,37 +438,106 @@ extension ImportCandidateTablePlaceTests {
                 reading: .unidentified,
                 selected: false
             ),
-            headerPosition: headerPosition
+            headerKey: headerKey
+        )
+    }
+}
+
+/// Where the table scrolls when what it reads of the list changes.
+@Suite("Import list content scrolling")
+struct ImportCandidateTableContentTests {
+    @Test("a delivery under the same narrowing keeps the place")
+    func sameNarrowingKeepsThePlace() {
+        var content = ImportCandidateTableContent(Self.read())
+        #expect(
+            content.take(Self.read(), revealing: false, rowsChanged: false)
+                == nil
+        )
+        #expect(
+            content.take(Self.read(), revealing: false, rowsChanged: true)
+                == .keepPlace
         )
     }
 
-    /// A summary read under `filterText`, with nothing else in it.
-    private static func summary(
-        narrowedBy filterText: String
-    ) -> BridgeImportQueueSummary {
-        BridgeImportQueueSummary(
-            watchedFolders: [],
-            hasGroups: false,
-            narrowed: nil,
-            narrowing: BridgeImportListNarrowing(
-                tab: .pending,
-                filterText: filterText,
-                pendingFilter: .all
-            ),
-            openedAt: 0
+    /// Narrowed anew — the text changed — the list opens at its top, where
+    /// the first rows and their group header are, not at the row it showed
+    /// before; with a selected row still in the result, at that row.
+    @Test("a list narrowed anew opens at its first selected row, or its top")
+    func narrowedAnewOpensAtItsTop() {
+        var content = ImportCandidateTableContent(Self.read())
+        #expect(
+            content.take(
+                Self.read(filterText: "title"),
+                revealing: false,
+                rowsChanged: true
+            ) == .showOnTop(0)
+        )
+        #expect(
+            content.take(
+                Self.read(pendingFilter: .needsYou, openedAt: 4),
+                revealing: false,
+                rowsChanged: true
+            ) == .showOnTop(4)
         )
     }
 
-    /// A delivery at `revision`, narrowed as given.
+    /// A reveal scrolls to its own row; the deliveries it brings are taken
+    /// without a scroll of their own, and do not scroll once it has landed.
+    @Test("a reveal's deliveries scroll nothing")
+    func revealOwnsItsScroll() {
+        var content = ImportCandidateTableContent(Self.read())
+        #expect(
+            content.take(
+                Self.read(tab: .done),
+                revealing: true,
+                rowsChanged: true
+            ) == nil
+        )
+        #expect(
+            content.take(
+                Self.read(tab: .done),
+                revealing: false,
+                rowsChanged: false
+            ) == nil
+        )
+        #expect(
+            content.take(
+                Self.read(tab: .done),
+                revealing: false,
+                rowsChanged: true
+            ) == .keepPlace
+        )
+    }
+
+    /// The view opens a list narrowed anew at the row it names, whether or
+    /// not the rows the narrowing delivers are the ones shown.
+    @Test("a narrowing scrolls to the row its view opened at")
+    func narrowingScrollsToItsOpening() {
+        var content = ImportCandidateTableContent(Self.read())
+        #expect(
+            content.take(
+                Self.read(filterText: "t"),
+                revealing: false,
+                rowsChanged: false
+            ) == .showOnTop(0)
+        )
+        #expect(
+            content.take(
+                Self.read(filterText: "t"),
+                revealing: false,
+                rowsChanged: true
+            ) == .keepPlace
+        )
+    }
+
+    /// What the table reads, narrowed as given.
     private static func read(
-        _ revision: UInt64,
         tab: BridgeTriageTab = .pending,
         filterText: String = "",
         pendingFilter: BridgePendingFilter = .all,
         openedAt: Int = 0
     ) -> ImportCandidateListContentRead {
         ImportCandidateListContentRead(
-            revision: revision,
             narrowing: BridgeImportListNarrowing(
                 tab: tab,
                 filterText: filterText,
@@ -530,95 +545,5 @@ extension ImportCandidateTablePlaceTests {
             ),
             openedAt: openedAt
         )
-    }
-}
-
-/// An import list whose items a test replaces, delivering every live page
-/// again as core's list does.
-private final class MutableImportListPageSource: PageSource,
-    @unchecked Sendable
-{
-    typealias Row = BridgeImportListItem
-
-    private struct Sink {
-        let offset: Int
-        let limit: Int
-        let value: @MainActor @Sendable ([Row], Int) -> Void
-    }
-
-    private struct Delivery {
-        let sink: Sink
-        let page: [Row]
-        let total: Int
-    }
-
-    private let lock = NSLock()
-    private var items: [Row]
-    private var sinks: [UUID: Sink] = [:]
-
-    init(items: [Row]) {
-        self.items = items
-    }
-
-    var pages: ImportListPages {
-        .stub(source: self)
-    }
-
-    func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue: @escaping @MainActor @Sendable ([Row], Int) -> Void,
-        onError _: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        let id = UUID()
-        let sink = Sink(offset: offset, limit: limit, value: onValue)
-        let value = lock.recording { () -> ([Row], Int) in
-            sinks[id] = sink
-            return page(for: sink)
-        }
-        Task { @MainActor in onValue(value.0, value.1) }
-        return MutableImportListPageSubscription { [weak self] in
-            _ = self?.lock
-                .withLock {
-                    self?.sinks.removeValue(forKey: id)
-                }
-        }
-    }
-
-    func replaceItems(_ items: [Row]) async {
-        let deliveries = lock.recording { () -> [Delivery] in
-            self.items = items
-            return sinks.values.map { sink in
-                let value = page(for: sink)
-                return Delivery(
-                    sink: sink,
-                    page: value.0,
-                    total: value.1
-                )
-            }
-        }
-        for delivery in deliveries {
-            await delivery.sink.value(delivery.page, delivery.total)
-        }
-    }
-
-    private func page(for sink: Sink) -> ([Row], Int) {
-        let start = min(sink.offset, items.count)
-        let end = min(start + sink.limit, items.count)
-        return (Array(items[start..<end]), items.count)
-    }
-}
-
-private final class MutableImportListPageSubscription: PageSubscription,
-    @unchecked Sendable
-{
-    private let cancelAction: @Sendable () -> Void
-
-    init(cancel: @escaping @Sendable () -> Void) {
-        cancelAction = cancel
-    }
-
-    func cancel() {
-        cancelAction()
     }
 }

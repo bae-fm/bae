@@ -1,8 +1,8 @@
 //! A list's selection (`import_list_selection`): the rows a person points
 //! at, which are only ever rows the list shows. What it holds and offers,
-//! read beside the list's windows; the selected rows a bulk action takes, in
-//! the list's order; and the writes that change it, each answering with the
-//! selection revision the read that reflects it carries.
+//! read as a live query of its own; the selected rows a bulk action takes, in
+//! the list's order; and the writes that change it, which answer nothing: the
+//! rows they changed rerun the windows holding them.
 
 use super::listed::{BasisColumns, BASIS_COLUMNS};
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
@@ -157,29 +157,25 @@ impl ImportTables {
                     }
                     SelectionChange::Extend { from, to } => {
                         let items = row.items(Shown::View);
-                        let (Some(from), Some(to)) =
+                        let (Some((from, _)), Some((to, _))) =
                             (items.position_of(sql, &from)?, items.position_of(sql, &to)?)
                         else {
                             return Ok(Some(SelectionWrite::RunNotShown));
                         };
-                        items.select_window(
-                            sql,
-                            &LibraryPageWindow::at(from.min(to), from.abs_diff(to) + 1),
-                        )?;
+                        items.select_window(sql, from.min(to), from.abs_diff(to) + 1)?;
                     }
                 }
-                Ok(Some(SelectionWrite::Changed { revision: selection_revision(sql, list)? }))
+                Ok(Some(SelectionWrite::Changed))
             })
             .await?
             .ok_or(ImportListError::Closed(list))
     }
 
-    /// Select every row `list` shows, and answer with the selection revision
-    /// the read that shows it carries.
+    /// Select every row `list` shows.
     pub(crate) async fn select_all_in_import_list(
         &self,
         list: ImportListId,
-    ) -> Result<u64, ImportListError> {
+    ) -> Result<(), ImportListError> {
         self.store
             .call(move |sql| {
                 if list_row(sql, list)?.is_none() {
@@ -191,7 +187,7 @@ impl ImportTables {
                  ON CONFLICT (list_id, key) DO NOTHING",
                     [list.0],
                 )?;
-                Ok(Some(selection_revision(sql, list)?))
+                Ok(Some(()))
             })
             .await?
             .ok_or(ImportListError::Closed(list))
@@ -201,21 +197,11 @@ impl ImportTables {
 /// What a change to a selection came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelectionWrite {
-    /// The selection is as asked, at this revision.
-    Changed { revision: u64 },
+    /// The selection is as asked.
+    Changed,
     /// A run of rows was asked for between rows the list does not show, so
     /// nothing changed.
     RunNotShown,
-}
-
-/// The selection revision of `list`, which the write found open.
-fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
-    let revision = sql.query_row(
-        "SELECT selection_revision FROM import_list WHERE id = ?",
-        [list.0],
-        |row| row.get::<_, i64>(0),
-    )?;
-    to_u64(revision, "a list's selection revision")
 }
 
 /// Insert every key of `keys` the list shows into its selection.

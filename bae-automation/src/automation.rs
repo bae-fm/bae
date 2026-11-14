@@ -107,39 +107,29 @@ impl Automation {
         let mut candidates = Vec::new();
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
             let view = ImportListView { tab, ..ImportListView::default() };
-            let projection = self
-                .services
-                .load_import_list(view, whole_list())
-                .await
-                .map_err(AutomationError::from)?;
-            for window in projection.windows {
-                for item in window.rows {
-                    let candidate_key = match item {
-                        ImportListItem::Candidate { row, .. } => row.candidate_key,
-                        ImportListItem::Invalid { candidate, .. } => {
-                            candidates.push(automation_candidate_from_invalid(&candidate));
-                            continue;
-                        }
-                        ImportListItem::GroupHeader { .. } => continue,
-                    };
-                    let Some(detail) = self
-                        .services
-                        .load_import_candidate(&candidate_key)
-                        .await
-                        .map_err(AutomationError::from)?
-                    else {
+            let items =
+                self.services.load_import_items(view).await.map_err(AutomationError::from)?;
+            for item in items {
+                let candidate_key = match item {
+                    ImportListItem::Candidate { row, .. } => row.candidate_key,
+                    ImportListItem::Invalid { candidate, .. } => {
+                        candidates.push(automation_candidate_from_invalid(&candidate));
                         continue;
-                    };
-                    candidates.push(
-                        automation_candidate_from_folder(
-                            &detail,
-                            &runtime,
-                            &percents,
-                            &self.services,
-                        )
+                    }
+                    ImportListItem::GroupHeader { .. } => continue,
+                };
+                let Some(detail) = self
+                    .services
+                    .load_import_candidate(&candidate_key)
+                    .await
+                    .map_err(AutomationError::from)?
+                else {
+                    continue;
+                };
+                candidates.push(
+                    automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
                         .await?,
-                    );
-                }
+                );
             }
         }
         candidates.sort_by(|left, right| left.key().cmp(right.key()));
@@ -617,12 +607,6 @@ impl Automation {
             }
         }
     }
-}
-
-/// A window over every item the list holds. Automation presents the whole
-/// queue at once; the paging the tab does is a rendering concern.
-fn whole_list() -> bae_store::LibraryPageWindows {
-    std::iter::once(bae_store::LibraryPageWindow::at(0, u64::MAX)).collect()
 }
 
 #[cfg(test)]

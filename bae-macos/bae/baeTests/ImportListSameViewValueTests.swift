@@ -6,7 +6,7 @@ import Testing
 
 /// A new value of the view the list already shows: typing into the selected
 /// row's pane writes its draft, and the list's next value carries the row as
-/// the draft now reads, still selected at the same revision.
+/// the draft now reads, still selected.
 @Suite("Import list value for the same view")
 struct ImportListSameViewValueTests {
     /// The table keeps the row highlighted, asks core for nothing and leaves
@@ -20,18 +20,21 @@ struct ImportListSameViewValueTests {
         var selected = PreviewData.triageRowIdentified
         selected.selected = true
         let other = PreviewData.candidateItem(PreviewData.triageRowUnidentified)
-        let slot = ImportListSlot.preview(
+        let source = MutableImportList(items: [
+            PreviewData.candidateItem(selected), other,
+        ])
+        let slot = ImportListSlot(
             importStore: store,
             uiStore: uiStore,
-            items: [PreviewData.candidateItem(selected), other],
             selection: ImportSelection(
                 operations: .stub(change: { change in
                     changes.record(change)
-                    return 2
                 })
-            )
+            ),
+            makeHandle: { _ in source.handle }
         )
-        store.applySelectionRevision(1)
+        slot.startLoad()
+        try await Wait.until { slot.list?.row(at: 1) != nil }
         try await ImportListHosting.withList(
             store: store,
             slot: slot,
@@ -43,14 +46,18 @@ struct ImportListSameViewValueTests {
 
             var edited = selected
             edited.metadataSummary?.albumTitle = "Typed Title"
-            store.ingest([PreviewData.candidateItem(edited), other])
-            store.applySelectionRevision(1)
+            await source.replaceItems([
+                PreviewData.candidateItem(edited), other,
+            ])
+            try await Wait.until {
+                slot.list?.row(at: 0) == PreviewData.candidateItem(edited)
+            }
             try await Wait.untilSteady { table.selectedRowIndexes }
 
             #expect(table.selectedRowIndexes == [0])
             #expect(changes.all.isEmpty)
             #expect(slot.answersView)
-            #expect(store.shownSelectedKeys == [edited.candidateKey])
+            #expect(slot.list?.selectedKeys == [edited.candidateKey])
             #expect(window.firstResponder === focused)
         }
     }

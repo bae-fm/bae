@@ -3,9 +3,9 @@
 //! text filter finds, and the indexes each order reads off.
 
 use super::*;
+use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
-use crate::ImportListProjection;
 use bae_catalogs::search::MetadataResult;
 
 impl Library {
@@ -65,24 +65,31 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     );
 }
 
-/// The position of the header each release is listed under, in a read's
-/// order: `None` for a release in no group, and for each header.
-fn header_positions(projection: &ImportListProjection) -> Vec<Option<u64>> {
-    projection
-        .windows
+/// The key of the header each release is listed under, in a read's order:
+/// `None` for a release in no group, and for each header.
+fn header_keys(items: &[ImportListItem]) -> Vec<Option<String>> {
+    items
         .iter()
-        .flat_map(|window| &window.rows)
         .map(|item| match item {
-            ImportListItem::Candidate { header_position, .. } => *header_position,
+            ImportListItem::Candidate { header_key, .. } => header_key.clone(),
             ImportListItem::GroupHeader { .. } | ImportListItem::Invalid { .. } => None,
         })
         .collect()
 }
 
-/// A release in a group names where its group's header sits in the list,
-/// and one in no group names none.
+/// The stable key of the header of the group at `name`.
+fn header_of(lib: &Library, name: &str) -> Option<String> {
+    Some(crate::list::group_stable_key(&lib.group_key(name)))
+}
+
+fn items_of(read: &ImportListRead) -> Vec<ImportListItem> {
+    read.windows.iter().flat_map(|window| window.rows.clone()).collect()
+}
+
+/// A release in a group names its group's header by its key, and one in no
+/// group names none.
 #[tokio::test]
-async fn a_group_member_names_its_headers_position() {
+async fn a_group_member_names_its_header_by_key() {
     let lib = Library::new().await;
     lib.run(lib.scan("A/One") + lib.scan("A/Two") + lib.scan("B/Three") + lib.scan("Loose")).await;
     let read = lib.shown(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
@@ -97,29 +104,47 @@ async fn a_group_member_names_its_headers_position() {
             "candidate Loose"
         ]
     );
-    assert_eq!(header_positions(&read), [None, Some(0), Some(0), None, Some(3), None]);
+    let (a, b) = (header_of(&lib, "A"), header_of(&lib, "B"));
+    assert_eq!(header_keys(&items_of(&read)), [None, a.clone(), a, None, b, None]);
+    let ImportListItem::GroupHeader { group, .. } = &items_of(&read)[0] else {
+        panic!("a header leads");
+    };
+    assert_eq!(
+        items_of(&read)[0].stable_key(),
+        header_of(&lib, "A").unwrap(),
+        "the key a member names is the header's own stable key ({})",
+        group.name
+    );
 }
 
-/// A window that starts among a group's members names the header before it,
-/// which it does not hold: the header the rows on top are listed under,
+/// A window that starts among a group's members delivers the header before
+/// it, which it does not hold: the header the rows on top are listed under,
 /// whichever windows a surface has loaded.
 #[tokio::test]
-async fn a_window_starting_inside_a_group_names_the_header_before_it() {
+async fn a_window_starting_inside_a_group_delivers_the_header_before_it() {
     let lib = Library::new().await;
     lib.run(lib.scan("A/Disc 1") + lib.scan("A/Disc 2") + lib.scan("A/Disc 3") + lib.scan("Loose"))
         .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let read = lib.read_through(list, LibraryPageWindow::at(2, 3)).await;
-    assert_eq!(sequence(&read), ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]);
-    assert_eq!(header_positions(&read), [Some(0), Some(0), None]);
+    let window = lib.window_at(list, 2, 3).await;
+    assert_eq!(
+        items_sequence(&window.read.rows),
+        ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]
+    );
+    let a = header_of(&lib, "A");
+    assert_eq!(header_keys(&window.read.rows), [a.clone(), a.clone(), None]);
+    let leading = window.leading_header.expect("the window starts inside the group");
+    assert_eq!(Some(leading.stable_key()), a, "the header the first rows are listed under");
+    assert_eq!(items_sequence(std::slice::from_ref(&leading)), ["group A"]);
+
+    let top = lib.window_at(list, 0, 2).await;
+    assert!(top.leading_header.is_none(), "a window holding the header delivers none beside it");
 }
 
 /// A list that folds a group shut reads its windows past the folded members,
-/// and an open group's members still name where their header sits: its place
-/// among the items the list shows, the folded group's header counted and its
-/// members not.
+/// and an open group's members still name their header.
 #[tokio::test]
-async fn a_folded_lists_members_name_their_headers_position() {
+async fn a_folded_lists_members_name_their_header() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(
@@ -145,10 +170,15 @@ async fn a_folded_lists_members_name_their_headers_position() {
             "candidate Loose"
         ]
     );
-    assert_eq!(header_positions(&read), [None, None, Some(1), Some(1), Some(1), None]);
-    let window = lib.read_through(list, LibraryPageWindow::at(3, 3)).await;
-    assert_eq!(sequence(&window), ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]);
-    assert_eq!(header_positions(&window), [Some(1), Some(1), None]);
+    let b = header_of(&lib, "B");
+    assert_eq!(header_keys(&items_of(&read)), [None, None, b.clone(), b.clone(), b.clone(), None]);
+    let window = lib.window_at(list, 3, 3).await;
+    assert_eq!(
+        items_sequence(&window.read.rows),
+        ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]
+    );
+    assert_eq!(header_keys(&window.read.rows), [b.clone(), b.clone(), None]);
+    assert_eq!(window.leading_header.map(|header| header.stable_key()), b);
 }
 
 /// A group header asks how the folder under it is read, and offers to read it
@@ -274,24 +304,27 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
         ["group A", "candidate A/Old", "group B", "candidate B/Old"]
     );
     assert_eq!(
-        sequence(&lib.read_through(list, LibraryPageWindow::at(1, 2)).await),
+        items_sequence(&lib.window_at(list, 1, 2).await.read.rows),
         ["candidate A/Old", "group B"]
     );
     tables.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
     assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
-/// A window past the end holds what is left of the list, and one wholly past
-/// it holds nothing.
+/// A jump past the end starts at the last item, and a window from its key
+/// holds that item alone.
 #[tokio::test]
-async fn a_window_past_the_end_holds_what_is_left() {
+async fn a_jump_past_the_end_starts_at_the_last_item() {
     let lib = Library::new().await;
     lib.run(lib.scan("A") + lib.scan("B") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let read = lib.read_through(list, LibraryPageWindow::at(2, 5)).await;
-    assert_eq!(sequence(&read), ["candidate C"]);
-    assert_eq!(read.total_count, 3);
-    assert!(sequence(&lib.read_through(list, LibraryPageWindow::at(5, 5)).await).is_empty());
+    let window = lib.window_at(list, 5, 5).await;
+    assert_eq!(items_sequence(&window.read.rows), ["candidate C"]);
+    assert!(window.read.beyond.is_none(), "the list ends there");
+    assert_eq!(lib.read(list).await.total_count, 3);
+    let empty = Library::new().await;
+    let none = empty.open(view(TriageTab::Pending)).await;
+    assert!(empty.tables().import_key_at(none, 0).await.unwrap().is_none());
 }
 
 impl Library {

@@ -510,7 +510,7 @@ extension LatestStream where Value == UInt64 {
         }
 
         /// Fill with the next bulk action over `list`'s selection.
-        public func feed(from list: any ImportListSubscriptionProtocol)
+        public func feed(from list: any ImportListProtocol)
             -> LatestFeed
         {
             fed { list.selectionActionProgress() }

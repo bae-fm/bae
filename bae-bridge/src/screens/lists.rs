@@ -119,7 +119,7 @@ impl BridgeListWindow {
 }
 
 impl BridgeListWindowValue {
-    fn from_core(value: bae_views::ListWindowValue) -> Self {
+    pub(crate) fn from_core(value: bae_views::ListWindowValue) -> Self {
         Self {
             window: BridgeListWindow::from_core(value.window),
             rows: match value.rows {
@@ -159,6 +159,15 @@ impl BridgeListWindowValue {
                 bae_views::ListRows::Storage(rows) => BridgeListRows::Storage {
                     rows: rows.into_iter().map(crate::types::BridgeStorageRow::from_core).collect(),
                 },
+                #[cfg(desktop)]
+                bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {
+                    items: items
+                        .into_iter()
+                        .map(crate::types::BridgeImportListItem::from_core)
+                        .collect(),
+                    leading_header: leading_header
+                        .map(crate::types::BridgeImportListItem::from_core),
+                },
             },
             first: value.first.as_ref().map(BridgeSortValue::of_key),
             beyond: value.beyond.as_ref().map(BridgeSortValue::of_key),
@@ -167,7 +176,7 @@ impl BridgeListWindowValue {
 }
 
 impl BridgeListCount {
-    fn from_core(count: bae_views::ListCount) -> Self {
+    pub(crate) fn from_core(count: bae_views::ListCount) -> Self {
         Self {
             rows: count.rows,
             extra: match count.extra {
@@ -178,13 +187,20 @@ impl BridgeListCount {
                 bae_views::ListCountExtra::Storage { total_size, searching } => {
                     BridgeListCountExtra::Storage { total_size, searching }
                 }
+                #[cfg(desktop)]
+                bae_views::ListCountExtra::Import { narrowed } => BridgeListCountExtra::Import {
+                    narrowed: narrowed.map(|narrowed| crate::types::BridgeNarrowedCount {
+                        shown: narrowed.shown,
+                        total: narrowed.total,
+                    }),
+                },
             },
         }
     }
 }
 
 impl BridgeListPosition {
-    fn from_core(position: bae_views::ListPosition) -> Self {
+    pub(crate) fn from_core(position: bae_views::ListPosition) -> Self {
         Self { key: BridgeSortValue::of_key(&position.key), rows_before: position.rows_before }
     }
 }

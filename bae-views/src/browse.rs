@@ -46,6 +46,13 @@ pub enum ListRows {
     ArtistSearch(Vec<crate::album_detail::ArtistSearchResult>),
     /// The Storage Manager's rows, each a release beside its album.
     Storage(Vec<crate::album_detail::StorageRow>),
+    /// The import list's items, and the header of the group the first of
+    /// them is a member of when the window starts inside the group.
+    #[cfg(desktop)]
+    Import {
+        items: Vec<bae_import::ImportListItem>,
+        leading_header: Option<bae_import::ImportListItem>,
+    },
 }
 
 /// One delivery of a list's window: the request it answers, its rows, the
@@ -92,6 +99,12 @@ pub enum ListCountExtra {
     Storage {
         total_size: u64,
         searching: bool,
+    },
+    /// The import list's narrowed count, how many of its tab's entries its
+    /// filters keep, while they narrow it.
+    #[cfg(desktop)]
+    Import {
+        narrowed: Option<bae_import::NarrowedCount>,
     },
 }
 

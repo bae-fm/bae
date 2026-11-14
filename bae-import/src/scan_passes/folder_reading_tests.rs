@@ -265,13 +265,7 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
         })
         .await
         .unwrap();
-    let projection = tables
-        .load_import_list(crate::ImportListRequest {
-            list,
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-        })
-        .await
-        .unwrap();
+    let projection = tables.read_import_list_for_test(list).await.unwrap();
     let mut headers = Vec::new();
     let mut rows = Vec::new();
     for item in projection.windows.iter().flat_map(|window| &window.rows) {

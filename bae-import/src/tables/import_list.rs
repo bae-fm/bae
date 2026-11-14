@@ -4,12 +4,12 @@
 //! it folds (`import_list_collapsed`) and the rows it selects
 //! (`import_list_selection`); every release's tab, Found state, group, dates,
 //! shown text and command basis are in `import_list_placement`, which triggers
-//! keep in the write that changes any table they come from. A read of the list
-//! (`read`) is then a handful of indexed statements: the counts (`summary`),
-//! what the selection holds and offers (`selection`), the requested windows in
-//! the list's order (`order`), and each window's rows by key (`window`). A
-//! search reads the rows its index (`import_list_search`) finds. Nothing is
-//! placed, filtered, sorted or counted outside SQLite. The pane reads one
+//! keep in the write that changes any table they come from. A surface follows
+//! the list by live queries of their own (`read`): each window, a range of the
+//! list's order (`order`) whose rows are read by key (`window`), the count and
+//! the chrome (`summary`), and what the selection holds and offers
+//! (`selection`). A search reads the rows its index (`import_list_search`)
+//! finds. Nothing is placed, filtered, sorted or counted outside SQLite. The pane reads one
 //! candidate (`pane`) from the same placement. A surface changes the list it
 //! has open by its view and folds (`writes`) and by its selection
 //! (`selection`).
@@ -103,16 +103,12 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
 /// The collations the import list's SQL names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];
 
-/// One list's row as its reads take it: its view, its revisions, and whether
-/// its view narrows its tab or keeps every row of it.
+/// One list's row as its reads take it: its view, and whether it narrows its
+/// tab or keeps every row of it.
 #[derive(Debug, Clone, PartialEq)]
 struct ListRow {
     id: ImportListId,
     view: ImportListView,
-    view_revision: u64,
-    selection_revision: u64,
-    /// Where its view opened.
-    opened_at: u64,
     /// Whether the text filter or Found's filter entry narrows the tab.
     narrows: bool,
     /// Whether the text filter narrows it, which only a read of every row's
@@ -156,14 +152,10 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
 /// before anything else, so a fold or a selection never names a list that is
 /// gone.
 fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<Option<ListRow>, DbError> {
-    let Some((
-        (tab, pending_filter, filter_text, order),
-        (view_revision, selection_revision, opened_at),
-        (narrows, filters_text, keeps_all),
-    )) = sql
+    let Some(((tab, pending_filter, filter_text, order), (narrows, filters_text, keeps_all))) = sql
         .query_row(
-            "SELECT tab, pending_filter, filter_text, list_order, view_revision, \
-                    selection_revision, opened_at, narrows, pattern IS NOT NULL, keeps_all \
+            "SELECT tab, pending_filter, filter_text, list_order, narrows, \
+                    pattern IS NOT NULL, keeps_all \
              FROM import_list_view WHERE id = ?",
             [id.0],
             |row| {
@@ -174,8 +166,7 @@ fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<Option<ListRo
                         row.get::<_, String>(2)?,
                         row.get::<_, String>(3)?,
                     ),
-                    (row.get::<_, i64>(4)?, row.get::<_, i64>(5)?, row.get::<_, i64>(6)?),
-                    (row.get::<_, bool>(7)?, row.get::<_, bool>(8)?, row.get::<_, bool>(9)?),
+                    (row.get::<_, bool>(4)?, row.get::<_, bool>(5)?, row.get::<_, bool>(6)?),
                 ))
             },
         )
@@ -191,9 +182,6 @@ fn list_row(sql: &impl coven::SqlRead, id: ImportListId) -> Result<Option<ListRo
             pending_filter: pending_filter_of(&pending_filter)?,
             order: views::order_of(&order)?,
         },
-        view_revision: to_u64(view_revision, "a list's view revision")?,
-        selection_revision: to_u64(selection_revision, "a list's selection revision")?,
-        opened_at: to_u64(opened_at, "where a list's view opened")?,
         narrows,
         filters_text,
         keeps_all,

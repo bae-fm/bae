@@ -10,9 +10,9 @@ use crate::folder_scanner::{
 };
 use crate::folder_scanner::{CategorizedFiles, ReleaseFileScope};
 use crate::list::ImportListItem;
+use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
-use crate::ImportListProjection;
 use crate::{MetadataProvenance, TriageTab};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_identify::TerminalVerdict;
@@ -22,7 +22,7 @@ use bae_store::test_fixtures::fixed_now;
 use bae_util::test_channels::HANG_GUARD;
 
 /// Each header's group name and whether it offers to combine, in order.
-fn combinable(read: &ImportListProjection) -> Vec<(String, bool)> {
+fn combinable(read: &ImportListRead) -> Vec<(String, bool)> {
     read.windows[0]
         .rows
         .iter()
@@ -771,10 +771,11 @@ async fn a_done_row_reads_its_library_release() {
         .await
         .unwrap();
     let version = write_cover(&records, &release_id, "the library cover").await;
-    let mut live = tables
-        .subscribe_import_list(list_request(&lib.db, crate::TriageTab::Done, [(0, 50)]).await);
+    let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
+    let whole = bae_store::ListWindow::Forward { from: None, until: None, limit: 50 };
+    let mut live = tables.subscribe_import_window(list, whole);
     let first = live.next().await.expect("the query stays open").result.unwrap();
-    let done = rows(&first);
+    let done = window_rows(&first);
     assert_eq!(done.len(), 1);
     let done = &done[0];
     assert_eq!(done.placement, crate::TriagePlacement::Done);
@@ -816,7 +817,10 @@ async fn a_done_row_reads_its_library_release() {
         .result
         .unwrap();
     assert_eq!(
-        rows(&retitled)[0].metadata_summary.as_ref().map(|summary| summary.album_title.as_str()),
+        window_rows(&retitled)[0]
+            .metadata_summary
+            .as_ref()
+            .map(|summary| summary.album_title.as_str()),
         Some("Retitled")
     );
 }
@@ -876,10 +880,8 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     )
     .await;
 
-    let listed = tables
-        .load_import_list(list_request(&lib.db, crate::TriageTab::Pending, [(0, 50)]).await)
-        .await
-        .unwrap();
+    let list = open_in_path_order(&lib.db, crate::TriageTab::Pending).await;
+    let listed = tables.read_import_list_for_test(list).await.unwrap();
     let row = listed
         .windows
         .iter()

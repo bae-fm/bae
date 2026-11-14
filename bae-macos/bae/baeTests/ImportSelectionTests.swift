@@ -24,8 +24,8 @@ extension ImportSelectionOperations {
     /// The inert operations with the ones a test watches replaced.
     static func stub(
         change:
-            @escaping @Sendable (BridgeSelectionChange) async throws -> UInt64 =
-            { _ in 0 },
+            @escaping @Sendable (BridgeSelectionChange) async throws -> Void =
+            { _ in },
         selectAll: @escaping @Sendable () async throws -> Void = {},
         combine: @escaping @Sendable () async throws -> Data = {
             throw StubError.notImplemented
@@ -205,65 +205,41 @@ struct ImportSelectionTests {
     }
 }
 
-/// What the list shows selected between a click and core's list catching up.
+/// What the list shows selected is what the rows it holds say: a click
+/// writes the selection, and the windows holding the rows it changed deliver
+/// them selected.
 @MainActor
-@Suite("A click's selection until core's list reflects it")
-struct PendingSelectionClickTests {
+@Suite("The selection the list's rows show")
+struct ListSelectionTests {
     private static let album = Data("/music/Album".utf8)
     private static let otherAlbum = Data("/music/Other Album".utf8)
 
-    private static func store(selecting selected: Data?) -> ImportStore {
-        let store = ImportStore()
-        store.ingest(
-            [album, otherAlbum]
-                .map { key in
-                    var row = PreviewData.triageRowIdentified
-                    row.candidateKey = key
-                    row.selected = key == selected
-                    return PreviewData.candidateItem(row)
-                }
+    private static func list(
+        selecting selected: Data?
+    ) -> PaginatedList<BridgeImportListItem> {
+        let items = [album, otherAlbum]
+            .map { key in
+                var row = PreviewData.triageRowIdentified
+                row.candidateKey = key
+                row.selected = key == selected
+                return PreviewData.candidateItem(row)
+            }
+        let list = PaginatedList<BridgeImportListItem>(
+            queries: .fixed(items, answers: UnansweredCount()),
+            onError: { _ in }
         )
-        return store
+        list.preloadRows(rows: items)
+        return list
     }
 
-    @Test("an older list read leaves the click shown until its revision lands")
-    func olderReadsLeaveTheClick() {
-        let store = Self.store(selecting: Self.album)
-        store.applySelectionRevision(4)
-        let click = store.beginSelectionClick([Self.otherAlbum])
-
-        store.applySelectionRevision(4)
-        #expect(store.shownSelectedKeys == [Self.otherAlbum])
-        store.selectionClickWritten(click, revision: 5)
-        store.applySelectionRevision(4)
-        #expect(store.shownSelectedKeys == [Self.otherAlbum])
-
-        store.applySelectionRevision(5)
-        #expect(store.shownSelectedKeys == [Self.album])
-    }
-
-    @Test("a list read that landed before the write answered clears the click")
-    func aReadAheadOfTheAnswerClears() {
-        let store = Self.store(selecting: Self.album)
-        let click = store.beginSelectionClick([Self.otherAlbum])
-        store.applySelectionRevision(7)
-        #expect(store.shownSelectedKeys == [Self.otherAlbum])
-
-        store.selectionClickWritten(click, revision: 7)
-        #expect(store.shownSelectedKeys == [Self.album])
-    }
-
-    @Test("a failed write shows core's rows, and only the latest click counts")
-    func failuresAndNewerClicks() {
-        let store = Self.store(selecting: Self.album)
-        let first = store.beginSelectionClick([Self.otherAlbum])
-        let second = store.beginSelectionClick([])
-
-        store.selectionClickWritten(first, revision: 1)
-        store.applySelectionRevision(1)
-        #expect(store.shownSelectedKeys.isEmpty)
-
-        store.selectionClickFailed(second)
-        #expect(store.shownSelectedKeys == [Self.album])
+    @Test("the rows' own selected flags are the loaded selection")
+    func theRowsSayWhatIsSelected() {
+        #expect(Self.list(selecting: Self.album).selectedKeys == [Self.album])
+        #expect(
+            Self.list(selecting: Self.otherAlbum).selectedKeys == [
+                Self.otherAlbum
+            ]
+        )
+        #expect(Self.list(selecting: nil).selectedKeys.isEmpty)
     }
 }

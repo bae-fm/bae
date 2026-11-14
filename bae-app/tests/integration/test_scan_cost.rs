@@ -22,7 +22,7 @@
 
 use bae_app::AppServices;
 use bae_import::{ImportListView, ScanEvent};
-use bae_store::LibraryPageWindow;
+use bae_store::ListWindow;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -119,14 +119,15 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
     let list = match list_open {
         false => None,
         true => {
-            let list = std::sync::Arc::new(
-                services.subscribe_import_list(ImportListView::default()).await.unwrap(),
-            );
-            list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
-            let reading = list.clone();
+            let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
+            let window = list.until_closed(list.subscribe_window(ListWindow::Forward {
+                from: None,
+                until: None,
+                limit: 50,
+            }));
             let reader = tokio::spawn(async move {
                 let mut answers = 0_u64;
-                while reading.next().await.is_ok() {
+                while window.next().await.is_ok() {
                     answers += 1;
                 }
                 answers

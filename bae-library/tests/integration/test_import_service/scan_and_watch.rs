@@ -124,8 +124,8 @@ async fn scan_batch_until(
 async fn wait_for_candidates(
     f: &ImportFixture,
     what: &str,
-    accept: impl FnMut(&bae_import::ImportListSnapshot) -> bool,
-) -> bae_import::ImportListSnapshot {
+    accept: impl FnMut(&bae_import::ImportListRead) -> bool,
+) -> bae_import::ImportListRead {
     wait_for_tab(f, what, bae_import::TriageTab::Pending, accept).await
 }
 
@@ -141,7 +141,7 @@ async fn wait_for_folder_scans(
 }
 
 /// The candidate rows one read of the list holds.
-fn candidate_rows(projection: &bae_import::ImportListSnapshot) -> Vec<&bae_import::TriageRow> {
+fn candidate_rows(projection: &bae_import::ImportListRead) -> Vec<&bae_import::TriageRow> {
     projection
         .windows
         .iter()

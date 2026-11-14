@@ -737,7 +737,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     fixture.set_identify_automatically(false).await;
     fixture.scan(MAX_IN_FLIGHT + 1).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&list).await;
     let keys: Vec<crate::CandidateKey> =
         dirs.iter().map(|dir| crate::CandidateKey::folder(dir)).collect();
@@ -750,7 +750,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     }
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
 
-    let status = |snapshot: &crate::ImportListSnapshot, key: &crate::CandidateKey| {
+    let status = |snapshot: &crate::list::ImportListRead, key: &crate::CandidateKey| {
         page_live(snapshot)[key].facts.identification.clone()
     };
     let running = Some(crate::IdentificationStatus::Running);
@@ -759,10 +759,6 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     // over the cap waits.
     let waiting = loop {
         let snapshot = next_page(&list).await;
-        assert_eq!(
-            snapshot.view_revision, initial.view_revision,
-            "identifying changed the list's request"
-        );
         let runs = keys.iter().filter(|key| status(&snapshot, key) == running).count();
         let waits: Vec<&crate::CandidateKey> =
             keys.iter().filter(|key| status(&snapshot, key) == queued).collect();
@@ -776,10 +772,6 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     fixture.provider.let_one_through();
     loop {
         let snapshot = next_page(&list).await;
-        assert_eq!(
-            snapshot.view_revision, initial.view_revision,
-            "identifying changed the list's request"
-        );
         match status(&snapshot, &waiting) {
             Some(crate::IdentificationStatus::Queued) => {}
             Some(crate::IdentificationStatus::Running) => break,

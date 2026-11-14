@@ -3,13 +3,13 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// The import list table's rows, scrolling and page holds. Its selection
+/// The import list table's rows, scrolling and window holds. Its selection
 /// handling is in `ImportCandidateTableCoordinator+Selection.swift`.
 @MainActor
 final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     NSTableViewDelegate
 {
-    private(set) var list: OffsetPaginatedList<BridgeImportListItem>
+    private(set) var list: PaginatedList<BridgeImportListItem>
     let importStore: ImportStore
     let listSlot: ImportListSlot
     var actions: ImportListEntryActions
@@ -53,7 +53,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     let pinnedStrip = ImportListPinnedHeaderStrip()
 
     init(
-        list: OffsetPaginatedList<BridgeImportListItem>,
+        list: PaginatedList<BridgeImportListItem>,
         importStore: ImportStore,
         listSlot: ImportListSlot,
         actions: ImportListEntryActions,
@@ -139,7 +139,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// scroll as the content change asks, highlight the rows `shownSelected`
     /// names, and hold the pages of the rows in view.
     func update(
-        list: OffsetPaginatedList<BridgeImportListItem>,
+        list: PaginatedList<BridgeImportListItem>,
         rows: ImportCandidateTableRows,
         read: ImportCandidateListContentRead,
         shownSelected: Set<Data>,
@@ -161,12 +161,13 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         if revealing {
             endPendingPlace()
         }
+        let rowsChanged = rows != shownRows
         load(rows)
         if environment.appearance != drawnAppearance {
             drawnAppearance = environment.appearance
             reloadRows()
         }
-        scroll(for: read, revealing: revealing)
+        scroll(for: read, revealing: revealing, rowsChanged: rowsChanged)
         highlight(shownSelected)
         holdRowsInView()
         refreshPinnedHeader()
@@ -201,7 +202,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private func noteHeights(in tableView: ImportCandidateTableView) {
         var headers = IndexSet()
         for entry in list.loadedEntries {
-            if case .groupHeader = importStore.items[entry.id] {
+            if case .groupHeader = list.row(at: entry.position) {
                 headers.insert(entry.position)
             }
         }
@@ -259,7 +260,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
 
     private func scroll(
         for read: ImportCandidateListContentRead,
-        revealing: Bool
+        revealing: Bool,
+        rowsChanged: Bool
     ) {
         guard var content else {
             // The first delivery a table takes is what it opens on: at the
@@ -276,7 +278,11 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             }
             return
         }
-        let scrolling = content.take(read, revealing: revealing)
+        let scrolling = content.take(
+            read,
+            revealing: revealing,
+            rowsChanged: rowsChanged
+        )
         self.content = content
         switch scrolling {
         case .showOnTop(let row):
@@ -308,7 +314,7 @@ extension ImportCandidateTableCoordinator {
 
     /// The entry at `row`, once its page has landed.
     func item(at row: Int) -> BridgeImportListItem? {
-        list.idAt(row).flatMap { importStore.items[$0] }
+        list.row(at: row)
     }
 
     /// A header is its own, shorter height; every other row is one height,
@@ -430,11 +436,7 @@ extension ImportCandidateTableCoordinator {
         let range = tableView.rows(in: tableView.visibleRect)
         let lower = max(range.location - 1, 0)
         let upper = min(range.location + range.length + 1, count)
-        var inView = lower < upper ? Set(lower..<upper) : []
-        // The header pinned over the rows, wherever it sits in the list.
-        if let pinned = pinnedHeader() {
-            inView.insert(pinned.position)
-        }
+        let inView = lower < upper ? Set(lower..<upper) : []
         for (row, hold) in rowHolds where !inView.contains(row) {
             hold.cancel()
             rowHolds.removeValue(forKey: row)
@@ -578,7 +580,7 @@ extension ImportCandidateTableCoordinator {
 
     private func placeRow(at row: Int) -> ImportListPlace.Row {
         guard let stableKey = list.idAt(row) else { return .unloaded }
-        if let candidate = importStore.items[stableKey]?.triageRow {
+        if let candidate = list.row(of: stableKey)?.triageRow {
             return .candidate(
                 stableKey: stableKey,
                 candidateKey: candidate.candidateKey
@@ -637,7 +639,12 @@ extension ImportCandidateTableCoordinator {
     /// that have landed say.
     func pinnedHeader() -> ImportListPinnedHeader? {
         guard let top = topRow else { return nil }
-        return ImportListPinnedHeader.over(top: top) { item(at: $0) }
+        let list = list
+        return ImportListPinnedHeader.over(
+            top: top,
+            item: { list.row(at: $0) },
+            header: { list.row(of: $0) ?? list.leadingHeader(of: $0) }
+        )
     }
 
     /// Pin the header of the group on top over the rows, once its page has

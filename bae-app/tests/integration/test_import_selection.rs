@@ -6,10 +6,10 @@ use bae_app::AppServices;
 use bae_import::selection::{SelectionChange, SelectionSummary, SingleSelection};
 use bae_import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
-    ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
+    FollowedImportList, ImportListItem, ImportListOrder, ImportListRead, ImportListView,
     PendingFilter, TriageTab,
 };
-use bae_store::LibraryPageWindow;
+use bae_store::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
 use std::path::Path;
 use tempfile::TempDir;
@@ -57,12 +57,12 @@ async fn tab_counts_until(
 
 /// The list's snapshots until one `accept` admits.
 async fn until(
-    list: &LiveImportList,
-    accept: impl Fn(&ImportListSnapshot) -> bool,
-) -> ImportListSnapshot {
+    list: &FollowedImportList,
+    accept: impl Fn(&ImportListRead) -> bool,
+) -> ImportListRead {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let snapshot = list.next().await.expect("the list answers");
+            let snapshot = list.next().await;
             if accept(&snapshot) {
                 return snapshot;
             }
@@ -78,9 +78,12 @@ async fn list_showing(
     services: &AppServices,
     view: ImportListView,
     count: u64,
-) -> (LiveImportList, ImportListSnapshot) {
+) -> (FollowedImportList, ImportListRead) {
     let list = services.subscribe_import_list(view).await.unwrap();
-    list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
+    let list = FollowedImportList::follow(
+        list,
+        ListWindow::Forward { from: None, until: None, limit: 50 },
+    );
     let snapshot = until(&list, |snapshot| {
         snapshot.total_count == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
@@ -90,7 +93,7 @@ async fn list_showing(
 }
 
 /// The keys the snapshot's page shows selected, top to bottom.
-fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
+fn selected_on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -105,7 +108,7 @@ fn selected_on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateK
 }
 
 /// The candidate keys the snapshot's page shows, top to bottom.
-fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
+fn on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
@@ -127,11 +130,8 @@ async fn a_bulk_action_runs_over_every_selected_row() {
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
 
-    let revision = list.select_all().await.unwrap();
-    until(&list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 3
-    })
-    .await;
+    list.select_all().await.unwrap();
+    until(&list, |snapshot| snapshot.selection.count == 3).await;
 
     let failures = services
         .run_import_selection_action(
@@ -164,12 +164,8 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
     let (list, shown) = list_showing(&services, not_looked_up, 3).await;
     let picked: Vec<bae_import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
-    let revision =
-        list.change_selection(SelectionChange::Replace { keys: picked.clone() }).await.unwrap();
-    let selected = until(&list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 2
-    })
-    .await;
+    list.change_selection(SelectionChange::Replace { keys: picked.clone() }).await.unwrap();
+    let selected = until(&list, |snapshot| snapshot.selection.count == 2).await;
     assert_eq!(selected_on_page(&selected), picked);
     assert!(selected
         .selection
@@ -209,11 +205,8 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
-    let revision = list.select_all().await.unwrap();
-    until(&list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 3
-    })
-    .await;
+    list.select_all().await.unwrap();
+    until(&list, |snapshot| snapshot.selection.count == 3).await;
 
     list.set_view(ImportListView {
         filter_text: "Album 1".to_string(),
@@ -241,13 +234,11 @@ fn descending() -> ImportListView {
 
 /// The candidate keys `view` shows, top to bottom.
 async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_import::CandidateKey> {
-    let list = services
-        .load_import_list(view, std::iter::once(LibraryPageWindow::at(0, 50)).collect())
+    services
+        .load_import_items(view)
         .await
-        .unwrap();
-    list.windows
+        .unwrap()
         .into_iter()
-        .flat_map(|window| window.rows)
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.candidate_key),
             _ => None,
@@ -259,22 +250,18 @@ async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_imp
 /// order, and return the selected keys in the order the list shows them.
 async fn select_out_of_order(
     services: &AppServices,
-    list: &LiveImportList,
+    list: &FollowedImportList,
     view: ImportListView,
     picks: &[usize],
 ) -> Vec<bae_import::CandidateKey> {
     let shown = shown_keys(services, view).await;
-    let revision = list
-        .change_selection(SelectionChange::Toggle {
-            add: picks.iter().map(|&pick| shown[pick].clone()).collect(),
-            remove: Vec::new(),
-        })
-        .await
-        .unwrap();
-    until(list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == picks.len() as u64
+    list.change_selection(SelectionChange::Toggle {
+        add: picks.iter().map(|&pick| shown[pick].clone()).collect(),
+        remove: Vec::new(),
     })
-    .await;
+    .await
+    .unwrap();
+    until(list, |snapshot| snapshot.selection.count == picks.len() as u64).await;
     let mut in_view_order = picks.to_vec();
     in_view_order.sort_unstable();
     in_view_order.into_iter().map(|pick| shown[pick].clone()).collect()
@@ -399,12 +386,8 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
     let (list, _) = list_showing(&services, skipped, 1).await;
     let key = bae_import::CandidateKey::folder(&broken);
 
-    let revision =
-        list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
-    let selected = until(&list, |snapshot| {
-        snapshot.selection_revision >= revision && snapshot.selection.count == 1
-    })
-    .await;
+    list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
+    let selected = until(&list, |snapshot| snapshot.selection.count == 1).await;
     assert_eq!(
         selected.selection.single,
         Some(SingleSelection::InvalidCandidate { key: key.clone() })

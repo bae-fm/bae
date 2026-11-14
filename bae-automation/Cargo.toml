@@ -18,7 +18,6 @@ bae-desktop-cfg = { workspace = true }
 bae-app = { workspace = true }
 bae-library = { workspace = true }
 # The library's records its answers carry.
-bae-store = { workspace = true }
 bae-records = { workspace = true }
 # The identify views its answers carry.
 bae-identify = { workspace = true }

@@ -2,9 +2,9 @@
 //! lists; where a candidate is revealed; and the first one being identified.
 
 use super::*;
+use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
-use crate::ImportListProjection;
 use crate::TriageTab;
 use bae_catalogs::search::MetadataResult;
 
@@ -21,7 +21,7 @@ async fn grouped_in_two_entries() -> Library {
 }
 
 /// The releases a read holds, by display path.
-fn releases(projection: &ImportListProjection) -> Vec<String> {
+fn releases(projection: &ImportListRead) -> Vec<String> {
     projection
         .windows
         .iter()
@@ -66,11 +66,11 @@ async fn a_list_counts_what_it_lists() {
                 assert_eq!(read.total_count as usize, sequence(&read).len(), "{what}");
                 match filter != PendingFilter::All || !text.is_empty() {
                     true => assert_eq!(
-                        read.summary.narrowed.map(|narrowed| narrowed.shown as usize),
+                        read.narrowed.map(|narrowed| narrowed.shown as usize),
                         Some(kept.len()),
                         "{what}"
                     ),
-                    false => assert_eq!(read.summary.narrowed, None, "{what}"),
+                    false => assert_eq!(read.narrowed, None, "{what}"),
                 }
                 for item in read.windows.iter().flat_map(|window| &window.rows) {
                     let ImportListItem::GroupHeader { group, entry_count, .. } = item else {
@@ -119,12 +119,12 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let narrowed = lib
         .shown(ImportListView { filter_text: "wanted".to_string(), ..view(TriageTab::Pending) })
         .await;
-    assert_eq!(narrowed.summary.narrowed, Some(crate::NarrowedCount { shown: 1, total: 3 }));
+    assert_eq!(narrowed.narrowed, Some(crate::NarrowedCount { shown: 1, total: 3 }));
     assert_eq!(narrowed.total_count, 2, "the header and its matching member");
     assert_eq!(lib.tab_counts().await.pending, 3, "the counts are the whole queue's");
     assert!(narrowed.summary.has_groups);
     let whole = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(whole.summary.narrowed, None);
+    assert_eq!(whole.narrowed, None);
     assert_eq!(whole.total_count, 4);
     assert_eq!(whole.summary.watched_folders.len(), 1);
     assert_eq!(
@@ -317,7 +317,7 @@ async fn each_entry_counts_the_rows_it_holds() {
         assert_eq!(shown.total_count as u32, entry.count, "{:?}", entry.filter);
         if entry.filter != PendingFilter::All {
             assert_eq!(
-                shown.summary.narrowed,
+                shown.narrowed,
                 Some(crate::NarrowedCount { shown: entry.count, total: 14 }),
                 "the list's count under {:?} is the entry's",
                 entry.filter
@@ -352,7 +352,7 @@ async fn a_chosen_entry_holding_no_row_stays_chosen() {
     let ended = lib.read(list).await;
     assert_eq!(ended.total_count, 0);
     assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
-    assert_eq!(ended.summary.narrowed, Some(crate::NarrowedCount { shown: 0, total: 14 }));
+    assert_eq!(ended.narrowed, Some(crate::NarrowedCount { shown: 0, total: 14 }));
 }
 
 /// Done and Skipped rows are past identification, so an entry chosen on
@@ -364,7 +364,7 @@ async fn the_pending_filter_leaves_done_and_skipped_alone() {
         assert_eq!(lib.items(under(TriageTab::Done, filter)).await, ["candidate Imported"]);
         assert_eq!(lib.items(under(TriageTab::Skipped, filter)).await, ["candidate Set Aside"]);
         assert_eq!(
-            lib.shown(under(TriageTab::Done, filter)).await.summary.narrowed,
+            lib.shown(under(TriageTab::Done, filter)).await.narrowed,
             None,
             "the entry leaves Done alone"
         );
@@ -390,7 +390,7 @@ async fn the_text_filter_composes_with_the_pending_filter() {
     assert_eq!(lib.tab_counts().await.pending, 14);
     assert!(lib.items(texted(PendingFilter::Identified, "nothing")).await.is_empty());
     assert_eq!(
-        lib.shown(texted(PendingFilter::All, "several")).await.summary.narrowed,
+        lib.shown(texted(PendingFilter::All, "several")).await.narrowed,
         Some(crate::NarrowedCount { shown: 1, total: 14 }),
         "only the row with no draft reads its folder's name"
     );
@@ -400,7 +400,6 @@ async fn the_text_filter_composes_with_the_pending_filter() {
             ..view(TriageTab::Skipped)
         })
         .await
-        .summary
         .narrowed,
         Some(crate::NarrowedCount { shown: 1, total: 1 })
     );

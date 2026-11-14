@@ -454,7 +454,7 @@ async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
 
 /// Each candidate row of one read, by key, with where it stands on Found.
 fn standings(
-    projection: &crate::ImportListProjection,
+    projection: &crate::list::ImportListRead,
 ) -> Vec<(crate::CandidateKey, Option<crate::PendingStanding>)> {
     projection
         .windows

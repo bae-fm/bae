@@ -202,23 +202,23 @@ impl AppServices {
         self.inner.import.every_scan_event_for_test()
     }
 
-    /// Open an import list showing `view`, reconfigurable by view and by
-    /// window, with nothing folded and nothing selected.
+    /// Open an import list showing `view`, with nothing folded and nothing
+    /// selected. Its windows, count, summary, filter entries and selection
+    /// are live reads opened from it, ended when it closes.
     pub async fn subscribe_import_list(
         &self,
         view: ImportListView,
     ) -> Result<LiveImportList, bae_library::LibraryError> {
-        Ok(self.inner.import.open_list(view, bae_store::LibraryPageWindows::new()).await?)
+        Ok(self.inner.import.open_list(view).await?)
     }
 
-    /// One read of a list showing `view` through `windows`, for a caller
-    /// with no subscription: a list opened for the read and closed after it.
-    pub async fn load_import_list(
+    /// Every item of the list showing `view`, once, for a caller with no list
+    /// open: a list opened for the read and closed after it.
+    pub async fn load_import_items(
         &self,
         view: ImportListView,
-        windows: bae_store::LibraryPageWindows,
-    ) -> Result<bae_import::ImportListProjection, bae_library::LibraryError> {
-        Ok(self.inner.import.load_list(view, windows).await?)
+    ) -> Result<Vec<bae_import::ImportListItem>, bae_library::LibraryError> {
+        Ok(self.inner.import.load_list(view).await?)
     }
 
     /// The import pane's candidate as it changes, read for the key the

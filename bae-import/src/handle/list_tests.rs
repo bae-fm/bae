@@ -14,89 +14,92 @@
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
-use crate::{ImportListView, LiveImportList, PendingFilter};
+use crate::{ImportListView, ImportWindow, LiveImportList, PendingFilter};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::{discogs_release_json, mb_release_json, mb_titled_release_json};
+use bae_store::{DbError, ListWindow};
 use bae_util::test_channels::HANG_GUARD;
 use tempfile::TempDir;
 
-/// The list under one filter entry, and the keys and filter entries its last
-/// snapshot carried.
-struct LiveList {
-    list: LiveImportList,
+/// What the list under one filter entry shows, as its window and its filter
+/// entries last delivered them: the keys of its rows, and each entry's count.
+#[derive(Clone, Default)]
+struct ListState {
     shown: Option<Vec<crate::CandidateKey>>,
     entries: Vec<crate::PendingFilterEntry>,
 }
 
+/// The list under one filter entry, followed through one window over every
+/// item and the filter's entries, each its own live query.
+struct LiveList {
+    _list: LiveImportList,
+    state: tokio::sync::watch::Receiver<ListState>,
+}
+
+fn keys_of(items: &[crate::ImportListItem]) -> Vec<crate::CandidateKey> {
+    items.iter().filter_map(candidate_key).cloned().collect()
+}
+
 impl LiveList {
     async fn new(handle: &ImportServiceHandle, filter: PendingFilter) -> Self {
-        Self {
-            list: handle
-                .subscribe_whole_list(ImportListView {
-                    pending_filter: filter,
-                    ..ImportListView::default()
-                })
-                .await,
-            shown: None,
-            entries: Vec::new(),
-        }
+        let list = handle
+            .open_list(ImportListView { pending_filter: filter, ..ImportListView::default() })
+            .await
+            .expect("the list opens");
+        let (state, receiver) = tokio::sync::watch::channel(ListState::default());
+        let state = std::sync::Arc::new(state);
+        let mut window =
+            list.subscribe_window(ListWindow::Forward { from: None, until: None, limit: u64::MAX });
+        let rows = state.clone();
+        tokio::spawn(async move {
+            while let Some(event) = window.next().await {
+                let window = event.result.expect("the window reads");
+                rows.send_modify(|state| state.shown = Some(keys_of(&window.read.rows)));
+            }
+        });
+        let mut entries = list.subscribe_filter_entries();
+        tokio::spawn(async move {
+            while let Some(entries_read) = entries.next().await {
+                state.send_modify(|state| state.entries = entries_read.expect("the entries read"));
+            }
+        });
+        Self { _list: list, state: receiver }
     }
 
     /// Wait until the list shows exactly `expected`; at once when it already
     /// does, since a change that moves no row delivers nothing.
     async fn shows(&mut self, expected: &[&crate::CandidateKey]) {
         let wanted: Vec<crate::CandidateKey> = expected.iter().map(|key| (*key).clone()).collect();
-        let reached = tokio::time::timeout(HANG_GUARD, async {
-            while self.shown.as_ref() != Some(&wanted) {
-                self.next().await;
-            }
-        })
-        .await;
-        assert!(reached.is_ok(), "the list shows {:?}, not {wanted:?}", self.shown);
+        let reached = tokio::time::timeout(
+            HANG_GUARD,
+            self.state.wait_for(|state| state.shown.as_ref() == Some(&wanted)),
+        )
+        .await
+        .is_ok();
+        assert!(reached, "the list shows {:?}, not {wanted:?}", self.state.borrow().shown);
     }
 
-    /// How many rows the last snapshot counts under `filter`; none before
+    /// How many rows the filter's entries count under `filter`; none before
     /// the first.
     fn counted(&self, filter: PendingFilter) -> Option<u32> {
-        counted(&self.entries, filter)
+        counted(&self.state.borrow().entries, filter)
     }
 
-    /// Wait until a snapshot counts `count` rows under `filter`; at once when
-    /// the last one does.
+    /// Wait until the entries count `count` rows under `filter`; at once when
+    /// they already do.
     async fn counts(&mut self, filter: PendingFilter, count: u32) {
-        let reached = tokio::time::timeout(HANG_GUARD, async {
-            while self.counted(filter) != Some(count) {
-                self.next().await;
-            }
-        })
-        .await;
+        let reached = tokio::time::timeout(
+            HANG_GUARD,
+            self.state.wait_for(|state| counted(&state.entries, filter) == Some(count)),
+        )
+        .await
+        .is_ok();
         assert!(
-            reached.is_ok(),
+            reached,
             "the list counts {:?} under {filter:?}, not {count}",
             self.counted(filter)
         );
-    }
-
-    async fn next(&mut self) {
-        let snapshot = self.list.next().await.expect("the list answers");
-        self.entries = snapshot.pending_filter_entries.clone();
-        // A snapshot naming no window leaves the rows as they were.
-        if !snapshot.windows.is_empty() {
-            self.shown = Some(
-                snapshot
-                    .windows
-                    .iter()
-                    .flat_map(|window| &window.rows)
-                    .filter_map(|item| match item {
-                        crate::ImportListItem::Candidate { row, .. } => {
-                            Some(row.candidate_key.clone())
-                        }
-                        _ => None,
-                    })
-                    .collect(),
-            );
-        }
     }
 }
 
@@ -209,13 +212,22 @@ async fn the_entry_counts_follow_what_is_running() {
     shut_down(handle).await;
 }
 
+/// A list over every item that holds one row on its page: the window of the
+/// first item, closed at the second, whose range the other row is outside
+/// of, and the filter's entries, each its own live query.
+struct OnePage {
+    _list: LiveImportList,
+    window: coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError>,
+    entries: coven::LiveQuery<Vec<crate::PendingFilterEntry>, DbError>,
+}
+
 /// A watched root holding two stored candidates, each with its draft read
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
 async fn one_row_on_the_page(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (ImportServiceHandle, TempDir, LiveImportList, crate::CandidateKey, crate::CandidateKey) {
+) -> (ImportServiceHandle, TempDir, OnePage, crate::CandidateKey, crate::CandidateKey) {
     let (parts, db, tmp) = setup_test_import_with(providers, http).await;
     let tables = crate::tables::ImportTables::new(db);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
@@ -238,25 +250,26 @@ async fn one_row_on_the_page(
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
-    let list = handle
-        .subscribe_list_window(ImportListView::default(), bae_store::LibraryPageWindow::at(0, 1))
-        .await;
-    let snapshot = delivered(&list).await;
-    let on_page: Vec<crate::CandidateKey> = snapshot
-        .windows
-        .iter()
-        .flat_map(|window| &window.rows)
-        .filter_map(candidate_key)
-        .cloned()
-        .collect();
+    let list = handle.open_list(ImportListView::default()).await.expect("the list opens");
+    let mut window =
+        list.subscribe_window(ListWindow::Forward { from: None, until: None, limit: 1 });
+    let initial = window.next().await.expect("the query stays open").result.unwrap();
+    let on_page = keys_of(&initial.read.rows);
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
-    let entries = &snapshot.pending_filter_entries;
-    assert_eq!(counted(entries, PendingFilter::All), Some(2));
-    assert_eq!(counted(entries, PendingFilter::InProgress), Some(0));
-    assert_eq!(counted(entries, PendingFilter::Identified), Some(0));
+    // The first delivery closes the window at the row beyond it.
+    let beyond = initial.read.beyond.clone().expect("the second row is beyond the page");
+    window
+        .requests()
+        .set(ListWindow::Forward { from: None, until: Some(beyond.clone()), limit: 1 })
+        .unwrap();
+    let mut entries = list.subscribe_filter_entries();
+    let entries_read = entries.next().await.expect("the query stays open").unwrap();
+    assert_eq!(counted(&entries_read, PendingFilter::All), Some(2));
+    assert_eq!(counted(&entries_read, PendingFilter::InProgress), Some(0));
+    assert_eq!(counted(&entries_read, PendingFilter::Identified), Some(0));
     let on_page = on_page.into_iter().next().expect("one row");
     let off_page = if on_page == first_key { second_key } else { first_key };
-    (handle, tmp, list, on_page, off_page)
+    (handle, tmp, OnePage { _list: list, window, entries }, on_page, off_page)
 }
 
 /// The candidate whose row `item` is.
@@ -267,60 +280,69 @@ fn candidate_key(item: &crate::ImportListItem) -> Option<&crate::CandidateKey> {
     }
 }
 
-/// The next snapshot the list delivers.
-async fn delivered(list: &LiveImportList) -> crate::ImportListSnapshot {
-    tokio::time::timeout(HANG_GUARD, list.next())
-        .await
-        .expect("the list delivers")
-        .expect("the list answers")
-}
-
 /// How many rows `entries` count under `filter`; `None` when they hold no
 /// entry for it, as before the list's first snapshot.
 fn counted(entries: &[crate::PendingFilterEntry], filter: PendingFilter) -> Option<u32> {
     entries.iter().find(|entry| entry.filter == filter).map(|entry| entry.count)
 }
 
+/// The next filter entries `page` delivers that `accept` admits.
+async fn entries_until(
+    page: &mut OnePage,
+    accept: impl Fn(&[crate::PendingFilterEntry]) -> bool,
+) -> Vec<crate::PendingFilterEntry> {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let entries = page.entries.next().await.expect("the query stays open").unwrap();
+            if accept(&entries) {
+                return entries;
+            }
+        }
+    })
+    .await
+    .expect("the entries reach what the test waits for")
+}
+
 /// A run starting for a row off the page, under All, changes nothing on the
-/// page but moves the row's count to In Progress, so the list delivers it.
+/// page but moves the row's count to In Progress, so the entries deliver it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_off_the_page_delivers_its_count() {
-    let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page(
+    let (handle, _tmp, mut page, _on_page, off_page) = one_row_on_the_page(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
 
     admit(&handle, &off_page).await;
-    let moved = delivered(&list).await;
+    let moved =
+        entries_until(&mut page, |entries| counted(entries, PendingFilter::InProgress) == Some(1))
+            .await;
 
-    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::InProgress), Some(1));
-    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
-    assert!(moved.windows.is_empty(), "the page holds the row it held: {on_page:?}");
+    assert_eq!(counted(&moved, PendingFilter::All), Some(2));
+    // Coven does not narrow the import list's windows by their range (the placement
+    // reads headers through a correlated EXISTS, and Found members sort through a
+    // join on unit), so any write the list reads reruns every window.
+    assert!(page.window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
     shut_down(handle).await;
 }
 
-/// A pick for a row off the page moves its count to Identified, so the list
-/// delivers it.
+/// A pick for a row off the page moves its count to Identified, so the
+/// entries deliver it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_off_the_page_delivers_its_count() {
     let fakes = FakeCatalogs::offline();
-    let (handle, _tmp, list, _on_page, off_page) =
+    let (handle, _tmp, mut page, _on_page, off_page) =
         one_row_on_the_page(fakes.providers(), bae_util::http::Http::for_test()).await;
     seed_mb_release_with_catalog(&fakes, "off-the-page", "CAT-1");
 
     pick(&handle, &off_page, "off-the-page").await;
     // The pick's write and its cancelling the row's run each deliver; while
     // the run still goes it counts the row under In Progress.
-    let moved = loop {
-        let snapshot = delivered(&list).await;
-        if counted(&snapshot.pending_filter_entries, PendingFilter::Identified) == Some(1) {
-            break snapshot;
-        }
-    };
+    let moved =
+        entries_until(&mut page, |entries| counted(entries, PendingFilter::Identified) == Some(1))
+            .await;
 
-    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::Identified), Some(1));
-    assert_eq!(counted(&moved.pending_filter_entries, PendingFilter::All), Some(2));
+    assert_eq!(counted(&moved, PendingFilter::All), Some(2));
     shut_down(handle).await;
 }
 
@@ -692,7 +714,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
 
-    let list = list_subscription(&fixture, page_window(0, 50)).await;
+    let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&list).await;
     let idle = page_live(&initial).remove(&key).expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
@@ -702,11 +724,6 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
     let claimed = next_page(&list).await;
-    assert_eq!(
-        claimed.view_revision, initial.view_revision,
-        "a claimed import changed the list's request"
-    );
-    assert_eq!(claimed.cause, coven::LiveQueryCause::Write);
     let queued = &page_live(&claimed)[&key];
     assert_eq!(queued.facts.import, Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)));
     assert_eq!(
@@ -785,20 +802,18 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
 
     // A window move is one more request to the same query, and the rows it
     // reads carry where each stands.
-    list.set_windows(page_window(0, 49)).unwrap();
+    list.set_window(page_window(49));
     let moved = next_page(&list).await;
-    assert_eq!(moved.view_revision, initial.view_revision);
-    assert_eq!(moved.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         moved.windows[0].rows, writing.windows[0].rows,
         "the window move read the rows as they were delivered"
     );
 }
 
-/// Where a candidate off the page stands reaches no row: it delivers no rows,
-/// only the count it moves. Once a new window puts the candidate on
-/// the page, its row carries its standing and the same subscription delivers
-/// its changes.
+/// Where a candidate off the page stands reaches no row and reruns no
+/// window: it moves the count the filter's entries hold. Once a new window
+/// puts the candidate on the page, its row carries its standing and the same
+/// subscription delivers its changes.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let fixture = Fixture::new("live-state-off-the-page").await;
@@ -807,44 +822,59 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
     fixture.scan(2).await;
 
-    let list = list_subscription(&fixture, page_window(0, 1)).await;
-    let initial = next_page(&list).await;
-    let on_page = page_live(&initial);
+    let list =
+        fixture.import.open_list(crate::ImportListView::default()).await.expect("the list opens");
+    let mut window = list.subscribe_window(page_window(1));
+    let initial = window.next().await.expect("the query stays open").result.unwrap();
+    let on_page = keys_of(&initial.read.rows);
     assert_eq!(on_page.len(), 1, "the window holds one row");
-    let on_key = on_page.into_keys().next().expect("one row");
+    let on_key = on_page.into_iter().next().expect("one row");
     let off_key = [first, second]
         .into_iter()
         .map(|dir| crate::CandidateKey::folder(&dir))
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
+    // The first delivery closes the window at the row beyond it.
+    let beyond = initial.read.beyond.clone().expect("the second row is beyond");
+    let requests = window.requests();
+    requests.set(ListWindow::Forward { from: None, until: Some(beyond), limit: 1 }).unwrap();
+    let mut entries = list.subscribe_filter_entries();
+    entries.next().await.expect("the query stays open").unwrap();
 
     fixture.import.claim_candidate_for_import(&off_key, "import-off").await;
-    let counted_off = next_page(&list).await;
-    assert_eq!(counted_off.view_revision, initial.view_revision);
-    assert!(counted_off.windows.is_empty(), "the claim off the page delivered no rows");
-    assert_eq!(
-        counted(&counted_off.pending_filter_entries, crate::PendingFilter::InProgress),
-        Some(1)
-    );
+    let counted_off = loop {
+        let entries = entries.next().await.expect("the query stays open").unwrap();
+        if counted(&entries, crate::PendingFilter::InProgress) == Some(1) {
+            break entries;
+        }
+    };
+    // Coven does not narrow the import list's windows by their range (the placement
+    // reads headers through a correlated EXISTS, and Found members sort through a
+    // join on unit), so any write the list reads reruns every window.
+    assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
+    assert_eq!(counted(&counted_off, crate::PendingFilter::All), Some(2));
 
     fixture.import.claim_candidate_for_import(&on_key, "import-on").await;
-    let claimed = next_page(&list).await;
-    assert_eq!(claimed.view_revision, initial.view_revision);
+    let claimed = loop {
+        let value = window.next().await.expect("the query stays open").result.unwrap();
+        if page_live_of(&value).get(&on_key).is_some_and(|live| live.facts.importing()) {
+            break value;
+        }
+    };
     assert_eq!(
-        page_live(&claimed)[&on_key].facts.import,
+        page_live_of(&claimed)[&on_key].facts.import,
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
     );
-    assert_eq!(counted(&claimed.pending_filter_entries, crate::PendingFilter::InProgress), Some(2));
 
-    list.set_windows(page_window(0, 2)).unwrap();
-    let widened = next_page(&list).await;
+    requests.set(ListWindow::Forward { from: None, until: None, limit: 2 }).unwrap();
+    let widened = loop {
+        let value = window.next().await.expect("the query stays open").result.unwrap();
+        if value.read.rows.len() == 2 {
+            break value;
+        }
+    };
     assert_eq!(
-        widened.view_revision, initial.view_revision,
-        "a window is the query's request, not the list's view"
-    );
-    assert_eq!(widened.cause, coven::LiveQueryCause::Request);
-    assert_eq!(
-        page_live(&widened)[&off_key].facts.import,
+        page_live_of(&widened)[&off_key].facts.import,
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)),
         "the row the window now holds carries where it stands"
     );
@@ -858,21 +888,40 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         )
         .await;
     fixture.import.emit_event_for_test(reported(&off_key, preparing("import-off")));
-    let taken_up = next_page(&list).await;
-    assert_eq!(taken_up.view_revision, widened.view_revision);
-    let live = page_live(&taken_up);
-    assert_eq!(
-        live[&off_key].facts.import,
-        Some(crate::ImportStep::Preparing(crate::PrepareStep::ValidatingSourceFiles))
-    );
+    let live = loop {
+        let value = window.next().await.expect("the query stays open").result.unwrap();
+        let live = page_live_of(&value);
+        if live[&off_key].facts.import
+            == Some(crate::ImportStep::Preparing(crate::PrepareStep::ValidatingSourceFiles))
+        {
+            break live;
+        }
+    };
     assert_eq!(
         live[&on_key].facts.import,
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
     );
 }
 
-/// A verdict stored for a row off the page reaches no row on it, but moves
-/// the filter's counts, so the list delivers them with no rows.
+/// What is running for each candidate a window holds, by key.
+fn page_live_of(
+    window: &ImportWindow,
+) -> std::collections::BTreeMap<crate::CandidateKey, crate::CandidateLiveState> {
+    window
+        .read
+        .rows
+        .iter()
+        .filter_map(|item| match item {
+            crate::ImportListItem::Candidate { row, live, .. } => {
+                Some((row.candidate_key.clone(), live.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// A verdict stored for a row off the page reaches no row on it, and moves
+/// the filter's counts.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let fixture = Fixture::new("verdict-off-the-page").await;
@@ -882,9 +931,18 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     fixture.set_identify_automatically(false).await;
     fixture.scan(2).await;
 
-    let list = list_subscription(&fixture, page_window(0, 1)).await;
-    let initial = next_page(&list).await;
-    let on_key = page_live(&initial).into_keys().next().expect("the window holds one row");
+    let list =
+        fixture.import.open_list(crate::ImportListView::default()).await.expect("the list opens");
+    let mut window = list.subscribe_window(page_window(1));
+    let initial = window.next().await.expect("the query stays open").result.unwrap();
+    let on_key = page_live_of(&initial).into_keys().next().expect("the window holds one row");
+    let beyond = initial.read.beyond.clone().expect("the second row is beyond");
+    window
+        .requests()
+        .set(ListWindow::Forward { from: None, until: Some(beyond), limit: 1 })
+        .unwrap();
+    let mut entries = list.subscribe_filter_entries();
+    let before = entries.next().await.expect("the query stays open").unwrap();
     let off_dir = [&first, &second]
         .into_iter()
         .find(|dir| crate::CandidateKey::folder(dir) != on_key)
@@ -894,14 +952,13 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let probed = fixture.probed_total_ms(&off_dir);
     fixture.archive("mb-off-page", "rg-off-page", &[probed, 0]).await;
     fixture.store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page").await;
-    let moved = next_page(&list).await;
-    assert_ne!(
-        moved.pending_filter_entries, initial.pending_filter_entries,
-        "the verdict moved a count"
-    );
-    assert_eq!(counted(&moved.pending_filter_entries, crate::PendingFilter::All), Some(2));
-    assert!(moved.windows.is_empty(), "the verdict off the page delivered no rows");
-    assert_eq!(moved.total_count, initial.total_count);
+    let moved = entries.next().await.expect("the query stays open").unwrap();
+    assert_ne!(moved, before, "the verdict moved a count");
+    assert_eq!(counted(&moved, crate::PendingFilter::All), Some(2));
+    // Coven does not narrow the import list's windows by their range (the placement
+    // reads headers through a correlated EXISTS, and Found members sort through a
+    // join on unit), so any write the list reads reruns every window.
+    assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
 }
 
 fn preparing(import_id: &str) -> crate::ImportProgress {

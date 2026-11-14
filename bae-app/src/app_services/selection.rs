@@ -1,7 +1,6 @@
-//! Acting on the import list's selection on [`AppServices`]. The list
-//! subscription owns the selection
-//! ([`LiveImportList`](bae_import::LiveImportList)) and
-//! hands its selected rows here, in the order the list shows them.
+//! Acting on the import list's selection on [`AppServices`]. The open list
+//! owns the selection ([`LiveImportList`](bae_import::LiveImportList)) and hands its
+//! selected rows here, in the order the list shows them.
 
 use super::*;
 use bae_import::selection::SelectedRows;

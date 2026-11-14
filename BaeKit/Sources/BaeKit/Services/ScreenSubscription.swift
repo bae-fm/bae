@@ -204,14 +204,7 @@ extension QueueUpcomingSubscription: PulledSubscription {}
     extension InvalidCandidateSubscription: PulledSubscription {}
     extension ReleaseFilesSubscription: PulledSubscription {}
 
-    extension PulledValues where Value == BridgeImportListSnapshot {
-        /// Each value of the import list's bridge object, which the list
-        /// also moves and asks through `list`'s other calls.
-        public init(_ list: any ImportListSubscriptionProtocol) {
-            self.init(
-                pull: { try await list.next() },
-                end: { try await list.cancel() }
-            )
-        }
-    }
+    extension ImportSummarySubscription: PulledSubscription {}
+    extension ImportFilterEntriesSubscription: PulledSubscription {}
+    extension ImportSelectionSubscription: PulledSubscription {}
 #endif

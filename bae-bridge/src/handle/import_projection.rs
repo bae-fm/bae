@@ -410,7 +410,7 @@ mirror_enum! {
 
 mirror_struct! {
     crate::types::BridgePendingFilterEntry = bae_import::PendingFilterEntry,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: {
         filter: (crate::types::BridgePendingFilter),
         count,
@@ -459,13 +459,11 @@ impl crate::types::BridgeImportListItem {
                 expanded,
                 entry_count,
             },
-            bae_import::ImportListItem::Candidate { row, live, header_position } => {
-                Self::Candidate {
-                    stable_key,
-                    row: crate::types::BridgeTriageRow::from_core(row, live),
-                    header_position,
-                }
-            }
+            bae_import::ImportListItem::Candidate { row, live, header_key } => Self::Candidate {
+                stable_key,
+                row: crate::types::BridgeTriageRow::from_core(row, live),
+                header_key,
+            },
             bae_import::ImportListItem::Invalid { candidate, selected } => Self::Invalid {
                 stable_key,
                 invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
@@ -512,77 +510,56 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeImportQueueSummary {
-    fn from_core(summary: bae_import::ImportQueueSummary) -> Self {
-        let bae_import::ImportQueueSummary {
-            watched_folders,
-            has_groups,
-            narrowed,
-            narrowing,
-            opened_at,
-        } = summary;
+    pub(crate) fn from_core(summary: bae_import::ImportQueueSummary) -> Self {
+        let bae_import::ImportQueueSummary { watched_folders, has_groups, narrowing } = summary;
         Self {
             watched_folders: watched_folders
                 .into_iter()
                 .map(crate::types::BridgeWatchedFolder::from_core)
                 .collect(),
             has_groups,
-            narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
-            opened_at,
         }
     }
 }
 
-mirror_struct! {
-    crate::types::BridgeImportCandidateListLocation
-        = bae_import::ImportCandidateListLocation,
-    from_core: pub(crate) fn,
-    fields: {
-        stable_key,
-        tab: (crate::types::BridgeTriageTab),
-        group_key: (opt crate::types::BridgeFolderReleaseDecisionKey),
-        visible_position,
-    },
+impl crate::types::BridgeImportCandidateListLocation {
+    pub(crate) fn from_core(location: bae_import::ImportCandidateListLocation) -> Self {
+        let bae_import::ImportCandidateListLocation {
+            stable_key,
+            tab,
+            group_key,
+            visible_position,
+            key,
+        } = location;
+        Self {
+            stable_key,
+            tab: crate::types::BridgeTriageTab::from_core(tab),
+            group_key: group_key.map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
+            visible_position,
+            key: crate::types::BridgeSortValue::of_key(&key),
+        }
+    }
+}
+
+impl crate::types::BridgeImportListOpening {
+    pub(crate) fn from_core(opening: bae_import::ImportListOpening) -> Self {
+        match opening {
+            bae_import::ImportListOpening::Top => Self::Top,
+            bae_import::ImportListOpening::At { key, position } => {
+                Self::At { key: crate::types::BridgeSortValue::of_key(&key), position }
+            }
+        }
+    }
 }
 
 impl crate::types::BridgeSelectionSummary {
-    pub(super) fn from_core(summary: bae_import::selection::SelectionSummary) -> Self {
+    pub(crate) fn from_core(summary: bae_import::selection::SelectionSummary) -> Self {
         let bae_import::selection::SelectionSummary { count, single, offers } = summary;
         Self {
             count,
             single: single.map(crate::types::BridgeSingleSelection::from_core),
             offers: offers.into_iter().map(crate::types::BridgeSelectionOffer::from_core).collect(),
-        }
-    }
-}
-
-impl crate::types::BridgeImportListSnapshot {
-    pub(crate) fn from_core(snapshot: bae_import::ImportListSnapshot) -> Self {
-        let bae_import::ImportListSnapshot {
-            windows,
-            total_count,
-            summary,
-            pending_filter_entries,
-            selection_revision,
-            selection,
-            view_revision,
-            cause,
-        } = snapshot;
-        Self {
-            windows: windows
-                .into_iter()
-                .map(crate::types::BridgeImportListWindow::from_core)
-                .collect(),
-            total_count,
-            summary: crate::types::BridgeImportQueueSummary::from_core(summary),
-            pending_filter_entries: pending_filter_entries
-                .into_iter()
-                .map(crate::types::BridgePendingFilterEntry::from_core)
-                .collect(),
-            selection_revision,
-            selection: crate::types::BridgeSelectionSummary::from_core(selection),
-            view_revision,
-            cause: crate::types::BridgeLiveQueryCause::from_core(cause),
         }
     }
 }

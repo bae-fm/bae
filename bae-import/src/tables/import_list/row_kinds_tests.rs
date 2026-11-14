@@ -203,11 +203,12 @@ async fn linked_release(
 
 /// One read of the first `rows` items of `kind`'s tab, and the statements it
 /// ran.
-async fn read_window(lib: &Library, kind: Kind, rows: u64) -> (crate::ImportListProjection, usize) {
+async fn read_window(lib: &Library, kind: Kind, rows: u64) -> (crate::ImportWindow, usize) {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let request = list_request(&lib.db, kind.tab(), [(0, rows)]).await;
+    let list = open_in_path_order(&lib.db, kind.tab()).await;
+    let window = bae_store::ListWindow::Forward { from: None, until: None, limit: rows };
     let counter = lib.db.track_work_for_test().await.unwrap();
-    let read = tables.load_import_list(request).await.unwrap();
+    let read = tables.read_import_window(list, window).await.unwrap();
     (read, counter.take().app_read_statements)
 }
 
@@ -232,7 +233,7 @@ async fn import_list_row_kinds_cost() {
             let started = Instant::now();
             let (read, _) = read_window(&lib, kind, LIMIT).await;
             runs.push(started.elapsed());
-            rows = read.windows[0].rows.len();
+            rows = read.read.rows.len();
         }
         runs.sort();
         report(
@@ -253,7 +254,7 @@ async fn import_list_row_kinds_cost() {
 async fn statements_of(kind: Kind, rows: u64) -> usize {
     let lib = library_of(kind, rows).await;
     let (read, statements) = read_window(&lib, kind, rows).await;
-    assert_eq!(read.windows[0].rows.len() as u64, rows, "{kind:?}: the window holds every row");
+    assert_eq!(read.read.rows.len() as u64, rows, "{kind:?}: the window holds every row");
     statements
 }
 
@@ -268,7 +269,7 @@ async fn a_window_reads_imported_rows_in_statements_its_size_does_not_change() {
 async fn an_imported_row_shows_its_upload_waiting_whatever_the_window_holds() {
     let lib = library_of(Kind::Imported, 3).await;
     let (read, _) = read_window(&lib, Kind::Imported, 3).await;
-    for row in rows(&read) {
+    for row in window_rows(&read) {
         assert_eq!(
             row.upload,
             Some(bae_records::UploadProgress { queued: 1, uploading: 0 }),
@@ -282,7 +283,7 @@ async fn an_imported_row_shows_its_upload_waiting_whatever_the_window_holds() {
 async fn an_imported_row_shows_its_records_whatever_the_window_holds() {
     let lib = library_of(Kind::Imported, 3).await;
     let (read, _) = read_window(&lib, Kind::Imported, 3).await;
-    for row in rows(&read) {
+    for row in window_rows(&read) {
         assert!(
             matches!(row.reading, crate::triage::TriageReading::Identified { .. }),
             "{} reads its release's records",
@@ -304,7 +305,7 @@ async fn a_linked_row_names_the_records_its_whole_release_does() {
     let lib = library_of(Kind::Linked, 3).await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let (read, _) = read_window(&lib, Kind::Linked, 3).await;
-    for row in rows(&read) {
+    for row in window_rows(&read) {
         let Some(crate::ReleaseLink::Pressing(link)) = &row.release_link else {
             panic!("{} is linked to a pressing", row.display_path);
         };

@@ -8,17 +8,12 @@
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
 use super::views::tab_of;
 use super::*;
-use crate::list::{ImportCandidateListLocation, NarrowedCount};
+use crate::list::{
+    ImportCandidateListLocation, ImportListCount, ImportListNarrowing, ImportQueueSummary,
+    NarrowedCount,
+};
 use crate::RelativeFolder;
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
-
-/// Every tab's count, how many of Found's releases each filter entry holds,
-/// and whether Found has any group.
-pub(super) struct Counts {
-    pub(super) tabs: TriageTabCounts,
-    pub(super) entries: Vec<PendingFilterEntry>,
-    pub(super) has_groups: bool,
-}
 
 /// Every tab's count, and whether Found has any group, from the counts kept
 /// beside the placement.
@@ -41,13 +36,13 @@ fn tab_rows(sql: &SqlReadContext<'_>) -> Result<(TriageTabCounts, bool), DbError
 }
 
 /// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
-fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
+pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
     Ok(tab_rows(sql)?.0)
 }
 
-/// The counts kept beside the placement.
-pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
-    let (tabs, has_groups) = tab_rows(sql)?;
+/// How many of Found's releases each filter entry holds, in the menu's
+/// order, from the counts kept beside the placement.
+pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilterEntry>, DbError> {
     let in_entries = sql
         .query("SELECT pending_entry, count FROM import_list_entry_count", [], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
@@ -57,7 +52,44 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
             Ok((pending_filter_of(&entry)?, to_u32(count, "a filter entry's count")?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(Counts { tabs, entries: crate::list::pending_filter_entries(&in_entries), has_groups })
+    Ok(crate::list::pending_filter_entries(&in_entries))
+}
+
+/// What the chrome around `list` shows beside its rows: the watched folders,
+/// whether Found has any group, and what the view narrows its rows by.
+pub(super) fn summary(
+    sql: &SqlReadContext<'_>,
+    list: ImportListId,
+) -> Result<ImportQueueSummary, DbError> {
+    let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
+    let (_, has_groups) = tab_rows(sql)?;
+    Ok(ImportQueueSummary {
+        watched_folders: super::watched_folders::watched_folders_on(sql)?,
+        has_groups,
+        narrowing: ImportListNarrowing {
+            tab: list.view.tab,
+            filter_text: list.view.filter_text.clone(),
+            pending_filter: list.view.pending_filter,
+        },
+    })
+}
+
+/// How many items `list` holds and how many of its tab's entries its
+/// narrowing keeps.
+pub(super) fn count(
+    sql: &SqlReadContext<'_>,
+    list: ImportListId,
+) -> Result<ImportListCount, DbError> {
+    let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
+    let (tabs, _) = tab_rows(sql)?;
+    let listed = listed(sql, &list, &tabs)?;
+    Ok(ImportListCount { rows: listed.total, narrowed: listed.narrowed })
+}
+
+/// The error a read of a list that is no longer open fails with: a surface
+/// reads only the lists it holds open, and closing one ends its reads first.
+pub(super) fn closed(list: ImportListId) -> DbError {
+    DbError::unreadable("an import list read", format!("{list:?}, which is closed"))
 }
 
 /// How many items a list holds, and how many of its tab's releases its
@@ -92,26 +124,22 @@ enum Reads {
 const FOUND_ROW_COST: u128 = 3;
 
 impl Listed {
-    /// The rows a window of the list is read from. A search's window is read
-    /// from the rows the search finds, sorted, when reading them costs less
-    /// than passing the tab's rows its order would pass to reach the window
-    /// from the list's top or end: about the items it passes times the tab's
-    /// releases over the releases the search keeps. A window with a cursor
-    /// passes none. Otherwise, and for every other list, it is
-    /// read from the tab's rows in order, each tested.
-    pub(super) fn shown(&self, window: &bae_store::LibraryPageWindow) -> Shown<'static> {
+    /// The rows the item at `position` is read from by its offset. A
+    /// search's item is read from the rows the search finds, sorted, when
+    /// reading them costs less than passing the tab's rows its order would
+    /// pass to reach the item from the list's top or end: about the items it
+    /// passes times the tab's releases over the releases the search keeps.
+    /// Otherwise, and for every other list, it is read from the tab's rows
+    /// in order, each tested. A window of the list always has a key to start
+    /// from, so it never passes a row.
+    pub(super) fn shown(&self, position: u64) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
         };
         let kept = u128::from(narrowed.shown);
-        let passed = match window.cursor {
-            Some(_) => 0,
-            None => {
-                let end = window.offset.saturating_add(window.limit);
-                u128::from(window.offset.min(self.total.saturating_sub(end)))
-            }
-        };
+        let end = position.saturating_add(1);
+        let passed = u128::from(position.min(self.total.saturating_sub(end)));
         match FOUND_ROW_COST * kept * kept < passed * u128::from(narrowed.total) {
             true => Shown::Found,
             false => Shown::View,
@@ -143,12 +171,12 @@ pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
 pub(super) fn listed(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
-    counts: &Counts,
+    tabs: &TriageTabCounts,
 ) -> Result<Listed, DbError> {
     let narrowed = |shown: i64| -> Result<NarrowedCount, DbError> {
         Ok(NarrowedCount {
             shown: to_u32(shown, "a list's narrowed count")?,
-            total: counts.tabs.of(list.view.tab),
+            total: tabs.of(list.view.tab),
         })
     };
     let total = |count: i64| to_u64(count, "a list's item count");
@@ -247,11 +275,12 @@ pub(super) fn locate(
     let position =
         Items::new(list, tab, row.view.order, Shown::Revealing { opened: group.as_ref() })
             .position_of(sql, key)?;
-    Ok(Some(position.map(|position| ImportCandidateListLocation {
+    Ok(Some(position.map(|(position, order_key)| ImportCandidateListLocation {
         stable_key: crate::list::candidate_stable_key(key),
         tab,
         group_key: group,
         visible_position: position,
+        key: order_key,
     })))
 }
 

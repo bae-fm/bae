@@ -17,7 +17,7 @@ extension ImportCandidateTableCoordinator {
         let request = ImportListSelectionRequest(
             proposed: proposed,
             current: tableView.selectedRowIndexes,
-            shown: importStore.shownSelectedKeys,
+            shown: list.selectedKeys,
             gesture: SelectionGesture(event?.modifierFlags ?? []),
             target: event.flatMap { table?.pressedRow($0) },
             anchor: anchorKey,
@@ -34,7 +34,7 @@ extension ImportCandidateTableCoordinator {
             anchorKey = anchor
             endPendingPlace()
             onPersonSelected()
-            listSlot.changeSelection(change, showing: shown)
+            listSlot.changeSelection(change)
             return rows(selecting: shown)
         }
     }
@@ -58,9 +58,8 @@ extension ImportCandidateTableCoordinator {
     private func rows(selecting keys: Set<Data>) -> IndexSet {
         var rows = IndexSet()
         guard !keys.isEmpty else { return rows }
-        for (position, stableKey) in list.loadedEntries
-        where position < rowCount {
-            guard let key = importStore.items[stableKey]?.selectionKey,
+        for (position, _) in list.loadedEntries where position < rowCount {
+            guard let key = list.row(at: position)?.selectionKey,
                 keys.contains(key)
             else { continue }
             rows.insert(position)

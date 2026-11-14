@@ -44,6 +44,11 @@ uuid = { workspace = true }
 # The error of a language the names cannot be ordered in (src/name_sort.rs).
 thiserror = { workspace = true }
 
+# The import list's items, which a window of that list delivers beside the
+# other lists' rows; only the desktop builds carry them.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+bae-import = { workspace = true }
+
 [dev-dependencies]
 # Test databases with bae's schema, the rows db's fixtures seed them with,
 # and two stores syncing over shared storage.

@@ -787,32 +787,29 @@ pub(crate) async fn start_import_for(fixture: &Fixture, candidate: &Path) {
     });
 }
 
-/// A list subscription over the Pending tab, asking for `windows`.
+/// A list over the Pending tab, asking for `window`.
 pub(crate) async fn list_subscription(
     fixture: &Fixture,
-    windows: bae_store::LibraryPageWindows,
-) -> crate::LiveImportList {
-    fixture
-        .import
-        .open_list(crate::ImportListView::default(), windows)
-        .await
-        .expect("the list opens")
+    window: bae_store::ListWindow,
+) -> crate::list::FollowedImportList {
+    fixture.import.follow_list(crate::ImportListView::default(), window).await
 }
 
-pub(crate) fn page_window(offset: u64, limit: u64) -> bae_store::LibraryPageWindows {
-    std::iter::once(bae_store::LibraryPageWindow::at(offset, limit)).collect()
+/// The window of the first `limit` items.
+pub(crate) fn page_window(limit: u64) -> bae_store::ListWindow {
+    bae_store::ListWindow::Forward { from: None, until: None, limit }
 }
 
-/// The list's next snapshot.
-pub(crate) async fn next_page(list: &crate::LiveImportList) -> crate::ImportListSnapshot {
-    tokio::time::timeout(HANG_GUARD, list.next())
-        .await
-        .expect("the list delivers")
-        .expect("the list answers")
+/// The list's next value, with everything else the list shows read beside
+/// it.
+pub(crate) async fn next_page(
+    list: &crate::list::FollowedImportList,
+) -> crate::list::ImportListRead {
+    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers")
 }
 
 /// How many of Found's rows a snapshot counts under `filter`.
-pub(crate) fn counted(snapshot: &crate::ImportListSnapshot, filter: crate::PendingFilter) -> u32 {
+pub(crate) fn counted(snapshot: &crate::list::ImportListRead, filter: crate::PendingFilter) -> u32 {
     snapshot
         .pending_filter_entries
         .iter()
@@ -823,7 +820,7 @@ pub(crate) fn counted(snapshot: &crate::ImportListSnapshot, filter: crate::Pendi
 
 /// What is running for each candidate row a snapshot's page holds, by key.
 pub(crate) fn page_live(
-    snapshot: &crate::ImportListSnapshot,
+    snapshot: &crate::list::ImportListRead,
 ) -> BTreeMap<crate::CandidateKey, crate::CandidateLiveState> {
     snapshot
         .windows
@@ -853,7 +850,7 @@ pub(crate) fn reported(key: &crate::CandidateKey, progress: crate::ImportProgres
 
 /// Each candidate row a snapshot's page holds, with its live state, by key.
 pub(crate) fn page_rows(
-    snapshot: &crate::ImportListSnapshot,
+    snapshot: &crate::list::ImportListRead,
 ) -> BTreeMap<crate::CandidateKey, (crate::TriageRow, crate::CandidateLiveState)> {
     snapshot
         .windows

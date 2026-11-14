@@ -915,39 +915,3 @@ async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
     manager.library.manager().retry_outbox_now().await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
 }
-
-/// The import list's version of the releases' storage.
-async fn release_storage_version(manager: &LibraryManager) -> i64 {
-    manager
-        .store
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT version FROM import_list_versions WHERE source = 'release_storage'",
-                [],
-                |row| row.get(0),
-            )?)
-        })
-        .await
-        .unwrap()
-}
-
-/// A release's files joining the upload queue move where the import list's
-/// Done runs the release, so they move the list's version of the releases'
-/// storage, by which a list's read knows its last read's rows may sit
-/// elsewhere now.
-#[tokio::test]
-async fn a_release_joining_the_upload_queue_moves_the_import_list_s_version() {
-    let (test, temp) = setup_test_manager().await;
-    let manager = test.library.manager();
-    connect_test_cloud(&test).await;
-    let release = insert_local_release_with_files(
-        manager,
-        &temp.path().join("queued"),
-        "Album",
-        &[("a.flac", b"audio")],
-    )
-    .await;
-    let before = release_storage_version(manager).await;
-    manager.upload_release(&release.id).await.unwrap();
-    assert!(release_storage_version(manager).await > before);
-}

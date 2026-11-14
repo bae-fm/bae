@@ -39,14 +39,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
-/// each release with the position of the header `header_positions` lists it
-/// under. The headers and the releases are each read in the window's order,
-/// so each item is the next row of its kind.
+/// each member of a group with the key of the header it is listed under. The
+/// headers and the releases are each read in the window's order, so each item
+/// is the next row of its kind.
 pub(super) fn materialise(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
     keys: &[ItemKey],
-    header_positions: &[Option<u64>],
 ) -> Result<Vec<WindowItemRows>, DbError> {
     let mut headers = header_rows(sql, list, keys)?.into_iter().peekable();
     let releases = release_rows(sql, list.id, keys)?;
@@ -57,8 +56,7 @@ pub(super) fn materialise(
     let mut releases = releases.into_iter().peekable();
     keys.iter()
         .enumerate()
-        .zip(header_positions)
-        .map(|((position, key), &header_position)| {
+        .map(|(position, key)| {
             let missing = || {
                 // The window's keys and rows are read in one snapshot.
                 DbError::unreadable(
@@ -75,7 +73,7 @@ pub(super) fn materialise(
             if key.item == Item::Invalid {
                 return invalid_item(&mut scanned, release);
             }
-            candidate_item(&imported, &linked, &mut covers, release, header_position)
+            candidate_item(&imported, &linked, &mut covers, release)
         })
         .collect()
 }
@@ -206,6 +204,9 @@ struct ReleaseRows {
     failure: Option<crate::ImportFailureReason>,
     facts: RuntimeFactColumns,
     selected: bool,
+    /// The header of the group the release is listed under, by its stable
+    /// key.
+    header_key: Option<String>,
     /// The draft's source, the link and the cover, which are the
     /// candidate's own only while its state describes its current files.
     metadata_provenance: Option<crate::MetadataProvenance>,
@@ -251,6 +252,7 @@ fn release_rows(
                     {RUNTIME_FACT_COLUMNS}, \
                     EXISTS (SELECT 1 FROM import_list_selection AS chosen \
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
+                    p.group_folder AS group_folder, \
                     w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
                     EXISTS (SELECT 1 FROM import_candidate_edit AS drafted \
                             WHERE drafted.content_hash = s.content_hash) AS drafted, \
@@ -318,6 +320,17 @@ fn release_rows(
                 },
                 facts: RuntimeFactColumns::read(row, 26)?,
                 selected: row.get("selected")?,
+                header_key: row
+                    .get::<_, Option<RelativeFolder>>("group_folder")?
+                    .map(|folder| {
+                        Ok::<_, rusqlite::Error>(crate::list::group_stable_key(
+                            &FolderReleaseDecisionKey {
+                                watched_folder_path: path_column::get(row, 0)?,
+                                relative_folder: folder,
+                            },
+                        ))
+                    })
+                    .transpose()?,
                 metadata_provenance: None,
                 release_link: None,
                 cover: None,
@@ -405,13 +418,12 @@ impl ImportedReads {
 }
 
 /// A release's row: its placement and the keyed rows beside it, listed under
-/// the header at `header_position`.
+/// its group's header, if it has one.
 fn candidate_item(
     imported_reads: &ImportedReads,
     linked_reads: &LinkedReads,
     covers: &mut HashMap<usize, crate::CoverImageSource>,
     release: ReleaseRows,
-    header_position: Option<u64>,
 ) -> Result<WindowItemRows, DbError> {
     let ListedRelease { basis, standing } = release.listed.clone().listed(&release.key)?;
     let facts = release.facts.facts(&release.key)?;
@@ -483,7 +495,7 @@ fn candidate_item(
         live: crate::CandidateLiveState::of(&basis, facts, standing),
         picked: shown.picked,
         cover: shown.cover,
-        header_position,
+        header_key: release.header_key.clone(),
     })
 }
 
@@ -510,7 +522,7 @@ pub(super) enum WindowItemRows {
         /// empty one: the row shows what the candidate would commit with, or
         /// what the library release has.
         cover: Option<crate::CoverImageSource>,
-        header_position: Option<u64>,
+        header_key: Option<String>,
     },
 }
 
@@ -518,7 +530,7 @@ impl WindowItemRows {
     pub(super) fn process(self) -> Result<ImportListItem, DbError> {
         match self {
             Self::Ready(item) => Ok(item),
-            Self::Candidate { mut row, live, picked, cover, header_position } => {
+            Self::Candidate { mut row, live, picked, cover, header_key } => {
                 // The reading the row was placed with named no records;
                 // this is where the linked releases' records are put
                 // together.
@@ -530,7 +542,7 @@ impl WindowItemRows {
                     );
                 }
                 row.cover = cover;
-                Ok(ImportListItem::Candidate { row, live, header_position })
+                Ok(ImportListItem::Candidate { row, live, header_key })
             }
         }
     }

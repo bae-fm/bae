@@ -2,30 +2,27 @@ import AppKit
 import BaeKit
 
 /// The group header pinned over the top of the import list: the header of
-/// the group the row on top is listed under. Each member names where its
-/// header sits in the list, so the header is known from the row on top alone,
-/// whichever pages have landed, while the header's own row may still be on
-/// its way.
+/// the group the row on top is listed under. Each member names its header by
+/// the header's key, so the header is known from the row on top alone,
+/// whichever windows are loaded; a window that starts inside a group delivers
+/// that group's header beside its rows.
 struct ImportListPinnedHeader: Equatable {
-    /// Where the header sits in the list.
-    let position: Int
-    /// The header, once the page holding it has landed.
+    /// The header's key.
+    let key: String
+    /// The header, when a loaded row or a window's leading header is it.
     let header: BridgeImportListItem?
 
-    /// The header pinned while the row at `top` is on top, read from the rows
-    /// that have landed: a header on top pins itself, and a release in no
-    /// group, or a row that has not landed, pins none.
+    /// The header pinned while the row at `top` is on top: a header on top
+    /// pins itself, and a release in no group, or a row that has not landed,
+    /// pins none. `header` finds the header of a key among the rows and
+    /// leading headers the list holds.
     static func over(
         top: Int,
-        item: (Int) -> BridgeImportListItem?
+        item: (Int) -> BridgeImportListItem?,
+        header: (String) -> BridgeImportListItem?
     ) -> ImportListPinnedHeader? {
-        guard let position = headerPosition(of: top, item: item) else {
-            return nil
-        }
-        return ImportListPinnedHeader(
-            position: position,
-            header: item(position)
-        )
+        guard let key = headerKey(of: top, item: item) else { return nil }
+        return ImportListPinnedHeader(key: key, header: header(key))
     }
 
     /// Whether the group ends with the row at `top`: the row below it has
@@ -33,20 +30,20 @@ struct ImportListPinnedHeader: Equatable {
     /// leaves with the row on top as it scrolls away.
     func ends(below top: Int, item: (Int) -> BridgeImportListItem?) -> Bool {
         guard item(top + 1) != nil else { return false }
-        return Self.headerPosition(of: top + 1, item: item) != position
+        return Self.headerKey(of: top + 1, item: item) != key
     }
 
-    /// Where the header the row at `row` is listed under sits: the row itself
+    /// The key of the header the row at `row` is listed under: the row's own
     /// for a header, its group's header for a member.
-    private static func headerPosition(
+    private static func headerKey(
         of row: Int,
         item: (Int) -> BridgeImportListItem?
-    ) -> Int? {
+    ) -> String? {
         switch item(row) {
-        case .groupHeader:
-            row
-        case .candidate(_, _, let headerPosition?):
-            Int(headerPosition)
+        case .groupHeader(let stableKey, _, _, _, _):
+            stableKey
+        case .candidate(_, _, let headerKey?):
+            headerKey
         case .candidate, .invalid, nil:
             nil
         }

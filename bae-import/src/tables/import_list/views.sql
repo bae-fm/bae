@@ -3,9 +3,7 @@
 -- (`import_list_collapsed`); and the rows selected in it
 -- (`import_list_selection`). What a list shows is a query over these and the
 -- placement, so a change to any of them is a write the list's live query
--- answers. The revisions count changes to the view, its folds included, and
--- to the selection, so a surface can wait for the list value that reflects
--- one. No list outlives the process that opened it: the import service
+-- answers. No list outlives the process that opened it: the import service
 -- empties these tables as the library opens.
 CREATE TABLE IF NOT EXISTS import_list (
     id                 INTEGER PRIMARY KEY,
@@ -20,13 +18,7 @@ CREATE TABLE IF NOT EXISTS import_list (
     pattern            TEXT GENERATED ALWAYS AS (
         CASE WHEN filter_text <> '' THEN bae_search_pattern(filter_text) END) STORED,
     list_order         TEXT NOT NULL CHECK (list_order IN (
-        'newest_first', 'oldest_first', 'path_ascending', 'path_descending')),
-    view_revision      INTEGER NOT NULL DEFAULT 0 CHECK (view_revision >= 0),
-    selection_revision INTEGER NOT NULL DEFAULT 0 CHECK (selection_revision >= 0),
-    -- Where the list's view opened: the position its first selected row had
-    -- in it when the view was set, or its top while it showed no selected
-    -- row. The write that sets the view writes it; nothing else moves it.
-    opened_at          INTEGER NOT NULL DEFAULT 0 CHECK (opened_at >= 0)
+        'newest_first', 'oldest_first', 'path_ascending', 'path_descending'))
 ) STRICT;
 
 -- The groups a list shows folded shut: their members are not in it. A group
@@ -133,7 +125,7 @@ CREATE VIEW IF NOT EXISTS import_list_shown AS
 SELECT * FROM import_list_item WHERE item <> 'group';
 
 -- A selected release a change moves out of what a list shows leaves its
--- selection; its selection's revision moves with it.
+-- selection.
 CREATE TRIGGER IF NOT EXISTS import_list_selected_moved AFTER UPDATE ON import_list_placement
 WHEN NEW.item <> 'group'
  AND (OLD.tab, OLD.pending_state, OLD.filter_title, OLD.filter_artists, OLD.group_folder)
@@ -174,16 +166,4 @@ BEGIN
       AND key IN (SELECT key FROM import_list_placement
                   WHERE watched_folder_path = NEW.watched_folder_path
                     AND group_folder = NEW.group_folder AND item <> 'group');
-END;
-
--- Every change to a selection, the person's or one that hid a row, moves its
--- revision.
-CREATE TRIGGER IF NOT EXISTS import_list_selection_added AFTER INSERT ON import_list_selection
-BEGIN
-    UPDATE import_list SET selection_revision = selection_revision + 1 WHERE id = NEW.list_id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_selection_removed AFTER DELETE ON import_list_selection
-BEGIN
-    UPDATE import_list SET selection_revision = selection_revision + 1 WHERE id = OLD.list_id;
 END;

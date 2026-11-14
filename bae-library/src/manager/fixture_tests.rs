@@ -174,16 +174,10 @@ fn fixture_candidate(folder: &str, state: crate::FixtureCandidateState) -> crate
 }
 
 /// Found's rows the import list reads, by display path, newest first.
-async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjection {
+async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListRead {
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let list = tables.open_import_list(bae_import::ImportListView::default()).await.unwrap();
-    tables
-        .load_import_list(bae_import::ImportListRequest {
-            list,
-            windows: std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
-        })
-        .await
-        .unwrap()
+    tables.read_import_list_for_test(list).await.unwrap()
 }
 
 /// Each candidate of a watched folder lands on Found in the state the

@@ -63,7 +63,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
             ("C".into(), fixed_now().timestamp_millis(), None, None),
         ]
     );
-    let names = |projection: crate::ImportListProjection| {
+    let names = |projection: crate::list::ImportListRead| {
         rows(&projection).into_iter().map(|row| row.folder_name).collect::<Vec<_>>()
     };
     assert_eq!(

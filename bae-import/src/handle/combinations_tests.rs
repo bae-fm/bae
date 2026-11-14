@@ -14,20 +14,15 @@ use tempfile::TempDir;
 
 /// Pending rows the queue holds, by display path, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
-    let projection = handle
-        .load_list(
-            crate::ImportListView {
-                order: crate::ImportListOrder::PathAscending,
-                ..crate::ImportListView::default()
-            },
-            [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
-        )
+    let items = handle
+        .load_list(crate::ImportListView {
+            order: crate::ImportListOrder::PathAscending,
+            ..crate::ImportListView::default()
+        })
         .await
         .unwrap();
-    projection
-        .windows
+    items
         .iter()
-        .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, .. } => Some(row.display_path.clone()),
             _ => None,

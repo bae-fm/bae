@@ -69,13 +69,13 @@ struct ImportListEntryView: View {
                 onSetExpanded: { actions.onSetGroupExpanded(group, $0) },
                 onCombine: { actions.onCombineFolder(group.key) }
             )
-        case .candidate(_, let row, let headerPosition):
+        case .candidate(_, let row, let headerKey):
             // Every tab's row, drawn the same: a Done row is the row it was
             // in Found, and offers the release imported from it.
             MacImportRow(
                 row: row,
                 coverContent: entry.coverContent,
-                isGroupMember: headerPosition != nil,
+                isGroupMember: headerKey != nil,
                 menuOffers: { actions.menuOffers(row) },
                 onPerform: actions.onPerform,
                 onShowInLibrary: row.importedRelease.map { release in
