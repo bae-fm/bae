@@ -3,10 +3,10 @@
 //! the context lane's upcoming tracks with their length, and the last
 //! addition to Up Next.
 
-use super::queue::{context_order_column, repeat_from_row};
+use super::queue::context_order_column;
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
-use crate::{ContextSource, QueueItem, RepeatMode};
+use crate::{ContextSource, QueueItem};
 
 /// Follow the queue as its screens show it: Up Next whole, what the context
 /// lane plays from, and whether the transport can step either way.
@@ -97,7 +97,6 @@ fn queue_items_on(
 
 /// The `playback_queue` row as the queue screens read it.
 struct QueueHead {
-    repeat: RepeatMode,
     shuffled: bool,
     context: Option<(ContextSource, i64)>,
     manual_version: u64,
@@ -105,24 +104,16 @@ struct QueueHead {
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (RepeatMode, bool, Option<String>, Option<String>, Option<i64>, i64, i64);
-    let (repeat, shuffled, source_kind, source_release_id, cursor, manual_version, context_version): Head =
+    type Head = (bool, Option<String>, Option<String>, Option<i64>, i64, i64);
+    let (shuffled, source_kind, source_release_id, cursor, manual_version, context_version): Head =
         sql.query_row(
-            "SELECT repeat, shuffled, source_kind, source_release_id, \
+            "SELECT shuffled, source_kind, source_release_id, \
                     CASE shuffled WHEN 1 THEN shuffled_cursor ELSE ordered_cursor END, \
                     manual_version, context_version \
              FROM playback_queue",
             [],
             |row| {
-                Ok((
-                    repeat_from_row(row, 0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                    row.get(6)?,
-                ))
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?))
             },
         )?;
     let context = match (source_kind, cursor) {
@@ -142,7 +133,6 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
     };
     // The table's CHECKs keep both versions at zero or above.
     Ok(QueueHead {
-        repeat,
         shuffled,
         context,
         manual_version: manual_version as u64,
@@ -169,18 +159,26 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
          ORDER BY position",
         [],
     )?;
-    let (context, has_upcoming, has_previous) = match head.context {
-        None => (None, false, false),
-        Some((source, cursor)) => {
-            let column = context_order_column(head.shuffled);
-            let (has_upcoming, has_previous): (bool, bool) = sql.query_row(
-                &format!(
-                    "SELECT EXISTS (SELECT 1 FROM playback_context WHERE {column} > ?1), \
-                            EXISTS (SELECT 1 FROM playback_context WHERE {column} < ?1)"
-                ),
-                [cursor],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
+    // The context lane's playing place is its cursor in the order it reads
+    // in; with no cursor nothing comes before or after it.
+    let (has_next, has_previous): (bool, bool) = sql.query_row(
+        "SELECT q.repeat <> 'off' \
+                OR EXISTS (SELECT 1 FROM playback_manual) \
+                OR EXISTS (SELECT 1 FROM playback_context c \
+                           WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
+                               > CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
+                                                 ELSE q.ordered_cursor END), \
+                EXISTS (SELECT 1 FROM playback_context c \
+                        WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
+                            < CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
+                                              ELSE q.ordered_cursor END) \
+         FROM playback_queue q",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    let context = match head.context {
+        None => None,
+        Some((source, _cursor)) => {
             let source_title = match &source {
                 ContextSource::Release(release_id) => sql
                     .query_row(
@@ -192,10 +190,9 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
                     .optional()?,
                 ContextSource::Releases | ContextSource::Tracks | ContextSource::Library => None,
             };
-            (Some(crate::ResolvedContext { source, source_title }), has_upcoming, has_previous)
+            Some(crate::ResolvedContext { source, source_title })
         }
     };
-    let has_next = !manual.is_empty() || has_upcoming || head.repeat != RepeatMode::Off;
     Ok(crate::ResolvedQueueSnapshot {
         manual,
         context,
