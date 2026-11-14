@@ -295,6 +295,7 @@ private struct SyncSettingsPage: View {
 #if DEBUG
     // periphery:ignore - called by baeShots
     /// The Sync page with actions that do nothing, for a shot.
+    @MainActor
     func syncSettingsPageWithInertActions(
         restoreCode: RestoreCodeReveal,
         storageReadError: DisplayError?
