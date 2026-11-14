@@ -85,7 +85,7 @@ struct StorageSettingsForm: View {
         Form {
             if let storage {
                 Section {
-                    StorageUsageView(usage: StorageUsage(storage))
+                    MacStorageUsage(usage: StorageUsage(storage))
                 }
                 Section("Cache") {
                     LabeledContent {

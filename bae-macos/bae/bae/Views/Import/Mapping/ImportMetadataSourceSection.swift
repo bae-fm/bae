@@ -46,7 +46,7 @@ struct ImportMetadataSourceSection: View {
     @ViewBuilder
     private var draft: some View {
         if let edit = candidate.edit {
-            ImportReleaseHeader(
+            MacImportDraft(
                 releaseSummary: ImportReleaseSummary(
                     candidate: candidate,
                     editValues: edit

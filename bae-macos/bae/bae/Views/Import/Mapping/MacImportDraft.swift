@@ -78,7 +78,7 @@ enum ImportDraftCommand: CaseIterable, Identifiable {
 
 /// The editable metadata draft card: the action row, the cover beside the
 /// release fields, and the catalogs that describe the release.
-struct ImportReleaseHeader: View {
+struct MacImportDraft: View {
     let releaseSummary: ImportReleaseSummary
     /// Whether the draft can be edited and identified now; the records row
     /// stays enabled.

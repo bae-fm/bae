@@ -503,7 +503,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 metadataProvenance: provenance
             )
         )
-        return ImportReleaseHeader(
+        return MacImportDraft(
             releaseSummary: ImportReleaseSummary(
                 candidate: candidate,
                 editValues: editValues

@@ -57,7 +57,7 @@ extension BridgeStorageKind {
 
 /// How much this Mac keeps: the total, one bar split by kind, and a line for
 /// each kind with its size. Draws what it is given and reads nothing else.
-struct StorageUsageView: View {
+struct MacStorageUsage: View {
     let usage: StorageUsage
 
     private static let gap: CGFloat = 2

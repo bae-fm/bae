@@ -4,4 +4,4 @@ The draft card: Identify with Automatic, Search and ⋯; where the import goes a
 
 Where the import goes is one pop-up button, `to`: This Mac or Cloud. It shows when the library has cloud storage (`cloud`), and it is one stored choice: the bulk pane and Settings → Import show the same one.
 
-**In the code:** macOS: `ImportReleaseHeader` and `ReleaseMetadataHeader` (`Views/Import/Mapping/`, `Views/Components/MetadataForm/`); `ReleaseEditorView` for `editor`.
+**In the code:** macOS: `MacImportDraft` and `ReleaseMetadataHeader` (`Views/Import/Mapping/`, `Views/Components/MetadataForm/`); `ReleaseEditorView` for `editor`.

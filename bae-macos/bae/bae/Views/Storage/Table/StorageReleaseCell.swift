@@ -10,24 +10,11 @@ struct StorageReleaseCell: View {
     let dateAdded: Date
     let column: StorageTableColumn
 
-    /// The release column's cover side.
-    private static let coverSize: CGFloat = 24
-
     var body: some View {
         Group {
             switch column {
             case .release:
-                HStack(spacing: ThemeSpace.related) {
-                    ImageView(
-                        imageRef: release.cover,
-                        pointSize: Self.coverSize
-                    )
-                    .frame(width: Self.coverSize, height: Self.coverSize)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
-                    Text(album.title).lineLimit(1)
-                }
+                MacReleaseCell(release: release, album: album)
             case .artist:
                 Text(album.artistLine.text).lineLimit(1)
             case .media:
@@ -50,5 +37,27 @@ struct StorageReleaseCell: View {
         }
         .frame(maxWidth: .infinity, alignment: cellAlignment(column))
         .padding(.horizontal, ThemeSpace.inline)
+    }
+}
+
+/// The Release column's cell: a cover and the album's title.
+struct MacReleaseCell: View {
+    let release: ReleaseSummary
+    let album: BridgeAlbum
+
+    private static let coverSize: CGFloat = 24
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.related) {
+            ImageView(
+                imageRef: release.cover,
+                pointSize: Self.coverSize
+            )
+            .frame(width: Self.coverSize, height: Self.coverSize)
+            .clipShape(
+                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+            )
+            Text(album.title).lineLimit(1)
+        }
     }
 }
