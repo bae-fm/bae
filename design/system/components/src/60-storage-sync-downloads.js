@@ -40,10 +40,10 @@
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
   // ---- Storage Manager (macOS) ----
-  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector.
+  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector. `disabled` dims the controls, which do nothing while no library is open.
   function MacStorageWindow(props) {
     var k = kids(props.children);
-    return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
+    return h('div', { className: cx('bae-m-window bae-m-storewin', props.disabled && 'bae-m-storewin-off'), style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
       h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
       h('header', { className: 'bae-m-storewin-bar' },
         h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),

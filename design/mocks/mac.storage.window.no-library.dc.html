@@ -16,9 +16,9 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<div class="bae-mac" style="width:300px;height:200px;display:flex;background:var(--background);border-radius:10px"><x-import component-from-global-scope="Bae.MacContentUnavailable" title="No library loaded" description="Open a library first"></x-import></div>
+<x-import component-from-global-scope="Bae.MacStorageWindow" filter="All" height="660" disabled="{{yes}}"><div style="display:flex;flex-direction:column;height:100%"><x-import component-from-global-scope="Bae.MacContentUnavailable" title="No library loaded" description="Open a library first"></x-import></div></x-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":300,"height":200}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":660}}'>
 class Component extends DCLogic {
   renderVals() { return { yes: true }; }
 }

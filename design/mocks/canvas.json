@@ -2804,12 +2804,12 @@
    "y": 1380
   },
   "mac.storage.window.no-library.dc.html": {
-   "h": 200,
+   "h": 660,
    "page": "storage",
    "title": "macOS: no library open",
-   "w": 300,
-   "x": 5900,
-   "y": 1380
+   "w": 1100,
+   "x": 10620,
+   "y": 2160
   },
   "mac.storage.window.filter-no-match.dc.html": {
    "h": 660,

@@ -223,7 +223,7 @@
 .bae-m-queue-np-play { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--hover); color: var(--text-secondary); fill: currentColor; }
 .bae-m-queue-body { flex: 1; min-height: 0; overflow: hidden; padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
 .bae-m-queue-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
-.bae-m-cu-title { font: 700 17px var(--font-sans); }
+.bae-m-cu-title { font: 700 17px var(--font-sans); color: var(--text-primary); }
 .bae-m-cu-desc { font: 400 13px var(--font-sans); color: var(--text-secondary); }
 .bae-m-queue-section { display: flex; align-items: center; gap: 6px; padding: 12px 8px 4px; }
 .bae-m-queue-section-title { flex: 1; min-width: 0; font: 600 11px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
