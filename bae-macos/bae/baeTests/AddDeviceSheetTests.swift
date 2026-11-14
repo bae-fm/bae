@@ -57,14 +57,13 @@ struct AddDeviceSheetTests {
             AddDeviceHarness(holder: holder).environment(store)
                 .environment(Sync()),
             size: size
-        ) { _, host in
+        ) { _, _ in
             try await Wait.until { handle.statuses != nil }
             // The sheet follows the pairing its code came with.
             #expect(handle.pairing == Self.adding.id)
             let statuses = try #require(handle.statuses)
             statuses.deliver(.waiting(request: nil))
-            try await SnapshotTestSupport.settle(host)
-            #expect(store.addDeviceStatus?.face == .code)
+            try await Wait.until { store.addDeviceStatus?.face == .code }
 
             statuses.deliver(.ended(end: .added(name: "New Phone")))
             try await Wait.until {
