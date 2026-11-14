@@ -45,7 +45,7 @@ mod uploads;
 mod versions;
 
 pub use activity_bytes::{
-    activity_bytes_on, ActivityBytes, BatchReleases, DownloadRelease, UploadRelease,
+    activity_bytes_on, ActivityBytes, DownloadBytes, SendingFile, UploadBytes, WaitingRelease,
 };
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use browse::*;

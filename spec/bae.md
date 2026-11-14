@@ -3756,10 +3756,12 @@ pin only keeps a copy on this one. Every count is in releases, a release done
 once all its files are, and every bar is filled by the bytes of the batch done
 (for uploads, the bytes the providers confirmed), each release counting its
 size: a done release all of it, an upload its stored files and its files'
-shares on the way, the pin or move-to-this-device downloading its share; the bytes done
-never go back while the batch lasts, so a release whose transfer ends before
-its line reads it done keeps the bytes it reached, and one removed from the
-library keeps what it had counted. A bar moves while a release's files transfer
+shares on the way, the pin or move-to-this-device downloading its share. The
+tables give the bytes done and the files and releases still on the move; the
+bar adds each one's size times its latest share and is worked out again when
+the tables or a transfer change, with no value held from an earlier one. coven
+ends a file's upload progress only after the commit that records it stored. A
+release removed from the library counts none of its bytes. A bar moves while a release's files transfer
 and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
 over once the queue empties. Pinning and Moving to This Mac share the download
@@ -5910,7 +5912,6 @@ What the library lists, bae-views' part, kept by its triggers:
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title key and credit key, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
-| `upload_batch_number` | one row: how many upload batches have begun, the number of the one `upload_batch` holds, advanced as its first release joins, by which the Uploading line's bar tells a new batch from the one whose bytes it held (§6.4) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 | `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed or deleted an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |

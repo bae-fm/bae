@@ -1,58 +1,64 @@
 //! What each Activity transfer line's bar counts from the library's tables:
-//! each release of the line's batch with its size and how much of it the
-//! tables say is done. How far the files and releases on the move have got
-//! is not here: it changes with every byte, and travels with the transfers.
+//! the bytes of the line's batch and how many of them the tables say are done,
+//! with the files and releases whose bytes are still on the move. How far
+//! those have got changes with every byte, and travels with the transfers.
 
 use crate::sync_activity::DownloadLine;
-use bae_records::records::queued_uploads::{sending_files_on, RELEASE_BYTES_STORED};
-use bae_store::read::{count_column, optional_count_column};
+use bae_records::records::queued_uploads::RELEASE_BYTES_STORED;
+use bae_store::read::count_column;
 use bae_store::DbError;
-use std::collections::BTreeMap;
 
-/// Each transfer line's batch, release by release, as one read finds it.
-/// Bytes moving change none of it, so they rerun nothing; a batch growing,
-/// a release's files stored or pinned, and a file starting or ending its
-/// upload do.
+/// Each transfer line's batch in bytes, as one read finds it. Bytes moving
+/// change none of it, so they rerun nothing; a batch growing, a release's
+/// files stored or pinned, and a file starting or ending its upload do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityBytes {
-    pub uploads: Option<BatchReleases<UploadRelease>>,
-    pub pins: Option<BatchReleases<DownloadRelease>>,
-    pub moving_to_this_device: Option<BatchReleases<DownloadRelease>>,
+    pub uploads: Option<UploadBytes>,
+    pub pins: Option<DownloadBytes>,
+    pub moving_to_this_device: Option<DownloadBytes>,
 }
 
-/// The releases one line's batch holds, while it holds any.
+/// The Uploading line's batch while it holds a release. A release the library
+/// no longer holds counts none of its bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BatchReleases<Release> {
-    /// Which of its line's batches this is, each one past the one before:
-    /// a reader tells by it that the batch it held ended and another began.
-    pub number: u64,
-    /// Each release by id; `None` for one the library no longer holds.
-    pub releases: BTreeMap<String, Option<Release>>,
-}
-
-/// A release of the Uploading line's batch.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UploadRelease {
-    /// Its whole size.
+pub struct UploadBytes {
+    /// The whole size of the batch's releases.
     pub bytes_total: u64,
-    /// Of its size, the bytes of its files stored: those not queued to
-    /// upload.
-    pub bytes_stored: u64,
-    /// Each of its files this process is sending now, with the file's size.
-    pub sending: BTreeMap<coven::FileId, u64>,
+    /// Of that, the bytes of their files stored: those not queued to upload.
+    pub bytes_done: u64,
+    /// Each file of the batch's releases that this process is sending now.
+    pub sending: Vec<SendingFile>,
 }
 
-/// A release of the Pinning or Moving to this device line's batch.
+/// A release file this process is sending now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DownloadRelease {
-    /// Its whole size.
-    pub bytes_total: u64,
-    /// No entry of the line's kind for it is in the download queue, and it
-    /// is pinned whole, or for a move-to-this-device no longer stored in the cloud.
-    pub done: bool,
+pub struct SendingFile {
+    pub file: coven::FileId,
+    pub size: u64,
 }
 
-/// Every transfer line's batch, release by release.
+/// The Pinning or Moving to this device line's batch while it holds a
+/// release. A release the library no longer holds counts none of its bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DownloadBytes {
+    /// The whole size of the batch's releases.
+    pub bytes_total: u64,
+    /// Of that, the sizes of the releases that are done: no entry of the
+    /// line's kind for them is in the download queue, and they are pinned
+    /// whole, or for a move-to-this-device no longer stored in the cloud.
+    pub bytes_done: u64,
+    /// The releases not done, each with its whole size.
+    pub waiting: Vec<WaitingRelease>,
+}
+
+/// A release of a download batch that is not done yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WaitingRelease {
+    pub release_id: String,
+    pub bytes_total: u64,
+}
+
+/// Every transfer line's batch in bytes.
 pub fn activity_bytes_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBytes, DbError> {
     Ok(ActivityBytes {
         uploads: upload_bytes_on(sql)?,
@@ -61,93 +67,82 @@ pub fn activity_bytes_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityByte
     })
 }
 
-/// The Uploading line's batch, each release with its stored bytes and its
-/// files being sent. A cover's or a picture's file belongs to no release of
-/// the batch.
-fn upload_bytes_on(
-    sql: &coven::SqlReadContext<'_>,
-) -> Result<Option<BatchReleases<UploadRelease>>, DbError> {
-    let mut releases: BTreeMap<String, Option<UploadRelease>> = sql
-        .query(
-            &format!(
-                "SELECT batch.release_id AS release_id, storage.total_size AS bytes_total, \
-                     {RELEASE_BYTES_STORED} AS bytes_stored \
-                 FROM upload_batch AS batch \
-                 LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id"
-            ),
-            [],
-            |row| {
-                let release = match optional_count_column(row, "bytes_total")? {
-                    Some(bytes_total) => Some(UploadRelease {
-                        bytes_total,
-                        bytes_stored: count_column(row, "bytes_stored")?,
-                        sending: BTreeMap::new(),
-                    }),
-                    None => None,
-                };
-                Ok((row.get("release_id")?, release))
-            },
-        )?
-        .into_iter()
-        .collect();
-    if releases.is_empty() {
+/// The Uploading line's batch: its size, the bytes stored, and the files being
+/// sent. A cover's or a picture's file belongs to no release of the batch.
+fn upload_bytes_on(sql: &coven::SqlReadContext<'_>) -> Result<Option<UploadBytes>, DbError> {
+    let (releases, bytes_total, bytes_done): (u64, u64, u64) = sql.query_row(
+        &format!(
+            "SELECT COUNT(*) AS releases, COALESCE(SUM(storage.total_size), 0) AS bytes_total, \
+                 COALESCE(SUM({RELEASE_BYTES_STORED}), 0) AS bytes_done \
+             FROM upload_batch AS batch \
+             LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id"
+        ),
+        [],
+        batch_counts,
+    )?;
+    if releases == 0 {
         return Ok(None);
     }
-    // A cover's or a picture's file has no release. A release's file being
-    // sent is queued, so its release is in the batch and still held.
-    for file in sending_files_on(sql)? {
-        if let Some(release_id) = &file.release_id {
-            let release = releases
-                .get_mut(release_id)
-                .and_then(Option::as_mut)
-                .expect("a release with a file queued is in the upload batch");
-            let size = file.file_size.expect("a release file being sent has its size read with it");
-            release.sending.insert(file.file, size);
-        }
-    }
-    let number = sql.query_row("SELECT number FROM upload_batch_number", [], |row| {
-        count_column(row, "number")
-    })?;
-    Ok(Some(BatchReleases { number, releases }))
+    let sending = sql.query(
+        "SELECT sending.file AS file, coven.size AS size \
+         FROM coven_sending AS sending \
+         JOIN release_files AS f ON f.file = sending.file \
+         JOIN upload_batch AS batch ON batch.release_id = f.release_id \
+         JOIN coven_files AS coven ON coven.id = sending.file",
+        [],
+        |row| Ok(SendingFile { file: row.get("file")?, size: count_column(row, "size")? }),
+    )?;
+    Ok(Some(UploadBytes { bytes_total, bytes_done, sending }))
 }
 
-/// `line`'s batch, each release with whether it is done.
+/// A batch's release count, whole size and bytes done, as its aggregate
+/// statement names them.
+fn batch_counts(row: &rusqlite::Row<'_>) -> rusqlite::Result<(u64, u64, u64)> {
+    Ok((
+        count_column(row, "releases")?,
+        count_column(row, "bytes_total")?,
+        count_column(row, "bytes_done")?,
+    ))
+}
+
+/// `line`'s batch: its size, the sizes of its done releases, and the releases
+/// not done.
 fn download_bytes_on(
     sql: &coven::SqlReadContext<'_>,
     line: &DownloadLine,
-) -> Result<Option<BatchReleases<DownloadRelease>>, DbError> {
-    let releases: BTreeMap<String, Option<DownloadRelease>> = sql
-        .query(
-            &format!(
-                "SELECT batch.release_id AS release_id, storage.total_size AS bytes_total, \
-                     ({}) AS done \
-                 FROM download_batch AS batch \
-                 LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id \
-                 WHERE batch.kind = ?1",
-                line.done()
-            ),
-            [line.kind],
-            |row| {
-                let release = match optional_count_column(row, "bytes_total")? {
-                    Some(bytes_total) => {
-                        Some(DownloadRelease { bytes_total, done: row.get("done")? })
-                    }
-                    None => None,
-                };
-                Ok((row.get("release_id")?, release))
-            },
-        )?
-        .into_iter()
-        .collect();
-    if releases.is_empty() {
+) -> Result<Option<DownloadBytes>, DbError> {
+    let done = line.done();
+    let (releases, bytes_total, bytes_done): (u64, u64, u64) = sql.query_row(
+        &format!(
+            "SELECT COUNT(*) AS releases, COALESCE(SUM(storage.total_size), 0) AS bytes_total, \
+                 COALESCE(SUM(storage.total_size) FILTER (WHERE {done}), 0) AS bytes_done \
+             FROM download_batch AS batch \
+             LEFT JOIN release_storage AS storage ON storage.release_id = batch.release_id \
+             WHERE batch.kind = ?1"
+        ),
+        [line.kind],
+        batch_counts,
+    )?;
+    if releases == 0 {
         return Ok(None);
     }
-    let number = sql.query_row(
-        "SELECT number FROM download_batch_number WHERE kind = ?1",
+    let waiting = sql.query(
+        &format!(
+            "SELECT batch.release_id AS release_id, storage.total_size AS bytes_total \
+             FROM download_batch AS batch \
+             JOIN release_storage AS storage ON storage.release_id = batch.release_id \
+             WHERE batch.kind = ?1 AND NOT COALESCE({done}, 0) \
+             ORDER BY batch.release_id"
+        ),
         [line.kind],
-        |row| count_column(row, "number"),
+        |row| {
+            Ok(WaitingRelease {
+                release_id: row.get("release_id")?,
+                bytes_total: count_column(row, "bytes_total")?,
+            })
+        },
     )?;
-    Ok(Some(BatchReleases { number, releases }))
+    Ok(Some(DownloadBytes { bytes_total, bytes_done, waiting }))
 }
 
 #[cfg(test)]

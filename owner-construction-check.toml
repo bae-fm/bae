@@ -1570,7 +1570,6 @@ owner = "LibraryViews"
 homes = ["bae-views/src/"]
 tables = [
     "upload_batch",
-    "upload_batch_number",
     "composer_work",
     "composer_release",
     "composer_unlinked_credit",
@@ -1769,7 +1768,6 @@ frozen = [
     { path = "bae-import/src/triage/selection.rs", item = "selection_offers", shape = "cutoff", count = 1, finding = "sums the selected groups and works out which actions each group offers in Rust" },
     { path = "bae-import/src/triage/selection.rs", item = "selection_offers", shape = "filter", count = 2, finding = "sums the selected groups and works out which actions each group offers in Rust" },
     { path = "bae-import/src/triage/selection.rs", item = "selection_offers", shape = "pick", count = 1, finding = "sums the selected groups and works out which actions each group offers in Rust" },
-    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::next", shape = "kept-state", count = 2, finding = "holds the last bars and the per-release byte maximum, and skips unchanged bars" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "kept-state", count = 3, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::next", shape = "kept-state", count = 2, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "groups `sending.files` by release in a `BTreeMap`" },
@@ -1824,8 +1822,6 @@ frozen = [
     { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::with_ids", shape = "filter", count = 1, finding = "`ReleaseLabel::with_ids` filters with `filter` (found by the check)" },
     { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "filter", count = 1, finding = "`StatedMedia::any` filters with `filter_map` (found by the check)" },
     { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "pick", count = 1, finding = "`StatedMedia::any` picks with `any` (found by the check)" },
-    { path = "bae-views/src/activity_bytes.rs", item = "download_bytes_on", shape = "group", count = 1, finding = "files each sending file under its release in a `BTreeMap` after two queries" },
-    { path = "bae-views/src/activity_bytes.rs", item = "upload_bytes_on", shape = "group", count = 2, finding = "files each sending file under its release in a `BTreeMap` after two queries" },
     { path = "bae-views/src/album.rs", item = "LibraryViews::subscribe_album_browse", shape = "kept-state", count = 1, finding = "the live query keeps the places of its last read in `KnownPlaces`, so the next window starts from them" },
     { path = "bae-views/src/album.rs", item = "find_album_detail_on", shape = "query-per-row", count = 1, finding = "builds each release's detail with about nine statements apiece after the album query" },
     { path = "bae-views/src/album/listing.rs", item = "SectionsDelivery::read", shape = "kept-state", count = 1, finding = "holds the versions the last sections delivery was read at, and skips the sections query while they stand" },
@@ -1843,7 +1839,6 @@ frozen = [
     { path = "bae-views/src/storage.rs", item = "storage_queues_on", shape = "filter", count = 1, finding = "filters the Storage Manager's queue rows in Rust (found by the check)" },
     { path = "bae-views/src/storage_inspector.rs", item = "inspector_files_on", shape = "filter", count = 1, finding = "filters coven's pending records by their decoded subject and joins them to files by path in Rust" },
     { path = "bae-views/src/storage_inspector.rs", item = "inspector_files_on", shape = "pick", count = 1, finding = "filters coven's pending records by their decoded subject and joins them to files by path in Rust" },
-    { path = "bae-views/src/sync_activity.sql", item = "upload_batch_number.number", shape = "counter", count = 1, finding = "an upload batch number its trigger counts up with each batch; the activity lines read it" },
     { path = "bae-views/src/versions.sql", item = "library_list_versions.version", shape = "counter", count = 1, finding = "a version number its triggers count up on every list change, read only so `KnownPlaces` can tell whether its places still stand" },
 ]
 allowed = [
