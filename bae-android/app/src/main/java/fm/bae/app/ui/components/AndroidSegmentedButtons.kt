@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -29,11 +30,13 @@ internal fun AndroidSegmentedButtons(
     label: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        // The label is drawn over the buttons; the buttons are one group, which the label names.
         label?.let {
             Text(
                 text = it,
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics {},
             )
         }
         val edge = BaeTheme.colors.hairlineStrong
