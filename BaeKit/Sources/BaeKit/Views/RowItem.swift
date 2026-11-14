@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The piece every macOS row with a leading icon is built from: `lead` (an
 /// icon, a status glyph, a progress mark), the content, then `trail` (a size,
-/// a time, a cancel mark). The leading column is `ThemeSize.lead` wide and as
-/// tall as the first line, the icon centred in it; the content starts
+/// a time, a cancel mark), drawn in secondary text. The leading column is
+/// `ThemeSize.lead` wide and as tall as the first line, the icon centred in
+/// it; the content starts
 /// `ThemeSpace.related` after it. The column stays when `lead` is empty, so a
 /// row with no icon keeps the same text edge as its neighbours. It has no
 /// inset of its own: the row it sits in places it.
@@ -34,6 +35,7 @@ public struct RowItem<Lead: View, Content: View, Trail: View>: View {
                 .overlay { lead }
             content.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: ThemeSpace.related) { trail }
+                .foregroundStyle(.secondary)
         }
     }
 }

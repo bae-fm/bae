@@ -20,7 +20,6 @@ struct StorageInspectorFileRow: View {
                 .foregroundStyle(nameStyle)
         } trail: {
             Text(row.file.fileSizeText)
-                .foregroundStyle(.secondary)
                 .monospacedDigit()
         }
         .padding(.vertical, ThemeSpace.related)

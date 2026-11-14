@@ -38,7 +38,6 @@ struct QueueRow<Content: View, Below: View>: View {
                 if let createdAt {
                     Text(queuedRelativeLabel(createdAt))
                         .themeText(.fine)
-                        .foregroundStyle(.secondary)
                         .fixedSize()
                 }
 

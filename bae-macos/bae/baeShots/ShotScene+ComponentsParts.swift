@@ -357,7 +357,7 @@ extension ShotScene {
             } content: {
                 Text("Download failed")
             } trail: {
-                Text("2m ago").themeText(.fine).foregroundStyle(.secondary)
+                Text("2m ago").themeText(.fine)
             }
             .frame(width: 380, alignment: .leading)
         },
@@ -373,7 +373,7 @@ extension ShotScene {
                 } content: {
                     Text("01 Harbor Lights.flac")
                 } trail: {
-                    Text("34.1 MB").themeText(.fine).foregroundStyle(.secondary)
+                    Text("34.1 MB").themeText(.fine)
                 }
             }
             .frame(width: 380, alignment: .leading)
