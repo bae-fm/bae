@@ -121,7 +121,9 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(summary.names == names.joined(separator: ", "))
+        #expect(
+            summary.names == "First Artist, Second Artist, and Third Artist"
+        )
         #expect(summary.identityLabel == "Library")
     }
 
@@ -135,7 +137,7 @@ struct ArtistAssignmentsSummaryTests {
             )
         )
 
-        #expect(summary.names == names.joined(separator: ", "))
+        #expect(summary.names == "First Artist and Second Artist")
         #expect(summary.identityLabel == "New")
     }
 
@@ -188,7 +190,7 @@ struct ArtistAssignmentsSummaryTests {
 
         #expect(
             summary.names
-                == "First Artist, Second Artist, Third Artist, Fourth Artist"
+                == "First Artist, Second Artist, Third Artist, and Fourth Artist"
         )
         #expect(summary.identityLabel == "2 new")
     }
