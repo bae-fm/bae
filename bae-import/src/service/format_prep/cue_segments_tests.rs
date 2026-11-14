@@ -29,7 +29,8 @@ INDEX 01 00:00:00
 "#,
     )
     .expect("write cue");
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
     let make_probe = |seconds| ProbeResult {
         content_type: ContentType::Flac,
         container: bae_util::audio_container::AudioContainer::Flac,
@@ -111,8 +112,10 @@ INDEX 01 01:00:00
     )
     .expect("write cue");
 
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = bae_audio::probe_audio_from_path(&audio_path).expect("analyze ape");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
+    let probe = bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
+        .expect("analyze ape");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
@@ -142,8 +145,14 @@ INDEX 01 01:00:00
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built = build_audio_formats(&tracks_to_files, &file_ids, &test_clock(), &ids)
-        .expect("build audio formats");
+    let built = build_audio_formats(
+        &tracks_to_files,
+        &file_ids,
+        &test_clock(),
+        &ids,
+        &bae_store::FileLeases::for_test_default(),
+    )
+    .expect("build audio formats");
 
     // Exactly one track (track 2) has a real audio pregap.
     let pregaps: Vec<_> = built
@@ -256,13 +265,15 @@ INDEX 01 11:01:30
     )
     .expect("write cue");
 
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "test.wav".to_string(),
             path: audio_path.clone(),
-            probe: bae_audio::probe_audio_from_path(&audio_path).expect("probe the image"),
+            probe: bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
+                .expect("probe the image"),
         }],
     });
 
@@ -292,8 +303,14 @@ INDEX 01 11:01:30
     );
     let ids = coven::SequentialIds::new();
 
-    let built = build_audio_formats(&tracks_to_files, &file_ids, &clock, &ids)
-        .expect("build audio formats");
+    let built = build_audio_formats(
+        &tracks_to_files,
+        &file_ids,
+        &clock,
+        &ids,
+        &bae_store::FileLeases::for_test_default(),
+    )
+    .expect("build audio formats");
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
@@ -325,7 +342,8 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
          TRACK 02 MODE1/2352\n    INDEX 01 00:05:00\n",
     )
     .expect("write cue");
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
     let path = temp.path().join("image.flac");
     let analysis = CueFlacAnalysis {
         cue_sheet,
@@ -424,9 +442,12 @@ FILE "second.flac" WAVE
     )
     .expect("write cue");
 
-    let probe = |path: &std::path::Path| bae_audio::probe_audio_from_path(path).expect("probe");
+    let probe = |path: &std::path::Path| {
+        bae_audio::probe_audio_from_path(path, bae_util::test_files::place()).expect("probe")
+    };
     let cue_pair = Arc::new(CueFlacAnalysis {
-        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue"),
+        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+            .expect("parse cue"),
         audio_files: vec![
             CueAnalyzedAudioFile {
                 file_reference: "first.flac".to_string(),
@@ -462,6 +483,7 @@ FILE "second.flac" WAVE
         &file_ids,
         &test_clock(),
         &coven::SequentialIds::new(),
+        &bae_store::FileLeases::for_test_default(),
     )
     .expect("build audio formats");
 
@@ -599,7 +621,8 @@ fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
     let path = temp.path().join("image.flac");
     std::fs::write(&path, b"bytes FFmpeg reads as no audio").expect("write image");
     let cue_pair = Arc::new(CueFlacAnalysis {
-        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue"),
+        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+            .expect("parse cue"),
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "image.flac".to_string(),
             path: path.clone(),
@@ -626,6 +649,7 @@ fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
         &HashMap::from([(path.clone(), "image".to_string())]),
         &test_clock(),
         &coven::SequentialIds::new(),
+        &bae_store::FileLeases::for_test_default(),
     ) else {
         panic!("an image whose track starts can't be read fails the import");
     };
@@ -637,8 +661,10 @@ fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
 fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let audio_path = PathBuf::from(format!("{dir}/Test Album.ape"));
     let cue_path = PathBuf::from(format!("{dir}/Test Album.cue"));
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
-    let probe = bae_audio::probe_audio_from_path(&audio_path).expect("analyze ape");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
+    let probe = bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
+        .expect("analyze ape");
     let cue_pair = Arc::new(crate::types::CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![crate::types::CueAnalyzedAudioFile {
@@ -689,8 +715,14 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let mut file_ids = HashMap::new();
     file_ids.insert(PathBuf::from(format!("{dir}/Test Album.ape")), "file-1".to_string());
 
-    let built = build_audio_formats(&tracks, &file_ids, &test_clock(), &SequentialIds::new())
-        .expect("build_audio_formats");
+    let built = build_audio_formats(
+        &tracks,
+        &file_ids,
+        &test_clock(),
+        &SequentialIds::new(),
+        &bae_store::FileLeases::for_test_default(),
+    )
+    .expect("build_audio_formats");
 
     let main_segments: Vec<_> = built
         .audio_segments
@@ -736,9 +768,11 @@ fn cue_image(
         ),
     )
     .expect("write the cue");
-    let probe = bae_audio::probe_audio_from_path(&path).expect("probe");
+    let probe =
+        bae_audio::probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {
-        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue"),
+        cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+            .expect("parse cue"),
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: name.to_string(),
             path: path.clone(),
@@ -764,6 +798,7 @@ fn cue_image(
         &HashMap::from([(path, "image".to_string())]),
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
         &coven::SequentialIds::new(),
+        &bae_store::FileLeases::for_test_default(),
     )
     .expect("build audio formats");
     (bytes, built.audio_segments)

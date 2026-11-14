@@ -284,8 +284,9 @@ impl crate::file_tag_reader::FileTagReader for UnparseableTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
-        let read = self.counted.read(path)?;
+        let read = self.counted.read(path, place)?;
         if path == self.unparseable {
             return Err(crate::file_tag_reader::TagReadFailure::Unparseable(
                 "its Vorbis comment block is cut short".to_string(),
@@ -387,8 +388,9 @@ impl crate::file_tag_reader::FileTagReader for FaultingTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
-        let read = self.counted.read(path)?;
+        let read = self.counted.read(path, place)?;
         if path == self.faulting && self.fault.load(Ordering::SeqCst) {
             return Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
                 "failed to read tags from {}: the share went away",
@@ -543,8 +545,9 @@ impl crate::file_tag_reader::FileTagReader for EmbeddingTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
-        let mut read = self.counted.read(path)?;
+        let mut read = self.counted.read(path, place)?;
         read.embedded_cover =
             Some((self.picture.clone(), bae_util::content_type::ContentType::Jpeg));
         Ok(read)
@@ -671,9 +674,10 @@ impl crate::file_tag_reader::FileTagReader for CountingTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
-        crate::file_tag_reader::LoftyFileTagReader.read(path)
+        crate::file_tag_reader::LoftyFileTagReader.read(path, place)
     }
 }
 

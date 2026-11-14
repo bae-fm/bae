@@ -198,6 +198,8 @@ pub struct ImportService {
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
+    /// The places of the budget of open files the import's reads take.
+    file_leases: bae_store::FileLeases,
     import_cancels: crate::import_cancel::ImportCancels,
     /// Where every bug the import worker finds is reported: a write no
     /// caller waits on, and an image the blocking format prep can't read.

@@ -671,6 +671,7 @@ impl crate::file_tag_reader::FileTagReader for CountingFileTagReader {
     fn read(
         &self,
         _path: &std::path::Path,
+        _place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let index = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if index == 0 {

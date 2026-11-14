@@ -59,3 +59,24 @@ fn shift_jis_fallback() {
     assert_eq!(result.text, "テスト");
     assert_eq!(result.encoding, "Shift_JIS");
 }
+
+/// A text file is read through the place it is given, which goes back once
+/// the read is done, whether the file opened or not.
+#[test]
+fn reading_a_text_file_gives_its_place_back() {
+    let dir = std::env::temp_dir().join(format!("bae-text-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("sheet.cue");
+    std::fs::write(&path, "TITLE \"One\"").unwrap();
+    let budget = coven::FileBudget::for_test();
+    let watch = budget.watch();
+    let lease = budget.lease_blocking(1).unwrap();
+
+    let read = read_text_file(&path, lease.place_blocking()).unwrap();
+    assert_eq!(read.text, "TITLE \"One\"");
+    assert_eq!(watch.holding(), 0);
+
+    assert!(read_text_file(&dir.join("absent.cue"), lease.place_blocking()).is_err());
+    assert_eq!(watch.holding(), 0);
+    std::fs::remove_dir_all(&dir).unwrap();
+}

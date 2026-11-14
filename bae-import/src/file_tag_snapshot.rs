@@ -6,6 +6,7 @@ use super::track_numbers::TrackNumbers;
 use super::ImportError;
 use bae_catalogs::StoreMarker;
 use bae_util::content_type::ContentType;
+use coven::{FileLease, LeasePlace};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileObservation {
@@ -205,13 +206,14 @@ pub(crate) fn observe_audio_files(
 /// `file`'s tags as `reader` reads them, or why they do not parse, with the
 /// file as it was while they were read: the scanned size, at the modification
 /// time it has now. A read that fails at the file itself says nothing of the
-/// file, and fails.
+/// file, and fails. The file opens in `place`.
 pub(crate) fn read_observed(
     file: &ScannedFile,
     reader: &dyn FileTagReader,
+    place: LeasePlace,
 ) -> Result<(FileObservation, Result<FileTagRead, String>), ImportError> {
     let before = observe_file(file)?;
-    let read = reader.read(&file.version.path);
+    let read = reader.read(&file.version.path, place);
     let after = observe_file(file)?;
     if before != after {
         return Err(changed_file_error(file));
@@ -231,15 +233,17 @@ pub(crate) struct DeliveredFileTags {
 }
 
 /// The tags of each of `audio_files` as `reader` reads them now, in their
-/// order.
+/// order, each file opened in a place of `lease`, one after the other. Call it
+/// off the async workers.
 pub(crate) fn read_delivered_file_tags(
     audio_files: &[ScannedFile],
     reader: &dyn FileTagReader,
+    lease: &FileLease,
 ) -> Result<Vec<DeliveredFileTags>, ImportError> {
     audio_files
         .iter()
         .map(|file| {
-            let (observation, read) = read_observed(file, reader)?;
+            let (observation, read) = read_observed(file, reader, lease.place_blocking())?;
             let (tags, delivery) = match read {
                 Ok(read) => (TagReading::Stated(read.tags), read.delivery),
                 Err(reason) => (TagReading::Unparseable(reason), DeliveryTags::default()),
@@ -254,11 +258,12 @@ pub(crate) fn extract_file_tag_snapshot(
     scan_generation: u64,
     file_edit_revision: u64,
     reader: &dyn FileTagReader,
+    lease: &FileLease,
 ) -> Result<FileTagSnapshot, ImportError> {
     let mut facts = Vec::with_capacity(audio_files.len());
     let mut embedded_cover = None;
     for file in audio_files {
-        let (before, read) = read_observed(file, reader)?;
+        let (before, read) = read_observed(file, reader, lease.place_blocking())?;
         let tags = match read {
             Ok(read) => {
                 if embedded_cover.is_none() {

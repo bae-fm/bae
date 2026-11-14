@@ -527,7 +527,12 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let files = scan_files(&album);
     assert!(files.bound_sheets().is_empty());
     assert!(
-        crate::rip_reading::read_rip_artifacts(&files).unwrap().disc_id.computed().len() == 1,
+        crate::rip_reading::read_rip_artifacts(&files, &bae_util::test_files::lease())
+            .unwrap()
+            .disc_id
+            .computed()
+            .len()
+            == 1,
         "the rip log's TOC still yields a disc ID with the sheet unbound",
     );
 }

@@ -8,6 +8,7 @@ use bae_catalogs::{AudioOrigin, AudioSource, DownloadProof};
 use bae_identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
 use bae_records::DocumentKind;
 use bae_types::barcode::Barcode;
+use coven::{FileLease, LeasePlace};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::debug;
@@ -81,6 +82,7 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 pub(super) fn gather_non_ocr_sources(
     folders: &[PathBuf],
     categorized: &CategorizedFiles,
+    lease: &FileLease,
 ) -> Result<FastPass, crate::ImportError> {
     let mut pass = FastPass::empty();
 
@@ -108,7 +110,7 @@ pub(super) fn gather_non_ocr_sources(
     // Rip evidence, disc ID, CUE barcodes and the audio facts all come off
     // one scan.
     pass.audio = crate::probe::audio_facts(categorized)?;
-    let rip = read_rip_artifacts(categorized)?;
+    let rip = read_rip_artifacts(categorized, lease)?;
     pass.origin = rip.origin;
     pass.disc_id = rip.disc_id.into_signal();
     pass.cue_barcodes = cue_barcodes(categorized);
@@ -137,6 +139,7 @@ pub(super) fn gather_non_ocr_sources(
     let files = crate::file_tag_snapshot::read_delivered_file_tags(
         &audio_files,
         &crate::file_tag_reader::LoftyFileTagReader,
+        lease,
     )?;
     // Each file's ISRCs, as `isrc::code` reads its tag, in the files'
     // order; a value that reads as no code adds nothing.
@@ -172,7 +175,7 @@ pub(super) fn gather_non_ocr_sources(
 
     // Text files feed the pool one line at a time.
     for path in text_file_paths(categorized) {
-        let text = read_capped_text(&path)?;
+        let text = read_capped_text(&path, lease.place_blocking())?;
         for line in text.lines() {
             let trimmed = line.trim();
             if !trimmed.is_empty() {
@@ -284,14 +287,14 @@ fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
 /// Read a text file, capped and decoded whatever its encoding. A file that
 /// cannot be opened or read, one that left the folder after the scan
 /// included, is an error.
-fn read_capped_text(path: &Path) -> Result<String, crate::ImportError> {
+fn read_capped_text(path: &Path, place: LeasePlace) -> Result<String, crate::ImportError> {
     use std::io::Read;
 
     let unread =
         |error| crate::ImportError::DocumentRead { file: path.display().to_string(), error };
-    let file = std::fs::File::open(path).map_err(unread)?;
+    let file = place.open(path).map_err(unread)?;
     let mut buf = Vec::new();
-    file.take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf).map_err(unread)?;
+    (&*file).take(MAX_TEXT_FILE_BYTES).read_to_end(&mut buf).map_err(unread)?;
     Ok(bae_util::text_encoding::decode_text(&buf).text)
 }
 

@@ -86,10 +86,12 @@ pub async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
+    let lease = records.lease_one().await;
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
                 files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
+                &lease,
             );
             let formats: Vec<bae_types::audio_format::AudioFormat> = categorized
                 .audio()
@@ -97,7 +99,7 @@ pub async fn resolve_release_identity(
                 .map(|audio| audio.format.clone())
                 .collect();
             Ok::<_, crate::ImportError>((
-                crate::rip_reading::read_library_rip_artifacts(&categorized)?,
+                crate::rip_reading::read_library_rip_artifacts(&categorized, &lease)?,
                 formats,
             ))
         })
@@ -174,7 +176,9 @@ pub(crate) async fn resolve_release_artwork_paths(
         .await?
     {
         Some(file) => {
-            let bytes = store.read_file(&file).await.map_err(ReleaseArtworkError::CoverRead)?;
+            let lease = store.lease_one().await;
+            let bytes =
+                store.read_file(&file, &lease).await.map_err(ReleaseArtworkError::CoverRead)?;
             let (dir, cover_path) = diagnostics
                 .blocking("stage a cover for reading", move || stage_cover_for_ocr(&bytes))
                 .await?

@@ -262,7 +262,9 @@ impl SaveService {
     /// one) and re-encodes it to the target format.
     /// Embeds metadata (title, artist, album, year, track number, cover art).
     /// A source file is open only while a track reading it is being saved
-    /// (see [`run_tracks_over_sources`]); `open` opens one by release file id.
+    /// (see [`run_tracks_over_sources`]), in a place the pass took from
+    /// `files` in one wait; `open` opens one by release file id in a place of
+    /// the lease it is given.
     /// `on_saved` runs as each track's file is written. `existing` says what a
     /// file already at a track's output path does. A track whose save panics
     /// fails the save as unfinished, which the caller reports; once the
@@ -274,15 +276,17 @@ impl SaveService {
         tracks: Vec<(SaveTrackPlan, PathBuf)>,
         cover_image_bytes: Option<Vec<u8>>,
         codec: bae_preferences::SaveCodec,
+        files: &bae_store::FileLeases,
         parallelism: NonZeroUsize,
         existing: ExistingOutput,
-        open: impl Fn(&String) -> SourceStream,
+        open: impl Fn(&String, &coven::FileLease) -> SourceStream,
         on_saved: Arc<dyn Fn() + Send + Sync>,
         bugs: BugSinkRef,
     ) -> Result<(), SaveError> {
         let cover_image_bytes = Arc::new(cover_image_bytes);
         run_tracks_over_sources(
             tracks,
+            files,
             parallelism,
             |(plan, _): &(SaveTrackPlan, PathBuf)| plan.source_files(),
             open,
@@ -307,6 +311,7 @@ impl SaveService {
                 }
             },
             SaveError::from,
+            |error| SaveError::Failed(error.to_string()),
         )
         .await
         .map(|_| ())

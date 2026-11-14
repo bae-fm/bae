@@ -95,6 +95,12 @@ pub enum ImportError {
     #[error("the source audio for {track} could not be read: {error}")]
     SourceRead { track: String, error: bae_audio::sparse_buffer::SourceReadError },
 
+    /// A track's audio is in more files than the app's budget of open files
+    /// holds, so the import cannot read the track. Nothing was committed.
+    #[cfg(desktop)]
+    #[error("the audio of one track is in more files than bae may open at once: {0}")]
+    TooManyFilesAtOnce(coven::LeaseTooLarge),
+
     /// Candidate preparation is immutable from the moment import owns it.
     #[cfg(desktop)]
     #[error("This release is being imported and can no longer be edited")]
@@ -740,6 +746,7 @@ impl ImportError {
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }
+            | Self::TooManyFilesAtOnce(_)
             | Self::WatchedFolder(_)
             | Self::Watch { .. } => C::Import,
         }

@@ -32,6 +32,7 @@ impl Home {
                 bae_store::EnteredName::parse("Creator").unwrap(),
                 "Test Device",
                 bae_store::TestSources::system().clock().clone(),
+                coven::FileBudget::for_test(),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -53,6 +54,7 @@ impl Home {
             )),
             bae_diagnostics::Diagnostics::noop(),
             std::sync::Arc::new(coven::SystemClock),
+            coven::FileBudget::for_test(),
             std::sync::Arc::new(coven::SequentialIds::new()),
             self.library_builder(),
             |_| (),
@@ -106,6 +108,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         home.library_builder(),
         |_| (),
@@ -129,6 +132,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         home.library_builder(),
         |_| (),
@@ -153,6 +157,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         home.library_builder(),
         |_| (),
@@ -193,6 +198,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
             bae_store::EnteredName::parse("Creator").unwrap(),
             "Test Device",
             bae_store::TestSources::system().clock().clone(),
+            coven::FileBudget::for_test(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await
@@ -220,6 +226,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         home.library_builder().storage_connector(storage),
         |_| (),

@@ -239,11 +239,15 @@ impl PendingCueTrack {
         })
     }
 }
-/// Read and parse the sheet at `cue_path`, whatever its text encoding.
-pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueSheetError> {
+/// Read and parse the sheet at `cue_path`, opened in `place`, whatever its
+/// text encoding.
+pub fn parse_cue_sheet(
+    cue_path: &Path,
+    place: coven::LeasePlace,
+) -> Result<CueSheet, CueSheetError> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::CueParse, cue_path);
-    parse_cue_content(&bae_util::text_encoding::read_text_file(cue_path)?.text)
+    parse_cue_content(&bae_util::text_encoding::read_text_file(cue_path, place)?.text)
 }
 /// Parse CUE sheet content.
 ///

@@ -78,6 +78,7 @@ pub(super) fn cue_audio_pregap(
 pub(super) fn cue_file_landing_bytes(
     file: &crate::types::CueAnalyzedAudioFile,
     cue_sheet: &crate::cue_sheet::CueSheet,
+    lease: &coven::FileLease,
 ) -> Result<HashMap<u64, u64>, ImportError> {
     ensure_probe_audio_format(&file.path, &file.probe)?;
     let sample_rate = u64::from(file.probe.sample_rate.get());
@@ -88,14 +89,15 @@ pub(super) fn cue_file_landing_bytes(
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate))
         .collect();
-    let landings = bae_audio::seek_landing_bytes(&file.path, &start_samples).map_err(|reason| {
-        ImportError::Internal {
-            detail: format!(
-                "could not read where each track of the CUE image {} starts: {reason}",
-                file.path.display()
-            ),
-        }
-    })?;
+    let landings =
+        bae_audio::seek_landing_bytes(&file.path, &start_samples, lease).map_err(|reason| {
+            ImportError::Internal {
+                detail: format!(
+                    "could not read where each track of the CUE image {} starts: {reason}",
+                    file.path.display()
+                ),
+            }
+        })?;
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 

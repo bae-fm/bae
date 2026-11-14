@@ -280,8 +280,9 @@ async fn extract(
                 emit_signals(inner, extraction, settled);
                 return;
             }
+            let lease = inner.store.lease_one().await;
             let fast = match run_fast_pass_blocking(&inner.diagnostics, move || {
-                gather_non_ocr_sources(&candidate.source_folders(), &candidate.files)
+                gather_non_ocr_sources(&candidate.source_folders(), &candidate.files, &lease)
             })
             .await
             {

@@ -34,6 +34,7 @@ async fn preview_play_rejects_unprobeable_file() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -59,12 +60,16 @@ async fn switching_previews_keeps_the_main_player_resume() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
     let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let sample_rate = u64::from(
-        bae_audio::probe_audio_from_path(&path).expect("probe fixture").sample_rate.get(),
+        bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
+            .expect("probe fixture")
+            .sample_rate
+            .get(),
     );
 
     let first = PreviewTarget::sample_range(path.clone(), 0, Some(sample_rate));
@@ -82,7 +87,8 @@ async fn switching_previews_keeps_the_main_player_resume() {
 async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
@@ -95,6 +101,7 @@ async fn preview_plays_only_the_requested_sample_window() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -149,7 +156,8 @@ async fn preview_plays_only_the_requested_sample_window() {
 async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
@@ -161,6 +169,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let device = ManualCaptureDevice::new(captured, AudioClock::new());
@@ -225,7 +234,8 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
 async fn a_preview_asked_to_pause_twice_stays_paused() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target = PreviewTarget::sample_range(path, 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
@@ -236,6 +246,7 @@ async fn a_preview_asked_to_pause_twice_stays_paused() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = ManualCaptureDevice::new(captured, AudioClock::new());
@@ -311,7 +322,8 @@ impl AudioOutput for InvalidatingOutput {
 async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
+    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
+        .expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
@@ -323,6 +335,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let capture = ManualCaptureAudioOutput::new(captured, AudioClock::new());
@@ -393,6 +406,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let buffer = create_sparse_buffer(0);
 
@@ -412,6 +426,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -436,6 +451,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
 
     let (mut audio_tx, audio_rx) =
@@ -517,6 +533,7 @@ async fn failed_preview_seek_surfaces_idle() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
 
     // Set up an active preview over a working capture output.
@@ -620,6 +637,7 @@ async fn ending_a_preview_closes_its_file() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test_default(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -653,4 +671,43 @@ async fn ending_a_preview_closes_its_file() {
     ended(&mut player).await;
     assert_eq!(open_now(&second), 0);
     coven::assert_no_open_files_under(dir.path());
+}
+
+/// A preview takes its place of the budget before it opens its file: with the
+/// only place of a budget of one held, starting a preview waits for it, and
+/// the preview plays once the place goes back.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_preview_waits_for_a_place_then_plays() {
+    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
+    let watch = budget.watch();
+    let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+    let (command_tx, _command_rx) = OwnCommands::channel();
+    let mut player = PreviewPlayer::new(
+        tokio::runtime::Handle::current(),
+        progress_tx,
+        command_tx,
+        50,
+        bae_diagnostics::Diagnostics::noop(),
+        bae_store::FileLeases::for_test(budget.clone()),
+    );
+    let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
+    let device = CaptureAudioDevice::new(captured);
+    let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
+    let held = budget.lease(1).await.unwrap();
+    let waited = watch.lease_waits_from_now(1);
+
+    let started = {
+        let play = player.play(PreviewTarget::whole_file(path), &device);
+        tokio::pin!(play);
+        tokio::select! {
+            _ = &mut play => panic!("the preview opened its file without a place"),
+            () = waited => {}
+        }
+        drop(held);
+        play.await.started()
+    };
+
+    assert!(started);
+    assert_eq!(watch.most_holding(), 1);
+    assert_eq!(player.stop(), AfterPreview::LeaveMain);
 }

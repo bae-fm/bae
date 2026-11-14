@@ -109,7 +109,7 @@ async fn stream_file(
     let total = file.file_size;
     let content_type = segment.container.http_mime();
 
-    let buffer = services.open_release_file_stream(&segment.file_id, total);
+    let buffer = services.open_release_file_stream(&segment.file_id, total).await;
 
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
@@ -248,7 +248,7 @@ async fn stream_encoded(
     format: StreamEncodeFormat,
     content_length: Option<u64>,
 ) -> Result<Response, SubError> {
-    let decode = state.services.open_track_decode(audio);
+    let decode = state.services.open_track_decode(audio).await.map_err(lib_err)?;
     let decode = state
         .diagnostics
         .blocking("wait for a streamed track's files", move || {

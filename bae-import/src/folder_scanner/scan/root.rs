@@ -57,8 +57,11 @@ where
     let root_listing = walk.listing(Path::new(""))?;
     let direct_audio = root_listing.holds_audio();
     let mut direct_scope_files = root_listing.files;
-    let walk_order =
-        newest_first(&reader.folder_times(&root, &root_listing.directories, cancellation)?);
+    let walk_order = {
+        // Reading the folders' dates in one batch holds the root open.
+        let _place = reads.place()?;
+        newest_first(&reader.folder_times(&root, &root_listing.directories, cancellation)?)
+    };
     for lent in read_folders_at_once(
         &walk,
         &root_listing.directories,

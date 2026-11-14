@@ -457,7 +457,7 @@ pub(super) fn assert_kind_invariant(path: &Path, kind: FileKind) {
         }
         FileKind::Jpeg | FileKind::Png => {
             assert!(
-                image_header::is_valid_image(path).unwrap_or(false),
+                image_header::is_valid_image(path, bae_util::test_files::place()).unwrap_or(false),
                 "fixture builder bug: image at {:?} fails validator",
                 path,
             );
@@ -488,7 +488,7 @@ pub(super) fn assert_kind_invariant(path: &Path, kind: FileKind) {
         FileKind::CueFor { n_tracks, .. }
         | FileKind::CueUnquoted { n_tracks, .. }
         | FileKind::NonPairingCue { n_tracks, .. } => {
-            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
+            let sheet = parse_cue_sheet(path, bae_util::test_files::place()).unwrap_or_else(|e| {
                 panic!("fixture builder bug: CUE at {:?} fails parse: {:?}", path, e,)
             });
             assert_eq!(
@@ -501,7 +501,7 @@ pub(super) fn assert_kind_invariant(path: &Path, kind: FileKind) {
             );
         }
         FileKind::CueNoHeader { n_tracks, file_reference } => {
-            let sheet = parse_cue_sheet(path).unwrap_or_else(|e| {
+            let sheet = parse_cue_sheet(path, bae_util::test_files::place()).unwrap_or_else(|e| {
                 panic!("fixture builder bug: headerless CUE at {:?} fails parse: {:?}", path, e,)
             });
             assert!(
@@ -759,7 +759,10 @@ pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(WalkItem)>(
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &new_key,
         },
-        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
+        &FileReads::new(
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            bae_store::FileLeases::for_test_default(),
+        ),
         &ScanCancellation::new(),
         |_| {},
         on_item,

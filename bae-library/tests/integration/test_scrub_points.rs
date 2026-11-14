@@ -464,7 +464,7 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
     .await
     .expect("import the release");
     let audio = tracks(library.records(), &imported.release_id).await.remove(0);
-    let decode = library.manager().open_track_decode(&audio);
+    let decode = library.manager().open_track_decode(&audio).await.unwrap();
     let served = bae_util::test_blocking::on_blocking_pool(move || {
         let mut sink = Collected::default();
         decode

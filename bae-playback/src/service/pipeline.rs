@@ -125,10 +125,6 @@ impl PlaybackService {
             }
         };
 
-        // The incoming track's files are known now: release the outgoing current
-        // and preload buffers, keeping any file the new track also plays.
-        self.file_buffers.release_retired(&prepared.file_ids());
-
         // Second Loading emission: carries the target track's metadata so the bar
         // switches from the prior track to the target while audio still downloads.
         self.slot =

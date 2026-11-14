@@ -29,9 +29,11 @@ use crate::stream_pipeline::{
 use crate::timeline::{StreamPosition, TrackTimeline};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_diagnostics::{Diagnostics, ReportedTask};
+use bae_store::FileLeases;
 use bae_track_audio::data_source::{AudioDataReader, LocalReader};
 use bae_track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_util::task_failure::TaskFailed;
+use coven::FileLease;
 use std::path::Path;
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
@@ -118,6 +120,9 @@ pub(crate) struct PreviewPlayer {
     /// Where the preview's probe, fill, decoder and event listener report a
     /// panic.
     diagnostics: Diagnostics,
+    /// The installation's places for open files: each preview takes one for
+    /// its probe and its fill, which holds it while the preview plays.
+    files: FileLeases,
     /// Every preview's fill, which holds its file open until it ends, for a
     /// test to wait on.
     #[cfg(test)]
@@ -163,6 +168,7 @@ impl PreviewPlayer {
         command_tx: OwnCommands,
         position_update_interval_ms: u32,
         diagnostics: Diagnostics,
+        files: FileLeases,
     ) -> Self {
         Self {
             runtime,
@@ -173,6 +179,7 @@ impl PreviewPlayer {
             active: None,
             paused_main_player: false,
             diagnostics,
+            files,
             #[cfg(test)]
             fills: Vec::new(),
         }
@@ -220,7 +227,12 @@ impl PreviewPlayer {
             }
         };
 
-        let Some(probe) = probe_preview_audio(&self.diagnostics, target.path()).await else {
+        // One place for the whole preview: the probe opens the file in it,
+        // and once the probe closes it the fill opens the file in it and
+        // holds it while the preview plays. Taken here, holding no place.
+        let lease = self.files.lease(1).await.expect("a budget holds at least one place");
+        let Some(probe) = probe_preview_audio(&self.diagnostics, target.path(), &lease).await
+        else {
             return PreviewPlayOutcome::SetupFailed(crate::PlaybackErrorReason::internal(
                 "the file to preview couldn't be probed",
             ));
@@ -239,7 +251,7 @@ impl PreviewPlayer {
 
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> =
-            Box::new(LocalReader::new(target.path(), self.diagnostics.clone()));
+            Box::new(LocalReader::new(target.path(), self.diagnostics.clone(), lease));
         let fill = reader.start_reading(
             buffer.clone(),
             preview_fill_error_handler(self.progress_tx.clone(), self.command_tx.clone()),
@@ -678,11 +690,13 @@ async fn listen_to_preview(
 async fn probe_preview_audio(
     diagnostics: &Diagnostics,
     path: &Path,
+    lease: &FileLease,
 ) -> Option<bae_audio::ProbeResult> {
     let probe_path = path.to_path_buf();
+    let lease = lease.clone();
     let result = diagnostics
         .blocking("probe the file to preview", move || {
-            bae_audio::probe_audio_from_path(&probe_path)
+            bae_audio::probe_audio_from_path(&probe_path, lease.place_blocking())
         })
         .await;
     resolve_preview_probe(path, result)

@@ -23,6 +23,7 @@ impl ImportTables {
         tags: Arc<dyn FileTagReader>,
     ) -> Result<FileReads, crate::ImportError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
+        let files = self.store.file_leases();
         self.store
             .read(move |sql| {
                 let items = load_items(&sql, &watched_folder_path, RowSources::Scanned)?;
@@ -36,7 +37,7 @@ impl ImportTables {
                     .map(|stored| crate::folder_scanner::FolderEntry::Release(stored.item))
                     .chain(sidecars.into_iter().map(crate::folder_scanner::FolderEntry::Sidecar))
                     .collect();
-                Ok(FileReads::stored(&entries, &stored_tags, tags)?)
+                Ok(FileReads::stored(&entries, &stored_tags, tags, files)?)
             })
             .await
     }

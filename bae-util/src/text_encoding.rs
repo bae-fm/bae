@@ -1,5 +1,7 @@
 //! Text encoding detection and decoding.
 
+use coven::LeasePlace;
+use std::io::Read;
 use std::path::Path;
 
 pub struct DecodedText {
@@ -30,9 +32,12 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
     DecodedText { text: decoded.into_owned(), encoding: encoding.name().to_string() }
 }
 
-/// Read a file and decode its contents, detecting encoding automatically.
-pub fn read_text_file(path: &Path) -> std::io::Result<DecodedText> {
-    let bytes = std::fs::read(path)?;
+/// Read a file, opened in `place`, and decode its contents, detecting
+/// encoding automatically. The file closes before the place goes back.
+pub fn read_text_file(path: &Path, place: LeasePlace) -> std::io::Result<DecodedText> {
+    let mut file = place.open(path)?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
     Ok(decode_text(&bytes))
 }
 

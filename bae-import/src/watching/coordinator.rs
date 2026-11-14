@@ -480,8 +480,11 @@ async fn check_network_folder(
         }
     };
     let checked_root = root.to_path_buf();
+    let lease = tables.lease_one().await;
     let changes = match diagnostics
-        .blocking("check a network folder", move || network_changes(&checked_root, &recorded))
+        .blocking("check a network folder", move || {
+            network_changes(&checked_root, &recorded, &lease)
+        })
         .await
     {
         Ok(changes) => changes,

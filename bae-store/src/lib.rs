@@ -13,6 +13,8 @@ mod entered_name;
 pub use entered_name::{BlankName, EnteredName};
 mod error;
 pub use error::{DbError, WriteError};
+mod file_leases;
+pub use file_leases::FileLeases;
 mod file_stream;
 pub use file_stream::FileStream;
 mod file_version;

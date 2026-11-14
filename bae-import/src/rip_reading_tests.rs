@@ -7,7 +7,7 @@ use crate::tests::fixture;
 
 /// `artifacts` read, every document readable.
 fn read_ok(artifacts: RipArtifacts<'_>) -> RipReading {
-    read(artifacts).expect("the artifacts read")
+    read(artifacts, &bae_util::test_files::lease()).expect("the artifacts read")
 }
 
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {
@@ -308,7 +308,7 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
     )
     .unwrap();
 
-    let disc_id = read_rip_artifacts(&categorized)
+    let disc_id = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
         .unwrap()
         .disc_id
         .computed()
@@ -337,7 +337,7 @@ fn test_compute_discid_routes_cue_ape() {
     .unwrap();
     let audio_path = folder.join("Test Album.ape");
     let opens_before = bae_audio::test_reads::probes(&audio_path);
-    let computed = read_rip_artifacts(&categorized)
+    let computed = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
         .unwrap()
         .disc_id
         .computed()
@@ -369,14 +369,16 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
         audio: Vec::new(),
     };
 
-    let error = read(artifacts(&missing)).expect_err("a log that is not there is not read");
+    let error = read(artifacts(&missing), &bae_util::test_files::lease())
+        .expect_err("a log that is not there is not read");
     assert!(
         matches!(error, ImportError::DocumentRead { ref file, .. } if file.ends_with("Album.log")),
         "{error:?}"
     );
 
     std::fs::write(&missing, "not a rip log at all\n").unwrap();
-    let reading = read(artifacts(&missing)).expect("bytes that read but state nothing do not fail");
+    let reading = read(artifacts(&missing), &bae_util::test_files::lease())
+        .expect("bytes that read but state nothing do not fail");
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }
 
@@ -392,15 +394,18 @@ fn a_rip_log_whose_table_of_contents_does_not_hash_fails_the_reading() {
     text = text.replace("|    1000    |", "|    1O00    |");
     std::fs::write(&path, text).unwrap();
 
-    let error = read(RipArtifacts {
-        documents: vec![RipDocument {
-            path: &path,
-            file: Some("Album.log"),
-            kind: DocumentKind::RipLog,
-        }],
-        sheets: Vec::new(),
-        audio: Vec::new(),
-    })
+    let error = read(
+        RipArtifacts {
+            documents: vec![RipDocument {
+                path: &path,
+                file: Some("Album.log"),
+                kind: DocumentKind::RipLog,
+            }],
+            sheets: Vec::new(),
+            audio: Vec::new(),
+        },
+        &bae_util::test_files::lease(),
+    )
     .expect_err("a table of contents that does not read fails the reading");
     assert!(
         matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.log")),
@@ -414,16 +419,19 @@ fn a_rip_log_whose_table_of_contents_does_not_hash_fails_the_reading() {
 fn a_sheet_that_cannot_be_laid_out_as_a_disc_fails_the_reading() {
     let sheet = sheet(None);
     let format = lossless(44_100, 16, 2);
-    let error = read(RipArtifacts {
-        documents: Vec::new(),
-        sheets: vec![RipSheet {
-            sheet: &sheet,
-            audio: Vec::new(),
-            path: Path::new("/folder/Album.cue"),
-            file: Some("Album.cue"),
-        }],
-        audio: vec![&format],
-    })
+    let error = read(
+        RipArtifacts {
+            documents: Vec::new(),
+            sheets: vec![RipSheet {
+                sheet: &sheet,
+                audio: Vec::new(),
+                path: Path::new("/folder/Album.cue"),
+                file: Some("Album.cue"),
+            }],
+            audio: vec![&format],
+        },
+        &bae_util::test_files::lease(),
+    )
     .expect_err("a sheet over audio with no measured length fails the reading");
     assert!(
         matches!(error, ImportError::DiscIdCalculation { ref file, .. } if file.ends_with("Album.cue")),

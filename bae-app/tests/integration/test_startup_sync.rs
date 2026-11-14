@@ -76,6 +76,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             bae_store::EnteredName::parse("Creator").unwrap(),
             "Test Device",
             bae_store::TestSources::system().clock().clone(),
+            coven::FileBudget::for_test(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await
@@ -117,6 +118,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
                 )),
                 bae_diagnostics::Diagnostics::noop(),
                 std::sync::Arc::new(coven::SystemClock),
+                coven::FileBudget::for_test(),
                 std::sync::Arc::new(coven::SequentialIds::new()),
                 builder,
                 |_| (),

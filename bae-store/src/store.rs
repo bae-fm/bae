@@ -2,7 +2,7 @@
 //! live query of the library runs through.
 
 use coven::task::{BugSinkRef, CarriesBug};
-use coven::{ClockRef, CovenHandle, CovenWrite, SqlReadContext};
+use coven::{ClockRef, CovenHandle, CovenWrite, FileBudget, SqlReadContext};
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
 use std::sync::Arc;
@@ -30,6 +30,9 @@ struct StoreInner {
     /// awaits every call it makes on its handle, so it is the one that
     /// reports such a bug, once.
     bugs: BugSinkRef,
+    /// The installation's places for open files, which every library the app
+    /// opens shares and every read of the person's files takes a lease from.
+    files: FileBudget,
     /// How many reads the store has been asked for, so a test can hold a code
     /// path to the reads it should make.
     #[cfg(any(test, feature = "test-utils"))]
@@ -66,13 +69,16 @@ impl std::fmt::Debug for Store {
 
 impl Store {
     /// The store over `handle`, stamping its writes by `clock`, reporting a
-    /// bug a call carries back to `bugs`, the app's crash reporter.
-    pub fn new(handle: CovenHandle, clock: ClockRef, bugs: BugSinkRef) -> Self {
+    /// bug a call carries back to `bugs`, the app's crash reporter. Every open
+    /// of the person's files through the store takes a place of `files`, the
+    /// installation's budget.
+    pub fn new(handle: CovenHandle, clock: ClockRef, bugs: BugSinkRef, files: FileBudget) -> Self {
         Store {
             inner: Arc::new(StoreInner {
                 handle,
                 clock,
                 bugs,
+                files,
                 #[cfg(any(test, feature = "test-utils"))]
                 reads: std::sync::atomic::AtomicU64::new(0),
                 #[cfg(any(test, feature = "test-utils"))]
@@ -87,12 +93,14 @@ impl Store {
         handle: CovenHandle,
         sources: crate::TestSources,
         bugs: BugSinkRef,
+        files: FileBudget,
     ) -> Self {
         Store {
             inner: Arc::new(StoreInner {
                 handle,
                 clock: sources.clock().clone(),
                 bugs,
+                files,
                 reads: std::sync::atomic::AtomicU64::new(0),
                 sources: Some(sources),
             }),
@@ -273,13 +281,27 @@ impl Store {
         clock: ClockRef,
         bugs: BugSinkRef,
     ) -> Result<Self, DbError> {
+        Self::new_test_within(schema, directory, clock, bugs, FileBudget::for_test()).await
+    }
+
+    /// [`Self::new_test_reporting_to`], opening the person's files within
+    /// `files`, a budget a test sizes and watches. The installation and the
+    /// store share it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn new_test_within(
+        schema: crate::Schema,
+        directory: &Path,
+        clock: ClockRef,
+        bugs: BugSinkRef,
+        files: FileBudget,
+    ) -> Result<Self, DbError> {
+        let sources = crate::TestSources::on_budget(&clock, files.clone());
         let installation =
-            coven::Coven::in_memory(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
-        let sources = crate::TestSources::on(&clock);
+            sources.installation(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
         let handle = crate::configure_store(sources.builder(&installation), schema)
             .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
             .await?;
-        Ok(Self::new_on(handle, sources, bugs))
+        Ok(Self::new_on(handle, sources, bugs, files))
     }
 }
 

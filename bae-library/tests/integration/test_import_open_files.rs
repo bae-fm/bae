@@ -1,19 +1,11 @@
 //! How many files an import holds open at once.
 //!
-//! A macOS GUI app runs under a soft `RLIMIT_NOFILE` of 256, and an idle
-//! library already holds dozens of descriptors (the store, its WAL, sockets,
-//! kqueues), so an import may hold only a constant number of source files open
-//! however many tracks it has. The test runs in a process of its own, so no
-//! other test's descriptors move the counts it reads or run into the limit it
-//! lowers: it imports a three-disc folder of 300 tracks under a soft limit only
-//! a few dozen descriptors above what the library already holds, samples the
-//! process's open descriptors throughout, and requires the source files held
-//! open at once to stay within a constant and none of them to remain open once
+//! Every open of the person's files takes a place from the installation's
+//! budget, so an import holds no more files open than the budget has places,
+//! however many tracks it has. The test gives the library a budget of one place,
+//! imports a three-disc folder of 300 tracks, and requires every track to import,
+//! the most files open at once to be one, and none of them to remain open once
 //! the import is done.
-
-use bae_util::open_files_peak::OpenFilesPeak;
-
-use crate::own_process::in_own_process;
 
 use std::fs;
 use std::path::Path;
@@ -21,55 +13,6 @@ use std::time::Instant;
 
 const DISCS: usize = 3;
 const TRACKS_PER_DISC: usize = 100;
-
-/// Source files the import may hold open at once, whatever the track count:
-/// it measures as many tracks at once as there are cores, and each track reads
-/// one file here.
-fn max_sources_open() -> usize {
-    std::thread::available_parallelism().expect("available parallelism").get()
-}
-
-/// Descriptors the import may hold above the idle library's, whatever the
-/// track count: its source files, and the library's own connections and
-/// pipes. The soft limit is set this far above the descriptors already open,
-/// so an import that exceeds it fails outright.
-fn headroom() -> usize {
-    max_sources_open() + 32
-}
-
-/// The highest descriptor number this process holds open.
-fn highest_open_fd() -> usize {
-    fs::read_dir("/dev/fd")
-        .expect("list /dev/fd")
-        .filter_map(|entry| entry.ok()?.file_name().to_str()?.parse().ok())
-        .max()
-        .expect("stdio is open")
-}
-
-/// The process's soft descriptor limit lowered for the test's duration and
-/// restored when it ends, including on a failed assertion.
-struct LoweredFileLimit {
-    original: libc::rlimit,
-}
-
-impl LoweredFileLimit {
-    fn to(soft: libc::rlim_t) -> Self {
-        let mut original = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
-        // SAFETY: getrlimit/setrlimit write and read the rlimit we pass.
-        assert_eq!(unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut original) }, 0);
-        let lowered =
-            libc::rlimit { rlim_cur: soft.min(original.rlim_max), rlim_max: original.rlim_max };
-        assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &lowered) }, 0);
-        Self { original }
-    }
-}
-
-impl Drop for LoweredFileLimit {
-    fn drop(&mut self) {
-        // SAFETY: restores the limit read in `to`.
-        unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &self.original) };
-    }
-}
 
 fn write_box_set(album_dir: &Path) {
     let flac = fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
@@ -84,23 +27,16 @@ fn write_box_set(album_dir: &Path) {
     }
 }
 
-#[test]
-fn a_box_set_import_holds_a_bounded_number_of_files_open() {
-    in_own_process(
-        "test_import_open_files::a_box_set_import_holds_a_bounded_number_of_files_open",
-        || {
-            bae_library::test_libraries::multi_thread_runtime()
-                .block_on(import_a_box_set_under_a_lowered_limit())
-        },
-    );
-}
-
-async fn import_a_box_set_under_a_lowered_limit() {
+#[tokio::test(flavor = "multi_thread")]
+async fn a_box_set_imports_with_a_budget_of_one_place() {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
+    let watch = budget.watch();
     let (library, album_dir, _temp) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(
+        bae_library::test_libraries::setup_test_library_with_album_dir_within(
             fakes.providers(),
             bae_util::http::Http::for_test(),
+            budget,
         )
         .await;
     write_box_set(&album_dir);
@@ -126,9 +62,6 @@ async fn import_a_box_set_under_a_lowered_limit() {
     let release_key = fakes.seed_discogs_test_release(release);
     let import_handle = library.start_discogs_import().await;
 
-    let _limit = LoweredFileLimit::to((highest_open_fd() + 1 + headroom()) as libc::rlim_t);
-
-    let sampler = OpenFilesPeak::start(&album_dir);
     let started = Instant::now();
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     import_handle
@@ -141,24 +74,16 @@ async fn import_a_box_set_under_a_lowered_limit() {
         .expect("import command is accepted");
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let result = bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx).await;
-    let peak_sources = sampler.finish();
     eprintln!(
-        "{} tracks imported in {:.1?} with at most {peak_sources} source files open at once",
+        "{} tracks imported in {:.1?} with at most {} files open at once",
         DISCS * TRACKS_PER_DISC,
-        started.elapsed()
+        started.elapsed(),
+        watch.most_holding()
     );
 
-    let (release_id, _album_id) = result.unwrap_or_else(|error| {
-        panic!(
-            "the box set import failed under a soft limit of {} spare descriptors: {error}",
-            headroom()
-        )
-    });
-    assert!(
-        peak_sources <= max_sources_open(),
-        "the import held {peak_sources} source files open at once, over {} cores",
-        max_sources_open()
-    );
+    let (release_id, _album_id) = result
+        .unwrap_or_else(|error| panic!("the box set import failed with a budget of one: {error}"));
+    assert_eq!(watch.most_holding(), 1, "the import held more files open than its budget");
     let tracks =
         library.records().get_tracks_for_release(&release_id).await.expect("read imported tracks");
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);

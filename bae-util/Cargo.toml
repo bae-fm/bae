@@ -77,9 +77,8 @@ encoding_rs = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "net", "io-util", "test-util"] }
-# The directory the open-files sampler's test holds a file open in.
-tempfile = { workspace = true }
-# The process's open files under a directory, which the sampler reads.
+# The budget of open files (`FileBudget::for_test`) the test places come from
+# (src/test_files.rs).
 coven = { workspace = true, features = ["test-utils"] }
 
 [features]
@@ -87,8 +86,8 @@ default = []
 # The test transport (`Http::for_test`, `serve`, its clock whose waits pass
 # as they are armed, and the local servers and canned errors tests answer
 # with), a local host that answers, records and holds a test's requests, and
-# the sampler of the files a piece of work holds open at once, for the tests
-# of every crate that builds on this one. Dev/test-only: a production build
+# the places of the open-files budget a test opens a file in, for the tests of
+# every crate that builds on this one. Dev/test-only: a production build
 # never enables it.
 test-utils = ["tokio/net", "tokio/io-util", "coven/test-utils"]
 

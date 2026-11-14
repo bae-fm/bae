@@ -219,9 +219,10 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
 
 /// A file FFmpeg reads through the handle Rust opened it with, so FFmpeg
 /// opens nothing by name: a name that isn't UTF-8, or one FFmpeg's own file
-/// protocol can't spell on Windows, opens like any other.
+/// protocol can't spell on Windows, opens like any other. The file holds its
+/// place of the open-files budget until it closes.
 pub(super) struct FileAvioContext {
-    file: std::fs::File,
+    file: coven::LeasedFile<std::fs::File>,
     /// The first read of the file that failed, if one did. FFmpeg only sees
     /// an I/O error code from the read callback, and what it makes of one
     /// depends on where it lands (a probe that reads nothing is "Invalid data
@@ -231,7 +232,7 @@ pub(super) struct FileAvioContext {
 }
 
 impl FileAvioContext {
-    pub(super) fn new(file: std::fs::File) -> Self {
+    pub(super) fn new(file: coven::LeasedFile<std::fs::File>) -> Self {
         Self { file, read_error: None }
     }
 

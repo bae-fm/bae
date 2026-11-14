@@ -282,6 +282,7 @@ pub(super) fn playback_service_and_commands_over(
         command_tx.clone(),
         50,
         diagnostics.clone(),
+        bae_store::FileLeases::for_test_default(),
     );
     let playback_queue = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(db.clone()));
     let staged_sides = advance::track_infos_follow(db, "the staged crossing's sides", &diagnostics);
@@ -317,6 +318,7 @@ pub(super) fn playback_service_and_commands_over(
             tokio::runtime::Handle::current(),
             FetchArbiter::new(),
             tokio::sync::watch::channel(None).0,
+            bae_store::FileLeases::for_test_default(),
         ),
         starvation_episode: None,
         persisted_position: None,

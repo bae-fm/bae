@@ -413,7 +413,7 @@ pub(super) async fn playback_error_reason_for_file(
 ) -> bae_playback::PlaybackErrorReason {
     use bae_audio::sparse_buffer::create_sparse_buffer;
     let buffer = create_sparse_buffer(file.file_size);
-    let reader = manager.create_audio_reader(&file.id);
+    let reader = manager.create_audio_reader(&file.id, bae_util::test_files::lease());
     let (error_tx, mut error_rx) = tokio::sync::mpsc::unbounded_channel();
     reader.start_reading(
         buffer.clone(),

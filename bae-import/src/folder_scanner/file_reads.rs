@@ -18,7 +18,9 @@ use crate::file_tag_snapshot::{
 };
 use crate::track_numbers::TrackNumbers;
 use crate::ImportError;
+use bae_store::FileLeases;
 use bae_util::content_type::ContentType;
+use coven::{FileLease, LeasePlace};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -106,12 +108,29 @@ struct Known {
 pub(crate) struct FileReads {
     known: Mutex<Known>,
     tags: Arc<dyn FileTagReader>,
+    /// The installation's places for open files: every read of a file takes
+    /// one, on the thread that reads, before it opens the file.
+    files: FileLeases,
 }
 
 impl FileReads {
-    /// Nothing read yet; a track's tags are read through `tags`.
-    pub(crate) fn new(tags: Arc<dyn FileTagReader>) -> Self {
-        Self { known: Mutex::new(Known::default()), tags }
+    /// Nothing read yet; a track's tags are read through `tags`, and each
+    /// file read opens in a place of `files`.
+    pub(crate) fn new(tags: Arc<dyn FileTagReader>, files: FileLeases) -> Self {
+        Self { known: Mutex::new(Known::default()), tags, files }
+    }
+
+    /// One place of the budget, for the read of one file or folder, taken
+    /// on this thread, which waits for it: call it only off the async
+    /// workers, holding no other place of the budget.
+    pub(super) fn place(&self) -> Result<LeasePlace, FolderScanError> {
+        Ok(self.lease(1)?.place_blocking())
+    }
+
+    /// `count` places of the budget, taken in one wait on this thread, for
+    /// reads that follow one another: the same rules as [`Self::place`].
+    fn lease(&self, count: usize) -> Result<FileLease, FolderScanError> {
+        self.files.lease_blocking(count).map_err(|error| FolderScanError::Other(error.to_string()))
     }
 
     /// What the scan entries stored for one root say their pass read, and
@@ -125,6 +144,7 @@ impl FileReads {
         entries: &[FolderEntry],
         stored_tags: &[(FileVersion, TagReading)],
         tags: Arc<dyn FileTagReader>,
+        files: FileLeases,
     ) -> Result<Self, FolderScanError> {
         let mut known = Known::default();
         for entry in entries {
@@ -181,7 +201,7 @@ impl FileReads {
                 FileRead::Track(TrackRead { stream: None, tags: Some(tags) }),
             )?;
         }
-        Ok(Self { known: Mutex::new(known), tags })
+        Ok(Self { known: Mutex::new(known), tags, files })
     }
 
     fn with_known<T>(&self, action: impl FnOnce(&mut Known) -> T) -> T {
@@ -235,7 +255,7 @@ impl FileReads {
     fn probe(&self, file: &ScannedFile) -> Result<Playability, FolderScanError> {
         let version = file.version.clone();
         let reader = (!self.tags_known(&version)).then_some(self.tags.as_ref());
-        let (stream, read) = probe(file, reader)?;
+        let (stream, read) = probe(file, reader, &self.lease(1)?)?;
         let read = read.map(parsed).transpose()?;
         self.with_known(|known| {
             known.track_mut(&version).stream = Some(stream.clone());
@@ -256,7 +276,7 @@ impl FileReads {
         let version = file.version.clone();
         if !self.tags_known(&version) {
             unchanged(file, "changed before its tags could be read")?;
-            let read = self.tags.read(&file.version.path);
+            let read = self.tags.read(&file.version.path, self.place()?);
             unchanged(file, "changed while its tags were being read")?;
             let read = parsed(read)?;
             self.with_known(|known| known.remember_tags(&version, read));
@@ -379,8 +399,11 @@ impl FileReads {
                     (observation, tags, cover)
                 }
                 _ => {
+                    let place = self
+                        .place()
+                        .map_err(|error| ImportError::FileTags { detail: error.to_string() })?;
                     let (observation, read) =
-                        crate::file_tag_snapshot::read_observed(file, self.tags.as_ref())?;
+                        crate::file_tag_snapshot::read_observed(file, self.tags.as_ref(), place)?;
                     let version = FileVersion {
                         path: file.version.path.clone(),
                         size: observation.size,
@@ -426,12 +449,13 @@ impl FileReads {
         }) {
             return Ok(decodes);
         }
-        let decodes = image_header::is_valid_image(&version.path).map_err(|error| {
-            FolderScanError::Other(format!(
-                "Failed to validate image file {:?}: {error}",
-                version.path
-            ))
-        })?;
+        let decodes =
+            image_header::is_valid_image(&version.path, self.place()?).map_err(|error| {
+                FolderScanError::Other(format!(
+                    "Failed to validate image file {:?}: {error}",
+                    version.path
+                ))
+            })?;
         self.with_known(|known| known.files.insert(version, FileRead::Image { decodes }));
         Ok(decodes)
     }
@@ -445,7 +469,12 @@ impl FileReads {
         }) {
             return sheet;
         }
-        let sheet = match parse_cue_sheet(&file.version.path) {
+        let sheet = match self
+            .place()
+            .map_err(|error| std::io::Error::other(error.to_string()))
+            .map_err(crate::cue_sheet::CueSheetError::Io)
+            .and_then(|place| parse_cue_sheet(&file.version.path, place))
+        {
             Ok(sheet) => Some(sheet),
             Err(error) => {
                 info!("CUE {:?} does not parse: {error}", file.version.path);
@@ -731,9 +760,11 @@ fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
 fn probe(
     file: &ScannedFile,
     reader: Option<&dyn FileTagReader>,
+    lease: &FileLease,
 ) -> Result<(Playability, Option<Result<FileTagRead, TagReadFailure>>), FolderScanError> {
     unchanged(file, "changed before its audio facts could be read")?;
-    let stream = match bae_audio::probe_audio_from_path(&file.version.path) {
+    let stream = match bae_audio::probe_audio_from_path(&file.version.path, lease.place_blocking())
+    {
         // A failed read says nothing of the file's audio: the pass fails, and
         // nothing is stored for the file.
         Err(bae_audio::ProbeError::Io(source)) => {
@@ -753,7 +784,7 @@ fn probe(
     };
     let read = reader
         .filter(|_| matches!(stream, Playability::Measured(_)))
-        .map(|reader| reader.read(&file.version.path));
+        .map(|reader| reader.read(&file.version.path, lease.place_blocking()));
     unchanged(file, "changed while its audio facts were being read")?;
     Ok((stream, read))
 }

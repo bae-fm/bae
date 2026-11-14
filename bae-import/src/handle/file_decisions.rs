@@ -268,7 +268,10 @@ impl ImportServiceHandle {
                 })?;
             let mut replacement = current_candidate.clone();
             replacement.files = settled_files.clone();
-            let reads = crate::folder_scanner::FileReads::new(self.services.file_tags.clone());
+            let reads = crate::folder_scanner::FileReads::new(
+                self.services.file_tags.clone(),
+                self.services.store.file_leases(),
+            );
             let initialized = self
                 .services
                 .diagnostics

@@ -51,7 +51,7 @@ async fn a_call_that_panics_is_reported_once_by_the_store() {
     .await
     .unwrap();
     let heard = coven::task::HeardBugs::shared();
-    let db = crate::Store::new(handle, clock, heard.clone());
+    let db = crate::Store::new(handle, clock, heard.clone(), coven::FileBudget::for_test());
 
     let error =
         db.call(|_| -> Result<(), DbError> { panic!("note 43 has no title") }).await.unwrap_err();

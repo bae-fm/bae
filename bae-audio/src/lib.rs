@@ -44,9 +44,9 @@ pub use decode::{
 #[cfg(any(test, feature = "test-utils"))]
 pub use encode::encode_i32;
 pub use encode::{EncodeFormat, StreamEncodeFormat, StreamingEncoder, WriteSeek};
-#[cfg(desktop)]
-pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeError, ProbeResult};
+#[cfg(desktop)]
+pub use probe::{seek_landing_bytes, SEEK_LANDING_PLACES};
 pub use resample::Resampler;
 #[cfg(any(test, feature = "test-utils"))]
 pub use wav_read::{parse_streamed_wav, StreamedWav};

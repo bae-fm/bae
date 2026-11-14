@@ -372,25 +372,29 @@ fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
 /// Each file is read as the role its import stored. A person's decisions
 /// about a folder's sheets are kept with the candidate, not the release, so
 /// the sheets settle as the scan proposes them. Holds only what a rip
-/// reading reads: artwork and other files are left out.
+/// reading reads: artwork and other files are left out. Each sheet opens in a
+/// place of `lease`, one after the other, so call this off the async workers.
 pub(crate) fn categorize_library_files(
     files: impl IntoIterator<Item = (ScannedFile, ReleaseFileRole)>,
+    lease: &coven::FileLease,
 ) -> CategorizedFiles {
     let mut files: Vec<CandidateFile> = files
         .into_iter()
         .filter_map(|(file, stored)| {
             let role = match stored {
                 ReleaseFileRole::Audio => FileRole::Audio,
-                ReleaseFileRole::TrackSheet => match parse_cue_sheet(&file.version.path) {
-                    Ok(sheet) => unsettled_sheet(sheet),
-                    Err(error) => {
-                        info!(
-                            "CUE {:?} no longer parses, so it is read as a document: {error}",
-                            file.version.path
-                        );
-                        FileRole::Document { kind: DocumentKind::CueSheet }
+                ReleaseFileRole::TrackSheet => {
+                    match parse_cue_sheet(&file.version.path, lease.place_blocking()) {
+                        Ok(sheet) => unsettled_sheet(sheet),
+                        Err(error) => {
+                            info!(
+                                "CUE {:?} no longer parses, so it is read as a document: {error}",
+                                file.version.path
+                            );
+                            FileRole::Document { kind: DocumentKind::CueSheet }
+                        }
                     }
-                },
+                }
                 ReleaseFileRole::Document(kind) => FileRole::Document { kind },
                 ReleaseFileRole::Artwork
                 | ReleaseFileRole::DamagedImage

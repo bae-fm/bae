@@ -1797,6 +1797,17 @@ pauses the library's playback and resumes it when it ends.
 Importing measures loudness and adds the release to the library. Audio stays
 where it is; bae never copies, moves or rewrites it.
 
+Every open of the person's files, by the scan, an import, a save, an export,
+playback or a preview, takes a place from one budget of open files the host
+makes when it starts, so bae cannot run out of descriptors through those
+opens. The budget has an eighth of the process's descriptor limit in places,
+at least one (a macOS app's limit of 256 gives 32): a file or a stream of
+one holds a place from its open until it closes, and the other seven eighths
+hold the library's own database files, sockets and the platform's
+descriptors. A piece of work takes every place it will hold at once, in one
+wait, and opens its files inside them, so work that holds places never waits
+for the budget; every library the host opens shares the one budget.
+
 Ana clicks Import. bae:
 
 1. **Checks the files** are the ones the scan saw: same paths, sizes and
@@ -1810,7 +1821,8 @@ Ana clicks Import. bae:
    "Fetching artist pictures…"; an import that creates no Discogs artist
    fetches nothing and its progress never says so.
 3. **Reads each file** whole where it sits, for a local import as for an
-   import to storage: coven records its path, size and modification time and hashes
+   import to storage, one file at a time in one place of the budget of open
+   files: coven records its path, size and modification time and hashes
    its bytes, its content and each chunk, and the import's progress counts
    the bytes read. The upload of an import to storage checks what it sends against
    those hashes, and so does a local release's later move to storage (§4.2),
@@ -1818,7 +1830,11 @@ Ana clicks Import. bae:
    longer what the scan recorded fails the import before any row is
    written.
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
-   loudness and true peak, and the album's over all its tracks. A near-silent
+   loudness and true peak, and the album's over all its tracks. It measures as
+   many tracks at once as there are cores and places in the budget of open
+   files, taking its places in one wait before it opens a file; a track whose
+   audio is in more files than the budget has places for fails the import,
+   saying so. A near-silent
    track stores no loudness and plays unchanged. The same decode records
    *scrub points* for a FLAC whose seektable leaves FFmpeg somewhere to seek
    more than 10 seconds of audio short of its target: none, one of only
@@ -2653,7 +2669,11 @@ Two ways put a release back on disk, from desktop:
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
   track's Save as replaces a file only when the person confirms it.
-  Every save writes one file per track. A pregap, stored or generated, goes
+  A release save and an export open files within the budget of open files
+(§3.7): a save runs as many tracks at once as there are cores and places, each
+track's files open only while the track is being saved, and an export copies
+one file at a time.
+Every save writes one file per track. A pregap, stored or generated, goes
   at the end of the track before, and the hidden audio before track 1 stays
   at the start of track 1; a release stored as one image with a CUE sheet is
   split at its track marks. A track that is all of one file, already in a
@@ -4643,6 +4663,13 @@ from the frames it has indexed. So the seek decodes
 from the last scrub point (§3.7) that plays the new position exactly, or from
 the file's start before the first, and plays the samples a play from the
 start plays there. In each case the first sample played is the one asked for.
+Playback holds the places of the files of the playing track and of the track
+preloaded after it, four in all, taken in one wait when a track loads with
+nothing playing and given back when playback stops. A track reads at most two
+files, its own and the one holding its pregap; a switch to another track gives
+up the buffers of the files the new track does not play before its own files
+open. A preview takes one place for its probe and keeps it for its fill while
+it plays.
 A file's buffer, made when a track that plays from it loads, fetches first,
 beside the read that opens the file, the window that track's decode reads
 first: the byte import recorded at a track start, the scrub point a load at a
@@ -5564,7 +5591,7 @@ release's or track's id as UTF-8, or a candidate's key.
 - **`BridgeHost`** is built once per process. It holds bae's directory, the
   telemetry sink the app built at launch, which it reports bugs and a failed
   open through, the OAuth applications, on phones the app's sign-in presenter,
-  and a runtime for
+  the budget of open files (§3.7), and a runtime for
   the calls that run before a library is open: create, restore, join, reset,
   sign in. A call that creates or opens a store hands back coven's handle, and
   the app starts the library on it.

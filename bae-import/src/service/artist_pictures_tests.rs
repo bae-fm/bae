@@ -114,7 +114,7 @@ impl DiscogsPick {
             .library_image_file(artist_id, &bae_records::LibraryImageType::Artist)
             .await
             .unwrap()?;
-        Some(db.read_file(&file).await.unwrap())
+        Some(db.read_file(&file, &bae_util::test_files::lease()).await.unwrap())
     }
 }
 

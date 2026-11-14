@@ -25,8 +25,11 @@ impl LibraryManager {
             "Writing release output"
         );
         let total = files.len();
+        // One place for the whole export: each file's stream opens in it after
+        // the one before has closed.
+        let lease = self.records.lease_one().await;
         for (index, file) in files.iter().enumerate() {
-            self.export_one_file(file, staging_dir).await?;
+            self.export_one_file(file, staging_dir, &lease).await?;
             self.set_output_progress(release_id, output_percent(index + 1, total));
         }
         Ok(())
@@ -50,9 +53,10 @@ impl LibraryManager {
         &self,
         file: &DbFile,
         staging_dir: &std::path::Path,
+        lease: &coven::FileLease,
     ) -> Result<(), LibraryError> {
         let relative = bae_records::stored_name::file_path(&file.original_filename).local_path();
-        let stream = self.records.open_release_file(&file.id).await?;
+        let stream = self.records.open_release_file(&file.id, lease).await?;
         let size = stream.plaintext_size();
 
         let file_path = staging_dir.join(&relative);

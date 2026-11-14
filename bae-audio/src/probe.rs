@@ -8,6 +8,7 @@ use crate::avio::{
 };
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
+use coven::{FileLease, LeasePlace};
 use std::os::raw::{c_int, c_void};
 use std::path::Path;
 use std::ptr;
@@ -139,14 +140,17 @@ impl Drop for OpenedFile {
     }
 }
 
-/// Open the file at `path` for FFmpeg to read, and find its best audio stream.
-/// Returns the opened file and the stream index, or why not: a read of the file
-/// failed (`Io`), or its stream info can't be read or it has no audio stream
-/// (`NotAudio`).
-unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), ProbeError> {
+/// Open the file at `path` in `place` for FFmpeg to read, and find its best
+/// audio stream. Returns the opened file and the stream index, or why not: a
+/// read of the file failed (`Io`), or its stream info can't be read or it has
+/// no audio stream (`NotAudio`). The place goes back when the file closes.
+unsafe fn open_best_audio_stream(
+    path: &Path,
+    place: LeasePlace,
+) -> Result<(OpenedFile, c_int), ProbeError> {
     use ffmpeg_sys_next::*;
 
-    let file = std::fs::File::open(path).map_err(ProbeError::Io)?;
+    let file = place.open(path).map_err(ProbeError::Io)?;
     let file = Box::into_raw(Box::new(FileAvioContext::new(file)));
     // FFmpeg takes ownership of this buffer.
     let buffer = av_malloc(super::AVIO_BUFFER_SIZE) as *mut u8;
@@ -333,21 +337,22 @@ fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
     u32::try_from(value).ok().and_then(std::num::NonZeroU32::new)
 }
 
-/// The audio properties of the file at `path`, read from its current bytes:
-/// `NotAudio` when it holds no audio stream bae can use, `Io` when reading the
-/// file failed, which says nothing of what it holds.
-pub fn probe_audio_from_path(path: &Path) -> Result<ProbeResult, ProbeError> {
-    open_and_probe(path)
+/// The audio properties of the file at `path`, read from its current bytes
+/// with the file open in `place`: `NotAudio` when it holds no audio stream
+/// bae can use, `Io` when reading the file failed, which says nothing of what
+/// it holds.
+pub fn probe_audio_from_path(path: &Path, place: LeasePlace) -> Result<ProbeResult, ProbeError> {
+    open_and_probe(path, place)
 }
 
 /// Open the file and read its best audio stream through FFmpeg. `NotAudio`
 /// when it has no audio stream, or states no sample rate, channels or usable
 /// duration; `Io` when a read of it failed, wherever FFmpeg met the failure.
-fn open_and_probe(path: &Path) -> Result<ProbeResult, ProbeError> {
+fn open_and_probe(path: &Path, place: LeasePlace) -> Result<ProbeResult, ProbeError> {
     #[cfg(feature = "test-instrumentation")]
     crate::test_reads::record_probe(path);
     unsafe {
-        let (mut opened, stream_index) = open_best_audio_stream(path)?;
+        let (mut opened, stream_index) = open_best_audio_stream(path, place)?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let duration = probed_duration(path, fmt_ctx, stream);
@@ -436,6 +441,10 @@ unsafe fn stream_timestamps(
         .collect()
 }
 
+/// The places of the open-files budget [`seek_landing_bytes`] takes.
+#[cfg(desktop)]
+pub const SEEK_LANDING_PLACES: usize = 2;
+
 /// The byte of the frame holding each of `samples` -- where a playback seek to
 /// that sample starts reading. Recorded at import as each track's start byte.
 ///
@@ -455,17 +464,36 @@ unsafe fn stream_timestamps(
 /// Playback never searches for a track: it byte-seeks straight to the recorded
 /// byte (FLAC) or sample-seeks and prefetches it (APE). An error, saying why,
 /// only if the file can't be opened or its frames can't be read or seeked.
+///
+/// The file opens in `lease`'s places. A FLAC is open twice at once (the
+/// searching opening and the one that reads its final frames), so `lease`
+/// holds at least [`SEEK_LANDING_PLACES`] places; a smaller one fails here
+/// instead of waiting forever for a place of its own.
 #[cfg(desktop)]
-pub fn seek_landing_bytes(path: &Path, samples: &[u64]) -> Result<Vec<u64>, String> {
+pub fn seek_landing_bytes(
+    path: &Path,
+    samples: &[u64],
+    lease: &FileLease,
+) -> Result<Vec<u64>, String> {
+    if lease.count() < SEEK_LANDING_PLACES {
+        return Err(format!(
+            "a landing search needs {SEEK_LANDING_PLACES} places of the open-files budget, and \
+             its lease holds {}",
+            lease.count()
+        ));
+    }
     unsafe {
-        let (opened, stream_index) = open_best_audio_stream(path).map_err(|e| e.to_string())?;
+        let (opened, stream_index) =
+            open_best_audio_stream(path, lease.place_blocking()).map_err(|e| e.to_string())?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let codecpar = (*stream).codecpar;
         let landings =
             stream_timestamps(stream, samples).and_then(
                 |targets| match content_type_from_codec_id((*codecpar).codec_id) {
-                    ContentType::Flac => flac_frame_landings(path, fmt_ctx, stream_index, &targets),
+                    ContentType::Flac => {
+                        flac_frame_landings(path, lease, fmt_ctx, stream_index, &targets)
+                    }
                     content_type => {
                         let landing_byte = if content_type == ContentType::Ape {
                             LandingByte::ReadCursor
@@ -523,13 +551,14 @@ const FLAC_TAIL_FRAMES: usize = 11;
 #[cfg(desktop)]
 unsafe fn flac_frame_landings(
     path: &Path,
+    lease: &FileLease,
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     targets: &[i64],
 ) -> Result<Vec<u64>, String> {
     use ffmpeg_sys_next::*;
 
-    let tail = flac_final_frames(path)?;
+    let tail = flac_final_frames(path, lease)?;
     let (tail_pts, tail_pos) = tail[0];
     let stream = *(*fmt_ctx).streams.add(stream_index as usize);
     if av_add_index_entry(stream, tail_pos as i64, tail_pts, 0, 0, AVINDEX_KEYFRAME as c_int) < 0 {
@@ -567,8 +596,8 @@ unsafe fn flac_frame_landings(
 /// stopped reading, not where that frame begins). The searching opening must
 /// not inherit that entry.
 #[cfg(desktop)]
-unsafe fn flac_final_frames(path: &Path) -> Result<Vec<(i64, u64)>, String> {
-    let (opened, stream_index) = open_best_audio_stream(path)
+unsafe fn flac_final_frames(path: &Path, lease: &FileLease) -> Result<Vec<(i64, u64)>, String> {
+    let (opened, stream_index) = open_best_audio_stream(path, lease.place_blocking())
         .map_err(|reason| format!("cannot open it to read its final frames: {reason}"))?;
     let frames = flac_final_frames_in(opened.fmt_ctx, stream_index);
     #[cfg(test)]

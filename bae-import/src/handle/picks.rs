@@ -252,7 +252,15 @@ impl ImportServiceHandle {
             .tables
             .land_candidate_search_pick(&candidate_key, release.release(), release.album_links())
             .await?;
-        let audio = crate::audio_layout::read_audio(&candidate.files)?;
+        let lease = self.services.store.lease_one().await;
+        let files = candidate.files.clone();
+        let audio = self
+            .services
+            .diagnostics
+            .blocking("read a candidate's audio", move || {
+                crate::audio_layout::read_audio(&files, &lease)
+            })
+            .await??;
         let folder_tracks = audio.track_count();
         // A release that cannot be read onto the folder's audio — it lists
         // another number of tracks than the folder holds, several sets of its

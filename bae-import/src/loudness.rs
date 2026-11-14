@@ -467,8 +467,11 @@ fn decode_track(
 /// blocking thread (FFmpeg decode is blocking CPU work). A source file is open
 /// only while tracks reading it run (see [`run_tracks_over_sources`]): tracks
 /// of one CUE image share its stream, each through its own reader, and the fill
-/// keeps a window ahead of each decode and evicts behind them. At most
-/// `parallelism` source files are open at once however many tracks there are.
+/// keeps a window ahead of each decode and evicts behind them. The pass takes
+/// its places of `files`, the budget of open files, in one wait, and keeps no
+/// more source files open than it has places, however many tracks there are.
+/// A track whose audio is in more files than the budget has fails the pass with
+/// [`crate::ImportError::TooManyFilesAtOnce`] before any file opens.
 ///
 /// A track that is too quiet to have a usable loudness keeps NULL loudness/peak
 /// and still imports. A track whose meter fails is broken like one whose decode
@@ -493,6 +496,7 @@ fn decode_track(
 /// it measured is committed.
 pub(super) async fn measure_loudness(
     event_tx: &crate::ImportEventBus,
+    files: &bae_store::FileLeases,
     parallelism: NonZeroUsize,
     audio_formats: &mut [bae_records::DbAudioFormat],
     audio_segments: &[bae_records::DbAudioSegment],
@@ -593,15 +597,16 @@ pub(super) async fn measure_loudness(
 
     let outcomes = run_tracks_over_sources(
         measured_tracks,
+        files,
         parallelism,
         |track: &MeasuredTrack| {
             track.segments.iter().map(|segment| segment.file_id.clone()).collect()
         },
-        |file_id: &String| {
+        |file_id: &String, lease: &coven::FileLease| {
             let (path, size) = &sources[file_id];
             let error_path = path.clone();
             SourceStream::start(
-                Box::new(LocalReader::new(path, diagnostics.clone())),
+                Box::new(LocalReader::new(path, diagnostics.clone(), lease.clone())),
                 *size,
                 Box::new(move |error| {
                     warn!("loudness: streaming {error_path:?} failed: {error}");
@@ -634,6 +639,7 @@ pub(super) async fn measure_loudness(
             }
         },
         |failed| diagnostics.bug(failed).into(),
+        crate::ImportError::TooManyFilesAtOnce,
     )
     .await?;
 

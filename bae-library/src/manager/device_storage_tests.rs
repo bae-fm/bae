@@ -107,7 +107,7 @@ async fn the_parts_hold_what_coven_and_the_image_cache_measure() {
     let played_file = release_files(manager, &played).await.remove(0);
     manager.evict_file_for_test(played_file.file).await.unwrap();
     let played_ref = manager.release_file_ref(&played_file.id).await.unwrap();
-    manager.store.read_file(&played_ref).await.unwrap();
+    manager.store.read_file(&played_ref, &bae_util::test_files::lease()).await.unwrap();
     assert!(!release_files(manager, &pinned).await.is_empty());
     #[cfg(desktop)]
     test.library
@@ -158,7 +158,7 @@ async fn clear_cache_empties_the_cache_and_leaves_the_pinned_releases() {
     let played_file = release_files(manager, &played).await.remove(0);
     manager.evict_file_for_test(played_file.file).await.unwrap();
     let played_ref = manager.release_file_ref(&played_file.id).await.unwrap();
-    manager.store.read_file(&played_ref).await.unwrap();
+    manager.store.read_file(&played_ref, &bae_util::test_files::lease()).await.unwrap();
     #[cfg(desktop)]
     test.library
         .remote_images()
@@ -235,6 +235,7 @@ async fn data_from_before_a_reset_shows_until_it_is_deleted() {
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
         sources.clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

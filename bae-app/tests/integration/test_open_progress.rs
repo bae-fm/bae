@@ -30,6 +30,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         bae_store::test_devices::test_builder(&installation),
         {

@@ -207,7 +207,10 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     let disc_ids = |reading: crate::rip_reading::RipReading| {
         reading.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect::<Vec<_>>()
     };
-    let scanned = disc_ids(crate::rip_reading::read_rip_artifacts(&categorized).unwrap());
+    let scanned = disc_ids(
+        crate::rip_reading::read_rip_artifacts(&categorized, &bae_util::test_files::lease())
+            .unwrap(),
+    );
 
     let library = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(library.path()).await;

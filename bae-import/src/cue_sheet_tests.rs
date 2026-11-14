@@ -709,7 +709,7 @@ fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n  TRACK 03 AUDIO\n    INDEX 01 10:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert_eq!(sheet.audio_file_references(), ["album.flac"]);
     assert_eq!(sheet.tracks.len(), 3);
 }
@@ -723,7 +723,7 @@ fn test_cue_parser_tolerates_missing_performer_title() {
     let content = "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert!(sheet.title.is_none());
     assert!(sheet.performer.is_none());
     assert_eq!(sheet.audio_file_references(), ["dummy.flac"]);
@@ -737,7 +737,7 @@ fn test_cue_parser_stops_at_data_track() {
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 MODE1/2048\n    INDEX 01 05:00:00\n";
     std::fs::write(&cue, content).unwrap();
 
-    let sheet = parse_cue_sheet(&cue).unwrap();
+    let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
     assert_eq!(sheet.playable_track_count(), 1);
     assert!(matches!(

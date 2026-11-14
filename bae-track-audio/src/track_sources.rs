@@ -3,16 +3,17 @@
 //!
 //! A track reads one or more source files: a file of its own, or the CUE
 //! image it shares with the rest of its disc (plus, for an audio pregap, the
-//! file before). [`run_tracks_over_sources`] runs up to `parallelism` tracks
-//! at once, admitting them in track order, and keeps open exactly the files
-//! those tracks read. A file opens when the first track reading it starts and
+//! file before). [`run_tracks_over_sources`] takes its places of the
+//! open-files budget in one wait, runs up to `parallelism` tracks at once,
+//! admitting them in track order, and keeps open exactly the files those
+//! tracks read. A file opens when the first track reading it starts and
 //! closes once no running track reads it and the next track waiting does not
 //! either. Tracks of one CUE image running together share its one open stream,
 //! each decoding through its own reader over it, so an image counts once
 //! however many of its tracks are in flight. A track is admitted only while
-//! the files open stay within `parallelism` — a track reading more files than
-//! that runs alone — so a pass over a whole box set holds at most
-//! `parallelism` files open whatever its track count.
+//! the files open stay within the pass's places, which are at least as many
+//! as the most files one track reads, so a pass over a whole box set holds at
+//! most its places' worth of files open whatever its track count.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -22,7 +23,9 @@ use std::num::NonZeroUsize;
 use crate::data_source::{AudioDataReader, FillErrorHandler, FillTask};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
+use bae_store::FileLeases;
 use bae_util::task_failure::{caught, TaskFailed};
+use coven::{FileLease, LeaseTooLarge};
 
 /// One track's work, as its failure names it.
 const TRACK_WORK: &str = "work on one track";
@@ -69,7 +72,14 @@ impl SourceStream {
 /// Run `work` over each of `tracks`, up to `parallelism` at once, handing each
 /// the open streams of the files `files_of` says it reads, keyed as
 /// `files_of` names them. `open` opens a file the first time a running track
-/// needs it. Results come back in track order.
+/// needs it, in a place of the lease it is given.
+///
+/// The pass takes its places from `budget` in one wait before it opens
+/// anything: `parallelism` of them, or the budget's size when that is less,
+/// and at least as many as the most files one track reads. A track that reads
+/// more files than the budget has fails the pass with the error `too_wide`
+/// makes of it, before any file opens. The pass runs no more tracks than it
+/// has places and keeps no more files open. Results come back in track order.
 ///
 /// The first error stops admitting tracks; the tracks already running finish,
 /// every file is closed, and that error is returned. Every file is closed
@@ -78,11 +88,13 @@ impl SourceStream {
 /// it.
 pub async fn run_tracks_over_sources<K, T, R, E, Fut>(
     tracks: Vec<T>,
+    budget: &FileLeases,
     parallelism: NonZeroUsize,
     files_of: impl Fn(&T) -> Vec<K>,
-    open: impl Fn(&K) -> SourceStream,
+    open: impl Fn(&K, &FileLease) -> SourceStream,
     work: impl Fn(T, HashMap<K, SharedSparseBuffer>) -> Fut,
     panicked: impl Fn(TaskFailed) -> E,
+    too_wide: impl Fn(LeaseTooLarge) -> E,
 ) -> Result<Vec<R>, E>
 where
     K: Eq + Hash + Clone + Send + 'static,
@@ -90,9 +102,11 @@ where
     E: Send + 'static,
     Fut: Future<Output = Result<R, E>> + Send + 'static,
 {
-    let parallelism = parallelism.get();
     let track_count = tracks.len();
-    let mut waiting = tracks
+    if track_count == 0 {
+        return Ok(Vec::new());
+    }
+    let waiting = tracks
         .into_iter()
         .map(|track| {
             let mut files: Vec<K> = Vec::new();
@@ -103,8 +117,12 @@ where
             }
             (track, files)
         })
-        .enumerate()
-        .peekable();
+        .collect::<Vec<_>>();
+    let widest = waiting.iter().map(|(_, files)| files.len()).max().unwrap_or(0);
+    let places = parallelism.get().min(budget.places()).max(widest);
+    let lease = budget.lease(places).await.map_err(&too_wide)?;
+    let parallelism = parallelism.get().min(places);
+    let mut waiting = waiting.into_iter().enumerate().peekable();
     // Each open file with the number of running tracks reading it.
     let mut open_files: HashMap<K, (SourceStream, usize)> = HashMap::new();
     let mut running = tokio::task::JoinSet::new();
@@ -117,14 +135,14 @@ where
                 break;
             };
             let opening = files.iter().filter(|file| !open_files.contains_key(*file)).count();
-            if !running.is_empty() && open_files.len() + opening > parallelism {
+            if !running.is_empty() && open_files.len() + opening > places {
                 break;
             }
             let (index, (track, files)) = waiting.next().expect("peeked above");
             let mut streams = HashMap::with_capacity(files.len());
             for file in &files {
                 let (stream, readers) =
-                    open_files.entry(file.clone()).or_insert_with(|| (open(file), 0));
+                    open_files.entry(file.clone()).or_insert_with(|| (open(file, &lease), 0));
                 *readers += 1;
                 streams.insert(file.clone(), stream.buffer.0.clone());
             }

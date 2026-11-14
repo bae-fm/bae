@@ -24,14 +24,20 @@ pub(super) struct ExportFixture {
 
 impl ExportFixture {
     pub(super) async fn new() -> Self {
+        Self::within(coven::FileBudget::for_test()).await
+    }
+
+    /// A fixture whose library opens the person's files within `files`.
+    pub(super) async fn within(files: coven::FileBudget) -> Self {
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (library, cloud) = bae_library::test_libraries::storage_library(
+        let (library, cloud) = bae_library::test_libraries::storage_library_within(
             &db_dir,
             bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
             bae_util::http::Http::for_test(),
+            files,
         )
         .await;
         bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud)
@@ -751,10 +757,11 @@ fn flac_save_preset(id: &str) -> SavePreset {
 }
 
 /// Save `release_id` under `preset` into a fresh target, returning the most
-/// files under `source_dir` the save held open at once. Every source is closed
-/// by the time the save returns.
+/// places the budget saw holding an open file at once. Every source is closed,
+/// and every place back, by the time the save returns.
 async fn peak_sources_open_saving(
     f: &ExportFixture,
+    watch: &coven::FileBudgetWatch,
     release_id: &str,
     source_dir: &Path,
     preset: SavePreset,
@@ -765,7 +772,6 @@ async fn peak_sources_open_saving(
     let target = f.temp_path().join(format!("export-{}", preset.id));
     fs::create_dir_all(&target).unwrap();
 
-    let sampler = bae_util::open_files_peak::OpenFilesPeak::start(source_dir);
     f.library
         .manager()
         .export_release(
@@ -780,9 +786,10 @@ async fn peak_sources_open_saving(
         )
         .await
         .expect("the release save succeeds");
-    let peak = sampler.finish();
+    assert_eq!(watch.holding(), 0);
+    assert_eq!(watch.leased(), 0);
     coven::assert_no_open_files_under(source_dir);
-    peak
+    watch.most_holding()
 }
 
 fn cores() -> usize {
@@ -792,9 +799,11 @@ fn cores() -> usize {
 /// Saving a release of a file per track opens each track's file only while
 /// that track is being saved: at most one per core.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
+async fn a_release_save_opens_a_bounded_number_of_track_files() {
     bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
+    let budget = coven::FileBudget::for_test();
+    let watch = budget.watch();
+    let f = ExportFixture::within(budget).await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     for n in 1..=24 {
@@ -808,7 +817,8 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
 
     let per_track =
-        peak_sources_open_saving(&f, &release_id, &album_dir, flac_save_preset("tracks")).await;
+        peak_sources_open_saving(&f, &watch, &release_id, &album_dir, flac_save_preset("tracks"))
+            .await;
     assert!(
         per_track <= cores(),
         "{per_track} of 24 track files open at once over {} cores",
@@ -821,7 +831,9 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     bae_util::test_logs::install();
-    let f = ExportFixture::new().await;
+    let budget = coven::FileBudget::for_test();
+    let watch = budget.watch();
+    let f = ExportFixture::within(budget).await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     fs::copy(
@@ -844,7 +856,91 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
+    // The import's landing search of a FLAC image holds two places (the
+    // search's opening and the one reading its final frames), and the budget
+    // keeps the most places held at once since it began.
+    let import_peak = watch.most_holding();
+    assert_eq!(import_peak, 2, "the import's landing search");
+
     let peak =
-        peak_sources_open_saving(&f, &release_id, &album_dir, flac_save_preset("tracks")).await;
-    assert!(peak <= 1, "the save reads the image as one open file, not {peak}");
+        peak_sources_open_saving(&f, &watch, &release_id, &album_dir, flac_save_preset("tracks"))
+            .await;
+    assert!(
+        peak <= import_peak,
+        "the save of twelve tracks held {peak} files open, more than the one image needs"
+    );
+}
+
+/// The audio files under `dir`, found through its folders.
+fn flac_files_under(dir: &Path) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            found.extend(flac_files_under(&path));
+        } else if path.extension().is_some_and(|extension| extension == "flac") {
+            found.push(path);
+        }
+    }
+    found
+}
+
+/// A budget of one place saves every track of a release: each track's file
+/// opens in the one place after the track before it has closed it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_save_with_a_budget_of_one_place_saves_every_track() {
+    bae_util::test_logs::install();
+    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
+    let watch = budget.watch();
+    let f = ExportFixture::within(budget).await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    for n in 1..=6 {
+        bae_import::test_fixtures::write_tagged_flac(
+            &album_dir,
+            &format!("{n:02}.flac"),
+            &format!("Track {n}"),
+        );
+    }
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 6);
+
+    let peak =
+        peak_sources_open_saving(&f, &watch, &release_id, &album_dir, flac_save_preset("tracks"))
+            .await;
+
+    assert_eq!(peak, 1, "the save held one file open at a time");
+    assert_eq!(flac_files_under(&f.temp_path().join("export-tracks")).len(), 6);
+}
+
+/// A budget of one place copies every file of a release in an export.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_export_with_a_budget_of_one_place_copies_every_file() {
+    bae_util::test_logs::install();
+    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
+    let watch = budget.watch();
+    let f = ExportFixture::within(budget).await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    for n in 1..=6 {
+        bae_import::test_fixtures::write_tagged_flac(
+            &album_dir,
+            &format!("{n:02}.flac"),
+            &format!("Track {n}"),
+        );
+    }
+    let release_id = import_unknown_local(&f, &album_dir).await;
+    let target = f.temp_path().join("export-target");
+    fs::create_dir_all(&target).unwrap();
+
+    f.library
+        .manager()
+        .export_release(&release_id, &target, OutputKind::Export)
+        .await
+        .expect("the export succeeds");
+
+    assert_eq!(watch.most_holding(), 1, "the export held one file open at a time");
+    assert_eq!(watch.holding(), 0);
+    assert_eq!(flac_files_under(&target).len(), 6);
+    coven::assert_no_open_files_under(&album_dir);
 }

@@ -39,7 +39,10 @@ fn pass_over_root<R: DirectoryReader>(
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &same_grouping_key,
         },
-        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
+        &FileReads::new(
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            bae_store::FileLeases::for_test_default(),
+        ),
         cancellation,
         |directory| said.directories.push(directory),
         |item| said.items.push(item),
@@ -59,7 +62,10 @@ fn reading_of_one_folder(root: &Path, folder: &str) -> SaidByPass {
             decisions: &FolderReleaseDecisions::default(),
             new_grouping_key: &same_grouping_key,
         },
-        &FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
+        &FileReads::new(
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            bae_store::FileLeases::for_test_default(),
+        ),
         &ScanCancellation::new(),
         |directory| said.directories.push(directory),
         |item| said.items.push(item),

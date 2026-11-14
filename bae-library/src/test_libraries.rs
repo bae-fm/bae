@@ -20,7 +20,10 @@ pub use records::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     test_album, test_release, TEST_RELEASE_FOLDER,
 };
-pub use storage::{connect_storage, remove_uploaded_file, storage_library, storage_library_of};
+pub use storage::{
+    connect_storage, remove_uploaded_file, storage_library, storage_library_of,
+    storage_library_within,
+};
 
 use crate::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
@@ -334,9 +337,20 @@ impl TestLibrary {
 
 /// Open a test library in `dir` under the real clock and real UUID provider.
 async fn open_test_db(dir: &std::path::Path) -> Store {
-    Store::new_test(crate::SCHEMA, dir, Arc::new(coven::SystemClock))
-        .await
-        .expect("open the test database")
+    open_test_db_within(dir, coven::FileBudget::for_test()).await
+}
+
+/// [`open_test_db`] opening the person's files within `files`.
+async fn open_test_db_within(dir: &std::path::Path, files: coven::FileBudget) -> Store {
+    Store::new_test_within(
+        crate::SCHEMA,
+        dir,
+        Arc::new(coven::SystemClock),
+        coven::task::HeardBugs::shared(),
+        files,
+    )
+    .await
+    .expect("open the test database")
 }
 
 /// Open `dir/test.db` as a library, through the app's own opening step, with
@@ -404,6 +418,28 @@ pub async fn setup_test_library_with(
     (library, temp_dir)
 }
 
+/// [`setup_test_library_with_album_dir`] whose library and installation open
+/// the person's files within `files`, a budget the test sizes and watches.
+pub async fn setup_test_library_with_album_dir_within(
+    providers: bae_catalogs::providers::Providers,
+    http: bae_util::http::Http,
+    files: coven::FileBudget,
+) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
+    bae_util::test_logs::install();
+    let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
+    let store = open_test_db_within(temp_dir.path(), files).await;
+    let library = TestLibrary::open(
+        store,
+        bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
+        providers,
+        http,
+    )
+    .await;
+    let album_dir = temp_dir.path().join("album");
+    std::fs::create_dir_all(&album_dir).expect("test album dir");
+    (library, album_dir, temp_dir)
+}
+
 /// [`setup_test_library_with`] with an `album/` directory made alongside it,
 /// for a test that writes audio into a folder and imports that folder. The
 /// `TempDir` owns both directories, so it must outlive the library.
@@ -423,8 +459,8 @@ pub async fn setup_test_library_with_album_dir(
 pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = TestSources::system();
+    let installation = sources.installation(app_dir.coven_app_dir());
     let library = runtime.block_on(async {
         let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
             .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
@@ -503,9 +539,36 @@ pub async fn imported_release_setup_with<G>(
 where
     G: FnOnce(&std::path::Path),
 {
-    let (library, album_dir, temp_dir) =
-        setup_test_library_with_album_dir(fakes.providers(), bae_util::http::Http::for_test())
-            .await;
+    imported_release_setup_within(
+        fakes,
+        coven::FileBudget::for_test(),
+        release,
+        candidate_key,
+        import_id,
+        generate_files,
+    )
+    .await
+}
+
+/// [`imported_release_setup_with`] over a library that opens the person's
+/// files within `files`, a budget the test sizes and watches.
+pub async fn imported_release_setup_within<G>(
+    fakes: &bae_catalogs::fake_catalogs::FakeCatalogs,
+    files: coven::FileBudget,
+    release: bae_catalogs::discogs::DiscogsRelease,
+    candidate_key: &str,
+    import_id: String,
+    generate_files: G,
+) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
+where
+    G: FnOnce(&std::path::Path),
+{
+    let (library, album_dir, temp_dir) = setup_test_library_with_album_dir_within(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+        files,
+    )
+    .await;
 
     let release_id_key = fakes.seed_discogs_test_release(release);
     generate_files(&album_dir);

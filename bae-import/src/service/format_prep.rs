@@ -138,14 +138,20 @@ pub(super) fn audio_segment(
 
 /// Build audio format records for all tracks from the scan's stored facts. A
 /// CUE image whose track starts can't be read fails the build: the records
-/// would otherwise be stored without their byte positions for good.
+/// would otherwise be stored without their byte positions for good. The
+/// search of a CUE image opens its file in places of `files`.
 pub fn build_audio_formats(
     tracks_to_files: &[TrackFile],
     file_ids: &HashMap<PathBuf, String>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdSource,
+    files: &bae_store::FileLeases,
 ) -> Result<BuiltAudioFormats, ImportError> {
     let now = bae_store::utc_now(clock);
+    // The places a CUE image's landing search opens its file in, taken in one
+    // wait when the first image needs them and held until the build ends.
+    // Blocking: this runs off the async workers.
+    let mut landing_places: Option<coven::FileLease> = None;
     let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
     let mut audio_segments = Vec::new();
     let mut cue_landings_by_file: HashMap<PathBuf, HashMap<u64, u64>> = HashMap::new();
@@ -163,7 +169,18 @@ pub fn build_audio_formats(
                 )?;
                 for audio_file in &cue_pair.audio_files {
                     if !cue_landings_by_file.contains_key(&audio_file.path) {
-                        let landings = cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet)?;
+                        if landing_places.is_none() {
+                            landing_places = Some(
+                                files
+                                    .lease_blocking(bae_audio::SEEK_LANDING_PLACES)
+                                    .map_err(ImportError::TooManyFilesAtOnce)?,
+                            );
+                        }
+                        let landings = cue_file_landing_bytes(
+                            audio_file,
+                            &cue_pair.cue_sheet,
+                            landing_places.as_ref().expect("taken above"),
+                        )?;
                         cue_landings_by_file.insert(audio_file.path.clone(), landings);
                     }
                 }

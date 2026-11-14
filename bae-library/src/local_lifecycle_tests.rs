@@ -563,6 +563,7 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
         id,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -612,6 +613,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         id,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

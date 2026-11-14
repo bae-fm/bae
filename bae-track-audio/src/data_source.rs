@@ -8,6 +8,7 @@ use crate::storage_wait::{FetchProgress, StorageWaitWatch, StorageWaits};
 use crate::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_diagnostics::{Diagnostics, ReportedTask};
+use coven::FileLease;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -286,6 +287,9 @@ pub struct CovenFileReader {
     /// for one that reads it start to finish with nobody waiting to hear it.
     playback: Option<PlaybackRead>,
     diagnostics: Diagnostics,
+    /// The places of the open-files budget the stream of the file is opened
+    /// in: one, which the stream holds until its last read ends.
+    lease: FileLease,
 }
 
 /// How playback reads a release file: its fetches gated by the arbiter that
@@ -309,19 +313,22 @@ struct PlaybackRead {
 
 impl CovenFileReader {
     /// A reader of `file_id` start to finish, for work nobody listens to
-    /// while it reads — a save, a transcode, a decode for import.
+    /// while it reads — a save, a transcode, a decode for import. The fill
+    /// opens the file's stream in one place of `lease`.
     pub fn new(
         runtime: tokio::runtime::Handle,
         records: bae_records::Records,
         file_id: String,
         diagnostics: Diagnostics,
+        lease: FileLease,
     ) -> Self {
-        Self { runtime, records, file_id, playback: None, diagnostics }
+        Self { runtime, records, file_id, playback: None, diagnostics, lease }
     }
 
     /// A reader of `file_id` for playback: its fetches gated by `arbiter`,
     /// with the window at `prefetch_byte` and, when `prefetch_file_end`, the
-    /// file's last window fetched up front.
+    /// file's last window fetched up front. The fill opens the file's stream
+    /// in one place of `lease`.
     pub fn for_playback(
         runtime: tokio::runtime::Handle,
         records: bae_records::Records,
@@ -330,9 +337,10 @@ impl CovenFileReader {
         prefetch_byte: Option<u64>,
         prefetch_file_end: bool,
         diagnostics: Diagnostics,
+        lease: FileLease,
     ) -> Self {
         let playback = PlaybackRead { arbiter, prefetch_byte, prefetch_file_end };
-        Self { runtime, records, file_id, playback: Some(playback), diagnostics }
+        Self { runtime, records, file_id, playback: Some(playback), diagnostics, lease }
     }
 }
 
@@ -365,15 +373,21 @@ impl AudioDataReader for CovenFileReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenFileReader { runtime: prefetch_runtime, records, file_id, playback, diagnostics } =
-            *self;
+        let CovenFileReader {
+            runtime: prefetch_runtime,
+            records,
+            file_id,
+            playback,
+            diagnostics,
+            lease,
+        } = *self;
         let buffer_id = buffer.id();
         let fill_buffer = buffer.clone();
         let prefetch_diagnostics = diagnostics.clone();
 
         spawn_fill(diagnostics, &buffer, on_error, async move {
             let buffer = fill_buffer;
-            let stream = match records.open_release_file(&file_id).await {
+            let stream = match records.open_release_file(&file_id, &lease).await {
                 Ok(stream) => Arc::new(stream),
                 Err(error) => {
                     return Err(FillFailure::Open(

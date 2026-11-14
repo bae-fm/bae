@@ -66,7 +66,15 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
             let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-            assert_eq!(devices.b().records().read_release_file(&file.id).await.unwrap(), expected);
+            assert_eq!(
+                devices
+                    .b()
+                    .records()
+                    .read_release_file(&file.id, &bae_util::test_files::lease())
+                    .await
+                    .unwrap(),
+                expected
+            );
         }
         devices.pause().await;
         manager.store.unlock_store_key().await.unwrap();
@@ -98,7 +106,14 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         };
         assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(path));
         let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-        assert_eq!(manager.records.read_release_file(&file.id).await.unwrap(), expected);
+        assert_eq!(
+            manager
+                .records
+                .read_release_file(&file.id, &bae_util::test_files::lease())
+                .await
+                .unwrap(),
+            expected
+        );
     }
     assert_eq!(cover_file(manager, &release.id).await.id(), cover);
     manager.store.set_uploads_paused(false).await.unwrap();
@@ -112,7 +127,8 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     for file in &files {
         assert!(!devices.b().records().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
-        let read = devices.b().records().read_release_file(&file.id).await;
+        let read =
+            devices.b().records().read_release_file(&file.id, &bae_util::test_files::lease()).await;
         assert!(
             matches!(
                 &read,
@@ -391,7 +407,10 @@ async fn a_pinned_release_over_the_budget_leaves_room_to_cache_a_played_track() 
     assert!(before.pinned > before.budget, "the pinned release is over the budget: {before:?}");
 
     let played_ref = manager.release_file_ref(&played_file.id).await.unwrap();
-    assert_eq!(manager.store.read_file(&played_ref).await.unwrap(), played_bytes);
+    assert_eq!(
+        manager.store.read_file(&played_ref, &bae_util::test_files::lease()).await.unwrap(),
+        played_bytes
+    );
 
     let after = namespace_bytes(manager, bae_records::synced::RELEASE_FILES_NAMESPACE).await;
     assert_eq!(after.pinned, before.pinned, "the pinned copy stays: {after:?}");

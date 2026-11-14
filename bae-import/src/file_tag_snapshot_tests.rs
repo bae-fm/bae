@@ -6,7 +6,11 @@ use std::path::Path;
 struct CountingReader(std::sync::atomic::AtomicUsize);
 
 impl FileTagReader for CountingReader {
-    fn read(&self, _path: &Path) -> Result<FileTagRead, crate::file_tag_reader::TagReadFailure> {
+    fn read(
+        &self,
+        _path: &Path,
+        _place: coven::LeasePlace,
+    ) -> Result<FileTagRead, crate::file_tag_reader::TagReadFailure> {
         self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(FileTagRead {
             tags: FileTags {
@@ -38,7 +42,8 @@ fn extraction_reads_every_file_before_returning_one_snapshot() {
         .collect::<Vec<_>>();
     let reader = CountingReader::default();
 
-    let snapshot = extract_file_tag_snapshot(&files, 8, 2, &reader).unwrap();
+    let snapshot =
+        extract_file_tag_snapshot(&files, 8, 2, &reader, &bae_util::test_files::lease()).unwrap();
 
     assert_eq!(snapshot.files.len(), 2);
     assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 2);
@@ -56,7 +61,8 @@ fn extraction_refuses_a_file_whose_scanned_size_changed() {
     let file = ScannedFile::new(path, "01.flac".to_string(), 5, 1);
     let reader = CountingReader::default();
 
-    let error = extract_file_tag_snapshot(&[file], 1, 0, &reader).unwrap_err();
+    let error = extract_file_tag_snapshot(&[file], 1, 0, &reader, &bae_util::test_files::lease())
+        .unwrap_err();
 
     assert!(matches!(error, ImportError::FileTags { detail } if detail.contains("changed after")));
     assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 0);

@@ -7,6 +7,19 @@ use crate::LibraryManager;
 use bae_catalogs::providers::Providers;
 use coven::{MemoryStorage, Storage};
 
+/// [`storage_library`] opening the person's files within `files`, a budget
+/// the test sizes and watches.
+pub async fn storage_library_within(
+    directory: &std::path::Path,
+    providers: Providers,
+    http: bae_util::http::Http,
+    files: coven::FileBudget,
+) -> (super::TestLibrary, Arc<MemoryStorage>) {
+    let sources =
+        super::TestSources::on_budget(&(Arc::new(coven::SystemClock) as coven::ClockRef), files);
+    storage_library_on(directory, providers, http, None, sources).await
+}
+
 /// Create a store in its own installation, with an injected provider, before
 /// setup.
 pub async fn storage_library(
@@ -25,9 +38,19 @@ pub async fn storage_library_of(
     http: bae_util::http::Http,
     creator: Option<&str>,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
+    storage_library_on(directory, providers, http, creator, super::TestSources::system()).await
+}
+
+/// [`storage_library_of`] on `sources`.
+async fn storage_library_on(
+    directory: &std::path::Path,
+    providers: Providers,
+    http: bae_util::http::Http,
+    creator: Option<&str>,
+    sources: super::TestSources,
+) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let sources = super::TestSources::system();
+    let installation = sources.installation(app_dir.coven_app_dir());
     let storage =
         Arc::new(MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap());
     let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)

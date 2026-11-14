@@ -296,15 +296,35 @@ impl Store {
         Ok(self.reported(self.inner.handle.user_file(file).await)?)
     }
 
-    pub async fn read_file(&self, file: &coven::FileRef) -> Result<Vec<u8>, coven::FileReadError> {
-        self.reported(self.inner.handle.read_file(file).await)
+    /// The way to the installation's budget of open files, for work that
+    /// takes places on threads and in services of its own.
+    pub fn file_leases(&self) -> crate::FileLeases {
+        crate::FileLeases::of(self.inner.files.clone())
     }
 
+    /// A lease of one place, for work that reads one file at a time (see
+    /// [`crate::FileLeases::lease_one`]).
+    pub async fn lease_one(&self) -> coven::FileLease {
+        self.file_leases().lease_one().await
+    }
+
+    /// Read a whole file, in one place of `lease`.
+    pub async fn read_file(
+        &self,
+        file: &coven::FileRef,
+        lease: &coven::FileLease,
+    ) -> Result<Vec<u8>, coven::FileReadError> {
+        self.reported(self.inner.handle.read_file(file, lease).await)
+    }
+
+    /// Open a file for reading ranges. The stream holds one place of `lease`
+    /// until it drops.
     pub async fn open_file_stream(
         &self,
         file: &coven::FileRef,
+        lease: &coven::FileLease,
     ) -> Result<crate::FileStream, coven::FileReadError> {
-        let stream = self.reported(self.inner.handle.open_file_stream(file).await)?;
+        let stream = self.reported(self.inner.handle.open_file_stream(file, lease).await)?;
         Ok(crate::FileStream::new(stream, self.inner.bugs.clone()))
     }
 

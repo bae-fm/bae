@@ -156,7 +156,13 @@ pub(super) fn root_change(
 /// When the root's own mtime moved, the folders that came or went are found by
 /// listing it against the record, and a root with audio directly in it names
 /// itself, since the record cannot tell which of its files moved.
-pub(super) fn network_changes(root: &Path, recorded: &[(PathBuf, i64)]) -> Option<Vec<PathBuf>> {
+///
+/// Listing the root holds it open, which takes a place of `lease` meanwhile.
+pub(super) fn network_changes(
+    root: &Path,
+    recorded: &[(PathBuf, i64)],
+    lease: &coven::FileLease,
+) -> Option<Vec<PathBuf>> {
     let moved = changed_directories(recorded)?;
     let mut changes = Vec::new();
     for directory in moved {
@@ -164,6 +170,7 @@ pub(super) fn network_changes(root: &Path, recorded: &[(PathBuf, i64)]) -> Optio
             changes.push(directory);
             continue;
         }
+        let _place = lease.place_blocking();
         let listing = match std::fs::read_dir(root) {
             Ok(listing) => listing,
             Err(error) => {

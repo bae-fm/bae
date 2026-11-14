@@ -3,15 +3,21 @@
 use super::*;
 
 /// Reads a file the caller names by path: a file being previewed, or an
-/// import's sources before they are the library's.
+/// import's sources before they are the library's. The fill opens the file in
+/// one place of `lease` and holds the place until the fill ends.
 pub struct LocalReader {
     path: std::path::PathBuf,
     diagnostics: Diagnostics,
+    lease: FileLease,
 }
 
 impl LocalReader {
-    pub fn new(path: impl Into<std::path::PathBuf>, diagnostics: Diagnostics) -> Self {
-        Self { path: path.into(), diagnostics }
+    pub fn new(
+        path: impl Into<std::path::PathBuf>,
+        diagnostics: Diagnostics,
+        lease: FileLease,
+    ) -> Self {
+        Self { path: path.into(), diagnostics, lease }
     }
 }
 
@@ -21,13 +27,13 @@ impl AudioDataReader for LocalReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let LocalReader { path, diagnostics } = *self;
+        let LocalReader { path, diagnostics, lease } = *self;
         let fill_buffer = buffer.clone();
 
         spawn_fill(diagnostics, &buffer, on_error, async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-            let file = tokio::fs::File::open(&path).await.map_err(|e| {
+            let file = lease.place().await.open_async(&path).await.map_err(|e| {
                 FillFailure::Open(TrackReadError::io(
                     format!("Failed to open {}", path.display()),
                     e,

@@ -209,7 +209,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     );
 
     assert!(matches!(
-        manager.store.read_file(&first_ref).await,
+        manager.store.read_file(&first_ref, &bae_util::test_files::lease()).await,
         Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))
     ));
 }
@@ -239,5 +239,8 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
         Err(bae_store::DbError::Coven(error))
             if matches!(*error, coven::CovenError::Database(coven::DbError::FileAbsent { .. }))
     ));
-    assert_eq!(manager.store.read_file(&second).await.unwrap(), b"second cover");
+    assert_eq!(
+        manager.store.read_file(&second, &bae_util::test_files::lease()).await.unwrap(),
+        b"second cover"
+    );
 }

@@ -55,7 +55,15 @@ impl ImportServiceHandle {
                     ),
                 }
             })?;
-        let audio = crate::audio_layout::read_audio(&candidate.files)?;
+        let lease = self.services.store.lease_one().await;
+        let files = candidate.files.clone();
+        let audio = self
+            .services
+            .diagnostics
+            .blocking("read a candidate's audio", move || {
+                crate::audio_layout::read_audio(&files, &lease)
+            })
+            .await??;
         // What picking each row would read, top-ranked first. A release that
         // fails to load, or cannot be read onto the folder's audio, fails the
         // whole, leaving the candidate as it was.

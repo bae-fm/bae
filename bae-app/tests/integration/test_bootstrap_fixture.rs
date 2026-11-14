@@ -37,6 +37,7 @@ fn library_with_fixture(
             bae_store::EnteredName::parse("Creator").unwrap(),
             "Test Device",
             bae_store::TestSources::system().clock().clone(),
+            coven::FileBudget::for_test(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await
@@ -66,6 +67,7 @@ fn open(
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         builder,
         |_| (),
@@ -142,6 +144,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         bae_app::PlaybackOutput::Device(Box::new(bae_playback::audio_output::FailingAudioDevice)),
         bae_diagnostics::Diagnostics::noop(),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
         bae_store::test_devices::test_builder(&installation),
         |_| (),

@@ -218,6 +218,7 @@ pub fn bootstrap<T, F>(
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     clock: ClockRef,
+    files: coven::FileBudget,
     ids: IdSourceRef,
 
     builder: coven::CovenBuilder,
@@ -238,6 +239,7 @@ where
         playback_output,
         diagnostics,
         clock,
+        files,
         ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
@@ -254,6 +256,7 @@ pub fn bootstrap_prepared<T, F>(
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     clock: ClockRef,
+    files: coven::FileBudget,
     ids: IdSourceRef,
     compose: F,
 ) -> Result<T, BootstrapError>
@@ -271,6 +274,7 @@ where
         playback_output,
         diagnostics,
         clock,
+        files,
         ids,
         LibraryOpening::Open(handle),
         compose,
@@ -292,6 +296,7 @@ pub fn bootstrap_on_fixture<T, F>(
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     clock: ClockRef,
+    files: coven::FileBudget,
     ids: IdSourceRef,
 
     builder: coven::CovenBuilder,
@@ -312,6 +317,7 @@ where
         playback_output,
         diagnostics,
         clock,
+        files,
         ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
@@ -341,6 +347,7 @@ enum LibraryOpening {
 async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
+    files: coven::FileBudget,
     diagnostics: &Diagnostics,
 ) -> Result<bae_store::Store, bae_store::DbError> {
     let handle = match opening {
@@ -352,7 +359,7 @@ async fn open_store(
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(bae_store::Store::new(handle, clock, diagnostics.bug_sink()))
+    Ok(bae_store::Store::new(handle, clock, diagnostics.bug_sink(), files))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -384,6 +391,7 @@ fn bootstrap_opening<T, F>(
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     clock: ClockRef,
+    files: coven::FileBudget,
     ids: IdSourceRef,
 
     builder: LibraryOpening,
@@ -412,6 +420,7 @@ where
                 playback_output,
                 diagnostics,
                 clock,
+                files,
                 ids,
                 builder,
                 compose,
@@ -429,6 +438,7 @@ fn bootstrap_inner<T, F>(
     playback_output: PlaybackOutput,
     diagnostics: Diagnostics,
     clock: ClockRef,
+    files: coven::FileBudget,
     ids: IdSourceRef,
 
     builder: LibraryOpening,
@@ -476,7 +486,7 @@ where
     // built from it here, once, and handed to what holds it.
     let store = timing
         .stage(&library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock), &diagnostics))
+            runtime.block_on(open_store(builder, Arc::clone(&clock), files, &diagnostics))
         })
         .map_err(classify_open_error)?;
     let preferences = bae_preferences::PreferencesRow::new(store.clone());

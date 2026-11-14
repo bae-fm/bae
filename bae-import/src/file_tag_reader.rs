@@ -6,6 +6,7 @@ use super::file_tag_snapshot::{DeliveryTags, FileTags};
 use super::track_numbers::TrackNumbers;
 use bae_catalogs::StoreMarker;
 use bae_util::content_type::ContentType;
+use coven::LeasePlace;
 use lofty::config::ParseOptions;
 use lofty::file::{AudioFile, FileType};
 use lofty::id3::v2::{Frame, Id3v2Tag, Id3v2Version};
@@ -24,7 +25,8 @@ pub(crate) struct FileTagRead {
 }
 
 pub(crate) trait FileTagReader: Send + Sync {
-    fn read(&self, path: &Path) -> Result<FileTagRead, TagReadFailure>;
+    /// The tags of the file at `path`, which the read opens in `place`.
+    fn read(&self, path: &Path, place: LeasePlace) -> Result<FileTagRead, TagReadFailure>;
 }
 
 /// Why one file's tags were not read.
@@ -52,12 +54,12 @@ impl FileTagReader for LoftyFileTagReader {
     /// Opens and parses `path` once: the concrete format's own reading, for
     /// the ID3v2 frames and MP4 atoms only it keeps, is the one the generic
     /// tag is taken from.
-    fn read(&self, path: &Path) -> Result<FileTagRead, TagReadFailure> {
+    fn read(&self, path: &Path, place: LeasePlace) -> Result<FileTagRead, TagReadFailure> {
         let file_type = FileType::from_path(path);
-        let file = File::open(path).map_err(|error| {
+        let mut file = place.open(path).map_err(|error| {
             TagReadFailure::Fault(format!("failed to open {}: {error}", path.display()))
         })?;
-        let mut reader = BufReader::new(file);
+        let mut reader = BufReader::new(&mut *file);
         let parsed = parse(&mut reader, path, file_type)?;
         let tag = primary_tag(&parsed.tagged);
         let store = store_marker(parsed.itunes_purchase, tag);
@@ -137,7 +139,7 @@ enum Id3v2Frames {
 
 /// Parse the file `reader` reads, of `file_type` as its extension says, once.
 fn parse(
-    reader: &mut BufReader<File>,
+    reader: &mut BufReader<&mut File>,
     path: &Path,
     file_type: Option<FileType>,
 ) -> Result<ParsedFile, TagReadFailure> {
@@ -197,7 +199,7 @@ fn parse_failure(path: &Path, error: &lofty::error::FileParseError) -> TagReadFa
 /// The file parsed as the format `F`, which keeps its ID3v2 frames, with the
 /// legacy text of its ID3v2 tag.
 fn parse_keeping_id3v2<F>(
-    reader: &mut BufReader<File>,
+    reader: &mut BufReader<&mut File>,
     options: ParseOptions,
 ) -> Result<ParsedFile, lofty::error::FileParseError>
 where
@@ -291,7 +293,7 @@ fn legacy_id3v2_text(tag: &Id3v2Tag) -> LegacyTagText {
 
 /// The legacy text of the ID3v1 tag at the end of the file `reader` reads.
 fn legacy_id3v1_text(
-    reader: &mut BufReader<File>,
+    reader: &mut BufReader<&mut File>,
     path: &Path,
 ) -> Result<LegacyTagText, TagReadFailure> {
     let fault = |action: &str, error: std::io::Error| {

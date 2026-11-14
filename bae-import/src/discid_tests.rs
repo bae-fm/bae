@@ -6,8 +6,10 @@ use std::path::Path;
 /// The disc ID one log file hashes to, decoded the way the extraction pass
 /// decodes it.
 fn discid_from_log_file(path: &Path) -> Result<String, std::io::Error> {
-    discid_from_log_text(&bae_util::text_encoding::read_text_file(path)?.text)?
-        .ok_or_else(|| std::io::Error::other("the log holds no table of contents"))
+    discid_from_log_text(
+        &bae_util::text_encoding::read_text_file(path, bae_util::test_files::place())?.text,
+    )?
+    .ok_or_else(|| std::io::Error::other("the log holds no table of contents"))
 }
 
 fn assert_invalid_data(result: Result<String, std::io::Error>) {
@@ -49,9 +51,12 @@ fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
 
 #[test]
 fn test_extract_leadout_from_log() {
-    let log_content = bae_util::text_encoding::read_text_file(&fixture("logs/test_album.log"))
-        .expect("LOG fixture should be readable")
-        .text;
+    let log_content = bae_util::text_encoding::read_text_file(
+        &fixture("logs/test_album.log"),
+        bae_util::test_files::place(),
+    )
+    .expect("LOG fixture should be readable")
+    .text;
     let toc_sectors = extract_log_toc_sectors(&log_content)
         .expect("LOG TOC should parse")
         .expect("LOG should hold a TOC");

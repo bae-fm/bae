@@ -14,7 +14,14 @@
 //! task must survive the switch).
 
 use super::*;
+use bae_store::FileLeases;
 use bae_track_audio::data_source::AudioDataReader;
+use coven::FileLease;
+
+/// The places of the open-files budget playback holds while anything plays: a
+/// track reads at most two files (its pregap's and its own), and playback
+/// holds the playing track and the preloaded next one.
+const PLAYBACK_PLACES: usize = 4;
 
 pub(super) struct FileBuffers {
     /// The runtime the service runs on, which every fill runs on.
@@ -32,6 +39,14 @@ pub(super) struct FileBuffers {
     /// The current track's bytes and the buffer holding them; `None` while
     /// no track is current, or the current one plays on another device.
     playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
+    /// The installation's places for open files, which playback takes its
+    /// lease of from.
+    files: FileLeases,
+    /// The places every fill opens its file in while anything plays: those of
+    /// the playing track and the preloaded next one, each reading at most two
+    /// files. Taken when a track is first prepared, and given up with the
+    /// last buffer by [`Self::cancel_all`].
+    lease: Option<FileLease>,
     /// Every fill started so far, each holding its file open until it ends,
     /// for a test to wait on.
     #[cfg(any(test, feature = "test-utils"))]
@@ -45,6 +60,7 @@ impl FileBuffers {
         runtime: tokio::runtime::Handle,
         arbiter: Arc<FetchArbiter>,
         playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
+        files: FileLeases,
     ) -> Self {
         Self {
             runtime,
@@ -52,6 +68,8 @@ impl FileBuffers {
             retired: Vec::new(),
             arbiter,
             playing,
+            files,
+            lease: None,
             #[cfg(any(test, feature = "test-utils"))]
             fills: Vec::new(),
         }
@@ -126,6 +144,23 @@ impl FileBuffers {
             buffer.cancel();
         }
         self.cached.clear();
+        self.lease = None;
+    }
+
+    /// The places the fills of the playing and preloaded tracks open their
+    /// files in, taken from the budget in one wait the first time a track is
+    /// prepared after nothing was playing. Waits only while other work holds
+    /// the budget, and holds no place of it while it waits.
+    async fn lease(&mut self) -> Result<FileLease, PlaybackError> {
+        if let Some(lease) = &self.lease {
+            return Ok(lease.clone());
+        }
+        let lease = self
+            .files
+            .lease(PLAYBACK_PLACES)
+            .await
+            .map_err(|error| PlaybackError::internal(error.to_string()))?;
+        Ok(self.lease.insert(lease).clone())
     }
 }
 
@@ -167,6 +202,14 @@ pub(super) async fn prepare_track_for_playback(
     command_tx: &OwnCommands,
 ) -> Result<(PlaybackPreparedTrack, StreamDecodeParams), PlaybackError> {
     let resolved = ResolvedTrackAudio::resolve(records, track_id).await?;
+    // The incoming track's files are known: release the outgoing tracks'
+    // buffers now, before this track's fills open files, keeping any file the
+    // new track also plays. Playback then holds the files of the playing
+    // track and of one preloaded track, and no more.
+    let incoming_files: HashSet<&str> =
+        resolved.segments.iter().map(|segment| segment.file_id.as_str()).collect();
+    file_buffers.release_retired(&incoming_files);
+    let lease = file_buffers.lease().await?;
     // Read the replay-gain mode once, here, and pass it down — rather than a
     // preferences read buried inside `finalize_playback_track`. Read before
     // any buffer is made, so nothing fails between caching a buffer and
@@ -213,6 +256,7 @@ pub(super) async fn prepare_track_for_playback(
             decode.first_read_byte(buffer.id()),
             is_ape,
             diagnostics.clone(),
+            lease.clone(),
         ));
         let fill = reader.start_reading(
             buffer.clone(),

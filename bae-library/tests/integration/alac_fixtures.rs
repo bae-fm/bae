@@ -68,7 +68,8 @@ async fn import_single_m4a_fixture(
 #[test]
 fn probe_alac_returns_content_type_alac() {
     let path = fixture_dir().join("silence-alac.m4a");
-    let probe = probe_audio_from_path(&path).expect("probe ALAC fixture");
+    let probe =
+        probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe ALAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Alac);
     assert_eq!(probe.sample_rate.get(), 44100);
@@ -82,7 +83,8 @@ fn probe_alac_returns_content_type_alac() {
 #[test]
 fn probe_aac_returns_content_type_aac() {
     let path = fixture_dir().join("silence-aac.m4a");
-    let probe = probe_audio_from_path(&path).expect("probe AAC fixture");
+    let probe =
+        probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe AAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Aac);
     assert_eq!(probe.sample_rate.get(), 44100);
@@ -301,7 +303,10 @@ fn cue_alac_disc_id_is_stable() {
     )
     .expect("scan album dir");
     let track_count = categorized.track_count();
-    let disc_id = read_rip_artifacts(&categorized).unwrap().disc_id.computed();
+    let disc_id = read_rip_artifacts(&categorized, &bae_util::test_files::lease())
+        .unwrap()
+        .disc_id
+        .computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
     let [computed]: [bae_identify::signals::ComputedDiscId; 1] =
@@ -330,7 +335,8 @@ const EXPECTED_CUE_ALAC_DISC_ID: &str = "RGsIqQtOzlx_LdxgsE0wIvFi8h4-";
 // misreads the fixture, both tests would drift together without this.
 #[test]
 fn cue_alac_cue_sheet_has_three_tracks() {
-    let sheet = parse_cue_sheet(&fixture_dir().join("cue-alac.cue")).expect("parse cue");
+    let sheet = parse_cue_sheet(&fixture_dir().join("cue-alac.cue"), bae_util::test_files::place())
+        .expect("parse cue");
     assert_eq!(sheet.tracks.len(), 3);
     // INDEX 01 is in CUE frames (1/75s). The three tracks start at 0, 3s, 6s.
     assert_eq!(sheet.tracks[0].start_cue_frames, 0);

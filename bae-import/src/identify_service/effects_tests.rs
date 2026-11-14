@@ -199,7 +199,7 @@ async fn a_combined_folder_settles_on_the_release_that_holds_all_its_tracks() {
                 1 | 2 => FLAC_FIXTURES[at - 1].to_string(),
                 _ => format!("{at:02} Test Track {at}.flac"),
             };
-            bae_audio::probe_audio_from_path(&dir.join(name))
+            bae_audio::probe_audio_from_path(&dir.join(name), bae_util::test_files::place())
                 .expect("fixture FLAC probes")
                 .duration
                 .as_millis() as u64

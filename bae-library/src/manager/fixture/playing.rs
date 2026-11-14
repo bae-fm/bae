@@ -38,7 +38,10 @@ impl LibraryManager {
                 playing.cue_sheet.display()
             ))
         };
-        let sheet = bae_import::cue_sheet::parse_cue_sheet(&playing.cue_sheet)
+        // One place for the fixture's reads, one after the other; it goes
+        // back before the audio formats take theirs.
+        let lease = self.records.lease_one().await;
+        let sheet = bae_import::cue_sheet::parse_cue_sheet(&playing.cue_sheet, lease.place().await)
             .map_err(|error| invalid(error.to_string()))?;
         let folder =
             playing.cue_sheet.parent().ok_or_else(|| invalid("names no folder".to_string()))?;
@@ -51,9 +54,10 @@ impl LibraryManager {
             }
             let path = folder.join(&track.file_reference);
             let unplayable = || invalid(format!("{} is no audio bae plays", path.display()));
-            let probe = bae_audio::probe_audio_from_path(&path).map_err(|error| {
-                invalid(format!("{} is no audio bae plays: {error}", path.display()))
-            })?;
+            let probe =
+                bae_audio::probe_audio_from_path(&path, lease.place().await).map_err(|error| {
+                    invalid(format!("{} is no audio bae plays: {error}", path.display()))
+                })?;
             scanned_audio
                 .push(bae_import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);
             audio_files.push(CueAnalyzedAudioFile {
@@ -129,15 +133,17 @@ impl LibraryManager {
                 container: scanned.container,
                 duration_ms: scanned.duration_ms,
             });
-            let attachment = coven::prepare_user_file(&audio.path, |_| {})
+            let attachment = coven::prepare_user_file(&audio.path, &lease, |_| {})
                 .await
                 .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
             file_ids.insert(audio.path.clone(), file.id.clone());
             files.push((file, attachment));
         }
 
+        drop(lease);
         let built = {
             let clock = self.clock.clone();
+            let budget = self.store.file_leases();
             let ids = self.ids.clone();
             let tracks = tracks_to_files.clone();
             self.diagnostics
@@ -147,6 +153,7 @@ impl LibraryManager {
                         &file_ids,
                         clock.as_ref(),
                         ids.as_ref(),
+                        &budget,
                     )
                 })
                 .await

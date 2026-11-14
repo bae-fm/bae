@@ -158,7 +158,10 @@ fn a_tag_s_isrc_is_read() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, file).unwrap();
 
-    assert_eq!(LoftyFileTagReader.read(&path).unwrap().delivery.isrcs, ["IT-00G-91-70501"]);
+    assert_eq!(
+        LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().delivery.isrcs,
+        ["IT-00G-91-70501"]
+    );
 }
 
 #[test]
@@ -167,12 +170,23 @@ fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() 
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG)).unwrap();
 
-    let (bytes, content_type) =
-        LoftyFileTagReader.read(&path).unwrap().embedded_cover.expect("the tag carries a picture");
+    let (bytes, content_type) = LoftyFileTagReader
+        .read(&path, bae_util::test_files::place())
+        .unwrap()
+        .embedded_cover
+        .expect("the tag carries a picture");
 
     assert_eq!(content_type, ContentType::Jpeg);
     assert_eq!(bytes, PLACEHOLDER_JPEG);
-    assert_eq!(LoftyFileTagReader.read(&path).unwrap().tags.title.as_deref(), Some("Track Alpha"));
+    assert_eq!(
+        LoftyFileTagReader
+            .read(&path, bae_util::test_files::place())
+            .unwrap()
+            .tags
+            .title
+            .as_deref(),
+        Some("Track Alpha")
+    );
 }
 
 #[test]
@@ -181,7 +195,7 @@ fn lofty_reader_decodes_legacy_cyrillic_id3_text() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap().tags;
+    let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
     assert_eq!(read.title.as_deref(), Some("Название дорожки"));
     assert_eq!(read.track_artists, ["Имя исполнителя"]);
@@ -196,7 +210,7 @@ fn lofty_reader_keeps_each_value_of_an_id3v24_multivalue_frame() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_multivalue_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap().tags;
+    let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
     assert_eq!(read.track_artists, ["Исполнитель Один", "Исполнитель Два"]);
 }
@@ -207,7 +221,7 @@ fn lofty_reader_decodes_legacy_cyrillic_id3v1_text() {
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, legacy_cyrillic_id3v1_mp3()).unwrap();
 
-    let read = LoftyFileTagReader.read(&path).unwrap().tags;
+    let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
     assert_eq!(read.title.as_deref(), Some("Название дорожки"));
     assert_eq!(read.track_artists, ["Имя исполнителя"]);
@@ -254,25 +268,34 @@ fn m4a_with(dir: &Path, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
 fn a_tag_s_label_and_copyright_are_read() {
     let dir = tempfile::TempDir::new().unwrap();
     let read = LoftyFileTagReader
-        .read(&flac_with(
-            dir.path(),
-            &[
-                ("LABEL", "Imprint Name"),
-                ("COPYRIGHT", "(C) 1999 Imprint Name (P) 1999 Imprint Name"),
-            ],
-        ))
+        .read(
+            &flac_with(
+                dir.path(),
+                &[
+                    ("LABEL", "Imprint Name"),
+                    ("COPYRIGHT", "(C) 1999 Imprint Name (P) 1999 Imprint Name"),
+                ],
+            ),
+            bae_util::test_files::place(),
+        )
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Imprint Name"]);
     assert_eq!(read.copyrights, ["(C) 1999 Imprint Name (P) 1999 Imprint Name"]);
     let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]))
+        .read(
+            &flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]),
+            bae_util::test_files::place(),
+        )
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Other Imprint"]);
     assert_eq!(read.store, None);
     let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")]))
+        .read(
+            &flac_with(dir.path(), &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")]),
+            bae_util::test_files::place(),
+        )
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Imprint Name", "Second Imprint"]);
@@ -284,11 +307,17 @@ fn a_tag_s_label_and_copyright_are_read() {
 fn bandcamp_s_comment_marks_a_bandcamp_download() {
     let dir = tempfile::TempDir::new().unwrap();
     let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("COMMENT", "Visit https://artistname.bandcamp.com")]))
+        .read(
+            &flac_with(dir.path(), &[("COMMENT", "Visit https://artistname.bandcamp.com")]),
+            bae_util::test_files::place(),
+        )
         .unwrap();
     assert_eq!(read.delivery.store, Some(StoreMarker::Bandcamp));
     let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("COMMENT", "Ripped with care")]))
+        .read(
+            &flac_with(dir.path(), &[("COMMENT", "Ripped with care")]),
+            bae_util::test_files::place(),
+        )
         .unwrap();
     assert_eq!(read.delivery.store, None);
 }
@@ -299,11 +328,14 @@ fn bandcamp_s_comment_marks_a_bandcamp_download() {
 fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
     let dir = tempfile::TempDir::new().unwrap();
     for atom in [*b"purd", *b"apID", *b"ownr"] {
-        let read =
-            LoftyFileTagReader.read(&m4a_with(dir.path(), &[(atom, "placeholder")])).unwrap();
+        let read = LoftyFileTagReader
+            .read(&m4a_with(dir.path(), &[(atom, "placeholder")]), bae_util::test_files::place())
+            .unwrap();
         assert_eq!(read.delivery.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
     }
-    let read = LoftyFileTagReader.read(&m4a_with(dir.path(), &[(*b"cnID", "1")])).unwrap();
+    let read = LoftyFileTagReader
+        .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]), bae_util::test_files::place())
+        .unwrap();
     assert_eq!(read.delivery.store, None);
 }
 
@@ -313,16 +345,19 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
 fn every_artist_a_file_names_is_read() {
     let dir = tempfile::TempDir::new().unwrap();
     let read = LoftyFileTagReader
-        .read(&flac_with(
-            dir.path(),
-            &[
-                ("ARTIST", "Artist Alpha"),
-                ("ARTIST", "Artist Beta"),
-                ("ARTIST", "Artist Alpha"),
-                ("ALBUMARTIST", "Artist Alpha"),
-                ("ALBUMARTIST", " "),
-            ],
-        ))
+        .read(
+            &flac_with(
+                dir.path(),
+                &[
+                    ("ARTIST", "Artist Alpha"),
+                    ("ARTIST", "Artist Beta"),
+                    ("ARTIST", "Artist Alpha"),
+                    ("ALBUMARTIST", "Artist Alpha"),
+                    ("ALBUMARTIST", " "),
+                ],
+            ),
+            bae_util::test_files::place(),
+        )
         .unwrap()
         .tags;
     assert_eq!(read.track_artists, ["Artist Alpha", "Artist Beta"]);
@@ -336,20 +371,25 @@ fn every_artist_a_file_names_is_read() {
 fn every_year_a_file_s_dates_name_is_read() {
     let dir = tempfile::TempDir::new().unwrap();
     let read = LoftyFileTagReader
-        .read(&flac_with(
-            dir.path(),
-            &[
-                ("DATE", "2005-03-01"),
-                ("ORIGINALDATE", "1971"),
-                ("RELEASEDATE", "2005"),
-                ("YEAR", "notayear"),
-            ],
-        ))
+        .read(
+            &flac_with(
+                dir.path(),
+                &[
+                    ("DATE", "2005-03-01"),
+                    ("ORIGINALDATE", "1971"),
+                    ("RELEASEDATE", "2005"),
+                    ("YEAR", "notayear"),
+                ],
+            ),
+            bae_util::test_files::place(),
+        )
         .unwrap()
         .tags;
     assert_eq!(read.years, [2005, 1971]);
-    let read =
-        LoftyFileTagReader.read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")])).unwrap().tags;
+    let read = LoftyFileTagReader
+        .read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")]), bae_util::test_files::place())
+        .unwrap()
+        .tags;
     assert!(read.years.is_empty());
 }
 
@@ -371,7 +411,7 @@ fn the_compilation_flag_is_read() {
     let dir = tempfile::TempDir::new().unwrap();
     let flagged = |value: &str| {
         LoftyFileTagReader
-            .read(&flac_with(dir.path(), &[("COMPILATION", value)]))
+            .read(&flac_with(dir.path(), &[("COMPILATION", value)]), bae_util::test_files::place())
             .unwrap()
             .tags
             .compilation
@@ -413,7 +453,9 @@ fn embedded_cover(
     path: &std::path::Path,
 ) -> Result<Option<(Vec<u8>, ContentType)>, crate::file_tag_reader::TagReadFailure> {
     use crate::file_tag_reader::FileTagReader;
-    crate::file_tag_reader::LoftyFileTagReader.read(path).map(|read| read.embedded_cover)
+    crate::file_tag_reader::LoftyFileTagReader
+        .read(path, bae_util::test_files::place())
+        .map(|read| read.embedded_cover)
 }
 
 /// An embedded front cover is read and mapped to its `ContentType`.
@@ -574,8 +616,8 @@ fn a_read_tells_tags_that_do_not_parse_from_a_file_that_cannot_be_read() {
     fs::write(&garbage, vec![7u8; 4096]).unwrap();
     let missing = dir.path().join("02.flac");
 
-    let garbage_read = LoftyFileTagReader.read(&garbage).map(|_| ());
-    let missing_read = LoftyFileTagReader.read(&missing).map(|_| ());
+    let garbage_read = LoftyFileTagReader.read(&garbage, bae_util::test_files::place()).map(|_| ());
+    let missing_read = LoftyFileTagReader.read(&missing, bae_util::test_files::place()).map(|_| ());
 
     assert!(matches!(garbage_read, Err(TagReadFailure::Unparseable(_))), "{garbage_read:?}");
     assert!(

@@ -576,7 +576,7 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
     let audio = bae_records::ResolvedTrackAudio::resolve(library.records(), &imported.track_ids[1])
         .await
         .expect("resolve track 2");
-    let decode = library.manager().open_track_decode(&audio);
+    let decode = library.manager().open_track_decode(&audio).await.unwrap();
 
     let decoded = bae_util::test_blocking::on_blocking_pool(move || {
         let mut sink = CollectedDecode::default();

@@ -11,6 +11,7 @@ mod local_sparse_buffer;
 #[cfg(target_os = "linux")]
 mod non_utf8_names;
 mod now_playing_edits;
+mod open_files;
 mod queue_and_pregap;
 mod remote_sparse_buffer;
 mod row_failure;

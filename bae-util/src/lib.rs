@@ -16,8 +16,6 @@ pub mod name_key;
 pub mod natural_order;
 #[cfg(unix)]
 pub mod open_file_limit;
-#[cfg(any(test, feature = "test-utils"))]
-pub mod open_files_peak;
 pub mod path_text;
 pub mod retry;
 pub mod sample_time;
@@ -33,6 +31,8 @@ pub mod test_blocking;
 pub mod test_channels;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_cover_art;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_files;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_host;
 #[cfg(any(test, feature = "test-utils"))]

@@ -6,14 +6,15 @@
 
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
+use coven::LeasePlace;
 use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
 
 /// Whether an image file's magic bytes match its extension. An extension with
 /// no known magic is assumed valid — an unrecognized format is not evidence of
-/// corruption, so it must not block the import.
-pub(super) fn is_valid_image(path: &Path) -> io::Result<bool> {
+/// corruption, so it must not block the import. The file opens in `place`.
+pub(super) fn is_valid_image(path: &Path, place: LeasePlace) -> io::Result<bool> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::ImageCheck, path);
     // Ahead of the dispatch: an empty file is corrupt whatever its extension,
@@ -29,7 +30,8 @@ pub(super) fn is_valid_image(path: &Path) -> io::Result<bool> {
         return Ok(true);
     };
     let mut header = Vec::with_capacity(ContentType::IMAGE_HEADER_LEN);
-    fs::File::open(path)?.take(ContentType::IMAGE_HEADER_LEN as u64).read_to_end(&mut header)?;
+    let file = place.open(path)?;
+    (&*file).take(ContentType::IMAGE_HEADER_LEN as u64).read_to_end(&mut header)?;
     Ok(format.opens_with(&header).unwrap_or(true))
 }
 

@@ -225,7 +225,13 @@ impl Library {
                     file_id,
                     release.created_at,
                 ),
-                original: coven::prepare_user_file(original.path(), |_| ()).await.unwrap(),
+                original: coven::prepare_user_file(
+                    original.path(),
+                    &bae_util::test_files::lease(),
+                    |_| (),
+                )
+                .await
+                .unwrap(),
                 place: coven::Place::Cloud,
             };
             commit_import(&db, &candidate, Some(&album), &release, &[], &records, vec![file]).await;

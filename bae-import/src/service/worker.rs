@@ -86,6 +86,7 @@ impl ImportService {
         let tables = services.tables.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
+        let file_leases = services.store.file_leases();
         let import_cancels = services.import_cancels.clone();
         let catalogs = services.catalogs.clone();
         let remote_images = services.remote_images.clone();
@@ -122,6 +123,7 @@ impl ImportService {
                     remote_images,
                     clock,
                     ids,
+                    file_leases,
                     import_cancels,
                     diagnostics,
                 };

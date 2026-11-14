@@ -139,6 +139,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             ),
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),
+            file_leases: db.file_leases(),
             import_cancels: crate::import_cancel::ImportCancels::new(),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         },

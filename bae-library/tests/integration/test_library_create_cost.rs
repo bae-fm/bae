@@ -46,6 +46,7 @@ async fn creating_a_library_costs() {
             bae_store::EnteredName::parse("Creator").unwrap(),
             "Test Device",
             clock.clone(),
+            coven::FileBudget::for_test(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await

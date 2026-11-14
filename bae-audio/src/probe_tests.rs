@@ -28,7 +28,8 @@ fn seek_landing_bytes_track_sample_positions() {
 
     // Probe at second boundaries (0, 1s, 2s, 3s).
     let probes: Vec<u64> = (0..seconds as u64).map(|s| s * sample_rate as u64).collect();
-    let offsets = seek_landing_bytes(path, &probes).expect("seek_landing_bytes");
+    let offsets = seek_landing_bytes(path, &probes, &bae_util::test_files::lease())
+        .expect("seek_landing_bytes");
     assert_eq!(offsets.len(), probes.len());
 
     // Non-decreasing and within the file.
@@ -63,14 +64,14 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/cue_flac/Test Album.flac"
     ));
-    let probe = probe_audio_from_path(path).expect("probe fixture");
+    let probe = probe_audio_from_path(path, bae_util::test_files::place()).expect("probe fixture");
     let sr = u64::from(probe.sample_rate.get());
     let total_samples = (probe.duration.as_secs_f64() * sr as f64) as u64;
     let file_size = std::fs::metadata(path).unwrap().len();
 
     // Track starts from the CUE: 0s (silence), 10s (white noise), 20s (brown).
     let starts = [0u64, 10 * sr, 20 * sr];
-    let exact = seek_landing_bytes(path, &starts).expect("offsets");
+    let exact = seek_landing_bytes(path, &starts, &bae_util::test_files::lease()).expect("offsets");
 
     // Time-proportional estimate -- what we'd get without seeking.
     let proportional: Vec<u64> = starts
@@ -158,13 +159,13 @@ fn probe_reads_the_file_through_its_handle() {
     let dir = tempfile::tempdir().unwrap();
     let path = silent_wav_in(dir.path(), std::ffi::OsStr::new("Track.wav"));
 
-    let probe = probe_audio_from_path(&path).expect("probe");
+    let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
 
     assert_eq!(probe.content_type, ContentType::Pcm);
     assert_eq!((probe.sample_rate.get(), probe.channels.get()), (44_100, 2));
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
     assert!(matches!(
-        probe_audio_from_path(&dir.path().join("Absent.wav")),
+        probe_audio_from_path(&dir.path().join("Absent.wav"), bae_util::test_files::place()),
         Err(ProbeError::Io(_))
     ));
 }
@@ -177,7 +178,10 @@ fn a_failed_read_is_an_io_error_not_a_file_without_audio() {
     init();
     let dir = tempfile::tempdir().unwrap();
 
-    assert!(matches!(probe_audio_from_path(dir.path()), Err(ProbeError::Io(_))));
+    assert!(matches!(
+        probe_audio_from_path(dir.path(), bae_util::test_files::place()),
+        Err(ProbeError::Io(_))
+    ));
 }
 
 /// Bytes that read fine but are no audio are `NotAudio`.
@@ -188,7 +192,10 @@ fn bytes_that_are_no_audio_are_not_audio() {
     let path = dir.path().join("Track.flac");
     std::fs::write(&path, vec![0u8; 4096]).unwrap();
 
-    assert!(matches!(probe_audio_from_path(&path), Err(ProbeError::NotAudio(_))));
+    assert!(matches!(
+        probe_audio_from_path(&path, bae_util::test_files::place()),
+        Err(ProbeError::NotAudio(_))
+    ));
 }
 
 /// A file whose name isn't UTF-8 probes like any other: FFmpeg is handed the
@@ -202,7 +209,7 @@ fn probe_reads_a_file_whose_name_is_not_utf8() {
     let dir = tempfile::tempdir().unwrap();
     let path = silent_wav_in(dir.path(), std::ffi::OsStr::from_bytes(b"Caf\xE9.wav"));
 
-    let probe = probe_audio_from_path(&path).expect("probe");
+    let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
 
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
 }
@@ -224,8 +231,9 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
         ("placeholder-dsd.dff", ContentType::Dsd, AudioContainer::Dsdiff),
     ] {
         let path = fixture(name);
-        let probe = probe_audio_from_path(std::path::Path::new(&path))
-            .unwrap_or_else(|e| panic!("probe {name}: {e}"));
+        let probe =
+            probe_audio_from_path(std::path::Path::new(&path), bae_util::test_files::place())
+                .unwrap_or_else(|e| panic!("probe {name}: {e}"));
         assert_eq!(probe.content_type, expected, "{name}");
         assert_eq!(probe.container, container, "{name}");
     }
@@ -241,7 +249,7 @@ fn probe_reads_the_container_from_the_bytes() {
     let misnamed = dir.path().join("track.wav");
     std::fs::copy(flac.path(), &misnamed).unwrap();
 
-    let probe = probe_audio_from_path(&misnamed).expect("probe");
+    let probe = probe_audio_from_path(&misnamed, bae_util::test_files::place()).expect("probe");
 
     assert_eq!(probe.content_type, ContentType::Flac);
     assert_eq!(probe.container, AudioContainer::Flac);
@@ -307,7 +315,8 @@ fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
     let path = file.path();
     let target = frames as u64 / 2 + 123;
 
-    let landing = seek_landing_bytes(path, &[target]).expect("landing")[0];
+    let landing =
+        seek_landing_bytes(path, &[target], &bae_util::test_files::lease()).expect("landing")[0];
 
     let read = crate::test_reads::landing_search(file.path());
     assert!(read > 0, "the search's reads are counted");
@@ -343,7 +352,8 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     let third_to_last = last_frame_start - 2 * block;
     let targets = [total - 1, third_to_last + 100];
 
-    let landings = seek_landing_bytes(path, &targets).expect("landings");
+    let landings =
+        seek_landing_bytes(path, &targets, &bae_util::test_files::lease()).expect("landings");
 
     let ground =
         decode_audio(filled_sparse_buffer(&flac), None, None).expect("ground-truth decode");
@@ -375,4 +385,42 @@ fn a_count_ffmpeg_states_as_zero_or_less_states_none() {
     assert_eq!(stated_count(i32::MIN), None);
     assert_eq!(stated_count(0), None);
     assert_eq!(stated_count(44_100).map(std::num::NonZeroU32::get), Some(44_100));
+}
+
+/// A probe opens its file in the place it is given and gives the place back
+/// when it returns, the error path included.
+#[test]
+fn a_probe_gives_its_place_back_when_it_returns() {
+    let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
+    let budget = coven::FileBudget::for_test();
+    let watch = budget.watch();
+    let lease = budget.lease_blocking(1).unwrap();
+
+    probe_audio_from_path(&path, lease.place_blocking()).expect("probe fixture");
+    assert_eq!(watch.holding(), 0);
+    assert_eq!(watch.most_holding(), 1);
+
+    let absent = path.with_file_name("Absent.flac");
+    assert!(matches!(
+        probe_audio_from_path(&absent, lease.place_blocking()),
+        Err(ProbeError::Io(_))
+    ));
+    assert_eq!(watch.holding(), 0, "a file that would not open gives its place back");
+}
+
+/// A landing search opens a FLAC twice at once, so it needs two places; a
+/// lease of one place fails it before it waits for a place that never comes.
+#[test]
+fn a_landing_search_needs_two_places() {
+    let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
+    let budget = coven::FileBudget::for_test();
+    let one = budget.lease_blocking(1).unwrap();
+    let two = budget.lease_blocking(SEEK_LANDING_PLACES).unwrap();
+
+    let refused = seek_landing_bytes(&path, &[0], &one).unwrap_err();
+    assert!(refused.contains("needs 2 places"), "{refused}");
+    assert_eq!(budget.watch().most_holding(), 0, "the refused search opened nothing");
+
+    assert_eq!(seek_landing_bytes(&path, &[0], &two).expect("two places search it").len(), 1);
+    assert_eq!(budget.watch().holding(), 0);
 }

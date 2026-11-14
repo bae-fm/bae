@@ -88,7 +88,11 @@ fn test_categorized_yields_discid_and_track_count() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let disc_id = crate::rip_reading::read_rip_artifacts(&categorized).unwrap().disc_id.computed();
+    let disc_id =
+        crate::rip_reading::read_rip_artifacts(&categorized, &bae_util::test_files::lease())
+            .unwrap()
+            .disc_id
+            .computed();
     let track_count = categorized.track_count();
 
     assert_eq!(disc_id.len(), 1, "LOG fixture should produce a Disc ID");
@@ -120,7 +124,7 @@ fn non_utf8_cue_is_decoded_not_dropped() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files)
+    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
         .expect("scanned fixture audio has complete timing");
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
@@ -151,7 +155,7 @@ fn a_folder_whose_name_is_not_utf8_gives_its_name_and_bracketed_catalog() {
     .expect("candidate scan");
     let folder = tmp.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9 [LABELA071]"));
 
-    let pass = gather_non_ocr_sources(&[folder], &files)
+    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
         .expect("scanned fixture audio has complete timing");
 
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
@@ -193,7 +197,8 @@ fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times");
+    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
+        .expect("the fixture audio times");
 
     let tagged: Vec<&str> = pass
         .lines
@@ -223,7 +228,9 @@ fn origin_of(comments: &[(&str, &str)], extra: &[(&str, &[u8])]) -> bae_catalogs
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times").origin
+    gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
+        .expect("the fixture audio times")
+        .origin
 }
 
 const DELIVERED: &[(&str, &str)] = &[
@@ -318,7 +325,8 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times");
+    let pass = gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
+        .expect("the fixture audio times");
 
     assert_eq!(pass.track_titles, vec!["Song One", "Song Two"]);
 }
@@ -342,7 +350,9 @@ fn unnumbered_files_give_no_titles() {
             &crate::folder_scanner::StoredCandidateEdits::none(),
         )
         .expect("candidate scan");
-        gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times").track_titles
+        gather_non_ocr_sources(&[folder], &files, &bae_util::test_files::lease())
+            .expect("the fixture audio times")
+            .track_titles
     };
     assert!(titles_of(&[("Song A.flac", &[]), ("Song B.flac", &[])]).is_empty());
     assert!(titles_of(&[
@@ -388,10 +398,11 @@ fn a_text_file_that_cannot_be_read_fails_the_pass() {
     )
     .unwrap();
     let folders = [dir.to_path_buf()];
-    gather_non_ocr_sources(&folders, &categorized).expect("the notes read while they are there");
+    gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
+        .expect("the notes read while they are there");
 
     fs::remove_file(dir.join("notes.txt")).unwrap();
-    let error = gather_non_ocr_sources(&folders, &categorized)
+    let error = gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
         .err()
         .expect("a text file that left the folder fails the pass");
     assert!(

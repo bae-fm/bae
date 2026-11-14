@@ -113,9 +113,14 @@ impl AppDir {
     /// the OS keychain under bae's service. Built once at process start, so
     /// a keychain coven can't reach fails the start, and held while the
     /// process runs. coven reports its bugs in work nobody waits for to
-    /// `bugs`, the app's crash reporter.
-    pub fn coven(&self, bugs: coven::task::BugSinkRef) -> Result<coven::Coven, coven::KeyError> {
-        coven::Coven::new(self.path.clone(), KEYRING_SERVICE, bugs)
+    /// `bugs`, the app's crash reporter, and opens the person's files within
+    /// `files`, the installation's budget of open files.
+    pub fn coven(
+        &self,
+        bugs: coven::task::BugSinkRef,
+        files: coven::FileBudget,
+    ) -> Result<coven::Coven, coven::KeyError> {
+        coven::Coven::new(self.path.clone(), KEYRING_SERVICE, bugs, files)
     }
 
     /// The app directory coven keeps this device's stores under, which a

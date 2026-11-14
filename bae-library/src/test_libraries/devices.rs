@@ -144,7 +144,7 @@ impl DeviceLibrary {
     ) -> Option<TestDevice> {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
-        let installation = coven::Coven::in_memory(app.coven_app_dir());
+        let installation = self.sources.installation(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
         let code = crate::sync::restore_code::entered(code);
         let handle = stores::pair_store(
@@ -189,7 +189,7 @@ impl DeviceLibrary {
         );
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
-        let installation = coven::Coven::in_memory(app.coven_app_dir());
+        let installation = sources.installation(app.coven_app_dir());
         let handle =
             stores::create_first_store(crate::SCHEMA, &installation, &sources, storage.clone())
                 .await;
@@ -208,7 +208,7 @@ impl DeviceLibrary {
     pub async fn restore(&self, code: &str, name: &str) -> TestDevice {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
-        let installation = coven::Coven::in_memory(app.coven_app_dir());
+        let installation = self.sources.installation(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
         let code = crate::sync::restore_code::entered(code);
         let handle = stores::restore_store(

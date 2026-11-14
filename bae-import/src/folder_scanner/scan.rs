@@ -172,7 +172,12 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
     fn listing(&self, relative: &Path) -> Result<DirectoryListing, FolderScanError> {
         match self.read_ahead.borrow_mut().remove(relative) {
             Some(listing) => Ok(listing),
-            None => self.reader.read(self.scan.root, relative, self.scan.cancellation),
+            None => {
+                // The listing holds the directory open while it reads, so it
+                // holds a place of the budget meanwhile.
+                let _place = self.scan.reads.place()?;
+                self.reader.read(self.scan.root, relative, self.scan.cancellation)
+            }
         }
     }
 
@@ -705,7 +710,10 @@ where
         &OsDirectoryReader,
         root,
         &ScanReadings { stored, decisions, new_grouping_key: &new_key },
-        &FileReads::new(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
+        &FileReads::new(
+            std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            bae_store::FileLeases::for_test_default(),
+        ),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -777,7 +785,10 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader)),
+        &FileReads::new(
+            std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            bae_store::FileLeases::for_test_default(),
+        ),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),

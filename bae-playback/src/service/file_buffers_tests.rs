@@ -11,6 +11,7 @@ async fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
         tokio::runtime::Handle::current(),
         arbiter.clone(),
         tokio::sync::watch::channel(None).0,
+        bae_store::FileLeases::for_test_default(),
     );
     let pregap = create_sparse_buffer(1_024);
     let main = create_sparse_buffer(1_024);

@@ -495,7 +495,14 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
                 "the original plays again"
             );
             assert_eq!(
-                manager.library.manager().records.read_release_file(&file.id).await.unwrap().len(),
+                manager
+                    .library
+                    .manager()
+                    .records
+                    .read_release_file(&file.id, &bae_util::test_files::lease())
+                    .await
+                    .unwrap()
+                    .len(),
                 std::fs::metadata(
                     manager
                         .library

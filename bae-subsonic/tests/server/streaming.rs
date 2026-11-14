@@ -456,12 +456,22 @@ async fn lossy_track_reports_bit_depth_zero() {
 
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
+    seed_lossy_release_within(coven::FileBudget::for_test()).await
+}
+
+/// [`seed_lossy_release`] over a library that opens the person's files within
+/// `files`, a budget the test sizes and watches.
+async fn seed_lossy_release_within(
+    files: coven::FileBudget,
+) -> (AppServices, String, Vec<TempDir>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, db_temp) = bae_library::test_libraries::setup_test_library_with(
-        fakes.providers(),
-        bae_util::http::Http::for_test(),
-    )
-    .await;
+    let (library, _album_dir, db_temp) =
+        bae_library::test_libraries::setup_test_library_with_album_dir_within(
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+            files,
+        )
+        .await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -533,6 +543,7 @@ fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     let reader = Box::new(LocalReader::new(
         file.path().to_str().unwrap(),
         bae_diagnostics::Diagnostics::noop(),
+        bae_util::test_files::lease(),
     ));
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
     bae_audio::decode_audio(buffer, None, None).expect("decode transcoded bytes")
@@ -686,4 +697,40 @@ async fn a_stored_wav_is_served_as_audio_wav() {
     assert_eq!(served.status, StatusCode::OK);
     assert_eq!(served.content_type, "audio/wav");
     assert_eq!(&served.body[0..4], b"RIFF", "the stored WAV's own bytes");
+}
+
+/// A stream request takes its places of the budget when it opens the track's
+/// files: with the only place of a budget of one held, the request waits, and
+/// it is answered once the place goes back, for the original bytes and for a
+/// transcode alike. The places are back once each response has ended.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stream_request_holds_its_places_until_its_response_ends() {
+    let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
+    let watch = budget.watch();
+    let (services, release_id, _temps) = seed_lossy_release_within(budget.clone()).await;
+    let router = bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
+    let song_id = first_song_id(&router, &release_id).await;
+
+    for format in ["raw", "mp3"] {
+        let held = budget.lease(1).await.unwrap();
+        let waited = watch.lease_waits_from_now(1);
+        let query = authed(&format!("id={song_id}&format={format}"));
+        let request = call(&router, "stream", &query);
+        tokio::pin!(request);
+        tokio::select! {
+            _ = &mut request => panic!("the {format} request opened a file without a place"),
+            () = waited => {}
+        }
+        drop(held);
+
+        let response = request.await;
+        assert_eq!(response.status, StatusCode::OK, "{format}");
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+            while watch.holding() != 0 || watch.leased() != 0 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("every place is back once the response has ended");
+    }
 }

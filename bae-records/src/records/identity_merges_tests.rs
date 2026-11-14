@@ -163,7 +163,7 @@ async fn a_survivor_with_an_image_keeps_it_and_the_absorbed_artists_goes() {
 
     let kept = artist_image_file(&records, &survivor.id).await.unwrap();
     assert_eq!(kept.id(), own);
-    assert_eq!(db.read_file(&kept).await.unwrap(), b"survivor");
+    assert_eq!(db.read_file(&kept, &db.lease_one().await).await.unwrap(), b"survivor");
     assert!(records
         .find_library_image(&absorbed.id, &LibraryImageType::Artist)
         .await
@@ -197,7 +197,7 @@ async fn a_survivor_without_an_image_takes_the_absorbed_artists_file() {
 
         let taken = artist_image_file(&records, &survivor.id).await.unwrap();
         assert_eq!(taken.id(), file);
-        assert_eq!(db.read_file(&taken).await.unwrap(), b"absorbed");
+        assert_eq!(db.read_file(&taken, &db.lease_one().await).await.unwrap(), b"absorbed");
         assert_eq!(
             db.queued_upload_count_in_namespace_for_test(crate::synced::ARTIST_IMAGES_NAMESPACE)
                 .await

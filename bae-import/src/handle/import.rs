@@ -316,11 +316,19 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::ImportError> {
         let crate::release_candidate::CandidateSource { path: folder, scope, .. } =
             command.source.clone();
-        let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
-            &folder,
-            scope,
-            &crate::folder_scanner::StoredCandidateEdits::none(),
-        )?;
+        let categorized = {
+            let folder = folder.clone();
+            self.services
+                .diagnostics
+                .blocking("collect a test candidate's files", move || {
+                    crate::folder_scanner::collect_release_candidate_files_with_scope(
+                        &folder,
+                        scope,
+                        &crate::folder_scanner::StoredCandidateEdits::none(),
+                    )
+                })
+                .await??
+        };
         let watched_folder = crate::tables::watched_path::canonical_absolute_root(&folder)?;
         let candidate_key = crate::CandidateKey::folder(&watched_folder);
         let candidate_name =
@@ -352,7 +360,10 @@ impl ImportServiceHandle {
             &self.services.diagnostics,
             &item,
             generation,
-            Arc::new(crate::folder_scanner::FileReads::new(self.services.file_tags.clone())),
+            Arc::new(crate::folder_scanner::FileReads::new(
+                self.services.file_tags.clone(),
+                self.services.store.file_leases(),
+            )),
             &std::collections::HashSet::new(),
         )
         .await?;

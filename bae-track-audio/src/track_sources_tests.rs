@@ -1,7 +1,8 @@
 use super::*;
 use crate::data_source::LocalReader;
-use bae_util::open_files_peak::OpenFilesPeak;
+use bae_store::FileLeases;
 use bae_util::test_channels::HANG_GUARD;
+use coven::{FileBudget, FileLease};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -47,38 +48,46 @@ struct Run {
     peak_running: usize,
 }
 
+/// A reader of `path` whose fill opens it in a place of `lease`.
+fn local_stream(path: &Path, lease: &FileLease) -> SourceStream {
+    SourceStream::start(
+        Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop(), lease.clone())),
+        FILE_BYTES as u64,
+        Box::new(|_| {}),
+    )
+}
+
 /// Run `tracks` at `parallelism`, each reading every one of its files through
 /// its own reader and noting the files open together while it holds them. The
 /// first `parallelism` tracks wait for one another before going on, so the run
 /// is seen at its full width however the tasks are scheduled.
 async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
+    run_within(dir, tracks, parallelism, FileBudget::for_test()).await
+}
+
+/// [`run`] within `budget`.
+async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: FileBudget) -> Run {
     let opens = Arc::new(AtomicUsize::new(0));
     let first_batch = Arc::new(tokio::sync::Barrier::new(parallelism));
     let starts = Arc::new(AtomicUsize::new(0));
     let running = Arc::new(AtomicUsize::new(0));
     let peak_running = Arc::new(AtomicUsize::new(0));
-    let peak_seen_by_tracks = Arc::new(AtomicUsize::new(0));
-    let sampler = OpenFilesPeak::start(dir);
+    let watch = budget.watch();
 
     let names = run_tracks_over_sources(
         tracks,
+        &FileLeases::for_test(budget.clone()),
         NonZeroUsize::new(parallelism).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf| {
+        |path: &PathBuf, lease: &FileLease| {
             opens.fetch_add(1, Ordering::Relaxed);
-            SourceStream::start(
-                Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop())),
-                FILE_BYTES as u64,
-                Box::new(|_| {}),
-            )
+            local_stream(path, lease)
         },
         |track, streams| {
             let running = running.clone();
             let peak_running = peak_running.clone();
-            let peak_seen_by_tracks = peak_seen_by_tracks.clone();
             let first_batch = first_batch.clone();
             let starts = starts.clone();
-            let dir = dir.to_path_buf();
             async move {
                 let now = running.fetch_add(1, Ordering::SeqCst) + 1;
                 peak_running.fetch_max(now, Ordering::SeqCst);
@@ -92,10 +101,6 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
                         reader.read(&mut bytes).expect("the stream serves its file");
                         assert_eq!(bytes[0], path.file_name().unwrap().len() as u8);
                     }
-                    peak_seen_by_tracks.fetch_max(
-                        bae_util::open_files_peak::open_together(&dir).len(),
-                        Ordering::SeqCst,
-                    );
                 })
                 .await;
                 running.fetch_sub(1, Ordering::SeqCst);
@@ -103,23 +108,25 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
             }
         },
         |failed| failed.to_string(),
+        |too_wide| too_wide.to_string(),
     )
     .await
     .expect("every track runs");
 
-    // Every file is closed by the time the run returns.
+    // Every file is closed, and every place back, by the time the run returns.
+    assert_eq!(watch.holding(), 0);
+    assert_eq!(watch.leased(), 0);
     coven::assert_no_open_files_under(dir);
-    let peak_open = sampler.finish().max(peak_seen_by_tracks.load(Ordering::SeqCst));
     Run {
         names,
         opens: opens.load(Ordering::Relaxed),
-        peak_open,
+        peak_open: watch.most_holding(),
         peak_running: peak_running.load(Ordering::SeqCst),
     }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn file_per_track_holds_at_most_one_file_open_at_parallelism_one() {
+async fn file_per_track_opens_at_most_one_file_at_parallelism_one() {
     let dir = tempfile::tempdir().unwrap();
     let tracks = file_per_track(dir.path(), 30);
     let expected: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
@@ -133,7 +140,7 @@ async fn file_per_track_holds_at_most_one_file_open_at_parallelism_one() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn file_per_track_holds_at_most_parallelism_files_open() {
+async fn file_per_track_opens_at_most_parallelism_files() {
     let dir = tempfile::tempdir().unwrap();
     let tracks = file_per_track(dir.path(), 30);
     let expected: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
@@ -161,7 +168,7 @@ async fn tracks_of_one_image_run_together_over_one_open_file() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn images_and_files_per_track_together_stay_within_parallelism() {
+async fn images_and_files_per_track_together_stay_within_the_pass_places() {
     let dir = tempfile::tempdir().unwrap();
     let mut tracks = cue_image(dir.path(), "Disc 1.flac", 12);
     tracks.extend(file_per_track(dir.path(), 12));
@@ -181,11 +188,11 @@ async fn images_and_files_per_track_together_stay_within_parallelism() {
     }
 }
 
-/// A track reading two files (an audio pregap in the file before) opens
-/// both, even when that is more files than the parallelism allows at once:
-/// it runs alone.
+/// A track reading two files (an audio pregap in the file before) takes a
+/// place for each, even when that is more files than the parallelism: the
+/// pass's places grow to the most files one track reads.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn a_track_reading_more_files_than_the_parallelism_runs_alone() {
+async fn a_track_reading_more_files_than_the_parallelism_takes_places_for_all_of_them() {
     let dir = tempfile::tempdir().unwrap();
     let mut tracks = file_per_track(dir.path(), 3);
     let pregap_track = Track {
@@ -198,6 +205,63 @@ async fn a_track_reading_more_files_than_the_parallelism_runs_alone() {
 
     assert_eq!(run.names.len(), 4);
     assert_eq!(run.peak_open, 2);
+}
+
+/// A track reading more files than the budget has fails the pass before any
+/// file opens.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_track_reading_more_files_than_the_budget_holds_fails_the_pass_at_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let tracks = file_per_track(dir.path(), 2);
+    let both = Track {
+        name: "both".to_string(),
+        files: vec![tracks[0].files[0].clone(), tracks[1].files[0].clone()],
+    };
+    let budget = FileBudget::new(NonZeroUsize::MIN);
+    let opened = Arc::new(AtomicUsize::new(0));
+
+    let result: Result<Vec<()>, String> = run_tracks_over_sources(
+        vec![both],
+        &FileLeases::for_test(budget.clone()),
+        NonZeroUsize::new(4).unwrap(),
+        |track: &Track| track.files.clone(),
+        |path: &PathBuf, lease: &FileLease| {
+            opened.fetch_add(1, Ordering::Relaxed);
+            local_stream(path, lease)
+        },
+        |_track, _streams| async { Ok(()) },
+        |failed| failed.to_string(),
+        |too_wide| too_wide.to_string(),
+    )
+    .await;
+
+    assert_eq!(result, Err("a lease of 2 places asks for more than the budget's 1".to_string()));
+    assert_eq!(opened.load(Ordering::Relaxed), 0);
+    assert_eq!(budget.watch().leased(), 0);
+}
+
+/// The pass takes every place it holds in one wait at its start: with one
+/// place of a budget of two held, it waits once, and runs when the place
+/// comes back.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_pass_takes_its_places_from_the_budget_at_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let tracks = file_per_track(dir.path(), 4);
+    let budget = FileBudget::new(NonZeroUsize::new(2).unwrap());
+    let held = budget.lease(1).await.unwrap();
+    let waited = budget.watch().lease_waits_from_now(1);
+
+    let pass = run_within(dir.path(), tracks, 2, budget.clone());
+    tokio::pin!(pass);
+    tokio::select! {
+        _ = &mut pass => panic!("the pass ran before its places were free"),
+        () = waited => {}
+    }
+    drop(held);
+
+    let run = pass.await;
+    assert_eq!(run.names.len(), 4);
+    assert_eq!(run.peak_open, 2, "the pass held the budget's two places");
 }
 
 /// The first failure stops admitting tracks, lets the running ones finish,
@@ -215,15 +279,10 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
+        &FileLeases::for_test_default(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf| {
-            SourceStream::start(
-                Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop())),
-                FILE_BYTES as u64,
-                Box::new(|_| {}),
-            )
-        },
+        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
         |track, _streams| {
             let started = started.clone();
             let failed_tx = failed_tx.clone();
@@ -245,6 +304,7 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
             }
         },
         |failed| failed.to_string(),
+        |too_wide| too_wide.to_string(),
     )
     .await;
 
@@ -270,17 +330,13 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
     let (next_read_tx, next_read) = tokio::sync::oneshot::channel();
     let track_ends = Arc::new(Mutex::new(Some((reading_tx, pass_dropped_rx, next_read_tx))));
 
+    let leases = FileLeases::for_test_default();
     let mut pass = Box::pin(run_tracks_over_sources(
         tracks,
+        &leases,
         NonZeroUsize::MIN,
         |track: &Track| track.files.clone(),
-        |path: &PathBuf| {
-            SourceStream::start(
-                Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop())),
-                FILE_BYTES as u64,
-                Box::new(|_| {}),
-            )
-        },
+        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
         |_track, streams| {
             let (reading_tx, pass_dropped_rx, next_read_tx) =
                 track_ends.lock().unwrap().take().expect("one track runs");
@@ -299,6 +355,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
             }
         },
         |failed| failed.to_string(),
+        |too_wide| too_wide.to_string(),
     ));
     tokio::select! {
         _ = &mut pass => panic!("the track is still reading"),
@@ -325,15 +382,10 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
+        &FileLeases::for_test_default(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf| {
-            SourceStream::start(
-                Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop())),
-                FILE_BYTES as u64,
-                Box::new(|_| {}),
-            )
-        },
+        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
         |track, _streams| async move {
             if track.name.starts_with("01") {
                 panic!("{} broke", track.name);
@@ -341,6 +393,7 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
             Ok(())
         },
         |failed| format!("the pass failed: {failed}"),
+        |too_wide| too_wide.to_string(),
     )
     .await;
 

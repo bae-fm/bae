@@ -311,11 +311,12 @@ impl Records {
         &self,
         files: Vec<(NewReleaseFile, std::path::PathBuf, coven::Place)>,
     ) -> Result<Vec<coven::FileId>, IdentityWriteError> {
+        let lease = self.lease_one().await;
         let mut rows = Vec::with_capacity(files.len());
         let mut prepared = Vec::with_capacity(files.len());
         for (file, original, place) in files {
             prepared.push((
-                coven::prepare_user_file(&original, |_| ()).await.map_err(DbError::from)?,
+                coven::prepare_user_file(&original, &lease, |_| ()).await.map_err(DbError::from)?,
                 place,
             ));
             rows.push(file);

@@ -296,7 +296,7 @@ impl Fixture {
         FLAC_FIXTURES
             .iter()
             .map(|name| {
-                bae_audio::probe_audio_from_path(&dir.join(name))
+                bae_audio::probe_audio_from_path(&dir.join(name), bae_util::test_files::place())
                     .expect("fixture FLAC probes")
                     .duration
                     .as_millis() as u64

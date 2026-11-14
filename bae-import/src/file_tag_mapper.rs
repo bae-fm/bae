@@ -91,7 +91,13 @@ pub(crate) fn read_file_tags(
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let snapshot = extract_file_tag_snapshot(&scanned, 0, 0, &LoftyFileTagReader)?;
+    let snapshot = extract_file_tag_snapshot(
+        &scanned,
+        0,
+        0,
+        &LoftyFileTagReader,
+        &bae_util::test_files::lease(),
+    )?;
     file_tag_facts_values(&snapshot.files, folder_name)
 }
 

@@ -17,6 +17,8 @@ bae-desktop-cfg = { workspace = true }
 [dependencies]
 # Content types, which a probe and a decoded stream name.
 bae-util = { workspace = true }
+# The places of the open-files budget a probe opens its file in (src/probe.rs).
+coven = { workspace = true }
 # The lock-free ring a decode writes one track's PCM into (src/track_stream.rs).
 rtrb = { workspace = true }
 # The fill's wake signal (src/sparse_buffer.rs) and a track's ready signal

@@ -21,7 +21,8 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        Ok(self.records.read_release_file(file_id).await?)
+        let lease = self.records.lease_one().await;
+        Ok(self.records.read_release_file(file_id, &lease).await?)
     }
 
     /// A library image's file as this device sees it, for tests that check
@@ -77,7 +78,8 @@ impl LibraryManager {
 
     /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
-        Ok(self.records.read_release_file(&file.id).await?)
+        let lease = self.records.lease_one().await;
+        Ok(self.records.read_release_file(&file.id, &lease).await?)
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
@@ -113,9 +115,10 @@ impl LibraryManager {
         let Some(file) = self.library_image_file(id, image_type).await? else {
             return Ok(None);
         };
+        let lease = self.store.lease_one().await;
         let bytes = self
             .store
-            .read_file(&file)
+            .read_file(&file, &lease)
             .await
             .map_err(|e| LibraryError::file_read(format!("read image {id}"), e))?;
         Ok(Some(bytes))

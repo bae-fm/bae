@@ -97,11 +97,12 @@ async fn the_network_check_names_the_folders_that_moved() {
     let tables = fixture.test.tables().clone();
     let root = &fixture.root;
     let recorded = tables.load_folder_scan_directories(root).await.unwrap();
-    assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
+    assert_eq!(network_changes(root, &recorded, &bae_util::test_files::lease()), Some(Vec::new()));
 
     write_disc(&root.join("Artist/Album/Disc 1"), 2);
     write_disc(&root.join("New/Record"), 1);
-    let mut changes = network_changes(root, &recorded).expect("the record answers");
+    let mut changes = network_changes(root, &recorded, &bae_util::test_files::lease())
+        .expect("the record answers");
     changes.sort();
     let changes: Vec<&Path> = changes.iter().map(PathBuf::as_path).collect();
     assert_eq!(

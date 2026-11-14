@@ -98,6 +98,7 @@ impl crate::file_tag_reader::FileTagReader for HeldTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         let held = self.held.lock().unwrap().as_ref().is_some_and(|held| path.starts_with(held));
         if held {
@@ -114,7 +115,7 @@ impl crate::file_tag_reader::FileTagReader for HeldTagReader {
                 open = condition.wait(open).unwrap();
             }
         }
-        crate::file_tag_reader::LoftyFileTagReader.read(path)
+        crate::file_tag_reader::LoftyFileTagReader.read(path, place)
     }
 }
 

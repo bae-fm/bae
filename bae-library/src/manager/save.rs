@@ -89,8 +89,12 @@ impl LibraryManager {
     /// store, the cache, or the cloud with decrypt). A read failure — or a
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
-    fn open_save_source(&self, file: &bae_records::DbFile) -> SourceStream {
-        let reader = self.create_audio_reader(&file.id);
+    fn open_save_source(
+        &self,
+        file: &bae_records::DbFile,
+        lease: &coven::FileLease,
+    ) -> SourceStream {
+        let reader = self.create_audio_reader(&file.id, lease.clone());
         let file_id = file.id.clone();
         SourceStream::start(
             reader,
@@ -178,9 +182,12 @@ impl LibraryManager {
             vec![(plan, output_path.to_path_buf())],
             cover,
             preset.codec,
+            &self.store.file_leases(),
             NonZeroUsize::MIN,
             crate::save::ExistingOutput::Replace,
-            |file_id: &String| self.open_save_source(&sources[file_id]),
+            |file_id: &String, lease: &coven::FileLease| {
+                self.open_save_source(&sources[file_id], lease)
+            },
             Arc::new(|| {}),
             self.bugs(),
         )
@@ -249,9 +256,12 @@ impl LibraryManager {
             saves,
             cover,
             preset.codec,
+            &self.store.file_leases(),
             parallelism,
             crate::save::ExistingOutput::Refuse,
-            |file_id: &String| self.open_save_source(&sources[file_id]),
+            |file_id: &String, lease: &coven::FileLease| {
+                self.open_save_source(&sources[file_id], lease)
+            },
             on_saved,
             self.bugs(),
         )

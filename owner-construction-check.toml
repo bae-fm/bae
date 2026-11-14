@@ -57,6 +57,7 @@ crate_order = [
 # shared in-memory state has its own rows below.
 capability_types = [
     "AbortHandle",
+    "FileBudget",
     "AirPlaySink",
     "AirPlayStreamControl",
     "AppServices",
@@ -126,7 +127,6 @@ shared_state_types = [
     "AtomicU8",
     "AtomicU32",
     "AtomicU64",
-    "AtomicUsize",
     "JoinHandle",
     "Notify",
     "OnceCell",
@@ -153,11 +153,14 @@ external_types = [
     "AtomicU32",
     "AtomicU64",
     "AtomicU8",
-    "AtomicUsize",
     "CancellationToken",
     "Condvar",
     "Coven",
     "CovenHandle",
+    "FileBudget",
+    "FileLease",
+    "LeasePlace",
+    "LeasedFile",
     "Handle",
     "IdSource",
     "IdSourceRef",
@@ -273,6 +276,10 @@ non_owner_types = [
 task_types = [
     # One read of a file's audio, one output stream, and the stream's control.
     "AudioDataReader",
+    # A place of the open-files budget, taken for one piece of work.
+    "FileLease",
+    "LeasePlace",
+    "LeasedFile",
     "AudioOutput",
     "AudioStream",
     "AirPlayStreamControl",
@@ -507,6 +514,9 @@ task_types = [
 # Only the owner makes and returns one; a holder receives it when it is built
 # and keeps it for its one piece of work.
 [handles]
+# The way to the installation's places for open files, which work that opens
+# the person's files on threads and in services of its own takes its places by.
+FileLeases = "Store"
 # Where one close or removal writes its steps: the send end of the stream
 # the app pulls from the closing it made.
 ClosingSteps = "ClosingFeed"
@@ -630,6 +640,7 @@ OpenCalls = "LibrarySessions"
 "bae-store/src/test_sources.rs" = [
     "TestSources::system",
     "TestSources::on",
+    "TestSources::on_budget",
     "TestSources::ids",
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing
@@ -722,7 +733,12 @@ OpenCalls = "LibrarySessions"
     "start_manual_playback",
     "start_manual_playback_with_clock",
 ]
-"bae-library/src/test_libraries/storage.rs" = ["storage_library", "storage_library_of"]
+"bae-library/src/test_libraries/storage.rs" = [
+    "storage_library",
+    "storage_library_of",
+    "storage_library_within",
+    "storage_library_on",
+]
 # The writer thread of an output stream: the stream's handle stops it and
 # joins it when dropped.
 "bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream", "AAudioOutput::new"]
@@ -835,6 +851,8 @@ OpenCalls = "LibrarySessions"
     "TestLibrary::start_playback_reporting",
     "open_test_library",
     "open_test_library_with",
+    "setup_test_library_with_album_dir_within",
+    "imported_release_setup_within",
     "test_library_from_handle",
     "setup_test_library",
     "setup_test_library_with",
@@ -1056,6 +1074,10 @@ OpenCalls = "LibrarySessions"
     "ScanCancellation::child",
     "ScanCancellation::new",
     "Walk::new",
+    # A folder read on its own, outside any library, reads in places of a
+    # budget of its own.
+    "scan_for_candidates_with_decisions",
+    "collect_release_candidate_files_with_scope",
 ]
 "bae-import/src/identification/handle.rs" = ["IdentificationHandle::new"]
 "bae-import/src/identify_service.rs" = ["IdentifyService::new"]
@@ -1069,6 +1091,9 @@ OpenCalls = "LibrarySessions"
     "RootScanTask::new",
     "ScanServices::new",
 ]
+# A scan item stored without a library's store reads in places of a budget of
+# its own.
+"bae-import/src/scan_passes/scan_items.rs" = ["store_scan_item"]
 "bae-import/src/tables.rs" = ["ImportTables::new"]
 "bae-import/src/watching/active_roots.rs" = ["ActiveRoots::new"]
 "bae-import/src/watching/coordinator.rs" = [
@@ -1163,6 +1188,7 @@ OpenCalls = "LibrarySessions"
     "Store::new_on",
     "Store::test_sources",
     "Store::new_test_reporting_to",
+    "Store::new_test_within",
 ]
 # A kept store is made on the clock and ids of the run that made it.
 "bae-store/src/test_fixtures/kept_store.rs" = ["create_kept", "open_kept"]
@@ -1189,13 +1215,16 @@ OpenCalls = "LibrarySessions"
     "ReleaseTransfers::new",
     "ReleaseTransfers::report",
 ]
-"bae-util/src/open_files_peak.rs" = ["OpenFilesPeak::start"]
+# The places of the open-files budget a test makes its work take.
+"bae-store/src/file_leases.rs" = ["FileLeases::for_test", "FileLeases::for_test_default"]
 "bae-util/src/server.rs" = [
     "ServerController::new",
     # The server's task: the controller holds it, and shutdown cancels it and waits for it.
     "ServerController::start",
 ]
 "bae-util/src/test_host.rs" = ["FakeHost::start"]
+# A test takes its place on a thread of its own, off the runtime's budget of work.
+"bae-util/src/test_files.rs" = ["place"]
 
 # Work that runs on after its caller returns starts only at a listed root,
 # which keeps it and stops it: a runtime, the ambient runtime a task would
@@ -1619,7 +1648,7 @@ read_types = ["SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "Reconfigur
 live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
 request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
 value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "LocalBytesWatch", "KeyedValueStream"]
-kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64", "AtomicUsize"]
+kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64"]
 plumbing = [
     "bae-store/src/live_query.rs",
     "bae-store/src/live_query/",

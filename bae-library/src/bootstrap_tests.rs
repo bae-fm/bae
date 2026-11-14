@@ -17,6 +17,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
         bae_store::TestSources::system().clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -83,6 +84,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
         bae_store::TestSources::system().clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -112,6 +114,7 @@ async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
         bae_store::EnteredName::parse("  Robin ").unwrap(),
         "Test Device",
         sources.clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -139,6 +142,7 @@ async fn a_creator_s_name_that_cant_be_kept_leaves_no_library() {
         bae_store::EnteredName::parse("Failed Library").unwrap(),
         "Test Device",
         sources.clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
         |_| async {
             Err(bae_store::DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
@@ -163,6 +167,7 @@ async fn failed_creation_removes_the_partial_library() {
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
         bae_store::TestSources::system().clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -187,6 +192,7 @@ async fn resetting_an_unconnected_store_is_refused_and_changes_nothing() {
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
         bae_store::TestSources::system().clock().clone(),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -743,6 +749,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
         store,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
+        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

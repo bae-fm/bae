@@ -60,6 +60,7 @@ impl ImportServiceHandle {
         } = stored;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
+        let lease = self.services.store.lease_one().await;
         let snapshot = self
             .services
             .diagnostics
@@ -80,6 +81,7 @@ impl ImportServiceHandle {
                     scan_generation,
                     file_edit_revision,
                     reader.as_ref(),
+                    &lease,
                 )
             })
             .await??;

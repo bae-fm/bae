@@ -387,6 +387,10 @@ impl ImportService {
             .await?;
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
+        // One place for the whole read loop: each file opens in it after the
+        // one before has closed. The lease goes back before the steps that
+        // follow take theirs.
+        let read_lease = self.records.lease_one().await;
         for (idx, entry) in discovered_files.iter().enumerate() {
             let file = &entry.file;
             // The scan identity for every file was validated once before any
@@ -402,8 +406,10 @@ impl ImportService {
             // coven reads the original whole and records it as it finds it
             // now, on this device only or for the cloud alike, so what it
             // finds must be the file the scan read.
-            let original =
-                Box::pin(coven::prepare_user_file(&file.version.path, move |consumed| {
+            let original = Box::pin(coven::prepare_user_file(
+                &file.version.path,
+                &read_lease,
+                move |consumed| {
                     let completed = bytes_read_before_file + u128::from(consumed);
                     let percent = ((completed * 100) / total_bytes).min(100) as u8;
                     let previous = reported_percent_for_progress
@@ -420,14 +426,15 @@ impl ImportService {
                             ImportPhase::ReadingFiles,
                         );
                     }
-                }))
-                .await
-                .map_err(|error| crate::ImportError::UnusableFile {
-                    detail: format!(
-                        "coven could not prepare {} for import: {error}",
-                        file.version.path.display()
-                    ),
-                })?;
+                },
+            ))
+            .await
+            .map_err(|error| crate::ImportError::UnusableFile {
+                detail: format!(
+                    "coven could not prepare {} for import: {error}",
+                    file.version.path.display()
+                ),
+            })?;
             super::file_identity::require_scanned_identity(
                 file,
                 original.size(),
@@ -470,6 +477,8 @@ impl ImportService {
             debug!("Read file {}/{}: {}", idx + 1, total_files, file.relative_path,);
         }
 
+        drop(read_lease);
+
         // Byte landings seek through each CUE image with FFmpeg: blocking file
         // reads, so they run off the worker's runtime.
         let mut built_audio = {
@@ -477,9 +486,16 @@ impl ImportService {
             let file_ids = file_ids.clone();
             let clock = self.clock.clone();
             let ids = self.ids.clone();
+            let files = self.file_leases.clone();
             self.diagnostics
                 .blocking("build the import's audio formats", move || {
-                    super::build_audio_formats(&tracks, &file_ids, clock.as_ref(), ids.as_ref())
+                    super::build_audio_formats(
+                        &tracks,
+                        &file_ids,
+                        clock.as_ref(),
+                        ids.as_ref(),
+                        &files,
+                    )
                 })
                 .await??
         };
@@ -523,6 +539,7 @@ impl ImportService {
             .await?;
         let loudness = crate::loudness::measure_loudness(
             &self.event_tx,
+            &self.file_leases,
             parallelism,
             &mut built_audio.audio_formats,
             &built_audio.audio_segments,
@@ -540,9 +557,11 @@ impl ImportService {
 
         // Finalize writes the cover's bytes and row in one coven batch.
         let cover_winner = match cover {
-            Some(cover) => {
-                Some(cover.stored(discovered_files, &db_release.id, &self.diagnostics).await?)
-            }
+            Some(cover) => Some(
+                cover
+                    .stored(discovered_files, &db_release.id, &self.diagnostics, &self.records)
+                    .await?,
+            ),
             None => None,
         };
         let library_image = cover_winner.as_ref().map(|(image, bytes)| (image, bytes.as_slice()));

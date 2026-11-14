@@ -11,14 +11,15 @@ use bae_catalogs::{AudioOrigin, AudioSource, CdProof};
 use bae_identify::signals::{ComputedDiscId, DiscIdSignal};
 use bae_records::DocumentKind;
 use bae_types::audio_format::AudioFormat;
+use coven::{FileLease, LeasePlace};
 use std::path::Path;
 use tracing::{debug, trace, warn};
 
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
 /// A file that cannot be read is an error, not a document that states
 /// nothing: the evidence it holds is unknown.
-fn read_document(path: &Path) -> Result<String, ImportError> {
-    bae_util::text_encoding::read_text_file(path)
+fn read_document(path: &Path, place: LeasePlace) -> Result<String, ImportError> {
+    bae_util::text_encoding::read_text_file(path, place)
         .map(|read| read.text)
         .map_err(|error| ImportError::DocumentRead { file: path.display().to_string(), error })
 }
@@ -124,14 +125,15 @@ struct RipArtifacts<'a> {
 /// one rip per disc yields one disc ID per disc; one hashed twice is kept
 /// once. A document that cannot be read fails the reading, as does a log or
 /// sheet that cannot be hashed to a disc; a log that reads but holds no table
-/// of contents states no disc, and is passed over, logged.
-fn read(artifacts: RipArtifacts<'_>) -> Result<RipReading, ImportError> {
+/// of contents states no disc, and is passed over, logged. Each document opens
+/// in a place of `lease`, one after the other.
+fn read(artifacts: RipArtifacts<'_>, lease: &FileLease) -> Result<RipReading, ImportError> {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
     let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
     for document in &artifacts.documents {
-        let text = read_document(document.path)?;
+        let text = read_document(document.path, lease.place_blocking())?;
         if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
             let disc_id = discid_from_log_text(&text).map_err(|error| {
@@ -230,10 +232,12 @@ fn discid_from_cue_audio(
 /// the person took out of the tracklist describes a disc this folder is no
 /// longer presenting. A folder whose sheet is unbound can still identify
 /// itself from its log. Each disc and proof names the file it was read off.
+/// Each document opens in a place of `lease`: call it off the async workers.
 pub fn read_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
+    lease: &FileLease,
 ) -> Result<RipReading, ImportError> {
-    read_categorized(categorized, |file| Some(&file.relative_path))
+    read_categorized(categorized, |file| Some(&file.relative_path), lease)
 }
 
 /// Read a library release's files as [`read_rip_artifacts`] reads a folder's
@@ -241,8 +245,9 @@ pub fn read_rip_artifacts(
 /// release's signals name none of its files.
 pub(crate) fn read_library_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
+    lease: &FileLease,
 ) -> Result<RipReading, ImportError> {
-    read_categorized(categorized, |_| None)
+    read_categorized(categorized, |_| None, lease)
 }
 
 /// Read `categorized`'s rip files, `named` giving the name each disc and
@@ -250,6 +255,7 @@ pub(crate) fn read_library_rip_artifacts(
 fn read_categorized(
     categorized: &crate::folder_scanner::CategorizedFiles,
     named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
+    lease: &FileLease,
 ) -> Result<RipReading, ImportError> {
     // Logs first: a log's table of contents is the Disc ID as well as the
     // proof, which a report is not.
@@ -284,15 +290,18 @@ fn read_categorized(
             file: named(bound.file),
         })
         .collect();
-    read(RipArtifacts {
-        documents,
-        sheets,
-        audio: categorized
-            .audio()
-            .filter_map(|file| file.source_audio.as_ref())
-            .map(|audio| &audio.format)
-            .collect(),
-    })
+    read(
+        RipArtifacts {
+            documents,
+            sheets,
+            audio: categorized
+                .audio()
+                .filter_map(|file| file.source_audio.as_ref())
+                .map(|audio| &audio.format)
+                .collect(),
+        },
+        lease,
+    )
 }
 
 #[cfg(test)]

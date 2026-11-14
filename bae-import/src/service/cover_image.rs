@@ -6,6 +6,7 @@ use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::CandidateFile;
 use crate::ImportError;
 use bae_catalogs::remote_image::RemoteImage;
+use std::io::Read;
 
 /// Where the bytes of an import's cover come from. Nothing is chosen at
 /// import: this is the candidate's stored selection, the image a person
@@ -72,10 +73,14 @@ impl ImportCover {
         discovered_files: &[CandidateFile],
         release_id: &str,
         diagnostics: &bae_diagnostics::Diagnostics,
+        records: &bae_records::Records,
     ) -> Result<(bae_records::DbLibraryImage, Vec<u8>), ImportError> {
         let source = match self {
             Self::Remote(bytes) | Self::Embedded(bytes) => bytes,
-            Self::Local(path) => folder_cover(discovered_files, &path, diagnostics).await?,
+            Self::Local(path) => {
+                folder_cover(discovered_files, &path, diagnostics, records.lease_one().await)
+                    .await?
+            }
         };
         // Decoding and re-encoding the image is CPU work.
         let bytes = diagnostics
@@ -113,11 +118,13 @@ fn downloaded_cover(image: RemoteImage) -> Result<Vec<u8>, ImportError> {
 /// same name is no cover.
 ///
 /// The read runs on a blocking thread, so a cover on a slow volume does not
-/// stall the import worker's runtime.
+/// stall the import worker's runtime, and opens the file in a place of
+/// `lease`.
 async fn folder_cover(
     discovered_files: &[CandidateFile],
     selected_cover_path: &str,
     diagnostics: &bae_diagnostics::Diagnostics,
+    lease: coven::FileLease,
 ) -> Result<Vec<u8>, ImportError> {
     let cover_file = discovered_files
         .iter()
@@ -133,7 +140,11 @@ async fn folder_cover(
 
     let path = cover_file.version.path.clone();
     let bytes = diagnostics
-        .blocking("read the import's cover", move || std::fs::read(&path))
+        .blocking("read the import's cover", move || {
+            let mut bytes = Vec::new();
+            lease.place_blocking().open(&path)?.read_to_end(&mut bytes)?;
+            Ok::<_, std::io::Error>(bytes)
+        })
         .await?
         .map_err(|e| ImportError::LocalCover {
             detail: format!("Failed to read cover art {}: {e}", cover_file.version.path.display()),

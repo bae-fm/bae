@@ -19,6 +19,9 @@ pub struct BridgeHost {
     /// ids that clock times: one pair for the host and each of its libraries.
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
+    /// The installation's places for open files, which every library this
+    /// host opens shares.
+    files: coven::FileBudget,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
     operations: crate::operation_runtime::OperationRuntime,
@@ -56,6 +59,7 @@ impl BridgeHost {
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
             self.clock.clone(),
+            self.files.clone(),
             self.ids.clone(),
             start_handle(self.clone(), self.diagnostics.clone()),
         ))
@@ -79,6 +83,7 @@ impl BridgeHost {
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
             self.clock.clone(),
+            self.files.clone(),
             self.ids.clone(),
             self.library_builder(),
             opening.report(),
@@ -106,6 +111,7 @@ impl BridgeHost {
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
             self.clock.clone(),
+            self.files.clone(),
             self.ids.clone(),
             self.library_builder(),
             opening.report(),
@@ -271,6 +277,7 @@ impl BridgeHost {
         diagnostics: Diagnostics,
         app_dir: Arc<BridgeAppDir>,
         coven: coven::Coven,
+        files: coven::FileBudget,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
         audio_focus: bae_playback::AudioFocus,
@@ -292,6 +299,7 @@ impl BridgeHost {
             coven,
             clock,
             ids,
+            files,
             runtime: Some(runtime),
             oauth_clients: Mutex::new(coven::OAuthClients::new(None, None)),
             #[cfg(not(desktop))]
@@ -315,11 +323,21 @@ impl BridgeHost {
     ) -> Result<Arc<Self>, BridgeError> {
         let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
-        let coven = coven::Coven::in_memory_reporting_to(
+        let files = coven::FileBudget::under_descriptor_limit();
+        let coven = coven::Coven::in_memory_sharing(
             app_dir.core().coven_app_dir(),
             diagnostics.bug_sink(),
+            files.clone(),
         );
-        Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
+        Self::start(
+            diagnostics,
+            app_dir,
+            coven,
+            files,
+            clock,
+            ids,
+            bae_playback::AudioFocus::Unshared,
+        )
     }
 }
 
@@ -334,8 +352,17 @@ impl BridgeHost {
     ) -> Result<Arc<Self>, BridgeError> {
         let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
-        let coven = installation(&diagnostics, app_dir.core())?;
-        Self::start(diagnostics, app_dir, coven, clock, ids, bae_playback::AudioFocus::Unshared)
+        let files = coven::FileBudget::under_descriptor_limit();
+        let coven = installation(&diagnostics, app_dir.core(), files.clone())?;
+        Self::start(
+            diagnostics,
+            app_dir,
+            coven,
+            files,
+            clock,
+            ids,
+            bae_playback::AudioFocus::Unshared,
+        )
     }
 }
 
@@ -352,12 +379,14 @@ impl BridgeHost {
     ) -> Result<Arc<Self>, BridgeError> {
         let (clock, ids) = diagnostics.sources();
         let diagnostics = diagnostics.core().clone();
-        let coven = installation(&diagnostics, app_dir.core())?;
+        let files = coven::FileBudget::under_descriptor_limit();
+        let coven = installation(&diagnostics, app_dir.core(), files.clone())?;
         let audio_focus = crate::PlatformAudioFocus::new(audio_focus, diagnostics.clone());
         Self::start(
             diagnostics,
             app_dir,
             coven,
+            files,
             clock,
             ids,
             bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
@@ -448,6 +477,7 @@ impl BridgeHost {
         let builder = self.library_builder();
         let report = opening.report();
         let clock = self.clock.clone();
+        let files = self.files.clone();
         self.operations
             .clone()
             .run("BridgeHost.unsent_before_removal", move || async move {
@@ -457,6 +487,7 @@ impl BridgeHost {
                     store,
                     report,
                     clock,
+                    files,
                     &self.diagnostics,
                 )
                 .await?
@@ -583,6 +614,7 @@ impl BridgeHost {
                     creator,
                     &device_name,
                     clock,
+                    self.files.clone(),
                     &self.diagnostics,
                 )
                 .await?;
@@ -667,8 +699,9 @@ pub fn init_app_on_fixture(
 fn installation(
     diagnostics: &Diagnostics,
     app_dir: &bae_app_dir::AppDir,
+    files: coven::FileBudget,
 ) -> Result<coven::Coven, BridgeError> {
-    app_dir.coven(diagnostics.bug_sink()).map_err(|error| {
+    app_dir.coven(diagnostics.bug_sink(), files).map_err(|error| {
         diagnostics.event(TelemetryEvent::KeyringInitFailed {});
         BridgeError::Diagnostic {
             category: crate::types::BridgeErrorCategory::Keyring,

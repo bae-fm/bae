@@ -47,8 +47,14 @@ fn build_audio_formats_uses_stored_standalone_facts() {
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
     let ids = coven::SequentialIds::new();
 
-    let built =
-        build_audio_formats(&[track], &file_ids, &test_clock(), &ids).expect("build audio formats");
+    let built = build_audio_formats(
+        &[track],
+        &file_ids,
+        &test_clock(),
+        &ids,
+        &bae_store::FileLeases::for_test_default(),
+    )
+    .expect("build audio formats");
 
     assert_eq!(built.audio_formats.len(), 1);
     assert_eq!(built.audio_formats[0].track_id, "track-0");
@@ -96,7 +102,8 @@ INDEX 01 00:00:00
 "#,
     )
     .expect("write cue");
-    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path).expect("parse cue");
+    let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
+        .expect("parse cue");
     let cue_pair = CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {

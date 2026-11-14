@@ -744,21 +744,21 @@ impl AppServices {
 
     /// `file_id`'s bytes, `size` long, read into a buffer from the start;
     /// see [`LibraryManager::open_release_file_stream`].
-    pub fn open_release_file_stream(
+    pub async fn open_release_file_stream(
         &self,
         file_id: &str,
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
-        self.inner.manager.open_release_file_stream(file_id, size)
+        self.inner.manager.open_release_file_stream(file_id, size).await
     }
 
     /// `audio`'s stream, open for one decode start to finish; see
     /// [`LibraryManager::open_track_decode`].
-    pub fn open_track_decode(
+    pub async fn open_track_decode(
         &self,
         audio: &bae_records::ResolvedTrackAudio,
-    ) -> bae_library::TrackDecode {
-        self.inner.manager.open_track_decode(audio)
+    ) -> Result<bae_library::TrackDecode, bae_library::LibraryError> {
+        self.inner.manager.open_track_decode(audio).await
     }
 
     // The sync status, each value read from its tables in one go.

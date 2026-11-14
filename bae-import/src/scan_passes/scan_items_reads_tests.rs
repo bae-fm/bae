@@ -21,9 +21,10 @@ async fn reads_to_store(
     let (scan, _events) = test.scan();
     let services = &scan.services.services;
     let generation = services.tables.begin_folder_scan(root, crate::VolumeKind::Local).await?;
-    let reads = Arc::new(crate::folder_scanner::FileReads::new(Arc::new(
-        crate::file_tag_reader::LoftyFileTagReader,
-    )));
+    let reads = Arc::new(crate::folder_scanner::FileReads::new(
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+        bae_store::FileLeases::for_test_default(),
+    ));
     let before = test.db.reads_asked();
     let stored = store_scan_items(
         root,
@@ -74,8 +75,9 @@ impl crate::file_tag_reader::FileTagReader for PictureTagReader {
     fn read(
         &self,
         path: &Path,
+        place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
-        let mut read = crate::file_tag_reader::LoftyFileTagReader.read(path)?;
+        let mut read = crate::file_tag_reader::LoftyFileTagReader.read(path, place)?;
         read.embedded_cover =
             Some((vec![0xD8; self.bytes], bae_util::content_type::ContentType::Jpeg));
         Ok(read)
@@ -345,9 +347,10 @@ async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() 
     let (scan, _events) = test.scan();
     let services = &scan.services.services;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    let reads = Arc::new(crate::folder_scanner::FileReads::new(Arc::new(
-        crate::file_tag_reader::LoftyFileTagReader,
-    )));
+    let reads = Arc::new(crate::folder_scanner::FileReads::new(
+        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+        bae_store::FileLeases::for_test_default(),
+    ));
 
     let stored = tokio::time::timeout(
         HANG_GUARD,
@@ -376,6 +379,7 @@ impl crate::file_tag_reader::FileTagReader for VanishedShareTagReader {
     fn read(
         &self,
         path: &Path,
+        _place: coven::LeasePlace,
     ) -> Result<crate::file_tag_reader::FileTagRead, crate::file_tag_reader::TagReadFailure> {
         Err(crate::file_tag_reader::TagReadFailure::Fault(format!(
             "failed to read tags from {}: the share went away",
@@ -417,7 +421,10 @@ async fn a_folder_whose_tags_cannot_be_read_for_its_draft_fails_its_seed() {
         &bae_diagnostics::Diagnostics::noop(),
         item,
         generation,
-        Arc::new(crate::folder_scanner::FileReads::new(Arc::new(VanishedShareTagReader))),
+        Arc::new(crate::folder_scanner::FileReads::new(
+            Arc::new(VanishedShareTagReader),
+            bae_store::FileLeases::for_test_default(),
+        )),
         &HashSet::new(),
     )
     .await;
