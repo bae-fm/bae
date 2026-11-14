@@ -1,8 +1,10 @@
+pub mod anchor;
 pub mod handle;
 pub mod timeline;
 use crate::renderer::CastReceiver;
 use crate::service::PlaybackState;
 use crate::timeline::{StreamPosition, TrackTimeline};
+pub use anchor::{AnchorFold, TrackAnchor};
 pub use handle::{PlaybackPositionsWatch, PlaybackProgressFeed, PlaybackProgressHandle};
 pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -28,6 +30,11 @@ pub struct PlaybackPosition {
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
+    /// How fast the position moves while the track plays, as a multiple of
+    /// real time: 1.0 for this device's own output, a remote renderer's
+    /// stated rate, or 0.0 for one that states none (its position stands
+    /// until its next status).
+    pub rate: f64,
 }
 
 /// Where the preview is in its clip, and which clip that is, so a surface
@@ -219,20 +226,28 @@ impl PlaybackPositions {
                 }
                 next.playing = matches!(state, PlaybackState::Playing { .. });
             }
-            PlaybackProgress::PositionUpdate { track_id, position_ms, duration_ms, progress } => {
+            PlaybackProgress::PositionUpdate {
+                track_id,
+                position_ms,
+                duration_ms,
+                progress,
+                rate,
+            } => {
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
                     duration_ms: *duration_ms,
                     progress: *progress,
+                    rate: *rate,
                 });
             }
-            PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress } => {
+            PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress, rate } => {
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
                     duration_ms: *duration_ms,
                     progress: *progress,
+                    rate: *rate,
                 });
                 next.seek_revision =
                     next.seek_revision.checked_add(1).expect("playback seek revision overflow");
@@ -339,6 +354,9 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
+        /// How fast the position moves while the track plays; see
+        /// [`PlaybackPosition::rate`].
+        rate: f64,
     },
     VolumeChanged {
         volume: f32,
@@ -382,6 +400,9 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
+        /// How fast the position moves while the track plays; see
+        /// [`PlaybackPosition::rate`].
+        rate: f64,
     },
     /// Decode stats for a track that finished or was stopped.
     DecodeStats {
@@ -408,32 +429,37 @@ pub enum PlaybackProgress {
 }
 
 impl PlaybackProgress {
-    /// The playing tick at `position` of a track on `timeline`.
+    /// The playing tick at `position` of a track on `timeline`, moving at
+    /// `rate`.
     pub(crate) fn position_update(
         timeline: TrackTimeline,
         track_id: String,
         position: StreamPosition,
+        rate: f64,
     ) -> Self {
         Self::PositionUpdate {
             position_ms: timeline.track_time(position).as_millis(),
             duration_ms: timeline.duration_ms(),
             track_id,
             progress: timeline.progress(position),
+            rate,
         }
     }
 
     /// The display moved to `position` of a track on `timeline` without a
-    /// state change.
+    /// state change, moving on at `rate`.
     pub(crate) fn seeked(
         timeline: TrackTimeline,
         track_id: String,
         position: StreamPosition,
+        rate: f64,
     ) -> Self {
         Self::Seeked {
             position_ms: timeline.track_time(position).as_millis(),
             duration_ms: timeline.duration_ms(),
             track_id,
             progress: timeline.progress(position),
+            rate,
         }
     }
 

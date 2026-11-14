@@ -94,6 +94,19 @@ impl Renderer {
         }
     }
 
+    /// How fast the current track's position moves while it plays, as a
+    /// multiple of real time: 1.0 where audio plays here or on an AirPlay
+    /// receiver, and on a fetching device the rate it last stated, or 0.0
+    /// while it states none (its position stands until its next status).
+    pub(super) fn play_rate(&self) -> f64 {
+        match self {
+            Self::Local | Self::AirPlay(_) => 1.0,
+            Self::Remote(remote) => {
+                remote.last_status.and_then(|observed| observed.status.rate).unwrap_or(0.0)
+            }
+        }
+    }
+
     pub(super) fn flush_airplay(&self) {
         if let Self::AirPlay(airplay) = self {
             airplay.control.flush();
@@ -510,7 +523,12 @@ impl PlaybackService {
             let timeline = cur.prepared.timeline;
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::position_update(timeline, track_id.clone(), position),
+                PlaybackProgress::position_update(
+                    timeline,
+                    track_id.clone(),
+                    position,
+                    self.renderer.play_rate(),
+                ),
             );
         }
 
@@ -588,7 +606,12 @@ impl PlaybackService {
         let (timeline, track_id) = (cur.prepared.timeline, cur.prepared.track_id.clone());
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::position_update(timeline, track_id, position),
+            PlaybackProgress::position_update(
+                timeline,
+                track_id,
+                position,
+                self.renderer.play_rate(),
+            ),
         );
     }
 

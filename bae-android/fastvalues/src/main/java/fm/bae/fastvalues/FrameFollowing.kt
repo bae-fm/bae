@@ -10,10 +10,15 @@ import android.view.View
  * while the key is at rest or holds nothing, nothing runs, and the View shows
  * the key's value once on each pull that names the key. Values arriving faster than frames are
  * never all shown; the screen shows the latest one each frame.
+ *
+ * A value that is itself a line drawn from the time, such as a position anchor, also takes [onFrame],
+ * which each frame of a moving key runs with the key's latest value and the frame's time on the frame
+ * clock, whether or not the value changed.
  */
 class FrameFollowing<V : Any>(
     private val view: View,
     private val show: (V?) -> Unit,
+    private val onFrame: ((V, Long) -> Unit)? = null,
 ) : Choreographer.FrameCallback {
     private var source: LatestSource<V>? = null
     private val changed: () -> Unit = { activityChanged() }
@@ -51,7 +56,9 @@ class FrameFollowing<V : Any>(
 
     override fun doFrame(frameTimeNanos: Long) {
         if (!ticking) return
-        if (showLatest() != null && view.isAttachedToWindow) {
+        val latest = showLatest()
+        if (latest != null) onFrame?.invoke(latest, frameTimeNanos)
+        if (latest != null && view.isAttachedToWindow) {
             Choreographer.getInstance().postFrameCallback(this)
         } else {
             ticking = false

@@ -195,16 +195,28 @@ pub enum BridgePreviewState {
     Paused { target: BridgePreviewTarget, duration_ms: u64 },
 }
 
-/// Where the playing track is, as its seek bar draws it: the value its
-/// track's key holds in the playback positions' `KeyedValueStream`.
+/// Where the playing track is, as its seek bar draws it: an anchor, the
+/// track's position at a moment, and the rate it moves at from there. This is
+/// the value its track's key holds in the playback positions'
+/// `KeyedValueStream`, which holds a new one only as playback leaves the line
+/// it draws: a seek, a pause or resume, a change of rate, or another track.
+/// The native view works out the position each display frame as
+/// `position_ms + (frame time - anchored_at_ns) * rate`, held to the track's
+/// length. Mirrors `bae_playback::TrackAnchor`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeTrackPosition {
-    /// Track-relative: negative while pregap audio plays.
+    /// Track-relative at the anchor: negative while pregap audio plays.
     pub position_ms: i64,
+    /// How fast the position moves on from the anchor, as a multiple of real
+    /// time: zero while the track is paused or loading, one while it plays
+    /// here, a remote renderer's stated rate while it plays there.
+    pub rate: f64,
+    /// When the position was read, in nanoseconds on the frame clock: the
+    /// clock the display's frames report (`CADisplayLink` timestamps on
+    /// macOS, `Choreographer` frame times on Android).
+    pub anchored_at_ns: u64,
     /// `None` when the track's length is unknown.
     pub duration_ms: Option<u64>,
-    /// The seek bar's fill; zero throughout when the length is unknown.
-    pub progress: f64,
     /// The applied seeks so far, so a bar that projected a seek knows when
     /// core applied it.
     pub seek_revision: u64,
@@ -419,11 +431,17 @@ mirror_struct! {
 }
 
 impl BridgeTrackPosition {
-    /// The track's position, with the seeks applied so far.
-    pub(crate) fn from_core(position: bae_playback::PlaybackPosition, seek_revision: u64) -> Self {
-        let bae_playback::PlaybackPosition { track_id: _, position_ms, duration_ms, progress } =
-            position;
-        Self { position_ms, duration_ms, progress, seek_revision }
+    /// The track's line as told.
+    pub(crate) fn from_core(anchor: bae_playback::TrackAnchor) -> Self {
+        let bae_playback::TrackAnchor {
+            track_id: _,
+            position_ms,
+            duration_ms,
+            rate,
+            seek_revision,
+            at_ns,
+        } = anchor;
+        Self { position_ms, rate, anchored_at_ns: at_ns, duration_ms, seek_revision }
     }
 }
 

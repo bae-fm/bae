@@ -11,17 +11,10 @@ enum SeekBarSource {
     case preview(LatestSource<BridgePreviewPosition>)
 }
 
-/// One position as the bar draws it, from either stream.
-private struct SeekPosition: Equatable {
-    let progress: Double
-    let positionMs: Int64
-    /// `nil` when the track's length is unknown.
-    let durationMs: UInt64?
-}
-
 /// A seek slider between its time labels, set straight from its position
-/// stream once per display frame rather than through SwiftUI observation,
-/// since a position arrives with every tick core sends.
+/// stream once per display frame rather than through SwiftUI observation:
+/// the stream holds an anchor, and each frame works out the position from it
+/// and the frame's time.
 final class SeekBarNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider
@@ -60,20 +53,14 @@ final class SeekBarNSView: NSView {
     }
 
     private(set) lazy var tracks = FrameFollowing<BridgeTrackPosition>(
-        view: self
-    ) {
-        [weak self] position in
-        self?
-            .show(
-                position.map {
-                    SeekPosition(
-                        progress: $0.progress,
-                        positionMs: $0.positionMs,
-                        durationMs: $0.durationMs
-                    )
-                }
-            )
-    }
+        view: self,
+        show: { [weak self] position in
+            self?.show(position?.anchor)
+        },
+        onFrame: { [weak self] _, frameNs in
+            self?.draw(atNs: frameNs)
+        }
+    )
     private(set) lazy var buffered = FrameFollowing<BridgeTrackBuffered>(
         view: self
     ) { [weak self] held in
@@ -82,19 +69,10 @@ final class SeekBarNSView: NSView {
     private(set) lazy var previews = FrameFollowing<BridgePreviewPosition>(
         view: self
     ) { [weak self] position in
-        self?
-            .show(
-                position.map {
-                    SeekPosition(
-                        progress: $0.progress,
-                        positionMs: Int64($0.positionMs),
-                        durationMs: $0.durationMs
-                    )
-                }
-            )
+        self?.show(position?.anchor)
     }
     /// What the stream last said; `nil` while it holds nothing.
-    private var position: SeekPosition?
+    private var position: PlaybackAnchor?
     /// Holds a seek the person makes in front of the stream's position
     /// until core applies it, and draws the stream again at once; `nil`
     /// while the bar draws a shot or nothing, whose seeks are not held.
@@ -206,23 +184,30 @@ final class SeekBarNSView: NSView {
         previews.stop()
     }
 
-    /// Position, duration, and progress always belong to the same value. A
+    /// Position, duration, and progress always belong to the same anchor. A
     /// track whose length is unknown has no fill to seek to, so the slider is
     /// disabled until one is known.
-    private func show(_ position: SeekPosition?) {
-        self.position = position
-        guard let shown = position else {
+    private func show(_ anchor: PlaybackAnchor?) {
+        position = anchor
+        guard anchor != nil else {
             slider.isEnabled = false
             slider.doubleValue = 0
             draggingPositionMs = nil
-            updateLabels()
+            updateLabels(atNs: FrameClock.nowNs())
             return
         }
+        draw(atNs: FrameClock.nowNs())
+    }
+
+    /// The slider and labels at a frame timed `frameNs`, from the anchor.
+    private func draw(atNs frameNs: UInt64) {
+        guard let shown = position else { return }
         slider.isEnabled = shown.durationMs != nil
-        if !slider.isDragging {
-            slider.doubleValue = shown.progress
+        let progress = shown.progress(atFrameNs: frameNs)
+        if !slider.isDragging, slider.doubleValue != progress {
+            slider.doubleValue = progress
         }
-        updateLabels()
+        updateLabels(atNs: frameNs)
     }
 
     // MARK: - Internal
@@ -231,7 +216,7 @@ final class SeekBarNSView: NSView {
 
     /// Both labels come from one core projection, so they agree on which clock
     /// they show; during a drag the leading one reads the dropped position.
-    private func updateLabels() {
+    private func updateLabels(atNs frameNs: UInt64 = FrameClock.nowNs()) {
         guard let shown = position else {
             let idle =
                 showsIdleClock
@@ -249,7 +234,8 @@ final class SeekBarNSView: NSView {
         elapsedField.alphaValue = 1
         durationField.alphaValue = 1
         let labels = DurationClock.seekBar(
-            positionMs: draggingPositionMs ?? shown.positionMs,
+            positionMs: draggingPositionMs
+                ?? shown.positionMs(atFrameNs: frameNs),
             durationMs: shown.durationMs,
             showRemaining: showsRemainingTimeToggle && showRemainingTime
         )

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.positionAt
+import fm.bae.fastvalues.progressAt
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -203,14 +205,18 @@ class PlaybackProgressViewTest {
     }
 
     /** The bar's labels for [position] without the bridge: its raw milliseconds. */
-    private fun labels(position: BridgeTrackPosition?): SeekBarState =
-        position?.let { SeekBarState(it.progress, it.positionMs.toString(), "", seekable = it.durationMs != null) }
-            ?: SeekBarState(0.0, "", "", seekable = false)
+    private fun labels(
+        position: BridgeTrackPosition?,
+        frameTimeNanos: Long,
+    ): SeekBarState =
+        position?.let {
+            SeekBarState(it.progressAt(frameTimeNanos), it.positionAt(frameTimeNanos).toString(), "", seekable = it.durationMs != null)
+        } ?: SeekBarState(0.0, "", "", seekable = false)
 
     private fun position(
         positionMs: Long,
         seekRevision: ULong = 0uL,
-    ) = BridgeTrackPosition(positionMs, DURATION_MS.toULong(), positionMs.toDouble() / DURATION_MS, seekRevision)
+    ) = BridgeTrackPosition(positionMs, 0.0, 0uL, DURATION_MS.toULong(), seekRevision)
 
     private companion object {
         const val KEY = "track"

@@ -16,8 +16,9 @@ extension PreviewData {
             holding: [
                 "preview-track": BridgeTrackPosition(
                     positionMs: positionMs,
+                    rate: 0,
+                    anchoredAtNs: 0,
                     durationMs: durationMs,
-                    progress: Double(positionMs) / Double(durationMs),
                     seekRevision: 0
                 )
             ]
@@ -35,8 +36,9 @@ extension PreviewData {
                         $0.trackId,
                         BridgeTrackPosition(
                             positionMs: 73_000,
+                            rate: 0,
+                            anchoredAtNs: 0,
                             durationMs: 214_000,
-                            progress: 0.34,
                             seekRevision: 0
                         )
                     )

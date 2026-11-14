@@ -8,6 +8,7 @@ pub mod content_type_hint;
 pub mod database_failure;
 pub mod duration;
 pub mod error_text;
+pub mod frame_clock;
 pub mod fs;
 pub mod http;
 pub mod logging;

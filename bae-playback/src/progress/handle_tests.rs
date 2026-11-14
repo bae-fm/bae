@@ -91,6 +91,7 @@ async fn seek_revision_is_retained_across_later_position_ticks() {
             position_ms: 70,
             duration_ms: Some(100),
             progress: 0.7,
+            rate: 1.0,
         })
         .unwrap();
     progress_tx
@@ -99,6 +100,7 @@ async fn seek_revision_is_retained_across_later_position_ticks() {
             position_ms: 71,
             duration_ms: Some(100),
             progress: 0.71,
+            rate: 1.0,
         })
         .unwrap();
     next_event(&mut events).await;
@@ -120,6 +122,7 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
         position_ms,
         duration_ms: Some(100_000),
         progress: position_ms as f64 / 100_000.0,
+        rate: 1.0,
     };
     progress_tx
         .send(PlaybackProgress::StateChanged {
@@ -290,6 +293,7 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_moves_no_po
             position_ms: 10,
             duration_ms: Some(100),
             progress: 0.1,
+            rate: 1.0,
         })
         .unwrap();
     next_event(&mut events).await;

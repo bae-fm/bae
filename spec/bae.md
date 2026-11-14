@@ -4528,7 +4528,7 @@ line with an upright thumb and no fill at all.
 While the person drags a seek bar, on every platform and in every bar (the
 now-playing bar, the full player, the import preview's), the position time it
 shows follows the dragged position: the elapsed time, and the remaining time
-where the bar counts down. The playing position, which keeps arriving while
+where the bar counts down. The playing position, which keeps moving while
 they drag, doesn't move the time, and neither the time nor the fill steps
 back to it between the drop and the seek landing. On release the player
 seeks there; the dropped position stays (§9.4) until core has applied the
@@ -5209,12 +5209,24 @@ and starting playback with the library resets it to no line. The app pulls a
 live query of it, a value after each write. Those surfaces show no time
 before a track's start, so a playing pregap is one line standing at the
 start, and the line that moves begins as the track does. The queue is a live
-subscription of its own. The playing track's position and
-a preview's, which move as audio plays, a value each time the output has
+subscription of its own. The playing track's position reaches an app only in
+a `KeyedValueStream` (§10.2), under the track's id, as an anchor: the
+track-relative position at a moment on the frame clock (the clock a display's
+frames are timed on, which core stamps the anchor with), the rate it moves on
+at (one while the track plays here, a receiver's stated rate while it plays
+there, zero while it is paused or loading), the track's length, and the seeks
+applied so far. Core folds the positions the output reports, a few times a
+second, into the anchor and writes a new one only as playback leaves the line
+the anchor puts it on: a seek (even one that lands where the line was), a
+pause or resume, a new rate, another track or length, or a position more than
+a second off the line. The reports between change nothing in the stream. The
+native view works out the position each display frame as the anchor's position
+plus the time since the anchor times the rate, held to the track's length, from
+the frame's own time, so the position moves with no value arriving. A preview's
+position, which moves as audio plays, a value each time the output has
 played as much audio as the interval the app opened the library with, however
-fast the device takes it, reach an app only in a
-`KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
-so far, and the preview's, with the preview's seeks applied so far. So do the parts of the playing track its buffer holds (§7.6), as
+fast the device takes it, reaches an app in a `KeyedValueStream` too, with the
+preview's seeks applied so far. So do the parts of the playing track its buffer holds (§7.6), as
 fractions of its length under its id, and the playing track's wait on
 storage, under its id while the person waits on its load and it reads from
 storage. A seek the person
@@ -5509,7 +5521,7 @@ release's or track's id as UTF-8, or a candidate's key.
   which is why the app makes those objects from the host. The native
   view drawing a key reads the key's latest value once per display frame
   while the key is moving, and once on each pull that names it otherwise; the
-  playing track's position rests while it is not playing, and its buffered
+  playing track's anchor rests while its rate is zero, and its buffered
   parts rest once they are one stretch from start to end; a value the core says only
   when it changes (a download's bytes, a transfer line's bar, a file's or
   release's upload share, an export's percent) rests once a second passes

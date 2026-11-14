@@ -28,8 +28,11 @@ import fm.bae.app.currentLocale
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.fastvalues.FrameClock
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.positionAt
+import fm.bae.fastvalues.progressAt
 import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.bridgeSeekBar
@@ -53,15 +56,19 @@ internal data class SeekBarState(
     val seekable: Boolean,
 )
 
-/** The bar's state for [position], with empty labels when nothing is playing. */
+/**
+ * The bar's state for [position] at a frame timed [frameTimeNanos] on the frame clock, with empty
+ * labels when nothing is playing.
+ */
 internal fun Context.seekBarState(
     position: BridgeTrackPosition?,
+    frameTimeNanos: Long,
     showRemaining: Boolean,
 ): SeekBarState {
     position ?: return SeekBarState(0.0, "", "", seekable = false)
-    val clocks = bridgeSeekBar(position.positionMs, position.durationMs, showRemaining)
+    val clocks = bridgeSeekBar(position.positionAt(frameTimeNanos), position.durationMs, showRemaining)
     return SeekBarState(
-        progress = position.progress,
+        progress = position.progressAt(frameTimeNanos),
         leading = clockText(clocks.leading, currentLocale()),
         trailing = clocks.trailing?.let { clockText(it, currentLocale()) } ?: "",
         seekable = position.durationMs != null,
@@ -89,7 +96,7 @@ fun AndroidSeekBarContainer(
         position = nowPlaying?.let { player.trackPositions.source(it.trackId) },
         // The large line shows no held parts, so it follows none.
         buffered = if (look == SeekLineLook.BAR) nowPlaying?.let { player.trackBuffered.source(it.trackId) } else null,
-        state = { context.seekBarState(it, showRemaining) },
+        state = { position, frameTimeNanos -> context.seekBarState(position, frameTimeNanos, showRemaining) },
         onSeekRatio = { ratio ->
             val duration = player.duration
             if (duration != C.TIME_UNSET && duration > 0L) {
@@ -110,13 +117,14 @@ fun AndroidSeekBarContainer(
 /**
  * The seek row: the time labels [state] words, and the bar, which draws
  * [position] over the parts of its track [buffered] holds, in the [look]
- * given. The View reads both streams each display frame.
+ * given. The View reads both streams each display frame, and works the position
+ * out from the position's anchor and the frame's time.
  */
 @Composable
 internal fun AndroidSeekBar(
     position: LatestSource<BridgeTrackPosition>?,
     buffered: LatestSource<BridgeTrackBuffered>?,
-    state: (BridgeTrackPosition?) -> SeekBarState,
+    state: (BridgeTrackPosition?, Long) -> SeekBarState,
     onSeekRatio: (Double) -> Unit,
     onToggleRemaining: () -> Unit,
     modifier: Modifier = Modifier,
@@ -210,11 +218,18 @@ internal class PlaybackProgressView(
     var onToggleRemaining: () -> Unit = {}
 
     private var isDragging = false
-    private val following = FrameFollowing<BridgeTrackPosition>(this) { show(it) }
-    private val bufferedFollowing = FrameFollowing<BridgeTrackBuffered>(this) { heldRanges.show(it?.ranges.orEmpty()) }
+    private val following =
+        FrameFollowing<BridgeTrackPosition>(
+            this,
+            show = { show(it) },
+            onFrame = { _, frameTimeNanos -> showShown(frameTimeNanos) },
+        )
+    private val bufferedFollowing =
+        FrameFollowing<BridgeTrackBuffered>(this, show = { heldRanges.show(it?.ranges.orEmpty()) })
 
-    /** What the bar draws of a position; set by [bind]. */
-    private var state: (BridgeTrackPosition?) -> SeekBarState = { SeekBarState(0.0, "", "", seekable = false) }
+    /** What the bar draws of a position at a frame's time; set by [bind]. */
+    private var state: (BridgeTrackPosition?, Long) -> SeekBarState =
+        { _, _ -> SeekBarState(0.0, "", "", seekable = false) }
 
     /** What the stream last said; null while it holds nothing. */
     private var position: BridgeTrackPosition? = null
@@ -284,7 +299,7 @@ internal class PlaybackProgressView(
     fun bind(
         position: LatestSource<BridgeTrackPosition>?,
         buffered: LatestSource<BridgeTrackBuffered>?,
-        state: (BridgeTrackPosition?) -> SeekBarState,
+        state: (BridgeTrackPosition?, Long) -> SeekBarState,
         onSeekRatio: (Double) -> Unit,
         onToggleRemaining: () -> Unit,
     ) {
@@ -321,17 +336,19 @@ internal class PlaybackProgressView(
      * What the labels and fill show: the dragged position while the person drags, else the
      * seek they dropped until core applies it, else the stream's position.
      */
-    private fun showShown() {
-        setPosition(state(if (isDragging) positionAt(draggedRatio()) ?: position else projected ?: position))
+    private fun showShown(frameTimeNanos: Long = FrameClock.nowNanos()) {
+        setPosition(
+            state(if (isDragging) positionAt(draggedRatio()) ?: position else projected ?: position, frameTimeNanos),
+        )
     }
 
     private fun draggedRatio(): Double = seekBar.progress.toDouble() / seekBar.max.toDouble()
 
-    /** The stream's position moved to [ratio] of its track; null while the length is unknown. */
+    /** The stream's position standing at [ratio] of its track; null while the length is unknown. */
     private fun positionAt(ratio: Double): BridgeTrackPosition? {
         val position = position
         val durationMs = position?.durationMs ?: return null
-        return position.copy(positionMs = (ratio * durationMs.toDouble()).toLong(), progress = ratio)
+        return position.copy(positionMs = (ratio * durationMs.toDouble()).toLong(), rate = 0.0, anchoredAtNs = 0uL)
     }
 
     internal fun beginTracking() {

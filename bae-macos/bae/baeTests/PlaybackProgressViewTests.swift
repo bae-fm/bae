@@ -14,8 +14,9 @@ private func position(
 ) -> BridgeTrackPosition {
     BridgeTrackPosition(
         positionMs: positionMs,
+        rate: 0,
+        anchoredAtNs: 0,
         durationMs: durationMs,
-        progress: progress,
         seekRevision: seekRevision
     )
 }
@@ -453,6 +454,31 @@ struct SeekBarHeldPartsTests {
 @Suite("Queue strip")
 @MainActor
 struct ProgressStripTests {
+    /// A moving anchor draws the position it puts the track at now, with no
+    /// further value written to the stream.
+    @Test("the queue strip draws a moving anchor from the clock")
+    func stripDrawsAMovingAnchor() throws {
+        let positions = LatestStream<BridgeTrackPosition>.written()
+        positions.set(
+            BridgeTrackPosition(
+                positionMs: 45_000,
+                rate: 1,
+                anchoredAtNs: FrameClock.nowNs() - 30_000_000_000,
+                durationMs: 180_000,
+                seekRevision: 0
+            ),
+            for: "track"
+        )
+        let strip = ProgressStripNSView(accent: .controlAccentColor)
+        strip.follow(positions.stream.source(for: "track"))
+        let label = try #require(
+            SnapshotTestSupport.descendants(of: strip)
+                .compactMap { $0 as? NSTextField }.first
+        )
+        #expect(["1:15", "1:16"].contains(label.stringValue))
+        strip.stopFollowing()
+    }
+
     /// A seek the person makes on the bar is held in the track's stream, so
     /// the queue's strip, drawing the same track, shows it too until core
     /// applies it.

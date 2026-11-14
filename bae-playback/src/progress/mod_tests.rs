@@ -70,6 +70,7 @@ fn the_in_app_position_keeps_the_pregap() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.0,
+            rate: 1.0,
         })
         .expect("position update is retained");
 
@@ -85,12 +86,14 @@ fn position_ticks_change_no_playback_value() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.01,
+            rate: 1.0,
         },
         PlaybackProgress::Seeked {
             position_ms: 50_000,
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.5,
+            rate: 1.0,
         },
         PlaybackProgress::PreviewPositionUpdate { position_ms: 1_000, progress: 0.01 },
         PlaybackProgress::PreviewSeeked { position_ms: 1_000, progress: 0.01 },
@@ -107,6 +110,7 @@ fn a_state_on_another_track_ends_the_library_position() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.01,
+            rate: 1.0,
         })
         .expect("position update is retained");
     let playing = |track_id: &str| PlaybackProgress::StateChanged {

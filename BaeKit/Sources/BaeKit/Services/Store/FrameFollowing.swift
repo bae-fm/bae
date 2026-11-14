@@ -8,23 +8,34 @@
     /// key is at rest or holds nothing, nothing runs, and the view shows the
     /// key's value once on each pull that names the key. Values arriving faster than frames are never
     /// all shown; the screen shows the latest one each frame.
+    ///
+    /// A value that is itself a line drawn from the time, such as a position
+    /// anchor, also takes `onFrame`, which each frame of a moving key runs
+    /// with the key's latest value and the frame's time on the frame clock,
+    /// whether or not the value changed.
     @MainActor
     public final class FrameFollowing<Value: Sendable & Equatable> {
         private weak var view: NSView?
         private let show: (Value?) -> Void
+        private let onFrame: ((Value, UInt64) -> Void)?
         private var source: LatestSource<Value>?
         private var watch: KeyActivity.Watch?
         private var link: CADisplayLink?
-        private lazy var ticker = FrameTicker { [weak self] in
-            self?.frame()
+        private lazy var ticker = FrameTicker { [weak self] frameNs in
+            self?.frame(atNs: frameNs)
         }
         /// What was last shown; `.none` until something is.
         private var shown: Value??
 
         /// Follow on `view`'s display, showing each new value with `show`.
-        public init(view: NSView, show: @escaping (Value?) -> Void) {
+        public init(
+            view: NSView,
+            show: @escaping (Value?) -> Void,
+            onFrame: ((Value, UInt64) -> Void)? = nil
+        ) {
             self.view = view
             self.show = show
+            self.onFrame = onFrame
         }
 
         /// Read `source` from now on; a source for the key already read
@@ -78,6 +89,13 @@
             showLatest()
         }
 
+        /// One display frame timed at `frameNs`.
+        private func frame(atNs frameNs: UInt64) {
+            if let latest = showLatest(), let onFrame {
+                onFrame(latest, frameNs)
+            }
+        }
+
         /// Show the key's latest value if it changed, and answer it.
         @discardableResult
         private func showLatest() -> Value? {
@@ -91,16 +109,18 @@
 
     /// The display link's target, which a generic class can't be.
     private final class FrameTicker: NSObject {
-        private let tick: @MainActor () -> Void
+        private let tick: @MainActor (UInt64) -> Void
 
-        init(tick: @escaping @MainActor () -> Void) {
+        init(tick: @escaping @MainActor (UInt64) -> Void) {
             self.tick = tick
         }
 
         @MainActor
         @objc
-        func frame(_: CADisplayLink) {
-            tick()
+        func frame(_ link: CADisplayLink) {
+            // The frame is shown at its target time, which is on the frame
+            // clock: the clock of `CACurrentMediaTime`.
+            tick(FrameClock.ns(ofMediaTime: link.targetTimestamp))
         }
     }
 #endif

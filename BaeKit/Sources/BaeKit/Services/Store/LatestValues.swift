@@ -710,9 +710,9 @@ extension LatestStream where Value == BridgeTrackPosition {
         fed { appHandle.feedPlaybackPositions() }
     }
 
-    /// Show `key` at `progress` of its length, as the seek the person just
-    /// made there, until a position of a later applied seek arrives, for
-    /// every view drawing that track. Nothing while the key holds no
+    /// Show `key` standing at `progress` of its length, as the seek the
+    /// person just made there, until an anchor of a later applied seek
+    /// arrives, for every view drawing that track. Nothing while the key holds no
     /// position of a known length.
     fileprivate func holdSeek(_ key: Data, at progress: Double) {
         guard let current = own(for: key),
@@ -725,8 +725,9 @@ extension LatestStream where Value == BridgeTrackPosition {
         hold(
             BridgeTrackPosition(
                 positionMs: Int64(progress * Double(durationMs)),
+                rate: 0,
+                anchoredAtNs: 0,
                 durationMs: durationMs,
-                progress: progress,
                 seekRevision: seekRevision
             ),
             for: key

@@ -12,6 +12,7 @@ fn position(track_id: &str, position_ms: i64) -> PlaybackPositions {
             position_ms,
             duration_ms: Some(200_000),
             progress: position_ms as f64 / 200_000.0,
+            rate: 1.0,
         }),
         seek_revision: 0,
         playing: false,

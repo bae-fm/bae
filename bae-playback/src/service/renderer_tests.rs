@@ -111,6 +111,38 @@ async fn remote_status_feeds_progress() {
     );
 }
 
+/// A device's position carries the rate it stated, so a position that moves at
+/// half speed is drawn at half speed, and one that states none stands until
+/// its next status.
+#[tokio::test]
+async fn remote_positions_carry_the_rate_the_device_stated() {
+    let (_home, mut service, _state, mut rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
+    let mut rates = vec![];
+    for rate in [Some(0.5), None] {
+        while rx.try_recv().is_ok() {}
+        service
+            .handle_remote_event(status_event(
+                &service,
+                ReceiverStatus {
+                    player_state: RendererPlayerState::Playing,
+                    position: Some(std::time::Duration::from_secs(30)),
+                    duration: Some(std::time::Duration::from_secs(180)),
+                    volume: Some(1.0),
+                    rate,
+                },
+            ))
+            .await;
+        while let Ok(progress) = rx.try_recv() {
+            if let PlaybackProgress::PositionUpdate { rate, .. } = progress {
+                rates.push(rate);
+            }
+        }
+    }
+    assert_eq!(rates, vec![0.5, 0.0]);
+}
+
 /// Handing playback to a device announces that device by its id as well as its
 /// name: the UI matches the id against the device list, since names need not
 /// be unique.

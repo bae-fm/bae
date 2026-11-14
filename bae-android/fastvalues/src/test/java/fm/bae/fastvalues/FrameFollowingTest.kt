@@ -32,7 +32,7 @@ class FrameFollowingTest {
 
         override fun latest(key: ByteArray): BridgeFastValue? {
             reads += 1
-            return BridgeFastValue.TrackPosition(BridgeTrackPosition(1, 10uL, 0.1, 0uL))
+            return BridgeFastValue.TrackPosition(BridgeTrackPosition(1, 0.0, 0uL, 10uL, 0uL))
         }
 
         override fun moving(key: ByteArray): Boolean = moving
@@ -77,18 +77,18 @@ class FrameFollowingTest {
         ShadowChoreographer.setPaused(true)
         ShadowChoreographer.setFrameDelay(FRAME)
         val positions = LatestStream.written<BridgeTrackPosition>()
-        positions.write("track", BridgeTrackPosition(1, 10uL, 0.1, 0uL))
+        positions.write("track", BridgeTrackPosition(1, 0.0, 0uL, 10uL, 0uL))
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val view = View(activity)
         activity.setContentView(view)
         val shown = mutableListOf<Long?>()
-        FrameFollowing<BridgeTrackPosition>(view) { shown += it?.positionMs }.follow(positions.source("track"))
+        FrameFollowing<BridgeTrackPosition>(view, show = { shown += it?.positionMs }).follow(positions.source("track"))
         val looper = shadowOf(Looper.getMainLooper())
 
         repeat(3) { looper.idleFor(FRAME) }
         assertEquals(listOf<Long?>(1L), shown)
 
-        positions.write("track", BridgeTrackPosition(5, 10uL, 0.5, 0uL))
+        positions.write("track", BridgeTrackPosition(5, 0.0, 0uL, 10uL, 0uL))
         looper.idleFor(FRAME)
         assertEquals(listOf<Long?>(1L, 5L), shown)
     }
@@ -100,7 +100,7 @@ class FrameFollowingTest {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val view = View(activity)
         activity.setContentView(view)
-        return FrameFollowing<BridgeTrackPosition>(view) {}.also { it.follow(positions.source("track")) }
+        return FrameFollowing<BridgeTrackPosition>(view, show = {}).also { it.follow(positions.source("track")) }
     }
 
     private companion object {

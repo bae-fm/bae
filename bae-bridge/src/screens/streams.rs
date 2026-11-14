@@ -356,10 +356,14 @@ pub(crate) fn playback_positions(
     feed(runtime, run, move |services, writer| {
         let mut positions = services.subscribe_playback_positions();
         async move {
+            let mut fold = bae_playback::AnchorFold::new();
             loop {
-                let now = positions.positions();
-                // A paused track's position stays where it is.
-                writer.reset_resting(track_positions(&now), |_, _| !now.playing);
+                write_track_anchor(
+                    &mut fold,
+                    &writer,
+                    &positions.positions(),
+                    bae_util::frame_clock::frame_clock_ns(),
+                );
                 if positions.changed().await.is_err() {
                     return;
                 }
@@ -539,22 +543,33 @@ fn scan_found_held(counts: bae_import::ScanFoundCounts) -> HashMap<Vec<u8>, Brid
         .collect()
 }
 
-/// The playing track's position as its stream holds it: under its track's
-/// key, or nothing.
-fn track_positions(
+/// Write the playing track's anchor, read at `at_ns` on the frame clock, when
+/// `positions` leave the line the stream holds; the position ticks along it
+/// write nothing. An anchor at rate zero (a paused track) is at rest.
+fn write_track_anchor(
+    fold: &mut bae_playback::AnchorFold,
+    writer: &StreamWriter,
     positions: &bae_playback::PlaybackPositions,
+    at_ns: u64,
+) {
+    if fold.fold(positions, at_ns) {
+        writer.reset_resting(track_anchor_held(fold.anchor()), |_, value| {
+            matches!(value, BridgeFastValue::TrackPosition { position } if position.rate == 0.0)
+        });
+    }
+}
+
+/// The playing track's anchor as its stream holds it: under its track's key,
+/// or nothing.
+fn track_anchor_held(
+    anchor: Option<&bae_playback::TrackAnchor>,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {
-    positions
-        .library
-        .clone()
-        .map(|position| {
+    anchor
+        .map(|anchor| {
             (
-                position.track_id.clone().into_bytes(),
+                anchor.track_id.clone().into_bytes(),
                 BridgeFastValue::TrackPosition {
-                    position: crate::types::BridgeTrackPosition::from_core(
-                        position,
-                        positions.seek_revision,
-                    ),
+                    position: crate::types::BridgeTrackPosition::from_core(anchor.clone()),
                 },
             )
         })

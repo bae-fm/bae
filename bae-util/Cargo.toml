@@ -54,9 +54,15 @@ hex = { workspace = true }
 # rayon), including mobile.
 image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 
-# The open-file limit (src/open_file_limit.rs) is a Unix resource limit.
+# The open-file limit (src/open_file_limit.rs) is a Unix resource limit, and the
+# frame clock (src/frame_clock.rs) reads the Unix monotonic clocks.
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }
+
+# The frame clock (src/frame_clock.rs) is the platform's monotonic clock; on Windows
+# that is the performance counter.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_System_Performance"] }
 
 # Text encoding detection (src/text_encoding.rs) serves the import pipeline,
 # which a mobile build does not compile; the predicate is the `desktop` cfg's

@@ -76,8 +76,9 @@ struct NowPlayingStorageWaitTests {
                     holding: [
                         "track-1": BridgeTrackPosition(
                             positionMs: 0,
+                            rate: 0,
+                            anchoredAtNs: 0,
                             durationMs: 200_000,
-                            progress: 0,
                             seekRevision: 0
                         )
                     ]
