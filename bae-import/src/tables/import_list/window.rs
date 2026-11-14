@@ -15,7 +15,6 @@ use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
 use crate::candidate_detail::ListedRelease;
-use crate::folder_scanner::ScanItem;
 use crate::list::ImportListItem;
 use crate::tables::folder_scans;
 use crate::tables::import_state::{
@@ -51,7 +50,6 @@ pub(super) fn materialise(
     let releases = release_rows(sql, list.id, keys)?;
     let imported = ImportedReads::of(sql, &releases)?;
     let linked = LinkedReads::of(sql, keys, &releases)?;
-    let mut scanned = scanned_items(sql, keys, &releases)?;
     let mut covers = row_covers(sql, keys, &releases)?;
     let mut releases = releases.into_iter().peekable();
     keys.iter()
@@ -71,7 +69,7 @@ pub(super) fn materialise(
             let release =
                 releases.next_if(|release| release.position == position).ok_or_else(missing)?;
             if key.item == Item::Invalid {
-                return invalid_item(&mut scanned, release);
+                return invalid_item(release);
             }
             candidate_item(&imported, &linked, &mut covers, release)
         })
@@ -201,6 +199,8 @@ struct ReleaseRows {
     failure: Option<crate::ImportFailureReason>,
     facts: RuntimeFactColumns,
     selected: bool,
+    /// What the scan read of a folder that failed validation.
+    invalid: Option<folder_scans::InvalidColumns>,
     /// The header of the group the release is listed under, by its stable
     /// key.
     header_key: Option<String>,
@@ -229,6 +229,7 @@ fn release_rows(
     if keys.is_empty() {
         return Ok(Vec::new());
     }
+    let invalid_columns = folder_scans::invalid_columns_sql("c");
     let rows = sql.query(
         &format!(
             "SELECT p.watched_folder_path, p.key, p.display_path, \
@@ -242,7 +243,7 @@ fn release_rows(
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
                     p.group_folder AS group_folder, \
                     w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
-                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover} \
+                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid} \
              FROM json_each(:keys) AS w \
              JOIN import_list_placement AS p \
                  ON p.key = unhex(w.value ->> 1) AND p.item <> 'group' \
@@ -260,9 +261,12 @@ fn release_rows(
                  ON provenance.content_hash = s.content_hash \
              LEFT JOIN import_candidate_release_link AS link ON link.content_hash = s.content_hash \
              LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
+             {invalid_join} \
              ORDER BY window_position",
             cover = cover_read_columns(),
             library_cover = cover_version_sql("origin.release_id"),
+            invalid = invalid_columns.0,
+            invalid_join = invalid_columns.1,
         ),
         named_params! {
             ":keys": serde_json::Value::from(keys).to_string(),
@@ -305,6 +309,7 @@ fn release_rows(
                 },
                 facts: RuntimeFactColumns::read(row, 26)?,
                 selected: row.get("selected")?,
+                invalid: folder_scans::InvalidColumns::read(row)?,
                 header_key: row
                     .get::<_, Option<RelativeFolder>>("group_folder")?
                     .map(|folder| {
@@ -335,36 +340,16 @@ fn release_rows(
         .collect()
 }
 
-/// The scan items the window's rows read their files from, by key, read in
-/// one statement: a folder that failed validation shows what its scan read.
-/// Only such a row reads its scan's files.
-fn scanned_items(
-    sql: &SqlReadContext<'_>,
-    keys: &[ItemKey],
-    releases: &[ReleaseRows],
-) -> Result<HashMap<CandidateKey, folder_scans::StoredScanItem>, DbError> {
-    let wanted: Vec<(&std::path::Path, &CandidateKey)> = releases
-        .iter()
-        .filter(|release| keys[release.position].item == Item::Invalid)
-        .map(|release| (release.watched_folder_path.as_path(), &release.key))
-        .collect();
-    folder_scans::load_items_by_keys(sql, &wanted, folder_scans::RowSources::Any)
-}
-
-/// A folder that failed validation, as its row shows it: what its scan read.
-fn invalid_item(
-    scanned: &mut HashMap<CandidateKey, folder_scans::StoredScanItem>,
-    release: ReleaseRows,
-) -> Result<WindowItemRows, DbError> {
-    let candidate = match scanned.remove(&release.key).map(|stored| stored.item) {
-        Some(ScanItem::Invalid(candidate)) => candidate,
-        stored => {
-            return Err(DbError::unreadable(
-                format!("the scan item of {}, listed as failing validation", release.key),
-                stored.map(|item| matches!(item, ScanItem::Invalid(_))),
-            ))
-        }
+/// A folder that failed validation, as its row shows it: what its scan read,
+/// which the row's own statement selected.
+fn invalid_item(release: ReleaseRows) -> Result<WindowItemRows, DbError> {
+    let Some(invalid) = release.invalid else {
+        return Err(DbError::unreadable(
+            format!("the scan item of {}, listed as failing validation", release.key),
+            release.name,
+        ));
     };
+    let candidate = invalid.candidate(&release.key, release.name, release.watched_folder_path)?;
     Ok(WindowItemRows::Ready(ImportListItem::Invalid { candidate, selected: release.selected }))
 }
 

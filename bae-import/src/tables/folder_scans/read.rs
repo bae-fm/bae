@@ -441,15 +441,94 @@ const PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
 
 /// The files of the release joined as `candidate` that failed validation, as
 /// a JSON array in name order.
-const SKIPPED_FILES_JSON: &str = "(SELECT json_group_array(json_object( \
+fn skipped_files_json(candidate: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
          'relative_path', skipped.relative_path, \
          'absolute_path', hex(skipped.absolute_path), \
          'size', skipped.size, 'modified_at_ns', skipped.modified_at_ns, \
          'role', skipped.role, 'audio_damage', skipped.audio_damage, \
          'document_kind', skipped.document_kind) ORDER BY skipped.position) \
      FROM scan_skipped_file AS skipped \
-     WHERE skipped.watched_folder_path = candidate.watched_folder_path \
-       AND skipped.candidate_path = candidate.path)";
+     WHERE skipped.watched_folder_path = {candidate}.watched_folder_path \
+       AND skipped.candidate_path = {candidate}.path)"
+    )
+}
+
+/// What a read of a window's rows adds to a row of `scan_candidate`, joined
+/// as `candidate`, to show it as a folder that failed validation: the columns
+/// to select, and the join they read through.
+pub(crate) fn invalid_columns_sql(candidate: &str) -> (String, String) {
+    (
+        format!(
+            "{candidate}.folder AS invalid_folder, \
+             {candidate}.relative_folder AS invalid_relative_folder, \
+             {candidate}.grouping_key AS invalid_grouping, \
+             CASE WHEN {candidate}.kind = 'invalid' THEN {files} END AS invalid_files, \
+             invalid_tags.album_title AS invalid_album_title, \
+             invalid_tags.credits AS invalid_credits",
+            files = skipped_files_json(candidate)
+        ),
+        format!(
+            "LEFT JOIN scan_skipped_tags AS invalid_tags \
+                 ON invalid_tags.watched_folder_path = {candidate}.watched_folder_path \
+                AND invalid_tags.candidate_path = {candidate}.path"
+        ),
+    )
+}
+
+/// A folder that failed validation, as [`invalid_columns_sql`] selects it.
+#[derive(Clone, PartialEq)]
+pub(crate) struct InvalidColumns {
+    folder: PathBuf,
+    relative_folder: RelativeFolder,
+    grouping: Option<CandidateKey>,
+    files: String,
+    tags: Option<SkippedTags>,
+}
+
+impl InvalidColumns {
+    /// The columns of a row of another kind hold no files, which reads as
+    /// `None`.
+    pub(crate) fn read(row: &rusqlite::Row<'_>) -> Result<Option<Self>, rusqlite::Error> {
+        let Some(files) = row.get::<_, Option<String>>("invalid_files")? else {
+            return Ok(None);
+        };
+        Ok(Some(Self {
+            folder: path_column::get(row, "invalid_folder")?,
+            relative_folder: row.get("invalid_relative_folder")?,
+            grouping: row.get("invalid_grouping")?,
+            files,
+            tags: row
+                .get::<_, Option<String>>("invalid_album_title")?
+                .map(|album_title| {
+                    Ok::<_, rusqlite::Error>(SkippedTags {
+                        album_title,
+                        artist: crate::tables::stored_credits::line_column(row, "invalid_credits")?,
+                    })
+                })
+                .transpose()?,
+        }))
+    }
+
+    /// The candidate named `name`, stored at `key` under `watched_folder_path`.
+    pub(crate) fn candidate(
+        self,
+        key: &CandidateKey,
+        name: String,
+        watched_folder_path: PathBuf,
+    ) -> Result<InvalidCandidate, DbError> {
+        Ok(InvalidCandidate {
+            path: self.folder,
+            name,
+            watched_folder_path,
+            relative_folder: self.relative_folder,
+            grouping: self.grouping,
+            files: skipped_files_of(key, &self.files)?,
+            tags: self.tags,
+        })
+    }
+}
 
 struct CandidateRow {
     watched_folder_path: PathBuf,
@@ -483,7 +562,7 @@ pub(crate) fn load_candidate_items_rows(
                     candidate.relative_folder, candidate.folder, candidate.file_root, \
                     candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
                     {files} AS files, {PARTS_JSON} AS parts, \
-                    {SKIPPED_FILES_JSON} AS skipped_files, \
+                    {skipped_files} AS skipped_files, \
                     tags.album_title AS skipped_album_title, tags.credits AS skipped_credits \
              FROM scan_candidate AS candidate \
              LEFT JOIN scan_skipped_tags AS tags \
@@ -494,6 +573,7 @@ pub(crate) fn load_candidate_items_rows(
             entries.condition(),
             sources.clause(),
             files = files_json_sql(),
+            skipped_files = skipped_files_json("candidate"),
         ),
         entries.params(),
         |row| {
@@ -529,15 +609,16 @@ pub(crate) fn load_candidate_items_rows(
         for row in rows {
             let generation = to_u64(row.generation, "a scan candidate's generation")?;
             let item = match row.kind.as_str() {
-                "invalid" => ScanItem::Invalid(InvalidCandidate {
-                    path: row.folder,
-                    name: row.name,
-                    watched_folder_path: row.watched_folder_path,
-                    relative_folder: row.relative_folder,
-                    grouping: row.grouping_key,
-                    files: skipped_files_of(&row.path, &row.skipped_files)?,
-                    tags: row.skipped_tags,
-                }),
+                "invalid" => ScanItem::Invalid(
+                    InvalidColumns {
+                        folder: row.folder,
+                        relative_folder: row.relative_folder,
+                        grouping: row.grouping_key,
+                        files: row.skipped_files,
+                        tags: row.skipped_tags,
+                    }
+                    .candidate(&row.path, row.name, row.watched_folder_path)?,
+                ),
                 kind @ ("tentative" | "valid") => {
                     let candidate = FolderCandidate {
                         path: row.folder,
@@ -757,7 +838,7 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
     }
 }
 
-/// One `scan_skipped_file` row as [`SKIPPED_FILES_JSON`] holds it.
+/// One `scan_skipped_file` row as [`skipped_files_json`] holds it.
 #[derive(serde::Deserialize)]
 struct SkippedFileRow {
     relative_path: String,

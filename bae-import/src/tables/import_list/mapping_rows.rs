@@ -120,17 +120,27 @@ disc_options AS (
         SELECT sheet_disc_number FROM f WHERE sheet_disc = 'disc'
     )
 ),
+sheet_audio_counts (sheet, count) AS (
+    SELECT sheet_relative_path, COUNT(*) FROM scan_sheet_audio_file
+    WHERE watched_folder_path = :wf AND candidate_path = :cp GROUP BY sheet_relative_path
+),
 sheets (relative_path, json) AS (
     SELECT s.relative_path,
            json_object(
                'sheet_id', s.relative_path, 'name', s.relative_path, 'size', s.size,
-               'binding', s.sheet_binding, 'codec', s.sheet_binding_codec,
+               'binding', CASE WHEN s.sheet_binding <> 'resolved' THEN s.sheet_binding
+                               ELSE CASE COALESCE(n.count, 0)
+                                    WHEN 0 THEN 'resolved_to_none'
+                                    WHEN 1 THEN 'describes'
+                                    ELSE 'describes_files' END END,
+               'codec', s.sheet_binding_codec,
                'assignment', s.sheet_disc, 'disc_number', s.sheet_disc_number,
-               'audio', json((SELECT json_group_array(json(a.json) ORDER BY sa.position)
-                              FROM scan_sheet_audio_file AS sa
-                              JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
-                              WHERE sa.watched_folder_path = :wf AND sa.candidate_path = :cp
-                                AND sa.sheet_relative_path = s.relative_path)),
+               'audio_count', COALESCE(n.count, 0),
+               'described', CASE WHEN n.count = 1 THEN json((
+                   SELECT a.json FROM scan_sheet_audio_file AS sa
+                   JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
+                   WHERE sa.watched_folder_path = :wf AND sa.candidate_path = :cp
+                     AND sa.sheet_relative_path = s.relative_path)) END,
                'requested', json((SELECT json_group_array(r.file_reference ORDER BY r.seq)
                                   FROM refs AS r
                                   WHERE r.sheet = s.relative_path
@@ -160,7 +170,8 @@ sheets (relative_path, json) AS (
                'disc_options', CASE WHEN s.sheet_binding = 'resolved'
                                     THEN json((SELECT json FROM disc_options))
                                     ELSE json('[]') END)
-    FROM f AS s WHERE s.role = 'track_sheet'
+    FROM f AS s LEFT JOIN sheet_audio_counts AS n ON n.sheet = s.relative_path
+    WHERE s.role = 'track_sheet'
 ),
 runs AS (
     SELECT side_no, run_no, MIN(side_kind) AS side_kind, MIN(side_value) AS side_value,
@@ -283,7 +294,10 @@ struct SheetJson {
     codec: Option<String>,
     assignment: String,
     disc_number: Option<u32>,
-    audio: Vec<AudioJson>,
+    /// How many audio files the sheet is bound to, and the file when it is
+    /// bound to exactly one; `binding` already says which case the sheet is in.
+    audio_count: u32,
+    described: Option<AudioJson>,
     requested: Vec<String>,
     references: Vec<ReferenceJson>,
     disc_options: Vec<u32>,
@@ -471,14 +485,14 @@ fn container(audio: &AudioJson) -> MappingContainer {
 fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let bound = match sheet.binding.as_str() {
-        "resolved" => match sheet.audio.as_slice() {
-            [audio] => SheetBound::Describes(container(audio)),
-            [_, _, ..] => SheetBound::DescribesFiles {
-                audio_file_count: u32::try_from(sheet.audio.len())
-                    .map_err(|error| internal(format!("a sheet's audio count: {error}")))?,
-            },
-            [] => return Err(internal(format!("{} is bound to no audio", sheet.sheet_id))),
+        "describes" => match sheet.described.as_ref() {
+            Some(audio) => SheetBound::Describes(container(audio)),
+            None => return Err(internal(format!("{} describes no audio file", sheet.sheet_id))),
         },
+        "describes_files" => SheetBound::DescribesFiles { audio_file_count: sheet.audio_count },
+        "resolved_to_none" => {
+            return Err(internal(format!("{} is bound to no audio", sheet.sheet_id)))
+        }
         "unresolved" => SheetBound::Unresolved { requested: sheet.requested },
         "refused_timing" => SheetBound::RefusedTiming,
         "refused_codec" => SheetBound::RefusedCodec {
