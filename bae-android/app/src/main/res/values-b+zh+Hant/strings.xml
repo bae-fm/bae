@@ -281,6 +281,7 @@
     <string name="details">詳細資訊</string>
     <string name="copy_details">複製詳細資訊</string>
     <string name="reset_device">從雲端重設…</string>
+    <string name="library_data_wrong">此資料庫的資料有問題。</string>
     <string name="reset_device_confirm_title">要從雲端重設嗎？</string>
     <string name="reset_device_confirm">重設</string>
     <string name="restore_device_title">還原此資料庫</string>

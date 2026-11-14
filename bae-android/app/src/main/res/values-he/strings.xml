@@ -295,6 +295,7 @@
     <string name="details">פרטים</string>
     <string name="copy_details">העתקת הפרטים</string>
     <string name="reset_device">איפוס מהענן…</string>
+    <string name="library_data_wrong">יש בעיה בנתוני הספרייה הזו.</string>
     <string name="reset_device_confirm_title">לאפס מהענן?</string>
     <string name="reset_device_confirm">איפוס</string>
     <string name="restore_device_title">שחזור הספרייה הזו</string>

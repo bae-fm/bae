@@ -27,7 +27,7 @@ class FailedSwitchTest {
 
         assertEquals(
             AppScreen.LibraryOpen(open),
-            AppScreen.openFailed("other-library", failure, DisplayError("Offline.", "offline"), open),
+            AppScreen.openFailed("other-library", failure, DisplayError("Offline.", "offline"), offersReset = false, open),
         )
         runBlocking { open.dispose(null) }
     }

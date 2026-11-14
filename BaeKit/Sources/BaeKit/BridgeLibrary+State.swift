@@ -33,4 +33,17 @@ extension BridgeLibrary {
             return localizedCoreString(lineKey)
         }
     }
+
+    /// Whether Reset from cloud is what gets past `failure`, a failed open of
+    /// this library: core says the failure is in this device's copy of the
+    /// library's data, and the library has storage to reset from. A library
+    /// kept on this device only has none, which coven refuses a reset for
+    /// (`NoStorage`), and one that can't open as it is has no storage the app
+    /// knows of.
+    public func offersResetFromCloud(after failure: DisplayError) -> Bool {
+        guard failure.resetFromCloudReplaces,
+            case .openable(let storage) = state
+        else { return false }
+        return storage != nil
+    }
 }

@@ -281,6 +281,7 @@
     <string name="details">詳細</string>
     <string name="copy_details">詳細をコピー</string>
     <string name="reset_device">クラウドからリセット…</string>
+    <string name="library_data_wrong">このライブラリのデータに問題があります。</string>
     <string name="reset_device_confirm_title">クラウドからリセットしますか？</string>
     <string name="reset_device_confirm">リセット</string>
     <string name="restore_device_title">このライブラリを復元</string>

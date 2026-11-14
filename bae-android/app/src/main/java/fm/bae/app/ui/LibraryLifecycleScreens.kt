@@ -37,6 +37,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
@@ -123,6 +124,19 @@ internal fun ResetOfferedScreen(
                 look = NoticeLook.CENTERED,
                 action = shown.error.retryAction { prepared { onReset(it.reset) } },
             )
+        }
+
+        // A failed open of a library whose own data is wrong: what failed and what is wrong, with the way out.
+        shown != null && reason != null && reason.resetFromCloudReplaces -> {
+            Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
+                AndroidNotice(
+                    title = context.coreString(shown.step.titleKey),
+                    advice = stringResource(R.string.library_data_wrong),
+                    error = reason,
+                    action = offer,
+                    buttons = NoticeButtons.BELOW,
+                )
+            }
         }
 
         reason != null -> {
@@ -229,7 +243,11 @@ internal fun DeletionUnfinishedScreen(
     }
 }
 
-/** A library left its store, but deleting this device's files for it failed; finishing is retried here. */
+/**
+ * A library left its store, but deleting this device's files for it failed; finishing is retried here, when
+ * core says asking again can get past the failure. The library already left its store, so there is no
+ * library for Reset from cloud.
+ */
 @Composable
 internal fun RemovalIncompleteScreen(
     error: DisplayError?,
@@ -242,7 +260,7 @@ internal fun RemovalIncompleteScreen(
             advice = null,
             error = error,
             look = NoticeLook.CENTERED,
-            action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+            action = error.retryAction(onClick = onRetry),
         )
     }
 }

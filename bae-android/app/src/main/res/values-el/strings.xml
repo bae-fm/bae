@@ -286,6 +286,7 @@
     <string name="details">Λεπτομέρειες</string>
     <string name="copy_details">Αντιγραφή λεπτομερειών</string>
     <string name="reset_device">Επαναφορά από το cloud…</string>
+    <string name="library_data_wrong">Κάτι δεν πάει καλά με τα δεδομένα αυτής της βιβλιοθήκης.</string>
     <string name="reset_device_confirm_title">Επαναφορά από το cloud;</string>
     <string name="reset_device_confirm">Επαναφορά</string>
     <string name="restore_device_title">Επαναφορά αυτής της βιβλιοθήκης</string>

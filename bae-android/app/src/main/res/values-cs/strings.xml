@@ -302,6 +302,7 @@
     <string name="details">Podrobnosti</string>
     <string name="copy_details">Kopírovat podrobnosti</string>
     <string name="reset_device">Resetovat z cloudu…</string>
+    <string name="library_data_wrong">S daty této knihovny není něco v pořádku.</string>
     <string name="reset_device_confirm_title">Resetovat z cloudu?</string>
     <string name="reset_device_confirm">Resetovat</string>
     <string name="restore_device_title">Obnovit tuto knihovnu</string>

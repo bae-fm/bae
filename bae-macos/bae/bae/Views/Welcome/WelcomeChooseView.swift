@@ -300,7 +300,8 @@ enum WelcomeLayout {
 
 /// Why a removal left this Mac's files for a library it already left, or why
 /// reading or finishing that failed, with Retry while there is something to
-/// finish.
+/// finish and core says asking again can get past the failure. The library
+/// already left its store, so there is no library for Reset from cloud….
 private struct UnfinishedRemovalNotice: View {
     let error: DisplayError
     let removals: LibraryRemovals
@@ -313,7 +314,7 @@ private struct UnfinishedRemovalNotice: View {
                 error: error,
                 action: removals.unfinished == nil
                     ? nil
-                    : ErrorAction(isDisabled: removals.isRetrying) {
+                    : error.retryAction(isDisabled: removals.isRetrying) {
                         removals.retryUnfinished()
                     }
             )

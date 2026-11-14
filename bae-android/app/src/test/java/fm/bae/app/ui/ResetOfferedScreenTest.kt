@@ -2,8 +2,10 @@ package fm.bae.app.ui
 
 import android.app.Application
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
@@ -96,6 +98,34 @@ class ResetOfferedScreenTest {
 
         compose.onNodeWithText(compose.activity.getString(R.string.details)).performClick()
         compose.onNodeWithText("Couldn't prepare the reset.", substring = true).assertIsDisplayed()
+    }
+
+    /** A failed open of a library whose own data is wrong says what failed and what is wrong, and offers the reset. */
+    @Test
+    fun aDamagedLibraryOffersTheResetNotRetry() {
+        val why =
+            ScreenFailure(
+                FailedStep.LIBRARY_OPEN,
+                DisplayError("Something went wrong with the database.", "damaged", offersRetry = false, resetFromCloudReplaces = true),
+            )
+        compose.setContent {
+            TestTheme {
+                ResetOfferedScreen(
+                    libraryId = "home",
+                    error = why,
+                    lines = testRecoveryLines,
+                    prepare = { error("not tapped") },
+                    errors = TestErrorDisplays,
+                    onReset = {},
+                    onLeave = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText(compose.activity.coreString(FailedStep.LIBRARY_OPEN.titleKey)).assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.getString(R.string.library_data_wrong)).assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.getString(R.string.reset_device)).assertIsDisplayed()
+        compose.onAllNodesWithText(compose.activity.getString(R.string.retry)).assertCountEquals(0)
     }
 
     private data object TestErrorDisplays : ErrorDisplays {

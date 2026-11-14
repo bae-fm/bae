@@ -293,6 +293,7 @@
     <string name="details">Detalii</string>
     <string name="copy_details">Copiază detaliile</string>
     <string name="reset_device">Resetează din cloud…</string>
+    <string name="library_data_wrong">Ceva nu este în regulă cu datele acestei biblioteci.</string>
     <string name="reset_device_confirm_title">Resetezi din cloud?</string>
     <string name="reset_device_confirm">Resetează</string>
     <string name="restore_device_title">Restaurează această bibliotecă</string>

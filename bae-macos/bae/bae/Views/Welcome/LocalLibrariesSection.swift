@@ -68,6 +68,9 @@ struct LocalLibrariesSection: View {
                     if let openFailure, openFailure.libraryId == library.id {
                         OpenFailureNotice(
                             failure: openFailure,
+                            offersReset: library.offersResetFromCloud(
+                                after: openFailure.error
+                            ),
                             onResetFromCloud: { onResetFromCloud(library) }
                         )
                     }
@@ -134,21 +137,22 @@ private struct UnreadableInstallationRow: View {
 
 /// Why a library failed to open, joined to its row with no line between
 /// them (the row names the library): the title and Details, and for a failure
-/// in this Mac's data for it (core says a reset from the cloud replaces what
-/// failed), what is wrong and Reset from cloud….
+/// in this Mac's data for a library that has storage (core says a reset from
+/// the cloud replaces what failed), what is wrong and Reset from cloud….
 private struct OpenFailureNotice: View {
     let failure: LoadError
+    let offersReset: Bool
     let onResetFromCloud: () -> Void
 
     var body: some View {
         Notice(
             title: failure.step.title,
-            advice: failure.error.resetFromCloudReplaces
+            advice: offersReset
                 ? String(
                     localized: "Something is wrong with this library’s data."
                 ) : nil,
             error: failure.error,
-            action: failure.error.resetFromCloudReplaces
+            action: offersReset
                 ? ErrorAction("Reset from cloud…", perform: onResetFromCloud)
                 : nil,
             buttons: .below

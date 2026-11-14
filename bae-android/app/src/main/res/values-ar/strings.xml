@@ -316,6 +316,7 @@
     <string name="details">التفاصيل</string>
     <string name="copy_details">نسخ التفاصيل</string>
     <string name="reset_device">إعادة التعيين من السحابة…</string>
+    <string name="library_data_wrong">هناك مشكلة في بيانات هذه المكتبة.</string>
     <string name="reset_device_confirm_title">هل تريد إعادة التعيين من السحابة؟</string>
     <string name="reset_device_confirm">إعادة تعيين</string>
     <string name="restore_device_title">استعادة هذه المكتبة</string>

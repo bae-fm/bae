@@ -287,6 +287,7 @@
     <string name="details">Detalhes</string>
     <string name="copy_details">Copiar detalhes</string>
     <string name="reset_device">Repor a partir da nuvem…</string>
+    <string name="library_data_wrong">Há algo errado com os dados desta biblioteca.</string>
     <string name="reset_device_confirm_title">Repor a partir da nuvem?</string>
     <string name="reset_device_confirm">Repor</string>
     <string name="restore_device_title">Restaurar esta biblioteca</string>

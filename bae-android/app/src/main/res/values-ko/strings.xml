@@ -281,6 +281,7 @@
     <string name="details">세부 정보</string>
     <string name="copy_details">세부 정보 복사</string>
     <string name="reset_device">클라우드에서 초기화…</string>
+    <string name="library_data_wrong">이 보관함의 데이터에 문제가 있습니다.</string>
     <string name="reset_device_confirm_title">클라우드에서 초기화할까요?</string>
     <string name="reset_device_confirm">초기화</string>
     <string name="restore_device_title">이 라이브러리 복원</string>

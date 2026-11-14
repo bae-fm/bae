@@ -288,6 +288,7 @@
     <string name="details">Details</string>
     <string name="copy_details">Details kopiëren</string>
     <string name="reset_device">Herstellen vanuit de cloud…</string>
+    <string name="library_data_wrong">Er is iets mis met de gegevens van deze bibliotheek.</string>
     <string name="reset_device_confirm_title">Herstellen vanuit de cloud?</string>
     <string name="reset_device_confirm">Herstellen</string>
     <string name="restore_device_title">Deze bibliotheek herstellen</string>

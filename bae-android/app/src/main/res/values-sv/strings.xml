@@ -286,6 +286,7 @@
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopiera detaljer</string>
     <string name="reset_device">Återställ från molnet…</string>
+    <string name="library_data_wrong">Något är fel med det här bibliotekets data.</string>
     <string name="reset_device_confirm_title">Återställa från molnet?</string>
     <string name="reset_device_confirm">Återställ</string>
     <string name="restore_device_title">Återställ det här biblioteket</string>

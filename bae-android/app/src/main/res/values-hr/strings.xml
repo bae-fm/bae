@@ -295,6 +295,7 @@
     <string name="details">Pojedinosti</string>
     <string name="copy_details">Kopiraj pojedinosti</string>
     <string name="reset_device">Ponovno postavi iz oblaka…</string>
+    <string name="library_data_wrong">Nešto nije u redu s podacima ove biblioteke.</string>
     <string name="reset_device_confirm_title">Ponovno postaviti iz oblaka?</string>
     <string name="reset_device_confirm">Ponovno postavi</string>
     <string name="restore_device_title">Vraćanje ove fonoteke</string>

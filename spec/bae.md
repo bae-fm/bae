@@ -3075,7 +3075,12 @@ library that fails to open on a Mac shows the failure joined to its row, under
 its name: **Could not open**, with **Details**; when what failed is the
 library's data on this Mac, such as tables that don't match the app's, it
 says "Something is wrong with this library’s data." and offers **Reset from
-cloud…**, the reset below. A
+cloud…**, the reset below, in place of *Retry*; a library kept on this Mac
+only, which has no storage to reset from (coven refuses with `NoStorage`),
+shows **Details** alone, and its row's menu still offers **Delete…**. A phone
+that fails to open a library the same way shows a notice in the middle of the
+screen, "The library did not open" over the same sentence, with **Details** and **Reset from
+cloud…** under them, which asks as a device reset does (§6.4). A
 library row shows its name alone otherwise, on a phone and on a Mac: no
 provider line, and nothing for one that never synced. While a removal runs, its
 row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on a
@@ -4214,8 +4219,9 @@ fail, saying the laptop left the library and its files are still on it.
   found from its record, never from bae files that coven's store list lacks:
   a library hidden from that list, by unreadable settings or a first restore
   or join cut off partway, still exists. At launch bae shows a recorded
-  removal whose store coven no longer lists, with *Retry*, and opens no
-  library while it shows.
+  removal whose store coven no longer lists, with *Retry* when core says asking
+  again can get past the failure (G.1), and opens no library while it shows.
+  That library already left its store, so it offers no *Reset from cloud…*.
   *Retry* deletes only what is left on this device; it never tries to leave
   again. While it runs, it reports finishing earlier removals through a setup
   call's stream, counted by removal once their records are read, and the app
@@ -6318,7 +6324,7 @@ with one of these categories and a detail:
 |---|---|
 | `Database`, `Config`, `Internal` | reports it |
 | `DatabaseBusy` | asks again: the library's database was busy with other work, or what the call read changed under it |
-| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes |
+| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; resets the library from the cloud (§6.4) when it has storage |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4) |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |

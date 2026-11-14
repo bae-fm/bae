@@ -286,6 +286,7 @@
     <string name="details">Detaljer</string>
     <string name="copy_details">Kopier detaljer</string>
     <string name="reset_device">Nulstil fra skyen…</string>
+    <string name="library_data_wrong">Der er noget galt med dette biblioteks data.</string>
     <string name="reset_device_confirm_title">Nulstil fra skyen?</string>
     <string name="reset_device_confirm">Nulstil</string>
     <string name="restore_device_title">Gendan dette bibliotek</string>

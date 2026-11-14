@@ -49,6 +49,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
@@ -239,7 +240,9 @@ sealed interface AppScreen {
     companion object {
         /**
          * The screen a failed open of [libraryId] lands on: resetting the
-         * device, finishing the removal that stopped partway, else [open],
+         * device, which a damaged copy of a library with storage offers
+         * ([offersReset]) in place of Retry, finishing the removal that stopped
+         * partway, else [open],
          * the library still open when the open was a switch, whose snackbar
          * shows the failure, else the failure as [shown]. A reset or restore
          * that stopped partway lands on none: finishing it begins at once.
@@ -248,9 +251,10 @@ sealed interface AppScreen {
             libraryId: String,
             error: BridgeException,
             shown: DisplayError,
+            offersReset: Boolean,
             open: OpenLibrary?,
         ): AppScreen =
-            when (val category = (error as? BridgeException.Diagnostic)?.category) {
+            when ((error as? BridgeException.Diagnostic)?.category) {
                 is BridgeErrorCategory.DeviceResetRequired -> {
                     ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
                 }
@@ -260,10 +264,26 @@ sealed interface AppScreen {
                 }
 
                 else -> {
-                    open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                    if (offersReset) {
+                        ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                    } else {
+                        open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                    }
                 }
             }
     }
+}
+
+/**
+ * Whether Reset from cloud is what gets past [failure], a failed open of this library: core says the
+ * failure is in this device's copy of the library's data, and the library has storage to reset from.
+ * A library kept on this device only has none, which coven refuses a reset for (`NoStorage`), and one
+ * that can't open as it is has no storage the app knows of. [this] is null for a library the listing
+ * doesn't hold.
+ */
+internal fun BridgeLibrary?.offersResetFromCloud(failure: DisplayError): Boolean {
+    val state = this?.state as? BridgeLibraryState.Openable ?: return false
+    return failure.resetFromCloudReplaces && state.storage != null
 }
 
 /** A device reset ready to confirm, and the `Core` table key of the warning the person accepts first. */
@@ -290,6 +310,10 @@ object AppSessionHolder {
 
     /** Local libraries on this device, for the Settings switcher. */
     val libraries: StateFlow<LibraryListing> get() = discovered.libraries
+
+    /** The library [libraryId] as the last listing held it, or null when none did or no listing has run. */
+    private fun listedLibrary(libraryId: String): BridgeLibrary? =
+        (discovered.libraries.value as? LibraryListing.Listed)?.libraries?.firstOrNull { it.id == libraryId }
 
     /**
      * The currently open library, if any. Reused across re-opens of the same id.
@@ -448,7 +472,8 @@ object AppSessionHolder {
                 if (shown == null) {
                     openOrOnboarding()
                 } else {
-                    AppScreen.openFailed(libraryId, e, shown, current).also { screen ->
+                    val offersReset = listedLibrary(libraryId).offersResetFromCloud(shown)
+                    AppScreen.openFailed(libraryId, e, shown, offersReset, current).also { screen ->
                         if (screen is AppScreen.LibraryOpen) screen.session.messages.show(shown)
                     }
                 },

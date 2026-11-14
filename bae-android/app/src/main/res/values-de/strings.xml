@@ -288,6 +288,7 @@
     <string name="details">Details</string>
     <string name="copy_details">Details kopieren</string>
     <string name="reset_device">Aus der Cloud zurücksetzen…</string>
+    <string name="library_data_wrong">Mit den Daten dieser Bibliothek stimmt etwas nicht.</string>
     <string name="reset_device_confirm_title">Aus der Cloud zurücksetzen?</string>
     <string name="reset_device_confirm">Zurücksetzen</string>
     <string name="restore_device_title">Diese Bibliothek wiederherstellen</string>

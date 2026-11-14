@@ -302,6 +302,7 @@
     <string name="details">Szczegóły</string>
     <string name="copy_details">Kopiuj szczegóły</string>
     <string name="reset_device">Zresetuj z chmury…</string>
+    <string name="library_data_wrong">Coś jest nie tak z danymi tej biblioteki.</string>
     <string name="reset_device_confirm_title">Zresetować z chmury?</string>
     <string name="reset_device_confirm">Zresetuj</string>
     <string name="restore_device_title">Przywróć tę bibliotekę</string>

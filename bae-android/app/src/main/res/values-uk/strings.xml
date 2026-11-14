@@ -302,6 +302,7 @@
     <string name="details">Подробиці</string>
     <string name="copy_details">Копіювати подробиці</string>
     <string name="reset_device">Скинути з хмари…</string>
+    <string name="library_data_wrong">Із даними цієї бібліотеки щось негаразд.</string>
     <string name="reset_device_confirm_title">Скинути з хмари?</string>
     <string name="reset_device_confirm">Скинути</string>
     <string name="restore_device_title">Відновити цю бібліотеку</string>

@@ -288,6 +288,7 @@
     <string name="details">Подробности</string>
     <string name="copy_details">Копиране на подробностите</string>
     <string name="reset_device">Нулиране от облака…</string>
+    <string name="library_data_wrong">Нещо не е наред с данните на тази библиотека.</string>
     <string name="reset_device_confirm_title">Нулиране от облака?</string>
     <string name="reset_device_confirm">Нулиране</string>
     <string name="restore_device_title">Възстановяване на тази библиотека</string>

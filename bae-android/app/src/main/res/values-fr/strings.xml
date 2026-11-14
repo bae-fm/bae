@@ -294,6 +294,7 @@
     <string name="details">Détails</string>
     <string name="copy_details">Copier les détails</string>
     <string name="reset_device">Réinitialiser depuis le cloud…</string>
+    <string name="library_data_wrong">Les données de cette bibliothèque présentent un problème.</string>
     <string name="reset_device_confirm_title">Réinitialiser depuis le cloud ?</string>
     <string name="reset_device_confirm">Réinitialiser</string>
     <string name="restore_device_title">Restaurer cette bibliothèque</string>

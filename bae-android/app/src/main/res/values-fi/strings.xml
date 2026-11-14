@@ -286,6 +286,7 @@
     <string name="details">Tiedot</string>
     <string name="copy_details">Kopioi tiedot</string>
     <string name="reset_device">Nollaa pilvestä…</string>
+    <string name="library_data_wrong">Tämän kirjaston tiedoissa on jotain vialla.</string>
     <string name="reset_device_confirm_title">Nollataanko pilvestä?</string>
     <string name="reset_device_confirm">Nollaa</string>
     <string name="restore_device_title">Palauta tämä kirjasto</string>

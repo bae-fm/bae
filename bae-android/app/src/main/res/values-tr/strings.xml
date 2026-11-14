@@ -288,6 +288,7 @@
     <string name="details">Ayrıntılar</string>
     <string name="copy_details">Ayrıntıları kopyala</string>
     <string name="reset_device">Buluttan sıfırla…</string>
+    <string name="library_data_wrong">Bu kitaplığın verilerinde bir sorun var.</string>
     <string name="reset_device_confirm_title">Buluttan sıfırlansın mı?</string>
     <string name="reset_device_confirm">Sıfırla</string>
     <string name="restore_device_title">Bu kitaplığı geri yükle</string>

@@ -286,6 +286,7 @@
     <string name="details">Részletek</string>
     <string name="copy_details">Részletek másolása</string>
     <string name="reset_device">Alaphelyzetbe állítás a felhőből…</string>
+    <string name="library_data_wrong">Valami nincs rendben a könyvtár adataival.</string>
     <string name="reset_device_confirm_title">Alaphelyzetbe állítod a felhőből?</string>
     <string name="reset_device_confirm">Alaphelyzetbe állítás</string>
     <string name="restore_device_title">Ennek a könyvtárnak a visszaállítása</string>
