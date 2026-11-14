@@ -5,7 +5,7 @@
 //! makes of a list on its own: where a candidate would be revealed, and the
 //! first one being identified.
 
-use super::order::{sorted_terms, unit_join, uploading_cte, Item};
+use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::views::tab_of;
 use super::*;
 use crate::list::{
@@ -15,44 +15,64 @@ use crate::list::{
 use crate::RelativeFolder;
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
-/// Every tab's count, and whether Found has any group, from the counts kept
-/// beside the placement.
-fn tab_rows(sql: &SqlReadContext<'_>) -> Result<(TriageTabCounts, bool), DbError> {
-    let mut tabs = TriageTabCounts::default();
-    let mut has_groups = false;
-    for (tab, item, count) in
-        sql.query("SELECT tab, item, count FROM import_list_tab_count", [], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i64>(2)?))
-        })?
-    {
-        match Item::of(&item)? {
-            Item::Group => has_groups = true,
-            Item::Candidate | Item::Invalid => {
-                tabs.add(tab_of(&tab)?, to_u32(count, "a tab's count")?)
-            }
-        }
-    }
-    Ok((tabs, has_groups))
-}
+/// Every tab's count: the releases and folders that failed validation it
+/// lists, which is every placement row but a group's header.
+const TAB_COUNTS: &str = "SELECT COUNT(*) FILTER (WHERE tab = 'pending'), \
+                                 COUNT(*) FILTER (WHERE tab = 'done'), \
+                                 COUNT(*) FILTER (WHERE tab = 'skipped') \
+                          FROM import_list_placement WHERE item <> 'group'";
 
 /// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
 pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
-    Ok(tab_rows(sql)?.0)
+    let (pending, done, skipped) = sql.query_row(TAB_COUNTS, [], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
+    })?;
+    Ok(TriageTabCounts {
+        pending: to_u32(pending, "the pending tab's count")?,
+        done: to_u32(done, "the done tab's count")?,
+        skipped: to_u32(skipped, "the skipped tab's count")?,
+    })
 }
 
+/// Whether Found has any group: a group's header is a placement row of its
+/// own.
+fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
+    Ok(sql.query_row(
+        "SELECT EXISTS (SELECT 1 FROM import_list_placement WHERE tab = 'pending' AND item = 'group')",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+/// Every entry of Found's filter, in the menu's order, with how many of
+/// Found's releases it holds: `all` holds every one and the others each hold
+/// those in their states. An entry holding none cannot be chosen.
+const FILTER_ENTRIES: &str = "WITH entries (position, entry) AS ( \
+         VALUES (1, 'needs_you'), (2, 'in_progress'), (3, 'identified'), (4, 'unmatched'), \
+                (5, 'not_looked_up')), \
+     counted (position, entry, count) AS ( \
+         SELECT 0, 'all', COUNT(*) FROM import_list_placement WHERE pending_entry IS NOT NULL \
+         UNION ALL \
+         SELECT e.position, e.entry, COUNT(p.entry) FROM entries AS e \
+         LEFT JOIN import_list_placement AS p ON p.pending_entry = e.entry \
+         GROUP BY e.position) \
+     SELECT entry, count, count > 0 FROM counted ORDER BY position";
+
 /// How many of Found's releases each filter entry holds, in the menu's
-/// order, from the counts kept beside the placement.
+/// order.
 pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilterEntry>, DbError> {
-    let in_entries = sql
-        .query("SELECT pending_entry, count FROM import_list_entry_count", [], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })?
-        .into_iter()
-        .map(|(entry, count)| {
-            Ok((pending_filter_of(&entry)?, to_u32(count, "a filter entry's count")?))
+    sql.query(FILTER_ENTRIES, [], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, bool>(2)?))
+    })?
+    .into_iter()
+    .map(|(entry, count, selectable)| {
+        Ok(PendingFilterEntry {
+            filter: pending_filter_of(&entry)?,
+            count: to_u32(count, "a filter entry's count")?,
+            selectable,
         })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(crate::list::pending_filter_entries(&in_entries))
+    })
+    .collect()
 }
 
 /// What the chrome around `list` shows beside its rows: the watched folders,
@@ -62,10 +82,9 @@ pub(super) fn summary(
     list: ImportListId,
 ) -> Result<ImportQueueSummary, DbError> {
     let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
-    let (_, has_groups) = tab_rows(sql)?;
     Ok(ImportQueueSummary {
         watched_folders: super::watched_folders::watched_folders_on(sql)?,
-        has_groups,
+        has_groups: has_groups_on(sql)?,
         narrowing: ImportListNarrowing {
             tab: list.view.tab,
             filter_text: list.view.filter_text.clone(),
@@ -81,7 +100,7 @@ pub(super) fn count(
     list: ImportListId,
 ) -> Result<ImportListCount, DbError> {
     let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
-    let (tabs, _) = tab_rows(sql)?;
+    let tabs = tab_counts_on(sql)?;
     let listed = listed(sql, &list, &tabs)?;
     Ok(ImportListCount { rows: listed.total, narrowed: listed.narrowed })
 }
@@ -123,6 +142,36 @@ pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
                    ON h.list_id = :list AND h.watched_folder_path = g.watched_folder_path \
                   AND h.item = 'group' AND h.key = g.group_folder)";
 
+/// How many items a list that folds a group or narrows its tab holds: the
+/// releases its filter entry keeps, less those under the groups it folds
+/// shut, plus the header of each group holding a kept release.
+const KEPT_ITEMS: &str = "SELECT kept - folded + headers FROM ( \
+         SELECT \
+             CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
+                  THEN (SELECT COUNT(*) FROM import_list_placement AS p \
+                        WHERE p.pending_entry = v.pending_filter) \
+                  ELSE (SELECT COUNT(*) FROM import_list_placement AS p \
+                        WHERE p.tab = v.tab AND p.item <> 'group') END AS kept, \
+             CASE WHEN v.tab = 'pending' \
+                  THEN (SELECT COUNT(*) FROM import_list_collapsed AS c \
+                        JOIN import_list_placement AS p \
+                            ON p.watched_folder_path = c.watched_folder_path \
+                           AND p.group_folder = c.group_folder AND p.item <> 'group' \
+                        WHERE c.list_id = v.id \
+                          AND (v.pending_filter = 'all' OR p.pending_entry = v.pending_filter)) \
+                  ELSE 0 END AS folded, \
+             CASE WHEN v.tab <> 'pending' THEN 0 \
+                  WHEN v.pending_filter = 'all' \
+                  THEN (SELECT COUNT(*) FROM import_list_placement AS h \
+                        WHERE h.tab = 'pending' AND h.item = 'group') \
+                  ELSE (SELECT COUNT(*) FROM import_list_placement AS h \
+                        WHERE h.tab = 'pending' AND h.item = 'group' \
+                          AND EXISTS (SELECT 1 FROM import_list_placement AS m \
+                                      WHERE m.watched_folder_path = h.watched_folder_path \
+                                        AND m.group_folder = h.key AND m.item <> 'group' \
+                                        AND m.pending_entry = v.pending_filter)) END AS headers \
+         FROM import_list_view AS v WHERE v.id = ?)";
+
 /// How many items the list holds — its releases its filters keep outside the
 /// groups it folds shut, and the header of each group holding one — and how
 /// many releases its filters keep. Without a search these are the kept
@@ -147,45 +196,18 @@ pub(super) fn listed(
     }
     let items = match list.keeps_all {
         true => sql.query_row(
-            "SELECT COALESCE(SUM(t.count), 0) FROM import_list_view AS v \
-             JOIN import_list_tab_count AS t ON t.tab = v.tab WHERE v.id = ?",
+            "SELECT COUNT(*) FROM import_list_view AS v \
+             JOIN import_list_placement AS p ON p.tab = v.tab WHERE v.id = ?",
             [list.id.0],
             |row| row.get::<_, i64>(0),
         )?,
-        false => sql.query_row(
-            "SELECT kept - folded + headers FROM ( \
-                 SELECT \
-                     CASE WHEN v.tab = 'pending' AND v.pending_filter <> 'all' \
-                          THEN COALESCE((SELECT e.count FROM import_list_entry_count AS e \
-                                         WHERE e.pending_entry = v.pending_filter), 0) \
-                          ELSE COALESCE((SELECT SUM(t.count) FROM import_list_tab_count AS t \
-                                         WHERE t.tab = v.tab AND t.item <> 'group'), 0) END \
-                         AS kept, \
-                     CASE WHEN v.tab = 'pending' \
-                          THEN COALESCE((SELECT SUM(g.count) FROM import_list_collapsed AS c \
-                                         JOIN import_list_group_entry_count AS g \
-                                             ON g.watched_folder_path = c.watched_folder_path \
-                                            AND g.group_folder = c.group_folder \
-                                         WHERE c.list_id = v.id \
-                                           AND (v.pending_filter = 'all' \
-                                                OR g.pending_entry = v.pending_filter)), 0) \
-                          ELSE 0 END AS folded, \
-                     CASE WHEN v.tab <> 'pending' THEN 0 \
-                          WHEN v.pending_filter = 'all' \
-                          THEN COALESCE((SELECT t.count FROM import_list_tab_count AS t \
-                                         WHERE t.tab = 'pending' AND t.item = 'group'), 0) \
-                          ELSE (SELECT count(*) FROM import_list_group_entry_count AS g \
-                                WHERE g.pending_entry = v.pending_filter) END AS headers \
-                 FROM import_list_view AS v WHERE v.id = ?)",
-            [list.id.0],
-            |row| row.get::<_, i64>(0),
-        )?,
+        false => sql.query_row(KEPT_ITEMS, [list.id.0], |row| row.get::<_, i64>(0))?,
     };
     let narrowed = match list.narrows {
         true => Some(narrowed(sql.query_row(
-            "SELECT COALESCE((SELECT e.count FROM import_list_entry_count AS e \
-                              WHERE e.pending_entry = v.pending_filter), 0) \
-             FROM import_list_view AS v WHERE v.id = ?",
+            "SELECT COUNT(*) FROM import_list_view AS v \
+             JOIN import_list_placement AS p ON p.pending_entry = v.pending_filter \
+             WHERE v.id = ?",
             [list.id.0],
             |row| row.get::<_, i64>(0),
         )?)?),

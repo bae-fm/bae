@@ -549,3 +549,39 @@ async fn the_tab_counts_follow_the_placement() {
         .unwrap();
     assert_eq!(skipped, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
 }
+
+/// The tab counts and the filter entries are counted off the placement's own
+/// indexes: nothing is kept beside the placement for them, and no read walks
+/// every placement row's table row.
+#[tokio::test]
+async fn the_counts_are_counted_off_the_placements_indexes() {
+    let lib = Library::new().await;
+    let plans = lib
+        .db
+        .read(|sql| {
+            [super::TAB_COUNTS, super::FILTER_ENTRIES]
+                .into_iter()
+                .map(|statement| {
+                    Ok(sql
+                        .query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
+                            row.get::<_, String>(3)
+                        })?
+                        .join(" | "))
+                })
+                .collect::<Result<Vec<_>, bae_store::DbError>>()
+        })
+        .await
+        .unwrap();
+    assert!(
+        plans[0].contains("USING COVERING INDEX import_list_placement_by_tab"),
+        "the tab counts walk the tab and item index: {}",
+        plans[0]
+    );
+    assert!(
+        plans[1].contains("USING INDEX import_list_placement_by_entry")
+            && !plans[1].contains("SCAN import_list_placement")
+            && !plans[1].contains("SCAN p"),
+        "the entry counts walk the entry index: {}",
+        plans[1]
+    );
+}

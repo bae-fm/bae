@@ -228,15 +228,6 @@ impl TriageTabCounts {
             TriageTab::Skipped => self.skipped,
         }
     }
-
-    /// Count `count` more entries on `tab`.
-    pub(crate) fn add(&mut self, tab: TriageTab, count: u32) {
-        match tab {
-            TriageTab::Pending => self.pending += count,
-            TriageTab::Done => self.done += count,
-            TriageTab::Skipped => self.skipped += count,
-        }
-    }
 }
 
 /// The release this device imported from the folder's files, or its stored

@@ -22,7 +22,6 @@
 //! (`follows_scans`, `follows_groupings`, `follows_candidates`,
 //! `follows_library`).
 
-mod counts;
 mod follows_candidates;
 mod follows_groupings;
 mod follows_library;
@@ -82,7 +81,6 @@ impl coven::task::CarriesBug for ImportListError {
 pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     placement::SQL,
     groups::SQL,
-    counts::SQL,
     search::SQL,
     views::SQL,
     follows_scans::SQL,

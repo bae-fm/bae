@@ -208,60 +208,34 @@ impl Library {
         counter.take().app_write_steps
     }
 
-    /// Run `write`, and check the counts and the search index kept beside the
-    /// placement still say what it holds: every write here moves placement
-    /// rows, and each must move the counts and the searched text with them.
+    /// Run `write`, and check the search index kept beside the placement and
+    /// the tab counts still say what the placement holds: every write here
+    /// moves placement rows, and each must move the searched text with them.
     pub(crate) async fn run(&self, write: Write) {
         for step in write.0 {
             step.await;
         }
         self.searchable().await;
-        let (kept, counted) = self
+        let counted: Vec<(String, i64)> = self
             .db
             .read(|sql| {
-                let rows = |statement: &str| {
-                    sql.query(statement, [], |row| {
-                        Ok((
-                            row.get::<_, Option<String>>(0)?,
-                            row.get::<_, Option<String>>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                            row.get::<_, i64>(3)?,
-                        ))
-                    })
-                };
-                let kept = [
-                    rows("SELECT tab, item, NULL, count FROM import_list_tab_count")?,
-                    rows("SELECT pending_entry, NULL, NULL, count FROM import_list_entry_count")?,
-                    rows(
-                        "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
-                         pending_entry, count FROM import_list_group_entry_count",
-                    )?,
-                ];
-                let counted = [
-                    rows(
-                        "SELECT tab, item, NULL, count(*) FROM import_list_placement \
-                         GROUP BY tab, item",
-                    )?,
-                    rows(
-                        "SELECT pending_entry, NULL, NULL, count(*) FROM import_list_placement \
-                         WHERE pending_entry IS NOT NULL GROUP BY pending_entry",
-                    )?,
-                    rows(
-                        "SELECT coven_path_text(watched_folder_path), group_name, pending_entry, \
-                         count(*) FROM import_list_placement \
-                         WHERE item = 'candidate' AND group_folder IS NOT NULL \
-                         GROUP BY watched_folder_path, group_folder, pending_entry",
-                    )?,
-                ];
-                Ok((kept, counted))
+                Ok(sql.query(
+                    "SELECT tab, count(*) FROM import_list_placement \
+                     WHERE item <> 'group' GROUP BY tab ORDER BY tab",
+                    [],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                )?)
             })
             .await
             .unwrap();
-        for (mut kept, mut counted) in kept.into_iter().zip(counted) {
-            kept.sort();
-            counted.sort();
-            assert_eq!(kept, counted, "the counts kept beside the placement");
-        }
+        let shown = self.tab_counts().await;
+        let held =
+            |tab: &str| counted.iter().find(|(name, _)| name == tab).map_or(0, |(_, count)| *count);
+        assert_eq!(
+            (i64::from(shown.pending), i64::from(shown.done), i64::from(shown.skipped)),
+            (held("pending"), held("done"), held("skipped")),
+            "the tab counts"
+        );
     }
 
     /// Check the search index holds each release's folded shown text under

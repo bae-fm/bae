@@ -129,6 +129,14 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     CHECK (tab <> 'done' OR own_date IS NOT NULL)
 ) STRICT;
 
+-- What the list's counts read: each tab's rows of each item, and Found's
+-- releases by their filter entry, and the members of a group as their
+-- placement's own indexes below hold them.
+CREATE INDEX IF NOT EXISTS import_list_placement_by_tab ON import_list_placement (tab, item);
+
+CREATE INDEX IF NOT EXISTS import_list_placement_by_entry
+    ON import_list_placement (pending_entry) WHERE pending_entry IS NOT NULL;
+
 -- A release by its key alone, as a standing or a selection names it.
 CREATE INDEX IF NOT EXISTS import_list_placement_by_key ON import_list_placement (key);
 

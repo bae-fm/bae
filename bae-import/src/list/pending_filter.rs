@@ -4,7 +4,7 @@
 //! Every Found row is in exactly one state, and every state is under exactly
 //! one entry past All — the placement's `pending_entry` names it — so those
 //! entries split Found's rows between them and All holds them all. The counts
-//! are read in the same read as the rows, so they never disagree with them.
+//! are COUNT statements over the placement (`import_list_placement`).
 
 /// Which of Found's rows the list shows: one entry of the filter menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -42,20 +42,4 @@ pub struct PendingFilterEntry {
     pub filter: PendingFilter,
     pub count: u32,
     pub selectable: bool,
-}
-
-/// Every entry of the menu, in its order, with how many of Found's rows it
-/// holds, from how many each entry past All holds alone.
-pub(crate) fn pending_filter_entries(held: &[(PendingFilter, u32)]) -> Vec<PendingFilterEntry> {
-    PendingFilter::ENTRIES
-        .into_iter()
-        .map(|filter| {
-            let count = held
-                .iter()
-                .filter(|(entry, _)| filter == PendingFilter::All || *entry == filter)
-                .map(|(_, count)| count)
-                .sum();
-            PendingFilterEntry { filter, count, selectable: count > 0 }
-        })
-        .collect()
 }

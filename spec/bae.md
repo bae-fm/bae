@@ -1154,8 +1154,8 @@ draft row in one statement, and the file versions its folder-image and
 embedded covers name in one statement each, not one per row.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
-counts — are kept beside the placement as rows move, so reading them costs
-the same however long the queue is. The list's count, with the narrowed count
+counts — are COUNT statements over the placement's own rows, each read off an
+index of the placement, with no count kept beside it. The list's count, with the narrowed count
 it carries, is a live query of its own and never beside the rows: a scan's
 commit moves it without resending every window. Each tab's count is a read of
 its own as well, sent on a stream keyed by tab, and the tab bar's labels read
@@ -6254,7 +6254,6 @@ Beside them, keyed by the release an import made:
 |---|---|
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order, holding Done's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
-| `import_list_tab_count`, `import_list_entry_count`, `import_list_group_entry_count` | how many placement rows each tab holds of each kind, how many of Found's releases each filter entry holds, and how many of each group's releases each entry holds, kept by triggers on the placement in the write that moves a row, so the list's counts read these and not the placement |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |

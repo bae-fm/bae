@@ -77,8 +77,8 @@ pub(super) fn materialise(
 }
 
 /// One group header's columns, read for the window that holds it. How many
-/// of its releases the filters keep is the counts kept beside the placement,
-/// unless a text filter reads the rows; whether its folder is offered to be
+/// of its releases the filters keep is the members the placement holds under it,
+/// counted, unless a text filter reads the rows; whether its folder is offered to be
 /// read as one release is its placement's (`import_list_recombine`).
 fn header_rows(
     sql: &SqlReadContext<'_>,
@@ -107,10 +107,12 @@ fn header_rows(
                 AND m.group_folder = h.folder)"
         }
         false => {
-            "(SELECT COALESCE(SUM(g.count), 0) FROM import_list_view AS v \
-              JOIN import_list_group_entry_count AS g \
-                  ON v.pending_filter = 'all' OR g.pending_entry = v.pending_filter \
-              WHERE v.id = :list AND g.watched_folder_path = h.root AND g.group_folder = h.folder)"
+            "(SELECT COUNT(*) FROM import_list_view AS v \
+              JOIN import_list_placement AS m \
+                  ON m.watched_folder_path = h.root AND m.group_folder = h.folder \
+                 AND m.item <> 'group' \
+                 AND (v.pending_filter = 'all' OR m.pending_entry = v.pending_filter) \
+              WHERE v.id = :list)"
         }
     };
     let rows = sql.query(

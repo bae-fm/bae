@@ -28,7 +28,6 @@ mod subscription;
 mod test_read;
 
 pub(crate) use path_order::release_keys_in_path_order;
-pub(crate) use pending_filter::pending_filter_entries;
 pub use pending_filter::{PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListFailure, LiveImportList};
 #[cfg(any(test, feature = "test-utils"))]

@@ -1579,9 +1579,6 @@ owner = "ImportTables"
 homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_list/"]
 tables = [
     "import_list_placement",
-    "import_list_tab_count",
-    "import_list_entry_count",
-    "import_list_group_entry_count",
     "import_list_search",
     "import_list",
     "import_list_collapsed",
@@ -1667,8 +1664,6 @@ frozen = [
     { path = "bae-import/src/folder_scanner/file_reads.rs", item = "FileReads::stored", shape = "kept-state", count = 1, finding = "`FileReads::stored` reads through `FileReads`, which keeps `Mutex` state (found by the check)" },
     { path = "bae-import/src/folder_scanner/file_reads.rs", item = "Known::learn", shape = "group", count = 1, finding = "`Known::learn` groups with `entry` (found by the check)" },
     { path = "bae-import/src/folder_scanner/file_reads.rs", item = "Known::learn_skipped_tags", shape = "group", count = 1, finding = "`Known::learn_skipped_tags` groups with `entry` (found by the check)" },
-    { path = "bae-import/src/list/pending_filter.rs", item = "pending_filter_entries", shape = "aggregate", count = 1, finding = "builds the filter entries and sums them for All in Rust" },
-    { path = "bae-import/src/list/pending_filter.rs", item = "pending_filter_entries", shape = "filter", count = 1, finding = "builds the filter entries and sums them for All in Rust" },
     { path = "bae-import/src/tables/album_link_rows.rs", item = "group_albums_of_on", shape = "group", count = 2, finding = "`group_albums_of_on` groups into a `HashMap` (found by the check)" },
     { path = "bae-import/src/tables/folder_scans.rs", item = "folder_scan_generation_sequence.last_generation", shape = "counter", count = 1, finding = "`folder_scan_generation_sequence.last_generation` is only ever counted up, never set to another value (found by the check)" },
     { path = "bae-import/src/tables/folder_scans.rs", item = "misplaced", shape = "pick", count = 1, finding = "`misplaced` picks with `any` (found by the check)" },
