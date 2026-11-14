@@ -3527,8 +3527,8 @@ it. It is
 made when Settings opens, one local read of her keys that the section names
 while it runs, never a bare spinner: the sheet says it is making a code for her
 new device, and the section that it is making her restore code. It shows
-masked: on a Mac its first two groups and its last, the groups between as dots;
-on Android its first two groups and dots after them. **Show** reveals it in
+masked: its first two groups and its last, the groups between as dots.
+**Show** reveals it in
 groups of four and **Hide** masks it again; **Copy** copies the whole code,
 shown or not; **Print…** on a Mac and **Print** on Android print one page: the
 QR code, the code in groups of four, where the library is stored, the date, and

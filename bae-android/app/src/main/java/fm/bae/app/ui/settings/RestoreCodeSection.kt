@@ -1,6 +1,7 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,8 +19,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
@@ -268,15 +271,21 @@ private fun CodeBox(
                 )
             }
         } else {
-            Text(
-                text = maskedRestoreCode(code).withWordGap(),
-                style = ThemeText.mono.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // The card is a picture named "partly hidden"; the masked code in it stays one text of its own.
+            Box(
                 modifier =
-                    Modifier
-                        .padding(ThemeSpace.edge)
-                        .clearAndSetSemantics { contentDescription = hiddenLabel },
-            )
+                    Modifier.semantics {
+                        role = Role.Image
+                        contentDescription = hiddenLabel
+                    },
+            ) {
+                Text(
+                    text = maskedRestoreCode(code).withWordGap(),
+                    style = ThemeText.mono.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(ThemeSpace.edge),
+                )
+            }
         }
     }
     FlowRow(
@@ -297,16 +306,16 @@ private fun CodeBox(
 }
 
 /**
- * [grouped], a code in groups of four, with every group after the second as
- * dots: the prefix and the first four characters stay, which tells one code
+ * [grouped], a code in groups of four, with every group between the second and the last as
+ * dots: the prefix, the first four characters and the last group stay, which tells one code
  * from another without it being readable over a shoulder.
  */
-internal fun maskedRestoreCode(grouped: String): String =
-    grouped
-        .split(' ')
-        .filter { it.isNotEmpty() }
-        .mapIndexed { index, group -> if (index < VISIBLE_GROUPS) group else MASK }
+internal fun maskedRestoreCode(grouped: String): String {
+    val groups = grouped.split(' ').filter { it.isNotEmpty() }
+    return groups
+        .mapIndexed { index, group -> if (index < VISIBLE_GROUPS || index == groups.lastIndex) group else MASK }
         .joinToString(" ")
+}
 
 private const val VISIBLE_GROUPS = 2
 private const val MASK = "••••"

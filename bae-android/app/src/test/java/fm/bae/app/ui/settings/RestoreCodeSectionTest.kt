@@ -100,8 +100,8 @@ class RestoreCodeSectionTest {
     }
 
     @Test
-    fun aMaskedCodeKeepsItsFirstTwoGroups() {
-        assertEquals("CVR1 ABCD •••• •••• ••••", maskedRestoreCode("CVR1 ABCD EFGH IJKL MNOP"))
+    fun aMaskedCodeKeepsItsFirstTwoGroupsAndItsLast() {
+        assertEquals("CVR1 ABCD •••• •••• MNOP", maskedRestoreCode("CVR1 ABCD EFGH IJKL MNOP"))
         assertEquals("CVR1 ABCD", maskedRestoreCode("CVR1 ABCD"))
     }
 
