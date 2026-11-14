@@ -3,10 +3,7 @@
 //! names nothing.
 
 use super::*;
-use bae_import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
-    ScannedFile,
-};
+use bae_import::folder_scanner::ScanItem;
 use bae_import::{ImportEvent, ImportProgress};
 use std::path::PathBuf;
 
@@ -66,7 +63,8 @@ impl Fixture {
     pub(super) fn root(&self) -> PathBuf {
         let root = self.tmp.path().join("watched");
         std::fs::create_dir_all(&root).expect("the watched root exists");
-        root
+        bae_import::tables::watched_path::canonical_absolute_root(&root)
+            .expect("the watched root has a canonical path")
     }
 }
 
@@ -191,51 +189,48 @@ async fn a_watched_folder_whose_name_is_not_utf8_is_removed_by_its_key() {
     assert!(listed_watched_folders(&fixture.automation).await.is_empty());
 }
 
-fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
-    FolderCandidate {
-        path: root.join(name),
-        file_root: root.join(name),
-        name: name.to_string(),
-        files: CategorizedFiles {
-            files: vec![CandidateFile {
-                file: {
-                    let mut file = ScannedFile::new(
-                        root.join(name).join("01.flac"),
-                        "01.flac".to_string(),
-                        1_000,
-                        0,
-                    );
-                    file.source_audio = Some(bae_import::folder_scanner::ScannedAudio {
-                        content_type: bae_util::content_type::ContentType::Flac,
-                        container: bae_util::audio_container::AudioContainer::Flac,
-                        duration_ms: 1_000,
-                        format: bae_types::audio_format::AudioFormat {
-                            codec: "FLAC".to_string(),
-                            sample_rate_hz: 44_100,
-                            bits_per_sample: Some(16),
-                            bitrate_kbps: None,
-                            channels: 2,
-                        },
-                    });
-                    file
-                },
-                role: FileRole::Audio,
-            }],
-            parts: Vec::new(),
+/// The scan item for the album folder `name` below `root`, found by walking
+/// a real folder holding one track: storing a scan item reads each file's
+/// tags, so its files must exist as the item says.
+fn candidate(root: &std::path::Path, name: &str) -> ScanItem {
+    let folder = root.join(name);
+    std::fs::create_dir_all(&folder).expect("the album folder exists");
+    std::fs::copy(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../bae-import/tests/fixtures/flac/01 Test Track 1.flac"
+        ),
+        folder.join("01.flac"),
+    )
+    .expect("the track is written");
+    let mut found = Vec::new();
+    bae_import::folder_scanner::scan_for_candidates_with_decisions(
+        root.to_path_buf(),
+        &bae_import::folder_scanner::StoredCandidateEdits::none(),
+        &bae_import::folder_scanner::FolderReleaseDecisions::default(),
+        &coven::SequentialIds::new(),
+        |item| {
+            if let bae_import::folder_scanner::WalkItem::Entry(
+                bae_import::folder_scanner::FolderEntry::Release(item),
+            ) = item
+            {
+                found.push(item);
+            }
         },
-        watched_folder_path: root.to_path_buf(),
-        scope: ReleaseFileScope::Recursive,
-        file_edit_revision: 0,
-        relative_folder: bae_import::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
-        grouping: None,
-    }
+    )
+    .expect("the walk reads the folder");
+    let relative = bae_import::RelativeFolder::of(std::path::Path::new(name)).unwrap();
+    found
+        .into_iter()
+        .rfind(|item| matches!(item, ScanItem::Valid(found) if found.relative_folder == relative))
+        .expect("the walk finds the release")
 }
 
 /// Store a scan of the watched root holding only the candidate `name`, and
 /// return the key automation names it by.
 pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     let root = fixture.root();
-    write_scan(fixture, &root, |items| items.push(ScanItem::Valid(candidate(&root, name)))).await;
+    write_scan(fixture, &root, |items| items.push(candidate(&root, name))).await;
     key_of(&root, name)
 }
 
@@ -319,13 +314,13 @@ async fn the_tables_are_the_answer() {
     let fixture = automation_over().await;
     let root = fixture.root();
     write_scan(&fixture, &root, |items| {
-        items.push(ScanItem::Valid(candidate(&root, "A")));
-        items.push(ScanItem::Valid(candidate(&root, "B")));
+        items.push(candidate(&root, "A"));
+        items.push(candidate(&root, "B"));
     })
     .await;
 
     fixture.skip(&key_of(&root, "A")).await;
-    write_scan(&fixture, &root, |items| items.push(ScanItem::Valid(candidate(&root, "A")))).await;
+    write_scan(&fixture, &root, |items| items.push(candidate(&root, "A"))).await;
 
     assert_eq!(keys(&fixture.list_candidates().await), vec![key_of(&root, "A").as_str()]);
     let candidate = fixture.get_candidate(&key_of(&root, "A")).await.expect("still scanned");
