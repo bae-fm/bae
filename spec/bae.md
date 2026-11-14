@@ -4516,6 +4516,12 @@ deleted), playback stops with an error shown. It shows nothing for a command tha
 changed: that is rare, and the screen already shows the queue as it now is,
 so the gesture just ends.
 
+What's playing from's tracks are a list the queue screens read as any other
+list: the tracks after the current one, in the order the part reads in (its
+own, or the shuffled one while shuffle is on), read as windows that are ranges
+of that order, with the list's count a read of its own and a jump to a row read
+as the key at its position. Moving on to the next track moves the list's top.
+
 When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
 with *Details* and *Retry*, which reads them again.

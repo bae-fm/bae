@@ -585,6 +585,100 @@ async fn test_offset_windows_read_with_the_tail_length() {
     assert_eq!(read.upcoming_total, 129);
 }
 
+/// The upcoming tracks are a list in the lane's order: windows are ranges of
+/// it bounded by the key of a row at each end, the count is its own read, and
+/// a jump reads the key at a position and counts the rows before it. The
+/// playing track and the ones before it are never in it.
+#[tokio::test]
+async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() {
+    use bae_store::list_windows::ListWindow::Forward;
+    let tracks: Vec<String> = (0..130).map(|i| format!("t{i:03}")).collect();
+    let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
+    let mut f = release(&refs).await;
+    f.play_from("t010").await;
+    let upcoming = &tracks[11..];
+
+    let window = |from, until, limit| Forward { from, until, limit };
+    let mut top = crate::tables::subscribe_upcoming_window(&f.db, false, window(None, None, 3));
+    let first = top.next().await.expect("the query stays open").result.unwrap();
+    let names = |read: &bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
+        read.rows.iter().map(|item| f.name(&item.track_id)).collect()
+    };
+    assert_eq!(names(&first), upcoming[..3].to_vec());
+    let beyond = first.beyond.clone().expect("the limit cut the window short");
+
+    // The next window starts at the row the first one stopped before.
+    let mut next = crate::tables::subscribe_upcoming_window(
+        &f.db,
+        false,
+        window(Some(beyond.clone()), None, 2),
+    );
+    let second = next.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(names(&second), upcoming[3..5].to_vec());
+    assert_eq!(second.first, Some(beyond.clone()));
+
+    // A window bounded at both ends reads the rows between, and no more.
+    let until = second.beyond.clone().unwrap();
+    let mut bounded = crate::tables::subscribe_upcoming_window(
+        &f.db,
+        false,
+        window(Some(first.beyond.clone().unwrap()), Some(until), 100),
+    );
+    let between = bounded.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(names(&between), upcoming[3..5].to_vec());
+    assert_eq!(between.beyond, None, "the window reached its bound");
+
+    let mut count = crate::tables::subscribe_upcoming_count(&f.db, false);
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 119);
+
+    // A jump: the key at a position starts a window there, and the rows
+    // before the key are the position.
+    let at = crate::tables::upcoming_key_at(&f.db, false, 100).await.unwrap().expect("a key");
+    let mut jumped =
+        crate::tables::subscribe_upcoming_window(&f.db, false, window(Some(at.clone()), None, 20));
+    let read = jumped.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(
+        names(&read),
+        upcoming[100..119].to_vec(),
+        "a window past the end holds what remains"
+    );
+    let mut position = crate::tables::subscribe_upcoming_position(&f.db, false, at);
+    assert_eq!(position.next().await.expect("the query stays open").result.unwrap(), 100);
+    assert_eq!(
+        crate::tables::upcoming_key_at(&f.db, false, 5_000).await.unwrap(),
+        crate::tables::upcoming_key_at(&f.db, false, 118).await.unwrap(),
+        "a position past the end has the last row's key"
+    );
+}
+
+/// With shuffle on the lane reads in its shuffled order, which the upcoming
+/// list follows; turning it off reads the lane's own order again.
+#[tokio::test]
+async fn test_upcoming_windows_follow_the_order_the_lane_reads_in() {
+    use bae_store::list_windows::ListWindow::Forward;
+    let tracks: Vec<String> = (0..40).map(|i| format!("t{i:02}")).collect();
+    let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
+    let mut f = release(&refs).await;
+    f.play_from("t00").await;
+    f.queue.set_shuffle(true).await.unwrap();
+    let shuffled = f.upcoming().await;
+    assert_ne!(shuffled, tracks[1..].to_vec(), "shuffling reorders the tail");
+
+    let read = |shuffled_order| {
+        let mut window = crate::tables::subscribe_upcoming_window(
+            &f.db,
+            shuffled_order,
+            Forward { from: None, until: None, limit: 100 },
+        );
+        async move { window.next().await.expect("the query stays open").result.unwrap() }
+    };
+    let names = |read: bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
+        read.rows.iter().map(|item| f.name(&item.track_id)).collect()
+    };
+    assert_eq!(names(read(true).await), shuffled);
+    assert_eq!(names(read(false).await), tracks[1..].to_vec());
+}
+
 /// Reordering a context entry with `before = None` moves it to the end of the
 /// lane while the playing track stays playing.
 #[tokio::test]

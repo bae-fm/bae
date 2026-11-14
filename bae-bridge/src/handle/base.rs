@@ -99,6 +99,11 @@ forward! { async this => {
                 .download_key_at(position)
                 .await
                 .map_err(BridgeError::from)?,
+            BridgeList::Upcoming { shuffled } => this
+                .services
+                .upcoming_key_at(shuffled, position)
+                .await
+                .map_err(BridgeError::from)?,
             BridgeList::ArtistSearch { text } => this
                 .services
                 .artist_search_key_at(BridgeList::artist_search_query(&text), position)

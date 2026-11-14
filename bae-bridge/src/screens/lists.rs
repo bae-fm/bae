@@ -150,6 +150,9 @@ impl BridgeListWindowValue {
                 bae_views::ListRows::Downloads(rows) => BridgeListRows::Downloads {
                     rows: rows.into_iter().map(crate::types::BridgeDownloadOp::from_core).collect(),
                 },
+                bae_views::ListRows::Upcoming(rows) => BridgeListRows::Upcoming {
+                    rows: rows.into_iter().map(crate::types::BridgeQueueEntry::from_core).collect(),
+                },
                 bae_views::ListRows::ArtistSearch(rows) => BridgeListRows::ArtistSearch {
                     rows: rows
                         .into_iter()

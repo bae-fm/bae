@@ -63,36 +63,40 @@ pub fn subscribe_queue_upcoming(
         .process(Ok)
 }
 
-/// The rows `rows` picks — a `SELECT entry, track_id, position …` in lane
-/// order, already cut to the page asked for — each with its track as the
-/// queue rows show it. The page is cut before the join, so the rows an
-/// offset passes over are never joined to their tracks.
+/// The statement that reads the rows `rows` picks — a `SELECT entry,
+/// track_id AS lane_track, position …` in lane order, already cut to the page
+/// asked for — each with its track as the queue rows show it. The page is cut
+/// before the join, so the rows an offset passes over are never joined to
+/// their tracks. Every column `rows` picks comes through beside the track's.
+pub(super) fn queue_items_sql(rows: &str) -> String {
+    format!(
+        "SELECT e.*, {columns} \
+         FROM ({rows}) e \
+         JOIN tracks t ON t.id = e.lane_track \
+         {joins} \
+         ORDER BY e.position",
+        columns = track_display_columns(),
+        joins = TRACK_DISPLAY_JOINS,
+    )
+}
+
+/// One queue row as [`queue_items_sql`] reads it.
+pub(super) fn queue_item_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QueueItem> {
+    let meta = track_queue_meta_from_row(row)?;
+    Ok(QueueItem {
+        entry_id: row.get("entry")?,
+        track_id: row.get("track_id")?,
+        display: meta.display,
+        duration_ms: meta.duration_ms,
+    })
+}
+
 fn queue_items_on(
     sql: &SqlReadContext<'_>,
     rows: &str,
     params: impl rusqlite::Params,
 ) -> Result<Vec<QueueItem>, DbError> {
-    Ok(sql.query(
-        &format!(
-            "SELECT e.entry, {columns} \
-             FROM ({rows}) e \
-             JOIN tracks t ON t.id = e.track_id \
-             {joins} \
-             ORDER BY e.position",
-            columns = track_display_columns(),
-            joins = TRACK_DISPLAY_JOINS,
-        ),
-        params,
-        |row| {
-            let meta = track_queue_meta_from_row(row)?;
-            Ok(QueueItem {
-                entry_id: row.get("entry")?,
-                track_id: row.get("track_id")?,
-                display: meta.display,
-                duration_ms: meta.duration_ms,
-            })
-        },
-    )?)
+    Ok(sql.query(&queue_items_sql(rows), params, queue_item_from_row)?)
 }
 
 /// The `playback_queue` row as the queue screens read it.
@@ -155,7 +159,7 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     // context lane, then the entry number.
     let manual = queue_items_on(
         sql,
-        "SELECT 'm' || entry AS entry, track_id, position FROM playback_manual \
+        "SELECT 'm' || entry AS entry, track_id AS lane_track, position FROM playback_manual \
          ORDER BY position",
         [],
     )?;
@@ -216,7 +220,7 @@ fn queue_upcoming_on(
                 Some((_, cursor)) => queue_items_on(
                     sql,
                     &format!(
-                        "SELECT 'c' || entry AS entry, track_id, {column} AS position \
+                        "SELECT 'c' || entry AS entry, track_id AS lane_track, {column} AS position \
                          FROM playback_context \
                          WHERE {column} > ?1 ORDER BY {column} LIMIT ?2 OFFSET ?3",
                         column = context_order_column(head.shuffled)

@@ -215,6 +215,64 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     assert!(cleared.windows.iter().all(|window| window.rows.is_empty()));
 }
 
+/// The upcoming tracks are a list the queue screens read like any other: a
+/// window of a range of the lane's order that moves in place, its own count,
+/// and the key at a position. Skipping ahead moves the playing track, which
+/// moves the list's top, its count and the window over it.
+#[tokio::test]
+async fn the_upcoming_list_follows_the_playing_track_through_its_window_and_count() {
+    let (services, track_ids, _temp_dir) = playing_app_services(12).await;
+    queue_value_with_context(&services).await;
+    let top = |limit| bae_store::ListWindow::Forward { from: None, until: None, limit };
+    let window = services.subscribe_upcoming_window(false, top(3));
+    let ids = |value: &bae_views::ListWindowValue| match &value.rows {
+        bae_views::ListRows::Upcoming(rows) => {
+            rows.iter().map(|item| item.track_id.clone()).collect::<Vec<_>>()
+        }
+        other => panic!("the upcoming list delivered {other:?}"),
+    };
+    let first = tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap();
+    assert_eq!(ids(&first), track_ids[1..4].to_vec());
+
+    // The same window object moves to a later range, from a key the list
+    // gave.
+    let key = services.upcoming_key_at(false, 6).await.unwrap().expect("a key at position 6");
+    window.set(bae_store::ListWindow::Forward { from: Some(key), until: None, limit: 2 }).unwrap();
+    let moved = loop {
+        let value = tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap();
+        if ids(&value) == track_ids[7..9].to_vec() {
+            break value;
+        }
+    };
+    assert!(moved.first.is_some());
+
+    // Skipping to the next track moves the list's top, and its count.
+    window.set(top(3)).unwrap();
+    let count = services.subscribe_upcoming_count(false);
+    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap();
+    assert_eq!(counted.rows, 11);
+    services
+        .playback_skip_to_entry(match &first.rows {
+            bae_views::ListRows::Upcoming(rows) => rows[0].entry_id.parse().unwrap(),
+            other => panic!("the upcoming list delivered {other:?}"),
+        })
+        .await
+        .unwrap();
+    let skipped = loop {
+        let value = tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap();
+        if ids(&value).first() == Some(&track_ids[2]) {
+            break value;
+        }
+    };
+    assert_eq!(ids(&skipped), track_ids[2..5].to_vec());
+    loop {
+        let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap();
+        if counted.rows == 10 {
+            break;
+        }
+    }
+}
+
 /// Wait until the storage inspector, set to one release, shows its export
 /// entry as `matches` looks for.
 #[cfg(desktop)]

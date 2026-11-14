@@ -64,6 +64,9 @@ pub enum BridgeList {
     ComposerPage { artist_id: String },
     /// The download queue, in the order queued.
     Downloads,
+    /// The context's tracks after the playing one, in the order the lane
+    /// reads in: its own, or the shuffled one when `shuffled`.
+    Upcoming { shuffled: bool },
     /// The artists an artist picker's `text` finds; blank text finds none.
     ArtistSearch { text: String },
     /// The Storage Manager's releases under `sort` and `filter`, narrowed by
@@ -104,6 +107,9 @@ pub enum BridgeListRows {
     },
     Downloads {
         rows: Vec<crate::types::BridgeDownloadOp>,
+    },
+    Upcoming {
+        rows: Vec<crate::types::BridgeQueueEntry>,
     },
     ArtistSearch {
         rows: Vec<crate::types::BridgeArtistSearchResult>,

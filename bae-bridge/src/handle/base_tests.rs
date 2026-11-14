@@ -73,6 +73,37 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     assert!(matches!(again, Err(crate::types::BridgeError::Diagnostic { .. })), "{again:?}");
 }
 
+/// The queue's upcoming tracks are a list of the bridge like any other: with
+/// nothing playing its window holds no rows, its count is zero and it has no
+/// key at any position, and the window's rows come as queue entries.
+#[test]
+fn the_upcoming_list_of_an_idle_queue_is_empty() {
+    let handle = bridge_handle_holding(
+        "upcoming-list",
+        &bae_library::LibraryFixture {
+            albums: Vec::new(),
+            watched_folders: Vec::new(),
+            playing: None,
+        },
+    );
+    let list = crate::types::BridgeList::Upcoming { shuffled: false };
+    let top = crate::types::BridgeListWindow::Forward { from: None, until: None, limit: 10 };
+    let window = handle.handle().subscribe_list_window(list.clone(), top);
+    let counts = handle.handle().subscribe_list_count(list.clone());
+    let runtime = &handle.handle().runtime;
+
+    let listed = runtime.block_on(window.clone().next()).expect("upcoming window value");
+    let crate::types::BridgeListRows::Upcoming { rows } = &listed.rows else {
+        panic!("the upcoming list's window holds queue entries");
+    };
+    assert!(rows.is_empty() && listed.first.is_none() && listed.beyond.is_none());
+    assert_eq!(runtime.block_on(counts.clone().next()).expect("upcoming count").rows, 0);
+    let key = runtime
+        .block_on(Arc::clone(handle.handle()).list_key_at(list, 0))
+        .expect("the key of an empty list");
+    assert_eq!(key, None);
+}
+
 /// Setting S3 up as the library's storage writes the steps coven reports into
 /// the setup's stream, the last its creating the library in storage, and the
 /// stream holds nothing once the setup ends.

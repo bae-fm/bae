@@ -49,6 +49,48 @@ impl LibraryManager {
         bae_playback::tables::subscribe_queue_upcoming(&self.store, initial)
     }
 
+    /// Follow one window of the upcoming tracks, a range of the order the
+    /// context lane reads in (`shuffled` picks which).
+    pub fn subscribe_upcoming_window(
+        &self,
+        shuffled: bool,
+        initial: bae_store::ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<
+        bae_store::ListWindow,
+        bae_store::WindowRead<bae_playback::QueueItem>,
+        bae_store::DbError,
+    > {
+        bae_playback::tables::subscribe_upcoming_window(&self.store, shuffled, initial)
+    }
+
+    /// Follow how many tracks come after the playing one.
+    pub fn subscribe_upcoming_count(
+        &self,
+        shuffled: bool,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        bae_playback::tables::subscribe_upcoming_count(&self.store, shuffled)
+    }
+
+    /// Follow how many upcoming tracks come before the row at `key`.
+    pub fn subscribe_upcoming_position(
+        &self,
+        shuffled: bool,
+        key: bae_store::list_windows::OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
+    {
+        bae_playback::tables::subscribe_upcoming_position(&self.store, shuffled, key)
+    }
+
+    /// The key of the upcoming track at `position`, or of the last one;
+    /// `None` when nothing is upcoming.
+    pub async fn upcoming_key_at(
+        &self,
+        shuffled: bool,
+        position: u64,
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError> {
+        Ok(bae_playback::tables::upcoming_key_at(&self.store, shuffled, position).await?)
+    }
+
     /// Test-only. Production reads audio format as part of the resolved track-audio
     /// / playback-info aggregates below, never standalone.
     #[cfg(any(test, feature = "test-utils"))]

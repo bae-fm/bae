@@ -32,6 +32,8 @@ pub enum ListRows {
     ComposerPage(Vec<crate::album_detail::ComposerDetailRow>),
     /// The download queue's entries, each beside its release.
     Downloads(Vec<bae_transfers::DownloadRow>),
+    /// The tracks after the playing one, as the queue shows them.
+    Upcoming(Vec<bae_playback::QueueItem>),
     /// The artists an artist picker's text finds.
     ArtistSearch(Vec<crate::album_detail::ArtistSearchResult>),
     /// The Storage Manager's rows, each a release beside its album.

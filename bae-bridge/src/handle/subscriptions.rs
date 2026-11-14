@@ -29,6 +29,9 @@ impl AppHandle {
                 self.services.subscribe_composer_page_window(&artist_id, window)
             }
             BridgeList::Downloads => self.services.subscribe_download_window(window),
+            BridgeList::Upcoming { shuffled } => {
+                self.services.subscribe_upcoming_window(shuffled, window)
+            }
             BridgeList::Storage { sort, filter, search } => self.services.subscribe_storage_window(
                 &BridgeList::storage_sort(sort),
                 filter.into_core(),
@@ -54,6 +57,7 @@ impl AppHandle {
                 self.services.subscribe_composer_page_count(&artist_id)
             }
             BridgeList::Downloads => self.services.subscribe_download_count(),
+            BridgeList::Upcoming { shuffled } => self.services.subscribe_upcoming_count(shuffled),
             BridgeList::Storage { filter, search, .. } => {
                 self.services.subscribe_storage_count(filter.into_core(), &search)
             }
@@ -85,6 +89,9 @@ impl AppHandle {
                 self.services.subscribe_composer_page_position(&artist_id, key)
             }
             BridgeList::Downloads => self.services.subscribe_download_position(key),
+            BridgeList::Upcoming { shuffled } => {
+                self.services.subscribe_upcoming_position(shuffled, key)
+            }
             BridgeList::Storage { sort, filter, search } => {
                 self.services.subscribe_storage_position(
                     &BridgeList::storage_sort(sort),

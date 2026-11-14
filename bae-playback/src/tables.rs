@@ -12,6 +12,7 @@ mod preview_target;
 mod queue;
 mod queue_fill;
 mod queue_reads;
+mod queue_upcoming;
 mod resume;
 mod timeline;
 mod track_display;
@@ -36,6 +37,10 @@ pub use queue_reads::subscribe_queue_addition;
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue_reads::{queue_addition, queue_context_version, queue_upcoming};
 pub use queue_reads::{subscribe_queue_upcoming, subscribe_queue_value, QueueUpcomingRead};
+pub use queue_upcoming::{
+    subscribe_upcoming_count, subscribe_upcoming_position, subscribe_upcoming_window,
+    upcoming_key_at, upcoming_order,
+};
 #[cfg(any(test, feature = "test-utils"))]
 pub use resume::plant_unreadable_resume_row_for_test;
 #[cfg(any(test, feature = "test-utils"))]

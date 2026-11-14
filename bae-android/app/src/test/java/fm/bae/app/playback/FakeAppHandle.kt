@@ -243,7 +243,12 @@ internal open class FakeAppHandle(
                 ) { FakeComposerPage(composerDetailRows[list.artistId].orEmpty()) }
             }
 
-            is BridgeList.Artists, BridgeList.Downloads, is BridgeList.ArtistSearch, is BridgeList.Storage -> {
+            is BridgeList.Artists,
+            BridgeList.Downloads,
+            is BridgeList.Upcoming,
+            is BridgeList.ArtistSearch,
+            is BridgeList.Storage,
+            -> {
                 unfaked("the list $list")
             }
         }
