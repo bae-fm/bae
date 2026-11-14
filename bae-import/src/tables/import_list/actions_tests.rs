@@ -1,5 +1,79 @@
 use super::*;
-use crate::triage::TriageTab;
+use crate::{
+    CandidateActionBasis, IdentificationStatus, ImportPhase, ImportStep, PrepareStep, StoredLookup,
+    TriagePlacement, TriageRuntimeFacts, TriageTab,
+};
+
+/// What a release offers, decided by the command columns over a placement row
+/// and a standing holding the given facts.
+trait Offered {
+    fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction>;
+}
+
+impl Offered for CandidateActionBasis {
+    fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
+        let (tab, failed) = match self.placement {
+            TriagePlacement::Pending => ("pending", 0),
+            TriagePlacement::Failed => ("pending", 1),
+            TriagePlacement::Done => ("done", 0),
+            TriagePlacement::Skipped => ("skipped", 0),
+        };
+        let lookup = match self.lookup {
+            None => "NULL",
+            Some(StoredLookup::Answered) => "'answered'",
+            Some(StoredLookup::Failed) => "'failed'",
+        };
+        let (identification, asked) = match &live.identification {
+            None => ("NULL", "NULL"),
+            Some(IdentificationStatus::Queued) => ("'queued'", "NULL"),
+            Some(IdentificationStatus::Running) => ("'running'", "NULL"),
+            Some(IdentificationStatus::Finalizing) => ("'finalizing'", "NULL"),
+            Some(IdentificationStatus::ReadingPick { import_asked: true }) => {
+                ("'reading_pick'", "1")
+            }
+            Some(IdentificationStatus::ReadingPick { import_asked: false }) => {
+                ("'reading_pick'", "0")
+            }
+            Some(IdentificationStatus::FinalizationFailed { failure }) => match failure.retryable()
+            {
+                true => ("'not_written'", "NULL"),
+                false => ("'inapplicable'", "NULL"),
+            },
+        };
+        let step = match live.import {
+            None => "NULL",
+            Some(ImportStep::Preparing(PrepareStep::Queued)) => "'queued'",
+            Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)) => {
+                "'validating_source_files'"
+            }
+            Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)) => {
+                "'fetching_artist_pictures'"
+            }
+            Some(ImportStep::Running(ImportPhase::ReadingFiles)) => "'reading_files'",
+            Some(ImportStep::Running(ImportPhase::MeasuringLoudness)) => "'measuring_loudness'",
+            Some(ImportStep::Running(ImportPhase::Finalizing)) => "'finalizing'",
+        };
+        let connection = rusqlite::Connection::open_in_memory().unwrap();
+        connection
+            .query_row(
+                &format!(
+                    "WITH p (item, tab, import_failed, actionable, draft_valid, lookup, separable) \
+                          AS (VALUES ('candidate', '{tab}', {failed}, {actionable}, {valid}, \
+                                      {lookup}, {separable})), \
+                          st (identification, import_asked, import_step) \
+                          AS (VALUES ({identification}, {asked}, {step})) \
+                     SELECT {columns} FROM p CROSS JOIN st",
+                    actionable = self.actionable,
+                    valid = self.draft_valid,
+                    separable = self.separable,
+                    columns = action_columns(),
+                ),
+                [],
+                read_actions,
+            )
+            .unwrap()
+    }
+}
 
 fn basis(placement: TriagePlacement, lookup: Option<StoredLookup>) -> CandidateActionBasis {
     CandidateActionBasis::of(true, &placement, true, lookup, false)
@@ -42,7 +116,7 @@ fn every_pending_candidate_with_a_valid_draft_offers_import() {
 fn skipped_candidates_offer_restore_without_replacing_metadata() {
     assert_eq!(
         basis(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
-        vec![CandidateAction::Restore, CandidateAction::Combine, CandidateAction::RevealFolder]
+        vec![CandidateAction::Combine, CandidateAction::Restore, CandidateAction::RevealFolder]
     );
 }
 

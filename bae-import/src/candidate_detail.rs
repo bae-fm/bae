@@ -111,6 +111,8 @@ pub struct DraftProjection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListedRelease {
     pub basis: crate::CandidateActionBasis,
+    /// The commands it offers, from its placement and what is running for it.
+    pub actions: Vec<crate::CandidateAction>,
     /// Where it stands among Found's states, what is running for it
     /// included; `None` off Found.
     pub standing: Option<crate::PendingStanding>,
@@ -160,7 +162,7 @@ impl ImportCandidateDetailProjection {
         let importing = facts.importing();
         let file_evidence = signals.as_ref().map(crate::file_evidence).unwrap_or_default();
         let placement = listed.basis.placement;
-        let live = CandidateLiveState::of(&listed.basis, facts, listed.standing);
+        let live = CandidateLiveState::of(listed.actions, facts, listed.standing);
         let (import_status, pane_placement, stage) = match stage {
             ProjectedStage::Imported { release, images } => (
                 import_status_of(Some(&release), source_error.as_ref(), None),

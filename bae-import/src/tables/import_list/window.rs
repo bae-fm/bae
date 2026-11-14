@@ -11,6 +11,7 @@
 //! filters keep, whether the list folds it, and whether its folder is offered
 //! to be read as one release, as its placement holds it.
 
+use super::actions::action_columns;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
@@ -245,7 +246,7 @@ fn release_rows(
                             WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
                     p.group_folder AS group_folder, \
                     w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
-                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid} \
+                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions} \
              FROM json_each(:keys) AS w \
              JOIN import_list_placement AS p \
                  ON p.key = unhex(w.value ->> 1) AND p.item <> 'group' \
@@ -269,6 +270,7 @@ fn release_rows(
             library_cover = cover_version_sql("origin.release_id"),
             invalid = invalid_columns.0,
             invalid_join = invalid_columns.1,
+            actions = action_columns(),
         ),
         named_params! {
             ":keys": serde_json::Value::from(keys).to_string(),
@@ -394,7 +396,7 @@ fn candidate_item(
     covers: &mut HashMap<usize, crate::CoverImageSource>,
     release: ReleaseRows,
 ) -> Result<WindowItemRows, DbError> {
-    let ListedRelease { basis, standing } = release.listed.clone().listed(&release.key)?;
+    let ListedRelease { basis, actions, standing } = release.listed.clone().listed(&release.key)?;
     let facts = release.facts.facts(&release.key)?;
     let (blocked, subject, holder) = release.block.clone();
     let block = block_of(blocked, subject, holder)?;
@@ -461,7 +463,7 @@ fn candidate_item(
     };
     Ok(WindowItemRows::Candidate {
         row,
-        live: crate::CandidateLiveState::of(&basis, facts, standing),
+        live: crate::CandidateLiveState::of(actions, facts, standing),
         picked: shown.picked,
         cover: shown.cover,
         header_key: release.header_key.clone(),

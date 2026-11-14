@@ -19,8 +19,6 @@ macro_rules! basis_columns {
     };
 }
 
-pub(super) const BASIS_COLUMNS: &str = basis_columns!();
-
 /// [`BASIS_COLUMNS`] and then where the release stands on Found, which
 /// [`ListedColumns::read`] reads.
 pub(super) const LISTED_COLUMNS: &str = concat!(
@@ -87,7 +85,7 @@ impl BasisColumns {
     }
 }
 
-/// [`LISTED_COLUMNS`] as SQLite holds them.
+/// [`LISTED_COLUMNS`] and the command columns as SQLite holds them.
 #[derive(Clone, PartialEq)]
 pub(super) struct ListedColumns {
     basis: BasisColumns,
@@ -95,6 +93,9 @@ pub(super) struct ListedColumns {
     needs_you_reason: Option<String>,
     reason_pressings: Option<i64>,
     error_detail: Option<String>,
+    /// The commands the release offers, from the columns
+    /// [`super::actions::action_columns`] gives.
+    actions: Vec<crate::CandidateAction>,
 }
 
 impl ListedColumns {
@@ -107,6 +108,7 @@ impl ListedColumns {
             needs_you_reason: row.get(state + 1)?,
             reason_pressings: row.get(state + 2)?,
             error_detail: row.get(state + 3)?,
+            actions: super::actions::read_actions(row)?,
         })
     }
 
@@ -160,7 +162,7 @@ impl ListedColumns {
                 }
             }),
         };
-        Ok(ListedRelease { basis: self.basis.basis(key)?, standing })
+        Ok(ListedRelease { basis: self.basis.basis(key)?, actions: self.actions, standing })
     }
 }
 

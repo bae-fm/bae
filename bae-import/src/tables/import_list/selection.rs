@@ -4,79 +4,120 @@
 //! the list's order; and the writes that change it, which answer nothing: the
 //! rows they changed rerun the windows holding them.
 
-use super::listed::{BasisColumns, BASIS_COLUMNS};
+use super::actions::{action_columns, offers};
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
 use super::*;
 use crate::selection::{
     SelectedCandidate, SelectedRows, SelectionChange, SelectionSummary, SingleSelection,
 };
-use crate::tables::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
-use crate::triage::{selection_offers, SelectionPart};
-use crate::CandidateKey;
+use crate::triage::SelectionOffer;
+use crate::{CandidateAction, CandidateKey};
 
-/// What the list's selection holds and offers. The offers are worked out
-/// once for each set of selected rows alike in everything their commands are
-/// decided from, weighted by how many rows it holds, rather than once a row.
+/// What the list's selection holds and offers, in one statement: how many
+/// rows it holds, the one row when it holds one, and for each command how many
+/// of the rows offer it and whether it can run as the selection stands. The
+/// rows are the summary (position 0) and then each command offered, by its
+/// place in [`CandidateAction::ALL`]. Each command runs row by row over the
+/// rows that offer it, so it is offered when any does. Combining is one
+/// command over the whole selection: it is offered once there are two rows or
+/// more, and can run only when every one of them could be combined, so the
+/// reason it cannot is on the row that holds it back rather than a missing
+/// item.
 pub(super) fn selection(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
 ) -> Result<SelectionSummary, DbError> {
-    let groups = sql.query(
+    let sums = CandidateAction::ALL
+        .iter()
+        .map(|action| format!("COALESCE(SUM(can_{action:?}), 0) AS count_{action:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let offers = CandidateAction::ALL
+        .iter()
+        .enumerate()
+        .map(|(at, action)| match action {
+            CandidateAction::Combine => format!(
+                "SELECT {at} + 1, n_rows, COALESCE(every_can_combine, 0), NULL, NULL \
+                 FROM total WHERE n_rows >= 2"
+            ),
+            _ => format!(
+                "SELECT {at} + 1, count_{action:?}, 1, NULL, NULL FROM total \
+                 WHERE count_{action:?} > 0"
+            ),
+        })
+        .collect::<Vec<_>>()
+        .join(" UNION ALL ");
+    let rows = sql.query(
         &format!(
-            "SELECT p.item, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS}, count(*), MIN(p.key) \
-             FROM import_list_selection AS s \
-             JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
-             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-             WHERE s.list_id = ? \
-             GROUP BY p.item, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS}"
+            "WITH chosen AS ( \
+                 SELECT p.item, p.key, {actions} \
+                 FROM import_list_selection AS s \
+                 JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
+                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
+                 WHERE s.list_id = ?), \
+             total AS ( \
+                 SELECT COUNT(*) AS n_rows, MIN(item) AS item, MIN(key) AS key, \
+                        MIN(can_Combine) AS every_can_combine, {sums} \
+                 FROM chosen) \
+             SELECT 0, n_rows, 1, CASE WHEN n_rows = 1 THEN item END, \
+                    CASE WHEN n_rows = 1 THEN key END FROM total \
+             UNION ALL {offers} ORDER BY 1",
+            actions = action_columns(),
         ),
         [list.0],
         |row| {
             Ok((
-                row.get::<_, String>(0)?,
-                BasisColumns::read(row, 1)?,
-                RuntimeFactColumns::read(row, 7)?,
-                row.get::<_, i64>(11)?,
-                row.get::<_, CandidateKey>(12)?,
+                row.get::<_, usize>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, bool>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<CandidateKey>>(4)?,
             ))
         },
     )?;
-    let mut parts = Vec::with_capacity(groups.len());
-    let mut count = 0;
-    let mut single = None;
-    for (item, basis, facts, rows, key) in groups {
-        let rows = to_u64(rows, "a selection's count")?;
-        count += rows;
-        let item = Item::of(&item)?;
-        single = Some((item, key.clone()));
-        // A folder that failed validation takes part in the selection — it
-        // holds back combining it — with no action of its own.
-        let actions = match item {
-            Item::Candidate => basis.basis(&key)?.actions(&facts.facts(&key)?),
-            Item::Invalid | Item::Group => Vec::new(),
-        };
-        parts.push(SelectionPart { actions, count: rows });
+    let mut summary = SelectionSummary::default();
+    for (position, count, enabled, item, key) in rows {
+        let count = to_u64(count, "a selection's count")?;
+        match position.checked_sub(1) {
+            None => {
+                summary.count = count;
+                summary.single = match (item.as_deref().map(Item::of).transpose()?, key) {
+                    (Some(Item::Candidate), Some(key)) => Some(SingleSelection::Candidate { key }),
+                    (Some(Item::Invalid), Some(key)) => {
+                        Some(SingleSelection::InvalidCandidate { key })
+                    }
+                    _ => None,
+                };
+            }
+            Some(at) => summary.offers.push(SelectionOffer {
+                action: CandidateAction::ALL[at],
+                count,
+                enabled,
+            }),
+        }
     }
-    let single = match (count, single) {
-        (1, Some((Item::Candidate, key))) => Some(SingleSelection::Candidate { key }),
-        (1, Some((Item::Invalid, key))) => Some(SingleSelection::InvalidCandidate { key }),
-        _ => None,
-    };
-    Ok(SelectionSummary { count, single, offers: selection_offers(&parts) })
+    Ok(summary)
 }
 
-/// The selected rows of the list, in its order; `None` once it is closed.
+/// The selected rows of the list, in its order, and of them those that offer
+/// `acting` when a command is named; `None` once the list is closed.
 pub(super) fn selected(
     sql: &impl coven::SqlRead,
     list: ImportListId,
+    acting: Option<CandidateAction>,
 ) -> Result<Option<SelectedRows>, DbError> {
     let Some(row) = super::list_row(sql, list)? else {
         return Ok(None);
     };
+    // Combining acts on every selected row, whatever each offers.
+    let offering = match acting {
+        Some(CandidateAction::Combine) | None => "1".to_string(),
+        Some(action) => format!("(p.item = 'candidate' AND {})", offers(action)),
+    };
     let rows = sql.query(
         &format!(
             "WITH {uploading} \
-             SELECT p.item, p.key, c.name, {BASIS_COLUMNS}, {RUNTIME_FACT_COLUMNS} \
+             SELECT p.item, p.key, c.name \
              FROM import_list_selection AS s \
              JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
              {unit} \
@@ -84,7 +125,7 @@ pub(super) fn selected(
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
              LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
              LEFT JOIN uploading AS u ON u.key = p.key \
-             WHERE s.list_id = ? \
+             WHERE s.list_id = ? AND {offering} \
              ORDER BY u.position IS NULL, u.position, {terms}",
             uploading = uploading_cte(),
             unit = unit_join("p", "unit"),
@@ -92,24 +133,15 @@ pub(super) fn selected(
         ),
         [list.0],
         |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, CandidateKey>(1)?,
-                row.get::<_, String>(2)?,
-                BasisColumns::read(row, 3)?,
-                RuntimeFactColumns::read(row, 9)?,
-            ))
+            Ok((row.get::<_, String>(0)?, row.get::<_, CandidateKey>(1)?, row.get::<_, String>(2)?))
         },
     )?;
     let mut selected = SelectedRows::default();
-    for (item, key, name, basis, facts) in rows {
+    for (item, key, name) in rows {
         match Item::of(&item)? {
-            Item::Candidate => selected.candidates.push(SelectedCandidate {
-                basis: basis.basis(&key)?,
-                facts: facts.facts(&key)?,
-                candidate_key: key,
-                name,
-            }),
+            Item::Candidate => {
+                selected.candidates.push(SelectedCandidate { candidate_key: key, name })
+            }
             Item::Invalid | Item::Group => selected.invalid.push(key),
         }
     }
@@ -118,12 +150,17 @@ pub(super) fn selected(
 
 impl ImportTables {
     /// The rows the list `list` has selected, in the order it shows them:
-    /// what a bulk action runs over.
+    /// what a bulk action runs over, narrowed to the rows offering `acting`
+    /// when a command is named.
     pub async fn load_import_list_selected(
         &self,
         list: ImportListId,
+        acting: Option<CandidateAction>,
     ) -> Result<crate::selection::SelectedRows, ImportListError> {
-        self.store.read(move |sql| selected(&sql, list)).await?.ok_or(ImportListError::Closed(list))
+        self.store
+            .read(move |sql| selected(&sql, list, acting))
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 
     /// Apply a change a person made by pointing at rows of `list`. A row the

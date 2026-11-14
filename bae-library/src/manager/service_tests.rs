@@ -207,7 +207,7 @@ async fn done_runs_the_releases_still_uploading_first() {
     );
     assert_eq!(
         tables
-            .load_import_list_selected(list)
+            .load_import_list_selected(list, None)
             .await
             .unwrap()
             .candidates
@@ -332,7 +332,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         .unwrap();
     assert_eq!(
         tables
-            .load_import_list_selected(list)
+            .load_import_list_selected(list, None)
             .await
             .unwrap()
             .candidates

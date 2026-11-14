@@ -7,7 +7,7 @@ use crate::selection::SelectionChange;
 use crate::selection::SingleSelection;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
-use crate::triage::{keys_for, SelectionOffer};
+use crate::triage::SelectionOffer;
 use crate::CandidateAction;
 use crate::ImportListItem;
 use crate::ImportListOrder;
@@ -21,8 +21,8 @@ async fn keys_running(
     action: CandidateAction,
 ) -> Vec<crate::CandidateKey> {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let selected = tables.load_import_list_selected(list).await.unwrap();
-    keys_for(&crate::selection::members(&selected.candidates), action)
+    let selected = tables.load_import_list_selected(list, Some(action)).await.unwrap();
+    selected.candidates.into_iter().map(|candidate| candidate.candidate_key).collect()
 }
 
 /// The offer for `action` of `list`'s selection.
@@ -68,7 +68,7 @@ async fn the_selected_rows_come_in_the_list_s_order() {
         },
     )
     .await;
-    let selected = tables.load_import_list_selected(list).await.unwrap();
+    let selected = tables.load_import_list_selected(list, None).await.unwrap();
     assert_eq!(
         selected
             .candidates
@@ -372,7 +372,7 @@ async fn extending_selects_the_run_between_two_rows() {
     lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     lib.select(list, SelectionChange::Extend { from: lib.key("C"), to: lib.key("Box/1") }).await;
-    let selected = tables.load_import_list_selected(list).await.unwrap();
+    let selected = tables.load_import_list_selected(list, None).await.unwrap();
     assert_eq!(
         selected
             .candidates

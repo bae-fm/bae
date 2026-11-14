@@ -352,7 +352,11 @@ impl ImportList {
                 let failures = self
                     .services
                     .run_import_selection_action(
-                        &self.inner.selected().await.map_err(list_error)?,
+                        &self
+                            .inner
+                            .selected_offering(action.into_core())
+                            .await
+                            .map_err(list_error)?,
                         action.into_core(),
                         |completed, total| {
                             progress.set(crate::types::BridgeFastValue::SelectionActionProgress {

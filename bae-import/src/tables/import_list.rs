@@ -22,6 +22,7 @@
 //! (`follows_scans`, `follows_groupings`, `follows_candidates`,
 //! `follows_library`).
 
+mod actions;
 mod follows_candidates;
 mod follows_groupings;
 mod follows_library;

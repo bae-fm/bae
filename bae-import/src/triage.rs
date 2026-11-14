@@ -32,7 +32,7 @@ pub use actions::{
     CandidateAction, CandidateActionBasis, CandidateLiveState, IdentifyingStep, StoredLookup,
 };
 pub use model::*;
-pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer, SelectionPart};
+pub use selection::{selection_offers, SelectionOffer, SelectionPart};
 pub use standing::{BadgeTone, NeedsYouReason, PendingBadge, PendingStanding, PendingState};
 
 /// The failed check against the folder the pane states beside Import: the

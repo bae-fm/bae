@@ -1,7 +1,4 @@
-use super::{
-    IdentificationStatus, ImportStanding, PendingStanding, TriagePlacement, TriageRuntimeFacts,
-    TriageSkipAction,
-};
+use super::{IdentificationStatus, PendingStanding, TriagePlacement, TriageRuntimeFacts};
 
 /// Commands offered for a candidate at its current lifecycle position —
 /// every one a candidate can take, so every surface that acts on candidates
@@ -94,110 +91,6 @@ impl CandidateActionBasis {
     ) -> Self {
         Self { actionable, placement: *placement, draft_valid, lookup, separable }
     }
-
-    /// The commands these facts offer with `live` running for the candidate.
-    ///
-    /// An import owning the candidate leaves only cancelling it, not even a
-    /// skip: the attempt is what decides it now. A run in flight leaves only cancelling
-    /// it and the skip — the run is about to write the answer every other
-    /// command would overwrite — and, while the release it picked unattended
-    /// is read, importing once that answer is written, until that is asked.
-    ///
-    /// How its folders are read is decided before any of that: a release
-    /// imported, or with work running for it, is past regrouping; any other
-    /// separates when a grouping reads it — even one that cannot be worked on
-    /// as it stands, which is what separating fixes — and combines when it can
-    /// be acted on. Revealing its folders is always there.
-    pub fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
-        use CandidateAction as A;
-        let mut actions = self.commands(live);
-        let settled = matches!(self.placement, TriagePlacement::Done)
-            || live.importing()
-            || live.identifying();
-        if !settled {
-            if self.separable {
-                actions.push(A::Separate);
-            } else if self.actionable {
-                actions.push(A::Combine);
-            }
-        }
-        actions.push(A::RevealFolder);
-        actions
-    }
-
-    /// The commands that act on what the candidate holds, before how its
-    /// folders are read and revealing them.
-    fn commands(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
-        use CandidateAction as A;
-        use TriagePlacement as P;
-        if !self.actionable {
-            return Vec::new();
-        }
-        // A running import can be cancelled; one writing its release
-        // completes, so nothing is offered for it.
-        match live.import_standing() {
-            Some(ImportStanding::Queued | ImportStanding::Running) => return vec![A::CancelImport],
-            Some(ImportStanding::Writing) => return Vec::new(),
-            None => {}
-        }
-        let identifying = live.identifying();
-        let placement = &self.placement;
-        let mut actions = match placement {
-            P::Done | P::Skipped => Vec::new(),
-            _ if identifying => {
-                let import_once_stored = matches!(
-                    live.identification,
-                    Some(IdentificationStatus::ReadingPick { import_asked: false })
-                );
-                let mut actions = Vec::new();
-                // The pick's draft is what imports, not the one stored now,
-                // so whether that one would import does not matter.
-                if import_once_stored {
-                    actions.push(A::Import);
-                }
-                actions.push(A::CancelIdentification);
-                actions
-            }
-            P::Pending | P::Failed => {
-                let mut actions = Vec::new();
-                if self.draft_valid {
-                    actions.push(A::Import);
-                }
-                let failed_save = match &live.identification {
-                    Some(IdentificationStatus::FinalizationFailed { failure }) => Some(failure),
-                    Some(
-                        IdentificationStatus::Queued
-                        | IdentificationStatus::Running
-                        | IdentificationStatus::Finalizing
-                        | IdentificationStatus::ReadingPick { .. },
-                    )
-                    | None => None,
-                };
-                // Identifying again reaches the same answer and fails the
-                // same way, so it is not offered.
-                let answer_fails_again = failed_save.is_some_and(|failure| !failure.retryable());
-                // A stored lookup is shown as it stood, as Automatic shows it,
-                // so only a candidate with none is offered identifying.
-                if self.lookup.is_none() && !answer_fails_again {
-                    actions.push(A::Identify);
-                }
-                if self.lookup == Some(StoredLookup::Failed)
-                    || failed_save.is_some_and(|failure| failure.retryable())
-                {
-                    actions.push(A::RetryIdentification);
-                }
-                actions.extend([A::ResetToFileMetadata, A::ClearMetadata]);
-                actions
-            }
-        };
-        if let Some(skip) = placement.skip_action() {
-            actions.push(match skip {
-                TriageSkipAction::Skip => A::Skip,
-                TriageSkipAction::Unskip => A::Restore,
-            });
-        }
-        actions
-    }
 }
 
 /// What is running for one candidate right now, and the commands its row
@@ -213,14 +106,14 @@ pub struct CandidateLiveState {
 }
 
 impl CandidateLiveState {
-    /// The row's live state from its basis, what is running for it, and the
-    /// state the placement puts it in with that.
+    /// The row's live state from the commands it offers, what is running for
+    /// it, and the state the placement puts it in with that.
     pub fn of(
-        basis: &CandidateActionBasis,
+        actions: Vec<CandidateAction>,
         facts: TriageRuntimeFacts,
         standing: Option<PendingStanding>,
     ) -> Self {
-        Self { actions: basis.actions(&facts), standing, facts }
+        Self { actions, standing, facts }
     }
 
     /// The lookup at work the row shows: the work its state counts, so only a
@@ -255,7 +148,3 @@ pub enum IdentifyingStep {
     /// Its run is going, or writing an answer that picks no release.
     Running,
 }
-
-#[cfg(test)]
-#[path = "actions_tests.rs"]
-mod tests;

@@ -616,13 +616,10 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
         "a failed run is never imported unattended"
     );
 
-    let (listed, live) = queue_item(&fixture, &key).await;
+    let (_, live) = queue_item(&fixture, &key).await;
     assert_eq!(live.standing, Some(crate::PendingStanding::LookupError));
     assert!(
-        listed
-            .action_basis
-            .actions(&crate::TriageRuntimeFacts::default())
-            .contains(&crate::CandidateAction::RetryIdentification),
+        live.actions.contains(&crate::CandidateAction::RetryIdentification),
         "a lookup error offers Retry"
     );
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");

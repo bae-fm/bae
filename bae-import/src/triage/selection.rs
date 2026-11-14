@@ -5,14 +5,6 @@
 
 use super::CandidateAction;
 
-/// One selected candidate and the actions it offers right now: its
-/// [`CandidateLiveState`](super::CandidateLiveState)'s.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SelectionMember {
-    pub candidate_key: crate::CandidateKey,
-    pub actions: Vec<CandidateAction>,
-}
-
 /// One action a selection offers, how many members it applies to, and whether
 /// it can run as the selection stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,24 +27,8 @@ impl SelectionPart {
     /// Whether this part's rows take part in `action`: those that offer it,
     /// or every row for combining, which acts on the whole selection.
     fn takes(&self, action: CandidateAction) -> bool {
-        takes_part(&self.actions, action)
+        action == CandidateAction::Combine || self.actions.contains(&action)
     }
-}
-
-/// Whether a row offering `offered` takes part in `action`: it offers it, or
-/// the action is combining, which acts on the whole selection.
-fn takes_part(offered: &[CandidateAction], action: CandidateAction) -> bool {
-    action == CandidateAction::Combine || offered.contains(&action)
-}
-
-/// The keys `action` runs on over `members`: those that offer it, or every
-/// member for combining, which acts on the whole selection.
-pub fn keys_for(members: &[SelectionMember], action: CandidateAction) -> Vec<crate::CandidateKey> {
-    members
-        .iter()
-        .filter(|member| takes_part(&member.actions, action))
-        .map(|member| member.candidate_key.clone())
-        .collect()
 }
 
 /// The actions a selection made of `parts` offers, in the order every surface

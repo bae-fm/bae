@@ -115,7 +115,16 @@ impl LiveImportList {
     /// The selected rows, in the order the list shows them: what a bulk
     /// action runs over.
     pub async fn selected(&self) -> Result<SelectedRows, ImportListFailure> {
-        Ok(self.tables.load_import_list_selected(self.list).await?)
+        Ok(self.tables.load_import_list_selected(self.list, None).await?)
+    }
+
+    /// The selected rows that offer `action`, in the order the list shows
+    /// them: what a bulk action of that kind runs over.
+    pub async fn selected_offering(
+        &self,
+        action: crate::CandidateAction,
+    ) -> Result<SelectedRows, ImportListFailure> {
+        Ok(self.tables.load_import_list_selected(self.list, Some(action)).await?)
     }
 
     /// The view and place that reveal the candidate at `candidate_key` at its

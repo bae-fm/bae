@@ -4,7 +4,7 @@
 
 use super::*;
 use bae_import::selection::SelectedRows;
-use bae_import::triage::{keys_for, CandidateAction};
+use bae_import::triage::CandidateAction;
 use bae_import::ImportError;
 
 /// One selected candidate a bulk action could not run on, and why.
@@ -58,8 +58,8 @@ impl AppServices {
         }
     }
 
-    /// Run `action` on every selected candidate that offers it now — with
-    /// where each stands, read from the standings table — one at a time in the
+    /// Run `action` on `selected`, the selected candidates that offer it now,
+    /// read from the list for that action, one at a time in the
     /// order the list shows them, telling `progress` how many are done of how
     /// many. The identification and import queues take what they are handed
     /// first to first, so the top rows start first. A candidate the action
@@ -71,8 +71,8 @@ impl AppServices {
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
         let selected = &selected.candidates;
-        let members = bae_import::selection::members(selected);
-        let keys = keys_for(&members, action);
+        let keys: Vec<bae_import::CandidateKey> =
+            selected.iter().map(|candidate| candidate.candidate_key.clone()).collect();
         let total = keys.len() as u64;
         let name_of = |key: &bae_import::CandidateKey| {
             selected

@@ -69,8 +69,10 @@ pub(super) fn load_candidate_detail_on(
     let Some(listed) = sql
         .query_row(
             &format!(
-                "SELECT {LISTED_COLUMNS} FROM import_list_placement AS p \
-                 WHERE p.key = ? AND p.item = 'candidate'"
+                "SELECT {LISTED_COLUMNS}, {actions} FROM import_list_placement AS p \
+                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
+                 WHERE p.key = ? AND p.item = 'candidate'",
+                actions = super::actions::action_columns(),
             ),
             [key],
             |row| ListedColumns::read(row, 0),

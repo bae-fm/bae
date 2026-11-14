@@ -8,7 +8,7 @@
 //! from the selected rows' placement and what is running for each, and a bulk
 //! action runs in core over the selected keys that offer it.
 
-use super::triage::{CandidateActionBasis, SelectionMember, SelectionOffer, TriageRuntimeFacts};
+use super::triage::SelectionOffer;
 use super::CandidateKey;
 
 /// How a person changed the selection by pointing at rows.
@@ -22,15 +22,11 @@ pub enum SelectionChange {
     Extend { from: CandidateKey, to: CandidateKey },
 }
 
-/// One selected candidate as the tables place it: what its commands are
-/// decided from, and the name a report of a bulk action gives it.
+/// One selected candidate, and the name a report of a bulk action gives it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectedCandidate {
     pub candidate_key: CandidateKey,
     pub name: String,
-    pub basis: CandidateActionBasis,
-    /// What is running for it, as its standing says.
-    pub facts: TriageRuntimeFacts,
 }
 
 /// Every selected row as the tables place it: the candidates, and the folders
@@ -61,15 +57,4 @@ pub struct SelectionSummary {
     pub count: u64,
     pub single: Option<SingleSelection>,
     pub offers: Vec<SelectionOffer>,
-}
-
-/// The selected candidates with the actions each offers now.
-pub fn members(selected: &[SelectedCandidate]) -> Vec<SelectionMember> {
-    selected
-        .iter()
-        .map(|candidate| SelectionMember {
-            candidate_key: candidate.candidate_key.clone(),
-            actions: candidate.basis.actions(&candidate.facts),
-        })
-        .collect()
 }

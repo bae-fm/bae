@@ -1,10 +1,6 @@
 use super::*;
 use CandidateAction as A;
 
-fn member(key: &str, actions: &[CandidateAction]) -> SelectionMember {
-    SelectionMember { candidate_key: crate::CandidateKey::test(key), actions: actions.to_vec() }
-}
-
 /// One row offering `actions`.
 fn one(actions: &[CandidateAction]) -> SelectionPart {
     SelectionPart { actions: actions.to_vec(), count: 1 }
@@ -27,10 +23,6 @@ fn one_member_offers_its_own_actions_in_order() {
 /// Each action applies to the members that offer it.
 #[test]
 fn each_action_applies_to_the_members_that_offer_it() {
-    let members = [
-        member("Album", &[A::Import, A::Identify, A::RevealFolder]),
-        member("Other Album", &[A::Identify, A::RevealFolder]),
-    ];
     let offers = selection_offers(&[
         one(&[A::Import, A::Identify, A::RevealFolder]),
         one(&[A::Identify, A::RevealFolder]),
@@ -40,7 +32,6 @@ fn each_action_applies_to_the_members_that_offer_it() {
     assert_eq!(count(A::Import), Some(1));
     assert_eq!(count(A::Identify), Some(2));
     assert_eq!(count(A::Skip), None);
-    assert_eq!(keys_for(&members, A::Import), vec![crate::CandidateKey::test("Album")]);
 }
 
 /// A part counts each of its rows: an action is offered for as many rows
