@@ -9,6 +9,10 @@
 //! spell it out: `cfg(not(any(target_os = "ios", target_os = "android")))`.
 
 fn main() {
+    // The only input is the target OS. Naming it keeps cargo from rerunning
+    // this script (and recompiling the crate) whenever any file of the crate
+    // using it changes; a change to this file rebuilds the script itself.
+    println!("cargo::rerun-if-env-changed=CARGO_CFG_TARGET_OS");
     println!("cargo::rustc-check-cfg=cfg(desktop)");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS")
         .expect("cargo sets CARGO_CFG_TARGET_OS for a build script");
