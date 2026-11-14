@@ -74,7 +74,9 @@ final class ChipFillNSView: NSView {
     private lazy var pins = FrameFollowing<BridgeDownloadTransferProgress>(
         view: self
     ) { [weak self] progress in self?.show(progress?.fraction) }
-    private lazy var makeLocals = FrameFollowing<BridgeMakeLocalProgress>(
+    private lazy var movesToThisDevice = FrameFollowing<
+        BridgeMoveToThisDeviceProgress
+    >(
         view: self
     ) { [weak self] progress in self?.show(progress?.fraction) }
 
@@ -112,23 +114,23 @@ final class ChipFillNSView: NSView {
         switch fill {
         case .upload(let source):
             pins.stop()
-            makeLocals.stop()
+            movesToThisDevice.stop()
             uploads.follow(source)
         case .pin(let source):
             uploads.stop()
-            makeLocals.stop()
+            movesToThisDevice.stop()
             pins.follow(source)
-        case .makeLocal(let source):
+        case .moveToThisDevice(let source):
             uploads.stop()
             pins.stop()
-            makeLocals.follow(source)
+            movesToThisDevice.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         pins.stop()
-        makeLocals.stop()
+        movesToThisDevice.stop()
     }
 
     private func show(_ fraction: Double?) {

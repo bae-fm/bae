@@ -240,7 +240,7 @@ extension PreviewData {
             coverFiles: [previewReleaseCoverFile],
             galleryItems: [],
             playability: playability,
-            makeLocal: nil,
+            moveToThisDevice: nil,
             downloadStatus: nil,
             // Every catalog, so the expansion's facts-line popover shows
             // what a release a MusicBrainz pick linked all the way out

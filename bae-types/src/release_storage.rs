@@ -1,7 +1,7 @@
 //! The storage transitions a person can ask of a release.
 
 /// A storage transition the user can trigger from the release "Storage…" sheet.
-/// `Upload` / `DetachAudio` move between the two storage states; `Pin` / `Unpin`
+/// `Upload` / `MoveToThisDevice` move between the two storage states; `Pin` / `Unpin`
 /// toggle the orthogonal cache pin on a remote release. The core computes which are
 /// available; the UI renders them and never re-derives availability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,7 +14,7 @@ pub enum ReleaseStorageAction {
     /// cache (still in the cloud).
     Unpin,
     /// Remote -> Local (move the files back out to a user folder).
-    DetachAudio,
+    MoveToThisDevice,
 }
 
 impl ReleaseStorageAction {
@@ -25,13 +25,13 @@ impl ReleaseStorageAction {
             Self::Upload => "upload",
             Self::Pin => "pin",
             Self::Unpin => "unpin",
-            Self::DetachAudio => "detach_audio",
+            Self::MoveToThisDevice => "move_to_this_device",
         }
     }
 
     /// The transition named `key`, or `None` when no transition goes by it.
     pub fn from_key(key: &str) -> Option<Self> {
-        [Self::Upload, Self::Pin, Self::Unpin, Self::DetachAudio]
+        [Self::Upload, Self::Pin, Self::Unpin, Self::MoveToThisDevice]
             .into_iter()
             .find(|action| action.key() == key)
     }

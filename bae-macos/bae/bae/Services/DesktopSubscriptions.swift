@@ -294,7 +294,7 @@ final class DesktopSubscriptions {
             outputStore.percents.feed(from: appHandle),
             outboxStore.fileShares.feedUploads(from: appHandle),
             downloadStore.fileShares.feedPins(from: appHandle),
-            downloadStore.makeLocalTransfers.feed(from: appHandle),
+            downloadStore.moveToThisDeviceTransfers.feed(from: appHandle),
             importStore.previewPosition.feed(from: appHandle),
             importStore.importPercents.feed(from: appHandle),
             importStore.tabCounts.feed(

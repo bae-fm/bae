@@ -39,7 +39,7 @@ impl AppHandle {
     }
 
     /// Write the share of each Activity transfer line's batch bytes done
-    /// into a stream by line: `uploads`, `pins` or `making_local`, each
+    /// into a stream by line: `uploads`, `pins` or `moving_to_this_device`, each
     /// while its batch holds a release. A failed read empties the stream and
     /// is pulled as an error; the next bars fill it again.
     pub fn feed_activity_bars(&self) -> Arc<KeyedValueStream> {
@@ -52,11 +52,11 @@ impl AppHandle {
         crate::screens::download_transfers(self.runtime.clone(), self.run_feed())
     }
 
-    /// Write how far each release being made local has come into a stream by
+    /// Write how far each release being moved to this device has come into a stream by
     /// release id: the bytes of the file coven is downloading into the
     /// person's folder and of the whole release.
-    pub fn feed_make_local_transfers(&self) -> Arc<KeyedValueStream> {
-        crate::screens::make_local_transfers(self.runtime.clone(), self.run_feed())
+    pub fn feed_move_to_this_device_transfers(&self) -> Arc<KeyedValueStream> {
+        crate::screens::move_to_this_device_transfers(self.runtime.clone(), self.run_feed())
     }
 }
 

@@ -71,14 +71,14 @@ struct StorageStatusBand: View {
             case .downloaded, .available, .failed: break
             }
         }
-        switch release.makeLocal {
-        case .queued: return .makingLocal(step: .queued)
-        case .making: return .makingLocal(step: .running)
+        switch release.moveToThisDevice {
+        case .queued: return .movingToThisDevice(step: .queued)
+        case .making: return .movingToThisDevice(step: .running)
         case .failed, nil: return nil
         }
     }
 
-    /// A pin or a make-local that failed: a danger notice whose Details opens
+    /// A pin or a move-to-this-device that failed: a danger notice whose Details opens
     /// the error.
     @ViewBuilder
     private var failure: some View {
@@ -89,7 +89,7 @@ struct StorageStatusBand: View {
                 error: DisplayError(line: error)
             )
         }
-        if case .failed(let error) = release.makeLocal {
+        if case .failed(let error) = release.moveToThisDevice {
             Notice(
                 title: String(localized: "Could not move to This Mac"),
                 advice: nil,

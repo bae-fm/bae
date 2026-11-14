@@ -32,7 +32,7 @@ pub struct BridgeStorageBrowseSnapshot {
 }
 
 /// The transfer queues holding files waiting or on the move, each with
-/// whether it is paused; the download queue (pins and make-locals) and the
+/// whether it is paused; the download queue (pins and moves-to-this-device) and the
 /// output queue name the release they run. Mirrors `StorageQueues`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeStorageQueues {

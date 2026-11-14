@@ -535,15 +535,18 @@ pub(super) async fn started_pin_entry(
     bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(release_id)
 }
 
-/// Queue `release_ids` to be made local into `folder` and wait until the
+/// Queue `release_ids` to be moved to this device into `folder` and wait until the
 /// download queue has run them: `Ok` when it holds none waiting or running
 /// and none failed, else the first failure's error.
-pub(super) async fn make_local_and_wait(
+pub(super) async fn move_to_this_device_and_wait(
     manager: &LibraryManager,
     release_ids: &[String],
     folder: &std::path::Path,
 ) -> Result<(), String> {
-    manager.make_releases_local(release_ids.to_vec(), folder).await.map_err(|e| e.to_string())?;
+    manager
+        .move_releases_to_this_device(release_ids.to_vec(), folder)
+        .await
+        .map_err(|e| e.to_string())?;
     let queue = download_queue_until(manager, |queue| {
         queue
             .rows
@@ -784,7 +787,7 @@ pub(super) fn setup_failure_classes_retain_the_actionable_category() {
         (coven::DbError::Bug(bug()).into(), C::Internal),
         (coven::DbError::StoreFailed(bug()).into(), C::Internal),
         (LibraryError::file_read("read a cover", coven::FileReadError::Bug(bug())), C::Internal),
-        (LibraryError::MakeLocal(Box::new(coven::DeviceOnlyError::Bug(bug()))), C::Internal),
+        (LibraryError::MoveToThisDevice(Box::new(coven::DeviceOnlyError::Bug(bug()))), C::Internal),
     ];
     for (error, expected) in cases {
         assert_eq!(error.category(), expected, "{error}");

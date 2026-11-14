@@ -397,21 +397,21 @@ impl Automation {
                 self.services.unpin_releases(std::slice::from_ref(&release_id)).await?;
                 Ok(AutomationStorageActionOutcome::Unpinned { release_id })
             }
-            AutomationStorageAction::DetachAudio { destination_dir } => {
+            AutomationStorageAction::MoveToThisDevice { destination_dir } => {
                 require_action(
                     &summary,
-                    AutomationReleaseStorageAction::DetachAudio,
+                    AutomationReleaseStorageAction::MoveToThisDevice,
                     "detach audio",
                 )?;
-                // The make-local joins the download queue rather than running
-                // inline, as the Storage Manager's Make local does.
+                // The move-to-this-device joins the download queue rather than running
+                // inline, as the Storage Manager's Move to this device does.
                 self.services
-                    .make_releases_local(
+                    .move_releases_to_this_device(
                         vec![release_id.clone()],
                         std::path::Path::new(&destination_dir),
                     )
                     .await?;
-                Ok(AutomationStorageActionOutcome::MakeLocalQueued { release_id })
+                Ok(AutomationStorageActionOutcome::MoveToThisDeviceQueued { release_id })
             }
             AutomationStorageAction::Cancel => {
                 self.services.cancel_release_transition(&release_id).await?;

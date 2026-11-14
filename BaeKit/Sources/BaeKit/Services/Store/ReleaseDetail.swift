@@ -40,7 +40,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
     public var downloadStatus: BridgeReleaseDownloadStatus?
     /// Where the release stands in moving to This Mac, in the same queue; nil
     /// when it is not moving to This Mac.
-    public var makeLocal: BridgeMakeLocalStatus?
+    public var moveToThisDevice: BridgeMoveToThisDeviceStatus?
 
     public var id: String {
         summary.id
@@ -69,7 +69,7 @@ public struct ReleaseDetail: Identifiable, Sendable {
         labelsLine = Self.labelsLine(bridge.labels, separator: separator)
         totalDuration = bridge.totalDuration
         downloadStatus = bridge.downloadStatus
-        makeLocal = bridge.makeLocal
+        moveToThisDevice = bridge.moveToThisDevice
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         credits = bridge.credits

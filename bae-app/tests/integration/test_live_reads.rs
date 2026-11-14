@@ -380,12 +380,12 @@ async fn the_storage_view_moves_one_subscription() {
     assert_eq!(filtered.total_size, views(&manager).get_storage_total_size(local).await.unwrap());
 }
 
-/// A release queued to be made local reaches the album detail, the release
+/// A release queued to be moved to this device reaches the album detail, the release
 /// detail and the Storage Manager, each read from its download queue entry:
 /// while it waits the release shows it and offers no storage action, and a
 /// cancel takes it out of all three.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_make_local_entry_reaches_the_reads() {
+async fn a_move_to_this_device_entry_reaches_the_reads() {
     let (manager, storage, dir) = open_library().await;
     bae_library::test_libraries::connect_storage(manager.manager(), manager.store(), &storage)
         .await;
@@ -419,19 +419,19 @@ async fn a_make_local_entry_reaches_the_reads() {
             selected: Default::default(),
         },
     );
-    let waiting = Some(bae_views::album_detail::MakeLocalStatus::Queued);
-    let album_shows = |status: Option<bae_views::album_detail::MakeLocalStatus>| {
+    let waiting = Some(bae_views::album_detail::MoveToThisDeviceStatus::Queued);
+    let album_shows = |status: Option<bae_views::album_detail::MoveToThisDeviceStatus>| {
         move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::AlbumDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
-                detail.releases[0].make_local == status
+                detail.releases[0].move_to_this_device == status
                     && detail.releases[0].summary.transitioning == status.is_some()
             })
         }
     };
-    let release_shows = |status: Option<bae_views::album_detail::MakeLocalStatus>| {
+    let release_shows = |status: Option<bae_views::album_detail::MoveToThisDeviceStatus>| {
         move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::ReleaseDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
-                detail.make_local == status
+                detail.move_to_this_device == status
                     && detail.summary.storage_actions.is_empty() == status.is_some()
             })
         }
@@ -442,35 +442,50 @@ async fn a_make_local_entry_reaches_the_reads() {
         }
     };
 
-    until("the album shows no make-local", || album_detail.next(), album_shows(None)).await;
-    until("the release shows no make-local", || release_detail.next(), release_shows(None)).await;
+    until("the album shows no move-to-this-device", || album_detail.next(), album_shows(None))
+        .await;
+    until(
+        "the release shows no move-to-this-device",
+        || release_detail.next(),
+        release_shows(None),
+    )
+    .await;
     until("the row rests", || storage_browse.next(), row_shows(StorageRowStatus::InStorage)).await;
 
     // The worker leaves the entry waiting.
     manager.manager().set_downloads_paused(true).await.unwrap();
     let folder = dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    manager.manager().make_releases_local(vec![release_id.clone()], &folder).await.unwrap();
-    until("the album shows the make-local", || album_detail.next(), album_shows(waiting.clone()))
-        .await;
+    manager
+        .manager()
+        .move_releases_to_this_device(vec![release_id.clone()], &folder)
+        .await
+        .unwrap();
     until(
-        "the release shows the make-local",
+        "the album shows the move-to-this-device",
+        || album_detail.next(),
+        album_shows(waiting.clone()),
+    )
+    .await;
+    until(
+        "the release shows the move-to-this-device",
         || release_detail.next(),
         release_shows(waiting.clone()),
     )
     .await;
     until(
-        "the row shows the make-local",
+        "the row shows the move-to-this-device",
         || storage_browse.next(),
-        row_shows(StorageRowStatus::MakingLocal(
+        row_shows(StorageRowStatus::MovingToThisDevice(
             bae_views::album_detail::DownloadEntryStep::Queued,
         )),
     )
     .await;
 
     manager.manager().cancel_release_transition(&release_id).await.unwrap();
-    until("the album's make-local ends", || album_detail.next(), album_shows(None)).await;
-    until("the release's make-local ends", || release_detail.next(), release_shows(None)).await;
+    until("the album's move-to-this-device ends", || album_detail.next(), album_shows(None)).await;
+    until("the release's move-to-this-device ends", || release_detail.next(), release_shows(None))
+        .await;
     until("the row rests again", || storage_browse.next(), row_shows(StorageRowStatus::InStorage))
         .await;
 }

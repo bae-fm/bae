@@ -164,9 +164,9 @@ pub struct ReleaseDetail {
     /// The download control's state for the release, from its entry in the
     /// download queue as it was read; `None` when there is no control to show.
     pub download_status: Option<ReleaseDownloadStatus>,
-    /// Where the release stands in being made local, in the download queue;
+    /// Where the release stands in being moved to this device, in the download queue;
     /// `None` when it is not being.
-    pub make_local: Option<MakeLocalStatus>,
+    pub move_to_this_device: Option<MoveToThisDeviceStatus>,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -310,10 +310,10 @@ impl ReleaseDetail {
             &summary.storage_actions,
             download.as_ref(),
         );
-        let make_local = release_make_local_status(download.as_ref());
+        let move_to_this_device = release_move_to_this_device_status(download.as_ref());
         ReleaseDetail {
             download_status,
-            make_local,
+            move_to_this_device,
             summary,
             name,
             year: release.pressing.year,

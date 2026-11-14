@@ -10,7 +10,7 @@ pub enum DownloadKind {
     Pin,
     /// Downloads the release's files into the person's folder and makes the
     /// release local.
-    MakeLocal,
+    MoveToThisDevice,
 }
 
 /// A release's entry in the download queue: what it does, and where it
@@ -23,13 +23,13 @@ pub struct DownloadEntry {
 
 impl DownloadEntry {
     /// Whether the release's storage actions wait on this entry: it is
-    /// downloading, or it is a make-local waiting, which would be undone by
+    /// downloading, or it is a move-to-this-device waiting, which would be undone by
     /// another action. A pin waiting, or an entry that failed, leaves the
     /// release to its actions.
     pub fn holds_the_release(&self) -> bool {
         match (self.kind, &self.step) {
             (_, DownloadStep::Running) => true,
-            (DownloadKind::MakeLocal, DownloadStep::Queued) => true,
+            (DownloadKind::MoveToThisDevice, DownloadStep::Queued) => true,
             (_, DownloadStep::Queued | DownloadStep::Failed { .. }) => false,
         }
     }
@@ -66,7 +66,7 @@ pub fn download_entry_column(row: &Row<'_>) -> rusqlite::Result<Option<DownloadE
     let kind_column = row.as_ref().column_index("download_kind")?;
     let kind = match row.get::<_, String>(kind_column)?.as_str() {
         "pin" => DownloadKind::Pin,
-        "make_local" => DownloadKind::MakeLocal,
+        "move_to_this_device" => DownloadKind::MoveToThisDevice,
         other => {
             return Err(bae_store::read::column_conversion_error(
                 row,

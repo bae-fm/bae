@@ -51,7 +51,7 @@ pub trait QueuedPayload: Clone + PartialEq + Send + Sync + 'static {
     }
 }
 
-/// A download carries what it does: a pin nothing more, a make-local its
+/// A download carries what it does: a pin nothing more, a move-to-this-device its
 /// folder.
 impl QueuedPayload for DownloadRequest {
     const QUEUE: &'static str = "download";
@@ -63,8 +63,8 @@ impl QueuedPayload for DownloadRequest {
     fn values(&self) -> Result<Vec<Value>, DbError> {
         Ok(match self {
             Self::Pin => vec![Value::Text("pin".to_string()), Value::Null],
-            Self::MakeLocal { target_dir } => vec![
-                Value::Text("make_local".to_string()),
+            Self::MoveToThisDevice { target_dir } => vec![
+                Value::Text("move_to_this_device".to_string()),
                 Value::Blob(coven::path_bytes(target_dir)),
             ],
         })
@@ -75,7 +75,7 @@ impl QueuedPayload for DownloadRequest {
         match (kind.as_str(), bae_store::path_column::get_optional(row, at + 1)?) {
             ("pin", None) => Ok(Self::Pin),
             #[cfg(desktop)]
-            ("make_local", Some(target_dir)) => Ok(Self::MakeLocal { target_dir }),
+            ("move_to_this_device", Some(target_dir)) => Ok(Self::MoveToThisDevice { target_dir }),
             (kind, target_dir) => Err(column_conversion_error(
                 row,
                 at,
@@ -86,7 +86,7 @@ impl QueuedPayload for DownloadRequest {
 
     /// Cancelling a pin removes what it downloaded: the release's files
     /// leave this device in the write that takes the entry out, the partial
-    /// download a stopped pin keeps among them. A make-local's cancel leaves
+    /// download a stopped pin keeps among them. A move-to-this-device's cancel leaves
     /// the files as they are.
     fn cancelling_in(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
         let kind: Option<String> = sql
@@ -594,13 +594,13 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
     Ok(sql.execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])? > 0)
 }
 
-/// Queue to make local into `target_dir`, in the order given, each of
+/// Queue to move to this device into `target_dir`, in the order given, each of
 /// `release_ids` that is stored in the cloud, in one write that decides which:
 /// one the library no longer holds or that is local is passed over, and so is
 /// one waiting or downloading; one whose download failed becomes this
-/// make-local in its place. `true` when any went in or was queued again.
+/// move-to-this-device in its place. `true` when any went in or was queued again.
 #[cfg(desktop)]
-pub(crate) fn enqueue_make_locals_on(
+pub(crate) fn enqueue_moves_to_this_device_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
     target_dir: &std::path::Path,
@@ -609,13 +609,13 @@ pub(crate) fn enqueue_make_locals_on(
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
     Ok(sql.execute(
         "INSERT INTO download_queue (release_id, created_at, state, kind, target_dir) \
-         SELECT requested.value, :created_at, 'queued', 'make_local', :target_dir \
+         SELECT requested.value, :created_at, 'queued', 'move_to_this_device', :target_dir \
          FROM json_each(:release_ids) AS requested \
          JOIN release_storage AS storage ON storage.release_id = requested.value \
          WHERE storage.stored = 1 \
          ORDER BY requested.key \
          ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
-             kind = 'make_local', target_dir = excluded.target_dir \
+             kind = 'move_to_this_device', target_dir = excluded.target_dir \
          WHERE download_queue.state = 'failed'",
         rusqlite::named_params! {
             ":created_at": created_at,

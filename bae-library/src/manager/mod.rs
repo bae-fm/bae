@@ -233,7 +233,7 @@ pub enum LibraryError {
     /// Making a release local again failed; coven removed what the call
     /// made, so the release stays in the cloud.
     #[error("make release local: {0}")]
-    MakeLocal(#[source] Box<coven::DeviceOnlyError>),
+    MoveToThisDevice(#[source] Box<coven::DeviceOnlyError>),
     #[error("Playback error: {0}")]
     Playback(String),
     /// Work asked of a library after it closed; nothing of it started.
@@ -386,7 +386,7 @@ impl bae_util::task_failure::ReportedBug for LibraryError {
             #[cfg(desktop)]
             LibraryError::Import(error) => error.reported_bug(),
             LibraryError::FileRead { error, .. } => error.reported_bug(),
-            LibraryError::MakeLocal(error) => error.reported_bug(),
+            LibraryError::MoveToThisDevice(error) => error.reported_bug(),
             LibraryError::StorageMove(error) => error.reported_bug(),
             LibraryError::SetupDismiss(error) => error.reported_bug(),
             LibraryError::AdminChangeDismiss(error) => error.reported_bug(),
@@ -449,7 +449,7 @@ impl LibraryError {
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::FileRead { error, .. } => file_read_category(error),
-            LibraryError::MakeLocal(error) => device_only_category(error),
+            LibraryError::MoveToThisDevice(error) => device_only_category(error),
             LibraryError::StorageMove(error) => {
                 write_error_category(error, storage_move_refusal_category)
             }

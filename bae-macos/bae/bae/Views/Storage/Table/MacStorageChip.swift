@@ -32,13 +32,13 @@ struct MacStorageChip: View {
             StatusChip("Queued to pin", tone: .activity)
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
-        case .makeLocalFailed(let error):
+        case .moveToThisDeviceFailed(let error):
             StatusChip("Could not move to This Mac", tone: .danger)
                 .help(error)
-        case .makingLocal(.queued):
+        case .movingToThisDevice(.queued):
             StatusChip("Queued to move to This Mac", tone: .activity)
-        case .makingLocal(.running):
-            StorageMakingLocalChipContainer(releaseId: release.id)
+        case .movingToThisDevice(.running):
+            StorageMovingToThisDeviceChipContainer(releaseId: release.id)
         case .onOneDevice:
             StatusChip("Local", symbol: "folder")
         case .pinned:
@@ -101,17 +101,17 @@ struct StoragePinningChipContainer: View {
 
 /// A release moving to This Mac's chip, filled each frame from how far its
 /// files have downloaded into the person's folder.
-struct StorageMakingLocalChipContainer: View {
+struct StorageMovingToThisDeviceChipContainer: View {
     let releaseId: String
     @Environment(DownloadStore.self)
     private var downloadStore
 
     var body: some View {
         StorageProgressChip(
-            verbatim: BridgeReleaseStorageAction.detachAudio.transferLabel,
+            verbatim: BridgeReleaseStorageAction.moveToThisDevice.transferLabel,
             kind: .pin,
-            fill: .makeLocal(
-                downloadStore.makeLocalProgress(forRelease: releaseId)
+            fill: .moveToThisDevice(
+                downloadStore.moveToThisDeviceProgress(forRelease: releaseId)
             )
         )
     }

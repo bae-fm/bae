@@ -338,7 +338,7 @@ async fn storage_page_sorts_album_title_descending() {
 /// With storage set up every remote/local transition is open.
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
-    use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
+    use bae_types::release_storage::ReleaseStorageAction::{MoveToThisDevice, Pin, Unpin, Upload};
 
     let (test, temp_dir) = setup_test_manager().await;
 
@@ -368,8 +368,8 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
         .map(|r| (r.release.id.clone(), r.release.storage_actions.clone()))
         .collect();
 
-    assert_eq!(actions[&pinned], vec![Unpin, DetachAudio]);
-    assert_eq!(actions[&cloud_only], vec![Pin, DetachAudio]);
+    assert_eq!(actions[&pinned], vec![Unpin, MoveToThisDevice]);
+    assert_eq!(actions[&cloud_only], vec![Pin, MoveToThisDevice]);
     assert_eq!(actions[&local.id], vec![Upload]);
 }
 

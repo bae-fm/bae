@@ -246,8 +246,8 @@ pub(crate) fn activity_bars(runtime: OperationRuntime, run: impl RunFeed) -> Arc
 /// batch's bytes done under the line's name, while its batch holds a
 /// release.
 fn activity_bars_held(bars: bae_library::ActivityBars) -> HashMap<Vec<u8>, BridgeFastValue> {
-    let bae_library::ActivityBars { uploads, pins, making_local } = bars;
-    [("uploads", uploads), ("pins", pins), ("making_local", making_local)]
+    let bae_library::ActivityBars { uploads, pins, moving_to_this_device } = bars;
+    [("uploads", uploads), ("pins", pins), ("moving_to_this_device", moving_to_this_device)]
         .into_iter()
         .filter_map(|(line, bar)| {
             bar.map(|bar| {
@@ -292,16 +292,16 @@ fn pin_progress(
 ) -> Option<bae_transfers::DownloadTransferProgress> {
     match transfer {
         bae_transfers::DownloadTransfer::Pin(progress) => Some(progress),
-        bae_transfers::DownloadTransfer::MakeLocal(_) => None,
+        bae_transfers::DownloadTransfer::MoveToThisDevice(_) => None,
     }
 }
 
-/// The make-local of a download, if that is what it is.
-fn make_local_progress(
+/// The move-to-this-device of a download, if that is what it is.
+fn move_to_this_device_progress(
     transfer: bae_transfers::DownloadTransfer,
-) -> Option<bae_transfers::MakeLocalTransferProgress> {
+) -> Option<bae_transfers::MoveToThisDeviceTransferProgress> {
     match transfer {
-        bae_transfers::DownloadTransfer::MakeLocal(progress) => Some(progress),
+        bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => Some(progress),
         bae_transfers::DownloadTransfer::Pin(_) => None,
     }
 }
@@ -327,8 +327,8 @@ pub(crate) fn download_transfers(
     })
 }
 
-/// The stream [`AppHandle::feed_make_local_transfers`](crate::AppHandle::feed_make_local_transfers) hands out.
-pub(crate) fn make_local_transfers(
+/// The stream [`AppHandle::feed_move_to_this_device_transfers`](crate::AppHandle::feed_move_to_this_device_transfers) hands out.
+pub(crate) fn move_to_this_device_transfers(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
@@ -338,9 +338,9 @@ pub(crate) fn make_local_transfers(
             while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
                 write_release_changes(
                     &writer,
-                    download_changes(changes, make_local_progress),
-                    |progress| BridgeFastValue::MakeLocal {
-                        progress: crate::types::BridgeMakeLocalProgress::from_core(progress),
+                    download_changes(changes, move_to_this_device_progress),
+                    |progress| BridgeFastValue::MoveToThisDevice {
+                        progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
                     },
                 );
             }

@@ -166,7 +166,7 @@ struct ActivityList: View {
 extension BridgeSyncActivity {
     /// A queue's line shows: its batch holds a release.
     fileprivate var hasTransferLine: Bool {
-        uploads != nil || pins != nil || makingLocal != nil
+        uploads != nil || pins != nil || movingToThisDevice != nil
     }
 }
 
@@ -204,12 +204,15 @@ private struct TransferRows: View {
                 bar: store.bar(.pins)
             )
         }
-        if let makingLocal = activity.makingLocal {
+        if let movingToThisDevice = activity.movingToThisDevice {
             TransferLine(
-                title: localizedCoreString("core.activity.making_local"),
-                count: makingLocal.wait?.text ?? makingLocal.batch.text,
-                queue: .init(.downloads, paused: makingLocal.paused),
-                bar: store.bar(.makingLocal)
+                title: localizedCoreString(
+                    "core.activity.moving_to_this_device"
+                ),
+                count: movingToThisDevice.wait?.text
+                    ?? movingToThisDevice.batch.text,
+                queue: .init(.downloads, paused: movingToThisDevice.paused),
+                bar: store.bar(.movingToThisDevice)
             )
         }
     }

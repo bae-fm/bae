@@ -38,8 +38,8 @@ fn step(before: u64, all: u64, done: u64, total: u64) -> coven::Progress<coven::
 #[test]
 fn a_release_has_come_as_far_as_its_files_before_and_its_file() {
     assert_eq!(
-        MakeLocalTransferProgress::of(step(300, 1_000, 50, 200)),
-        MakeLocalTransferProgress {
+        MoveToThisDeviceTransferProgress::of(step(300, 1_000, 50, 200)),
+        MoveToThisDeviceTransferProgress {
             file_bytes_done: 50,
             file_bytes_total: 200,
             bytes_done: 350,

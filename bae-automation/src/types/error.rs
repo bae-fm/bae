@@ -85,7 +85,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Storage(e) => Self::Unavailable(e),
             error @ LibraryError::Closed(_) => Self::Unavailable(error.to_string()),
             error @ LibraryError::FileRead { .. } => Self::Unavailable(error.to_string()),
-            error @ LibraryError::MakeLocal(_) => Self::Unavailable(error.to_string()),
+            error @ LibraryError::MoveToThisDevice(_) => Self::Unavailable(error.to_string()),
             error @ (LibraryError::Cleanup { .. }
             | LibraryError::StorageMove(_)
             | LibraryError::SetupDismiss(_)

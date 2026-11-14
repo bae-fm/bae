@@ -438,23 +438,23 @@ fn batched(kind: &str, release_id: &str) -> (String, String) {
 /// Each kind's batch holds every release queued as that kind until none of
 /// that kind waits or downloads: a finished pin and a cancelled one stay in
 /// the pin batch while another pin waits, and it empties once the last one
-/// leaves, the make-local's batch staying as it was. A failure ends the batch
+/// leaves, the move-to-this-device's batch staying as it was. A failure ends the batch
 /// only when no entry of its kind waits, and a retry starts it again.
 #[tokio::test]
 async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let make_local = ReleaseQueueEntry {
+    let move_to_this_device = ReleaseQueueEntry {
         release_id: RELEASE_Z.to_string(),
         created_at: 8,
-        payload: DownloadRequest::MakeLocal { target_dir: "/Users/ana/Music".into() },
+        payload: DownloadRequest::MoveToThisDevice { target_dir: "/Users/ana/Music".into() },
     };
     let third = "3c4c2e9a-7f0b-4b8e-8d2a-5d6a1f0e9b21";
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B), download(third)])
         .await
         .unwrap();
-    enqueue_releases(&db, vec![make_local]).await.unwrap();
+    enqueue_releases(&db, vec![move_to_this_device]).await.unwrap();
     let everything = vec![
-        batched("make_local", RELEASE_Z),
+        batched("move_to_this_device", RELEASE_Z),
         batched("pin", RELEASE_A),
         batched("pin", third),
         batched("pin", RELEASE_B),
@@ -476,14 +476,14 @@ async fn the_download_batch_holds_each_kind_until_it_has_none_waiting() {
         .unwrap());
     assert_eq!(
         download_batch(&db).await,
-        vec![batched("make_local", RELEASE_Z)],
+        vec![batched("move_to_this_device", RELEASE_Z)],
         "no pin waits or downloads: the pin batch is over"
     );
 
     assert!(retry_failed_release::<DownloadRequest>(&db, third).await.unwrap());
     assert_eq!(
         download_batch(&db).await,
-        vec![batched("make_local", RELEASE_Z), batched("pin", third)],
+        vec![batched("move_to_this_device", RELEASE_Z), batched("pin", third)],
         "the retried pin starts a new batch"
     );
     assert!(cancel_queued_release::<DownloadRequest>(&db, RELEASE_Z).await.unwrap());
@@ -514,13 +514,13 @@ async fn each_download_batch_takes_the_next_number_of_its_kind() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     assert_eq!(
         download_batch_numbers(&db).await,
-        vec![numbered("make_local", 0), numbered("pin", 0)]
+        vec![numbered("move_to_this_device", 0), numbered("pin", 0)]
     );
 
     enqueue_releases(&db, vec![download(RELEASE_A), download(RELEASE_B)]).await.unwrap();
     assert_eq!(
         download_batch_numbers(&db).await,
-        vec![numbered("make_local", 0), numbered("pin", 1)],
+        vec![numbered("move_to_this_device", 0), numbered("pin", 1)],
         "one batch began with two releases"
     );
 
@@ -529,7 +529,7 @@ async fn each_download_batch_takes_the_next_number_of_its_kind() {
     enqueue_releases(&db, vec![download(RELEASE_A)]).await.unwrap();
     assert_eq!(
         download_batch_numbers(&db).await,
-        vec![numbered("make_local", 0), numbered("pin", 2)],
+        vec![numbered("move_to_this_device", 0), numbered("pin", 2)],
         "the batch ended, and the release queued again began the next"
     );
 }

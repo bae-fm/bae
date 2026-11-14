@@ -1,5 +1,5 @@
 //! The progress of each release transfer under way — the active download's
-//! bytes, the active export's percent, a make-local's bytes — for a reader
+//! bytes, the active export's percent, a move-to-this-device's bytes — for a reader
 //! that draws each one: all of it first, then each release whose progress
 //! moved. No table holds the progress, so the reads of the transfers' tables
 //! change only as transfers come, go, start or fail.

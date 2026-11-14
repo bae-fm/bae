@@ -248,12 +248,12 @@ struct StorageManagerStoreSelectionTests {
                 search: "",
                 rows: rows,
                 selected: [rows[0], rows[1]],
-                selectionActions: [.detachAudio]
+                selectionActions: [.moveToThisDevice]
             )
         )
         try await Wait.until { store.list != nil }
 
-        #expect(store.selectionActions(for: selected) == [.detachAudio])
+        #expect(store.selectionActions(for: selected) == [.moveToThisDevice])
         #expect(
             store.selectionActions(for: selected.union([rows[2].id])) == nil,
             "a release core has not answered for leaves the answer unknown"

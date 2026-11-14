@@ -148,7 +148,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
         storage_state: ReleaseStorageState::InStorage { pinned: true },
         storage_actions: vec![
             ReleaseStorageAction::Unpin,
-            ReleaseStorageAction::DetachAudio,
+            ReleaseStorageAction::MoveToThisDevice,
             ReleaseStorageAction::Upload,
             ReleaseStorageAction::Pin,
         ],
@@ -163,7 +163,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
     assert_eq!(json["storage_state"], serde_json::json!({"place": "in_storage", "pinned": true}));
     assert_eq!(
         json["storage_actions"],
-        serde_json::json!(["unpin", "detach_audio", "upload", "pin"]),
+        serde_json::json!(["unpin", "move_to_this_device", "upload", "pin"]),
     );
 }
 

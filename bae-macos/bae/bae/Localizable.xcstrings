@@ -141469,7 +141469,7 @@
       }
     },
     "Downloads at once" : {
-      "comment" : "Settings, Transfers: how many files download at once, pins and make-locals together",
+      "comment" : "Settings, Transfers: how many files download at once, pins and moves-to-this-device together",
       "localizations" : {
         "en" : {
           "stringUnit" : {

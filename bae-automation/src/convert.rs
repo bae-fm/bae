@@ -167,7 +167,7 @@ mirror_enum! {
     AutomationReleaseStorageAction = ReleaseStorageAction,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Upload, Pin, Unpin, DetachAudio },
+    variants: { Upload, Pin, Unpin, MoveToThisDevice },
 }
 
 /// Split a single-source request into the query and the source to ask.

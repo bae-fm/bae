@@ -489,7 +489,7 @@ async fn transition_completions_deliver_storage_values() {
 
     let dest = tmp.path().join("brought-back");
     std::fs::create_dir(&dest).unwrap();
-    mgr.manager().make_releases_local(vec![release_id.clone()], &dest).await.unwrap();
+    mgr.manager().move_releases_to_this_device(vec![release_id.clone()], &dest).await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }
 
@@ -627,10 +627,10 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
             .expect("storage projection resolves")
     };
 
-    use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin};
+    use bae_types::release_storage::ReleaseStorageAction::{MoveToThisDevice, Pin};
     assert_eq!(
         next().await.selection_actions,
-        [DetachAudio],
+        [MoveToThisDevice],
         "a pinned and an unpinned release share only detaching their audio"
     );
 
@@ -638,7 +638,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     loop {
         let value = next().await;
         if value.selected.len() == 1 {
-            assert_eq!(value.selection_actions, [Pin, DetachAudio]);
+            assert_eq!(value.selection_actions, [Pin, MoveToThisDevice]);
             break;
         }
     }

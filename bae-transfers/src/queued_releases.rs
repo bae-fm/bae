@@ -619,13 +619,13 @@ where
             .await
     }
 
-    /// Queue to make local into `target_dir`, in the order given, each of
+    /// Queue to move to this device into `target_dir`, in the order given, each of
     /// `release_ids` that is stored in the cloud, in one write that decides
     /// which: one the library no longer holds, one local, and one waiting or
     /// downloading are passed over, and one whose download failed becomes this
-    /// make-local in its place. `true` when any went in or was queued again.
+    /// move-to-this-device in its place. `true` when any went in or was queued again.
     #[cfg(desktop)]
-    pub async fn enqueue_make_locals(
+    pub async fn enqueue_moves_to_this_device(
         &self,
         release_ids: Vec<String>,
         target_dir: std::path::PathBuf,
@@ -634,7 +634,7 @@ where
         let added = self
             .store
             .call(move |sql| {
-                tables::enqueue_make_locals_on(sql, &release_ids, &target_dir, created_at)
+                tables::enqueue_moves_to_this_device_on(sql, &release_ids, &target_dir, created_at)
             })
             .await?;
         if added {

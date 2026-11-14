@@ -47,7 +47,7 @@ impl AppServices {
     }
 
     /// How far each downloading release has come (a pin's bytes, or a
-    /// make-local's), sent as they move.
+    /// move-to-this-device's), sent as they move.
     pub fn watch_download_transfers(
         &self,
     ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransfer> {

@@ -196,7 +196,7 @@
                 coverFiles: [],
                 galleryItems: [],
                 playability: .playable,
-                makeLocal: nil,
+                moveToThisDevice: nil,
                 downloadStatus: nil,
                 // Every catalog on the first album's first pressing, so the
                 // expansion shot shows what a release a MusicBrainz pick

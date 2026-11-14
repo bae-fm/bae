@@ -11,14 +11,15 @@ struct MoveToThisMacWordsTests {
     @Test("the release action reads Move to This Mac")
     func actionLabel() {
         #expect(
-            BridgeReleaseStorageAction.detachAudio.label == "Move to This Mac…"
+            BridgeReleaseStorageAction.moveToThisDevice.label
+                == "Move to This Mac…"
         )
     }
 
     @Test("the action while it runs reads Moving to This Mac")
     func runningLabel() {
         #expect(
-            BridgeReleaseStorageAction.detachAudio.transferLabel
+            BridgeReleaseStorageAction.moveToThisDevice.transferLabel
                 == "Moving to This Mac…"
         )
     }
@@ -26,7 +27,7 @@ struct MoveToThisMacWordsTests {
     @Test("the Activity panel line reads Moving to This Mac")
     func activityLine() {
         #expect(
-            localizedCoreString("core.activity.making_local")
+            localizedCoreString("core.activity.moving_to_this_device")
                 == "Moving to This Mac"
         )
     }

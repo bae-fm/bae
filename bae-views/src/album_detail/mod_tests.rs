@@ -44,9 +44,9 @@ fn on_one_device_without_its_originals_here_offers_nothing() {
 /// A release in storage offers Pin or Unpin by whether this device keeps
 /// it, and Detach either way; none needs the sync loop running.
 #[test]
-fn in_storage_offers_pin_or_unpin_and_detach_audio() {
-    assert_eq!(available_storage_actions(PINNED, &Playable, true), vec![Unpin, DetachAudio]);
-    assert_eq!(available_storage_actions(NOT_PINNED, &Playable, true), vec![Pin, DetachAudio]);
+fn in_storage_offers_pin_or_unpin_and_move_to_this_device() {
+    assert_eq!(available_storage_actions(PINNED, &Playable, true), vec![Unpin, MoveToThisDevice]);
+    assert_eq!(available_storage_actions(NOT_PINNED, &Playable, true), vec![Pin, MoveToThisDevice]);
 }
 
 /// A pin's entry in the queue decides the control, whatever the release's
@@ -66,7 +66,7 @@ fn a_pin_entry_decides_the_control() {
     for (phase, expected) in cases {
         for state in [NOT_PINNED, PINNED] {
             assert_eq!(
-                release_download_status(state, &[Unpin, DetachAudio], Some(&phase)),
+                release_download_status(state, &[Unpin, MoveToThisDevice], Some(&phase)),
                 Some(expected.clone()),
                 "a {phase:?} entry decides the control ({state:?})"
             );
@@ -74,34 +74,43 @@ fn a_pin_entry_decides_the_control() {
     }
 }
 
-/// A make-local's entry is not the download control's to show; its own
-/// status says where the release stands in being made local.
+/// A move-to-this-device's entry is not the download control's to show; its own
+/// status says where the release stands in being moved to this device.
 #[test]
-fn a_make_local_entry_is_its_own_status() {
+fn a_move_to_this_device_entry_is_its_own_status() {
     use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
-    let make_local = |step| DownloadEntry { kind: DownloadKind::MakeLocal, step };
-    let waiting = make_local(DownloadStep::Queued);
-    let running = make_local(DownloadStep::Running);
-    let failed = make_local(DownloadStep::Failed { error: "disk full".to_string() });
+    let move_to_this_device = |step| DownloadEntry { kind: DownloadKind::MoveToThisDevice, step };
+    let waiting = move_to_this_device(DownloadStep::Queued);
+    let running = move_to_this_device(DownloadStep::Running);
+    let failed = move_to_this_device(DownloadStep::Failed { error: "disk full".to_string() });
     for entry in [&waiting, &running, &failed] {
-        assert_eq!(release_download_status(NOT_PINNED, &[Pin, DetachAudio], Some(entry)), None);
+        assert_eq!(
+            release_download_status(NOT_PINNED, &[Pin, MoveToThisDevice], Some(entry)),
+            None
+        );
     }
-    assert_eq!(release_make_local_status(Some(&waiting)), Some(MakeLocalStatus::Queued));
-    assert_eq!(release_make_local_status(Some(&running)), Some(MakeLocalStatus::Making));
     assert_eq!(
-        release_make_local_status(Some(&failed)),
-        Some(MakeLocalStatus::Failed { error: "disk full".to_string() })
+        release_move_to_this_device_status(Some(&waiting)),
+        Some(MoveToThisDeviceStatus::Queued)
+    );
+    assert_eq!(
+        release_move_to_this_device_status(Some(&running)),
+        Some(MoveToThisDeviceStatus::Making)
+    );
+    assert_eq!(
+        release_move_to_this_device_status(Some(&failed)),
+        Some(MoveToThisDeviceStatus::Failed { error: "disk full".to_string() })
     );
     let pin = DownloadEntry { kind: DownloadKind::Pin, step: DownloadStep::Running };
-    assert_eq!(release_make_local_status(Some(&pin)), None);
-    assert_eq!(release_make_local_status(None), None);
+    assert_eq!(release_move_to_this_device_status(Some(&pin)), None);
+    assert_eq!(release_move_to_this_device_status(None), None);
 }
 
 /// Pinned with nothing in flight is the settled offline state.
 #[test]
 fn pinned_with_an_empty_queue_is_downloaded() {
     assert_eq!(
-        release_download_status(PINNED, &[Unpin, DetachAudio], None),
+        release_download_status(PINNED, &[Unpin, MoveToThisDevice], None),
         Some(ReleaseDownloadStatus::Downloaded),
     );
 }
@@ -110,7 +119,7 @@ fn pinned_with_an_empty_queue_is_downloaded() {
 #[test]
 fn unpinned_with_pin_offered_is_available() {
     assert_eq!(
-        release_download_status(NOT_PINNED, &[Pin, DetachAudio], None),
+        release_download_status(NOT_PINNED, &[Pin, MoveToThisDevice], None),
         Some(ReleaseDownloadStatus::Available),
     );
 }

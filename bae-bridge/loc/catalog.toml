@@ -14884,11 +14884,11 @@ da = "Fastgør"
 nb = "Fester"
 fi = "Kiinnitetään"
 
-[messages."core.activity.making_local"]
+[messages."core.activity.moving_to_this_device"]
 comment = "Activity panel: the line of releases moving to this Mac, downloading into a folder to be kept on this device only."
 value = "Moving to This Mac"
 
-[messages."core.activity.making_local".translations]
+[messages."core.activity.moving_to_this_device".translations]
 ar = "جارٍ النقل إلى هذا الـ Mac"
 bg = "Преместване на този Mac"
 cs = "Přesouvání na tento Mac"
@@ -16110,10 +16110,10 @@ da = "Vedhæfter lyd…"
 nb = "Legger ved lyd…"
 fi = "Liitetään ääntä…"
 
-[messages."core.transfer.action.make_local"]
+[messages."core.transfer.action.move_to_this_device"]
 value = "Moving to This Mac…"
 
-[messages."core.transfer.action.make_local".translations]
+[messages."core.transfer.action.move_to_this_device".translations]
 ar = "جارٍ النقل إلى هذا الـ Mac…"
 bg = "Преместване на този Mac…"
 cs = "Přesouvání na tento Mac…"

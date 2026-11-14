@@ -6,7 +6,7 @@ use bae_diagnostics::{LocalId, TelemetryEvent};
 use bae_transfers::storage_moves::UnpinRefusal;
 
 impl LibraryManager {
-    /// Queue the uploaded releases of a selection to be made local into
+    /// Queue the uploaded releases of a selection to be moved to this device into
     /// `folder`, a folder the person picked, each in a folder of its own
     /// below it named for the release, in one write that passes over a
     /// release the library does not hold, one that is local, and one already
@@ -17,7 +17,7 @@ impl LibraryManager {
     /// call made, and the release stays in the cloud. Wakes the parked
     /// worker.
     #[cfg(desktop)]
-    pub async fn make_releases_local(
+    pub async fn move_releases_to_this_device(
         &self,
         release_ids: Vec<String>,
         folder: &std::path::Path,
@@ -25,25 +25,27 @@ impl LibraryManager {
         let enqueued_at = bae_store::utc_now(self.clock.as_ref()).timestamp_millis();
         match self
             .downloads
-            .enqueue_make_locals(release_ids, folder.to_path_buf(), enqueued_at)
+            .enqueue_moves_to_this_device(release_ids, folder.to_path_buf(), enqueued_at)
             .await
         {
             Ok(true) => {}
-            Ok(false) => tracing::debug!("make_releases_local: nothing to make local"),
+            Ok(false) => {
+                tracing::debug!("move_releases_to_this_device: nothing to move to this device")
+            }
             Err(error) => {
-                self.diagnostics.report_failure("queue releases to make local", &error);
+                self.diagnostics.report_failure("queue releases to move to this device", &error);
                 return Err(error.into());
             }
         }
         Ok(())
     }
 
-    /// Start the make-local the download queue took up: list the copies it
+    /// Start the move-to-this-device the download queue took up: list the copies it
     /// downloads, and run the download and the write that switches the files
     /// on a task of its own, which a cancel or a pause aborts. The abort drops
     /// coven's download, which removes every copy and folder it made.
     #[cfg(desktop)]
-    pub(super) async fn start_make_local(
+    pub(super) async fn start_move_to_this_device(
         &self,
         release_id: String,
         folder: std::path::PathBuf,
@@ -70,16 +72,16 @@ impl LibraryManager {
         let local_release_id = release_id.clone();
         let running = self.spawn_ending(
             "make a release local",
-            async move { manager.make_local_into(&local_release_id, &folder, files, entry).await },
+            async move { manager.move_to_this_device_into(&local_release_id, &folder, files, entry).await },
             {
                 let manager = self.clone();
                 move |made| {
                     let made = made.unwrap_or_else(|bug| Err(bug.into()));
                     match &made {
                         Ok(_) => {
-                            tracing::info!(%release_id, "release made local");
+                            tracing::info!(%release_id, "release moved to this device");
                             manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-                                action: ReleaseStorageAction::DetachAudio,
+                                action: ReleaseStorageAction::MoveToThisDevice,
                                 release_id: LocalId(release_id),
                                 file_count,
                             });
@@ -87,7 +89,7 @@ impl LibraryManager {
                         Err(error) => {
                             tracing::error!(%release_id, failure = %error, "making a release local failed");
                             manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
-                                action: ReleaseStorageAction::DetachAudio,
+                                action: ReleaseStorageAction::MoveToThisDevice,
                                 release_id: LocalId(release_id),
                             });
                         }
@@ -108,8 +110,8 @@ impl LibraryManager {
             }
         });
         Ok((
-            bae_transfers::DownloadTransfer::MakeLocal(
-                bae_transfers::MakeLocalTransferProgress::begin(total),
+            bae_transfers::DownloadTransfer::MoveToThisDevice(
+                bae_transfers::MoveToThisDeviceTransferProgress::begin(total),
             ),
             running.boxed(),
         ))
@@ -118,7 +120,7 @@ impl LibraryManager {
     /// Download `files` into `folder`, then switch every file of the release
     /// to this device only and take its queue entry out, in one write.
     #[cfg(desktop)]
-    async fn make_local_into(
+    async fn move_to_this_device_into(
         &self,
         release_id: &str,
         folder: &std::path::Path,
@@ -132,13 +134,13 @@ impl LibraryManager {
             .prepare_device_only(folder, files, &stopped, |progress| {
                 self.downloads.set_active_progress(
                     release_id,
-                    bae_transfers::DownloadTransfer::MakeLocal(
-                        bae_transfers::MakeLocalTransferProgress::of(progress),
+                    bae_transfers::DownloadTransfer::MoveToThisDevice(
+                        bae_transfers::MoveToThisDeviceTransferProgress::of(progress),
                     ),
                 );
             })
             .await
-            .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
+            .map_err(|error| LibraryError::MoveToThisDevice(Box::new(error)))?;
         Ok(self
             .store
             .call(move |sql| {
@@ -235,7 +237,7 @@ impl LibraryManager {
     /// which is running — a release is in at most one transition at a time.
     /// A no-op if nothing is in progress.
     ///
-    /// A pin or a make-local is stopped through the download queue, which
+    /// A pin or a move-to-this-device is stopped through the download queue, which
     /// also holds the ones not yet started. Cancelling an upload cancels the
     /// release's move to the cloud, and its files stay on this device only,
     /// as does ending a failed move. An unpin can't be stopped.

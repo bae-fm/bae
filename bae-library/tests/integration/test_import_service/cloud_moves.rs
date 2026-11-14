@@ -163,10 +163,10 @@ async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
     finish_move(&f, &id, &files).await;
 }
 
-/// A release made local again is on this device only, its originals the
+/// A release moved to this device again is on this device only, its originals the
 /// copies coven wrote, and moves back to the cloud as one move.
 #[tokio::test]
-async fn a_release_made_local_moves_back_to_the_cloud() {
+async fn a_release_moved_to_this_device_moves_back_to_the_cloud() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
@@ -183,9 +183,9 @@ async fn a_release_made_local_moves_back_to_the_cloud() {
     let files = release_file_ids(&f, &id).await;
     finish_move(&f, &id, &files).await;
 
-    let local = f.temp_path().join("Made Local");
+    let local = f.temp_path().join("Moved to This Device");
     fs::create_dir_all(&local).unwrap();
-    f.library.manager().make_releases_local(vec![id.clone()], &local).await.unwrap();
+    f.library.manager().move_releases_to_this_device(vec![id.clone()], &local).await.unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while !f.library.manager().download_snapshot().await.unwrap().rows.is_empty() {
             tokio::time::sleep(std::time::Duration::from_millis(20)).await;

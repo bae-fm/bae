@@ -28,7 +28,7 @@ fn making_uploaded_audio_local_keeps_only_this_device_playable() {
     });
 }
 
-/// The folder name the releases made local in these tests are placed in.
+/// The folder name the releases moved to this device in these tests are placed in.
 const FOLDER: &str = crate::test_libraries::TEST_RELEASE_FOLDER;
 
 async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, uploaded: bool) {
@@ -70,9 +70,13 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         }
         devices.pause().await;
         manager.store.unlock_store_key().await.unwrap();
-        make_local_and_wait(manager, std::slice::from_ref(&release.id), destination.path())
-            .await
-            .unwrap();
+        move_to_this_device_and_wait(
+            manager,
+            std::slice::from_ref(&release.id),
+            destination.path(),
+        )
+        .await
+        .unwrap();
     } else {
         manager.cancel_release_transition(&release.id).await.unwrap();
         // Retrying the command cannot undo the local state.
@@ -219,7 +223,7 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             .await;
 
         let in_the_cloud = (
-            vec![ReleaseStorageAction::Pin, ReleaseStorageAction::DetachAudio],
+            vec![ReleaseStorageAction::Pin, ReleaseStorageAction::MoveToThisDevice],
             Some(bae_views::album_detail::ReleaseDownloadStatus::Available),
         );
         assert_eq!(offered(devices.a().manager(), &release.id).await, in_the_cloud);
@@ -504,10 +508,12 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    make_local_and_wait(manager, std::slice::from_ref(&release.id), &folder).await.unwrap();
+    move_to_this_device_and_wait(manager, std::slice::from_ref(&release.id), &folder)
+        .await
+        .unwrap();
     assert!(
         release_files(manager, &release.id).await.iter().all(|file| !file.stored),
-        "making it local switched every file here"
+        "moving it to this device switched every file here"
     );
     assert!(download_queue_now(manager).await.rows.is_empty(), "and took it out of the queue");
 }
@@ -547,12 +553,17 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
 /// is listed with the bytes of the file coven downloads and of the whole
 /// release; once its files have switched it is listed no more.
 #[tokio::test]
-async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
+async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_download() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
+    let release_id = uploaded_release(
+        manager,
+        &temp_dir.path().join("moved-to-this-device"),
+        "Moved to This Device",
+        false,
+    )
+    .await;
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -577,14 +588,14 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let mut transfers = manager.watch_download_transfers();
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    manager.make_releases_local(vec![release_id.clone()], &folder).await.unwrap();
+    manager.move_releases_to_this_device(vec![release_id.clone()], &folder).await.unwrap();
     observed.await.unwrap();
     let listed = tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
         transfers.until(|transfers| {
             matches!(
                 transfers.get(&release_id),
-                Some(bae_transfers::DownloadTransfer::MakeLocal(progress))
+                Some(bae_transfers::DownloadTransfer::MoveToThisDevice(progress))
                     if progress.file_bytes_total > 0
             )
         }),
@@ -593,8 +604,8 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     .expect("the release is listed while its copy downloads")
     .unwrap()[&release_id]
         .clone();
-    let bae_transfers::DownloadTransfer::MakeLocal(listed) = listed else {
-        panic!("a make-local lists its own progress: {listed:?}");
+    let bae_transfers::DownloadTransfer::MoveToThisDevice(listed) = listed else {
+        panic!("a move-to-this-device lists its own progress: {listed:?}");
     };
     assert!(listed.file_bytes_done < listed.file_bytes_total, "{listed:?}");
     assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
@@ -618,10 +629,10 @@ async fn cancelling_a_release_nothing_runs_for_is_no_error() {
     test.library.manager().cancel_release_transition(REL_NONE).await.unwrap();
 }
 
-/// Cancelling a make-local while its copies download stops it: no copy is
+/// Cancelling a move-to-this-device while its copies download stops it: no copy is
 /// left, the release stays in the cloud, and its entry is gone.
 #[tokio::test]
-async fn cancelling_a_make_local_leaves_the_release_in_the_cloud() {
+async fn cancelling_a_move_to_this_device_leaves_the_release_in_the_cloud() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
@@ -649,7 +660,7 @@ async fn cancelling_a_make_local_leaves_the_release_in_the_cloud() {
 
     let dest = temp_dir.path().join("out");
     std::fs::create_dir(&dest).unwrap();
-    manager.make_releases_local(vec![release_id.clone()], &dest).await.unwrap();
+    manager.move_releases_to_this_device(vec![release_id.clone()], &dest).await.unwrap();
     observed.await.unwrap();
     manager.cancel_release_transition(&release_id).await.unwrap();
     // The aborted download dropped the held read with it.
@@ -669,7 +680,7 @@ async fn cancelling_a_make_local_leaves_the_release_in_the_cloud() {
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
 
 /// A release whose pin failed has a failed entry in the download queue;
-/// making it local queues the make-local in the entry's place, and the
+/// moving it to this device queues the move-to-this-device in the entry's place, and the
 /// write that switches its files takes it out.
 #[tokio::test]
 async fn making_a_release_local_replaces_its_failed_pin() {
@@ -689,26 +700,28 @@ async fn making_a_release_local_replaces_its_failed_pin() {
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
-    make_local_and_wait(manager, std::slice::from_ref(&release_id), &folder).await.unwrap();
+    move_to_this_device_and_wait(manager, std::slice::from_ref(&release_id), &folder)
+        .await
+        .unwrap();
 
     assert!(
         download_queue_now(manager).await.rows.is_empty(),
-        "a release made local has no download entry"
+        "a release moved to this device has no download entry"
     );
     assert!(release_files(manager, &release_id).await.iter().all(|file| !file.stored));
 }
 
-/// A make-local waits behind the entry already downloading, and is passed over
+/// A move-to-this-device waits behind the entry already downloading, and is passed over
 /// for a release that already has an entry waiting or running.
 #[tokio::test]
-async fn a_make_local_passes_over_a_release_already_queued() {
+async fn a_move_to_this_device_passes_over_a_release_already_queued() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let release_id = insert_pinnable_release(&test).await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
 
-    manager.make_releases_local(vec![release_id.clone()], temp_dir.path()).await.unwrap();
+    manager.move_releases_to_this_device(vec![release_id.clone()], temp_dir.path()).await.unwrap();
 
     let rows = download_queue_now(manager).await.rows;
     assert_eq!(rows.len(), 1);

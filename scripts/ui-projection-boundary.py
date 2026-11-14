@@ -166,8 +166,8 @@ KEYED_STREAMS = (
     ),
     KeyedStream(
         "DownloadStore",
-        "makeLocalProgress",
-        "the latest bytes a release being made local has downloaded into the "
+        "moveToThisDeviceProgress",
+        "the latest bytes a release being moved to this device has downloaded into the "
         "person's folder, which core sends as they arrive and keeps in no "
         "table; the leaf hands it to a native view that reads it each display "
         "frame",

@@ -547,7 +547,7 @@ impl LibraryManager {
     }
 
     /// Hear how far the active download has come (a pin's bytes, or a
-    /// make-local's), by release, and each change to it.
+    /// move-to-this-device's), by release, and each change to it.
     pub fn watch_download_transfers(
         &self,
     ) -> bae_transfers::ReleaseTransfersWatch<bae_transfers::DownloadTransfer> {

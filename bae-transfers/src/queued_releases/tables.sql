@@ -33,12 +33,12 @@ CREATE TABLE IF NOT EXISTS download_queue (
     created_at INTEGER NOT NULL,
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),
     error      TEXT,
-    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'make_local')),
-    -- A make-local's folder, as coven's bytes for the path
+    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'move_to_this_device')),
+    -- A move-to-this-device's folder, as coven's bytes for the path
     -- (`coven::path_bytes`); the release goes in a folder of its own below it.
     target_dir BLOB,
     CHECK ((state = 'failed') = (error IS NOT NULL)),
-    CHECK ((kind = 'make_local') = (target_dir IS NOT NULL))
+    CHECK ((kind = 'move_to_this_device') = (target_dir IS NOT NULL))
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
@@ -55,11 +55,11 @@ END;
 
 -- The releases the download queue has held of each kind since that kind last
 -- had none waiting or downloading: what the Activity panel's Pinning and
--- Making local lines count. Only membership: whether a release is done is read
+-- Moving to this device lines count. Only membership: whether a release is done is read
 -- from release_storage. Never synced.
 CREATE TABLE IF NOT EXISTS download_batch (
     release_id TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'make_local')),
+    kind       TEXT NOT NULL CHECK (kind IN ('pin', 'move_to_this_device')),
     PRIMARY KEY (release_id, kind)
 ) STRICT, WITHOUT ROWID;
 
@@ -68,11 +68,11 @@ CREATE TABLE IF NOT EXISTS download_batch (
 -- bytes tells by it that the batch ended and another began, whether or not it
 -- read the kind with none in between. Never synced.
 CREATE TABLE IF NOT EXISTS download_batch_number (
-    kind   TEXT PRIMARY KEY CHECK (kind IN ('pin', 'make_local')),
+    kind   TEXT PRIMARY KEY CHECK (kind IN ('pin', 'move_to_this_device')),
     number INTEGER NOT NULL CHECK (number >= 0)
 ) STRICT, WITHOUT ROWID;
 
-INSERT OR IGNORE INTO download_batch_number (kind, number) VALUES ('pin', 0), ('make_local', 0);
+INSERT OR IGNORE INTO download_batch_number (kind, number) VALUES ('pin', 0), ('move_to_this_device', 0);
 
 -- A kind's first release in its batch begins the next batch.
 CREATE TRIGGER IF NOT EXISTS download_batch_begun AFTER INSERT ON download_batch

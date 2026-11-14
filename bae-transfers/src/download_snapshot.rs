@@ -88,12 +88,12 @@ impl DownloadRate {
     }
 }
 
-/// How far one release being made local has come: the bytes of the file
+/// How far one release being moved to this device has come: the bytes of the file
 /// coven is downloading into the person's folder, and of the whole release.
 /// Held only in memory while the copies download, before the write that
 /// switches the files; no table holds it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MakeLocalTransferProgress {
+pub struct MoveToThisDeviceTransferProgress {
     /// The bytes of the file being downloaded that are down.
     pub file_bytes_done: u64,
     /// The file's bytes in all.
@@ -104,7 +104,7 @@ pub struct MakeLocalTransferProgress {
     pub bytes_total: u64,
 }
 
-impl MakeLocalTransferProgress {
+impl MoveToThisDeviceTransferProgress {
     /// Nothing down yet, of a release of `bytes_total`.
     pub fn begin(bytes_total: u64) -> Self {
         Self { file_bytes_done: 0, file_bytes_total: 0, bytes_done: 0, bytes_total }
@@ -123,11 +123,11 @@ impl MakeLocalTransferProgress {
 }
 
 /// How far the active download has come, by what it does: a pin's bytes and
-/// rate, or a make-local's bytes of the release and of its current file.
+/// rate, or a move-to-this-device's bytes of the release and of its current file.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DownloadTransfer {
     Pin(DownloadTransferProgress),
-    MakeLocal(MakeLocalTransferProgress),
+    MoveToThisDevice(MoveToThisDeviceTransferProgress),
 }
 
 /// What a queued download does, and what it needs to.
@@ -138,7 +138,7 @@ pub enum DownloadRequest {
     /// Download the release's files into a folder of their own below
     /// `target_dir`, and switch them to this device only.
     #[cfg(desktop)]
-    MakeLocal { target_dir: std::path::PathBuf },
+    MoveToThisDevice { target_dir: std::path::PathBuf },
 }
 
 /// A release to queue for download.

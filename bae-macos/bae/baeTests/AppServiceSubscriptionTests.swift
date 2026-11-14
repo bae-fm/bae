@@ -182,7 +182,7 @@ struct SyncActivitySubscriptionTests {
                 )
             },
             pins: nil,
-            makingLocal: nil
+            movingToThisDevice: nil
         )
     }
 }

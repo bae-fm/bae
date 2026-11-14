@@ -705,9 +705,9 @@ OpenCalls = "LibrarySessions"
     "LibraryManager::store_fixture_verdict",
 ]
 "bae-library/src/manager/fixture/playing.rs" = ["LibraryManager::write_resume_point"]
-# The make-local's task: its running op holds the abort a cancel or a pause
+# The move-to-this-device's task: its running op holds the abort a cancel or a pause
 # uses.
-"bae-library/src/manager/locality.rs" = ["LibraryManager::start_make_local"]
+"bae-library/src/manager/locality.rs" = ["LibraryManager::start_move_to_this_device"]
 # An export's task: its running op holds the abort a cancel uses.
 "bae-library/src/manager/output.rs" = ["LibraryManager::run_output_worker"]
 "bae-library/src/test_libraries/playback.rs" = [

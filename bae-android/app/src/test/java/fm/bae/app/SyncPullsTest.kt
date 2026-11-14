@@ -91,7 +91,7 @@ class SyncPullsTest {
             syncing = false,
             uploads = uploads,
             pins = null,
-            makingLocal = null,
+            movingToThisDevice = null,
         )
 
     private fun status(

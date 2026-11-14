@@ -49,7 +49,7 @@ struct DownloadRow: View {
         switch (op.kind, op.state) {
         case (.pin, .queued):
             StatusChip("Queued to pin", symbol: "clock")
-        case (.makeLocal, .queued):
+        case (.moveToThisDevice, .queued):
             StatusChip("Queued to move to This Mac", symbol: "clock")
         case (.pin, .active):
             StatusChip(
@@ -57,9 +57,10 @@ struct DownloadRow: View {
                 tone: .activity,
                 symbol: "arrow.down.circle.fill"
             )
-        case (.makeLocal, .active):
+        case (.moveToThisDevice, .active):
             StatusChip(
-                verbatim: BridgeReleaseStorageAction.detachAudio.transferLabel,
+                verbatim: BridgeReleaseStorageAction.moveToThisDevice
+                    .transferLabel,
                 tone: .activity,
                 symbol: "arrow.down.circle.fill"
             )

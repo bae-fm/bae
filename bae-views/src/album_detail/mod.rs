@@ -126,7 +126,7 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
 /// the move when it reads the file. It
 /// admits work to coven's durable outbox; a stopped loop leaves that work
 /// truthfully queued until a cycle can drain it, and does not remove the
-/// action. Pin / Unpin / DetachAudio gate on the library syncing alone.
+/// action. Pin / Unpin / MoveToThisDevice gate on the library syncing alone.
 ///
 /// A release mid-transition offers none of these: its summary empties them
 /// while its files wait to upload or a transfer runs.
@@ -144,8 +144,8 @@ pub fn available_storage_actions(
             vec![Upload]
         }
         ReleaseStorageState::OnOneDevice => Vec::new(),
-        ReleaseStorageState::InStorage { pinned: true } => vec![Unpin, DetachAudio],
-        ReleaseStorageState::InStorage { pinned: false } => vec![Pin, DetachAudio],
+        ReleaseStorageState::InStorage { pinned: true } => vec![Unpin, MoveToThisDevice],
+        ReleaseStorageState::InStorage { pinned: false } => vec![Pin, MoveToThisDevice],
     }
 }
 
@@ -172,10 +172,10 @@ pub enum ReleaseDownloadStatus {
     Available,
 }
 
-/// Where a release stands in being made local: its entry in the download
-/// queue, when it is a make-local.
+/// Where a release stands in being moved to this device: its entry in the download
+/// queue, when it is a move-to-this-device.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MakeLocalStatus {
+pub enum MoveToThisDeviceStatus {
     /// Waiting its turn.
     Queued,
     /// Downloading its files into the person's folder. How many bytes is the
@@ -185,20 +185,20 @@ pub enum MakeLocalStatus {
     Failed { error: String },
 }
 
-/// The release's make-local status from its entry in the download queue;
-/// `None` when the entry is not a make-local, or there is none.
-pub fn release_make_local_status(
+/// The release's move-to-this-device status from its entry in the download queue;
+/// `None` when the entry is not a move-to-this-device, or there is none.
+pub fn release_move_to_this_device_status(
     download: Option<&bae_transfers::DownloadEntry>,
-) -> Option<MakeLocalStatus> {
+) -> Option<MoveToThisDeviceStatus> {
     use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
 
-    let Some(DownloadEntry { kind: DownloadKind::MakeLocal, step }) = download else {
+    let Some(DownloadEntry { kind: DownloadKind::MoveToThisDevice, step }) = download else {
         return None;
     };
     Some(match step {
-        DownloadStep::Queued => MakeLocalStatus::Queued,
-        DownloadStep::Running => MakeLocalStatus::Making,
-        DownloadStep::Failed { error } => MakeLocalStatus::Failed { error: error.clone() },
+        DownloadStep::Queued => MoveToThisDeviceStatus::Queued,
+        DownloadStep::Running => MoveToThisDeviceStatus::Making,
+        DownloadStep::Failed { error } => MoveToThisDeviceStatus::Failed { error: error.clone() },
     })
 }
 
@@ -209,7 +209,7 @@ pub fn release_make_local_status(
 /// would re-answer a question [`available_storage_actions`] has already answered,
 /// and would disagree with it the moment its gate changes. `Unpin` is not
 /// consulted for the same reason in reverse: it appears exactly when `pinned`, so
-/// `pinned` already says it. `DetachAudio` / `Upload` are desktop transitions
+/// `pinned` already says it. `MoveToThisDevice` / `Upload` are desktop transitions
 /// this control has nothing to do with.
 pub fn release_download_status(
     state: ReleaseStorageState,
@@ -227,7 +227,7 @@ pub fn release_download_status(
             }
         }),
         // Making the release local is not this control's to show.
-        Some(DownloadEntry { kind: DownloadKind::MakeLocal, .. }) => None,
+        Some(DownloadEntry { kind: DownloadKind::MoveToThisDevice, .. }) => None,
         None if state == (ReleaseStorageState::InStorage { pinned: true }) => {
             Some(ReleaseDownloadStatus::Downloaded)
         }

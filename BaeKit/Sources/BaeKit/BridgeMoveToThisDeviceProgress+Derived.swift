@@ -1,6 +1,6 @@
 import Foundation
 
-extension BridgeMakeLocalProgress {
+extension BridgeMoveToThisDeviceProgress {
     /// How far the whole release has come, as a 0...1 fraction.
     public var fraction: Double {
         guard bytesTotal > 0 else { return 0 }

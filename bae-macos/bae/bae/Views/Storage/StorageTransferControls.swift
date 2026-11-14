@@ -55,8 +55,8 @@ struct StorageTransferControls: View {
                             forRelease: operation.releaseId
                         )
                     )
-                    : .makeLocal(
-                        downloadStore.makeLocalProgress(
+                    : .moveToThisDevice(
+                        downloadStore.moveToThisDeviceProgress(
                             forRelease: operation.releaseId
                         )
                     ),

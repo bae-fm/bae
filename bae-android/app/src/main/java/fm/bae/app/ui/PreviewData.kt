@@ -178,7 +178,7 @@ object PreviewData {
             coverFiles = emptyList(),
             galleryItems = emptyList(),
             playability = BridgeReleasePlayability.Playable,
-            makeLocal = null,
+            moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),
             totalDuration = null,
@@ -328,7 +328,7 @@ object PreviewData {
                     wait = null,
                     paused = false,
                 ),
-            makingLocal = null,
+            movingToThisDevice = null,
         )
 
     fun downloadCounts(

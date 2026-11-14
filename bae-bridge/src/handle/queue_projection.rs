@@ -36,7 +36,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeMakeLocalProgress = bae_transfers::MakeLocalTransferProgress,
+    crate::types::BridgeMoveToThisDeviceProgress = bae_transfers::MoveToThisDeviceTransferProgress,
     from_core: pub(crate) fn,
     fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
 }
@@ -58,8 +58,8 @@ impl crate::types::BridgeDownloadOp {
         let kind = match payload {
             bae_transfers::DownloadRequest::Pin => crate::types::BridgeDownloadKind::Pin,
             #[cfg(desktop)]
-            bae_transfers::DownloadRequest::MakeLocal { .. } => {
-                crate::types::BridgeDownloadKind::MakeLocal
+            bae_transfers::DownloadRequest::MoveToThisDevice { .. } => {
+                crate::types::BridgeDownloadKind::MoveToThisDevice
             }
         };
         crate::types::BridgeDownloadOp {

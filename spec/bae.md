@@ -2193,7 +2193,7 @@ uploading. An original that changed since the import fails the move, even
 one that kept its size and modification time: the rows describe the file as
 imported, and a changed file would give every device audio that doesn't
 match them. A release moves only when every one of its files is on
-this device only and none is moving already; a release made local again
+this device only and none is moving already; a release moved to this device again
 (§4.4) moves like one imported here. A move never keeps a copy on this
 device: once it finishes the files are in storage and unpinned, and the
 release is pinned afterwards like any other (§4.3).
@@ -2234,7 +2234,7 @@ Other devices go on showing the release without playing it.
 - **Transfers on the Mac.** Settings lists Transfers after Playback in its
   sidebar, and its pane holds Pause uploads and
   Pause downloads, then Uploads at once and Downloads at once, pop-ups of how
-  many files each moves at a time. Downloads are pins and make-locals, which share one
+  many files each moves at a time. Downloads are pins and moves-to-this-device, which share one
   queue so they contend for the same downloads; the pause and the limit cover
   both, and nothing else counts or names one as the other. Either
   pause lasts across restarts, and while either holds, the sidebar says Paused
@@ -2319,7 +2319,7 @@ being sent together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
 the release offers no storage action but cancelling, which would race it
 otherwise. A release in a download is the download queue's entry for it
-(§4.3, §4.4), a pin or a make-local, ended in the write that changes its
+(§4.3, §4.4), a pin or a move-to-this-device, ended in the write that changes its
 files, so the entry and coven's change commit together and the release never
 shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
@@ -2386,7 +2386,7 @@ never pinned; an evicted one is fetched again the next time it is shown.
 Shown large, in the lightbox on the Mac or the gallery on Android, an image
 the app is still loading is named under its spinner.
 
-The download queue holds pins and make-locals (§4.4) and downloads one release
+The download queue holds pins and moves-to-this-device (§4.4) and downloads one release
 at a time. Pins download from a queue that can be paused,
 cancelled and retried. Pausing stops the download that is running at once
 rather than after its file, and its release stays queued in its place; resuming
@@ -2451,7 +2451,7 @@ queued; the person sees the error and the failure is reported as a bug.
 Making an uploaded release local again brings its files into a folder the
 person picks, and leaves them on this device only. Only the desktop apps offer it.
 In the apps' words the move names the device as the import's destination
-does (This Mac or Cloud): on the Mac it is Move to This Mac, never "make local".
+does (This Mac or Cloud): on the Mac it is Move to This Mac.
 
 Carol wants her box set out of storage. She picks a folder on her drive. Each
 release she selects goes in a folder of its own below it, named for the
@@ -2459,12 +2459,12 @@ release's source folder, so two releases that both hold `01.flac` do not
 collide; a release with no source folder name fails its entry. One request
 queues the whole selection in the download queue (§4.3), in one write that
 passes over a release that is local, deleted meanwhile, or already waiting or
-downloading, and makes a failed pin's entry this make-local in its place. The
+downloading, and makes a failed pin's entry this move-to-this-device in its place. The
 queue makes them local one release at a time, in the order asked, and its
 pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
-the entry that was running starts again. A queued make-local reads Queued to
+the entry that was running starts again. A queued move-to-this-device reads Queued to
 move to This Mac; one that fails stays with its error, reading
 Could not move to This Mac, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
@@ -3727,12 +3727,12 @@ Syncing changes, while coven's sync state says so (a pass moving, or a file
 being sent or downloaded), with no count, so its bar moves; Uploading
 ("1 of 2 releases"); Pinning ("1 of 3 releases"), which on the phones opens
 the Pinning screen; and on the desktop Moving to This Mac on a line of its own ("0 of
-1 release"): a make-local changes where files live for every device, while a
+1 release"): a move-to-this-device changes where files live for every device, while a
 pin only keeps a copy on this one. Every count is in releases, a release done
 once all its files are, and every bar is filled by the bytes of the batch done
 (for uploads, the bytes the providers confirmed), each release counting its
 size: a done release all of it, an upload its stored files and its files'
-shares on the way, the pin or make-local downloading its share; the bytes done
+shares on the way, the pin or move-to-this-device downloading its share; the bytes done
 never go back while the batch lasts, so a release whose transfer ends before
 its line reads it done keeps the bytes it reached, and one removed from the
 library keeps what it had counted. A bar moves while a release's files transfer
@@ -4436,7 +4436,7 @@ The default is off.
 Playback plays files on this device, or streams them from storage.
 
 A track's file is read through coven: from the original on this device for a
-local release, imported here or made local again (§4.4), moving to storage
+local release, imported here or moved to this device again (§4.4), moving to storage
 or not, from the cache or a pin for an uploaded one, and otherwise fetched from
 storage a range at a time
 ([coven §17.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#177-reading-a-file)).
@@ -6012,9 +6012,9 @@ write commits, so the release and the row naming it land in either order.
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
 | `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
-| `download_queue` | release queued to pin or to make local, in the order queued: pin or make local, with a make-local's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
+| `download_queue` | release queued to pin or to move to this device, in the order queued: pin or move to this device, with a move-to-this-device's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Moving to This Mac lines count (§6.4) |
-| `download_batch_number` | kind (pin or make local): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Moving to This Mac lines' bars tell a new batch from the one whose bytes they held (§6.4) |
+| `download_batch_number` | kind (pin or move to this device): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Moving to This Mac lines' bars tell a new batch from the one whose bytes they held (§6.4) |
 | `output_queue` | release queued to export or save, in the order queued: its folder, a BLOB of coven's bytes for its path, export or save with its format and save settings captured whole, and queued, writing, or failed with its error (§4.6) |
 
 The download queue keeps its entries and its pause across restarts; the export
@@ -6235,7 +6235,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `import_start` | import a candidate as stored, or once the pick its run is reading is stored |
 | `release_detail_get` | read a library release |
 | `release_export` | queue an export of a release's files |
-| `release_storage_action` | move to storage, pin, unpin, queue a make-local, or cancel |
+| `release_storage_action` | move to storage, pin, unpin, queue a move-to-this-device, or cancel |
 | `output_status` | read the export queue |
 | `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |

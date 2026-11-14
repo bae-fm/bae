@@ -25,7 +25,7 @@ fn pin_batch(number: u64, releases: &[(&str, Option<(u64, bool)>)]) -> ActivityB
                 })
                 .collect(),
         }),
-        making_local: None,
+        moving_to_this_device: None,
     }
 }
 
@@ -137,7 +137,7 @@ fn an_upload_bar_counts_stored_files_and_in_flight_shares() {
             .into(),
         }),
         pins: None,
-        making_local: None,
+        moving_to_this_device: None,
     };
     let moved =
         |bytes_transferred, bytes_total| coven::TransferProgress { bytes_transferred, bytes_total };
@@ -172,6 +172,6 @@ fn a_new_batch_starts_from_zero() {
     count.read(pin_batch(2, &[("first", Some((100, false)))]));
     assert_eq!(pins_bar(&mut count), bar(0, 100));
 
-    count.read(ActivityBytes { uploads: None, pins: None, making_local: None });
+    count.read(ActivityBytes { uploads: None, pins: None, moving_to_this_device: None });
     assert_eq!(pins_bar(&mut count), None, "no batch, no bar");
 }

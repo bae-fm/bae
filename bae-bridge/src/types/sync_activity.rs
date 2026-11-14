@@ -27,7 +27,7 @@ pub struct BridgeSyncActivity {
     pub pins: Option<BridgeDownloadQueueActivity>,
     /// The Moving to This Mac line, while its batch holds a release; never on a
     /// phone, which makes nothing local.
-    pub making_local: Option<BridgeDownloadQueueActivity>,
+    pub moving_to_this_device: Option<BridgeDownloadQueueActivity>,
 }
 
 impl BridgeSyncActivity {
@@ -41,7 +41,7 @@ impl BridgeSyncActivity {
             moving,
             uploads,
             pins,
-            making_local,
+            moving_to_this_device,
         } = activity;
         Self {
             moving,
@@ -52,7 +52,8 @@ impl BridgeSyncActivity {
             syncing,
             uploads: uploads.map(BridgeUploadQueueActivity::from_core),
             pins: pins.map(BridgeDownloadQueueActivity::from_core),
-            making_local: making_local.map(BridgeDownloadQueueActivity::from_core),
+            moving_to_this_device: moving_to_this_device
+                .map(BridgeDownloadQueueActivity::from_core),
         }
     }
 }

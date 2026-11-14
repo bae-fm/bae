@@ -397,14 +397,14 @@ extension LatestStream where Value == BridgeDownloadTransferProgress {
     }
 }
 
-extension LatestStream where Value == BridgeMakeLocalProgress {
+extension LatestStream where Value == BridgeMoveToThisDeviceProgress {
     /// How far each release moving to This Mac has downloaded, by release id;
     /// a shot's holds `values` and nothing feeds it.
-    public static func makeLocals(holding values: [String: Value] = [:])
+    public static func movesToThisDevice(holding values: [String: Value] = [:])
         -> LatestStream
     {
         LatestStream(holding: keyed(values)) {
-            if case .makeLocal(let progress) = $0 {
+            if case .moveToThisDevice(let progress) = $0 {
                 progress
             }
             else {
@@ -415,7 +415,7 @@ extension LatestStream where Value == BridgeMakeLocalProgress {
 
     /// Fill from core.
     public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedMakeLocalTransfers() }
+        fed { appHandle.feedMoveToThisDeviceTransfers() }
     }
 }
 

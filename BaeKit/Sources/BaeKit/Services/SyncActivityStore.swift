@@ -5,7 +5,7 @@ import Observation
 public enum ActivityLine: String, Sendable {
     case uploads
     case pins
-    case makingLocal = "making_local"
+    case movingToThisDevice = "moving_to_this_device"
 }
 
 /// Everything sync is doing on this device, as core reports it: the title
@@ -76,7 +76,7 @@ public final class SyncActivityStore {
                     wait: nil,
                     paused: false
                 ),
-                makingLocal: BridgeDownloadQueueActivity(
+                movingToThisDevice: BridgeDownloadQueueActivity(
                     batch: BridgeTransferBatch(done: 0, total: 1),
                     wait: nil,
                     paused: false

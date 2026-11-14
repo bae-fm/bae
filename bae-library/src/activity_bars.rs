@@ -36,7 +36,7 @@ impl BatchBar {
 pub struct ActivityBars {
     pub uploads: Option<BatchBar>,
     pub pins: Option<BatchBar>,
-    pub making_local: Option<BatchBar>,
+    pub moving_to_this_device: Option<BatchBar>,
 }
 
 /// One release's bytes as its line counts them.
@@ -106,7 +106,7 @@ struct BarsCount {
     downloading: BTreeMap<String, DownloadTransfer>,
     uploads: Option<LineCount>,
     pins: Option<LineCount>,
-    making_local: Option<LineCount>,
+    moving_to_this_device: Option<LineCount>,
 }
 
 impl BarsCount {
@@ -135,11 +135,14 @@ impl BarsCount {
             pins: count_line(&mut self.pins, read.pins.as_ref(), |release_id, release| {
                 download_now(release, downloading.get(release_id).and_then(pin_share))
             }),
-            making_local: count_line(
-                &mut self.making_local,
-                read.making_local.as_ref(),
+            moving_to_this_device: count_line(
+                &mut self.moving_to_this_device,
+                read.moving_to_this_device.as_ref(),
                 |release_id, release| {
-                    download_now(release, downloading.get(release_id).and_then(make_local_share))
+                    download_now(
+                        release,
+                        downloading.get(release_id).and_then(move_to_this_device_share),
+                    )
                 },
             ),
         })
@@ -197,16 +200,16 @@ fn download_now(release: &DownloadRelease, share: Option<f64>) -> Counted {
 fn pin_share(transfer: &DownloadTransfer) -> Option<f64> {
     match transfer {
         DownloadTransfer::Pin(progress) => Some(progress.fraction),
-        DownloadTransfer::MakeLocal(_) => None,
+        DownloadTransfer::MoveToThisDevice(_) => None,
     }
 }
 
-/// The share of a make-local's bytes downloaded, if the transfer is a
-/// make-local; one with no bytes to download has downloaded none.
-fn make_local_share(transfer: &DownloadTransfer) -> Option<f64> {
+/// The share of a move-to-this-device's bytes downloaded, if the transfer is a
+/// move-to-this-device; one with no bytes to download has downloaded none.
+fn move_to_this_device_share(transfer: &DownloadTransfer) -> Option<f64> {
     match transfer {
-        DownloadTransfer::MakeLocal(progress) if progress.bytes_total == 0 => Some(0.0),
-        DownloadTransfer::MakeLocal(progress) => {
+        DownloadTransfer::MoveToThisDevice(progress) if progress.bytes_total == 0 => Some(0.0),
+        DownloadTransfer::MoveToThisDevice(progress) => {
             Some(progress.bytes_done as f64 / progress.bytes_total as f64)
         }
         DownloadTransfer::Pin(_) => None,

@@ -133,8 +133,8 @@ final class StorageActionRunner {
         switch action {
         case .upload:
             pendingMoveToCloud = releaseIds
-        case .detachAudio:
-            detachAudio(releaseIds: releaseIds)
+        case .moveToThisDevice:
+            moveToThisDevice(releaseIds: releaseIds)
         case .pin:
             // Pinning routes through the download queue, which
             // serializes the batch and reports progress via the Downloads pane
@@ -231,7 +231,7 @@ final class StorageActionRunner {
 
     /// Prompt for the folder a local release's files move into. Returns
     /// the chosen directory, or nil when the user cancels the panel.
-    static func promptDetachAudioDestination() -> URL? {
+    static func promptMoveToThisDeviceDestination() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -243,15 +243,18 @@ final class StorageActionRunner {
         return url
     }
 
-    private func detachAudio(releaseIds: [String]) {
-        guard let newPath = Self.promptDetachAudioDestination() else {
+    private func moveToThisDevice(releaseIds: [String]) {
+        guard let newPath = Self.promptMoveToThisDeviceDestination() else {
             return
         }
         let releaseIds = listed(releaseIds)
         guard !releaseIds.isEmpty else { return }
         Task {
             do {
-                try await releaseEditor.makeReleasesLocal(releaseIds, newPath)
+                try await releaseEditor.moveReleasesToThisDevice(
+                    releaseIds,
+                    newPath
+                )
             }
             catch {
                 uiStore.showError(error)

@@ -720,10 +720,10 @@ pub enum AutomationStorageAction {
     Pin,
     /// Stop keeping a cloud release offline. Its bytes stay in the cloud.
     Unpin,
-    /// Queue an uploaded release to be made local: its audio is copied into a
+    /// Queue an uploaded release to be moved to this device: its audio is copied into a
     /// folder of its own named for the release below `destination_dir`, and
     /// plays from there once the copy is done.
-    DetachAudio { destination_dir: String },
+    MoveToThisDevice { destination_dir: String },
     /// Cancel whichever transition is in flight; nothing running is no error.
     Cancel,
 }
@@ -749,8 +749,8 @@ pub enum AutomationStorageActionOutcome {
     Unpinned {
         release_id: String,
     },
-    /// The make-local is queued; the audio is not local yet.
-    MakeLocalQueued {
+    /// The move-to-this-device is queued; the audio is not local yet.
+    MoveToThisDeviceQueued {
         release_id: String,
     },
     /// Whatever was in flight was told to stop, if anything was.

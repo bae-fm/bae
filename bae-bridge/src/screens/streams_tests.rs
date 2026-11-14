@@ -69,11 +69,13 @@ fn a_storage_wait_is_at_rest() {
 /// names only its own.
 #[test]
 fn a_download_stream_holds_only_its_own_kind_of_download() {
-    use bae_transfers::{DownloadTransfer, MakeLocalTransferProgress, ReleaseTransferChange};
+    use bae_transfers::{
+        DownloadTransfer, MoveToThisDeviceTransferProgress, ReleaseTransferChange,
+    };
     let pin = DownloadTransfer::Pin(
         bae_transfers::DownloadTransferProgress::new("pinning", 10, 40).unwrap(),
     );
-    let local = DownloadTransfer::MakeLocal(MakeLocalTransferProgress::begin(40));
+    let local = DownloadTransfer::MoveToThisDevice(MoveToThisDeviceTransferProgress::begin(40));
     let reset = || {
         ReleaseTransferChange::Reset(
             [("pinning".to_string(), pin.clone()), ("local".to_string(), local.clone())].into(),
@@ -100,9 +102,9 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
             moved("pinning", &pin),
             ReleaseTransferChange::Removed { release_id: "local".to_string() },
         ],
-        make_local_progress,
+        move_to_this_device_progress,
     );
-    let DownloadTransfer::MakeLocal(local_progress) = local else { unreachable!() };
+    let DownloadTransfer::MoveToThisDevice(local_progress) = local else { unreachable!() };
     assert_eq!(
         locals,
         vec![
@@ -173,16 +175,16 @@ fn the_activity_bars_hold_pins_while_a_pin_batch_holds_a_release() {
     writer.reset(activity_bars_held(ActivityBars {
         uploads: None,
         pins: Some(pinning),
-        making_local: None,
+        moving_to_this_device: None,
     }));
     assert_eq!(values.latest(b"pins"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
     assert_eq!(values.latest(b"uploads"), None);
-    assert_eq!(values.latest(b"making_local"), None);
+    assert_eq!(values.latest(b"moving_to_this_device"), None);
 
     writer.reset(activity_bars_held(ActivityBars {
         uploads: None,
         pins: None,
-        making_local: None,
+        moving_to_this_device: None,
     }));
     assert_eq!(values.latest(b"pins"), None, "the pin batch is over");
 }

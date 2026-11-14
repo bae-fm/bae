@@ -69,7 +69,7 @@ func makeBridgeRelease(
         coverFiles: [],
         galleryItems: [],
         playability: .playable,
-        makeLocal: nil,
+        moveToThisDevice: nil,
         downloadStatus: nil,
         records: [],
         totalDuration: totalDuration,

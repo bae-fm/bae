@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 pub struct ActivityBytes {
     pub uploads: Option<BatchReleases<UploadRelease>>,
     pub pins: Option<BatchReleases<DownloadRelease>>,
-    pub making_local: Option<BatchReleases<DownloadRelease>>,
+    pub moving_to_this_device: Option<BatchReleases<DownloadRelease>>,
 }
 
 /// The releases one line's batch holds, while it holds any.
@@ -42,13 +42,13 @@ pub struct UploadRelease {
     pub sending: BTreeMap<coven::FileId, u64>,
 }
 
-/// A release of the Pinning or Making local line's batch.
+/// A release of the Pinning or Moving to this device line's batch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DownloadRelease {
     /// Its whole size.
     pub bytes_total: u64,
     /// No entry of the line's kind for it is in the download queue, and it
-    /// is pinned whole, or for a make-local no longer stored in the cloud.
+    /// is pinned whole, or for a move-to-this-device no longer stored in the cloud.
     pub done: bool,
 }
 
@@ -57,7 +57,7 @@ pub fn activity_bytes_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityByte
     Ok(ActivityBytes {
         uploads: upload_bytes_on(sql)?,
         pins: download_bytes_on(sql, &DownloadLine::PINS)?,
-        making_local: download_bytes_on(sql, &DownloadLine::MAKING_LOCAL)?,
+        moving_to_this_device: download_bytes_on(sql, &DownloadLine::MOVING_TO_THIS_DEVICE)?,
     })
 }
 

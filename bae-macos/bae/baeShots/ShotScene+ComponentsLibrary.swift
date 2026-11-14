@@ -213,7 +213,7 @@ extension ShotScene {
         storageChip("mac.component.storage-chip.could-not-move-to-this-mac") {
             MacStorageChip(
                 release: PreviewData.storageRelease(),
-                status: .makeLocalFailed(
+                status: .moveToThisDeviceFailed(
                     error: "The network connection was lost."
                 )
             )
@@ -224,7 +224,7 @@ extension ShotScene {
         storageChip("mac.component.storage-chip.queued-to-move-to-this-mac") {
             MacStorageChip(
                 release: PreviewData.storageRelease(),
-                status: .makingLocal(step: .queued)
+                status: .movingToThisDevice(step: .queued)
             )
         },
     ]

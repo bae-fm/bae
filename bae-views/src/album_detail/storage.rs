@@ -12,7 +12,7 @@ use bae_transfers::{DownloadEntry, DownloadKind, DownloadStep};
 /// changes any of them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoragePlace {
-    /// This device's download queue holds it failed, a pin or a make-local,
+    /// This device's download queue holds it failed, a pin or a move-to-this-device,
     /// or coven lists a file of it in a failed move.
     Failed,
     /// Files of it wait in this device's upload queue.
@@ -50,14 +50,14 @@ pub enum StorageRowStatus {
     MoveFailed {
         file_name: String,
     },
-    /// The download queue holds a make-local of it failed, with the error.
-    MakeLocalFailed {
+    /// The download queue holds a move-to-this-device of it failed, with the error.
+    MoveToThisDeviceFailed {
         error: String,
     },
     Uploading,
     Pinning(DownloadEntryStep),
-    /// The download queue holds a make-local of it, waiting or downloading.
-    MakingLocal(DownloadEntryStep),
+    /// The download queue holds a move-to-this-device of it, waiting or downloading.
+    MovingToThisDevice(DownloadEntryStep),
     OnOneDevice,
     Pinned,
     InStorage,
@@ -82,7 +82,7 @@ impl StorageRowStatus {
                 _,
             ) => match kind {
                 DownloadKind::Pin => Self::DownloadFailed { error },
-                DownloadKind::MakeLocal => Self::MakeLocalFailed { error },
+                DownloadKind::MoveToThisDevice => Self::MoveToThisDeviceFailed { error },
             },
             (StoragePlace::Failed, _, Some(file_name)) => Self::MoveFailed { file_name },
             (StoragePlace::Failed, ..) => {
@@ -102,7 +102,7 @@ impl StorageRowStatus {
                 };
                 match kind {
                     DownloadKind::Pin => Self::Pinning(step),
-                    DownloadKind::MakeLocal => Self::MakingLocal(step),
+                    DownloadKind::MoveToThisDevice => Self::MovingToThisDevice(step),
                 }
             }
             (StoragePlace::Pinning, ..) => {

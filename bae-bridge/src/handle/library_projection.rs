@@ -127,7 +127,7 @@ impl BridgeRelease {
             gallery_items,
             playability,
             download_status,
-            make_local,
+            move_to_this_device,
             records,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
@@ -177,7 +177,8 @@ impl BridgeRelease {
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items.into_iter().map(BridgeGalleryItem::from_core).collect(),
             playability: crate::types::BridgeReleasePlayability::from_core(playability),
-            make_local: make_local.map(crate::types::BridgeMakeLocalStatus::from_core),
+            move_to_this_device: move_to_this_device
+                .map(crate::types::BridgeMoveToThisDeviceStatus::from_core),
             download_status: download_status
                 .map(crate::types::BridgeReleaseDownloadStatus::from_core),
             records: records
@@ -266,10 +267,10 @@ mirror_enum! {
     variants: {
         DownloadFailed { error },
         MoveFailed { file_name },
-        MakeLocalFailed { error },
+        MoveToThisDeviceFailed { error },
         Uploading,
         Pinning(step: (crate::types::BridgeDownloadEntryStep)),
-        MakingLocal(step: (crate::types::BridgeDownloadEntryStep)),
+        MovingToThisDevice(step: (crate::types::BridgeDownloadEntryStep)),
         OnOneDevice,
         Pinned,
         InStorage,

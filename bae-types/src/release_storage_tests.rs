@@ -6,7 +6,7 @@ fn every_transition_reads_back_from_its_key() {
         ReleaseStorageAction::Upload,
         ReleaseStorageAction::Pin,
         ReleaseStorageAction::Unpin,
-        ReleaseStorageAction::DetachAudio,
+        ReleaseStorageAction::MoveToThisDevice,
     ] {
         assert_eq!(ReleaseStorageAction::from_key(action.key()), Some(action));
     }

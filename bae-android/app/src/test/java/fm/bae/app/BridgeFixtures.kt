@@ -124,7 +124,7 @@ object BridgeFixtures {
             coverFiles = emptyList(),
             galleryItems = galleryItems,
             playability = BridgeReleasePlayability.Playable,
-            makeLocal = null,
+            moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),
             totalDuration = null,

@@ -1,5 +1,5 @@
 //! The Activity panel's Pinning and Moving to This Mac lines as the download
-//! queue's pins and make-locals run: each line counts the releases of its own
+//! queue's pins and moves-to-this-device run: each line counts the releases of its own
 //! batch, done of all it has held since its kind last had none waiting.
 
 use super::*;
@@ -104,13 +104,13 @@ async fn a_cancelled_pin_stays_in_the_count_and_never_counts_done() {
     assert_eq!(pins_now(manager).await, None, "no pin waits: the batch is over");
 }
 
-/// Pins and make-locals share the download queue but each line counts its
-/// own batch: a make-local done counts only on its own line, a failed pin
-/// queued again as a make-local joins the make-local batch and stays in the
+/// Pins and moves-to-this-device share the download queue but each line counts its
+/// own batch: a move-to-this-device done counts only on its own line, a failed pin
+/// queued again as a move-to-this-device joins the move-to-this-device batch and stays in the
 /// pin batch it left, and both lines carry the queue's one hold.
 #[cfg(desktop)]
 #[tokio::test]
-async fn pins_and_make_locals_are_counted_apart() {
+async fn pins_and_moves_to_this_device_are_counted_apart() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let releases = pinnable_releases(&test, 4).await;
@@ -119,7 +119,7 @@ async fn pins_and_make_locals_are_counted_apart() {
 
     queue_pins(manager, &[releases[0].clone(), releases[1].clone()]).await;
     manager
-        .make_releases_local(vec![releases[2].clone(), releases[3].clone()], &folder)
+        .move_releases_to_this_device(vec![releases[2].clone(), releases[3].clone()], &folder)
         .await
         .unwrap();
     let activity = activity_now(manager).await;
@@ -128,21 +128,21 @@ async fn pins_and_make_locals_are_counted_apart() {
         wait: Some(bae_transfers::QueueWait::Paused),
     };
     assert_eq!(
-        (activity.pins, activity.making_local),
+        (activity.pins, activity.moving_to_this_device),
         (Some(line(batch(0, 2))), Some(line(batch(0, 2))))
     );
 
-    // The make-local of the third release, as the worker runs it: its files
+    // The move-to-this-device of the third release, as the worker runs it: its files
     // switched to this device in the write that ends its entry. Starting it
     // resumes the queue, so the worker must have read the paused one first.
     settled_download_worker(manager).await;
-    let made_local = releases[2].clone();
+    let moved_to_this_device = releases[2].clone();
     let activated = manager
         .store
         .call(move |sql| {
             bae_transfers::tables::worker_moves::activate_on::<bae_transfers::DownloadRequest>(
                 sql,
-                &made_local,
+                &moved_to_this_device,
             )
         })
         .await
@@ -176,9 +176,12 @@ async fn pins_and_make_locals_are_counted_apart() {
     manager.set_downloads_paused(true).await.unwrap();
     let activity = activity_now(manager).await;
     assert_eq!(
-        (activity.pins.map(|pins| pins.batch), activity.making_local.map(|lines| lines.batch)),
+        (
+            activity.pins.map(|pins| pins.batch),
+            activity.moving_to_this_device.map(|lines| lines.batch)
+        ),
         (Some(batch(0, 2)), Some(batch(1, 2))),
-        "the make-local done counts on its own line"
+        "the move-to-this-device done counts on its own line"
     );
 
     let failed = releases[0].clone();
@@ -193,12 +196,15 @@ async fn pins_and_make_locals_are_counted_apart() {
         })
         .await
         .unwrap();
-    manager.make_releases_local(vec![releases[0].clone()], &folder).await.unwrap();
+    manager.move_releases_to_this_device(vec![releases[0].clone()], &folder).await.unwrap();
     let activity = activity_now(manager).await;
     assert_eq!(
-        (activity.pins.map(|pins| pins.batch), activity.making_local.map(|lines| lines.batch)),
+        (
+            activity.pins.map(|pins| pins.batch),
+            activity.moving_to_this_device.map(|lines| lines.batch)
+        ),
         (Some(batch(0, 2)), Some(batch(1, 3))),
-        "the failed pin, queued again to make local, is in both batches"
+        "the failed pin, queued again to move to this device, is in both batches"
     );
 
     manager.cancel_download(&releases[1]).await.unwrap();

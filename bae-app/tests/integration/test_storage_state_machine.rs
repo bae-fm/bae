@@ -91,15 +91,15 @@ async fn create_remote_cloud_only_release_in_folder(
     (release_id, captured)
 }
 
-/// Queue `release_ids` to be made local into `folder` and wait until the
+/// Queue `release_ids` to be moved to this device into `folder` and wait until the
 /// download queue has run them: `Ok` when it holds none waiting or running
 /// and none failed, else the first failure's error.
-async fn make_local_and_wait(
+async fn move_to_this_device_and_wait(
     mgr: &bae_library::test_libraries::TestLibrary,
     release_ids: &[String],
     folder: &std::path::Path,
 ) -> Result<(), String> {
-    mgr.manager().make_releases_local(release_ids.to_vec(), folder).await.unwrap();
+    mgr.manager().move_releases_to_this_device(release_ids.to_vec(), folder).await.unwrap();
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let rows = mgr.manager().download_snapshot().await.unwrap().rows;
@@ -116,7 +116,7 @@ async fn make_local_and_wait(
         }
     })
     .await
-    .expect("the download queue runs the make-locals")
+    .expect("the download queue runs the moves-to-this-device")
     .unwrap_or(Ok(()))
 }
 
@@ -320,7 +320,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
+    move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
 
     // Release is Local, and each file's original path names its new copy in
     // the release's own folder.
@@ -335,10 +335,10 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     }
 }
 
-/// Two releases made local into one picked folder each go in a folder of
+/// Two releases moved to this device into one picked folder each go in a folder of
 /// their own, named for the release, so their `01.flac` do not collide.
 #[tokio::test]
-async fn making_two_releases_local_puts_each_in_its_own_folder() {
+async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
     let tmp = TempDir::new().unwrap();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
@@ -358,7 +358,7 @@ async fn making_two_releases_local_puts_each_in_its_own_folder() {
     let folder = tmp.path().join("exported");
     std::fs::create_dir(&folder).unwrap();
     let ids: Vec<String> = releases.iter().map(|(release_id, _)| release_id.clone()).collect();
-    make_local_and_wait(&mgr, &ids, &folder).await.unwrap();
+    move_to_this_device_and_wait(&mgr, &ids, &folder).await.unwrap();
 
     for ((release_id, name), bytes) in releases.iter().zip([b"first".as_slice(), b"second"]) {
         assert_eq!(
@@ -393,7 +393,8 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let result = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
+    let result =
+        move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
     assert!(result.is_err(), "missing file must fail the entry");
 
     assert_eq!(
@@ -422,7 +423,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let error = make_local_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)
+    let error = move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)
         .await
         .expect_err("two copies at one path can't both be made");
 

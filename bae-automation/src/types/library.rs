@@ -77,7 +77,7 @@ pub enum AutomationReleaseStorageAction {
     Upload,
     Pin,
     Unpin,
-    DetachAudio,
+    MoveToThisDevice,
 }
 
 #[derive(Debug, Clone, Serialize)]

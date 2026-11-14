@@ -32,9 +32,9 @@ pub struct SyncActivity {
     pub uploads: Option<UploadQueueActivity>,
     /// The Pinning line, while its batch holds a release.
     pub pins: Option<DownloadQueueActivity>,
-    /// The Making local line, while its batch holds a release. A phone
+    /// The Moving to this device line, while its batch holds a release. A phone
     /// makes nothing local, so it never has one.
-    pub making_local: Option<DownloadQueueActivity>,
+    pub moving_to_this_device: Option<DownloadQueueActivity>,
 }
 
 /// The releases a transfer line's batch holds, and how many of them are
@@ -64,16 +64,16 @@ pub struct UploadQueueActivity {
     pub wait: Option<bae_records::UploadQueueWait>,
 }
 
-/// The Pinning or the Making local line: the releases queued as that kind
+/// The Pinning or the Moving to this device line: the releases queued as that kind
 /// since none of it waited or downloaded. A pin is done once no pin entry of
-/// it is in the queue and every file is pinned; a make-local once no
-/// make-local entry of it is in the queue and it is no longer stored in the
+/// it is in the queue and every file is pinned; a move-to-this-device once no
+/// move-to-this-device entry of it is in the queue and it is no longer stored in the
 /// cloud.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadQueueActivity {
     pub batch: TransferBatch,
     /// What holds the download queue back, shown in place of the count. Pins
-    /// and make-locals share the queue, so both lines show the same hold.
+    /// and moves-to-this-device share the queue, so both lines show the same hold.
     pub wait: Option<QueueWait>,
 }
 
@@ -86,7 +86,7 @@ impl UploadQueueActivity {
 
 impl DownloadQueueActivity {
     /// The person paused the download queue: the line ends in Resume, not
-    /// Pause. Pins and make-locals share the queue, so both lines say so.
+    /// Pause. Pins and moves-to-this-device share the queue, so both lines say so.
     pub fn paused(&self) -> bool {
         self.wait == Some(QueueWait::Paused)
     }
@@ -107,7 +107,7 @@ pub struct UploadQueueCounts {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadQueueCounts {
     pub pins: TransferBatch,
-    pub making_local: TransferBatch,
+    pub moving_to_this_device: TransferBatch,
     pub queue: ReleaseQueueCounts,
 }
 
@@ -132,7 +132,7 @@ impl SyncActivity {
                 .holding()
                 .map(|batch| UploadQueueActivity { batch, wait: uploads.wait.clone() }),
             pins: download_line(downloads.pins),
-            making_local: download_line(downloads.making_local),
+            moving_to_this_device: download_line(downloads.moving_to_this_device),
         }
     }
 
@@ -148,8 +148,10 @@ impl SyncActivity {
     /// while it is, so the hold stays in reach.
     pub fn held(&self) -> bool {
         let uploads_held = self.uploads.as_ref().is_some_and(|uploads| uploads.wait.is_some());
-        let downloads_held =
-            [&self.pins, &self.making_local].into_iter().flatten().any(|line| line.wait.is_some());
+        let downloads_held = [&self.pins, &self.moving_to_this_device]
+            .into_iter()
+            .flatten()
+            .any(|line| line.wait.is_some());
         !self.moving && (uploads_held || downloads_held)
     }
 }
@@ -214,13 +216,13 @@ fn upload_queue_counts_on(
     )?)
 }
 
-/// The download queue's batches of pins and make-locals, beside its counts.
+/// The download queue's batches of pins and moves-to-this-device, beside its counts.
 fn download_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
 ) -> Result<DownloadQueueCounts, bae_store::DbError> {
     Ok(DownloadQueueCounts {
         pins: download_batch_on(sql, &DownloadLine::PINS)?,
-        making_local: download_batch_on(sql, &DownloadLine::MAKING_LOCAL)?,
+        moving_to_this_device: download_batch_on(sql, &DownloadLine::MOVING_TO_THIS_DEVICE)?,
         queue: bae_transfers::tables::release_queue_counts_on::<bae_transfers::DownloadRequest>(
             sql,
         )?,
@@ -238,10 +240,10 @@ pub(crate) struct DownloadLine {
 impl DownloadLine {
     /// The Pinning line: a release is done once every file is pinned.
     pub(crate) const PINS: Self = Self { kind: "pin", stored_done: RELEASE_STORAGE_PINNED };
-    /// The Making local line: a release is done once it is no longer stored
+    /// The Moving to this device line: a release is done once it is no longer stored
     /// in the cloud.
-    pub(crate) const MAKING_LOCAL: Self =
-        Self { kind: "make_local", stored_done: "storage.stored = 0" };
+    pub(crate) const MOVING_TO_THIS_DEVICE: Self =
+        Self { kind: "move_to_this_device", stored_done: "storage.stored = 0" };
 
     /// Whether the release of `batch`, a `download_batch` row joined to its
     /// storage row as `storage`, is done: no entry of the line's kind for it

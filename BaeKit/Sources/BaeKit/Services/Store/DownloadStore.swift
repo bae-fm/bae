@@ -16,8 +16,8 @@ public class DownloadStore {
     public nonisolated let releaseProgress:
         LatestStream<BridgeDownloadTransferProgress>
     /// The latest progress of each release moving to This Mac.
-    public nonisolated let makeLocalTransfers:
-        LatestStream<BridgeMakeLocalProgress>
+    public nonisolated let moveToThisDeviceTransfers:
+        LatestStream<BridgeMoveToThisDeviceProgress>
     /// Whether the person paused the download queue, as the retained
     /// subscription last said.
     public private(set) var downloadsPaused: Bool
@@ -29,13 +29,15 @@ public class DownloadStore {
         fileShares: LatestStream<Double> = .fileShares(),
         releaseProgress: LatestStream<BridgeDownloadTransferProgress> =
             .downloads(),
-        makeLocalTransfers: LatestStream<BridgeMakeLocalProgress> =
-            .makeLocals()
+        moveToThisDeviceTransfers: LatestStream<
+            BridgeMoveToThisDeviceProgress
+        > =
+            .movesToThisDevice()
     ) {
         self.downloadsPaused = downloadsPaused
         self.fileShares = fileShares
         self.releaseProgress = releaseProgress
-        self.makeLocalTransfers = makeLocalTransfers
+        self.moveToThisDeviceTransfers = moveToThisDeviceTransfers
     }
 
     public func applyDownloadsPaused(_ paused: Bool) {
@@ -52,10 +54,12 @@ public class DownloadStore {
 
     /// The latest progress of a release moving to This Mac, for the native
     /// views that read it each display frame.
-    public nonisolated func makeLocalProgress(forRelease releaseId: String)
-        -> LatestSource<BridgeMakeLocalProgress>
+    public nonisolated func moveToThisDeviceProgress(
+        forRelease releaseId: String
+    )
+        -> LatestSource<BridgeMoveToThisDeviceProgress>
     {
-        makeLocalTransfers.source(for: releaseId)
+        moveToThisDeviceTransfers.source(for: releaseId)
     }
 
     /// The latest share a file being downloaded to keep whole has moved, for

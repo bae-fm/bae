@@ -35,7 +35,9 @@ final class TransferReadoutNSView: NSView {
                 fraction: progress?.fraction
             )
     }
-    private lazy var makeLocals = FrameFollowing<BridgeMakeLocalProgress>(
+    private lazy var movesToThisDevice = FrameFollowing<
+        BridgeMoveToThisDeviceProgress
+    >(
         view: self
     ) { [weak self] progress in
         self?
@@ -119,23 +121,23 @@ final class TransferReadoutNSView: NSView {
         switch stream {
         case .upload(let source):
             pins.stop()
-            makeLocals.stop()
+            movesToThisDevice.stop()
             uploads.follow(source)
         case .pin(let source):
             uploads.stop()
-            makeLocals.stop()
+            movesToThisDevice.stop()
             pins.follow(source)
-        case .makeLocal(let source):
+        case .moveToThisDevice(let source):
             uploads.stop()
             pins.stop()
-            makeLocals.follow(source)
+            movesToThisDevice.follow(source)
         }
     }
 
     func stopFollowing() {
         uploads.stop()
         pins.stop()
-        makeLocals.stop()
+        movesToThisDevice.stop()
     }
 
     /// A zero or unknown rate shows nothing rather than a stalled speed.

@@ -85,6 +85,6 @@ class ActivityProblemsTest {
             syncing = false,
             uploads = null,
             pins = null,
-            makingLocal = null,
+            movingToThisDevice = null,
         )
 }

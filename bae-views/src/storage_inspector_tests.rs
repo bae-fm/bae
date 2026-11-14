@@ -64,16 +64,16 @@ fn shown(
     StorageInspector::of("selected", files, entries, upload)
 }
 
-/// A make-local brings a release's files into a folder, not into this
+/// A move-to-this-device brings a release's files into a folder, not into this
 /// device's pins: its entry shows, and no file's pin does.
 #[cfg(desktop)]
 #[test]
-fn a_make_local_entry_shows_no_file_pins() {
+fn a_move_to_this_device_entry_shows_no_file_pins() {
     let inspector = shown(
         vec![file("a", None), file("b", Some(FilePin::Kept))],
         &ReleaseQueueEntries {
             download: Some(row(
-                DownloadRequest::MakeLocal { target_dir: "/music".into() },
+                DownloadRequest::MoveToThisDevice { target_dir: "/music".into() },
                 "selected",
                 ReleaseQueueState::Queued,
             )),

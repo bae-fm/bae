@@ -191,14 +191,14 @@ forward! {
 forward! {
     #[cfg(desktop)]
     async this => {
-        /// Queue the uploaded releases of a selection to be made local into
+        /// Queue the uploaded releases of a selection to be moved to this device into
         /// the folder at `folder`, each in a folder of its own below it named
         /// for the release: coven downloads each release's files there, one
         /// release at a time, then one write switches the release to this
         /// device only.
-        fn make_releases_local(release_ids: Vec<String>, folder: Vec<u8>) -> () {
+        fn move_releases_to_this_device(release_ids: Vec<String>, folder: Vec<u8>) -> () {
             let folder = crate::from_app::path(folder)?;
-            Ok(this.services.make_releases_local(release_ids, &folder).await?)
+            Ok(this.services.move_releases_to_this_device(release_ids, &folder).await?)
         }
 
         /// Change the cover art for an album's release: a library image, or a

@@ -577,7 +577,7 @@ impl AppServices {
     delegate_values!(subscribe_device_storage => subscribe_device_storage() -> bae_library::DeviceStorage);
     delegate_async!(manager, upload_releases => upload_releases(release_ids: &[String]) -> Result<bae_library::UploadReleasesOutcome, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, make_releases_local => make_releases_local(release_ids: Vec<String>, folder: &std::path::Path) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, move_releases_to_this_device => move_releases_to_this_device(release_ids: Vec<String>, folder: &std::path::Path) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, device_name: &str, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);

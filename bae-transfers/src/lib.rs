@@ -18,7 +18,7 @@ pub use download_entry::{
 pub use download_snapshot::{
     DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate, DownloadRequest,
     DownloadRow, DownloadSnapshot, DownloadTransfer, DownloadTransferProgress,
-    MakeLocalTransferProgress, QueuedDownload, QueuedPin,
+    MoveToThisDeviceTransferProgress, QueuedDownload, QueuedPin,
 };
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
@@ -55,7 +55,7 @@ const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
     SCHEMA_PARTS,
 ]);
 
-/// The download queue, of pins and make-locals: its table, and the bytes its
+/// The download queue, of pins and moves-to-this-device: its table, and the bytes its
 /// active download has moved.
 pub type Downloads = QueuedReleases<DownloadRequest, DownloadTransfer>;
 /// The export and save queue: its table, and the percent its active one has

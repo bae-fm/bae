@@ -11,7 +11,7 @@ pub fn test_album() -> DbAlbum {
     DbAlbum { year: Some(2024), ..DbAlbum::new_test("Test Album", &coven::UuidIds) }
 }
 
-/// The folder name of every [`test_release`]: where an export or a made-local
+/// The folder name of every [`test_release`]: where an export or a moved-to-this-device
 /// copy of it is placed.
 pub const TEST_RELEASE_FOLDER: &str = "Release Folder";
 

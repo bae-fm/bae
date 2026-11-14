@@ -17,7 +17,7 @@ fn idle_uploads() -> UploadQueueCounts {
 fn idle_downloads() -> DownloadQueueCounts {
     DownloadQueueCounts {
         pins: batch(0, 0),
-        making_local: batch(0, 0),
+        moving_to_this_device: batch(0, 0),
         queue: ReleaseQueueCounts::default(),
     }
 }
@@ -40,7 +40,10 @@ fn a_settled_library_is_quiet() {
     assert!(!activity.moving);
     assert!(!activity.held());
     assert!(!activity.needs_attention());
-    assert_eq!((activity.uploads, activity.pins, activity.making_local), (None, None, None));
+    assert_eq!(
+        (activity.uploads, activity.pins, activity.moving_to_this_device),
+        (None, None, None)
+    );
 }
 
 /// A pass that runs while nothing transfers doesn't spin the indicator; the
@@ -85,17 +88,20 @@ fn a_download_moves_only_while_an_entry_downloads() {
     assert!(SyncActivity::new(&status(), &idle_uploads(), &downloads).moving);
 }
 
-/// Pins and make-locals share the download queue but are lines of their
+/// Pins and moves-to-this-device share the download queue but are lines of their
 /// own, each from its own batch; a kind whose batch holds nothing has no
 /// line.
 #[test]
-fn pins_and_make_locals_are_lines_of_their_own() {
-    let downloads =
-        DownloadQueueCounts { pins: batch(0, 0), making_local: batch(2, 3), ..idle_downloads() };
+fn pins_and_moves_to_this_device_are_lines_of_their_own() {
+    let downloads = DownloadQueueCounts {
+        pins: batch(0, 0),
+        moving_to_this_device: batch(2, 3),
+        ..idle_downloads()
+    };
     let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
     assert_eq!(activity.pins, None);
     assert_eq!(
-        activity.making_local,
+        activity.moving_to_this_device,
         Some(DownloadQueueActivity { batch: batch(2, 3), wait: None })
     );
 }
@@ -112,7 +118,7 @@ fn a_held_line_keeps_its_count() {
     };
     let downloads = DownloadQueueCounts {
         pins: batch(0, 2),
-        making_local: batch(1, 1),
+        moving_to_this_device: batch(1, 1),
         queue: ReleaseQueueCounts {
             total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
             wait: Some(QueueWait::Offline),
@@ -128,7 +134,7 @@ fn a_held_line_keeps_its_count() {
         })
     );
     assert_eq!(
-        (activity.pins, activity.making_local),
+        (activity.pins, activity.moving_to_this_device),
         (
             Some(DownloadQueueActivity { batch: batch(0, 2), wait: Some(QueueWait::Offline) }),
             Some(DownloadQueueActivity { batch: batch(1, 1), wait: Some(QueueWait::Offline) })
@@ -138,7 +144,7 @@ fn a_held_line_keeps_its_count() {
 
 /// A line ends in Resume only while the person paused its queue: not while
 /// the network, a metered network or a retry's time holds it, nor while
-/// nothing does. Pins and make-locals share one queue, so both lines say so.
+/// nothing does. Pins and moves-to-this-device share one queue, so both lines say so.
 #[test]
 fn a_line_is_paused_only_by_the_person() {
     use bae_records::UploadQueueWait;
@@ -159,14 +165,14 @@ fn a_line_is_paused_only_by_the_person() {
     let downloads = |wait| {
         let downloads = DownloadQueueCounts {
             pins: batch(0, 2),
-            making_local: batch(0, 1),
+            moving_to_this_device: batch(0, 1),
             queue: ReleaseQueueCounts {
                 total: ReleaseQueueProgress { queued: 2, active: 0, failed: 0 },
                 wait,
             },
         };
         let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
-        (activity.pins.unwrap().paused(), activity.making_local.unwrap().paused())
+        (activity.pins.unwrap().paused(), activity.moving_to_this_device.unwrap().paused())
     };
     assert_eq!(downloads(Some(QueueWait::Paused)), (true, true));
     assert_eq!(downloads(Some(QueueWait::Offline)), (false, false));
@@ -202,14 +208,14 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
             ..idle_downloads()
         };
         assert!(SyncActivity::new(&status(), &idle_uploads(), &pins).held(), "pins {wait:?}");
-        let making_local = DownloadQueueCounts {
-            making_local: batch(0, 1),
+        let moving_to_this_device = DownloadQueueCounts {
+            moving_to_this_device: batch(0, 1),
             queue: held_queue,
             ..idle_downloads()
         };
         assert!(
-            SyncActivity::new(&status(), &idle_uploads(), &making_local).held(),
-            "making local {wait:?}"
+            SyncActivity::new(&status(), &idle_uploads(), &moving_to_this_device).held(),
+            "moving to this device {wait:?}"
         );
     }
 }

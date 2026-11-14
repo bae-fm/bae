@@ -249,16 +249,16 @@ pub enum BridgeStorageRowStatus {
     MoveFailed {
         file_name: String,
     },
-    /// The download queue holds a make-local of it failed, with the error.
-    MakeLocalFailed {
+    /// The download queue holds a move-to-this-device of it failed, with the error.
+    MoveToThisDeviceFailed {
         error: String,
     },
     Uploading,
     Pinning {
         step: BridgeDownloadEntryStep,
     },
-    /// The download queue holds a make-local of it, waiting or downloading.
-    MakingLocal {
+    /// The download queue holds a move-to-this-device of it, waiting or downloading.
+    MovingToThisDevice {
         step: BridgeDownloadEntryStep,
     },
     OnOneDevice,

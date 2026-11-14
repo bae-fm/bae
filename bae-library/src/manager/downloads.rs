@@ -1,4 +1,4 @@
-//! The download queue, of pins and make-locals.
+//! The download queue, of pins and moves-to-this-device.
 //!
 //! Pinning and making a release local route through a serial queue rather
 //! than an ephemeral per-release task: one release downloads at a time, the
@@ -74,13 +74,13 @@ impl LibraryManager {
     /// compose the pin task with this worker's progress drain, and yield the
     /// resulting operation. The outcome comes from draining the transfer's
     /// progress channel and then joining the pin task, so a panicked pin
-    /// reports the panic rather than "the channel closed". A make-local: list
+    /// reports the panic rather than "the channel closed". A move-to-this-device: list
     /// the copies and run the download and its write on a task of its own
-    /// ([`LibraryManager::start_make_local`]).
+    /// ([`LibraryManager::start_move_to_this_device`]).
     ///
     /// Success needs no follow-up here: each work ends its queue entry in the
     /// write that changes the release's files (`pin_release_files_with_progress`
-    /// pins them, a make-local switches them to this device only), so the
+    /// pins them, a move-to-this-device switches them to this device only), so the
     /// release subscription updates as the entry leaves. Completion and
     /// failure reach diagnostics from inside the work
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is
@@ -107,8 +107,8 @@ impl LibraryManager {
                             Ok((DownloadTransfer::Pin(initial_progress), running.boxed()))
                         }
                         #[cfg(desktop)]
-                        DownloadRequest::MakeLocal { target_dir } => {
-                            self.start_make_local(release_id, target_dir, entry).await
+                        DownloadRequest::MoveToThisDevice { target_dir } => {
+                            self.start_move_to_this_device(release_id, target_dir, entry).await
                         }
                     }
                 },

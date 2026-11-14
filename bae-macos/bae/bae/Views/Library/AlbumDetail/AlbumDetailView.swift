@@ -392,7 +392,7 @@ extension AlbumDetailView {
             unpinRelease(releaseId: releaseId, steps: UnpinAsk.withoutAsking)
         case .upload:
             presentMoveToCloudConfirmSheet(releaseId: releaseId)
-        case .detachAudio:
+        case .moveToThisDevice:
             makeReleaseLocal(releaseId: releaseId)
         }
     }
@@ -522,13 +522,17 @@ extension AlbumDetailView {
 
     private func makeReleaseLocal(releaseId: String) {
         guard
-            let newPath = StorageActionRunner.promptDetachAudioDestination()
+            let newPath =
+                StorageActionRunner.promptMoveToThisDeviceDestination()
         else {
             return
         }
         let releaseEditor = releaseEditor
         runStorageTransition {
-            try await releaseEditor.makeReleasesLocal([releaseId], newPath)
+            try await releaseEditor.moveReleasesToThisDevice(
+                [releaseId],
+                newPath
+            )
         }
     }
 

@@ -17,7 +17,7 @@ final class ReleaseEditor: Observable {
             BridgeUploadReleasesOutcome
     /// Queue the releases to move to This Mac into a folder of their own each
     /// below `folder`.
-    let makeReleasesLocal:
+    let moveReleasesToThisDevice:
         @Sendable (_ releaseIds: [String], _ folder: URL) async throws -> Void
     let deleteRelease: @Sendable (_ releaseId: String) async throws -> Void
     /// Delete an album: every release it holds and what each owns.
@@ -47,7 +47,7 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable ([String]) async throws ->
             BridgeUploadReleasesOutcome =
             { _ in throw StubError.notImplemented },
-        makeReleasesLocal:
+        moveReleasesToThisDevice:
             @escaping @Sendable ([String], URL) async throws -> Void = {
                 _,
                 _ in
@@ -80,7 +80,7 @@ final class ReleaseEditor: Observable {
     ) {
         self.changeCover = changeCover
         moveReleasesToCloudAction = moveReleasesToCloud
-        self.makeReleasesLocal = makeReleasesLocal
+        self.moveReleasesToThisDevice = moveReleasesToThisDevice
         self.deleteRelease = deleteRelease
         self.deleteAlbum = deleteAlbum
         self.setPrimaryRelease = setPrimaryRelease
@@ -101,8 +101,8 @@ final class ReleaseEditor: Observable {
             moveReleasesToCloud: {
                 try await handle.uploadReleases(releaseIds: $0)
             },
-            makeReleasesLocal: {
-                try await handle.makeReleasesLocal(
+            moveReleasesToThisDevice: {
+                try await handle.moveReleasesToThisDevice(
                     releaseIds: $0,
                     folder: $1.pathBytes
                 )

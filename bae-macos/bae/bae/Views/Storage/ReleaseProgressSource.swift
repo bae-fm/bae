@@ -6,5 +6,5 @@ import BaeKit
 enum ReleaseProgressSource {
     case upload(LatestSource<BridgeReleaseUploadTransfer>)
     case pin(LatestSource<BridgeDownloadTransferProgress>)
-    case makeLocal(LatestSource<BridgeMakeLocalProgress>)
+    case moveToThisDevice(LatestSource<BridgeMoveToThisDeviceProgress>)
 }

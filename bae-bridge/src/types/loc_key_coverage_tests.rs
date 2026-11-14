@@ -60,7 +60,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.activity.syncing",
     "core.activity.uploading",
     "core.activity.pinning",
-    "core.activity.making_local",
+    "core.activity.moving_to_this_device",
     "core.activity.releases_done",
     "core.activity.idle",
     "core.activity.retry_now",
@@ -114,7 +114,7 @@ fn produced_keys() -> Vec<String> {
         BridgeReleaseStorageAction::Upload,
         BridgeReleaseStorageAction::Pin,
         BridgeReleaseStorageAction::Unpin,
-        BridgeReleaseStorageAction::DetachAudio,
+        BridgeReleaseStorageAction::MoveToThisDevice,
     ] {
         keys.push(bridge_transfer_action_key(a));
     }

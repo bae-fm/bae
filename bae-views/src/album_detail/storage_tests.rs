@@ -13,7 +13,7 @@ fn failed(kind: DownloadKind, error: &str) -> Option<DownloadEntry> {
     entry(kind, DownloadStep::Failed { error: error.to_string() })
 }
 
-/// The queues' places show a pin or a make-local by its entry, and a
+/// The queues' places show a pin or a move-to-this-device by its entry, and a
 /// release at rest shows where its files are.
 #[test]
 fn a_running_entry_shows_by_what_it_does() {
@@ -28,10 +28,10 @@ fn a_running_entry_shows_by_what_it_does() {
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Pinning,
-            entry(DownloadKind::MakeLocal, DownloadStep::Running),
+            entry(DownloadKind::MoveToThisDevice, DownloadStep::Running),
             None
         ),
-        Ok(StorageRowStatus::MakingLocal(DownloadEntryStep::Running))
+        Ok(StorageRowStatus::MovingToThisDevice(DownloadEntryStep::Running))
     );
     assert_eq!(
         StorageRowStatus::of(StoragePlace::Uploading, None, None),
@@ -53,8 +53,8 @@ fn a_waiting_download_shows_by_what_it_does_and_a_failed_one_its_error() {
         Ok(StorageRowStatus::Pinning(waiting))
     );
     assert_eq!(
-        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::MakeLocal), None),
-        Ok(StorageRowStatus::MakingLocal(waiting))
+        StorageRowStatus::of(StoragePlace::Pinning, queued(DownloadKind::MoveToThisDevice), None),
+        Ok(StorageRowStatus::MovingToThisDevice(waiting))
     );
     assert_eq!(
         StorageRowStatus::of(StoragePlace::Failed, failed(DownloadKind::Pin, "offline"), None),
@@ -63,10 +63,10 @@ fn a_waiting_download_shows_by_what_it_does_and_a_failed_one_its_error() {
     assert_eq!(
         StorageRowStatus::of(
             StoragePlace::Failed,
-            failed(DownloadKind::MakeLocal, "disk full"),
+            failed(DownloadKind::MoveToThisDevice, "disk full"),
             None
         ),
-        Ok(StorageRowStatus::MakeLocalFailed { error: "disk full".to_string() })
+        Ok(StorageRowStatus::MoveToThisDeviceFailed { error: "disk full".to_string() })
     );
 }
 

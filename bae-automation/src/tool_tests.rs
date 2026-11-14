@@ -51,10 +51,10 @@ mod release_storage_action {
         assert!(matches!(
             parse(serde_json::json!({
                 "release_id": "release-1",
-                "action": { "kind": "detach_audio", "destination_dir": "/music/out" },
+                "action": { "kind": "move_to_this_device", "destination_dir": "/music/out" },
             }))
             .action,
-            AutomationStorageAction::DetachAudio { destination_dir } if destination_dir == "/music/out"
+            AutomationStorageAction::MoveToThisDevice { destination_dir } if destination_dir == "/music/out"
         ));
 
         for (kind, expected) in [
@@ -79,7 +79,7 @@ mod release_storage_action {
     #[test]
     fn reported_transition_names_are_the_accepted_names() {
         use AutomationReleaseStorageAction as A;
-        for action in [A::Upload, A::Pin, A::Unpin, A::DetachAudio] {
+        for action in [A::Upload, A::Pin, A::Unpin, A::MoveToThisDevice] {
             let reported = serde_json::to_value(action).unwrap();
             let name = reported.as_str().expect("a transition reports as a name");
             parse(serde_json::json!({
@@ -104,7 +104,7 @@ mod release_storage_action {
     fn an_action_missing_what_it_needs_is_refused() {
         let error = from_value::<ReleaseStorageActionInput>(serde_json::json!({
             "release_id": "release-1",
-            "action": { "kind": "detach_audio" },
+            "action": { "kind": "move_to_this_device" },
         }))
         .expect_err("an action without its required field is not an action");
         assert_eq!(error.kind(), "validation");
@@ -115,7 +115,7 @@ mod release_storage_action {
     fn only_the_transitions_core_offers_are_run() {
         let pinnable = summary(vec![
             AutomationReleaseStorageAction::Pin,
-            AutomationReleaseStorageAction::DetachAudio,
+            AutomationReleaseStorageAction::MoveToThisDevice,
         ]);
 
         require_action(&pinnable, AutomationReleaseStorageAction::Pin, "pin")
@@ -125,7 +125,7 @@ mod release_storage_action {
             .expect_err("core does not offer the unpin");
         assert_eq!(error.kind(), "validation");
         assert!(
-            error.message().contains("pin, detach_audio"),
+            error.message().contains("pin, move_to_this_device"),
             "the refusal names what the release does offer: {}",
             error.message()
         );

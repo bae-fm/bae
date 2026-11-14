@@ -76,7 +76,7 @@ impl StorageInspector {
         entries: &ReleaseQueueEntries,
         upload: Option<ReleaseUpload>,
     ) -> Self {
-        // Only a pin brings files to this device's pins; a make-local brings
+        // Only a pin brings files to this device's pins; a move-to-this-device brings
         // them into a folder.
         let pinning = entries.download.as_ref().is_some_and(|row| {
             matches!(row.op.payload, DownloadRequest::Pin)

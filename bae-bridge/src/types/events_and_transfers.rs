@@ -131,14 +131,14 @@ pub enum BridgeFastValue {
     /// keyed by file.
     FileShare { fraction: f64 },
     /// The share of a transfer line's batch bytes done, from 0 to 1; keyed
-    /// by the Activity line: `uploads`, `pins` or `making_local`, while that
+    /// by the Activity line: `uploads`, `pins` or `moving_to_this_device`, while that
     /// line's batch holds a release.
     BatchShare { fraction: f64 },
     /// A pinning release's bytes and rate; keyed by release.
     Download { progress: BridgeDownloadTransferProgress },
-    /// How far a release being made local has downloaded into the
+    /// How far a release being moved to this device has downloaded into the
     /// person's folder; keyed by release, in the download stream.
-    MakeLocal { progress: BridgeMakeLocalProgress },
+    MoveToThisDevice { progress: BridgeMoveToThisDeviceProgress },
     /// An exporting release's percent; keyed by release.
     ExportPercent { percent: u8 },
     /// Where the playing track is; keyed by track, the playing one alone.
@@ -206,11 +206,11 @@ pub struct BridgeDownloadTransferProgress {
     pub throughput_bps: Option<u64>,
 }
 
-/// How far a release being made local has downloaded: the bytes of the file
+/// How far a release being moved to this device has downloaded: the bytes of the file
 /// coven is downloading, and of every file of the release. Mirrors
-/// `MakeLocalTransferProgress`.
+/// `MoveToThisDeviceTransferProgress`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMakeLocalProgress {
+pub struct BridgeMoveToThisDeviceProgress {
     pub file_bytes_done: u64,
     pub file_bytes_total: u64,
     pub bytes_done: u64,
@@ -241,18 +241,18 @@ pub enum BridgeDownloadKind {
     Pin,
     /// Downloads the release's files into the person's folder and makes the
     /// release local.
-    MakeLocal,
+    MoveToThisDevice,
 }
 
 mirror_enum! {
     BridgeDownloadKind = bae_transfers::DownloadKind,
     from_core: pub(crate) fn,
-    variants: { Pin, MakeLocal },
+    variants: { Pin, MoveToThisDevice },
 }
 
-/// Where a release stands in being made local. Mirrors `MakeLocalStatus`.
+/// Where a release stands in being moved to this device. Mirrors `MoveToThisDeviceStatus`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeMakeLocalStatus {
+pub enum BridgeMoveToThisDeviceStatus {
     /// Waiting its turn.
     Queued,
     /// Downloading its files into the person's folder; how many bytes is the
@@ -264,7 +264,7 @@ pub enum BridgeMakeLocalStatus {
 }
 
 mirror_enum! {
-    BridgeMakeLocalStatus = bae_views::album_detail::MakeLocalStatus,
+    BridgeMoveToThisDeviceStatus = bae_views::album_detail::MoveToThisDeviceStatus,
     from_core: pub(crate) fn,
     variants: {
         Queued,
@@ -273,7 +273,7 @@ mirror_enum! {
     },
 }
 
-/// One queued download: a whole release being pinned or made local. Mirrors
+/// One queued download: a whole release being pinned or moved to this device. Mirrors
 /// `DownloadRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadOp {
@@ -336,7 +336,7 @@ mirror_enum! {
 /// The Pinning screen's summary line for the download queue's counts
 /// `total`: its parts in core's order, which the UI resolves and joins. Only
 /// a phone has the Pinning screen, and a phone's download queue holds only
-/// pins; a desktop's holds make-locals too, which these words would call
+/// pins; a desktop's holds moves-to-this-device too, which these words would call
 /// pinning, so it has no such line.
 #[cfg(not(desktop))]
 #[uniffi::export]

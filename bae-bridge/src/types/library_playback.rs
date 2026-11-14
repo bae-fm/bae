@@ -302,7 +302,7 @@ pub enum BridgeReleaseStorageAction {
     Upload,
     Pin,
     Unpin,
-    DetachAudio,
+    MoveToThisDevice,
 }
 
 impl BridgeReleaseStorageAction {
@@ -310,7 +310,7 @@ impl BridgeReleaseStorageAction {
         use bae_types::release_storage::ReleaseStorageAction as A;
         match value {
             A::Upload => Self::Upload,
-            A::DetachAudio => Self::DetachAudio,
+            A::MoveToThisDevice => Self::MoveToThisDevice,
             A::Pin => Self::Pin,
             A::Unpin => Self::Unpin,
         }
@@ -323,7 +323,7 @@ impl BridgeReleaseStorageAction {
             Self::Pin => "core.transfer.action.pin",
             Self::Unpin => "core.transfer.action.unpin",
             Self::Upload => "core.transfer.action.upload",
-            Self::DetachAudio => "core.transfer.action.make_local",
+            Self::MoveToThisDevice => "core.transfer.action.move_to_this_device",
         }
     }
 }
@@ -437,10 +437,10 @@ pub struct BridgeRelease {
     pub gallery_items: Vec<BridgeGalleryItem>,
     /// Whether this device can play the release now, and why not.
     pub playability: BridgeReleasePlayability,
-    /// Where the release stands in being made local, which core decides from
+    /// Where the release stands in being moved to this device, which core decides from
     /// its entry in the download queue; `None` when it is not being made
     /// local.
-    pub make_local: Option<crate::types::BridgeMakeLocalStatus>,
+    pub move_to_this_device: Option<crate::types::BridgeMoveToThisDeviceStatus>,
     /// The download control's state for the release, which core decides from
     /// its entry in the download queue; `None` when there is no control to
     /// show.
