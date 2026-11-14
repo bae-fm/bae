@@ -13,12 +13,15 @@ struct LibrarySearchField: View {
         HStack(spacing: ThemeSpace.related) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
                 // The design draws the glyph at 14, between the icon roles.
                 .font(.system(size: 14, weight: ThemeIcon.medium.weight))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .themeText(.body)
                 .focused(focused)
+                .accessibilityLabel(prompt)
+                .accessibilityAddTraits(.isSearchField)
                 .onKeyPress(.escape) {
                     onEscape()
                     return .handled

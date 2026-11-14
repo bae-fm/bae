@@ -60,6 +60,7 @@ struct ActivityButton: View {
                         held: held,
                         needsAttention: problems.needsAttention
                     )
+                    .accessibilityElement(children: .ignore)
                     .frame(
                         width: ThemeSize.hitTarget,
                         height: ThemeSize.hitTarget

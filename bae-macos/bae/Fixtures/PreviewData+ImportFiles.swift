@@ -13,7 +13,7 @@ struct PreviewPickedRelease {
 }
 
 extension PreviewData {
-    static let previewSourceAudioFormat = BridgeAudioFormat(
+    private static let previewSourceAudioFormat = BridgeAudioFormat(
         codec: "FLAC",
         sampleRateHz: 44_100,
         bitsPerSample: 16,
@@ -21,7 +21,7 @@ extension PreviewData {
         channels: 2
     )
 
-    static func previewFile(
+    private static func previewFile(
         name: String,
         size: UInt64,
         role: BridgeFileRole,
@@ -39,7 +39,7 @@ extension PreviewData {
         )
     }
 
-    static func previewImage(
+    private static func previewImage(
         name: String,
         size: UInt64,
         dirPrefix: String? = nil

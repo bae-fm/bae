@@ -89,6 +89,13 @@ extension ShotScene {
                 ]
             )
         )
+        // The volume the boards' bar shows (70 percent, not muted), and
+        // repeat off, which give the bar its Mute and Repeat buttons.
+        store.settings = PlaybackSettings(
+            volume: 0.7,
+            isMuted: false,
+            repeatMode: .off
+        )
         store.play(
             track: BridgeNowPlayingTrack(
                 track: BridgePlayingTrack(

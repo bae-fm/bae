@@ -11,15 +11,11 @@ struct ImportPreviewFixture {
     let itemsByTab: [BridgeTriageTab: [BridgeImportListItem]]
 
     @MainActor
-    func slot(
-        uiStore: UiStore,
-        selection: ImportSelection = ImportSelection()
-    ) -> ImportListSlot {
+    func slot(uiStore: UiStore) -> ImportListSlot {
         ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
-            items: itemsByTab[uiStore.importCandidateTab] ?? [],
-            selection: selection
+            items: itemsByTab[uiStore.importCandidateTab] ?? []
         )
     }
 }

@@ -32,7 +32,7 @@ struct TitleBar: View {
     private var searchFocused: Bool
     var body: some View {
         ZStack {
-            SectionSegmentedControl(
+            SectionTabStrip(
                 selection: uiStore.activeSection,
                 onSelect: { newValue in
                     withAnimation(.spring(duration: 0.2, bounce: 0.15)) {
@@ -40,7 +40,10 @@ struct TitleBar: View {
                     }
                 }
             )
-            .offset(x: -(titleBarLeadingPadding - titleBarTrailingPadding) / 2)
+            .padding(
+                .trailing,
+                titleBarLeadingPadding - titleBarTrailingPadding
+            )
 
             HStack(spacing: ThemeSpace.group) {
                 Spacer()
@@ -73,6 +76,7 @@ struct TitleBar: View {
                 }
                 .buttonStyle(IconHoverButtonStyle().accentFocus())
                 .help("Settings")
+                .accessibilityLabel("Settings")
             }
         }
         .padding(.leading, titleBarLeadingPadding)
@@ -126,60 +130,5 @@ struct TitleBar: View {
                 uiStore.showSearchPopover = true
             }
         }
-    }
-}
-
-/// The Library/Import selector; the caller owns the section switch and its
-/// animation.
-private struct SectionSegmentedControl: View {
-    let selection: MainSection
-    let onSelect: (MainSection) -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            segment("Library", section: .library)
-            segment("Import", section: .importing)
-        }
-        .padding(ThemeSpace.inline)
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                .fill(Theme.well)
-        )
-        .accessibilityElement(children: .contain)
-    }
-
-    private func segment(
-        _ title: LocalizedStringKey,
-        section: MainSection
-    ) -> some View {
-        let active = selection == section
-        return Button {
-            onSelect(section)
-        } label: {
-            Text(title)
-                .themeText(.strong)
-                .foregroundStyle(active ? Color.primary : Color.secondary)
-                .padding(.horizontal, ThemeSpace.edge)
-                .padding(.vertical, ThemeSpace.compact)
-                .background(
-                    // Concentric with the well around it.
-                    RoundedRectangle(
-                        cornerRadius: ThemeRadius.control - ThemeSpace.inline
-                    )
-                    .fill(Theme.tile)
-                    .opacity(active ? 1 : 0)
-                    .shadow(
-                        color: active ? Theme.shadow : Color.clear,
-                        radius: 1.5,
-                        y: 1
-                    )
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.accentPlain)
-        .animation(.easeInOut(duration: 0.15), value: active)
-        .accessibilityAddTraits(
-            active ? [.isButton, .isSelected] : .isButton
-        )
     }
 }
