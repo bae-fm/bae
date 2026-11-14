@@ -4147,7 +4147,7 @@
    "x": 7540,
    "y": 2160
   },
-  "mac.storage.window.make-local-failed.dc.html": {
+  "mac.storage.window.move-to-this-device-failed.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a failed move to This Mac, in the inspector",
@@ -4171,7 +4171,7 @@
    "x": 7540,
    "y": 2940
   },
-  "mac.storage.window.make-local-queued.dc.html": {
+  "mac.storage.window.move-to-this-device-queued.dc.html": {
    "h": 660,
    "page": "storage",
    "title": "macOS: a release queued to move to This Mac, in the inspector",
@@ -5944,10 +5944,10 @@
   "mac.storage.release-menu.move-failed.dc.html",
   "mac.storage.window.move-failed.dc.html",
   "mac.storage.window.upload-waiting.dc.html",
-  "mac.storage.window.make-local-failed.dc.html",
+  "mac.storage.window.move-to-this-device-failed.dc.html",
   "mac.storage.window.upload-queued.dc.html",
   "mac.storage.window.pin-queued.dc.html",
-  "mac.storage.window.make-local-queued.dc.html",
+  "mac.storage.window.move-to-this-device-queued.dc.html",
   "mac.storage.window.moving-to-mac.dc.html",
   "mac.storage.unpin-several.dc.html",
   "mac.activity.panel.moving.dc.html",

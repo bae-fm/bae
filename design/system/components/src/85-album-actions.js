@@ -33,22 +33,22 @@
       h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release files')),
       h('div', { className: 'bae-m-lb-strip' }, ['Low Tide Hours', 'Low Tide Hours back', 'Low Tide Hours disc', 'Low Tide Hours booklet'].map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', i === 0 && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); })));
   }
-  // The release's Storage sheet, as StorageStatusBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading), Queued to move to This Mac or Moving to This Mac… (`makeLocal`: queued, making); the moving ones fill with `progress`. A failed pin (Couldn’t pin) or move to This Mac is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
+  // The release's Storage sheet, as StorageStatusBand draws it: one line, the release's state at rest (Local, Pinned, In cloud) and beside it at most one pill for a change on its way: Queued to upload or Uploading (`state`: waiting, uploading; the release is Local), Queued to pin or Pinning (`download`: queued, downloading), Queued to move to This Mac or Moving to This Mac… (`moveToThisDevice`: queued, moving); the moving ones fill with `progress`. A failed pin (Couldn’t pin) or move to This Mac is a danger notice under the line, with Details; an upload held by a missing original (`missing`, the file's name) is a warning notice naming it. What holds a whole queue back shows on the Storage Manager's footer, not here. Then why this Mac can't play it, and the storage actions. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageBand(props) {
     var s = props.state || 'cloud';
-    var d = props.download, m = props.makeLocal;
+    var d = props.download, m = props.moveToThisDevice;
     var rest = s === 'uploading' || s === 'waiting' ? 'local' : s;
     var restLabel = h('span', { className: 'bae-m-sband-rest' }, h(Sym, { name: { local: 'folder', pinned: 'pin', cloud: 'cloud' }[rest], size: 14 }), { local: 'Local', pinned: 'Pinned', cloud: 'In cloud' }[rest]);
     var pill = s === 'uploading' ? h(MacStorageChip, { state: 'uploading', progress: props.progress })
       : s === 'waiting' ? h(MacStorageChip, { state: 'uploadQueued' })
       : d === 'queued' ? h(MacStorageChip, { state: 'queued' })
       : d === 'downloading' ? h(MacStorageChip, { state: 'pinning', progress: props.progress })
-      : m === 'queued' ? h(MacStorageChip, { state: 'makeLocalQueued' })
-      : m === 'making' ? h(MacStorageChip, { state: 'detaching', progress: props.progress })
+      : m === 'queued' ? h(MacStorageChip, { state: 'moveToThisDeviceQueued' })
+      : m === 'moving' ? h(MacStorageChip, { state: 'detaching', progress: props.progress })
       : null;
     var missing = s === 'waiting' && props.missing ? h(MacNotice, { tone: 'warning', title: props.missing + ' is missing', subtitle: 'Restore it to finish uploading.' }) : null;
     var failed = d === 'failed' ? 'Could not pin' : m === 'failed' ? 'Could not move to This Mac' : null;
-    var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m === 'queued' || m === 'making';
+    var still = s === 'uploading' || s === 'waiting' || d === 'downloading' || m === 'queued' || m === 'moving';
     return h('div', { className: 'bae-m-sband' },
       h('div', { className: 'bae-m-sband-line' }, restLabel, pill),
       missing,

@@ -71,7 +71,7 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as StorageStateLabel draws it: one chip of one word, with no icon. At rest: Local, Pinned, Cloud. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn reads Queued (`queued`, `uploadQueued`, `makeLocalQueued`). An upload held by a missing original reads Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed reads Error, in danger (`downloadFailed`, `moveFailed`, `makeLocalFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
+  // The Storage column, as StorageStateLabel draws it: one chip of one word, with no icon. At rest: Local, Pinned, Cloud. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn reads Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original reads Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed reads Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
@@ -79,17 +79,17 @@
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Moving';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
-    if (s === 'downloadFailed' || s === 'moveFailed' || s === 'makeLocalFailed') return chip('danger', 'Error');
-    if (s === 'queued' || s === 'uploadQueued' || s === 'makeLocalQueued') return chip('activity', 'Queued');
+    if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return chip('danger', 'Error');
+    if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return chip('activity', 'Queued');
     if (s === 'uploadBlocked') return chip('warning', 'Waiting');
     return chip('neutral', { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
   }
 
-  // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`makeLocal`) that failed reads Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
+  // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`moveToThisDevice`) that failed reads Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
   function MacDownloadRow(props) {
     var kind = props.kind || 'pin';
-    var icon = { makeLocal: 'folder', upload: 'up', pin: 'pin' }[kind];
-    var notice = props.notice || (kind === 'makeLocal' ? 'Could not move to This Mac' : 'Could not pin');
+    var icon = { moveToThisDevice: 'folder', upload: 'up', pin: 'pin' }[kind];
+    var notice = props.notice || (kind === 'moveToThisDevice' ? 'Could not move to This Mac' : 'Could not pin');
     return h('div', { className: 'bae-m-dlrow' },
       h(MacItem, { lead: h(Sym, { name: icon, size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
@@ -176,7 +176,7 @@
   function MacPopover(props) {
     return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), h('div', { className: 'bae-m-popover-body' }, props.children));
   }
-  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem stays where it's fixed): the caller's own (children), bae couldn't read sync's status (`error`), and sync's own (signed out, a record it can't send) with Open Sync Settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`makingLocal`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. Or up to date.
+  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem stays where it's fixed): the caller's own (children), bae couldn't read sync's status (`error`), and sync's own (signed out, a record it can't send) with Open Sync Settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. Or up to date.
   function MacActivity(props) {
     var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
     // Every row of the panel's boxes has the same inset; a row in the problems' box without a glyph starts on the problems' text edge (MacItem's empty leading column). Transfers is its own box, so its lines start at the box's inset.
@@ -198,13 +198,13 @@
       props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' })) : null,
       props.attention && props.record ? line('r', h('span', { className: 'bae-strong' }, props.record), props.reason) : null].filter(Boolean));
     if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', problems)));
-    if (props.syncing || props.uploads || props.pins || props.makingLocal) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
+    if (props.syncing || props.uploads || props.pins || props.movingToThisDevice) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
       props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4, props.uploadsWait === 'Paused') : null,
       props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, props.downloadsWait === 'Paused') : null,
-      props.makingLocal ? xfer('m', 'Moving to This Mac', props.downloadsWait || props.makingLocal, props.makeLocalProgress != null ? props.makeLocalProgress : 0.2, props.downloadsWait === 'Paused') : null].filter(Boolean))));
+      props.movingToThisDevice ? xfer('m', 'Moving to This Mac', props.downloadsWait || props.movingToThisDevice, props.moveToThisDeviceProgress != null ? props.moveToThisDeviceProgress : 0.2, props.downloadsWait === 'Paused') : null].filter(Boolean))));
     // Under Transfers, Open Storage Manager for the detail.
-    if (props.uploads || props.pins || props.makingLocal) out.push(h('div', { key: 'k', className: 'bae-m-actfoot' }, h(MacButton, { size: 'small' }, 'Open Storage Manager')));
+    if (props.uploads || props.pins || props.movingToThisDevice) out.push(h('div', { key: 'k', className: 'bae-m-actfoot' }, h(MacButton, { size: 'small' }, 'Open Storage Manager')));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, row('i', h('div', { className: 'bae-m-actline bae-muted' }, 'Everything is up to date.')))));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
