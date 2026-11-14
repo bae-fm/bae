@@ -126,19 +126,6 @@ enum IdentifierChipValues {
     }
 }
 
-extension IdentifierChip where Trailing == EmptyView {
-    /// A chip with nothing after its value.
-    init(
-        label: String,
-        value: String? = nil,
-        style: IdentifierChipStyle = .filled
-    ) {
-        self.init(label: label, value: value, style: style) {
-            EmptyView()
-        }
-    }
-}
-
 /// One provider's name and its lookup's glyph, inside a value's chip.
 struct ProviderCapsule: View {
     let source: BridgeLookupCatalog

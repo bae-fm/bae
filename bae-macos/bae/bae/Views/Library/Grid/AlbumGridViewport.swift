@@ -88,6 +88,15 @@ final class AlbumGridViewport {
         /// The slot's top in the visible area, nil while it is not drawn.
         let minY: CGFloat?
         let scroll: AlbumGridScroll
+
+        // Written out, because the dead-code check reads the compiler's
+        // equality of a struct as assigning its properties without using them.
+        static func == (left: HoldScroll, right: HoldScroll) -> Bool {
+            left.slot == right.slot
+                && left.columnCount == right.columnCount
+                && left.minY == right.minY
+                && left.scroll == right.scroll
+        }
     }
 
     private enum RevealScroll {
