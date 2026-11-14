@@ -1,6 +1,7 @@
 mac build ./bae-macos/run.sh --no-open
 mac app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
 mac bundle fm.bae.desktop
+shots-source bae-shots
 android build ./bae-android/run.sh
 step mac macos ./bae-macos/run.sh --no-open
 step mac macos-tests ./bae-macos/test.sh --build-only
