@@ -48,6 +48,10 @@ tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
 # The schema tests read the tables the schema creates.
 regex = { workspace = true }
+# The kept seeds (see the optional dependencies above) compile into this
+# crate's own test build, where the test-utils feature is off.
+sha2 = { workspace = true }
+uuid = { workspace = true }
 
 [features]
 default = []
