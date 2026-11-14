@@ -717,7 +717,7 @@ pub(crate) fn storage_total_size_query(filter: StorageFilter) -> String {
 /// How many releases of the Storage Manager list under `filter` (narrowed to
 /// the albums the search `pattern` finds, with one) come before the rows `seek`
 /// reads, each album tested alone as the order's index reaches it.
-fn storage_seek_count_on(
+pub(crate) fn storage_seek_count_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,

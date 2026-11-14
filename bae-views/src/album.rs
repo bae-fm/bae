@@ -3,10 +3,11 @@
 
 use super::*;
 use listing::{
-    album_appearance_count_on, album_count_on, album_sections_on, album_seek_count_on,
-    grouped_artist_direction,
+    album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
 };
-pub(crate) use listing::{album_browse_order, album_rows_on, AlbumAppearanceRow};
+pub(crate) use listing::{
+    album_browse_order, album_rows_on, album_seek_count_on, AlbumAppearanceRow,
+};
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;

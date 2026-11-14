@@ -1,28 +1,9 @@
-/// A window of a list: where the screen counts it from, how many rows it
-/// holds, and the cursor to read it from when the screen holds the row
-/// beside it.
+/// A window of the queue's upcoming tail: where the screen counts it from,
+/// after the playing entry, and how many entries it holds.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeLibraryPageWindow {
+pub struct BridgeQueueWindow {
     pub offset: u64,
     pub limit: u64,
-    pub cursor: Option<BridgeWindowCursor>,
-}
-
-/// The row beside a window, by its sort values, and which side the window
-/// lies on. The values are those a delivered window gave for its first or
-/// last row.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeWindowCursor {
-    pub side: BridgeCursorSide,
-    pub key: Vec<BridgeSortValue>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCursorSide {
-    /// The window holds the rows after the row at the key.
-    After,
-    /// The window holds the rows before the row at the key.
-    Before,
 }
 
 /// One sort value of a row, as the list's order evaluates it for the row.

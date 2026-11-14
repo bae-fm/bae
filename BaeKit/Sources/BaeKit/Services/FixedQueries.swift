@@ -167,47 +167,6 @@
         }
     }
 
-    private final class TaskPageSubscription: PageSubscription,
-        @unchecked Sendable
-    {
-        private let task: Task<Void, Never>
-
-        init(_ task: Task<Void, Never>) {
-            self.task = task
-        }
-
-        func cancel() {
-            task.cancel()
-        }
-    }
-
-    /// In-memory page source for album shots and tests. Expects rows to
-    /// arrive pre-sorted; serves contiguous slices.
-    public struct FixedAlbumPageSource: PageSource {
-        public let albums: [BridgeAlbum]
-
-        public init(albums: [BridgeAlbum]) {
-            self.albums = albums
-        }
-
-        public func subscribe(
-            offset: Int,
-            limit: Int,
-            onValue:
-                @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-            onError _: @escaping @MainActor @Sendable (any Error) -> Void
-        ) -> any PageSubscription {
-            let albums = albums
-            return TaskPageSubscription(
-                Task { @MainActor in
-                    let start = min(offset, albums.count)
-                    let end = min(start + limit, albums.count)
-                    onValue(Array(albums[start..<end]), albums.count)
-                }
-            )
-        }
-    }
-
     extension BridgeListQueries {
         /// The key a fixed list gives its row at `position`: the position
         /// itself, since the rows arrive already in order.

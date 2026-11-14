@@ -42,14 +42,14 @@ private func queueEntry(_ entryId: String) -> BridgeQueueEntry {
 private final class UpcomingFeed: @unchecked Sendable {
     private let lock = NSLock()
     private var opened = 0
-    private var requests: [[BridgeLibraryPageWindow]] = []
+    private var requests: [[BridgeQueueWindow]] = []
     private var pending: [BridgeQueueUpcomingSnapshot] = []
     private var askedCount = 0
     private var waiter:
         CheckedContinuation<BridgeQueueUpcomingSnapshot, any Error>?
 
     var openedCount: Int { lock.withLock { opened } }
-    var requested: [[BridgeLibraryPageWindow]] { lock.withLock { requests } }
+    var requested: [[BridgeQueueWindow]] { lock.withLock { requests } }
     /// How many times the store has asked for a value. It applies each value
     /// before asking again, so an ask past a delivered value means that value
     /// was handled.
@@ -103,14 +103,11 @@ private final class UpcomingFeed: @unchecked Sendable {
             windows: offset.map { offset in
                 [
                     BridgeQueueUpcomingWindow(
-                        window: BridgeLibraryPageWindow(
+                        window: BridgeQueueWindow(
                             offset: offset,
-                            limit: 1,
-                            cursor: nil
+                            limit: 1
                         ),
-                        rows: [queueEntry(entryId)],
-                        first: nil,
-                        last: nil
+                        rows: [queueEntry(entryId)]
                     )
                 ]
             } ?? []
@@ -182,9 +179,9 @@ struct PlaybackStoreUpcomingWindowTests {
         #expect(feed.openedCount == 1)
         #expect(
             feed.requested.last == [
-                BridgeLibraryPageWindow(offset: 100, limit: 60, cursor: nil),
-                BridgeLibraryPageWindow(offset: 200, limit: 60, cursor: nil),
-                BridgeLibraryPageWindow(offset: 300, limit: 60, cursor: nil),
+                BridgeQueueWindow(offset: 100, limit: 60),
+                BridgeQueueWindow(offset: 200, limit: 60),
+                BridgeQueueWindow(offset: 300, limit: 60),
             ],
             "the window farthest from the newest one is dropped"
         )
@@ -317,7 +314,7 @@ struct PlaybackStoreUpcomingFailureTests {
         #expect(feed.openedCount == 2, "Retry opens the read again")
         #expect(
             feed.requested.last == [
-                BridgeLibraryPageWindow(offset: 100, limit: 60, cursor: nil)
+                BridgeQueueWindow(offset: 100, limit: 60)
             ],
             "over the windows it covered"
         )

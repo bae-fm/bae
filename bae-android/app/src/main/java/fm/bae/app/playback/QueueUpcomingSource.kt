@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueUpcomingSnapshot
+import uniffi.bae_bridge.BridgeQueueWindow
 
 private val logger = BaeLogger("bae.QueueUpcoming")
 
@@ -41,7 +41,7 @@ internal fun queuePageDistance(
  * and says whether the queue changed or only the windows moved.
  */
 interface QueueUpcomingQuery : PulledSubscription<BridgeQueueUpcomingSnapshot> {
-    fun setWindows(windows: List<BridgeLibraryPageWindow>)
+    fun setWindows(windows: List<BridgeQueueWindow>)
 }
 
 /** Opens the player's one upcoming read. */
@@ -54,7 +54,7 @@ class QueueUpcomingSource(
             object :
                 QueueUpcomingQuery,
                 PulledSubscription<BridgeQueueUpcomingSnapshot> by pulled(subscription::next, subscription::cancel) {
-                override fun setWindows(windows: List<BridgeLibraryPageWindow>) = subscription.setWindows(windows)
+                override fun setWindows(windows: List<BridgeQueueWindow>) = subscription.setWindows(windows)
             }
         },
     )
@@ -158,7 +158,7 @@ internal class QueueUpcomingWindows(
             (query ?: open()).setWindows(
                 read
                     .sortedBy { it.first }
-                    .map { BridgeLibraryPageWindow(it.first.toULong(), it.count().toULong(), null) },
+                    .map { BridgeQueueWindow(it.first.toULong(), it.count().toULong()) },
             )
         } catch (error: BridgeException) {
             logger.error("upcoming windows $read were not requested", error)

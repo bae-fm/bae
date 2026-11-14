@@ -759,7 +759,7 @@ mod playback_queue_bench {
         let mut value = subscribe_queue_value(&db);
         let mut upcoming = subscribe_queue_upcoming(
             &db,
-            bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(0, 100)]),
+            crate::QueueWindows::from([crate::QueueWindow::at(0, 100)]),
         );
         value.next().await.unwrap().unwrap();
         upcoming.next().await.unwrap();

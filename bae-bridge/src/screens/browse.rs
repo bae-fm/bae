@@ -3,46 +3,6 @@
 
 use crate::types::BridgeError;
 
-impl crate::types::BridgeLibraryPageWindow {
-    pub(crate) fn from_core(window: bae_store::LibraryPageWindow) -> Self {
-        Self {
-            offset: window.offset,
-            limit: window.limit,
-            cursor: window.cursor.map(crate::types::BridgeWindowCursor::from_core),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_store::LibraryPageWindow {
-        bae_store::LibraryPageWindow {
-            offset: self.offset,
-            limit: self.limit,
-            cursor: self.cursor.map(crate::types::BridgeWindowCursor::into_core),
-        }
-    }
-}
-
-impl crate::types::BridgeWindowCursor {
-    fn from_core(cursor: bae_store::list_windows::Cursor) -> Self {
-        use bae_store::list_windows::Cursor;
-        let (side, key) = match cursor {
-            Cursor::After(key) => (crate::types::BridgeCursorSide::After, key),
-            Cursor::Before(key) => (crate::types::BridgeCursorSide::Before, key),
-        };
-        Self { side, key: crate::types::BridgeSortValue::of_key(&key) }
-    }
-
-    fn into_core(self) -> bae_store::list_windows::Cursor {
-        use bae_store::list_windows::{Cursor, OrderKey};
-        let key = OrderKey::new(
-            self.key.into_iter().map(crate::types::BridgeSortValue::into_core).collect(),
-        );
-        match self.side {
-            crate::types::BridgeCursorSide::After => Cursor::After(key),
-            crate::types::BridgeCursorSide::Before => Cursor::Before(key),
-        }
-    }
-}
-
 impl crate::types::BridgeSortValue {
     /// The values of `key`, which a screen sends back as a cursor.
     pub(crate) fn of_key(key: &bae_store::list_windows::OrderKey) -> Vec<Self> {

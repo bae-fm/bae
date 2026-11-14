@@ -29,6 +29,7 @@ mod preview_player;
 pub mod progress;
 mod queue;
 mod queue_values;
+mod queue_windows;
 pub mod renderer;
 mod repeat_mode;
 mod replay_gain;
@@ -87,6 +88,7 @@ pub use progress::{
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use queue_values::{QueueAddition, QueueItem, ResolvedContext, ResolvedQueueSnapshot};
+pub use queue_windows::{QueueWindow, QueueWindowRead, QueueWindows};
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::{loudness_gain_db, loudness_gain_linear, replay_gain_linear};
 pub use service::{

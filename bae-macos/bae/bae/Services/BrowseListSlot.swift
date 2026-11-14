@@ -14,7 +14,6 @@ protocol WarmList: AnyObject {
 }
 
 extension PaginatedList: WarmList {}
-extension OffsetPaginatedList: WarmList {}
 
 /// One library-browse mode's list machinery: the warm list, its
 /// live subscriptions, the persisted sort criteria, and the

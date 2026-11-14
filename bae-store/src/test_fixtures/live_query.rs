@@ -1,9 +1,8 @@
 //! How a test checks what moved a live query.
 
 use crate::list_windows::OrderKey;
-use crate::{LibraryPageWindow, ListWindow};
+use crate::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
-use std::collections::BTreeSet;
 
 /// Move `live` to `request` and return the event answering it, asserting the
 /// move alone caused that run. Every commit since the query's last value is
@@ -30,11 +29,6 @@ where
         "a commit since the last value touched what the query reads"
     );
     event
-}
-
-/// The first page of a list, as the one window a browse query reads.
-pub fn first_page() -> BTreeSet<LibraryPageWindow> {
-    [LibraryPageWindow::at(0, 50)].into_iter().collect()
 }
 
 /// The window of a list from its top to its end, as one window of up to 50

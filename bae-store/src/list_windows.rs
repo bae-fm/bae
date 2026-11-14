@@ -13,7 +13,6 @@
 use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
 
 mod range;
 pub use range::{key_at, read_range, rows_before, ListWindow, WindowRead};
@@ -27,95 +26,6 @@ pub enum SortDirection {
 
 /// One sort value of a row: what an order term evaluates to for it.
 pub use rusqlite::types::Value as SortValue;
-
-/// A window of a list: where the screen counts it from, how many rows it
-/// holds, and, when the screen holds the row beside it, the cursor the read
-/// starts from.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LibraryPageWindow {
-    pub offset: u64,
-    pub limit: u64,
-    pub cursor: Option<Cursor>,
-}
-
-impl LibraryPageWindow {
-    /// The window of `limit` rows from `offset`, read by its offset.
-    pub fn at(offset: u64, limit: u64) -> Self {
-        Self { offset, limit, cursor: None }
-    }
-
-    /// The window read from `cursor`, labelled `offset`.
-    pub fn from_cursor(offset: u64, limit: u64, cursor: Cursor) -> Self {
-        Self { offset, limit, cursor: Some(cursor) }
-    }
-}
-
-/// The row beside a window, by its sort values, and which side the window
-/// lies on.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Cursor {
-    /// The window holds the rows after the row at the key.
-    After(OrderKey),
-    /// The window holds the rows before the row at the key.
-    Before(OrderKey),
-}
-
-pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LibraryBrowseWindow<Row> {
-    pub window: LibraryPageWindow,
-    pub rows: Vec<Row>,
-    /// The sort values of the window's first row and of its last, which the
-    /// screen sends back as the cursor of the window beside it. Both `None`
-    /// for a list that pages by offset alone.
-    pub first: Option<OrderKey>,
-    pub last: Option<OrderKey>,
-}
-
-impl<Row> LibraryBrowseWindow<Row> {
-    /// The window with each row made into another by `convert`.
-    pub fn map_rows<Other>(self, convert: impl FnMut(Row) -> Other) -> LibraryBrowseWindow<Other> {
-        LibraryBrowseWindow {
-            window: self.window,
-            rows: self.rows.into_iter().map(convert).collect(),
-            first: self.first,
-            last: self.last,
-        }
-    }
-
-    /// The window with its rows made into others all at once by `convert`.
-    pub fn try_convert_rows<Other, E>(
-        self,
-        convert: impl FnOnce(Vec<Row>) -> Result<Vec<Other>, E>,
-    ) -> Result<LibraryBrowseWindow<Other>, E> {
-        Ok(LibraryBrowseWindow {
-            window: self.window,
-            rows: convert(self.rows)?,
-            first: self.first,
-            last: self.last,
-        })
-    }
-
-    /// The window with each row made into another by `convert`, or the first
-    /// error it gives.
-    pub fn try_map_rows<Other, E>(
-        self,
-        convert: impl FnMut(Row) -> Result<Other, E>,
-    ) -> Result<LibraryBrowseWindow<Other>, E> {
-        Ok(LibraryBrowseWindow {
-            window: self.window,
-            rows: self.rows.into_iter().map(convert).collect::<Result<_, E>>()?,
-            first: self.first,
-            last: self.last,
-        })
-    }
-
-    /// A window of a list that pages by offset alone.
-    pub fn unkeyed(window: LibraryPageWindow, rows: Vec<Row>) -> Self {
-        Self { window, rows, first: None, last: None }
-    }
-}
 
 /// One term of a list's order: an SQL expression over the list's row, the
 /// way it runs, and whether it can be NULL, which sorts below every value.
@@ -353,13 +263,6 @@ impl Seek {
     pub(super) fn bounds_both_ends(&self) -> bool {
         matches!(&self.past, Some(Past::Between { lower: Some(_), upper: Some(_) }))
     }
-
-    /// Whether the seek reads every row in the order's own run: the seek of
-    /// a read by offset.
-    #[cfg(test)]
-    pub(super) fn reads_everything(&self) -> bool {
-        self.past.is_none()
-    }
 }
 
 /// A window's bound as SQLite's LIMIT and OFFSET take it: a bound past the
@@ -573,76 +476,6 @@ impl ListOrder {
         }
         seeks
     }
-}
-
-/// One window's rows as one read found them, with the sort values of its
-/// first row and of its last.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CursorWindowRead<R> {
-    pub window: LibraryPageWindow,
-    pub rows: Vec<R>,
-    pub first: Option<OrderKey>,
-    pub last: Option<OrderKey>,
-}
-
-impl<R> CursorWindowRead<R> {
-    /// The window as a delivery carries it.
-    pub fn into_browse(self) -> LibraryBrowseWindow<R> {
-        LibraryBrowseWindow {
-            window: self.window,
-            rows: self.rows,
-            first: self.first,
-            last: self.last,
-        }
-    }
-}
-
-/// Up to `window.limit` rows of `window`, each with its key: from its cursor
-/// through the order's index when it has one, by its offset otherwise. `read`
-/// runs the list's statement under a seek, for at most `limit` rows from
-/// `offset`, and gives each row with its key.
-pub fn read_window<R, E>(
-    order: &ListOrder,
-    window: &LibraryPageWindow,
-    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-) -> Result<Vec<Keyed<R>>, E> {
-    if window.limit == 0 {
-        return Ok(Vec::new());
-    }
-    match &window.cursor {
-        None => read(&order.everything(), window.limit, window.offset),
-        Some(Cursor::After(key)) => {
-            from_seeks(order.seeks(key, Side::After, false, false), window.limit, read)
-        }
-        Some(Cursor::Before(key)) => {
-            let mut rows =
-                from_seeks(order.seeks(key, Side::Before, false, true), window.limit, read)?;
-            rows.reverse();
-            Ok(rows)
-        }
-    }
-}
-
-/// Read each of `windows`, in order, with [`read_window`].
-pub fn read_windows<R, E>(
-    order: &ListOrder,
-    windows: &LibraryPageWindows,
-    mut read: impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-) -> Result<Vec<CursorWindowRead<R>>, E> {
-    windows
-        .iter()
-        .map(|window| {
-            let rows = read_window(order, window, &mut read)?;
-            let first = rows.first().map(|(_, key)| key.clone());
-            let last = rows.last().map(|(_, key)| key.clone());
-            Ok(CursorWindowRead {
-                window: window.clone(),
-                rows: rows.into_iter().map(|(row, _)| row).collect(),
-                first,
-                last,
-            })
-        })
-        .collect()
 }
 
 /// Up to `limit` rows from `seeks`, run in turn until they hold that many.

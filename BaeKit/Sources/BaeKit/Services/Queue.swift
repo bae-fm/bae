@@ -5,12 +5,12 @@ import Foundation
 /// at once with the tail's length, and says whether the queue changed or only
 /// the windows moved.
 public struct QueueUpcomingQuery: Sendable {
-    public let setWindows: @Sendable ([BridgeLibraryPageWindow]) throws -> Void
+    public let setWindows: @Sendable ([BridgeQueueWindow]) throws -> Void
     public let values: PulledValues<BridgeQueueUpcomingSnapshot>
 
     public init(
         setWindows:
-            @escaping @Sendable ([BridgeLibraryPageWindow]) throws -> Void,
+            @escaping @Sendable ([BridgeQueueWindow]) throws -> Void,
         values: PulledValues<BridgeQueueUpcomingSnapshot>
     ) {
         self.setWindows = setWindows

@@ -2,10 +2,23 @@
 
 use crate::types::BridgeError;
 
-browse_window! {
-    /// One requested window of the context's upcoming tail, with its entries.
-    window: BridgeQueueUpcomingWindow,
-    row: bae_playback::QueueItem => crate::types::BridgeQueueEntry,
+/// One requested window of the context's upcoming tail, with its entries.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeQueueUpcomingWindow {
+    pub window: crate::types::BridgeQueueWindow,
+    pub rows: Vec<crate::types::BridgeQueueEntry>,
+}
+
+impl BridgeQueueUpcomingWindow {
+    fn from_core(read: bae_playback::QueueWindowRead<bae_playback::QueueItem>) -> Self {
+        Self {
+            window: crate::types::BridgeQueueWindow {
+                offset: read.window.offset,
+                limit: read.window.limit,
+            },
+            rows: read.rows.into_iter().map(crate::types::BridgeQueueEntry::from_core).collect(),
+        }
+    }
 }
 
 /// Every requested window of the upcoming tail as of one read.
@@ -35,9 +48,13 @@ impl QueueUpcomingSubscription {
     /// the first entry after the playing track.
     pub fn set_windows(
         &self,
-        windows: Vec<crate::types::BridgeLibraryPageWindow>,
+        windows: Vec<crate::types::BridgeQueueWindow>,
     ) -> Result<(), BridgeError> {
-        self.inner.set(super::core_windows(windows)).map(|_revision| ()).map_err(BridgeError::from)
+        let windows = windows
+            .into_iter()
+            .map(|window| bae_playback::QueueWindow::at(window.offset, window.limit))
+            .collect();
+        self.inner.set(windows).map(|_revision| ()).map_err(BridgeError::from)
     }
 }
 

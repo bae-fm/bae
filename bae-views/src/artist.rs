@@ -222,7 +222,7 @@ pub(crate) fn artist_rows_on(
 
 /// How many artists come before the rows `seek` reads: what a count over one
 /// of the seeks before a key adds up to.
-fn artist_seek_count_on(
+pub(crate) fn artist_seek_count_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,

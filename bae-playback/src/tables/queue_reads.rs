@@ -40,7 +40,7 @@ pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, 
 /// rows show them.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
-    let all = bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(0, u64::MAX)]);
+    let all = crate::QueueWindows::from([crate::QueueWindow::at(0, u64::MAX)]);
     let read = store.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
     Ok(read.windows.into_iter().flat_map(|window| window.rows).collect())
 }
@@ -56,12 +56,8 @@ pub async fn queue_context_version(store: &Store) -> Result<u64, DbError> {
 /// through its request handle.
 pub fn subscribe_queue_upcoming(
     store: &Store,
-    initial: bae_store::LibraryPageWindows,
-) -> coven::ReconfigurableLiveQuery<
-    bae_store::LibraryPageWindows,
-    QueueUpcomingRead,
-    bae_store::DbError,
-> {
+    initial: crate::QueueWindows,
+) -> coven::ReconfigurableLiveQuery<crate::QueueWindows, QueueUpcomingRead, bae_store::DbError> {
     store
         .subscribe_reconfigurable(initial, |windows, sql| queue_upcoming_on(&sql, windows))
         .process(Ok)
@@ -212,7 +208,7 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
 
 fn queue_upcoming_on(
     sql: &SqlReadContext<'_>,
-    windows: &bae_store::LibraryPageWindows,
+    windows: &crate::QueueWindows,
 ) -> Result<QueueUpcomingRead, DbError> {
     let head = queue_head_on(sql)?;
     let windows = windows
@@ -235,7 +231,7 @@ fn queue_upcoming_on(
                     ],
                 )?,
             };
-            Ok(bae_store::LibraryBrowseWindow::unkeyed(window.clone(), items))
+            Ok(crate::QueueWindowRead { window: *window, rows: items })
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {
@@ -275,7 +271,7 @@ pub struct QueueUpcomingRead {
     /// another version may hold other rows.
     pub context_version: u64,
     pub upcoming_total: u64,
-    pub windows: Vec<bae_store::LibraryBrowseWindow<QueueItem>>,
+    pub windows: Vec<crate::QueueWindowRead<QueueItem>>,
 }
 
 #[cfg(test)]

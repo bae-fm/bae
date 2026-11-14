@@ -5,10 +5,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueUpcomingSnapshot
 import uniffi.bae_bridge.BridgeQueueUpcomingWindow
+import uniffi.bae_bridge.BridgeQueueWindow
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /** An upcoming read a test drives: it records every window request and hands `next` whatever
@@ -22,7 +22,7 @@ internal class UpcomingFeed {
 
     var opened = 0
         private set
-    val requests = mutableListOf<List<BridgeLibraryPageWindow>>()
+    val requests = mutableListOf<List<BridgeQueueWindow>>()
     private val values = Channel<BridgeQueueUpcomingSnapshot>(Channel.UNLIMITED)
     private var failNext: BridgeException? = null
     private val closed = CompletableDeferred<Unit>()
@@ -33,7 +33,7 @@ internal class UpcomingFeed {
     fun open(): QueueUpcomingQuery {
         opened++
         return object : QueueUpcomingQuery {
-            override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
+            override fun setWindows(windows: List<BridgeQueueWindow>) {
                 requests.add(windows)
             }
 
@@ -72,10 +72,8 @@ internal class UpcomingFeed {
                 windows =
                     listOf(
                         BridgeQueueUpcomingWindow(
-                            window = BridgeLibraryPageWindow(offset.toULong(), read.size.toULong(), null),
+                            window = BridgeQueueWindow(offset.toULong(), read.size.toULong()),
                             rows = read,
-                            first = null,
-                            last = null,
                         ),
                     ).filter { read.isNotEmpty() },
             ),

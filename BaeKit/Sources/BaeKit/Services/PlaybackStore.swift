@@ -267,10 +267,9 @@ extension PlaybackStore {
             try query.setWindows(
                 upcomingWindows.sorted { $0.lowerBound < $1.lowerBound }
                     .map {
-                        BridgeLibraryPageWindow(
+                        BridgeQueueWindow(
                             offset: UInt64($0.lowerBound),
-                            limit: UInt64($0.count),
-                            cursor: nil
+                            limit: UInt64($0.count)
                         )
                     }
             )

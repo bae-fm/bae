@@ -15,10 +15,10 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueSnapshot
+import uniffi.bae_bridge.BridgeQueueWindow
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -167,5 +167,5 @@ class QueueUpcomingWindowTest {
     private fun window(
         offset: Int,
         limit: Int,
-    ) = BridgeLibraryPageWindow(offset.toULong(), limit.toULong(), null)
+    ) = BridgeQueueWindow(offset.toULong(), limit.toULong())
 }

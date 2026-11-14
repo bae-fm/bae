@@ -5,7 +5,7 @@
 
 use super::{LiveRead, LiveRequest};
 use crate::live_query::{CancellableLiveQuery, LiveQueryError};
-use crate::{LibraryPageWindow, LibraryPageWindows, Schema, Store};
+use crate::{Schema, Store};
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::{mpsc, Arc, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -81,18 +81,6 @@ async fn a_read_for_a_replaced_id_is_passed_over() {
     let current = Some("current".to_string());
     let delivered = replaced_while_reading(None, Some("held".to_string()), current.clone()).await;
     assert_eq!(delivered, current);
-}
-
-/// A read for windows the reader has since scrolled off is still delivered:
-/// each window it names holds that window's rows.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_read_for_replaced_windows_is_delivered() {
-    let windows = |offset| -> LibraryPageWindows {
-        [LibraryPageWindow::at(offset, 10)].into_iter().collect()
-    };
-    let delivered =
-        replaced_while_reading(LibraryPageWindows::new(), windows(0), windows(10)).await;
-    assert_eq!(delivered, windows(0));
 }
 
 /// A read whose query ended once its store closed ends with it, and a new

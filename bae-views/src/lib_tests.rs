@@ -395,18 +395,26 @@ mod window_cost {
             }
         }
         for group_by_artist in [false, true] {
-            let (list, rows): (&str, Rows<_>) = if group_by_artist {
-                ("albums_by_artist", |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(sql, true, order, seek, limit, offset)
-                })
+            let (list, rows, count): (&str, Rows<_>, Count) = if group_by_artist {
+                (
+                    "albums_by_artist",
+                    |sql, order, seek, limit, offset| {
+                        crate::album::album_rows_on(sql, true, order, seek, limit, offset)
+                    },
+                    |sql, order, seek| crate::album::album_seek_count_on(sql, true, order, seek),
+                )
             } else {
-                ("albums", |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(sql, false, order, seek, limit, offset)
-                })
+                (
+                    "albums",
+                    |sql, order, seek, limit, offset| {
+                        crate::album::album_rows_on(sql, false, order, seek, limit, offset)
+                    },
+                    |sql, order, seek| crate::album::album_seek_count_on(sql, false, order, seek),
+                )
             };
             for (name, sort) in &sorts {
                 let (_, order) = crate::album::album_browse_order(sort, group_by_artist);
-                measure(db, list, name, n, order, rows).await;
+                measure(db, list, name, n, order, rows, count).await;
             }
         }
     }
@@ -429,6 +437,7 @@ mod window_cost {
                 n,
                 crate::artist::artist_order(&sort),
                 crate::artist::artist_rows_on,
+                crate::artist::artist_seek_count_on,
             )
             .await;
         }
@@ -456,6 +465,7 @@ mod window_cost {
                 n,
                 crate::composer::composer_order(&sort),
                 crate::composer::composer_rows_on,
+                crate::composer::composer_seek_count_on,
             )
             .await;
         }
@@ -502,7 +512,10 @@ mod window_cost {
                     let order =
                         crate::storage::storage_order(&StorageSortCriterion { field, direction });
                     let name = format!("{filter:?}_{field:?}_{direction:?}");
-                    measure(db, "storage", &name, n, order, rows).await;
+                    let count = move |sql: &SqlReadContext<'_>, order: &_, seek: &_| {
+                        crate::storage::storage_seek_count_on(sql, filter, None, order, seek)
+                    };
+                    measure(db, "storage", &name, n, order, rows, count).await;
                 }
             }
         }
@@ -561,6 +574,18 @@ mod window_cost {
                             limit,
                             offset,
                         )
+                    },
+                    {
+                        let pattern = bae_util::search_text::search_pattern(text);
+                        move |sql: &SqlReadContext<'_>, order: &_, seek: &_| {
+                            crate::storage::storage_seek_count_on(
+                                sql,
+                                StorageFilter::All,
+                                Some(pattern.as_str()),
+                                order,
+                                seek,
+                            )
+                        }
                     },
                 )
                 .await;
@@ -647,6 +672,7 @@ mod window_cost {
             n,
             bae_transfers::tables::queue_order(),
             bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
+            bae_transfers::tables::queue_seek_count_on::<bae_transfers::DownloadRequest>,
         )
         .await;
     }

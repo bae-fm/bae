@@ -40,9 +40,9 @@ impl LibraryManager {
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub fn subscribe_queue_upcoming(
         &self,
-        initial: bae_store::LibraryPageWindows,
+        initial: bae_playback::QueueWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
+        bae_playback::QueueWindows,
         bae_playback::tables::QueueUpcomingRead,
         bae_store::DbError,
     > {

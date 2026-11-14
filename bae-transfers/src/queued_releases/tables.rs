@@ -302,7 +302,7 @@ pub(crate) fn release_queue_row_count_on<P: QueuedPayload>(
 }
 
 /// How many entries of the queue come before the rows `seek` reads.
-pub(crate) fn queue_seek_count_on<P: QueuedPayload>(
+pub fn queue_seek_count_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,

@@ -1,6 +1,6 @@
 use bae_store::list_windows::OrderKey;
 use bae_store::live_query::LiveRead;
-use bae_store::{LibraryBrowseWindow, LibraryPageWindows, ListWindow, WindowRead};
+use bae_store::{ListWindow, WindowRead};
 
 /// One artist's group in the album grid grouped by artist. Its range includes
 /// unloaded rows, so clients can lay out every section without fetching every
@@ -17,16 +17,6 @@ pub struct LibraryBrowseSection {
     pub first_position: u64,
     /// How many albums the artist has: all of them, never a page of them.
     pub album_count: u64,
-}
-
-/// One delivery of a windowed list: each requested window with its rows, and
-/// how many rows the list holds.
-#[derive(Debug, Clone)]
-pub struct LibraryBrowseSnapshot<Row> {
-    pub windows: Vec<LibraryBrowseWindow<Row>>,
-    pub total_count: u64,
-    pub request_revision: u64,
-    pub cause: coven::LiveQueryCause,
 }
 
 /// The rows of a list's window, by the list they belong to.
@@ -118,8 +108,3 @@ pub struct ListPosition {
 /// The position of a key read live: the key moves in place, and each read
 /// answers the key last set.
 pub type LiveListPosition = LiveRead<OrderKey, ListPosition>;
-
-/// A windowed list read live: the windows it reads move in place, and each
-/// read resolves to the snapshot its screen takes, carrying every window the
-/// request names, read fresh.
-pub type LiveLibraryBrowse<Snapshot> = LiveRead<LibraryPageWindows, Snapshot>;

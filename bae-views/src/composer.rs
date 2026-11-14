@@ -194,7 +194,7 @@ fn find_work_detail_on(
 }
 
 /// How many composers come before the rows `seek` reads.
-fn composer_seek_count_on(
+pub(crate) fn composer_seek_count_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,

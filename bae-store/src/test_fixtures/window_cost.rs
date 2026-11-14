@@ -1,11 +1,12 @@
-//! How what one window of a paged list costs to read is measured: at each
-//! size, the window at the top, the middle and the end, reached by a jump,
-//! which reads it by its offset, and by scrolling, which reads it from a
-//! cursor at the row beside it (`list_windows`), each read the median of
-//! several runs.
+//! How what one window of a list costs to read is measured: at each size, the
+//! window at the top, the middle and the end, reached by scrolling, which
+//! reads the range that starts at a row's key (`list_windows`), and by a
+//! jump, which reads the key at a position by offset and then that range;
+//! and the position of a key, the count of the rows before it, at the middle
+//! and the end. Each read is the median of several runs.
 
-use crate::list_windows::{read_windows, Cursor, Keyed, ListOrder, Seek};
-use crate::{DbError, SortDirection, Store};
+use crate::list_windows::{key_at, read_range, rows_before, Keyed, ListOrder, Seek};
+use crate::{DbError, ListWindow, SortDirection, Store};
 use coven::SqlReadContext;
 use std::time::{Duration, Instant};
 /// The sizes the lists are measured at, each reached by adding rows to the
@@ -78,8 +79,12 @@ pub fn report_cost(metric: &str, value: f64, unit: &str) {
 pub type Rows<R> =
     fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>;
 
-/// Read one window at each measured offset of a list of `n` rows in `order`,
-/// once by a jump and once from the row beside it.
+/// Counts the rows a seek holds: what a list's live position adds up.
+pub type Count = fn(&SqlReadContext<'_>, &ListOrder, &Seek) -> Result<u64, DbError>;
+
+/// Read one window at each measured position of a list of `n` rows in
+/// `order`: by scrolling to it, by jumping to it, and, in the middle and at
+/// the end, the position of its first row.
 pub async fn measure<R: Send + 'static>(
     db: &Store,
     list: &str,
@@ -91,37 +96,55 @@ pub async fn measure<R: Send + 'static>(
         + Send
         + Sync
         + 'static,
+    count: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek) -> Result<u64, DbError>
+        + Clone
+        + Send
+        + Sync
+        + 'static,
 ) {
     let order = std::sync::Arc::new(order);
-    for (at, offset) in offsets(n) {
-        // The row beside the window: after it at the top, before it below.
-        let beside = if offset == 0 { offset + LIMIT } else { offset - 1 };
+    for (at, position) in offsets(n) {
         let key = {
             let (order, rows) = (order.clone(), rows.clone());
             db.read(move |sql| {
-                Ok(rows(&sql, &order, &order.everything(), 1, beside)?
-                    .pop()
-                    .expect("the row beside a window is in the list")
-                    .1)
+                Ok(key_at(&order, position, &mut |seek, limit, offset| {
+                    rows(&sql, &order, seek, limit, offset)
+                })?
+                .expect("the list has a row at the position"))
             })
             .await
             .unwrap()
         };
-        let cursor = if offset == 0 { Cursor::Before(key) } else { Cursor::After(key) };
-        for (reach, window) in [
-            ("jump", crate::LibraryPageWindow::at(offset, LIMIT)),
-            ("scroll", crate::LibraryPageWindow::from_cursor(offset, LIMIT, cursor)),
-        ] {
-            let (order, rows) = (order.clone(), rows.clone());
-            let windows = crate::LibraryPageWindows::from([window]);
-            let timing = median(db, move |sql| {
-                let read = read_windows(&order, &windows, |seek, limit, at| {
-                    rows(sql, &order, seek, limit, at)
+        let window = ListWindow::Forward { from: Some(key.clone()), until: None, limit: LIMIT };
+        let scroll = {
+            let (order, rows, window) = (order.clone(), rows.clone(), window.clone());
+            median(db, move |sql| {
+                let read = read_range(&order, &window, &mut |seek, limit, offset| {
+                    rows(sql, &order, seek, limit, offset)
                 })?;
-                Ok(read[0].rows.len())
+                Ok(read.rows.len())
+            })
+            .await
+        };
+        report(list, name, "scroll", at, position, n, scroll);
+        let jump = {
+            let (order, rows) = (order.clone(), rows.clone());
+            median(db, move |sql| {
+                let mut read = |seek: &Seek, limit, offset| rows(sql, &order, seek, limit, offset);
+                let key = key_at(&order, position, &mut read)?.expect("a row at the position");
+                let window = ListWindow::Forward { from: Some(key), until: None, limit: LIMIT };
+                Ok(read_range(&order, &window, &mut read)?.rows.len())
+            })
+            .await
+        };
+        report(list, name, "jump", at, position, n, jump);
+        if at != "top" {
+            let (order, count, key) = (order.clone(), count.clone(), key);
+            let place = median(db, move |sql| {
+                Ok(rows_before(&order, &key, |seek| count(sql, &order, seek))? as usize)
             })
             .await;
-            report(list, name, reach, at, offset, n, timing);
+            report(list, name, "position", at, position, n, place);
         }
     }
 }

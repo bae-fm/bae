@@ -12,7 +12,7 @@ pub struct QueueItem {
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels
-/// the section — a release vs the library). Its tracks are read in windows of [`bae_store::LibraryBrowseWindow`].
+/// the section — a release vs the library). Its tracks are read in windows of [`crate::QueueWindowRead`].
 /// Carried separately from the manual lane so each UI renders the two as
 /// distinct sections.
 #[derive(Debug, Clone, PartialEq)]

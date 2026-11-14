@@ -458,7 +458,7 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         .unwrap();
     assert!(matches!(ended, Err(LiveQueryError::Cancelled)), "{ended:?}");
     assert!(matches!(
-        read.set([bae_store::LibraryPageWindow::at(0, 10)].into()),
+        read.set([bae_playback::QueueWindow::at(0, 10)].into()),
         Err(LiveQueryError::Cancelled)
     ));
 }

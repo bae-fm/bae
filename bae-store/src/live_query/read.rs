@@ -4,7 +4,6 @@
 //! request last set resolves.
 
 use super::{CancellableLiveQuery, LiveQueryError};
-use crate::LibraryPageWindows;
 use std::collections::BTreeSet;
 use std::future::Future;
 use std::pin::Pin;
@@ -48,14 +47,6 @@ impl LiveRequest for crate::ListWindow {
 impl LiveRequest for crate::list_windows::OrderKey {
     fn still_answers(&self, current: &Self) -> bool {
         self == current
-    }
-}
-
-/// Each window a read names holds that window's rows as of the read, whatever
-/// windows are set since.
-impl LiveRequest for LibraryPageWindows {
-    fn still_answers(&self, _current: &Self) -> bool {
-        true
     }
 }
 

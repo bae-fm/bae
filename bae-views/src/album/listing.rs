@@ -16,7 +16,7 @@ pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 
 /// How many rows of the album grid come before the rows `seek` reads: what a
 /// count over one of the seeks before a key adds up to.
-pub(super) fn album_seek_count_on(
+pub(crate) fn album_seek_count_on(
     sql: &SqlReadContext<'_>,
     group_by_artist: bool,
     order: &ListOrder,

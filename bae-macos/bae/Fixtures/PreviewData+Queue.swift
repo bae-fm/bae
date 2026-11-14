@@ -9,7 +9,7 @@ import Foundation
 private final class PreviewUpcomingFeed: @unchecked Sendable {
     private let lock = NSLock()
     private var rows: [BridgeQueueEntry] = []
-    private var windows: [BridgeLibraryPageWindow] = []
+    private var windows: [BridgeQueueWindow] = []
     private var version: UInt64 = 0
     /// Whether a value is due that `take` has not taken yet.
     private var due = true
@@ -22,7 +22,7 @@ private final class PreviewUpcomingFeed: @unchecked Sendable {
         }
     }
 
-    func setWindows(_ windows: [BridgeLibraryPageWindow]) {
+    func setWindows(_ windows: [BridgeQueueWindow]) {
         deliver { self.windows = windows }
     }
 
@@ -69,9 +69,7 @@ private final class PreviewUpcomingFeed: @unchecked Sendable {
                 let end = min(start + Int(window.limit), rows.count)
                 return BridgeQueueUpcomingWindow(
                     window: window,
-                    rows: Array(rows[start..<end]),
-                    first: nil,
-                    last: nil
+                    rows: Array(rows[start..<end])
                 )
             }
         )
