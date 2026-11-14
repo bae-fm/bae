@@ -221,6 +221,23 @@ extension ShotScene {
             }
         },
         ShotScene(
+            id: "mac.library.albums.failed",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            let uiStore = UiStore()
+            let backing = LibraryView.previewUnreadableBacking(uiStore: uiStore)
+            return ShotStage(
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    needsAttention: false,
+                    size: CGSize(width: 1200, height: 760)
+                )
+            ) {
+                backing.session.albums.list?.initialLoadError != nil
+            }
+        },
+        ShotScene(
             id: "mac.activity.panel.problem-open",
             size: CGSize(width: 1200, height: 760)
         ) {

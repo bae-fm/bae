@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.BrowserPageState
+import fm.bae.app.data.PageError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
@@ -81,15 +82,7 @@ internal fun LibraryPageContent(
     ) {
         when {
             pageError != null && !page.hasRows -> {
-                ListPlaceholder {
-                    AndroidNotice(
-                        title = stringResource(R.string.library_read_failed),
-                        advice = null,
-                        error = pageError.error,
-                        look = NoticeLook.CENTERED,
-                        action = pageError.error.retryAction(onClick = pageError.onRetry),
-                    )
-                }
+                LibraryReadFailed(pageError)
             }
 
             // The first window is a local read; nothing shows until it lands.
@@ -105,6 +98,20 @@ internal fun LibraryPageContent(
                 rows()
             }
         }
+    }
+}
+
+/** A list that could not be read: the centred notice in the list's place, with Retry reopening its reads. */
+@Composable
+internal fun LibraryReadFailed(pageError: PageError) {
+    ListPlaceholder {
+        AndroidNotice(
+            title = stringResource(R.string.library_read_failed),
+            advice = null,
+            error = pageError.error,
+            look = NoticeLook.CENTERED,
+            action = pageError.error.retryAction(onClick = pageError.onRetry),
+        )
     }
 }
 
