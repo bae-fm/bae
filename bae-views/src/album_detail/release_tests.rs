@@ -43,16 +43,13 @@ fn detail_of(
     release.pressing.year = release_year;
     let raw = bae_records::DbReleaseDetail {
         release,
-        mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new(
-            &coven::UuidIds,
-            "release-id",
-            std::num::NonZeroU16::MIN,
-            bae_types::mediums::ReleaseMedium {
+        mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium {
+            medium: bae_types::mediums::ReleaseMedium {
                 carrier: Some(bae_types::pressing::Medium::Vinyl),
                 sides: std::num::NonZeroU8::new(2).expect("two sides"),
             },
-            chrono::Utc::now(),
-        )]),
+            ..bae_records::DbReleaseMedium::new_test("release-id")
+        }]),
         tracks,
         credits: Vec::new(),
         files,
