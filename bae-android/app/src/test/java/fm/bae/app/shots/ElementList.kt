@@ -21,13 +21,15 @@ import kotlin.math.roundToInt
 internal object ElementList {
     private const val PLATFORM = "android"
     private const val TENTH = 10.0
+    private const val SLACK = 0.6
     private const val HEX_RADIX = 16
     private const val RGB_DIGITS = 8
 
     /**
      * The list for the tree under [root] (the root has no semantics of its own and is not listed), with the
-     * [embedded] views' elements, which the tree does not hold, each placed where the reading order reaches
-     * its box: before the first element that starts lower, or in its row, further right.
+     * [embedded] views' elements, which the tree does not hold, each placed at the bare node the tree keeps for
+     * its view, or else where the reading order reaches its box: before the first element that starts lower, or
+     * in its row, further right.
      */
     fun of(
         board: String,
@@ -46,10 +48,26 @@ internal object ElementList {
             node.children.forEach { visit(it, here) }
         }
         root.children.forEach { visit(it, null) }
+        // The tree keeps a bare, childless node where an embedded view sits; its elements are read there, in
+        // the view's order. A view with no such node is read where the reading order reaches its box.
         var from = 0
+        val placed = mutableSetOf<Listed>()
         for (view in embedded) {
-            val at = (from until listed.size).firstOrNull { startsAfter(listed[it].json, view) } ?: listed.size
-            listed.add(at, Listed(view, null))
+            val holder =
+                listed
+                    .filter { held -> held !in placed && holds(held.json, view) && listed.none { it.parent === held } }
+                    .minByOrNull { area(it.json) }
+            val here = Listed(view, null)
+            val at =
+                if (holder != null) {
+                    var next = listed.indexOf(holder) + 1
+                    while (next < listed.size && listed[next] in placed) next++
+                    next
+                } else {
+                    (from until listed.size).firstOrNull { startsAfter(listed[it].json, view) } ?: listed.size
+                }
+            listed.add(at, here)
+            placed.add(here)
             from = at + 1
         }
         val elements = org.json.JSONArray()
@@ -72,6 +90,25 @@ internal object ElementList {
         val json: JSONObject,
         val parent: Listed?,
     )
+
+    /** Whether [element] is a bare node (no words, no role) whose box holds [view]'s. */
+    private fun holds(
+        element: JSONObject,
+        view: JSONObject,
+    ): Boolean {
+        if (element.getString("role") != "other" || !element.isNull("label")) return false
+        val box = element.getJSONObject("bounds")
+        val mine = view.getJSONObject("bounds")
+        return box.getDouble("x") - mine.getDouble("x") <= SLACK &&
+            box.getDouble("y") - mine.getDouble("y") <= SLACK &&
+            mine.getDouble("x") + mine.getDouble("width") - (box.getDouble("x") + box.getDouble("width")) <= SLACK &&
+            mine.getDouble("y") + mine.getDouble("height") - (box.getDouble("y") + box.getDouble("height")) <= SLACK
+    }
+
+    private fun area(element: JSONObject): Double {
+        val box = element.getJSONObject("bounds")
+        return box.getDouble("width") * box.getDouble("height")
+    }
 
     /** Whether [element] starts lower than [view]'s box, or in its row and further right. */
     private fun startsAfter(
