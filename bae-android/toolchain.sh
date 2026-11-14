@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034 # the scripts that source this read its variables
 # Sourced (bash) by every script that builds or checks the Android app: the
-# build scripts, scripts/check.sh, the pre-commit hook and CI. The toolchain
+# build scripts, the pre-commit hook and CI. The toolchain
 # versions are written once, in bae-android/gradle.properties, which Gradle also
 # reads; this reads them from there and finds the SDK, JDK and NDK they name.
 

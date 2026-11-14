@@ -84,7 +84,7 @@ if [ -f "$main_checkout/bae-android/local.properties" ] \
     echo "Linked bae-android/local.properties -> $main_checkout"
 fi
 
-# The macOS app builds in scripts/check.sh run with
+# The macOS app builds in bae-macos/test.sh run with
 # -disableAutomaticPackageResolution, which requires a Package.resolved. It lives
 # inside the gitignored generated xcodeproj, so a new worktree never inherits
 # one. Seed it from the main checkout (which keeps building the app), so an app

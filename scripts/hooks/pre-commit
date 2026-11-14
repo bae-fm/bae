@@ -1,4 +1,0 @@
-#!/bin/sh
-# The checks of a commit are declared in .checks; builds picks the ones the
-# staged files reach and runs them.
-exec builds checks run

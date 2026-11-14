@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Print the iOS simulator bae builds, tests and runs on: the newest available
-# iPhone, as "<udid><TAB><name>". run.sh, check.sh, the screenshot capture and
+# iPhone, as "<udid><TAB><name>". run.sh, the screenshot capture and
 # iOS CI all choose through this, so they agree on one device. Exits non-zero,
 # saying so, when no iPhone simulator is installed.
 set -euo pipefail

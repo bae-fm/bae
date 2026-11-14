@@ -83,7 +83,7 @@ esac
 
 # The staticlib links into the app, so build it for the app's deployment
 # target. The scheme pre-action receives it from Xcode; a build from a terminal
-# (CI, check.sh, open.sh) reads it from project.yml. cc-built dependencies
+# (CI, open.sh) reads it from project.yml. cc-built dependencies
 # (aws-lc-sys, libsqlite3-sys, ffmpeg-sys-next, objc2, ...) watch this variable,
 # so without it the two kinds of build rebuilt them and everything above them
 # each time they alternated.

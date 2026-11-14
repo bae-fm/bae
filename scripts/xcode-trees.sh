@@ -13,7 +13,7 @@
 #                   the app a Dock app. Holds the app the person launches, and
 #                   what bae-avalonia/run.sh and `builds build-app` read from
 #                   it.
-#   macos-unsigned  every other build of the app: scripts/check.sh,
+#   macos-unsigned  every other build of the app:
 #                   bae-macos/test.sh, the screenshot scenes, and CI and the
 #                   release workflow's builds. CODE_SIGNING_ALLOWED=NO, bundle id
 #                   fm.bae.desktop.xcode (project.yml's Debug default), a plist
