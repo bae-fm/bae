@@ -21,11 +21,11 @@ extension ShotScene {
     ]
 
     /// The cover a scene's albums show: placeholder art named after the album.
-    private static func cover(_ title: String) -> BridgeImageRef {
+    static func cover(_ title: String) -> BridgeImageRef {
         BridgeImageRef(id: title, version: "1", imageType: .cover)
     }
 
-    private static func coverStore() -> ImageStore {
+    static func coverStore() -> ImageStore {
         ImageStore(
             fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
         )

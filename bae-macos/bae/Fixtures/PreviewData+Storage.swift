@@ -311,7 +311,8 @@ extension PreviewData {
         transitioning: Bool = false,
         upload: BridgeReleaseUpload? = nil,
         fileCount: Int64 = 12,
-        totalSize: UInt64 = 367_000_000
+        totalSize: UInt64 = 367_000_000,
+        cover: BridgeImageRef? = nil
     ) -> ReleaseSummary {
         ReleaseSummary(
             from: BridgeReleaseSummary(
@@ -325,7 +326,7 @@ extension PreviewData {
                 transitioning: upload != nil || transitioning,
                 fileCount: fileCount,
                 totalSize: totalSize,
-                cover: nil
+                cover: cover
             )
         )
     }

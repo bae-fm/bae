@@ -10,7 +10,7 @@ extension ShotScene {
     static let playbackComponentScenes: [ShotScene] =
         nowPlayingBarScenes + seekBarScenes + playPauseScenes
         + queueRowScenes + queueSectionScenes + textFieldScenes
-        + trackRowScenes
+        + trackRowScenes + queuePanelScenes
 
     /// What the bar's seek bar shows of the track.
     private struct BarLoad {
@@ -356,5 +356,93 @@ extension ShotScene {
             ),
             artist: "Mara Quill"
         ),
+    ]
+
+    private static func queueEntry(
+        _ title: String,
+        album: String,
+        duration: UInt64
+    ) -> BridgeQueueEntry {
+        BridgeQueueEntry(
+            entryId: "e-\(title)",
+            trackId: "t-\(title)",
+            display: BridgeTrackDisplay(
+                title: title,
+                artistLine: .named("Mara Quill"),
+                albumId: "a-\(album)",
+                releaseId: "r-\(album)",
+                albumTitle: album,
+                coverImage: cover(album)
+            ),
+            durationClock: bridgeLengthClock(ms: duration)
+        )
+    }
+
+    /// `MacQueuePanel`, docked at the window's right with a track playing, one
+    /// track up next and one playing from the album.
+    private static let queuePanelScenes: [ShotScene] = [
+        component(
+            "mac.component.queue-panel.default",
+            width: 436,
+            height: 616,
+            images: coverStore()
+        ) {
+            let upcoming = [
+                queueEntry(
+                    "Tin Roof",
+                    album: "Low Tide Hours",
+                    duration: 341_000
+                )
+            ]
+            MacQueuePanel(
+                manual: [
+                    queueEntry(
+                        "Margins",
+                        album: "Northbound",
+                        duration: 295_000
+                    )
+                ],
+                manualVersion: 0,
+                context: QueuePlaybackContext(
+                    bridge: BridgePlaybackContext(
+                        kind: .release,
+                        sourceTitle: "Low Tide Hours"
+                    )
+                ),
+                shuffled: false,
+                upcoming: QueueUpcoming(
+                    total: upcoming.count,
+                    itemAt: {
+                        upcoming.indices.contains($0) ? upcoming[$0] : nil
+                    },
+                    holds: { id in upcoming.contains { $0.entryId == id } },
+                    version: 0,
+                    loadRange: { _, _ in },
+                    failure: nil,
+                    onRetry: {}
+                ),
+                position: PreviewData.trackPosition(
+                    positionMs: 102_000,
+                    durationMs: 303_000
+                ),
+                onShowUpcoming: {},
+                isActive: true,
+                nowPlayingTitle: "Low Tide Hours",
+                nowPlayingArtist: "Mara Quill",
+                nowPlayingCover: .libraryImage(cover("Low Tide Hours")),
+                isPlaying: true,
+                onClose: {},
+                onGoToNowPlaying: {},
+                onPlayPause: {},
+                onClearUpNext: {},
+                onClearPlayingFrom: {},
+                onSkipTo: { _ in },
+                onRemove: { _ in },
+                onReorder: { _, _ in nil },
+                onReorderFailed: { _ in },
+                onInsertTracks: { _, _ in },
+                onSetShuffle: { _ in }
+            )
+        }
     ]
 }
