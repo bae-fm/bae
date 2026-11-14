@@ -6458,7 +6458,8 @@ which of pausing between sides and restoring on launch are on, how many pins
 run at once, the total this phone keeps for the library (§4.7, "3.9 GB on this
 phone", nothing until the first measurement), whether casting is on, and the
 version. The Mac's Settings is one window with no title bar: its panes' names,
-as text alone, down a sidebar that holds the window's buttons at its top, and
+as text alone, down a sidebar that holds the window's buttons at its top,
+inset 12 points from the panel's top left corner, and
 each pane's title in bold at the top left of the pane. It opens on Appearance,
 the first pane. The sidebar names the
 sync state beside Library only while it is amber or red, and Offline beside

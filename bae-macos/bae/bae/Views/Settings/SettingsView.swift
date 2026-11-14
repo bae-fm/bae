@@ -216,6 +216,7 @@ struct SettingsWindowLayout<Pane: View>: View {
                 .windowBackground()
         }
         .windowBackground()
+        .settingsWindowButtonsInSidebar()
         .ignoresSafeArea(.container, edges: .top)
         // The sidebar's width plus the width every pane was drawn against.
         .frame(width: 690, height: 600)
