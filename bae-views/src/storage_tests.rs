@@ -198,44 +198,14 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
     }
 }
 
-/// The aliases a searching Storage Manager statement reads what the search
-/// finds through, beside the list's: never scanned whole.
-const SEARCH_ALIASES: &[&str] = &["credit", "shown", "listing", "storage", "r", "a"];
-
-/// Whether a plan scans one of `aliases` whole.
-fn scans(steps: &[String], aliases: &[&str]) -> bool {
-    steps.iter().any(|step| {
-        aliases.iter().any(|alias| {
-            step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
-        })
-    })
-}
-
-/// Whether a plan reads the search tables only by entry: each album's text
-/// looked up by its key, never the pattern searched for in a table's index,
-/// nor a table passed over whole.
-fn reads_search_text_by_entry(steps: &[String]) -> bool {
-    let reads = ["title_text", "artist_text", "printed_text"].map(|alias| {
-        steps
-            .iter()
-            .filter(|step| step.starts_with(&format!("SCAN {alias} ")))
-            .map(|step| step.ends_with("VIRTUAL TABLE INDEX 0:="))
-            .collect::<Vec<_>>()
-    });
-    reads.iter().all(|read| read == &[true])
-}
-
 /// The search pattern of `text`, as a statement binds it.
 fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
     vec![(":search", rusqlite::types::Value::Text(bae_util::search_text::search_pattern(text)))]
 }
 
-/// A searching Storage Manager list stays on its indexes under every sort
-/// and filter: read in the order's index, each seek searches the index,
-/// sorts nothing and tests each album by its own search text; read from what
-/// the search finds, each reaches the listing by its album and sorts only
-/// those rows; and its counts and its selection read what the search finds
-/// and the selected keys, never the whole list.
+/// A searching Storage Manager list never scans the listing whole under
+/// any sort and filter: each seek of a searched window reaches the listing
+/// through its indexes, by the albums the search finds, and sorts only those.
 #[tokio::test]
 async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index() {
     let (db, _tmp) = library().await;
@@ -270,175 +240,34 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                     150,
                 )
                 .await;
-                let what = format!("searched storage {filter:?} {field:?} {direction:?}");
-                assert_seeks_search(
-                    &db,
-                    &what,
-                    &order,
-                    key.clone(),
-                    |seek| {
-                        crate::storage::storage_window_query(
-                            &order,
-                            filter,
-                            crate::storage::StorageRows::SearchedInOrder,
-                            seek,
-                        )
-                    },
-                    search.clone(),
-                )
-                .await;
                 for seek in order.seeks_beside(&key) {
                     let statement = crate::storage::storage_window_query(
                         &order,
                         filter,
-                        crate::storage::StorageRows::SearchedInOrder,
+                        crate::storage::StorageRows::Searched,
                         &seek,
                     );
                     let steps =
                         crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
-                        reads_search_text_by_entry(&steps),
-                        "in order {what} {seek:?}: {steps:?}"
-                    );
-                    let statement = crate::storage::storage_window_query(
-                        &order,
-                        filter,
-                        crate::storage::StorageRows::Found,
-                        &seek,
-                    );
-                    let steps =
-                        crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
-                    assert!(
-                        !scans(&steps, SEARCH_ALIASES)
-                            && steps
-                                .iter()
-                                .any(|step| step.contains("USING INDEX idx_release_listing_album")),
-                        "found {what} {seek:?}: {steps:?}"
+                        !steps.iter().any(|step| crate::tests::LIST_ALIASES.iter().any(|alias| {
+                            step.starts_with(&format!("SCAN {alias} "))
+                                || step == &format!("SCAN {alias}")
+                        })),
+                        "searched storage {filter:?} {field:?} {direction:?} {seek:?}: {steps:?}"
                     );
                 }
             }
         }
-        let read = |statement: String, params: Vec<(&'static str, rusqlite::types::Value)>| {
-            let db = &db;
-            async move {
-                db.read(move |sql| {
-                    let params = params
-                        .iter()
-                        .map(|(name, value)| (*name, value as &dyn rusqlite::ToSql))
-                        .collect::<Vec<_>>();
-                    Ok(sql.query(
-                        &format!("EXPLAIN QUERY PLAN {statement}"),
-                        params.as_slice(),
-                        |row| row.get::<_, String>(3),
-                    )?)
-                })
-                .await
-                .unwrap()
-            }
-        };
-        let mut counted = search.clone();
-        counted.push((":titles", rusqlite::types::Value::Integer(30)));
-        let steps = read(crate::storage::storage_found_totals_query(filter), counted).await;
-        assert!(!scans(&steps, SEARCH_ALIASES), "count {filter:?}: {steps:?}");
-        // The pass over the titles reads every title once, and nothing else
-        // whole.
-        let steps =
-            read(crate::storage::storage_unfound_totals_query(filter), search.clone()).await;
-        assert!(
-            !scans(&steps, SEARCH_ALIASES)
-                && steps
-                    .iter()
-                    .filter(|step| step.ends_with("VIRTUAL TABLE INDEX 0:"))
-                    .eq(["SCAN untitled VIRTUAL TABLE INDEX 0:"].iter()),
-            "unfound {filter:?}: {steps:?}"
-        );
-        let mut selected = search.clone();
-        selected.push((":selected", rusqlite::types::Value::Text(r#"["a", "b"]"#.to_string())));
-        let steps = read(crate::storage::storage_selected_query(filter, true), selected).await;
-        assert!(
-            !scans(&steps, SEARCH_ALIASES) && reads_search_text_by_entry(&steps),
-            "selection {filter:?}: {steps:?}"
-        );
     }
 }
 
-/// The count of `text`'s search under `filter` read from what the indexes
-/// find, unless its pattern is in the titles of `titles` albums: whether it
-/// was read, the count and the size.
-fn found_totals(
-    sql: &SqlReadContext<'_>,
-    filter: StorageFilter,
-    text: &str,
-    titles: i64,
-) -> rusqlite::Result<(bool, i64, i64)> {
-    sql.query_row(
-        &crate::storage::storage_found_totals_query(filter),
-        rusqlite::named_params! {
-            ":search": bae_util::search_text::search_pattern(text),
-            ":titles": titles,
-        },
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-    )
-}
-
-/// The count and size `statement` reads for `text`'s search.
-fn pass_totals(
-    sql: &SqlReadContext<'_>,
-    statement: String,
-    text: &str,
-) -> rusqlite::Result<(i64, i64)> {
-    sql.query_row(
-        &statement,
-        rusqlite::named_params! { ":search": bae_util::search_text::search_pattern(text) },
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )
-}
-
-/// How a search is read at the top of the list: a rare one counted and read
-/// from what it finds, so it never walks the whole index; one in most titles
-/// left to the pass over the titles and read through the order's index.
+/// The count, the size and the list of a search under a filter agree: the
+/// count is how many releases the list holds, the size is their files', for
+/// a search found in titles, in the names the credits show, in a name a
+/// credit prints, in titles and names at once, and in no text.
 #[tokio::test]
-async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
-    let (db, _tmp) = library().await;
-    let read_at_top = |text: &'static str| {
-        let db = &db;
-        async move {
-            db.read(move |sql| {
-                let query = crate::LibrarySearchQuery::parse(text).unwrap();
-                let titles = crate::storage::storage_found_titles(300) as i64;
-                let (counted, _, _) = found_totals(&sql, StorageFilter::All, text, titles)?;
-                let (found, _, search) =
-                    crate::storage::storage_totals_on(&sql, StorageFilter::All, Some(&query))?;
-                Ok((found, counted, search.unwrap().rows(50, 0)))
-            })
-            .await
-            .unwrap()
-        }
-    };
-    // The second album's title, "Album 16807", is the only text holding it.
-    assert_eq!(read_at_top("16807").await, (1, true, crate::storage::StorageRows::Found));
-    assert_eq!(
-        read_at_top("album").await,
-        (300, false, crate::storage::StorageRows::SearchedInOrder)
-    );
-}
-
-/// A search is counted through the indexes while its pattern is in fewer
-/// titles than a pass over every title costs, about a fifth of them.
-#[test]
-fn a_search_in_a_fifth_of_the_titles_is_counted_by_a_pass() {
-    assert_eq!(crate::storage::storage_found_titles(100_000), 21_052);
-    assert_eq!(crate::storage::storage_found_titles(0), 0);
-}
-
-/// Every way a search is counted and read finds the same releases: the
-/// count from what the indexes find and the one taking what a pass over the
-/// titles doesn't find off the listing's counts agree, and so do the list read from what the indexes find and the one
-/// testing each album as the order's index reaches it, for a search found in
-/// titles, in the names the credits show, in a name a credit prints, in
-/// titles and names at once, and in no text.
-#[tokio::test]
-async fn every_search_read_finds_the_same_releases() {
+async fn a_searched_count_and_list_find_the_same_releases() {
     let (db, _tmp) = library().await;
     // The first album's credit prints a name of its own.
     test_records(&db)
@@ -455,56 +284,41 @@ async fn every_search_read_finds_the_same_releases() {
     for text in ["album 1", "artist 0", "printed", "1", "nothing holds this"] {
         for filter in [StorageFilter::All, StorageFilter::Local] {
             let order = order.clone();
-            let (counts, lists) = db
+            let (counted, listed) = db
                 .read(move |sql| {
                     let pattern = bae_util::search_text::search_pattern(text);
-                    let found = found_totals(&sql, filter, text, i64::MAX)
-                        .map(|(_, count, size)| (count, size));
-                    let unfound = pass_totals(
-                        &sql,
-                        crate::storage::storage_unfound_totals_query(filter),
-                        text,
-                    )
-                    .map_err(DbError::from)
-                    .and_then(|(unfound, unfound_size)| {
-                        Ok((
-                            crate::storage::storage_count_on(&sql, filter)? as i64 - unfound,
-                            crate::storage::storage_total_size_on(&sql, filter)? as i64
-                                - unfound_size,
-                        ))
-                    });
-                    let lists = [
-                        crate::storage::StorageRows::Found,
-                        crate::storage::StorageRows::SearchedInOrder,
-                    ]
-                    .map(|rows| {
-                        let statement = crate::storage::storage_window_query(
-                            &order,
-                            filter,
-                            rows,
-                            &order.everything(),
-                        );
-                        order.everything().bound(u64::MAX, 0, |params| {
-                            let mut params = params.to_vec();
-                            params.push((":search", &pattern));
-                            sql.query(&statement, params.as_slice(), |row| {
-                                row.get::<_, String>("release_id")
-                            })
+                    let counted = crate::storage::storage_counts_on(&sql, filter, Some(&pattern))?;
+                    let statement = crate::storage::storage_window_query(
+                        &order,
+                        filter,
+                        crate::storage::StorageRows::Searched,
+                        &order.everything(),
+                    );
+                    let listed = order.everything().bound(u64::MAX, 0, |params| {
+                        let mut params = params.to_vec();
+                        params.push((":search", &pattern));
+                        sql.query(&statement, params.as_slice(), |row| {
+                            Ok((
+                                row.get::<_, String>("release_id")?,
+                                row.get::<_, i64>("total_size")?,
+                            ))
                         })
-                    });
-                    let [read, tested] = lists;
-                    Ok(((found?, unfound?), (read?, tested?)))
+                    })?;
+                    Ok((counted, listed))
                 })
                 .await
                 .unwrap();
-            assert_eq!(counts.0, counts.1, "{text:?} {filter:?}: counts");
-            assert_eq!(lists.0, lists.1, "{text:?} {filter:?}: lists");
-            assert_eq!(counts.0 .0 as usize, lists.0.len(), "{text:?} {filter:?}");
+            assert_eq!(counted.0 as usize, listed.len(), "{text:?} {filter:?}: count");
             assert_eq!(
-                lists.0.is_empty(),
+                counted.1 as i64,
+                listed.iter().map(|(_, size)| size).sum::<i64>(),
+                "{text:?} {filter:?}: size"
+            );
+            assert_eq!(
+                listed.is_empty(),
                 text == "nothing holds this",
                 "{text:?} {filter:?} finds {}",
-                lists.0.len()
+                listed.len()
             );
         }
     }

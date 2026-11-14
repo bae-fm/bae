@@ -527,28 +527,23 @@ mod window_cost {
     /// about one title in a thousand.
     async fn measure_storage_search(db: &Store, n: u64) {
         for (name, text) in [("broad", "album"), ("rare", "album 123")] {
-            let query = crate::LibrarySearchQuery::parse(text).unwrap();
-            let counted = query.clone();
+            let pattern = bae_util::search_text::search_pattern(text);
+            let counted = pattern.clone();
             let timing = median(db, move |sql| {
-                let (count, _, _) =
-                    crate::storage::storage_totals_on(sql, StorageFilter::All, Some(&counted))?;
+                let (count, _) =
+                    crate::storage::storage_counts_on(sql, StorageFilter::All, Some(&counted))?;
                 Ok(count as usize)
             })
             .await;
             report("storage_search", name, "count", "all", 0, n, timing);
-            let counted = query.clone();
-            let (found, search) = db
+            let counted = pattern.clone();
+            let found = db
                 .read(move |sql| {
-                    let (count, _, search) = crate::storage::storage_totals_on(
-                        &sql,
-                        StorageFilter::All,
-                        Some(&counted),
-                    )?;
-                    Ok((count, search.unwrap()))
+                    Ok(crate::storage::storage_counts_on(&sql, StorageFilter::All, Some(&counted))?
+                        .0)
                 })
                 .await
                 .unwrap();
-            let search = std::sync::Arc::new(search);
             for (field, direction) in [
                 (StorageSortField::AlbumTitle, SortDirection::Ascending),
                 (StorageSortField::AlbumTitle, SortDirection::Descending),
@@ -557,7 +552,7 @@ mod window_cost {
             ] {
                 let order =
                     crate::storage::storage_order(&StorageSortCriterion { field, direction });
-                let search = search.clone();
+                let window_pattern = pattern.clone();
                 measure(
                     db,
                     "storage_search",
@@ -569,14 +564,14 @@ mod window_cost {
                             sql,
                             order,
                             StorageFilter::All,
-                            Some(search.as_ref()),
+                            Some(window_pattern.as_str()),
                             seek,
                             limit,
                             offset,
                         )
                     },
                     {
-                        let pattern = bae_util::search_text::search_pattern(text);
+                        let pattern = pattern.clone();
                         move |sql: &SqlReadContext<'_>, order: &_, seek: &_| {
                             crate::storage::storage_seek_count_on(
                                 sql,

@@ -1587,7 +1587,6 @@ tables = [
     "album_artist_link",
     "artist_listing",
     "release_listing",
-    "release_listing_totals",
     "album_search_entry",
     "album_search",
     "track_search_entry",

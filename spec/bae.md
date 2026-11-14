@@ -2309,7 +2309,8 @@ added. It shows every
 release, or only the local ones, or only the uploaded ones; text typed in its
 filter field narrows that to the releases whose album library search finds
 (§2.3), as each character is typed, and blank text narrows nothing. It shows
-the shown list's count and total size, and says there are no matches when the
+the shown list's count and total size, which one statement counts over the
+releases' storage rows with or without the search, and says there are no matches when the
 text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
 storage — a failed download first, then uploading, then pinning: files
@@ -6047,7 +6048,6 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_artist_link` | album the grid shows and artist its credits show: the album's title key, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
 | `artist_listing` | artist the artist list shows (§2.1): its name, the sort keys of its name and of its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title key and credit key, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
-| `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |

@@ -1,7 +1,5 @@
 //! What library search finds of albums and artists (§2.3), as SQL
-//! conditions: read from the search tables' indexes for the albums or
-//! artists a pattern finds, or tested on one album's own text in those
-//! tables.
+//! conditions read from the search tables' indexes.
 
 /// The ids of the artists library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see
@@ -52,51 +50,5 @@ pub(crate) fn album_matches_sql(album_id: &str, pattern: &str) -> String {
              SELECT album_id FROM album_search WHERE title GLOB {pattern} \
              UNION ALL {credits})",
         credits = albums_credits_find_sql(pattern),
-    )
-}
-
-/// Whether the album `album_id` names has a credit library search finds for
-/// the search pattern `pattern`, read from the search tables' indexes like
-/// [`album_matches_sql`].
-pub(crate) fn album_credits_found_sql(album_id: &str, pattern: &str) -> String {
-    format!("{album_id} IN ({})", albums_credits_find_sql(pattern))
-}
-
-/// Whether the title of the album `album_id` names holds the search pattern
-/// `pattern`, tested on the text its search table keeps for it, which that
-/// table's own matching tests (§2.3). The text is read by the album's entry
-/// and `+` keeps the pattern from SQLite's search of the table's index, so
-/// the test costs one lookup however many albums the pattern finds.
-fn album_title_holds_sql(album_id: &str, pattern: &str) -> String {
-    format!(
-        "EXISTS (SELECT 1 FROM album_search_entry title_entry \
-             JOIN album_search title_text ON title_text.rowid = title_entry.entry \
-             WHERE title_entry.album_id = {album_id} AND +title_text.title GLOB {pattern})"
-    )
-}
-
-/// Whether the album `album_id` names is one library search finds for the
-/// search pattern `pattern`, tested on that album alone: its title (see
-/// [`album_title_holds_sql`]), then the names its credits show and print,
-/// each read by its key from the text its search table keeps. The test costs
-/// a few lookups however many albums the pattern finds, so a statement
-/// testing the rows an index reaches reads only those.
-pub(crate) fn album_holds_sql(album_id: &str, pattern: &str) -> String {
-    format!(
-        "({title} \
-          OR EXISTS (SELECT 1 FROM album_artists credit \
-              JOIN artist_shown_as shown ON shown.artist_id = credit.artist_id \
-              JOIN artist_search_entry artist_entry \
-                  ON artist_entry.artist_id = shown.shown_artist_id \
-              JOIN artist_search artist_text ON artist_text.rowid = artist_entry.entry \
-              WHERE credit.album_id = {album_id} AND +artist_text.name GLOB {pattern}) \
-          OR EXISTS (SELECT 1 FROM album_artists credit \
-              JOIN artist_credit_search_entry printed_entry \
-                  ON printed_entry.artist_id = credit.artist_id \
-                 AND printed_entry.name_key = credit.credit_key \
-              JOIN artist_credit_search printed_text \
-                  ON printed_text.rowid = printed_entry.entry \
-              WHERE credit.album_id = {album_id} AND +printed_text.name GLOB {pattern}))",
-        title = album_title_holds_sql(album_id, pattern),
     )
 }

@@ -15,14 +15,14 @@ pub(super) const SQL: &str = include_str!("storage.sql");
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
     pub async fn get_storage_count(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        self.store.read(move |sql| storage_count_on(&sql, filter)).await
+        self.store.read(move |sql| Ok(storage_counts_on(&sql, filter, None)?.0)).await
     }
 
     /// The size of every file of the storage rows matching `filter` — the
     /// storage-manager footer's "Total:", independent of how many pages have
     /// loaded.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        self.store.read(move |sql| storage_total_size_on(&sql, filter)).await
+        self.store.read(move |sql| Ok(storage_counts_on(&sql, filter, None)?.1)).await
     }
 
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.
@@ -67,9 +67,6 @@ impl LibraryViews {
     /// each row beside whether storage is set up, which resolves it. Coven
     /// reruns it for a write inside its range alone.
     ///
-    /// A search is counted first, from what it finds: that decides whether
-    /// each seek of the window reads those releases or goes through the
-    /// order's index (`StorageSearch`).
     pub fn subscribe_storage_window(
         &self,
         sort: &StorageSortCriterion,
@@ -83,15 +80,23 @@ impl LibraryViews {
     > {
         let order = storage_order(sort);
         let read_order = order.clone();
-        let query = crate::LibrarySearchQuery::parse(search);
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
             .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-                let (.., found) = storage_totals_on(sql, filter, query.as_ref())?;
                 let syncs = syncs_on(sql)?;
-                Ok(storage_rows_on(sql, &read_order, filter, found.as_ref(), seek, limit, offset)?
-                    .into_iter()
-                    .map(|(parts, key)| ((parts, syncs), key))
-                    .collect())
+                Ok(storage_rows_on(
+                    sql,
+                    &read_order,
+                    filter,
+                    pattern.as_deref(),
+                    seek,
+                    limit,
+                    offset,
+                )?
+                .into_iter()
+                .map(|(parts, key)| ((parts, syncs), key))
+                .collect())
             })
             .process(|window| {
                 window.try_map_rows(|(parts, syncs)| Ok((process_storage_row(parts)?, syncs)))
@@ -106,10 +111,11 @@ impl LibraryViews {
         filter: StorageFilter,
         search: &str,
     ) -> coven::LiveQuery<StorageCounts, bae_store::DbError> {
-        let query = crate::LibrarySearchQuery::parse(search);
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store.subscribe(move |sql| {
-            let (rows, total_size, _) = storage_totals_on(&sql, filter, query.as_ref())?;
-            Ok(StorageCounts { rows, total_size, searching: query.is_some() })
+            let (rows, total_size) = storage_counts_on(&sql, filter, pattern.as_deref())?;
+            Ok(StorageCounts { rows, total_size, searching: pattern.is_some() })
         })
     }
 
@@ -143,12 +149,12 @@ impl LibraryViews {
         position: u64,
     ) -> Result<Option<OrderKey>, DbError> {
         let order = storage_order(sort);
-        let query = crate::LibrarySearchQuery::parse(search);
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
             .read(move |sql| {
-                let (.., found) = storage_totals_on(&sql, filter, query.as_ref())?;
                 key_at(&order, position, &mut |seek, limit, offset| {
-                    storage_rows_on(&sql, &order, filter, found.as_ref(), seek, limit, offset)
+                    storage_rows_on(&sql, &order, filter, pattern.as_deref(), seek, limit, offset)
                 })
             })
             .await
@@ -350,30 +356,21 @@ fn stored_value(filter: StorageFilter) -> Option<u8> {
     }
 }
 
-/// `SUM(column)` over `release_listing_totals`, of the rows `filter` keeps.
-fn listing_totals_sum_query(column: &str, filter: StorageFilter) -> String {
-    let kept =
-        stored_value(filter).map_or_else(String::new, |stored| format!(" WHERE stored = {stored}"));
-    format!("SELECT COALESCE(SUM({column}), 0) FROM release_listing_totals{kept}")
-}
-
-/// `release_listing listing` reached by album alone: a statement reading
-/// what a search finds looks up each album it finds there, and never walks
-/// an order's index past the releases it doesn't find.
-const FOUND_LISTING: &str = "release_listing listing INDEXED BY idx_release_listing_album";
-
-/// Which releases a Storage Manager statement reads, and how it reaches
-/// them.
+/// Which releases a Storage Manager statement reads: every release the
+/// filter keeps, or those whose album the search pattern `:search` finds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StorageRows {
-    /// Every release the filter keeps, through the order's index.
     Listed,
-    /// The releases whose album the search pattern `:search` finds, each
-    /// album tested alone as the order's index reaches its release.
-    SearchedInOrder,
-    /// The releases whose album the search pattern `:search` finds, read
-    /// from what it finds and sorted.
-    Found,
+    Searched,
+}
+
+/// The condition keeping the releases `rows` reads whose album is `album_id`
+/// (an SQL expression): the albums the search finds, or all.
+fn storage_search_condition(rows: StorageRows, album_id: &str) -> String {
+    match rows {
+        StorageRows::Listed => "1".to_string(),
+        StorageRows::Searched => album_matches_sql(album_id, ":search"),
+    }
 }
 
 /// The Storage Manager row's columns: the release's half and its album's,
@@ -413,18 +410,6 @@ fn storage_row_joins() -> String {
     )
 }
 
-/// The `listing` a statement reads `rows` from, and the condition that keeps
-/// the releases the search finds.
-fn storage_listing(rows: StorageRows) -> (&'static str, String) {
-    match rows {
-        StorageRows::Listed => ("release_listing listing", "1".to_string()),
-        StorageRows::SearchedInOrder => {
-            ("release_listing listing", album_holds_sql("listing.album_id", ":search"))
-        }
-        StorageRows::Found => (FOUND_LISTING, album_matches_sql("listing.album_id", ":search")),
-    }
-}
-
 /// One Storage Manager row per release `rows` reads that the filter keeps
 /// and `condition` passes, with the columns [`storage_row_columns`] names.
 fn storage_row_select(
@@ -433,14 +418,14 @@ fn storage_row_select(
     extra: &str,
     condition: &str,
 ) -> String {
-    let (listing, searched) = storage_listing(rows);
     format!(
         "SELECT {columns} \
-        FROM {listing} {joins} \
+        FROM release_listing listing {joins} \
         WHERE {filter} AND {searched} AND ({condition})",
         columns = storage_row_columns(extra),
         joins = storage_row_joins(),
         filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
     )
 }
 
@@ -458,10 +443,9 @@ pub(crate) fn storage_window_query(
     rows: StorageRows,
     seek: &Seek,
 ) -> String {
-    let (listing, searched) = storage_listing(rows);
     format!(
         "SELECT {columns} \
-         FROM (SELECT listing.release_id AS picked_release_id FROM {listing} \
+         FROM (SELECT listing.release_id AS picked_release_id FROM release_listing listing \
                WHERE {filter} AND {searched} AND ({condition}) \
                ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
          CROSS JOIN release_listing listing ON listing.release_id = picked.picked_release_id \
@@ -470,6 +454,7 @@ pub(crate) fn storage_window_query(
         columns = storage_row_columns(&format!(", {}", order.key_columns())),
         joins = storage_row_joins(),
         filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
     )
@@ -482,7 +467,7 @@ pub(crate) fn storage_window_query(
 /// the list read whole.
 pub(crate) fn storage_selected_query(filter: StorageFilter, searching: bool) -> String {
     let rows = match searching {
-        true => StorageRows::SearchedInOrder,
+        true => StorageRows::Searched,
         false => StorageRows::Listed,
     };
     format!(
@@ -492,174 +477,47 @@ pub(crate) fn storage_selected_query(filter: StorageFilter, searching: bool) -> 
     )
 }
 
-/// How many releases the list under `filter` holds whose album the search
-/// pattern `:search` finds, and their files' total size, read from what the
-/// search tables' indexes find, beside whether the pattern is in the titles
-/// of fewer than `:titles` albums. Only then is the count read
-/// ([`storage_found_titles`]): the title search stops at `:titles` albums
-/// and the match list reads nothing more.
-pub(crate) fn storage_found_totals_query(filter: StorageFilter) -> String {
-    format!(
-        "WITH titled (album_id) AS MATERIALIZED ( \
-             SELECT album_id FROM album_search WHERE title GLOB :search LIMIT :titles), \
-         few (counted) AS (SELECT COUNT(*) < :titles FROM titled) \
-         SELECT (SELECT counted FROM few), COUNT(*), COALESCE(SUM(listing.total_size), 0) \
-         FROM {FOUND_LISTING} \
-         WHERE {filter} AND listing.album_id IN ( \
-             SELECT album_id FROM titled WHERE (SELECT counted FROM few) \
-             UNION ALL \
-             SELECT album_id FROM ({credits}) WHERE (SELECT counted FROM few))",
-        filter = storage_filter(filter),
-        credits = albums_credits_find_sql(":search"),
-    )
-}
-
-/// How many releases the list under `filter` holds whose album the search
-/// pattern `:search` doesn't find, and their files' total size: what a
-/// search in many titles is counted from, taken off the counts kept beside
-/// the listing. Every album's title, as its search table keeps it, is tested
-/// in one pass over that table, which costs less than its index finding
-/// each album; only the albums whose title doesn't hold the pattern are
-/// looked up in the listing, and of those the ones a credit's name finds,
-/// through the credits' indexes, are left out.
-pub(crate) fn storage_unfound_totals_query(filter: StorageFilter) -> String {
-    format!(
-        "SELECT COUNT(*), COALESCE(SUM(listing.total_size), 0) \
-         FROM album_search untitled \
-         CROSS JOIN {FOUND_LISTING} ON listing.album_id = untitled.album_id \
-         WHERE NOT +untitled.title GLOB :search AND {filter} AND NOT {credited}",
-        filter = storage_filter(filter),
-        credited = album_credits_found_sql("listing.album_id", ":search"),
-    )
-}
-
-/// What counting one album costs each way of counting a search, measured
-/// against testing one album's title in a pass over every title: an album
-/// whose title holds the pattern found through the title search's index and
-/// looked up in the listing ([`storage_found_totals_query`]), and an album
-/// whose title doesn't looked up beside the pass
-/// ([`storage_unfound_totals_query`]).
-const FOUND_ALBUM_COST: u64 = 16;
-const UNTITLED_LOOKUP_COST: u64 = 3;
-
-/// The most titles of `albums` albums a search's pattern is counted through
-/// the indexes for. Past this many, testing every title and taking the
-/// albums whose title doesn't hold it off the listing's counts costs less:
-/// counted through the indexes, `titled` albums cost
-/// `FOUND_ALBUM_COST * titled`; counted off, `albums` passed plus
-/// `UNTITLED_LOOKUP_COST * (albums - titled)` looked up.
-pub(crate) fn storage_found_titles(albums: u64) -> u64 {
-    let albums = u128::from(albums);
-    (albums * u128::from(1 + UNTITLED_LOOKUP_COST)
-        / u128::from(FOUND_ALBUM_COST + UNTITLED_LOOKUP_COST)) as u64
-}
-
-/// What a row read from a search's matches costs against a row the order's
-/// index passes and tests: it is reached through the search tables and
-/// joined to its listing row, and the sort picks the window's rows from the
-/// rest. Measured at 20,000 and 100,000 releases in the orders by title and
-/// by date added, with searches finding from 100 releases to every release,
-/// the two reads cost the same when the index passes about as many rows as
-/// the matches would read, once each match is read for every row passed
-/// (`end * kept == found * found`): with 1.5 times as many passed the
-/// matches took about half the time, and with half as many the index did.
-const FOUND_ROW_COST: u128 = 1;
-
-/// A Storage Manager search as one read of the list runs it: the pattern its
-/// text matches, how many releases the filter keeps, and how many of those
-/// the search finds, which decide where each statement reads its rows from.
-pub(crate) struct StorageSearch {
-    pattern: String,
-    kept: u64,
-    found: u64,
-}
-
-impl StorageSearch {
-    /// Where a statement reading at most `limit` rows from `offset` reads
-    /// them from. Read in the order's index, it passes about its end times
-    /// the releases the filter keeps over those the search finds before it
-    /// holds its rows; read from what the search finds, it reads each of
-    /// those, at [`FOUND_ROW_COST`]. A search finding few releases is read
-    /// from them, so it never walks the whole index for a handful of rows.
-    pub(crate) fn rows(&self, limit: u64, offset: u64) -> StorageRows {
-        let found = u128::from(self.found);
-        let end = u128::from(offset.saturating_add(limit));
-        match FOUND_ROW_COST * found * found < end * u128::from(self.kept) {
-            true => StorageRows::Found,
-            false => StorageRows::SearchedInOrder,
-        }
-    }
-}
-
-/// How many releases the Storage Manager list holds and their files' total
-/// size, under `filter` and, with one, the search `query`: the counts kept
-/// beside the listing, or those of what the search finds. A search comes
-/// back as the read runs it.
-pub(crate) fn storage_totals_on(
+/// How many releases the Storage Manager list under `filter` holds and their
+/// files' total size, with `pattern` (a search pattern) narrowed to the
+/// releases whose album it finds.
+pub(crate) fn storage_counts_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
-    query: Option<&crate::LibrarySearchQuery>,
-) -> Result<(u64, u64, Option<StorageSearch>), DbError> {
-    let Some(query) = query else {
-        return Ok((storage_count_on(sql, filter)?, storage_total_size_on(sql, filter)?, None));
-    };
-    let pattern = search_pattern(query.as_str());
-    let kept = storage_count_on(sql, filter)?;
-    // The listing's release count stands in for how many albums there are.
-    let titles = storage_found_titles(storage_count_on(sql, StorageFilter::All)?);
-    let (counted, found, size) = sql.query_row(
-        &storage_found_totals_query(filter),
-        rusqlite::named_params! {
-            ":search": pattern,
-            ":titles": bae_store::list_windows::sql_bound(titles),
-        },
-        |row| {
-            Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)? as u64, row.get::<_, i64>(2)? as u64))
-        },
-    )?;
-    let (found, size) = match counted {
-        true => (found, size),
-        false => {
-            let (unfound, unfound_size) = sql.query_row(
-                &storage_unfound_totals_query(filter),
-                rusqlite::named_params! { ":search": pattern },
-                |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
-            )?;
-            let kept_size = storage_total_size_on(sql, filter)?;
-            // The releases a search leaves out are among those the list
-            // holds, so leaving out more is a bug of bae's: the counts kept
-            // beside the listing or this count disagree with the listing.
-            // The panic comes back from the store's work as a bug.
-            match (kept.checked_sub(unfound), kept_size.checked_sub(unfound_size)) {
-                (Some(found), Some(size)) => (found, size),
-                _ => panic!(
-                    "the search leaves out {unfound} releases of {unfound_size} bytes, \
-                     more than the {kept} releases of {kept_size} bytes the list holds"
-                ),
-            }
-        }
-    };
-    let search = StorageSearch { pattern, kept, found };
-    Ok((found, size, Some(search)))
+    pattern: Option<&str>,
+) -> Result<(u64, u64), DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let statement = format!(
+        "SELECT COUNT(*), COALESCE(SUM(st.total_size), 0) \
+         FROM release_storage st JOIN releases r ON r.id = st.release_id \
+         WHERE {stored} AND {searched}",
+        stored = stored_value(filter)
+            .map_or_else(|| "1".to_string(), |stored| format!("st.stored = {stored}")),
+        searched = storage_search_condition(rows, "r.album_id"),
+    );
+    let params: Vec<(&str, &dyn rusqlite::ToSql)> =
+        pattern.iter().map(|pattern| (":search", pattern as &dyn rusqlite::ToSql)).collect();
+    Ok(sql.query_row(&statement, params.as_slice(), |row| {
+        Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64))
+    })?)
 }
 
-/// The Storage Manager list's rows under `filter` and `search` that `seek`
-/// reads in `order`, at most `limit` from `offset`, each with its key.
+/// The Storage Manager list's rows under `filter` and the search `pattern`
+/// that `seek` reads in `order`, at most `limit` from `offset`, each with its key.
 pub(crate) fn storage_rows_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     filter: StorageFilter,
-    search: Option<&StorageSearch>,
+    pattern: Option<&str>,
     seek: &Seek,
     limit: u64,
     offset: u64,
 ) -> Result<Vec<Keyed<StorageRowParts>>, DbError> {
-    let rows = search.map_or(StorageRows::Listed, |search| search.rows(limit, offset));
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let statement = storage_window_query(order, filter, rows, seek);
     let mut rows = seek.bound(limit, offset, |params| {
         let mut params = params.to_vec();
-        if let Some(search) = search {
-            params.push((":search", &search.pattern));
+        if let Some(pattern) = &pattern {
+            params.push((":search", pattern));
         }
         sql.query(&statement, params.as_slice(), |row| {
             Ok((storage_row_parts(row)?, order.key_of(row)?))
@@ -683,40 +541,9 @@ fn process_storage_row(
     Ok(DbStorageRow { release, date_added, release_cover_version, album: album.process()?, status })
 }
 
-/// How many releases the Storage Manager list holds under `filter`.
-pub(crate) fn storage_count_on(
-    sql: &SqlReadContext<'_>,
-    filter: StorageFilter,
-) -> Result<u64, DbError> {
-    sql.query_row(&storage_count_query(filter), [], |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)
-        .map_err(DbError::from)
-}
-
-/// The statement [`storage_count_on`] reads.
-pub(crate) fn storage_count_query(filter: StorageFilter) -> String {
-    listing_totals_sum_query("release_count", filter)
-}
-
-/// The total size of the files of the releases the Storage Manager list
-/// holds under `filter`.
-pub(crate) fn storage_total_size_on(
-    sql: &SqlReadContext<'_>,
-    filter: StorageFilter,
-) -> Result<u64, DbError> {
-    sql.query_row(&storage_total_size_query(filter), [], |row| row.get::<_, i64>(0))
-        .map(|size| size as u64)
-        .map_err(DbError::from)
-}
-
-/// The statement [`storage_total_size_on`] reads.
-pub(crate) fn storage_total_size_query(filter: StorageFilter) -> String {
-    listing_totals_sum_query("total_size", filter)
-}
-
 /// How many releases of the Storage Manager list under `filter` (narrowed to
 /// the albums the search `pattern` finds, with one) come before the rows `seek`
-/// reads, each album tested alone as the order's index reaches it.
+/// reads.
 pub(crate) fn storage_seek_count_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
@@ -724,14 +551,12 @@ pub(crate) fn storage_seek_count_on(
     order: &ListOrder,
     seek: &Seek,
 ) -> Result<u64, DbError> {
-    let rows = match pattern {
-        Some(_) => StorageRows::SearchedInOrder,
-        None => StorageRows::Listed,
-    };
-    let (listing, searched) = storage_listing(rows);
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let statement = format!(
-        "SELECT COUNT(*) FROM {listing} WHERE {filter} AND {searched} AND ({condition})",
+        "SELECT COUNT(*) FROM release_listing listing \
+         WHERE {filter} AND {searched} AND ({condition})",
         filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
         condition = order.condition(seek),
     );
     let mut params = seek.params();
