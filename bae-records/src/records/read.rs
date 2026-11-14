@@ -165,6 +165,20 @@ pub fn credit_line_column(
         .map_err(|error| column_conversion_error(row, column, error.to_string()))
 }
 
+/// The line a nullable credit-list JSON column prints, read in a row closure;
+/// `None` for NULL.
+pub fn optional_credit_line_column(
+    row: &Row,
+    column: &str,
+) -> rusqlite::Result<Option<bae_types::credits::CreditLine>> {
+    let Some(json) = row.get::<_, Option<String>>(column)? else {
+        return Ok(None);
+    };
+    credits_from_json(&json)
+        .map(|credits| Some(crate::credits::library_line(&credits)))
+        .map_err(|error| column_conversion_error(row, column, error.to_string()))
+}
+
 pub fn find_release_by_id_on(
     sql: &impl coven::SqlRead,
     release_id: &str,

@@ -103,14 +103,14 @@ pub(crate) fn album_window_statement(
         )
     };
     format!(
-        "{select}, {group} AS group_artist_id, {keys} \
+        "{select}, {beside} AS credited_with, {keys} \
          FROM (SELECT {picked} {tables} WHERE {condition} \
                ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
          ORDER BY {ordering}",
         select = album_summary_select(),
-        group = album_group_artist_sql(group_by_artist),
+        beside = album_credits_beside_sql(group_by_artist),
         tables = album_order_tables(group_by_artist),
         keys = order.key_columns(),
         condition = order.condition(seek),
@@ -134,7 +134,7 @@ pub(crate) fn album_rows_on(
             Ok((
                 AlbumAppearanceRow {
                     row: AlbumSummaryRow::read(row)?,
-                    group_artist_id: row.get("group_artist_id")?,
+                    credited_with: optional_credit_line_column(row, "credited_with")?,
                 },
                 order.key_of(row)?,
             ))
@@ -142,26 +142,18 @@ pub(crate) fn album_rows_on(
     })?)
 }
 
-/// One row of the album list as read: the album, and the artist whose group
-/// lists it when the list is grouped by artist.
+/// One row of the album list as read: the album, and when the list is
+/// grouped by artist, the line of the album's credits that show another
+/// artist than the one whose group lists it (none when it has no others).
 #[derive(Clone, PartialEq)]
 pub(crate) struct AlbumAppearanceRow {
     pub(crate) row: AlbumSummaryRow,
-    group_artist_id: Option<String>,
+    credited_with: Option<bae_types::credits::CreditLine>,
 }
 
 impl AlbumAppearanceRow {
     pub(super) fn process(self) -> Result<DbAlbumAppearance, DbError> {
-        let credits = self.row.credits()?;
-        let credited_with = self.group_artist_id.and_then(|group| {
-            let others = credits
-                .iter()
-                .filter(|credit| credit.artist.id != group)
-                .cloned()
-                .collect::<Vec<_>>();
-            (!others.is_empty()).then(|| bae_records::credits::library_line(&others))
-        });
-        Ok(DbAlbumAppearance { album: self.row.process_with(&credits)?, credited_with })
+        Ok(DbAlbumAppearance { album: self.row.process()?, credited_with: self.credited_with })
     }
 }
 
@@ -251,14 +243,15 @@ pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
     )
 }
 
-/// The artist whose group lists each row of the album grid (a SQL
-/// expression over `album_browse_order`'s relation): the group's artist when
-/// grouped by artist, else NULL.
-fn album_group_artist_sql(group_by_artist: bool) -> &'static str {
+/// The credits of each row of the album grid that show another artist than
+/// the one whose group lists it, as a JSON array (a SQL expression over
+/// `album_browse_order`'s relation): NULL when the album has none, and for
+/// every row of the flat grid.
+fn album_credits_beside_sql(group_by_artist: bool) -> String {
     if group_by_artist {
-        "artist.artist_id"
+        bae_records::records::query::album_credits_beside_json_sql("artist.artist_id")
     } else {
-        "NULL"
+        "NULL".to_string()
     }
 }
 

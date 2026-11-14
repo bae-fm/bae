@@ -77,9 +77,16 @@ pub const RELEASE_STORAGE_PINNED: &str =
 /// `track_artists`), in list order, as a JSON array (see
 /// [`super::read::credits_from_json`]): each the artist it shows after merges,
 /// the other printed name it names, and its join. `prefix` keeps the
-/// subquery's aliases apart from the query it sits in. An owner with no
+/// subquery's aliases apart from the query it sits in, and `also` is a
+/// further condition on the credits (`""` for none). An owner with no
 /// credits gives NULL.
-fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &str) -> String {
+fn credits_json_sql(
+    table: &str,
+    owner_column: &str,
+    owner_expr: &str,
+    prefix: &str,
+    also: &str,
+) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'id', {prefix}_artist.id, 'name', {prefix}_artist.name, \
@@ -92,7 +99,7 @@ fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &
           FROM {table} {prefix}_credit \
           JOIN artists {prefix}_artist ON {prefix}_artist.id = {shown} \
           {credit_name} \
-          WHERE {prefix}_credit.{owner_column} = {owner_expr} \
+          WHERE {prefix}_credit.{owner_column} = {owner_expr} {also} \
           HAVING COUNT(*) > 0)",
         shown = shown_artist_id(&format!("{prefix}_credit.artist_id")),
         credit_name =
@@ -104,7 +111,20 @@ fn credits_json_sql(table: &str, owner_column: &str, owner_expr: &str, prefix: &
 pub fn album_credits_json_sql() -> String {
     format!(
         "COALESCE({}, '[]')",
-        credits_json_sql("album_artists", "album_id", "a.id", "album_credits")
+        credits_json_sql("album_artists", "album_id", "a.id", "album_credits", "")
+    )
+}
+
+/// The album `a`'s credits that show an artist other than `artist_expr` (an
+/// SQL expression), as a JSON array, NULL for none: what a row of the grid
+/// grouped by that artist names beside it.
+pub fn album_credits_beside_json_sql(artist_expr: &str) -> String {
+    credits_json_sql(
+        "album_artists",
+        "album_id",
+        "a.id",
+        "beside_credits",
+        &format!("AND beside_credits_artist.id <> {artist_expr}"),
     )
 }
 
@@ -123,7 +143,7 @@ pub fn track_credits_json_sql(track_alias: &str) -> String {
 
 /// The track `track_alias`'s own credits as a JSON array, NULL for none.
 fn track_own_credits_sql(track_alias: &str) -> String {
-    credits_json_sql("track_artists", "track_id", &format!("{track_alias}.id"), "track_credits")
+    credits_json_sql("track_artists", "track_id", &format!("{track_alias}.id"), "track_credits", "")
 }
 
 /// The album's releases in album order (see [`album_primary_release_sql`]).
