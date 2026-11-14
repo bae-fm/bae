@@ -4075,7 +4075,7 @@
    "x": 1802,
    "y": 15556
   },
-  "mac.welcome.libraries.damaged-join.discard.dc.html": {
+  "mac.welcome.libraries.discard-join.dc.html": {
    "h": 600,
    "page": "welcome",
    "title": "macOS: Welcome: discard an unfinished join that cannot be read",
@@ -4091,7 +4091,7 @@
    "x": 3374,
    "y": 15556
   },
-  "android.welcome.libraries.damaged-join.discard.dc.html": {
+  "android.welcome.libraries.discard-join.dc.html": {
    "h": 916,
    "page": "welcome",
    "title": "Welcome: discard an unfinished join that cannot be read",
@@ -6197,9 +6197,9 @@
   "android.playback.full-player.no-volume.dc.html",
   "android.welcome.open-failed.dc.html",
   "mac.welcome.libraries.damaged-join.dc.html",
-  "mac.welcome.libraries.damaged-join.discard.dc.html",
+  "mac.welcome.libraries.discard-join.dc.html",
   "android.welcome.libraries.damaged-join.dc.html",
-  "android.welcome.libraries.damaged-join.discard.dc.html",
+  "android.welcome.libraries.discard-join.dc.html",
   "mac.welcome.opening.uncounted.dc.html",
   "android.welcome.opening.uncounted.dc.html"
  ],
