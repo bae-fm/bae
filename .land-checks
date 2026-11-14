@@ -1,4 +1,4 @@
-# Whole-tree checks that land.sh runs on a cherry-picked result before pushing it.
+# Whole-tree checks that builds land runs on a cherry-picked result before pushing it.
 # Static checks only. The compile check of the result is .land-compile; tests stay with the coordinator.
 scripts/check-source-file-size.py
 scripts/check-rust-visibility.sh

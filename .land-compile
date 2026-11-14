@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile check that land.sh runs on a cherry-picked result before pushing it
+# Compile check that builds land runs on a cherry-picked result before pushing it
 # (see .land-checks for the static ones): clippy with --all-targets over the
 # crates the landed commits touch and the crates that depend on them, warnings
 # denied.
