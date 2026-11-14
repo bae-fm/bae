@@ -2987,78 +2987,6 @@
    "x": 2952,
    "y": 1656
   },
-  "mac.storage.proposal-today.dc.html": {
-   "h": 900,
-   "page": "storage",
-   "radius": 10,
-   "title": "Today",
-   "w": 440,
-   "x": 0,
-   "y": 6552
-  },
-  "mac.storage.proposal.file-selected.dc.html": {
-   "h": 614,
-   "page": "storage",
-   "radius": 10,
-   "title": "Proposed, file selected",
-   "w": 440,
-   "x": 1040,
-   "y": 6552
-  },
-  "mac.storage.proposal.pinning.dc.html": {
-   "h": 614,
-   "page": "storage",
-   "radius": 10,
-   "title": "Proposed, pinning",
-   "w": 440,
-   "x": 1560,
-   "y": 6552
-  },
-  "mac.storage.proposal.dc.html": {
-   "h": 900,
-   "page": "storage",
-   "radius": 10,
-   "title": "Proposed",
-   "w": 440,
-   "x": 520,
-   "y": 6552
-  },
-  "mac.storage.proposal-window-today.dc.html": {
-   "h": 654,
-   "page": "storage",
-   "radius": 10,
-   "title": "Window today",
-   "w": 1040,
-   "x": 0,
-   "y": 7892
-  },
-  "mac.storage.proposal-window.both-ways.dc.html": {
-   "h": 654,
-   "page": "storage",
-   "radius": 10,
-   "title": "Uploads and downloads",
-   "w": 1040,
-   "x": 1120,
-   "y": 8666
-  },
-  "mac.storage.proposal-window.filtered.dc.html": {
-   "h": 654,
-   "page": "storage",
-   "radius": 10,
-   "title": "All / Local / Cloud, sorted by Storage",
-   "w": 1040,
-   "x": 0,
-   "y": 8666
-  },
-  "mac.storage.proposal-window.dc.html": {
-   "h": 654,
-   "page": "storage",
-   "radius": 10,
-   "title": "Window proposed",
-   "w": 1040,
-   "x": 1120,
-   "y": 7892
-  },
   "android.welcome.libraries.none.dc.html": {
    "page": "welcome",
    "title": "Welcome: a new device",
@@ -4311,8 +4239,6 @@
   "welcome-rules",
   "welcome-removing-steps",
   "switch-rules",
-  "storage-today",
-  "storage-proposed",
   "setup-rules",
   "setup-code-gaps",
   "code-settings",
@@ -4372,7 +4298,6 @@
   "row-sync-mac",
   "row-sync-android",
   "row-downloads-android",
-  "row-store-earlier",
   "store-today",
   "row-set-import",
   "row-set-import-note",
@@ -5367,15 +5292,6 @@
    "x": 1200,
    "y": 0
   },
-  "row-store-earlier": {
-   "kind": "title1",
-   "maxW": 2200,
-   "page": "storage",
-   "text": "Earlier drawings (before the design system)",
-   "w": 240,
-   "x": 0,
-   "y": 6312
-  },
   "row-store-mac": {
    "kind": "title1",
    "maxW": 4600,
@@ -5473,22 +5389,6 @@
    "w": 380,
    "x": 520,
    "y": 160
-  },
-  "storage-proposed": {
-   "fill": "teal",
-   "page": "storage",
-   "text": "Proposed: the panel is this release only: its upload summary with Cancel, then one line per file. A dashed circle marks a queued file, a filling ring an uploading one; stored files show nothing. Pause for the whole sync queue moves to the window's footer.",
-   "w": 440,
-   "x": 520,
-   "y": 7512
-  },
-  "storage-today": {
-   "fill": "orange",
-   "page": "storage",
-   "text": "Today: Pause floats mid-header (a hidden Cancel All still holds its space). Bytes read Zero kB of Zero kB while 3 upload. A file with no audio format keeps an empty second line. A status chip adds a third line plus an invisible bar's height, so rows jump between three heights.",
-   "w": 440,
-   "x": 0,
-   "y": 7512
   },
   "store-today": {
    "fill": "blue",
@@ -5795,14 +5695,6 @@
   "mac.settings.transfers.dc.html",
   "android.settings.transfers.dc.html",
   "mac.settings.transfers.uploads-paused.dc.html",
-  "mac.storage.proposal-today.dc.html",
-  "mac.storage.proposal.dc.html",
-  "mac.storage.proposal.file-selected.dc.html",
-  "mac.storage.proposal.pinning.dc.html",
-  "mac.storage.proposal-window-today.dc.html",
-  "mac.storage.proposal-window.dc.html",
-  "mac.storage.proposal-window.filtered.dc.html",
-  "mac.storage.proposal-window.both-ways.dc.html",
   "android.settings.library.dc.html",
   "mac.settings.library.not-synced.dc.html",
   "mac.settings.library.dc.html",
