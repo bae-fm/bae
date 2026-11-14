@@ -237,7 +237,7 @@ extension LibraryView {
                         }
                     )
                 }
-                else if albumList.totalCount == 0 {
+                else if albumList.countAnswered, albumList.totalCount == 0 {
                     LibraryEmptyState(title: "No albums")
                 }
                 else {
@@ -293,7 +293,8 @@ extension LibraryView {
                         }
                     )
                 }
-                else if composerList.totalCount == 0 {
+                else if composerList.countAnswered, composerList.totalCount == 0
+                {
                     LibraryEmptyState(
                         title: "No composers",
                         nothingCredited: "No composer credits in your library"
@@ -342,7 +343,7 @@ extension LibraryView {
                         }
                     )
                 }
-                else if artistList.totalCount == 0 {
+                else if artistList.countAnswered, artistList.totalCount == 0 {
                     LibraryEmptyState(
                         title: "No artists",
                         nothingCredited: "No artist credits in your library"

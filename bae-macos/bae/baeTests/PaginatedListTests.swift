@@ -192,6 +192,7 @@ struct PaginatedListTests {
             onError: { Issue.record("List failed: \($0)") }
         )
         await list.loadInitial()
+        try? await Wait.until { list.countAnswered }
         return list
     }
 
@@ -240,13 +241,14 @@ struct PaginatedListTests {
 
         #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
         #expect(
-            list.totalCount == 50,
-            "the rows read so far stand for the count"
+            list.totalCount == 0,
+            "the rows read so far never stand for the count"
         )
+        #expect(!list.countAnswered)
         #expect(list.countExtra == nil)
 
         probe.releaseCount()
-        try await Wait.until { list.countExtra != nil }
+        try await Wait.until { list.countAnswered }
         #expect(list.totalCount == 200)
         list.cancel()
     }
@@ -260,14 +262,15 @@ struct PaginatedListTests {
 
         probe.holdCount()
         await list.reopen(at: nil, position: 0)
-        #expect(list.totalCount == 50)
+        #expect(list.totalCount == 0)
+        #expect(!list.countAnswered)
         #expect(list.countExtra == nil)
         list.cancel()
     }
 
     @MainActor
     @Test("repeated rows keep the distinct count the list's count carries")
-    func distinctItemCount() async {
+    func distinctItemCount() async throws {
         let album = makeBridgeAlbum(id: "shared")
         let list = PaginatedList<BridgeAlbum>(
             queries: .fixed(
@@ -278,6 +281,7 @@ struct PaginatedListTests {
             onError: { Issue.record("List failed: \($0)") }
         )
         await list.loadInitial()
+        try await Wait.until { list.countAnswered }
         #expect(list.totalCount == 2)
         #expect(list.itemCount == 1)
         #expect(list.idAt(0) == "shared")
@@ -326,7 +330,7 @@ struct PaginatedListTests {
             idsAt(list, 0...(all.count - 1 > 100 ? 100 : all.count - 1))
                 == all.prefix(101).map(Optional.init)
         }
-        #expect(list.totalCount == all.count)
+        try await Wait.until { list.totalCount == all.count }
     }
 
     @MainActor

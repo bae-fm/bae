@@ -21,10 +21,16 @@ private let logger = Logger.bae("PaginatedList")
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
 where Row.ID: Sendable {
-    /// How many rows the list has, from its count's last value. While a
-    /// reopened list's count is out, the end of the rows its windows hold, so
-    /// the rows draw as they arrive and the count when it does.
+    /// How many rows the list has, from its count's last value. 0 until the
+    /// count has answered (`countAnswered`): the rows its windows hold never
+    /// stand in for it, so a screen decides what an empty or filled list
+    /// shows only once the count has said which it is.
     public private(set) var totalCount: Int = 0
+
+    /// Whether the list's count has answered since the list was opened. A
+    /// screen that shows an empty state, or hides the rows, on `totalCount`
+    /// waits for this.
+    public private(set) var countAnswered = false
 
     /// What the list's count carries beside its rows, as its last value gave
     /// it: the album grid's album count, or the Storage Manager's total size;
@@ -89,8 +95,6 @@ where Row.ID: Sendable {
     @ObservationIgnored
     private var sectionDeliveries:
         ScreenSubscription<PulledValues<[BridgeLibraryBrowseSection]>>?
-    @ObservationIgnored
-    private var countAnswered = false
     /// How many holds each position has: the rows on screen, or a reveal on
     /// its way to a row.
     @ObservationIgnored
@@ -253,10 +257,6 @@ where Row.ID: Sendable {
     private func take(_ next: [Placed<Row>]) {
         guard next != placed else { return }
         placed = next
-        if !countAnswered {
-            // The rows read so far stand for the count until it answers.
-            totalCount = next.last.map { $0.start + $0.rows.count } ?? 0
-        }
         contentRevision += 1
     }
 
