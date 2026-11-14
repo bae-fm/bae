@@ -63,7 +63,7 @@ struct CoverItem: LightboxImage {
         content = .library(cover)
         label =
             switch cover.label {
-            case .current: String(localized: "Current cover")
+            case .current: String(localized: "Cover")
             case .file(let name): name
             case .remote(let sourceName, let label):
                 coverLabelText(sourceName: sourceName, label: label)

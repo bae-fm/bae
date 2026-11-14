@@ -28,30 +28,34 @@ extension ShotScene {
                 }
             )
             let content = CoverGalleryContent(boardCoverGallery)
-            let sheet = CoverPickerFrame {
-                CoverGalleryView(
-                    content: content,
-                    remoteItems: .linked(content.remote?.items ?? []),
-                    filter: .constant(.all),
-                    selectedCover: nil,
-                    lightboxLoad: LightboxImageLoad(),
-                    onRefresh: {},
-                    onFindRelease: {},
-                    onSelect: { _ in },
-                    onDone: {}
-                )
-            }
+            // The board's sheet: 1100 by 820, centred in the window with
+            // no dimming behind it.
+            let sheet = CoverGalleryView(
+                content: content,
+                remoteItems: .linked(content.remote?.items ?? []),
+                filter: .constant(.all),
+                selectedCover: nil,
+                lightboxLoad: LightboxImageLoad(),
+                onRefresh: {},
+                onFindRelease: {},
+                onSelect: { _ in },
+                onDone: {}
+            )
+            .frame(width: 1_100, height: 820)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
+            .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
             .environment(images)
             return ShotStage(
-                OverWindow.sheet(
-                    sheet,
-                    over: ShotScenes.libraryWindow(
+                ZStack {
+                    ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
                         size: size
                     )
-                ),
+                    sheet
+                },
                 images: images
             ) {
                 (backing.session.albums.list?.totalCount ?? 0) > 0
