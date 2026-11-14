@@ -79,6 +79,7 @@ mod layout;
 mod ledger_rows;
 mod lookup_choice_rows;
 mod lookup_failure_columns;
+mod match_record;
 mod match_rows;
 mod pane_rows;
 mod preparation_rows;

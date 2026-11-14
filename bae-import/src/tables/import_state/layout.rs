@@ -8,10 +8,8 @@
 //! module takes what they decided for a list, in list order, and writes each
 //! release's place and the text of each card and row beside it.
 
-use super::match_rows::{
-    album_links_column, load_search_run_matches_on, ordinal_column, store_album_link_rows,
-    MatchOwner,
-};
+use super::match_record::load_search_run_matches_on;
+use super::match_rows::{album_links_column, ordinal_column, store_album_link_rows, MatchOwner};
 use super::search_rows::load_picks_on;
 use super::*;
 use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};

@@ -218,6 +218,38 @@ async fn verdict_cards_statement_matches_the_rules() {
     assert_eq!(read, expected);
 }
 
+/// Two offered rows on one album are several pressings of it: the statement
+/// answers the album and each row's lead as the rules fold them, in the
+/// cards' order.
+#[tokio::test]
+async fn verdict_cards_statement_answers_the_album_its_pressings_share() {
+    let one_album = |release_id: &str, catalog: &str| MetadataResult {
+        source_group_id: Some("group-shared".to_string()),
+        ..release(release_id, catalog)
+    };
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![one_album("b", "CAT-B"), one_album("a", "CAT-A")],
+            pressings: vec![0, 1],
+            named_notes: Vec::new(),
+            ..sample_findings()
+        },
+        track_count: 11,
+        ledger: None,
+    };
+    let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
+
+    let read = stored_cards(&db, &hash, &verdict).await;
+
+    let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
+    let expected =
+        bae_identify::view::reference_cards_of(&bae_identify::RunOutcome::Answered(verdict), &text);
+    let shared = read.shared_album.clone().expect("two rows of one album are several pressings");
+    assert_eq!(shared.leads.len(), 2);
+    assert_eq!(read.groups, expected.groups);
+    assert_eq!(read.shared_album, expected.shared_album);
+}
+
 /// A card that offers a row with more agreements comes before one that
 /// offers fewer, whichever the run listed first.
 #[tokio::test]
@@ -266,7 +298,7 @@ async fn verdict_cards_statement_counts_rows_set_aside() {
     let cards = stored_cards(&db, &hash, &verdict).await;
 
     assert_eq!(cards.narrowed_out_count, 2);
-    assert!(!cards.offers_shared_album, "one offered row is not several pressings");
+    assert!(cards.shared_album.is_none(), "one offered row is not several pressings");
 }
 
 /// A found verdict of `matches` (each its own row unless `pressings` says

@@ -449,22 +449,15 @@ pub(super) fn outcome_of(
             "returned",
         ));
     }
-    let held: HashMap<i64, &MetadataResult> =
-        found.rows.iter().map(|row| (row.position, &row.result)).collect();
-    let (ledger, linked) = ledger.ledger(&content_hash, &held)?;
-    if let Some(stray) = found
-        .rows
-        .iter()
-        .find(|row| matches!(row.listing, Listing::Unlisted) && !linked.contains(&row.position))
-    {
+    if let Some(stray) = ledger.stray_unlisted {
         return Err(DbError::unreadable(
             format!(
-                "the lookups of {content_hash}'s ledger that found unlisted match {}",
-                stray.position
+                "the lookups of {content_hash}'s ledger, which found no unlisted match {stray}"
             ),
-            &linked,
+            stray,
         ));
     }
+    let ledger = ledger.ledger(&content_hash)?;
     let count_of = || {
         track_count
             .ok_or_else(|| {

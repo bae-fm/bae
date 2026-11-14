@@ -69,12 +69,10 @@ fn load_runs_on(
         let (outcome, _) = outcome_of(verdict, matches.remove(&run).unwrap_or_default())?;
         let signals = signals.map(|stored| stored.signals()).transpose()?;
         let cards = match &outcome {
-            RunOutcome::Running { findings, .. } => Some(findings),
-            RunOutcome::Answered(verdict) => verdict.findings(),
+            RunOutcome::Running { .. } => true,
+            RunOutcome::Answered(verdict) => verdict.findings().is_some(),
         }
-        .map(|findings| {
-            super::cards_read::verdict_cards_of(&cards, &findings.releases().collect::<Vec<_>>())
-        })
+        .then(|| super::cards_read::verdict_cards_of(&cards))
         .transpose()?
         .unwrap_or_default();
         let number = to_u64(run, &format!("{key}'s run number"))?;

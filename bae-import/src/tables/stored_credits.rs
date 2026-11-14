@@ -15,10 +15,15 @@ pub(crate) fn line_column(
     row: &rusqlite::Row<'_>,
     column: &str,
 ) -> rusqlite::Result<Option<CreditLine>> {
-    let Some(json) = row.get::<_, Option<String>>(column)? else {
-        return Ok(None);
-    };
-    serde_json::from_str::<Vec<StoredCredit>>(&json)
-        .map(|credits| Some(CreditLine::from_stored_credits(&credits)))
+    line_of(row.get::<_, Option<String>>(column)?.as_deref())
         .map_err(|error| bae_store::read::column_conversion_error(row, column, error))
+}
+
+/// The line stored credits text holds, `None` for none.
+pub(crate) fn line_of(json: Option<&str>) -> Result<Option<CreditLine>, serde_json::Error> {
+    json.map(|json| {
+        serde_json::from_str::<Vec<StoredCredit>>(json)
+            .map(|credits| CreditLine::from_stored_credits(&credits))
+    })
+    .transpose()
 }

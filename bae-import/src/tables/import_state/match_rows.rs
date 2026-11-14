@@ -5,6 +5,7 @@
 
 pub(super) const SQL: &str = include_str!("match_rows.sql");
 
+use super::match_record::{match_record_sql, match_row_of};
 use super::verdict_rows::Owner;
 use super::*;
 use crate::tables::album_link_rows::AlbumLinkRow;
@@ -13,22 +14,22 @@ use crate::tables::stored_credits;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
-use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
+use bae_catalogs::remote_image::{CoverStanding, DownscaledCopy, RemoteImageSet};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::{Medium, StatedFormat, StatedMedia};
 use std::str::FromStr;
 
-fn source_of(stored: &str) -> Result<LookupCatalog, DbError> {
+pub(super) fn source_of(stored: &str) -> Result<LookupCatalog, DbError> {
     LookupCatalog::from_str(stored)
         .map_err(|_unknown| DbError::unreadable("a match's stored lookup catalog", stored))
 }
 
-fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
+pub(super) fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
     Catalog::from_str(stored)
         .map_err(|_unknown| DbError::unreadable("a match's stored catalog", stored))
 }
 
-fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
+pub(super) fn standing_of(stored: &str) -> Result<CoverStanding, DbError> {
     CoverStanding::from_column(stored)
         .ok_or_else(|| DbError::unreadable("import_candidate_match.cover_standing", stored))
 }
@@ -501,15 +502,15 @@ pub(crate) struct StoredMatches {
 pub(super) struct MatchColumns {
     pub(super) content_hash: String,
     pub(super) position: i64,
-    pressing: Option<i64>,
-    listing: String,
-    media_kind: String,
+    pub(super) pressing: Option<i64>,
+    pub(super) listing: String,
+    pub(super) media_kind: String,
     /// The stored `album_links` value; [`match_of`] reads it with the album
     /// link rows.
-    album_links: String,
+    pub(super) album_links: String,
     /// The result with its list fields still empty; [`match_of`] fills them.
-    result: MetadataResult,
-    named_note: Option<String>,
+    pub(super) result: MetadataResult,
+    pub(super) named_note: Option<String>,
 }
 
 /// The match its columns and its child rows describe. The media kind and the
@@ -623,209 +624,6 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     Ok(MatchRow { position, result, listing })
 }
 
-pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
-    let cover_url: Option<String> = row.get("cover_url")?;
-    let cover_source: Option<String> = row.get("cover_source")?;
-    let cover_art = match (cover_url, cover_source) {
-        // The copies are child rows; [`match_of`] adds them.
-        (Some(url), Some(source)) => Some(RemoteCover {
-            image: RemoteImageSet::original(url),
-            label: cover_labels::label_of(&row.get::<_, String>("cover_label")?)?,
-            source: catalog_of(&source)?,
-            standing: standing_of(&row.get::<_, String>("cover_standing")?)?,
-        }),
-        // The table sets and clears the four cover columns together.
-        _ => None,
-    };
-    let tracks_kind: Option<String> = row.get("source_tracks_kind")?;
-    let source_tracks = match tracks_kind.as_deref() {
-        None => None,
-        Some("nothing") => Some(SourceTracks::Nothing),
-        Some("unreadable") => Some(SourceTracks::Unreadable),
-        Some("listed") => {
-            let count: i64 =
-                row.get::<_, Option<i64>>("source_tracks_count")?.ok_or_else(|| {
-                    DbError::unreadable(
-                        "import_candidate_match.source_tracks_count of a listed tracklist",
-                        None::<i64>,
-                    )
-                })?;
-            Some(SourceTracks::Listed {
-                count: to_u32(count, "import_candidate_match.source_tracks_count")?,
-            })
-        }
-        Some(other) => {
-            return Err(DbError::unreadable("import_candidate_match.source_tracks_kind", other))
-        }
-    };
-    let source: String = row.get("source")?;
-    let facts = bae_records::records::pressing_columns::read_facts_without_media(row, "")?;
-    Ok(MatchColumns {
-        content_hash: row.get("content_hash")?,
-        position: row.get("position")?,
-        pressing: row.get("pressing")?,
-        listing: row.get("listing")?,
-        media_kind: row.get("media_kind")?,
-        album_links: row.get("album_links")?,
-        result: MetadataResult {
-            source: source_of(&source)?,
-            release_id: row.get("release_id")?,
-            title: row.get("title")?,
-            artist: stored_credits::line_column(row, "credits")?,
-            year: row.get("year")?,
-            labels: Vec::new(),
-            area: facts.area,
-            status: facts.status,
-            packaging: facts.packaging,
-            discogs_details: facts.discogs_details,
-            barcodes: Vec::new(),
-            media: StatedMedia::Undescribed,
-            links: Vec::new(),
-            cover_art,
-            source_group_id: row.get("source_group_id")?,
-            album_links: AlbumLinks::NotAsked,
-            source_tracks,
-            document_failure: super::lookup_failure_columns::failure_of(
-                row.get("document_failure")?,
-                row.get("document_failure_status")?,
-            )?,
-            // Read from the stored catalog release the match names, so a
-            // later fetch of it shows.
-            album_first_year: row.get("album_first_year")?,
-            // Only a run's ranking reads these, so a verdict keeps neither.
-            track_titles: Vec::new(),
-            notes: Vec::new(),
-        },
-        named_note: row.get("named_note")?,
-    })
-}
-
-/// A match's own columns joined as `found`, and its album's first year from
-/// the stored catalog release it names, joined as `fetched`.
-pub(super) const MATCH_COLUMNS: &str =
-    "found.position, found.pressing, found.source, found.release_id, \
-     found.title, found.credits, found.year, found.country, found.region, \
-     found.status, found.packaging, found.discogs_details, found.media_kind, found.cover_url, \
-     found.cover_label, found.cover_source, found.cover_standing, found.source_group_id, \
-     found.album_links, found.source_tracks_kind, found.source_tracks_count, found.listing, \
-     found.document_failure, found.document_failure_status, \
-     fetched.album_first_year, found.named_note";
-
-/// What hangs off a match joined as `found`, each list a JSON array in its
-/// stored order: its labels, its barcodes, its cover's copies, its media, its
-/// links and its album links.
-pub(super) fn match_entries_columns() -> String {
-    let child = |table: &str, value: &str, order: &str| {
-        format!(
-            "(SELECT json_group_array({value} ORDER BY {order}) FROM {table} AS entry \
-              WHERE entry.content_hash IS found.content_hash \
-                AND entry.identify_run IS found.identify_run \
-                AND entry.search_run IS found.search_run \
-                AND entry.position = found.position)"
-        )
-    };
-    format!(
-        "{labels} AS match_labels, {barcodes} AS match_barcodes, \
-         {copies} AS match_cover_copies, \
-         {media} AS match_media, {links} AS match_links, {album_links} AS match_album_links",
-        labels = child(
-            "import_candidate_match_label",
-            "json_object('name', entry.name, 'catalog_number', entry.catalog_number, \
-                 'musicbrainz_label_id', entry.musicbrainz_label_id, \
-                 'discogs_label_id', entry.discogs_label_id)",
-            "entry.ordinal"
-        ),
-        barcodes = child("import_candidate_match_barcode", "entry.barcode", "entry.ordinal"),
-        copies = crate::tables::downscaled_copies::copies_json_sql(
-            "import_candidate_match_cover_copy",
-            "copy.content_hash IS found.content_hash AND copy.identify_run IS found.identify_run \
-             AND copy.search_run IS found.search_run AND copy.position = found.position",
-        ),
-        media = child(
-            "import_candidate_match_medium",
-            "json_object('kind', entry.media_kind, 'medium', entry.medium, \
-                         'quantity', entry.quantity)",
-            "entry.ordinal",
-        ),
-        links = child(
-            "import_candidate_match_link",
-            "json_array(entry.catalog, entry.key)",
-            "entry.ordinal",
-        ),
-        album_links = child(
-            "import_candidate_match_album_link",
-            "json_object('catalog', entry.catalog, 'key', entry.key)",
-            "entry.ordinal",
-        ),
-    )
-}
-
-/// One match's child lists as SQLite hands them over, still JSON.
-pub(super) struct StoredMatchEntries {
-    labels: String,
-    barcodes: String,
-    cover_copies: String,
-    media: String,
-    links: String,
-    album_links: String,
-}
-
-pub(super) fn read_match_entries(row: &Row<'_>) -> rusqlite::Result<StoredMatchEntries> {
-    Ok(StoredMatchEntries {
-        labels: row.get("match_labels")?,
-        barcodes: row.get("match_barcodes")?,
-        cover_copies: row.get("match_cover_copies")?,
-        media: row.get("match_media")?,
-        links: row.get("match_links")?,
-        album_links: row.get("match_album_links")?,
-    })
-}
-
-/// One medium of a match as [`match_entries_columns`] holds it.
-#[derive(serde::Deserialize)]
-struct StoredMatchMedium {
-    kind: String,
-    medium: Option<String>,
-    quantity: u32,
-}
-
-impl StoredMatchEntries {
-    pub(super) fn entries(self) -> Result<MatchEntries, DbError> {
-        fn list<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<Vec<T>, DbError> {
-            serde_json::from_str(json).map_err(|error| {
-                DbError::unreadable_json(format!("a match's stored {what}"), json, error)
-            })
-        }
-        Ok(MatchEntries {
-            labels: list(&self.labels, "labels")?,
-            barcodes: list(&self.barcodes, "barcodes")?,
-            cover_copies: crate::tables::downscaled_copies::copies_of(&self.cover_copies)?,
-            media: list::<StoredMatchMedium>(&self.media, "media")?
-                .into_iter()
-                .map(|stored| {
-                    Ok(StoredMedium {
-                        kind: stored.kind,
-                        medium: stored
-                            .medium
-                            .map(|key| {
-                                bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
-                                    DbError::unreadable(
-                                        "import_candidate_match_medium.medium",
-                                        &key,
-                                    )
-                                })
-                            })
-                            .transpose()?,
-                        quantity: stored.quantity,
-                    })
-                })
-                .collect::<Result<_, DbError>>()?,
-            links: list(&self.links, "links")?,
-            album_links: list(&self.album_links, "album links")?,
-        })
-    }
-}
-
 /// The releases of every run in flight, or of `key`'s runs alone, by run,
 /// each run's in position order.
 pub(super) fn load_run_matches_on(
@@ -835,111 +633,29 @@ pub(super) fn load_run_matches_on(
     let rows = sql.query(
         &format!(
             "SELECT 'run ' || found.identify_run AS content_hash, \
-                    found.identify_run AS match_run, {MATCH_COLUMNS}, {entries} \
+                    found.identify_run AS match_run, {record} AS record \
              FROM import_candidate_match AS found \
              JOIN import_identify_run AS run ON run.identify_run = found.identify_run \
-             LEFT JOIN source_release AS fetched \
-                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
              WHERE ?1 IS NULL OR run.candidate_key = ?1 \
              ORDER BY found.identify_run, found.position",
-            entries = match_entries_columns(),
+            record = match_record_sql("found"),
         ),
         params![key],
         |row| {
             Ok((
                 row.get::<_, i64>("match_run")?,
-                read_match_row(row).and_then(|columns| {
-                    Ok((columns, read_match_entries(row).map_err(DbError::from)?))
-                }),
+                match_row_of(
+                    &row.get::<_, String>("content_hash")?,
+                    &row.get::<_, String>("record")?,
+                ),
             ))
         },
     )?;
     let mut matches: HashMap<i64, StoredMatches> = HashMap::new();
     for (run, found) in rows {
-        let (columns, entries) = found?;
-        matches.entry(run).or_default().rows.push(match_of(columns, entries.entries()?)?);
+        matches.entry(run).or_default().rows.push(found?);
     }
     Ok(matches)
-}
-
-/// The releases the verdict-shaped `owner` holds, in position order.
-pub(super) fn load_owner_matches_on(
-    sql: &impl coven::SqlRead,
-    owner: Owner<'_>,
-) -> Result<StoredMatches, DbError> {
-    let column = owner.column();
-    let rows = sql.query(
-        &format!(
-            "SELECT COALESCE(found.content_hash, 'run ' || found.identify_run) AS content_hash, \
-                    {MATCH_COLUMNS}, {entries} \
-             FROM import_candidate_match AS found \
-             LEFT JOIN source_release AS fetched \
-                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
-             WHERE found.{column} = ? \
-             ORDER BY found.position",
-            entries = match_entries_columns(),
-        ),
-        params![owner],
-        |row| {
-            Ok(read_match_row(row)
-                .and_then(|columns| Ok((columns, read_match_entries(row).map_err(DbError::from)?))))
-        },
-    )?;
-    let mut matches = StoredMatches::default();
-    for found in rows {
-        let (columns, entries) = found?;
-        matches.rows.push(match_of(columns, entries.entries()?)?);
-    }
-    Ok(matches)
-}
-
-/// The releases every typed search holds, or `key`'s search alone, or the search `run`'s, by search,
-/// each search's under its catalog parts in their order, each part's in the
-/// order it returned them.
-pub(super) fn load_search_matches_on(
-    sql: &impl coven::SqlRead,
-    key: Option<&crate::CandidateKey>,
-    run: Option<i64>,
-) -> Result<HashMap<i64, Vec<MatchRow>>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT 'search ' || found.search_run AS content_hash, \
-                    found.search_run AS match_search, {MATCH_COLUMNS}, {entries} \
-             FROM import_candidate_match AS found \
-             JOIN import_candidate_search AS search ON search.search_run = found.search_run \
-             JOIN import_candidate_search_source AS part \
-                 ON part.search_run = found.search_run AND part.catalog = found.source \
-             LEFT JOIN source_release AS fetched \
-                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
-             WHERE (?1 IS NULL OR search.candidate_key = ?1) \
-               AND (?2 IS NULL OR found.search_run = ?2) \
-             ORDER BY found.search_run, part.position, found.position",
-            entries = match_entries_columns(),
-        ),
-        params![key, run],
-        |row| {
-            Ok((
-                row.get::<_, i64>("match_search")?,
-                read_match_row(row).and_then(|columns| {
-                    Ok((columns, read_match_entries(row).map_err(DbError::from)?))
-                }),
-            ))
-        },
-    )?;
-    let mut matches: HashMap<i64, Vec<MatchRow>> = HashMap::new();
-    for (search, found) in rows {
-        let (columns, entries) = found?;
-        matches.entry(search).or_default().push(match_of(columns, entries.entries()?)?);
-    }
-    Ok(matches)
-}
-
-/// The releases of the search `run` alone, in the order its parts list them.
-pub(super) fn load_search_run_matches_on(
-    sql: &impl coven::SqlRead,
-    run: i64,
-) -> Result<Vec<MatchRow>, DbError> {
-    Ok(load_search_matches_on(sql, None, Some(run))?.remove(&run).unwrap_or_default())
 }
 
 #[cfg(test)]

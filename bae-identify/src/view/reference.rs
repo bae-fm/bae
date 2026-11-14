@@ -59,7 +59,7 @@ pub fn reference_cards(
         .collect();
     let narrowed_out_count = cards.iter().map(|group| group.narrowed_out().count() as u32).sum();
     VerdictCards {
-        offers_shared_album: SharedAlbum::of(&cards).is_some(),
+        shared_album: SharedAlbum::of(&cards),
         groups: cards,
         agreements,
         narrowed_out_count,

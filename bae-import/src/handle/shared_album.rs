@@ -49,12 +49,8 @@ impl ImportServiceHandle {
             bae_identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
         let cards =
             self.services.tables.load_verdict_cards(&content_hash, &identify.verdict).await?;
-        let shared = bae_identify::SharedAlbum::of(&cards.groups).ok_or_else(|| {
-            crate::ImportError::Internal {
-                detail: format!(
-                    "{candidate_key}'s lookup offers no several pressings of one album"
-                ),
-            }
+        let shared = cards.shared_album.ok_or_else(|| crate::ImportError::Internal {
+            detail: format!("{candidate_key}'s lookup offers no several pressings of one album"),
         })?;
         let lease = self.services.store.lease_one().await;
         let files = candidate.files.clone();

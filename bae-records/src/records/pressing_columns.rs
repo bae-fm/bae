@@ -142,11 +142,36 @@ pub fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<Pre
     let column = |name: &str| format!("{prefix}{name}");
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;
-    let area = area_of(country, region)
-        .map_err(|detail| column_conversion_error(row, column("region").as_str(), detail))?;
-    let status = keyed(row, &column("status"), ReleaseStatus::from_key)?;
-    let packaging = keyed(row, &column("packaging"), Packaging::from_key)?;
+    let status: Option<String> = row.get(column("status").as_str())?;
+    let packaging: Option<String> = row.get(column("packaging").as_str())?;
     let discogs_details: Vec<DiscogsDetail> = json_column(row, column("discogs_details").as_str())?;
+    facts_without_media_of(
+        country,
+        region,
+        status.as_deref(),
+        packaging.as_deref(),
+        discogs_details,
+    )
+    .map_err(|detail| column_conversion_error(row, column("region").as_str(), detail))
+}
+
+/// The facts the key columns of a record state, for a record read from JSON
+/// instead of a row: the columns [`read_facts_without_media`] reads. The
+/// error names the value no vocabulary names.
+pub fn facts_without_media_of(
+    country: Option<String>,
+    region: Option<String>,
+    status: Option<&str>,
+    packaging: Option<&str>,
+    discogs_details: Vec<DiscogsDetail>,
+) -> Result<PressingFacts, String> {
+    let area = area_of(country, region)?;
+    let status = status
+        .map(|key| ReleaseStatus::from_key(key).ok_or_else(|| format!("status {key:?}")))
+        .transpose()?;
+    let packaging = packaging
+        .map(|key| Packaging::from_key(key).ok_or_else(|| format!("packaging {key:?}")))
+        .transpose()?;
     Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
 

@@ -113,7 +113,7 @@ impl IdentifyStateView {
                     narrowed_out_count: cards.narrowed_out_count,
                     folder_check: cards.folder_check,
                     unattended_pick: cards.unattended_pick,
-                    offers_shared_album: cards.offers_shared_album,
+                    offers_shared_album: cards.shared_album.is_some(),
                 }
             }
             RunOutcome::Answered(TerminalVerdict::NotFoundAnywhere { ledger }) => {
@@ -141,7 +141,7 @@ impl IdentifyStateView {
                     groups: cards.groups,
                     agreements: cards.agreements,
                     narrowed_out_count: cards.narrowed_out_count,
-                    offers_shared_album: cards.offers_shared_album,
+                    offers_shared_album: cards.shared_album.is_some(),
                 }
             }
         }

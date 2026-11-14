@@ -26,7 +26,7 @@ use bae_identify::{
     IdentifyRunView, IsrcStepView, LookupView, NotAskedReason, ProviderCell, SearchStepView,
     SignalValueRow,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 /// How each clue stood in a recorded ledger, as the verdict's step columns;
@@ -360,8 +360,10 @@ fn column(index: usize) -> Result<i64, DbError> {
 /// the step columns, and the ledger's lists riding on them as JSON arrays —
 /// the providers, the ISRCs and the offered catalog numbers in order, and
 /// the rows in order, each with its lookups in cell order and each lookup
-/// with the match positions of the releases it found in its order, how many
-/// pressings they are and the cards they make.
+/// with how many pressings the releases it found are and the cards they make
+/// (each card holding its releases), its answer 'no_match' where it answered
+/// with none. The position of an unlisted match no lookup found rides on them
+/// too.
 pub(super) fn ledger_columns() -> String {
     format!(
     "verdict.disc_id_step AS ledger_disc_id_step, \
@@ -369,6 +371,13 @@ pub(super) fn ledger_columns() -> String {
      verdict.catalog_step AS ledger_catalog_step, verdict.isrc_step AS ledger_isrc_step, \
      verdict.search_step AS ledger_search_step, verdict.search_album AS ledger_search_album, \
      verdict.search_artist AS ledger_search_artist, \
+     (SELECT MIN(unlisted.position) FROM import_candidate_match AS unlisted \
+      WHERE unlisted.content_hash IS verdict.content_hash \
+        AND unlisted.identify_run IS verdict.identify_run AND unlisted.listing = 'unlisted' \
+        AND NOT EXISTS (SELECT 1 FROM import_candidate_lookup_release AS found \
+                        WHERE found.content_hash IS verdict.content_hash \
+                          AND found.identify_run IS verdict.identify_run \
+                          AND found.match_position = unlisted.position)) AS ledger_stray_unlisted, \
      (SELECT json_group_array(provider.catalog ORDER BY provider.position) \
       FROM import_candidate_lookup_provider AS provider \
       WHERE provider.content_hash IS verdict.content_hash AND provider.identify_run IS verdict.identify_run) AS ledger_providers, \
@@ -382,16 +391,17 @@ pub(super) fn ledger_columns() -> String {
           'step', ledger_row.step, 'value', ledger_row.value, \
           'excluded', ledger_row.excluded, \
           'cells', json((SELECT json_group_array(json_object( \
-              'catalog', lookup.catalog, 'answer', lookup.answer, \
+              'catalog', lookup.catalog, \
+              'answer', CASE WHEN lookup.answer = 'answered' AND NOT EXISTS ( \
+                                   SELECT 1 FROM import_candidate_lookup_release AS found \
+                                   WHERE found.content_hash IS lookup.content_hash \
+                                     AND found.identify_run IS lookup.identify_run \
+                                     AND found.step = lookup.step \
+                                     AND found.position = lookup.position \
+                                     AND found.cell = lookup.cell) \
+                             THEN 'no_match' ELSE lookup.answer END, \
               'reason', lookup.not_asked_reason, 'failure', lookup.failure, \
               'status', lookup.failure_status, \
-              'releases', json((SELECT json_group_array(found.match_position \
-                                                        ORDER BY found.ordinal) \
-                                FROM import_candidate_lookup_release AS found \
-                                WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
-                                  AND found.step = lookup.step \
-                                  AND found.position = lookup.position \
-                                  AND found.cell = lookup.cell)), \
               'count', (SELECT COUNT(DISTINCT found.pressing) \
                         FROM import_candidate_lookup_release AS found \
                         WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
@@ -421,6 +431,8 @@ pub(super) struct StoredLedger {
     search: Option<String>,
     search_album: Option<String>,
     search_artist: Option<String>,
+    /// The position of an unlisted match no cell found, which no write makes.
+    pub(super) stray_unlisted: Option<i64>,
     providers: String,
     isrcs: String,
     offered_catalogs: String,
@@ -436,6 +448,7 @@ pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
         search: row.get("ledger_search_step")?,
         search_album: row.get("ledger_search_album")?,
         search_artist: row.get("ledger_search_artist")?,
+        stray_unlisted: row.get("ledger_stray_unlisted")?,
         providers: row.get("ledger_providers")?,
         isrcs: row.get("ledger_isrcs")?,
         offered_catalogs: row.get("ledger_offered_catalogs")?,
@@ -460,21 +473,15 @@ struct StoredLookup {
     reason: Option<String>,
     failure: Option<String>,
     status: Option<i64>,
-    releases: Vec<i64>,
     /// How many pressing rows the releases are.
     count: u32,
     cards: Vec<StoredCard>,
 }
 
 impl StoredLedger {
-    /// The ledger these rows record, its cells laying out the releases at
-    /// the match positions they link, `None` for a verdict that recorded
-    /// none; and every match position a cell links.
-    pub(super) fn ledger(
-        self,
-        content_hash: &str,
-        matches: &HashMap<i64, &MetadataResult>,
-    ) -> Result<(Option<IdentifyRunView>, HashSet<i64>), DbError> {
+    /// The ledger these rows record, its cells laying out the releases they
+    /// found, `None` for a verdict that recorded none.
+    pub(super) fn ledger(self, content_hash: &str) -> Result<Option<IdentifyRunView>, DbError> {
         let Self {
             disc_id,
             barcode,
@@ -483,6 +490,7 @@ impl StoredLedger {
             search,
             search_album,
             search_artist,
+            stray_unlisted: _,
             providers,
             isrcs,
             offered_catalogs,
@@ -517,19 +525,14 @@ impl StoredLedger {
                     (&providers, &isrcs, &offered, rows.len()),
                 ));
             }
-            return Ok((None, HashSet::new()));
+            return Ok(None);
         };
-        let linked: HashSet<i64> = rows
-            .iter()
-            .flat_map(|row| &row.cells)
-            .flat_map(|cell| cell.releases.iter().copied())
-            .collect();
         let mut by_step: HashMap<String, Vec<StoredRow>> = HashMap::new();
         for row in rows {
             by_step.entry(row.step.clone()).or_default().push(row);
         }
         let mut take = |step: &str| by_step.remove(step).unwrap_or_default();
-        let lookup = |stored: StoredLookup| lookup_of(content_hash, stored, matches);
+        let lookup = |stored: StoredLookup| lookup_of(stored);
         let one_lookup = |row: StoredRow, what: &str| {
             let mut cells = row.cells.into_iter();
             match (cells.next(), cells.next()) {
@@ -731,25 +734,14 @@ impl StoredLedger {
             isrc,
             search,
         };
-        Ok((Some(ledger), linked))
+        Ok(Some(ledger))
     }
 }
 
 /// One stored lookup as its cell: why nobody was asked, how it failed, or
 /// the releases it found laid out as the run laid them out.
-fn lookup_of(
-    content_hash: &str,
-    stored: StoredLookup,
-    matches: &HashMap<i64, &MetadataResult>,
-) -> Result<LookupView, DbError> {
-    let StoredLookup { catalog: _, answer, reason, failure, status, releases, count, cards } =
-        stored;
-    if answer != "answered" && !releases.is_empty() {
-        return Err(DbError::unreadable(
-            format!("the releases a {answer} lookup of {content_hash} found"),
-            &releases,
-        ));
-    }
+fn lookup_of(stored: StoredLookup) -> Result<LookupView, DbError> {
+    let StoredLookup { catalog: _, answer, reason, failure, status, count, cards } = stored;
     match answer.as_str() {
         "queued" => Ok(LookupView::Queued),
         "looking_up" => Ok(LookupView::LookingUp),
@@ -767,30 +759,11 @@ fn lookup_of(
         }),
         "failed" => Ok(LookupView::Failed {
             failure: failure_of(failure, status)?.ok_or_else(|| {
-                DbError::unreadable(
-                    format!("the failure of a failed lookup of {content_hash}"),
-                    None::<String>,
-                )
+                DbError::unreadable("the failure of a failed lookup", None::<String>)
             })?,
         }),
-        "answered" => {
-            let found = releases
-                .into_iter()
-                .map(|position| {
-                    matches.get(&position).map(|held| (*held).clone()).ok_or_else(|| {
-                        DbError::unreadable(
-                            format!("a match a lookup of {content_hash} found, which no match row holds"),
-                            position,
-                        )
-                    })
-                })
-                .collect::<Result<Vec<_>, DbError>>()?;
-            if found.is_empty() {
-                return Ok(LookupView::NoMatch);
-            }
-            let list: Vec<&MetadataResult> = found.iter().collect();
-            Ok(LookupView::Found { count, groups: groups_from(cards, &list)? })
-        }
+        "no_match" => Ok(LookupView::NoMatch),
+        "answered" => Ok(LookupView::Found { count, groups: groups_from(cards)? }),
         other => Err(DbError::unreadable("a stored lookup answer", other)),
     }
 }

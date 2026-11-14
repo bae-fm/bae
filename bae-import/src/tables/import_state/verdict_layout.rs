@@ -6,7 +6,8 @@
 //! selects what was stored and never judges or groups the rows again.
 
 use super::layout::{store_list_text, ListLayout, ListOwner, Place};
-use super::match_rows::{load_owner_matches_on, ordinal_column, Placed, StoredMatches};
+use super::match_record::load_owner_matches_on;
+use super::match_rows::{ordinal_column, Placed, StoredMatches};
 use super::verdict_rows::{outcome_of, read_verdict_row, verdict_columns, Outcome, Owner};
 use super::*;
 use bae_catalogs::search::MetadataResult;

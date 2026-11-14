@@ -5,10 +5,8 @@
 
 use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
-use super::match_rows::{
-    match_entries_columns, match_of, read_match_entries, read_match_row, MatchColumns,
-    StoredMatchEntries, StoredMatches, MATCH_COLUMNS,
-};
+use super::match_record::{match_record_sql, match_row_of};
+use super::match_rows::{MatchRow, StoredMatches};
 use super::pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 use super::release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 use super::verdict_rows::{identification_of, read_verdict_row, verdict_columns, VerdictRow};
@@ -35,7 +33,7 @@ struct StoredCandidate {
 /// first row of each candidate, and the match the row joins, if any.
 struct StateReadRow {
     candidate: Option<Result<StoredCandidate, DbError>>,
-    found: Option<Result<(MatchColumns, StoredMatchEntries), DbError>>,
+    found: Option<Result<MatchRow, DbError>>,
 }
 
 /// The candidate `content_hash` as the first of its rows reads it.
@@ -56,11 +54,11 @@ fn read_candidate(row: &Row<'_>, content_hash: String) -> Result<StoredCandidate
 }
 
 /// The match a row joins, if it joins one.
-fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)>, DbError> {
-    if row.get::<_, Option<i64>>("position")?.is_none() {
+fn read_found(row: &Row<'_>) -> Result<Option<MatchRow>, DbError> {
+    let Some(record) = row.get::<_, Option<String>>("record")? else {
         return Ok(None);
-    }
-    Ok(Some((read_match_row(row)?, read_match_entries(row)?)))
+    };
+    match_row_of(&row.get::<_, String>("content_hash")?, &record).map(Some)
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
@@ -102,16 +100,15 @@ pub(crate) fn load_states_rows_on(
                  LEFT JOIN import_candidate_verdict AS verdict \
                      ON verdict.content_hash = state.content_hash \
                  {clause}) \
-             SELECT candidate.*, {MATCH_COLUMNS}, {entries} \
+             SELECT candidate.*, \
+                    CASE WHEN found.position IS NULL THEN NULL ELSE {record} END AS record \
              FROM candidate \
              LEFT JOIN import_candidate_match AS found \
                  ON found.content_hash = candidate.content_hash \
-             LEFT JOIN source_release AS fetched \
-                 ON fetched.catalog = found.source AND fetched.release_id = found.release_id \
              ORDER BY candidate.content_hash, found.position",
             signals = super::signal_rows::signals_read_columns(),
             verdict = verdict_columns(),
-            entries = match_entries_columns(),
+            record = match_record_sql("found"),
             clause = filter.clause,
         ),
         filter.params().as_slice(),
@@ -135,10 +132,9 @@ pub(crate) fn load_states_rows_on(
             let Some(found) = row.found else {
                 continue;
             };
-            let (columns, entries) = found?;
             let candidate =
                 candidates.last_mut().expect("a match row follows its candidate's first row");
-            candidate.matches.rows.push(match_of(columns, entries.entries()?)?);
+            candidate.matches.rows.push(found?);
         }
         candidates
             .into_iter()

@@ -315,8 +315,8 @@ pub struct VerdictCards {
     pub agreements: Vec<(String, RowAgreements)>,
     /// How many rows were set aside across every card.
     pub narrowed_out_count: u32,
-    /// Whether the offered rows are several pressings of one album.
-    pub offers_shared_album: bool,
+    /// The album the offered rows are several pressings of, where they are.
+    pub shared_album: Option<crate::SharedAlbum>,
     /// The check against the folder the found release failed: why a found
     /// verdict picks none of its releases. `None` for every other shape.
     pub folder_check: Option<super::FolderCheck>,
