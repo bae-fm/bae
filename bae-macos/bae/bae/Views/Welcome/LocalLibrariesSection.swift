@@ -219,16 +219,22 @@ private struct LibraryRow: View {
                 Text(library.title)
                     .themeText(.strong)
                     .foregroundStyle(Theme.textPrimary)
-                MacProgressContainer(steps: removalSteps, look: .note) {
-                    MacProgressContainer(steps: openSteps, look: .note) {
-                        if let line = library.stateLine {
-                            Text(line)
-                                .themeText(.detail)
-                                .foregroundStyle(
-                                    isUnreadable
-                                        ? StatusTone.danger.color
-                                        : Color.secondary
-                                )
+                // Under the name only when there is something to put there:
+                // an empty container still takes the stack's spacing.
+                if removalSteps != nil || openSteps != nil
+                    || library.stateLine != nil
+                {
+                    MacProgressContainer(steps: removalSteps, look: .note) {
+                        MacProgressContainer(steps: openSteps, look: .note) {
+                            if let line = library.stateLine {
+                                Text(line)
+                                    .themeText(.detail)
+                                    .foregroundStyle(
+                                        isUnreadable
+                                            ? StatusTone.danger.color
+                                            : Color.secondary
+                                    )
+                            }
                         }
                     }
                 }
