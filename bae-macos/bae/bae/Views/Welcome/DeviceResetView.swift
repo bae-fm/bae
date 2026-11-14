@@ -61,7 +61,7 @@ struct DeviceResetView: View {
                 error: error.error,
                 look: .centered,
                 action: error.error.offersRetry
-                    ? ErrorAction("Try again", perform: onReset) : nil,
+                    ? ErrorAction("Retry", perform: onReset) : nil,
                 secondary: cancel
             )
         }
