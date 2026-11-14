@@ -493,4 +493,8 @@
     <string name="onboarding_discard_join_title">미완료 참여를 삭제할까요?</string>
     <string name="onboarding_discard_join_message">참여가 끝나지 않았고, 이 휴대전화는 저장된 내용을 읽을 수 없습니다. 삭제하면 이 휴대전화에서 제거됩니다. 클라우드의 라이브러리는 건드리지 않습니다.</string>
     <string name="onboarding_discard_join_confirm">삭제</string>
+    <string name="album_rated_by">%1$s 님의 평점: %2$d</string>
+    <string name="stars_none">평가 안 함</string>
+    <string name="stars_of_five">별 5개 중 %1$d개</string>
+    <string name="stars_rate">별 5개 중 %1$d개로 평가</string>
 </resources>

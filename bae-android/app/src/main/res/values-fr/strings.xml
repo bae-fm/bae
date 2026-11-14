@@ -509,4 +509,8 @@
     <string name="onboarding_discard_join_title">Abandonner l’adhésion inachevée ?</string>
     <string name="onboarding_discard_join_message">Elle n’a pas abouti et ce téléphone ne peut pas lire ce qu’elle a enregistré. L’abandonner la retire de ce téléphone. La bibliothèque dans le cloud n’est pas touchée.</string>
     <string name="onboarding_discard_join_confirm">Abandonner</string>
+    <string name="album_rated_by">%1$s lui a donné %2$d</string>
+    <string name="stars_none">Non noté</string>
+    <string name="stars_of_five">%1$d étoiles sur 5</string>
+    <string name="stars_rate">Noter %1$d étoiles sur 5</string>
 </resources>

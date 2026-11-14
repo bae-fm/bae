@@ -64,7 +64,9 @@ import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeStars
 
 internal data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -81,6 +83,7 @@ internal data class AlbumDetailCallbacks(
     val onAddReleaseToQueue: () -> Unit,
     val onPlayTrackNext: (String) -> Unit,
     val onAddTrackToQueue: (String) -> Unit,
+    val onRateAlbum: (BridgeStars?) -> Unit,
 )
 
 /**
@@ -305,6 +308,11 @@ private fun buildAlbumDetailCallbacks(
         onAddTrackToQueue = { trackId ->
             runTrackTransportCommand(trackId, "addToQueue", session.appHandle::addToQueue)
         },
+        onRateAlbum = { stars ->
+            session.messages.perform("setRating album ${release.albumId}") {
+                session.appHandle.setRating(BridgeRatingTarget.Album(release.albumId), stars)
+            }
+        },
     )
 }
 
@@ -344,6 +352,10 @@ internal fun AlbumDetailContent(
                 galleryItems = galleryItems,
                 onShowGallery = { showGallery = true },
             )
+        }
+
+        if (detail.rating.canRate || detail.rating.raters.isNotEmpty()) {
+            block { AlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
         }
 
         if (detail.showsReleaseChoices) {

@@ -511,4 +511,8 @@
     <string name="onboarding_discard_join_title">להשליך את ההצטרפות שלא הסתיימה?</string>
     <string name="onboarding_discard_join_message">היא לא הסתיימה, והטלפון הזה לא יכול לקרוא את מה שהיא שמרה. ההשלכה מסירה אותה מהטלפון הזה. הספרייה בענן לא נפגעת.</string>
     <string name="onboarding_discard_join_confirm">השלך</string>
+    <string name="album_rated_by">הדירוג של %1$s: %2$d</string>
+    <string name="stars_none">ללא דירוג</string>
+    <string name="stars_of_five">%1$d מתוך 5 כוכבים</string>
+    <string name="stars_rate">דירוג של %1$d מתוך 5 כוכבים</string>
 </resources>

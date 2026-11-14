@@ -500,4 +500,8 @@
     <string name="onboarding_discard_join_title">Eldobod a befejezetlen csatlakozást?</string>
     <string name="onboarding_discard_join_message">Nem fejeződött be, és ez a telefon nem tudja elolvasni, amit elmentett. Az eldobás eltávolítja erről a telefonról. A felhőben lévő könyvtárhoz nem nyúl hozzá.</string>
     <string name="onboarding_discard_join_confirm">Eldobás</string>
+    <string name="album_rated_by">%1$s értékelése: %2$d</string>
+    <string name="stars_none">Nincs értékelve</string>
+    <string name="stars_of_five">%1$d az 5 csillagból</string>
+    <string name="stars_rate">Értékelés: 5 csillagból %1$d</string>
 </resources>

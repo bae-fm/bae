@@ -518,4 +518,8 @@
     <string name="onboarding_discard_join_title">Zahodiť nedokončené pripojenie?</string>
     <string name="onboarding_discard_join_message">Nedokončilo sa a tento telefón nevie prečítať, čo uložilo. Zahodením sa odstráni z tohto telefónu. Knižnica v cloude zostane nedotknutá.</string>
     <string name="onboarding_discard_join_confirm">Zahodiť</string>
+    <string name="album_rated_by">Hodnotenie od %1$s: %2$d</string>
+    <string name="stars_none">Bez hodnotenia</string>
+    <string name="stars_of_five">%1$d z 5 hviezdičiek</string>
+    <string name="stars_rate">Ohodnotiť %1$d z 5 hviezdičiek</string>
 </resources>

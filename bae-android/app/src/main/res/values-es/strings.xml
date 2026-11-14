@@ -509,4 +509,8 @@
     <string name="onboarding_discard_join_title">¿Descartar la unión sin terminar?</string>
     <string name="onboarding_discard_join_message">No terminó y este teléfono no puede leer lo que guardó. Al descartarla, se quita de este teléfono. La biblioteca en la nube no se toca.</string>
     <string name="onboarding_discard_join_confirm">Descartar</string>
+    <string name="album_rated_by">%1$s lo valoró con %2$d</string>
+    <string name="stars_none">Sin valoración</string>
+    <string name="stars_of_five">%1$d de 5 estrellas</string>
+    <string name="stars_rate">Valorar con %1$d de 5 estrellas</string>
 </resources>

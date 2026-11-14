@@ -562,4 +562,8 @@
     <string name="onboarding_discard_join_title">Discard the unfinished join?</string>
     <string name="onboarding_discard_join_message">It did not finish, and this phone cannot read what it saved. Discarding removes it from this phone. The library in the cloud is not touched.</string>
     <string name="onboarding_discard_join_confirm">Discard</string>
+    <string name="album_rated_by">%1$s rated it %2$d</string>
+    <string name="stars_none">Not rated</string>
+    <string name="stars_of_five">%1$d of 5 stars</string>
+    <string name="stars_rate">Rate %1$d of 5 stars</string>
 </resources>

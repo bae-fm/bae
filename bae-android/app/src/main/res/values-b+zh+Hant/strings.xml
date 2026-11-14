@@ -493,4 +493,8 @@
     <string name="onboarding_discard_join_title">要捨棄未完成的加入嗎？</string>
     <string name="onboarding_discard_join_message">加入未完成，且這支手機無法讀取它儲存的內容。捨棄後會將其從這支手機移除。雲端的音樂庫不受影響。</string>
     <string name="onboarding_discard_join_confirm">捨棄</string>
+    <string name="album_rated_by">%1$s 評了 %2$d 星</string>
+    <string name="stars_none">未評分</string>
+    <string name="stars_of_five">5 星中的 %1$d 星</string>
+    <string name="stars_rate">評為 5 星中的 %1$d 星</string>
 </resources>

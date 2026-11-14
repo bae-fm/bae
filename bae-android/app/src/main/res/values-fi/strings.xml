@@ -500,4 +500,8 @@
     <string name="onboarding_discard_join_title">Hylätäänkö keskeneräinen liittyminen?</string>
     <string name="onboarding_discard_join_message">Se ei valmistunut, eikä tämä puhelin pysty lukemaan sen tallentamaa. Hylkääminen poistaa sen tästä puhelimesta. Pilvessä olevaan kirjastoon ei kosketa.</string>
     <string name="onboarding_discard_join_confirm">Hylkää</string>
+    <string name="album_rated_by">%1$s antoi arvosanan %2$d</string>
+    <string name="stars_none">Ei arvosteltu</string>
+    <string name="stars_of_five">%1$d / 5 tähteä</string>
+    <string name="stars_rate">Arvostele %1$d / 5 tähteä</string>
 </resources>

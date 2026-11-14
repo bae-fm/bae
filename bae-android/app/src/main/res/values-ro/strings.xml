@@ -509,4 +509,8 @@
     <string name="onboarding_discard_join_title">Renunți la alăturarea neterminată?</string>
     <string name="onboarding_discard_join_message">Nu s-a terminat, iar acest telefon nu poate citi ce a salvat. Renunțarea o elimină de pe acest telefon. Biblioteca din cloud nu este atinsă.</string>
     <string name="onboarding_discard_join_confirm">Renunță</string>
+    <string name="album_rated_by">Evaluare de la %1$s: %2$d</string>
+    <string name="stars_none">Neevaluat</string>
+    <string name="stars_of_five">%1$d din 5 stele</string>
+    <string name="stars_rate">Evaluează cu %1$d din 5 stele</string>
 </resources>

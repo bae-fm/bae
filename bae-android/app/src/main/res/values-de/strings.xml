@@ -502,4 +502,8 @@
     <string name="onboarding_discard_join_title">Das unfertige Beitreten verwerfen?</string>
     <string name="onboarding_discard_join_message">Es wurde nicht abgeschlossen, und dieses Telefon kann nicht lesen, was es gespeichert hat. Beim Verwerfen wird es von diesem Telefon entfernt. Die Mediathek in der Cloud bleibt unberührt.</string>
     <string name="onboarding_discard_join_confirm">Verwerfen</string>
+    <string name="album_rated_by">%1$s hat mit %2$d bewertet</string>
+    <string name="stars_none">Nicht bewertet</string>
+    <string name="stars_of_five">%1$d von 5 Sternen</string>
+    <string name="stars_rate">Mit %1$d von 5 Sternen bewerten</string>
 </resources>

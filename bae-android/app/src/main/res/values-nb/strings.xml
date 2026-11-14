@@ -500,4 +500,8 @@
     <string name="onboarding_discard_join_title">Forkaste den uferdige tilkoblingen?</string>
     <string name="onboarding_discard_join_message">Den ble ikke ferdig, og denne telefonen kan ikke lese det den lagret. Når du forkaster den, fjernes den fra denne telefonen. Biblioteket i skyen berøres ikke.</string>
     <string name="onboarding_discard_join_confirm">Forkast</string>
+    <string name="album_rated_by">%1$s ga den %2$d</string>
+    <string name="stars_none">Ikke vurdert</string>
+    <string name="stars_of_five">%1$d av 5 stjerner</string>
+    <string name="stars_rate">Gi %1$d av 5 stjerner</string>
 </resources>

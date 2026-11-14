@@ -502,4 +502,8 @@
     <string name="onboarding_discard_join_title">Tamamlanmamış katılma silinsin mi?</string>
     <string name="onboarding_discard_join_message">Tamamlanmadı ve bu telefon kaydettiğini okuyamıyor. Silmek, onu bu telefondan kaldırır. Buluttaki kitaplığa dokunulmaz.</string>
     <string name="onboarding_discard_join_confirm">Sil</string>
+    <string name="album_rated_by">%1$s puanı: %2$d</string>
+    <string name="stars_none">Puanlanmadı</string>
+    <string name="stars_of_five">5 yıldızdan %1$d</string>
+    <string name="stars_rate">5 yıldızdan %1$d ver</string>
 </resources>

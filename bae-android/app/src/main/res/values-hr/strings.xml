@@ -511,4 +511,8 @@
     <string name="onboarding_discard_join_title">Odbaciti nedovršeno pridruživanje?</string>
     <string name="onboarding_discard_join_message">Nije dovršeno, a ovaj telefon ne može pročitati što je spremilo. Odbacivanjem se uklanja s ovog telefona. Fonoteka u oblaku ostaje netaknuta.</string>
     <string name="onboarding_discard_join_confirm">Odbaci</string>
+    <string name="album_rated_by">Ocjena od %1$s: %2$d</string>
+    <string name="stars_none">Nije ocijenjeno</string>
+    <string name="stars_of_five">%1$d od 5 zvjezdica</string>
+    <string name="stars_rate">Ocijeni s %1$d od 5 zvjezdica</string>
 </resources>

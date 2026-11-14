@@ -502,4 +502,8 @@
     <string name="onboarding_discard_join_title">De onvoltooide deelname weggooien?</string>
     <string name="onboarding_discard_join_message">Hij is niet voltooid en deze telefoon kan niet lezen wat hij heeft opgeslagen. Weggooien verwijdert hem van deze telefoon. De bibliotheek in de cloud blijft ongemoeid.</string>
     <string name="onboarding_discard_join_confirm">Weggooien</string>
+    <string name="album_rated_by">%1$s gaf het %2$d</string>
+    <string name="stars_none">Niet beoordeeld</string>
+    <string name="stars_of_five">%1$d van 5 sterren</string>
+    <string name="stars_rate">Beoordeel met %1$d van 5 sterren</string>
 </resources>

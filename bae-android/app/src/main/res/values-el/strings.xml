@@ -500,4 +500,8 @@
     <string name="onboarding_discard_join_title">Να απορριφθεί η ημιτελής συμμετοχή;</string>
     <string name="onboarding_discard_join_message">Δεν ολοκληρώθηκε και αυτό το τηλέφωνο δεν μπορεί να διαβάσει όσα αποθήκευσε. Η απόρριψη την αφαιρεί από αυτό το τηλέφωνο. Η βιβλιοθήκη στο cloud δεν επηρεάζεται.</string>
     <string name="onboarding_discard_join_confirm">Απόρριψη</string>
+    <string name="album_rated_by">Βαθμολογία από %1$s: %2$d</string>
+    <string name="stars_none">Χωρίς βαθμολογία</string>
+    <string name="stars_of_five">%1$d από 5 αστέρια</string>
+    <string name="stars_rate">Βαθμολόγηση με %1$d από 5 αστέρια</string>
 </resources>

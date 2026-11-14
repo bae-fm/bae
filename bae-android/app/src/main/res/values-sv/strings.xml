@@ -500,4 +500,8 @@
     <string name="onboarding_discard_join_title">Kassera den ofullständiga anslutningen?</string>
     <string name="onboarding_discard_join_message">Den slutfördes inte, och den här telefonen kan inte läsa det den sparade. När du kasserar den tas den bort från den här telefonen. Biblioteket i molnet berörs inte.</string>
     <string name="onboarding_discard_join_confirm">Kassera</string>
+    <string name="album_rated_by">%1$s gav betyget %2$d</string>
+    <string name="stars_none">Inte betygsatt</string>
+    <string name="stars_of_five">%1$d av 5 stjärnor</string>
+    <string name="stars_rate">Betygsätt %1$d av 5 stjärnor</string>
 </resources>

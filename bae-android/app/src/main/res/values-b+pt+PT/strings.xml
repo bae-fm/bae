@@ -502,4 +502,8 @@
     <string name="onboarding_discard_join_title">Descartar a adesão por concluir?</string>
     <string name="onboarding_discard_join_message">Não foi concluída e este telemóvel não consegue ler o que ela guardou. Descartá-la remove-a deste telemóvel. A biblioteca na nuvem não é afetada.</string>
     <string name="onboarding_discard_join_confirm">Descartar</string>
+    <string name="album_rated_by">Classificação de %1$s: %2$d</string>
+    <string name="stars_none">Sem classificação</string>
+    <string name="stars_of_five">%1$d de 5 estrelas</string>
+    <string name="stars_rate">Classificar com %1$d de 5 estrelas</string>
 </resources>

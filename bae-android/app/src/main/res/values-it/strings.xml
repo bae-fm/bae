@@ -509,4 +509,8 @@
     <string name="onboarding_discard_join_title">Scartare l’adesione non completata?</string>
     <string name="onboarding_discard_join_message">Non è stata completata e questo telefono non riesce a leggere ciò che ha salvato. Scartarla la rimuove da questo telefono. La libreria nel cloud non viene toccata.</string>
     <string name="onboarding_discard_join_confirm">Scarta</string>
+    <string name="album_rated_by">Valutazione di %1$s: %2$d</string>
+    <string name="stars_none">Non valutato</string>
+    <string name="stars_of_five">%1$d stelle su 5</string>
+    <string name="stars_rate">Valuta %1$d stelle su 5</string>
 </resources>

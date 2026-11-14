@@ -520,4 +520,8 @@
     <string name="onboarding_discard_join_title">Відхилити незавершене приєднання?</string>
     <string name="onboarding_discard_join_message">Воно не завершилося, і цей телефон не може прочитати те, що воно зберегло. Відхилення прибирає його з цього телефона. Бібліотеку в хмарі не буде змінено.</string>
     <string name="onboarding_discard_join_confirm">Відхилити</string>
+    <string name="album_rated_by">Оцінка від %1$s: %2$d</string>
+    <string name="stars_none">Без оцінки</string>
+    <string name="stars_of_five">%1$d з 5 зірок</string>
+    <string name="stars_rate">Оцінити на %1$d з 5 зірок</string>
 </resources>

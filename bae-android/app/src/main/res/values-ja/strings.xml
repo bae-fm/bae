@@ -493,4 +493,8 @@
     <string name="onboarding_discard_join_title">未完了の参加を破棄しますか？</string>
     <string name="onboarding_discard_join_message">参加は完了しておらず、この携帯電話は保存された内容を読み取れません。破棄すると、この携帯電話から削除されます。クラウド上のライブラリには影響しません。</string>
     <string name="onboarding_discard_join_confirm">破棄</string>
+    <string name="album_rated_by">%1$sさんの評価: %2$d</string>
+    <string name="stars_none">未評価</string>
+    <string name="stars_of_five">5つ星中%1$d</string>
+    <string name="stars_rate">5つ星中%1$dで評価</string>
 </resources>
