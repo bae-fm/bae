@@ -225,6 +225,8 @@
 .bae-m-queue-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
 .bae-m-cu-title { font: 700 17px var(--font-sans); color: var(--text-primary); }
 .bae-m-cu-desc { font: 400 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-cu-glyph { margin-bottom: 6px; }
+.bae-m-cu-actions { display: flex; gap: var(--space-related); margin-top: 10px; }
 .bae-m-queue-section { display: flex; align-items: center; gap: 6px; padding: 12px 8px 4px; }
 .bae-m-queue-section-title { flex: 1; min-width: 0; font: 600 11px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-queue-clear { font: 400 11px var(--font-sans); color: var(--accent); }

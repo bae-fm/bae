@@ -324,7 +324,7 @@ export interface MacSectionHeaderProps { title: string; top?: number; bottom?: n
 export declare function MacSectionHeader(props: MacSectionHeaderProps): React.ReactElement;
 export declare function MacWorkDetail(props: { title: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacHairline(props: {}): React.ReactElement;
-export declare function MacContentUnavailable(props: { title: string; description?: string }): React.ReactElement;
+export declare function MacContentUnavailable(props: { title: string; description?: string; tone?: 'danger' | 'warning' | 'info'; children?: React.ReactNode }): React.ReactElement;
 export declare function Sym(props: { name: string; size?: number; weight?: number }): React.ReactElement;
 export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
