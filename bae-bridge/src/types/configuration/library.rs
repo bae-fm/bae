@@ -11,6 +11,9 @@ pub struct BridgeSearchResults {
     /// else the first track of the first album found; `None` when the search
     /// finds neither.
     pub top_playable: Option<BridgeTopPlayable>,
+    /// Whether the search found anything of any kind, which the empty state
+    /// reads.
+    pub found: bool,
 }
 
 /// A track to play, with the release it is on.

@@ -146,7 +146,8 @@ struct SearchResultsTests {
                         representativeCover: nil
                     )
                 ],
-                topPlayable: nil
+                topPlayable: nil,
+                found: true
             ),
             query: "work"
         )

@@ -35,12 +35,7 @@ import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeTrackSearchResult
 
-internal fun BridgeSearchResults.hasNoResults(): Boolean =
-    albums.isEmpty() &&
-        artists.isEmpty() &&
-        tracks.isEmpty() &&
-        composers.isEmpty() &&
-        works.isEmpty()
+internal fun BridgeSearchResults.hasNoResults(): Boolean = !found
 
 /**
  * Library search results for a non-blank query, one section per result kind.

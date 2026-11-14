@@ -624,7 +624,8 @@ extension PreviewData {
                     representativeCover: nil
                 )
             ],
-            topPlayable: nil
+            topPlayable: nil,
+            found: true
         ),
         query: "placeholder"
     )

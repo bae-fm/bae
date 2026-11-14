@@ -53,9 +53,7 @@ struct SearchView: View {
         guard let results else {
             return false
         }
-        return results.albums.isEmpty && results.artists.isEmpty
-            && results.tracks.isEmpty && results.composers.isEmpty
-            && results.works.isEmpty
+        return !results.found
     }
 
     private func resultsList(_ results: SearchResults) -> some View {

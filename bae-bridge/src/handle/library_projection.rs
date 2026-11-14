@@ -253,6 +253,7 @@ mirror_struct! {
         composers: (each BridgeComposerSummary),
         works: (each BridgeWorkSummary),
         top_playable: (opt crate::types::BridgeTopPlayable),
+        found,
     },
 }
 

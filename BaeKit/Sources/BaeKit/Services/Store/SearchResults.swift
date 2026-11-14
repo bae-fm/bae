@@ -7,6 +7,8 @@ public struct SearchResults: Equatable, Sendable {
     public let tracks: [TrackSearchResult]
     public let composers: [BridgeComposerSummary]
     public let works: [BridgeWorkSummary]
+    /// Whether the search found anything of any kind.
+    public let found: Bool
 
     public init(bridge: BridgeSearchResults, query: String) {
         self.query = query
@@ -15,6 +17,7 @@ public struct SearchResults: Equatable, Sendable {
         tracks = bridge.tracks.map(TrackSearchResult.init(bridge:))
         composers = bridge.composers
         works = bridge.works
+        found = bridge.found
     }
 }
 

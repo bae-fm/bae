@@ -271,6 +271,9 @@ object BridgeFixtures {
             composers = composers,
             works = works,
             topPlayable = topPlayable,
+            found =
+                albums.isNotEmpty() || artists.isNotEmpty() || tracks.isNotEmpty() ||
+                    composers.isNotEmpty() || works.isNotEmpty(),
         )
 
     fun downloadOp(

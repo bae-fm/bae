@@ -17,6 +17,8 @@ pub struct DbLibrarySearchResults {
     /// The track a spoken "play" of the search plays: the first track found,
     /// else the first track of the first album found.
     pub top_playable: Option<DbTopPlayable>,
+    /// Whether the search found anything of any kind.
+    pub found: bool,
 }
 
 /// A track to play, with the release it is on.

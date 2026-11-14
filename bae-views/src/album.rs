@@ -568,7 +568,34 @@ fn search_library_on(
             |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
         )
         .optional()?;
-    Ok(LibrarySearchRows { albums, artists, tracks, composers, works, top_playable })
+    // Whether any kind has a row, found by the statements that list each kind
+    // and stopping at the first row of any.
+    let found: bool = sql.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM albums a WHERE {album_matches}) \
+                 OR EXISTS (SELECT 1 FROM tracks t \
+                            WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)) \
+                 OR EXISTS ({artists}) OR EXISTS ({composers}) OR EXISTS ({works})",
+            album_matches = album_matches_sql("a.id", "?1"),
+            artists = artist_listing_query(
+                None,
+                Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
+                Some("LIMIT 1"),
+            ),
+            composers = composer_listing_query(
+                None,
+                Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
+                Some("LIMIT 1"),
+            ),
+            works = work_summary_query(
+                Some("WHERE w.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)"),
+                Some("LIMIT 1"),
+            ),
+        ),
+        params![pattern],
+        |row| row.get(0),
+    )?;
+    Ok(LibrarySearchRows { albums, artists, tracks, composers, works, top_playable, found })
 }
 
 #[derive(Clone, PartialEq)]
@@ -589,6 +616,7 @@ struct LibrarySearchRows {
     composers: Vec<DbComposerSummary>,
     works: Vec<DbWorkSummary>,
     top_playable: Option<DbTopPlayable>,
+    found: bool,
 }
 
 impl AlbumSearchRow {
@@ -625,6 +653,7 @@ impl LibrarySearchRows {
             composers: self.composers,
             works: self.works,
             top_playable: self.top_playable,
+            found: self.found,
         })
     }
 }

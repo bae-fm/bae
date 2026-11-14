@@ -563,6 +563,30 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
     assert_eq!(top("Nothing Matches This").await, None);
 }
 
+/// A search says whether it found anything of any kind, so no surface tests
+/// the five kinds' lists for an empty state: a track title, an album title
+/// and an artist's name each count, and a query that matches none does not.
+#[tokio::test]
+async fn a_search_says_whether_it_found_anything() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(NEEDLE_ARTIST, "Needle Artist Name")
+        .album(ALBUM_FOO, "Foo Album Title", Some(2026), &[NEEDLE_ARTIST])
+        .release(ALBUM_FOO, RELEASE_FOO)
+        .tracks(RELEASE_FOO, &[(TRACK_FOO_FIRST, "Opening Title")])
+        .write(&test_records(&db))
+        .await;
+    let found = |query: &'static str| {
+        let views = crate::LibraryViews::new(db.clone());
+        async move { views.search_rows(query, 10).await.unwrap().found }
+    };
+
+    assert!(found("Opening Title").await, "a track found");
+    assert!(found("Foo Album").await, "an album found");
+    assert!(found("Needle Artist").await, "an artist found");
+    assert!(!found("Nothing Matches This").await);
+}
+
 const EMPTY_ALBUM: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5001";
 const EMPTY_RELEASE: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5002";
 const PLAYABLE_ALBUM: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5011";
