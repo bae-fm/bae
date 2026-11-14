@@ -1249,8 +1249,11 @@ come first, so the disc-ID lookup need not wait for the artwork to be read.
 
 **Where the audio came from.** The files can prove a medium:
 
-- **A CD rip**: a rip log, an AccurateRip report, or a CUE sheet a known ripper
-  signed.
+- **A CD rip**: a rip log whose table of contents reads (the layout Exact Audio Copy and
+  XLD write; a log without that table proves nothing), an
+  AccurateRip report with an `[AccurateRip ID: ...] found.` line, or a CUE
+  sheet Exact Audio Copy signed (`REM COMMENT "ExactAudioCopy ..."`). No other
+  ripper's CUE sheet proves a CD rip.
 - **A download**: what a store writes into the files it sells, or the set of
   tags a label delivers with every track (an ISRC, a copyright line and the
   label), where nothing says a disc was read.
