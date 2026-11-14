@@ -36,6 +36,8 @@ use bae_catalogs::source_release::{
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_roles, Numbering};
 
+mod claimed_records;
+pub(crate) use claimed_records::claimed_records_on;
 mod tracklist;
 
 /// The tables under `source_release`, children before the tables they hang

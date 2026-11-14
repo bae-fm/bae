@@ -14,7 +14,7 @@ use crate::tables::import_state::{
     load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::load_source_release_on;
+use crate::tables::source_releases::{claimed_records_on, load_source_release_on};
 use crate::{DraftProjection, ProjectedStage};
 use crate::{ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
@@ -145,16 +145,12 @@ fn draft_rows_on(
     // checks it against the library.
     let claimed =
         claimed_releases_on(sql, candidate, release_link.as_ref().and_then(ReleaseLink::pressing))?;
-    // Every catalog record of what the candidate is linked to: the linked
-    // pressing's releases describe it, an album names its own.
-    let records = match &release_link {
-        Some(ReleaseLink::Album(album)) => album.records(),
-        Some(ReleaseLink::Pressing(_)) | None => bae_catalogs::source_release::claimed_records(
-            &claimed
-                .iter()
-                .map(bae_catalogs::source_release::SourceRelease::records)
-                .collect::<Vec<_>>(),
-        ),
+    // Every catalog record of what the candidate is linked to, merged in one
+    // statement over the stored releases: the linked pressing's releases
+    // describe it, an album names its own.
+    let records = match current {
+        Some(_) => claimed_records_on(sql, content_hash)?,
+        None => Vec::new(),
     };
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {

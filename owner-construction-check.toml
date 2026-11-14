@@ -1632,8 +1632,6 @@ frozen = [
     { path = "bae-catalogs/src/remote_image/covers.rs", item = "RemoteImageSet::with_copies", shape = "sort", count = 1, finding = "`RemoteImageSet::with_copies` sorts with `sort_by_key` (found by the check)" },
     { path = "bae-catalogs/src/remote_image/covers.rs", item = "offered_covers", shape = "filter", count = 1, finding = "`offered_covers` filters with `partition` (found by the check)" },
     { path = "bae-catalogs/src/remote_image/covers.rs", item = "push_unique_cover", shape = "pick", count = 1, finding = "`push_unique_cover` picks with `find` (found by the check)" },
-    { path = "bae-catalogs/src/source_release.rs", item = "claimed_records", shape = "pick", count = 1, finding = "`claimed_records` picks with `find` (found by the check)" },
-    { path = "bae-catalogs/src/source_release.rs", item = "claimed_records", shape = "sort", count = 1, finding = "`claimed_records` sorts with `sort_by_key` (found by the check)" },
     { path = "bae-catalogs/src/source_release.rs", item = "release_records", shape = "sort", count = 1, finding = "`release_records` sorts with `sort_by_key` (found by the check)" },
     { path = "bae-identify/src/agreements.rs", item = "Agreements::count", shape = "aggregate", count = 1, finding = "`Agreements::count` aggregates with `count` (found by the check)" },
     { path = "bae-identify/src/agreements.rs", item = "Agreements::count", shape = "filter", count = 1, finding = "`Agreements::count` filters with `filter` (found by the check)" },

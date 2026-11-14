@@ -1606,6 +1606,11 @@ release, and then each other catalog's release of the pressing, from its
 catalog, or fetching the cover from the catalog that offers it. A release the
 library already holds whole is read without a line, and the rest of the
 pick, which is local, shows none; the row takes no second pick meanwhile.
+A pick claims its release and, where the pick pairs another catalog's, that
+catalog's release. The pane reads the claimed releases' records merged by one
+statement over the stored releases: each claimed release's own record outranks
+what another says about its catalog, the applied catalog comes first, and the
+albums kept for the releases' albums join them.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
