@@ -226,8 +226,11 @@ async fn data_from_before_a_reset_shows_until_it_is_deleted() {
     let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = bae_store::TestSources::system();
+    let storage = std::sync::Arc::new(
+        coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
+    );
     let created = crate::create_library(
-        sources.builder(&installation),
+        sources.builder(&installation).storage_connector(storage.clone()),
         bae_store::EnteredName::parse("Local Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
@@ -236,10 +239,20 @@ async fn data_from_before_a_reset_shows_until_it_is_deleted() {
     )
     .await
     .unwrap();
+    // A reset loads the library back from storage, so the library has set it up.
+    created
+        .setup_s3_storage(
+            coven::Storage::config(storage.as_ref()),
+            "owner-key".into(),
+            coven::SecretText::new("owner-secret".into()),
+            &|_| (),
+        )
+        .await
+        .unwrap();
     let store = created.store_id();
     created.close().await.unwrap();
     let handle = crate::reset_device(
-        sources.builder(&installation),
+        sources.builder(&installation).storage_connector(std::sync::Arc::new(storage.for_device())),
         store,
         "Replacement",
         |_| {},
