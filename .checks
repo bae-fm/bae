@@ -13,32 +13,32 @@
 # Rust
 fix rustfmt *.rs rustfmt {files}
 check source-size *.astro,*.c,*.cc,*.cpp,*.cs,*.css,*.gradle,*.h,*.hpp,*.html,*.java,*.js,*.kt,*.kts,*.mjs,*.ps1,*.py,*.rb,*.rs,*.scss,*.sh,*.swift,*.ts,*.tsx,*.xaml scripts/check-source-file-size.py {files}
-check source-size-all scripts/check-source-file-size.py scripts/check-source-file-size.py
+whole source-size-all scripts/check-source-file-size.py scripts/check-source-file-size.py
 check rust-visibility *.rs scripts/check-rust-visibility.sh {files}
-check rust-visibility-all scripts/check-rust-visibility.sh scripts/check-rust-visibility.sh
+whole rust-visibility-all scripts/check-rust-visibility.sh scripts/check-rust-visibility.sh
 check reqwest-errors *.rs scripts/check-reqwest-error-display.py {files}
-check reqwest-errors-all scripts/check-reqwest-error-display.py scripts/check-reqwest-error-display.py
+whole reqwest-errors-all scripts/check-reqwest-error-display.py scripts/check-reqwest-error-display.py
 check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {crates}
-check rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
-check ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
-check coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
-check frozen-shrinks owner-construction-check.toml,scripts/ui-row-work.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
+whole rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
+whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
+whole coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
+whole frozen-shrinks owner-construction-check.toml,scripts/ui-row-work.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
 
 # The apps' sources and the bridge they call
-check uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
-check screen-pulls bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-android/screensubscription/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/check-screen-pulls.py,scripts/source_tokens.py python3 scripts/check-screen-pulls.py
-check swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,scripts/swift-owner-dependency-boundary.py python3 scripts/swift-owner-dependency-boundary.py
-check ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
-check keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
+whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
+whole screen-pulls bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-android/screensubscription/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/check-screen-pulls.py,scripts/source_tokens.py python3 scripts/check-screen-pulls.py
+whole swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,scripts/swift-owner-dependency-boundary.py python3 scripts/swift-owner-dependency-boundary.py
+whole ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
+whole keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
 check test-keychain *.rs,*.swift,*.kt,*.cs python3 scripts/check-test-keychain.py {files}
-check test-keychain-all project.yml,*.csproj,scripts/check-test-keychain.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-test-keychain.py
+whole test-keychain-all project.yml,*.csproj,scripts/check-test-keychain.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-test-keychain.py
 check no-ide-previews *.swift,*.kt python3 scripts/check-no-previews.py {files}
-check no-ide-previews-all scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py
+whole no-ide-previews-all scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py
 check xcode-trees * python3 scripts/check-xcode-trees.py {files}
-check xcode-trees-all scripts/check-xcode-trees.py,scripts/xcode-trees.sh python3 scripts/check-xcode-trees.py
+whole xcode-trees-all scripts/check-xcode-trees.py,scripts/xcode-trees.sh python3 scripts/check-xcode-trees.py
 
 # Swift
 fix swift-format *.swift xcrun swift-format format -i -p {files}
@@ -57,10 +57,10 @@ fix dotnet-format bae-avalonia/**/*.cs dotnet format whitespace bae-avalonia/bae
 check dotnet-format-config .editorconfig,bae-avalonia/bae-avalonia.csproj dotnet format whitespace bae-avalonia/bae-avalonia.csproj --verify-no-changes
 
 # Localization
-check loc-orphans *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-macos/bae/bae/**/*.swift,BaeKit/Sources/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/app/src/main/**/*.xml,scripts/loc-chrome-orphans.py,scripts/loc-orphans-allowlist.txt python3 scripts/loc-chrome-orphans.py
+whole loc-orphans *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-macos/bae/bae/**/*.swift,BaeKit/Sources/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/app/src/main/**/*.xml,scripts/loc-chrome-orphans.py,scripts/loc-orphans-allowlist.txt python3 scripts/loc-chrome-orphans.py
 check loc-english-skeleton *.xcstrings,bae-android/app/src/main/res/**/strings.xml python3 scripts/loc-english-skeleton.py {files}
-check loc-english-skeleton-all scripts/loc-english-skeleton.py,scripts/loc-skeleton-allowlist.txt,bae-loc/src/lib.rs python3 scripts/loc-english-skeleton.py
-check loc-words *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-bridge/loc/catalog.toml,spec/words.md,bae-macos/bae/bae/Shell/*Menu*.swift,scripts/loc-words.py python3 scripts/loc-words.py
+whole loc-english-skeleton-all scripts/loc-english-skeleton.py,scripts/loc-skeleton-allowlist.txt,bae-loc/src/lib.rs python3 scripts/loc-english-skeleton.py
+whole loc-words *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-bridge/loc/catalog.toml,spec/words.md,bae-macos/bae/bae/Shell/*Menu*.swift,scripts/loc-words.py python3 scripts/loc-words.py
 
 # Boards and workflows
 check shots-without-boards design/mocks/**,design/system/components/**,bae-android/app/src/test/java/fm/bae/app/shots/**,bae-macos/bae/baeShots/**,design/shots.toml scripts/cargo.sh run -q -p bae-shots -- lint

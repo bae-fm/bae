@@ -1,6 +1,6 @@
 #!/bin/bash
 # Compile check that builds land runs on a cherry-picked result before pushing it
-# (see .land-checks for the static ones): clippy with --all-targets over the
+# (the `whole` lines of .checks are the static ones): clippy with --all-targets over the
 # crates the landed commits touch and the crates that depend on them, warnings
 # denied.
 # Then the same crates' libraries and binaries without test features, which
