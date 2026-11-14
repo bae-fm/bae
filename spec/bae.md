@@ -2884,6 +2884,11 @@ person who did, with their stars, by name. A track's stars on the page are the
 person's own. Only a person with a profile rates (§5.4); the page's detail says
 whether this person can.
 
+On macOS the album's stars sit above its tracks: clicking a star rates the album
+with that many stars, and clicking the star the person already gave clears the
+rating. A person without a profile sees no stars, only the line of who rated
+the album.
+
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
 store, with its entries, and everyone sees it. A move between the store and a

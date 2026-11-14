@@ -34,6 +34,8 @@ struct AlbumExpansionContent: View {
     let onDeleteRelease: () -> Void
     let onDeleteAlbum: () -> Void
     let onExportTrack: (String) -> Void
+    /// Rate the album with these stars, or clear its rating with none.
+    let onRateAlbum: (BridgeStars?) -> Void
     var playlists = TrackPlaylistChoices.none
     /// Picking several tracks of the list, or `nil` where the list has none.
     var picking: TrackPicking?
@@ -91,6 +93,13 @@ struct AlbumExpansionContent: View {
                         albumMenu
                     }
                     .padding(.top, ThemeSpace.group)
+                    if detail.rating.canRate || !detail.rating.raters.isEmpty {
+                        AlbumRatingRow(
+                            rating: detail.rating,
+                            onRate: onRateAlbum
+                        )
+                        .padding(.top, ThemeSpace.related)
+                    }
                     AlbumTrackListView(
                         release: selectedRelease,
                         isCompilation: album.isCompilation,

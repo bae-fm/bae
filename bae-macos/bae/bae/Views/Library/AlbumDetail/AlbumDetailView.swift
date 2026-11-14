@@ -132,6 +132,9 @@ struct AlbumDetailView: View {
                     onExportTrack: { trackId in
                         exportTrack(trackId: trackId)
                     },
+                    onRateAlbum: { stars in
+                        rate(.album(id: albumId), stars)
+                    },
                     playlists: trackPlaylistChoices,
                     picking: trackPicking
                 )

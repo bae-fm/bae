@@ -110,6 +110,11 @@ public final class Library: Sendable, Observable {
     /// their release lists them, which core reads.
     public let tracksInReleaseOrder:
         @Sendable (_ trackIds: [String]) async throws -> [String]
+    /// Give an album or a track of this device's person these stars, or clear
+    /// their rating with none.
+    public let setRating:
+        @Sendable (_ target: BridgeRatingTarget, _ stars: BridgeStars?)
+            async throws -> Void
 
     public init(
         albumList:
@@ -222,7 +227,10 @@ public final class Library: Sendable, Observable {
         tracksInReleaseOrder:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
-            }
+            },
+        setRating:
+            @escaping @Sendable (BridgeRatingTarget, BridgeStars?) async throws
+            -> Void = { _, _ in throw StubError.notImplemented }
     ) {
         self.albumList = albumList
         self.getAlbumIndex = getAlbumIndex
@@ -252,6 +260,7 @@ public final class Library: Sendable, Observable {
         self.createPlaylist = createPlaylist
         self.appendPlaylistEntries = appendPlaylistEntries
         self.tracksInReleaseOrder = tracksInReleaseOrder
+        self.setRating = setRating
     }
 
     #if DEBUG
@@ -324,8 +333,17 @@ extension Library {
                 },
                 createPlaylist: Self.createPlaylist(handle),
                 appendPlaylistEntries: Self.appendPlaylistEntries(handle),
-                tracksInReleaseOrder: Self.tracksInReleaseOrder(handle)
+                tracksInReleaseOrder: Self.tracksInReleaseOrder(handle),
+                setRating: { try await handle.setRating(target: $0, stars: $1) }
             )
+        }
+
+        /// The track ids of albums, releases and tracks, resolved through
+        /// `handle`.
+        private static func resolveToTrackIds(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable ([String]) async throws -> [String] {
+            { try await handle.resolveToTrackIds(ids: $0) }
         }
 
         /// Where an album sits in the album list, read through `handle`.
@@ -373,13 +391,6 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
             { DetailQuery(handle.subscribePlaylistDetail()) }
-        }
-
-        /// Resolve albums and tracks to track ids through `handle`.
-        private static func resolveToTrackIds(
-            _ handle: any AppHandleProtocol
-        ) -> @Sendable ([String]) async throws -> [String] {
-            { try await handle.resolveToTrackIds(ids: $0) }
         }
 
         /// Order picked tracks as their release lists them through `handle`.

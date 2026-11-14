@@ -38,10 +38,10 @@ extension ShotScene {
     static func boardLibraryBacking(
         uiStore: UiStore,
         openAlbum: Bool = false,
+        detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:]
     ) -> (library: Library, session: LibraryBrowseSession) {
-        let detail = PreviewData.boardAlbumDetail()
         let library = Library(
             albumList: { _, _ in
                 .fixed(boardAlbums, answers: UnansweredCount())
