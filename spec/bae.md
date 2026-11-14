@@ -6460,7 +6460,9 @@ phone", nothing until the first measurement), whether casting is on, and the
 version. The Mac's Settings is one window with no title bar: its panes' names,
 as text alone, down a sidebar that holds the window's buttons at its top,
 inset 12 points from the panel's top left corner, and
-each pane's title in bold at the top left of the pane. It opens on Appearance,
+each pane's title in bold at the top left of the pane. A page inside a pane
+puts a round button, 24 points across and named "Back to" and the page it goes
+back to, before its title. It opens on Appearance,
 the first pane. The sidebar names the
 sync state beside Library only while it is amber or red, and Offline beside
 Subsonic while it is on and not running, each as a chip tinted in its tone.

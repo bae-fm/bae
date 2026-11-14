@@ -15,10 +15,14 @@ struct SettingsPageHeader: View {
                 Image(systemName: "chevron.backward")
                     .themeIcon(.small)
             }
-            .buttonStyle(.accentBordered)
-            .buttonBorderShape(.circle)
-            .controlSize(.small)
-            .accessibilityLabel(Text(verbatim: backTitle))
+            .buttonStyle(
+                BoxedIconButtonStyle(size: .back)
+                    .accentFocus(
+                        cornerRadius: BoxedIconButtonStyle.Size.back
+                            .cornerRadius
+                    )
+            )
+            .accessibilityLabel(Text("Back to \(backTitle)"))
             Text(verbatim: title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
