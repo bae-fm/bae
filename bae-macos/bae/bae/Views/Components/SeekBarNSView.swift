@@ -96,6 +96,7 @@ final class SeekBarNSView: NSView {
         slider.minValue = 0
         slider.maxValue = 1
         slider.isContinuous = true
+        slider.setAccessibilityLabel(String(localized: "Position"))
         slider.translatesAutoresizingMaskIntoConstraints = false
 
         durationField = NSTextField(labelWithString: "")
