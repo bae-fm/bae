@@ -107,6 +107,19 @@ struct ShotElementListTests {
         #expect(cancel.bounds.y > message.bounds.y, "\(json)")
     }
 
+    /// macOS reports a spinner as a busy indicator; the list reads it as a
+    /// progress bar, as VoiceOver does.
+    @Test
+    func listsASpinnerAsProgress() async throws {
+        let list = try await list("mac.component.spinner.alone")
+        let json = try json(list)
+        let spinner = try #require(
+            list.elements.first { $0.native == "AXBusyIndicator" },
+            "\(json)"
+        )
+        #expect(spinner.role == "progress", "\(json)")
+    }
+
     @Test
     func everyBoxLiesInTheShotAndEveryParentComesFirst() async throws {
         for id in [
