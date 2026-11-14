@@ -546,6 +546,19 @@ with its credits and parts (§2.1); a work whose part a track performs is
 performed through it. A release's detail names the works each of its
 tracks performs, in the track's order, each with its composers.
 
+**A release's tracks.** A release's detail lists its tracks in playing order,
+in a group for each run of tracks on one side or disc. A track on a record or a
+cassette is on a lettered side, the letters counting the sides of the release's
+sided mediums in order, across mediums: a CD, then a record of two sides and a
+record of one, reads Disc 1, Side A, Side B, Side C. A track on any other medium
+is on a numbered disc when the release holds more than one medium, and plain
+otherwise. Each group states the playing time of its tracks, and whether the
+release has more than one group, which is when each shows its time beside the
+release's. Each track carries its own credits (or the album's), the works it
+performs and the stars the person gave it. The release's files come with the
+lists the page shows beside them (the images, the images a cover can be made
+from, the files no track plays from), their count and their total size.
+
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track
 the credits in a role other than a writing one of the works it performs, as

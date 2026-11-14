@@ -156,11 +156,12 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         .unwrap()
         .expect("release detail");
     let committed_tracks: Vec<(String, TrackArtistAssignments)> = release_detail
-        .tracks
+        .track_groups
         .iter()
+        .flat_map(|group| &group.tracks)
         .map(|track| {
             (
-                track.track.title.clone(),
+                track.title.clone(),
                 if track.artists.is_empty() {
                     TrackArtistAssignments::AlbumArtists
                 } else {

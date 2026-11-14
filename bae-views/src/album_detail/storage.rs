@@ -156,7 +156,6 @@ impl StorageRow {
             // the per-track compilation flag is never read on this path.
             is_compilation: false,
             album_year: raw.album.year,
-            my_stars: Default::default(),
         };
         StorageRow {
             release: ReleaseSummary::from_raw(raw.release, &ctx),

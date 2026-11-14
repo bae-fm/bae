@@ -20,6 +20,7 @@ struct AlbumTrackListLayoutTests {
     func sidesSplitIntoColumns() async throws {
         let release = PreviewData.releaseDetail(albumId: "a-23")
         #expect(release.trackGroups.map(\.tracks.count) == [9, 8])
+        #expect(release.trackGroups.map(\.showsTime) == [true, true])
 
         let size = NSSize(width: 800, height: 900)
         try await withHostedTrackList(release: release, size: size) { _, host in

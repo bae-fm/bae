@@ -52,6 +52,7 @@ fn track_group_precomputes_header_key_per_side() {
                 side,
                 tracks: vec![track_detail(position, 187_000)],
                 total_duration_ms: 187_000,
+                shows_time: true,
             });
         assert_eq!(group.header_key.as_deref(), expected);
         assert_eq!(

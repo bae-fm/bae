@@ -612,7 +612,7 @@ impl AutomationRelease {
 }
 
 impl AutomationTrackGroup {
-    /// Drops core's display-only `total_duration_ms`.
+    /// Drops core's display-only `total_duration_ms` and `shows_time`.
     pub(crate) fn from_core(group: bae_views::album_detail::TrackGroup) -> Self {
         Self {
             side: AutomationTrackSide::from_core(group.side),

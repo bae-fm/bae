@@ -112,18 +112,32 @@ fn one_track(
     let release = bae_records::DbRelease::new_test("album-id", "release-id");
     let track = bae_records::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
     let raw = bae_records::DbReleaseDetail {
-        mediums: bae_records::DbReleaseMediums(vec![bae_records::DbReleaseMedium::new_test(
-            &release.id,
-        )]),
         release,
-        tracks: vec![bae_records::DbTrackWithArtists {
-            track: track.clone(),
-            artists: Vec::new(),
-            shown_artists: Vec::new(),
-            works: Vec::new(),
+        total_duration_ms: track.duration_ms,
+        track_groups: vec![bae_records::DbTrackGroup {
+            side: TrackSide::Flat,
+            tracks: vec![bae_records::DbTrackWithArtists {
+                id: track.id.clone(),
+                title: track.title.clone(),
+                duration_ms: track.duration_ms,
+                position: TrackPosition::Flat { number: 1 },
+                artists: Vec::new(),
+                shown_artists: Vec::new(),
+                works: Vec::new(),
+                my_stars: None,
+            }],
+            total_duration_ms: track.duration_ms,
+            shows_time: false,
         }],
         credits: Vec::new(),
-        files: Vec::new(),
+        files: bae_records::DbReleaseFiles {
+            files: Vec::new(),
+            images: Vec::new(),
+            covers: Vec::new(),
+            others: Vec::new(),
+            count: 0,
+            total_size: 0,
+        },
         records: Vec::new(),
         unstored_audio: Vec::new(),
         pinned: false,
@@ -241,14 +255,15 @@ fn the_files_no_track_plays_from_are_listed_with_their_roles() {
     use bae_records::ReleaseFileRole::{Artwork, Audio, DamagedImage, Document, Other, TrackSheet};
     let (mut raw, tracks) =
         one_track(vec![segment(bae_records::DbAudioSegmentRole::Main, "id-disc.flac")]);
-    raw.files = vec![
+    raw.files.others = vec![
         stored_file("back.png", DamagedImage, None),
         stored_file("cover.jpg", Artwork, None),
         stored_file("disc.cue", TrackSheet, None),
-        stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)),
         stored_file("notes.nfo", Other, None),
         stored_file("rip.log", Document(bae_records::DocumentKind::RipLog), None),
     ];
+    raw.files.files = raw.files.others.clone();
+    raw.files.files.push(stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)));
 
     let display = ReleaseEditDisplayContext::from_raw(&raw, tracks).unwrap();
 

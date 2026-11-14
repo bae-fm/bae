@@ -62,10 +62,10 @@ internal fun LazyListScope.albumTrackGroups(
                 positionColumnWidth = positionColumnWidth,
             )
         }
-        // The header shows the total, so only a multi-side release lists each
-        // side's play time.
+        // The header shows the total, so only a release core says shows its
+        // sides' time lists each side's play time.
         val groupDurationLabel = context.durationUnitsText(group.totalDuration)
-        if (release.trackGroups.size > 1 && groupDurationLabel.isNotEmpty()) {
+        if (group.showsTime && groupDurationLabel.isNotEmpty()) {
             item {
                 Text(
                     text = groupDurationLabel,

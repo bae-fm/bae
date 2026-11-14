@@ -1,25 +1,10 @@
 //! Personal ratings and ordered playlists shared through coven's owner tables.
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Stars {
-    One = 1,
-    Two = 2,
-    Three = 3,
-    Four = 4,
-    Five = 5,
-}
+pub use bae_types::stars::Stars;
 
-impl Stars {
-    pub(crate) fn from_sql(value: i64) -> rusqlite::Result<Self> {
-        match value {
-            1 => Ok(Self::One),
-            2 => Ok(Self::Two),
-            3 => Ok(Self::Three),
-            4 => Ok(Self::Four),
-            5 => Ok(Self::Five),
-            _ => Err(rusqlite::Error::IntegralValueOutOfRange(0, value)),
-        }
-    }
+/// The stars a stored count names, read in a row closure.
+pub(crate) fn stars_from_sql(value: i64) -> rusqlite::Result<Stars> {
+    Stars::from_stored(value).ok_or(rusqlite::Error::IntegralValueOutOfRange(0, value))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

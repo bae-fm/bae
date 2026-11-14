@@ -161,8 +161,11 @@ impl ContentType {
     }
 
     /// Formats decoded and normalized when an image is used as cover artwork.
+    pub const SUPPORTED_COVERS: [Self; 4] = [Self::Jpeg, Self::Png, Self::Gif, Self::Webp];
+
+    /// Whether this is one of [`Self::SUPPORTED_COVERS`].
     pub fn is_supported_cover(&self) -> bool {
-        matches!(self, Self::Jpeg | Self::Png | Self::Gif | Self::Webp)
+        Self::SUPPORTED_COVERS.contains(self)
     }
 
     /// The most bytes of a file's start [`Self::opens_with`] reads.

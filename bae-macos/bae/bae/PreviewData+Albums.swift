@@ -70,7 +70,8 @@
                         headerKey: isVinyl
                             ? "core.track.side" : "core.track.disc",
                         tracks: tracks,
-                        totalDuration: groupDuration(tracks)
+                        totalDuration: groupDuration(tracks),
+                        showsTime: true
                     )
                 )
             }
@@ -134,7 +135,8 @@
                             side: .flat,
                             headerKey: nil,
                             tracks: tracks,
-                            totalDuration: groupDuration(tracks)
+                            totalDuration: groupDuration(tracks),
+                            showsTime: false
                         )
                     ]
                 )

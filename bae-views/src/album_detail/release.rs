@@ -4,7 +4,6 @@
 use super::*;
 use crate::DbReleaseSummary;
 use bae_records::DbReleaseDetail;
-use std::collections::HashMap;
 
 /// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: whether the library syncs at all
@@ -19,8 +18,6 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) is_compilation: bool,
     /// The owning album's year, which [`ReleaseDetail::distinct_year`] is read against.
     pub(crate) album_year: Option<i32>,
-    /// This person's stars for the release's tracks, by track id.
-    pub(crate) my_stars: HashMap<String, Stars>,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -187,75 +184,32 @@ impl ReleaseDetail {
     ) -> ReleaseDetail {
         let release = raw.release;
 
-        let track_ids: Vec<&str> = raw.tracks.iter().map(|entry| entry.track.id.as_str()).collect();
-        let positions: Vec<String> =
-            raw.tracks.iter().map(|entry| raw.mediums.position(&entry.track).text()).collect();
-        let credits = super::credits::credit_rows(&raw.credits, &track_ids, &positions);
-
-        let tracks: Vec<TrackDetail> = raw
-            .tracks
+        let credits: Vec<CreditRow> = raw.credits.into_iter().map(CreditRow::from_raw).collect();
+        let track_groups: Vec<TrackGroup> = raw
+            .track_groups
             .into_iter()
-            .map(|entry| {
-                let artist_line = bae_records::credits::library_line(&entry.shown_artists);
-                let position = raw.mediums.position(&entry.track);
-                let position_text = position.text();
-                // On a compilation each row carries its own artist, because the
-                // album header names no single one; on a single-artist album the
-                // row would only repeat the header, so it shows nothing.
-                let display_artist = ctx.is_compilation.then(|| artist_line.clone());
-                let my_stars = ctx.my_stars.get(&entry.track.id).copied();
-                TrackDetail {
-                    my_stars,
-                    id: entry.track.id,
-                    title: entry.track.title,
-                    duration_ms: entry.track.duration_ms,
-                    artist_line,
-                    display_artist,
-                    position_text,
-                    position,
-                    works: entry
-                        .works
-                        .into_iter()
-                        .map(|work| TrackWork {
-                            work_id: work.work_id,
-                            title: work.title,
-                            composer_names: work.composer_names,
-                        })
-                        .collect(),
-                }
-            })
+            .map(|group| TrackGroup::from_raw(group, ctx.is_compilation))
             .collect();
-
-        let track_groups: Vec<TrackGroup> = super::group_tracks_by_side(&tracks);
+        let tracks: Vec<TrackDetail> =
+            track_groups.iter().flat_map(|group| group.tracks.iter().cloned()).collect();
 
         let remote = raw.remote;
         let playability = release_playability(&raw.unstored_audio);
-        let mut cover_files = Vec::new();
-        let mut other_files = Vec::new();
-        let files: Vec<FileDetail> = raw
-            .files
-            .into_iter()
-            .map(|row| {
-                let plays_tracks = row.plays_tracks();
-                let supports_cover = row.content_type.is_supported_cover();
-                let file = FileDetail::from_raw(row);
-                if supports_cover {
-                    cover_files.push(file.clone());
-                }
-                if !plays_tracks {
-                    other_files.push(file.clone());
-                }
-                file
-            })
-            .collect();
-        let image_files: Vec<FileDetail> = files.iter().filter(|f| f.is_image).cloned().collect();
+        let files: Vec<FileDetail> =
+            raw.files.files.into_iter().map(FileDetail::from_raw).collect();
+        let image_files: Vec<FileDetail> =
+            raw.files.images.into_iter().map(FileDetail::from_raw).collect();
+        let cover_files: Vec<FileDetail> =
+            raw.files.covers.into_iter().map(FileDetail::from_raw).collect();
+        let other_files: Vec<FileDetail> =
+            raw.files.others.into_iter().map(FileDetail::from_raw).collect();
         let source_audio = SourceAudioSummary::from_files(
             files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
         );
 
-        let file_count = files.len() as i64;
-        let total_size = files.iter().map(|f| f.file_size).sum::<u64>();
-        let total_duration_ms: u64 = tracks.iter().map(|t| t.duration_ms).sum();
+        let file_count = raw.files.count;
+        let total_size = raw.files.total_size;
+        let total_duration_ms = raw.total_duration_ms;
 
         let mut gallery = Vec::new();
         // One resolve of the `covers` row feeds both the gallery's "Cover" slot and

@@ -92,7 +92,7 @@ impl BridgeTrack {
 
 impl BridgeTrackGroup {
     pub(super) fn from_core(g: bae_views::album_detail::TrackGroup) -> Self {
-        let bae_views::album_detail::TrackGroup { side, tracks, total_duration_ms } = g;
+        let bae_views::album_detail::TrackGroup { side, tracks, total_duration_ms, shows_time } = g;
         let side = crate::types::BridgeTrackSide::from_core(side);
         BridgeTrackGroup {
             header_key: side.header_key().map(str::to_string),
@@ -100,6 +100,7 @@ impl BridgeTrackGroup {
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
+            shows_time,
         }
     }
 }

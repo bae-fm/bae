@@ -348,15 +348,12 @@ fn resolve_album_detail(raw: DbAlbumDetail, syncs: bool) -> crate::album_detail:
 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
-    for (i, ReleaseDetailRead { detail, download, my_stars }) in
-        raw.releases.into_iter().enumerate()
-    {
+    for (i, ReleaseDetailRead { detail, download }) in raw.releases.into_iter().enumerate() {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             syncs,
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
-            my_stars,
         };
         releases.push(crate::album_detail::ReleaseDetail::from_raw(detail, download, i, &ctx));
     }

@@ -1,8 +1,8 @@
 //! A release's tracks as its detail shows them, grouped by the side of the
 //! record each sits on.
 
-use super::Stars;
 use bae_types::mediums::{TrackPosition, TrackSide};
+use bae_types::stars::Stars;
 
 /// Track with resolved artist names and a structured display position.
 #[derive(Debug, Clone)]
@@ -50,31 +50,53 @@ pub struct TrackGroup {
     /// under each disc, where the album-wide total alone reads as belonging to
     /// the last disc.
     pub total_duration_ms: u64,
+    /// Whether the release has more than one group, so each shows its own
+    /// time beside the release's.
+    pub shows_time: bool,
 }
 
-/// Group pre-sorted tracks by consecutive side. Two tracks share a group when
-/// their positions resolve to the same [`TrackSide`] (same side letter, same
-/// disc, or both flat).
-pub(crate) fn group_tracks_by_side(tracks: &[TrackDetail]) -> Vec<TrackGroup> {
-    let mut groups: Vec<TrackGroup> = Vec::new();
-    for track in tracks {
-        let side = track.position.side();
-        if let Some(last) = groups.last_mut() {
-            if last.side == side {
-                last.tracks.push(track.clone());
-                last.total_duration_ms += track.duration_ms;
-                continue;
-            }
+impl TrackGroup {
+    /// The group `raw` holds, whose tracks show an artist each when the
+    /// album is a compilation.
+    pub(crate) fn from_raw(raw: bae_records::DbTrackGroup, is_compilation: bool) -> Self {
+        TrackGroup {
+            side: raw.side,
+            tracks: raw
+                .tracks
+                .into_iter()
+                .map(|track| TrackDetail::from_raw(track, is_compilation))
+                .collect(),
+            total_duration_ms: raw.total_duration_ms,
+            shows_time: raw.shows_time,
         }
-        groups.push(TrackGroup {
-            side,
-            tracks: vec![track.clone()],
-            total_duration_ms: track.duration_ms,
-        });
     }
-    groups
 }
 
-#[cfg(test)]
-#[path = "track_tests.rs"]
-mod tests;
+impl TrackDetail {
+    /// The track `raw` holds. On a compilation each row carries its own
+    /// artist, because the album header names no single one; on a
+    /// single-artist album the row would only repeat the header, so it shows
+    /// none.
+    fn from_raw(raw: bae_records::DbTrackWithArtists, is_compilation: bool) -> Self {
+        let artist_line = bae_records::credits::library_line(&raw.shown_artists);
+        TrackDetail {
+            display_artist: is_compilation.then(|| artist_line.clone()),
+            artist_line,
+            position_text: raw.position.text(),
+            position: raw.position,
+            works: raw
+                .works
+                .into_iter()
+                .map(|work| TrackWork {
+                    work_id: work.work_id,
+                    title: work.title,
+                    composer_names: work.composer_names,
+                })
+                .collect(),
+            my_stars: raw.my_stars,
+            id: raw.id,
+            title: raw.title,
+            duration_ms: raw.duration_ms,
+        }
+    }
+}

@@ -8,7 +8,7 @@ use rusqlite::{params, OptionalExtension, Params, Row};
 use std::sync::Arc;
 
 mod collections;
-pub use collections::{album_ratings_on, track_stars_on};
+pub use collections::{album_ratings_on, own_track_stars_sql};
 mod history;
 mod joining;
 pub use joining::private_circle_name;

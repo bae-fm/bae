@@ -1,26 +1,33 @@
-//! A release as its detail reads it: its tracks with their credits, its
-//! files, records and mediums, the audio this device holds on one device
-//! only, and whether it is pinned, stored, or queued to upload.
+//! A release as its detail reads it: its tracks by side with their credits
+//! and works, its credits by role, its files with the lists among them, its
+//! records, the audio this device holds on one device only, and whether it
+//! is pinned, stored, or queued to upload.
 
 use super::files::cover_version_sql;
 use super::query::*;
 use super::read::*;
 use super::release_credits::release_credits_on;
+use super::release_tracks::{release_total_duration_on, release_track_groups_on};
 use super::*;
 
-/// The release's rows as its detail reads them: its tracks with their
-/// credits, its files, records, mediums and audio on one device only, and
-/// whether it is pinned, stored, or queued to upload.
+/// What a track's stars are when no one's are asked for: none.
+pub const NO_STARS: &str = "NULL";
+
+/// The release's rows as its detail reads them: its tracks in groups, each
+/// with the stars `my_stars` gives it (an SQL expression over the track
+/// `track`, or [`NO_STARS`]), its credits, its files, records and audio on
+/// one device only, and whether it is pinned, stored, or queued to upload.
 pub fn release_detail_rows_on(
     sql: &impl coven::SqlRead,
     release: DbRelease,
+    my_stars: &str,
 ) -> Result<DbReleaseDetailRows, DbError> {
-    let tracks = get_tracks_with_artists_for_release_on(sql, &release.id)?;
+    let total_duration_ms = release_total_duration_on(sql, &release.id)?;
+    let track_groups = release_track_groups_on(sql, &release.id, my_stars)?;
     let credits = release_credits_on(sql, &release.id)?;
-    let files = get_files_for_release_on(sql, &release.id)?;
+    let files = release_files_on(sql, &release.id)?;
     let records = get_release_records_on(sql, &release.id)?;
     let unstored_audio = unstored_audio_on(sql, &release.id)?;
-    let mediums = release_mediums_on(sql, &release.id)?;
     let (pinned, remote) = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM release_storage storage \
@@ -40,8 +47,8 @@ pub fn release_detail_rows_on(
 
     Ok(DbReleaseDetailRows {
         release,
-        mediums,
-        tracks,
+        total_duration_ms,
+        track_groups,
         credits,
         files,
         records,
@@ -57,10 +64,10 @@ pub fn release_detail_rows_on(
 #[derive(Clone, PartialEq)]
 pub struct DbReleaseDetailRows {
     release: DbRelease,
-    mediums: DbReleaseMediums,
-    tracks: Vec<DbTrackWithArtists>,
-    credits: Vec<DbReleaseCredit>,
-    files: Vec<DbFile>,
+    total_duration_ms: u64,
+    track_groups: Vec<DbTrackGroup>,
+    credits: Vec<DbCreditRow>,
+    files: DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
@@ -74,8 +81,8 @@ impl DbReleaseDetailRows {
     pub fn process(self) -> DbReleaseDetail {
         DbReleaseDetail {
             release: self.release,
-            mediums: self.mediums,
-            tracks: self.tracks,
+            total_duration_ms: self.total_duration_ms,
+            track_groups: self.track_groups,
             credits: self.credits,
             files: self.files,
             records: self.records,
@@ -88,74 +95,44 @@ impl DbReleaseDetailRows {
     }
 }
 
-/// The release's tracks in playing order, each with its own credits and the
-/// credits it shows.
-fn get_tracks_with_artists_for_release_on(
+/// The release's files, and among them the images, the images a cover can
+/// be made from, and the files no track plays from, each a statement of its
+/// own over the release's files in their order, and the files counted and
+/// their sizes added.
+fn release_files_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
-) -> Result<Vec<DbTrackWithArtists>, DbError> {
-    let query = format!(
-        "SELECT
-            track.id AS track_id,
-            track.release_id AS track_release_id,
-            track.title AS track_title,
-            track.medium_id AS track_medium_id,
-            track.side AS track_side,
-            track.track_number AS track_track_number,
-            track.duration_ms AS track_duration_ms,
-            track.created_at AS track_created_at,
-            {own} AS own_credits,
-            {shown} AS shown_credits
-         FROM tracks track
-         JOIN releases r ON r.id = track.release_id
-         JOIN albums a ON a.id = r.album_id
-         WHERE track.release_id = ?
-         ORDER BY track.position, track.id",
-        own = track_own_credits_json_sql("track"),
-        shown = track_credits_json_sql("track"),
-    );
-    let mut works = performed_works_on(sql, release_id)?;
-    Ok(sql.query(&query, params![release_id], |row| {
-        let track = row_to_track_with_prefix(row, "track_")?;
-        Ok(DbTrackWithArtists {
-            works: works.remove(&track.id).unwrap_or_default(),
-            track,
-            artists: credits_column(row, "own_credits")?,
-            shown_artists: credits_column(row, "shown_credits")?,
-        })
-    })?)
-}
-
-/// The works each of the release's tracks performs, by track id, each
-/// track's in the order it performs them.
-fn performed_works_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<HashMap<String, Vec<DbPerformedWork>>, DbError> {
-    let query = format!(
-        "SELECT tw.track_id, w.id, w.title, {composer_names}
-         FROM track_works tw
-         JOIN tracks track ON track.id = tw.track_id
-         JOIN works w ON w.id = tw.work_id
-         WHERE track.release_id = ?
-         ORDER BY tw.track_id, tw.position, tw.id",
-        composer_names = work_composer_names_sql("w.id"),
-    );
-    let rows = sql.query(&query, params![release_id], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            DbPerformedWork {
-                work_id: row.get(1)?,
-                title: row.get(2)?,
-                composer_names: row.get(3)?,
-            },
-        ))
-    })?;
-    let mut by_track: HashMap<String, Vec<DbPerformedWork>> = HashMap::new();
-    for (track_id, work) in rows {
-        by_track.entry(track_id).or_default().push(work);
-    }
-    Ok(by_track)
+) -> Result<DbReleaseFiles, DbError> {
+    let among = |condition: &str| {
+        sql.query(
+            &format!(
+                "SELECT {columns} FROM release_files AS f WHERE f.release_id = ?1 AND {condition} \
+                 ORDER BY f.original_filename COLLATE natural_order, f.id",
+                columns = release_file_columns!(),
+            ),
+            params![release_id],
+            row_to_file,
+        )
+    };
+    let covers: Vec<String> = ContentType::SUPPORTED_COVERS
+        .iter()
+        .map(|content_type| format!("'{}'", content_type.as_str()))
+        .collect();
+    let (count, total_size) = sql.query_row(
+        "SELECT COUNT(*), COALESCE(SUM(coven.size), 0) \
+         FROM release_files AS f JOIN coven_files AS coven ON coven.id = f.file \
+         WHERE f.release_id = ?1",
+        params![release_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    Ok(DbReleaseFiles {
+        files: get_files_for_release_on(sql, release_id)?,
+        images: among("f.content_type GLOB 'image/*'")?,
+        covers: among(&format!("f.content_type IN ({})", covers.join(", ")))?,
+        others: among("f.source_audio_layout IS NULL")?,
+        count,
+        total_size,
+    })
 }
 
 /// What coven records this device holding for each of a release's audio

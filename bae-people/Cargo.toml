@@ -19,6 +19,8 @@ bae-diagnostics = { workspace = true }
 bae-records = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
+# The stars a rating holds.
+bae-types = { workspace = true }
 # How a refused dismissal says it holds a bug already reported.
 bae-util = { workspace = true }
 # The store: its connection, schema migrations, sync, files and live queries.

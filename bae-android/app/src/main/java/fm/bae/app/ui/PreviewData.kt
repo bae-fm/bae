@@ -134,6 +134,7 @@ object PreviewData {
             headerKey = null,
             tracks = tracks,
             totalDuration = null,
+            showsTime = false,
         )
 
     fun release(

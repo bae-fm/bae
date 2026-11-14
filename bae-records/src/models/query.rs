@@ -5,14 +5,15 @@ use super::*;
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,
-    /// The release's mediums, which its tracks' places are read against.
-    pub mediums: DbReleaseMediums,
-    pub tracks: Vec<DbTrackWithArtists>,
+    /// The release's tracks added up: how long they play.
+    pub total_duration_ms: u64,
+    /// The release's tracks in playing order, a group for each side.
+    pub track_groups: Vec<DbTrackGroup>,
     /// The release's credits in every role, in the order its detail lists
     /// them: the release's own, then each track's in playing order, a
     /// track's own before the non-writing credits of the works it performs.
-    pub credits: Vec<DbReleaseCredit>,
-    pub files: Vec<DbFile>,
+    pub credits: Vec<DbCreditRow>,
+    pub files: DbReleaseFiles,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -108,10 +109,28 @@ pub enum OtherDevice {
     Former { name: String, state: bae_store::FormerDeviceState },
 }
 
-/// A track row with its credits.
+/// The tracks of one side of a release, as its detail groups them: a run of
+/// tracks in playing order that sit on one side or disc.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbTrackGroup {
+    pub side: bae_types::mediums::TrackSide,
+    pub tracks: Vec<DbTrackWithArtists>,
+    /// How long this group's tracks play.
+    pub total_duration_ms: u64,
+    /// Whether the release has more than one group, so each shows its own
+    /// time beside the release's.
+    pub shows_time: bool,
+}
+
+/// A track with its credits, works and the stars this device's person gave
+/// it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbTrackWithArtists {
-    pub track: DbTrack,
+    pub id: String,
+    pub title: String,
+    pub duration_ms: u64,
+    /// Where the track sits on its release.
+    pub position: bae_types::mediums::TrackPosition,
     /// The track's own credits, in list order; none when it takes the
     /// album's.
     pub artists: Vec<crate::credits::LibraryCredit>,
@@ -119,6 +138,8 @@ pub struct DbTrackWithArtists {
     pub shown_artists: Vec<crate::credits::LibraryCredit>,
     /// The works the track performs, in the order it performs them.
     pub works: Vec<DbPerformedWork>,
+    /// The stars this device's person gave the track, if any.
+    pub my_stars: Option<bae_types::stars::Stars>,
 }
 
 /// A work a track performs, as a release's detail names it.
@@ -131,23 +152,33 @@ pub struct DbPerformedWork {
     pub composer_names: Option<String>,
 }
 
-/// Where a credit of a release's detail sits.
+/// One row of a release's credits: a role, the names of the artists who hold
+/// it over the same tracks, and those tracks.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DbCreditScope {
-    /// The release's: it covers every track.
-    Release,
-    /// One track's, by its id.
-    Track(String),
+pub struct DbCreditRow {
+    pub role: bae_types::credit_role::CreditedAs,
+    /// The names the artists print, in the order of their first credit.
+    pub artists: Vec<String>,
+    /// Where each track the row covers sits, in playing order; empty for a
+    /// row covering every track of the release.
+    pub tracks: Vec<bae_types::mediums::TrackPosition>,
 }
 
-/// One credit of a release's detail: the artist it shows as, the name it
-/// prints, what the artist did, and where.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbReleaseCredit {
-    pub artist_id: String,
-    pub printed: String,
-    pub role: bae_types::credit_role::CreditedAs,
-    pub scope: DbCreditScope,
+/// A release's files as its screens list them: all of them, and the lists
+/// among them that the release's pages show beside, with their count and
+/// sizes added up.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseFiles {
+    /// Every file, in the release's file order.
+    pub files: Vec<DbFile>,
+    /// The files that are images.
+    pub images: Vec<DbFile>,
+    /// The images a cover can be made from.
+    pub covers: Vec<DbFile>,
+    /// The files no track plays from.
+    pub others: Vec<DbFile>,
+    pub count: i64,
+    pub total_size: u64,
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

@@ -1,7 +1,8 @@
 //! The credits a release's detail lists: the release's own, each track's own,
 //! and the credits of the works each track performs in a role other than a
 //! writing one (a work's writing credits are its composers, named with the
-//! work).
+//! work), by role: the artists who hold a role over the same tracks are one
+//! row.
 
 use super::query::shown_artist_id;
 use super::read::credit_name_join;
@@ -53,15 +54,16 @@ impl CreditPart<'_> {
     }
 }
 
-/// The credits the detail of `release_id` lists, in the order it lists them:
-/// the release's, in the order the catalog stated them; then for each track
-/// in playing order, its own credits, then the credits in a role other than a
-/// writing one of the works it performs, each work in the order the track
-/// performs it.
-pub(super) fn release_credits_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<Vec<DbReleaseCredit>, DbError> {
+/// The rows of the credits the detail of the release `?1` lists. The credits
+/// are ordered as the release lists them: the release's, in the order the
+/// catalog stated them; then for each track in playing order, its own
+/// credits, then the credits in a role other than a writing one of the works
+/// it performs, each work in the order the track performs it. An artist
+/// holds a role (with its qualifiers) over the tracks its credits sit on, all
+/// of them for a credit of the release; artists holding a role over the same
+/// tracks are one row, in the order of their first credit, and rows go in the
+/// order of their first credit. A row covering every track has no tracks.
+fn release_credits_sql() -> String {
     let release = CreditPart {
         table: "release_artist_roles",
         part: 0,
@@ -97,27 +99,90 @@ pub(super) fn release_credits_on(
         filter: "track.release_id = ?1 \
                  AND credit.role NOT IN (SELECT role FROM writing_credit_roles)",
     };
-    let query = format!(
-        "{} UNION ALL {} UNION ALL {} \
-         ORDER BY part, track_position, kind, first_position, second_position, credit_id",
-        release.select(),
-        track.select(),
-        work.select(),
-    );
-    Ok(sql.query(&query, params![release_id], |row| {
-        let track_id: Option<String> = row.get("track_id")?;
+    format!(
+        "WITH {placed}, \
+         listed AS ({release} UNION ALL {track} UNION ALL {work}), \
+         ordered AS ( \
+            SELECT listed.*, \
+                   ROW_NUMBER() OVER (ORDER BY part, track_position, kind, first_position, \
+                                               second_position, credit_id) AS ord \
+            FROM listed), \
+         named AS ( \
+            SELECT ordered.*, \
+                   FIRST_VALUE(printed) OVER (PARTITION BY role, role_words, qualifiers, \
+                                                           artist_id ORDER BY ord) AS held_printed \
+            FROM ordered), \
+         held AS ( \
+            SELECT n.role, n.role_words, n.qualifiers, n.artist_id, MIN(n.ord) AS ord, \
+                   MIN(n.held_printed) AS printed, \
+                   CASE WHEN MAX(n.track_id IS NULL) = 1 \
+                          OR COUNT(DISTINCT n.track_id) = (SELECT COUNT(*) FROM placed) \
+                        THEN NULL \
+                        ELSE (SELECT json_group_array(json_object( \
+                                  'kind', p.side_kind, 'ordinal', p.side_ordinal, \
+                                  'number', p.number) ORDER BY p.position) \
+                              FROM placed p \
+                              WHERE p.id IN (SELECT same.track_id FROM named same \
+                                             WHERE same.role = n.role \
+                                               AND same.role_words IS n.role_words \
+                                               AND same.qualifiers = n.qualifiers \
+                                               AND same.artist_id = n.artist_id)) \
+                   END AS tracks \
+            FROM named n \
+            GROUP BY n.role, n.role_words, n.qualifiers, n.artist_id) \
+         SELECT role, role_words, qualifiers, \
+                json_group_array(printed ORDER BY ord) AS artists, tracks \
+         FROM held \
+         GROUP BY role, role_words, qualifiers, tracks \
+         ORDER BY MIN(ord)",
+        placed = super::release_tracks::placed_tracks_ctes(""),
+        release = release.select(),
+        track = track.select(),
+        work = work.select(),
+    )
+}
+
+/// One place of a credit row's tracks, as the statement spells it in JSON.
+#[derive(serde::Deserialize)]
+struct PlaceJson {
+    kind: String,
+    ordinal: u32,
+    number: u32,
+}
+
+/// The credit rows of the release `release_id`'s detail, in the order it
+/// lists them.
+pub(super) fn release_credits_on(
+    sql: &impl coven::SqlRead,
+    release_id: &str,
+) -> Result<Vec<DbCreditRow>, DbError> {
+    Ok(sql.query(&release_credits_sql(), params![release_id], |row| {
         let role: String = row.get("role")?;
         let words: Option<String> = row.get("role_words")?;
         let qualifiers: String = row.get("qualifiers")?;
-        Ok(DbReleaseCredit {
-            artist_id: row.get("artist_id")?,
-            printed: row.get("printed")?,
+        let artists: String = row.get("artists")?;
+        let tracks: Option<String> = row.get("tracks")?;
+        let places: Vec<PlaceJson> = tracks
+            .map(|tracks| serde_json::from_str(&tracks))
+            .transpose()
+            .map_err(|error| column_conversion_error(row, "tracks", error))?
+            .unwrap_or_default();
+        Ok(DbCreditRow {
             role: bae_types::credit_role::CreditedAs::from_columns(&role, words, &qualifiers)
                 .map_err(|error| column_conversion_error(row, "role", error.to_string()))?,
-            scope: match track_id {
-                Some(track) => DbCreditScope::Track(track),
-                None => DbCreditScope::Release,
-            },
+            artists: serde_json::from_str(&artists)
+                .map_err(|error| column_conversion_error(row, "artists", error))?,
+            tracks: places
+                .into_iter()
+                .map(|place| {
+                    super::release_tracks::track_position_of(
+                        &place.kind,
+                        place.ordinal,
+                        place.number,
+                    )
+                    .map_err(|reason| column_conversion_error(row, "tracks", reason))
+                })
+                .collect::<rusqlite::Result<_>>()?,
         })
     })?)
 }

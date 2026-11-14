@@ -491,7 +491,8 @@ fn release_edit_rows_on<Q: coven::SqlRead>(
             )
         })?;
     let album_artists = bae_records::records::read::get_artists_for_album_on(sql, &album.id)?;
-    let detail = bae_records::records::release_detail_rows_on(sql, release)?;
+    let detail =
+        bae_records::records::release_detail_rows_on(sql, release, bae_records::records::NO_STARS)?;
     let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
     Ok(Some(ReleaseEditRows { detail, album_artists, tracks, album }))
 }
@@ -532,17 +533,17 @@ fn release_edit_seed(
     let album_artist_assignments: Vec<bae_import::Credited> =
         album_artists.into_iter().map(bae_import::Credited::of_library).collect();
 
-    let mut tracks = Vec::with_capacity(detail.tracks.len());
-    for entry in &detail.tracks {
+    let mut tracks = Vec::new();
+    for entry in detail.track_groups.iter().flat_map(|group| &group.tracks) {
         // Empty when the track has no artist rows of its own — the wire edit
         // reads that as "shares the album artist", matching how
         // `apply_release_metadata_user_edit` writes it back.
         let artists: Vec<bae_import::Credited> =
             entry.artists.clone().into_iter().map(bae_import::Credited::of_library).collect();
         tracks.push((
-            entry.track.id.clone(),
+            entry.id.clone(),
             bae_import::TrackUserEdit {
-                title: entry.track.title.clone(),
+                title: entry.title.clone(),
                 artist_assignments: if artists.is_empty() {
                     bae_import::TrackArtistAssignments::AlbumArtists
                 } else {

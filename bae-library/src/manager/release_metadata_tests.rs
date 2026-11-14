@@ -95,10 +95,12 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
     assert_eq!(stored_after.release.pressing.barcodes, ["123456789"]);
-    assert_eq!(stored_after.tracks[0].track.title, "Edited Track");
+    assert_eq!(stored_after.track_groups[0].tracks[0].title, "Edited Track");
     // The track's place is not in the edit: it stays where the import put it.
-    assert_eq!(stored_after.tracks[0].track.side, track.side);
-    assert_eq!(stored_after.tracks[0].track.track_number, track.track_number);
+    assert_eq!(
+        stored_after.track_groups[0].tracks[0].position,
+        bae_types::mediums::TrackPosition::Flat { number: track.track_number.get() }
+    );
     assert_eq!(
         manager
             .records

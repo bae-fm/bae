@@ -1217,6 +1217,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-records",
  "bae-store",
+ "bae-types",
  "bae-util",
  "chrono",
  "coven",

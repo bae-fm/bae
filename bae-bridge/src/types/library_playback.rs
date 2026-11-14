@@ -508,6 +508,9 @@ pub struct BridgeTrackGroup {
     /// `BridgeRelease::total_duration`, or `None` when no track reports a
     /// length. Shown under each disc of a multi-disc release.
     pub total_duration: Option<BridgeDurationUnits>,
+    /// Whether the release has more than one group, so each shows its own
+    /// playing time beside the release's.
+    pub shows_time: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

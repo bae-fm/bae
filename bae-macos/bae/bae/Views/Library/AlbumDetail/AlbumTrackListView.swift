@@ -56,7 +56,7 @@ struct AlbumTrackListView: View {
                 }
                 // The album's play time sits in the header; only a multi-side
                 // release needs each side's named here.
-                if groups.count > 1, !group.totalDurationText.isEmpty {
+                if group.showsTime, !group.totalDurationText.isEmpty {
                     Text(group.totalDurationText)
                         .themeText(.fine)
                         .foregroundStyle(.tertiary)

@@ -101,7 +101,7 @@ pub fn credit_name_column(
 
 /// One credit as [`super::query::album_credits_json_sql`] spells it.
 #[derive(serde::Deserialize)]
-struct CreditJson {
+pub(super) struct CreditJson {
     id: String,
     name: String,
     sort_name: Option<String>,
@@ -118,6 +118,11 @@ struct CreditJson {
 pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {
     let credits: Vec<CreditJson> = serde_json::from_str(json)
         .map_err(|error| DbError::unreadable_json("credit list", json, error))?;
+    credits_of(credits)
+}
+
+/// The credits of a parsed credit list, in list order.
+pub(super) fn credits_of(credits: Vec<CreditJson>) -> Result<Vec<LibraryCredit>, DbError> {
     credits
         .into_iter()
         .map(|credit| {
@@ -147,13 +152,6 @@ pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbErro
             })
         })
         .collect()
-}
-
-/// The credits a credit-list JSON column holds, read in a row closure.
-pub(super) fn credits_column(row: &Row, column: &str) -> rusqlite::Result<Vec<LibraryCredit>> {
-    let json: String = row.get(column)?;
-    credits_from_json(&json)
-        .map_err(|error| column_conversion_error(row, column, error.to_string()))
 }
 
 /// The line a credit-list JSON column prints, read in a row closure.

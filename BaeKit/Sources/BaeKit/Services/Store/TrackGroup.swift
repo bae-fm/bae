@@ -5,6 +5,9 @@ public struct TrackGroup: Sendable {
     public var headerKey: String?
     public var tracks: [Track]
     public var totalDuration: BridgeDurationUnits?
+    /// Whether the release has more than one group, so each shows its own play
+    /// time beside the release's. Core decides.
+    public var showsTime: Bool
 
     /// This group's play time in the words core chose ("24 min"), or empty
     /// when no track reports a length.
@@ -25,5 +28,6 @@ public struct TrackGroup: Sendable {
         headerKey = bridge.headerKey
         tracks = bridge.tracks.map(Track.init(from:))
         totalDuration = bridge.totalDuration
+        showsTime = bridge.showsTime
     }
 }

@@ -203,7 +203,7 @@ fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
         Ok(Rating {
             person: coven::MemberId(uuid_column(row, 0)?),
             target,
-            stars: Stars::from_sql(row.get(3)?)?,
+            stars: crate::collections::stars_from_sql(row.get(3)?)?,
         })
     })
 }
@@ -255,16 +255,16 @@ pub(super) fn album_ratings_sql() -> String {
     )
 }
 
-/// This person's stars for the tracks of the release `?2`, by the track,
-/// found through `ratings`' key on the person and the track.
-pub(super) const TRACK_STARS_SQL: &str = "SELECT r.track_id, r.stars FROM ratings AS r \
-     JOIN tracks AS t ON t.id = r.track_id WHERE r.person_id = ?1 AND t.release_id = ?2";
-
-/// The id of this person's profile, once they have one.
-fn own_profile_id(sql: &SqlReadContext<'_>) -> rusqlite::Result<Option<(String, bool)>> {
-    Ok(sql
-        .query(&own_member_sql(), [], |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)))?
-        .pop())
+/// The stars this device's person gave the track `track_alias`, an
+/// expression for a statement over `tracks`: NULL for a track they did not
+/// rate, and for every track while they have no profile, found through
+/// `ratings`' key on the person and the track.
+pub fn own_track_stars_sql(track_alias: &str) -> String {
+    format!(
+        "(SELECT r.stars FROM ratings AS r WHERE r.track_id = {track_alias}.id \
+          AND r.person_id = (SELECT own.member FROM ({own}) AS own))",
+        own = own_member_sql(),
+    )
 }
 
 /// What the album `album_id`'s page reads of its ratings, for the person
@@ -274,7 +274,7 @@ pub fn album_ratings_on(
     album_id: &str,
 ) -> rusqlite::Result<AlbumRatings> {
     sql.query_row(&album_ratings_sql(), [album_id], |row| {
-        let stars_of = |value: i64| Stars::from_sql(value);
+        let stars_of = |value: i64| crate::collections::stars_from_sql(value);
         let others: String = row.get("others")?;
         let others: Vec<serde_json::Value> = serde_json::from_str(&others)
             .map_err(|error| bae_store::read::column_conversion_error(row, "others", error))?;
@@ -292,21 +292,4 @@ pub fn album_ratings_on(
                 .collect::<rusqlite::Result<_>>()?,
         })
     })
-}
-
-/// This person's stars for the tracks of the release `release_id` that they
-/// rated, by track id; none without a profile.
-pub fn track_stars_on(
-    sql: &SqlReadContext<'_>,
-    release_id: &str,
-) -> rusqlite::Result<std::collections::HashMap<String, Stars>> {
-    let Some((member, true)) = own_profile_id(sql)? else {
-        return Ok(std::collections::HashMap::new());
-    };
-    Ok(sql
-        .query(TRACK_STARS_SQL, params![member, release_id], |row| {
-            Ok((row.get::<_, String>(0)?, Stars::from_sql(row.get(1)?)?))
-        })?
-        .into_iter()
-        .collect())
 }

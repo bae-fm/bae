@@ -14,5 +14,6 @@ pub mod edit_validation;
 pub mod mediums;
 pub mod pressing;
 pub mod release_storage;
+pub mod stars;
 pub mod text_match;
 pub mod track_time;

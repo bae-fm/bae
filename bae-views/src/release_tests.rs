@@ -18,13 +18,15 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
         .unwrap()
         .expect("release detail");
 
-    let track_ids: Vec<&str> = detail.tracks.iter().map(|track| track.track.id.as_str()).collect();
+    let tracks: Vec<&bae_records::DbTrackWithArtists> =
+        detail.track_groups.iter().flat_map(|group| &group.tracks).collect();
+    let track_ids: Vec<&str> = tracks.iter().map(|track| track.id.as_str()).collect();
     assert_eq!(track_ids, vec![TRACK_A, TRACK_B]);
 
     let artist_names: Vec<&str> =
-        detail.tracks[0].artists.iter().map(|artist| artist.artist.name.as_str()).collect();
+        tracks[0].artists.iter().map(|artist| artist.artist.name.as_str()).collect();
     assert_eq!(artist_names, vec!["Track Artist Name First", "Track Artist Name Second"]);
-    assert!(detail.tracks[1].artists.is_empty());
+    assert!(tracks[1].artists.is_empty());
 
     // Each track shows its own credits, and one with none its album's: the
     // detail and every other reader take that from the one SQL rule.
@@ -33,11 +35,11 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
     };
     let album_artists = records.get_artists_for_album(&detail.release.album_id).await.unwrap();
     assert!(!album_artists.is_empty(), "the fixture's album credits an artist");
-    assert_eq!(names(&detail.tracks[0].shown_artists), artist_names);
-    assert_eq!(names(&detail.tracks[1].shown_artists), names(&album_artists));
-    for track in &detail.tracks {
-        let shown = records.get_shown_artists_for_track(&track.track.id).await.unwrap();
-        assert_eq!(names(&shown), names(&track.shown_artists), "{}", track.track.id);
+    assert_eq!(names(&tracks[0].shown_artists), artist_names);
+    assert_eq!(names(&tracks[1].shown_artists), names(&album_artists));
+    for track in &tracks {
+        let shown = records.get_shown_artists_for_track(&track.id).await.unwrap();
+        assert_eq!(names(&shown), names(&track.shown_artists), "{}", track.id);
     }
     assert!(records.get_shown_artists_for_track("no-such-track").await.unwrap().is_empty());
 }
@@ -55,7 +57,8 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
         .await
         .unwrap()
         .expect("release detail");
-    let names: Vec<&str> = detail.files.iter().map(|f| f.original_filename.as_str()).collect();
+    let names: Vec<&str> =
+        detail.files.files.iter().map(|f| f.original_filename.as_str()).collect();
     assert_eq!(names, FILES_IN_NATURAL_ORDER, "the release's detail");
 
     let plan = db
@@ -223,6 +226,254 @@ async fn a_release_lists_its_credits_by_role_and_artist_with_the_tracks_each_cov
                 vec!["Arranger Name Two"],
                 vec!["3".to_string()]
             ),
+        ]
+    );
+}
+
+const SIDED_ALBUM: &str = "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e01";
+const SIDED_RELEASE: &str = "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e02";
+const SIDED_ENGINEER: &str = "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e03";
+const SIDED_TRACKS: [&str; 5] = [
+    "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e11",
+    "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e12",
+    "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e13",
+    "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e14",
+    "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e15",
+];
+
+/// A release holding a CD, then a record of two sides, then a record of one:
+/// the CD is a numbered disc, the sides of the records are lettered across
+/// both records, each group sums its own tracks, and a credit over the
+/// record sides names their letters.
+#[tokio::test]
+async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
+    use bae_types::mediums::{ReleaseMedium, TrackSide};
+    use bae_types::pressing::Medium;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let release = SIDED_RELEASE;
+    let medium = |position: u16, carrier, sides: u8| {
+        let mut row = bae_records::DbReleaseMedium::new_test(release);
+        row.id = format!("{release}-medium-{position}");
+        row.position = std::num::NonZeroU16::new(position).unwrap();
+        row.medium = ReleaseMedium {
+            carrier: Some(carrier),
+            sides: std::num::NonZeroU8::new(sides).unwrap(),
+        };
+        row
+    };
+    RecordsFixture::new()
+        .artist(SIDED_ENGINEER, "Engineer Name")
+        .album(SIDED_ALBUM, "Album Title", None, &[SIDED_ENGINEER])
+        .release(SIDED_ALBUM, release)
+        .tracks(
+            release,
+            &[
+                (SIDED_TRACKS[0], "Track Title 1"),
+                (SIDED_TRACKS[1], "Track Title 2"),
+                (SIDED_TRACKS[2], "Track Title 3"),
+                (SIDED_TRACKS[3], "Track Title 4"),
+                (SIDED_TRACKS[4], "Track Title 5"),
+            ],
+        )
+        .track_role(
+            "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e21",
+            SIDED_TRACKS[2],
+            SIDED_ENGINEER,
+            (bae_catalogs::catalog::Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Engineer)),
+        )
+        .track_role(
+            "b8d2f6e3-4c50-4d79-8e1f-2a3b4c5d6e22",
+            SIDED_TRACKS[3],
+            SIDED_ENGINEER,
+            (bae_catalogs::catalog::Catalog::MusicBrainz, CreditedAs::of(CreditRoleKind::Engineer)),
+        )
+        .edit(|rows| {
+            rows.mediums = vec![
+                medium(1, Medium::Cd, 1),
+                medium(2, Medium::Vinyl, 2),
+                medium(3, Medium::Vinyl, 1),
+            ];
+            // (medium position, side, number on the side, length)
+            let places = [(1, 1, 1, 100_000), (1, 1, 2, 200_000), (2, 1, 1, 300_000)]
+                .into_iter()
+                .chain([(2, 2, 1, 400_000), (3, 1, 1, 500_000)]);
+            for (track, (position, side, number, duration_ms)) in rows.tracks.iter_mut().zip(places)
+            {
+                track.medium_id = format!("{release}-medium-{position}");
+                track.side = std::num::NonZeroU8::new(side).unwrap();
+                track.track_number = std::num::NonZeroU32::new(number).unwrap();
+                track.duration_ms = duration_ms;
+            }
+        })
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
+
+    let detail =
+        crate::LibraryViews::new(db.clone()).find_release_detail(release).await.unwrap().unwrap();
+
+    let groups: Vec<(TrackSide, Vec<&str>, u64)> = detail
+        .track_groups
+        .iter()
+        .map(|group| {
+            (
+                group.side.clone(),
+                group.tracks.iter().map(|track| track.position_text.as_str()).collect(),
+                group.total_duration_ms,
+            )
+        })
+        .collect();
+    let lettered = |side_letter: &str| TrackSide::Sided { side_letter: side_letter.to_string() };
+    assert_eq!(
+        groups,
+        [
+            (TrackSide::Disc { disc: 1 }, vec!["1", "2"], 300_000),
+            (lettered("A"), vec!["A1"], 300_000),
+            (lettered("B"), vec!["B1"], 400_000),
+            (lettered("C"), vec!["C1"], 500_000),
+        ]
+    );
+    assert!(detail.track_groups.iter().all(|group| group.shows_time));
+    assert_eq!(detail.total_duration_ms, 1_500_000);
+    assert_eq!(detail.credits.len(), 1);
+    assert_eq!(detail.credits[0].tracks, ["A1", "B1"]);
+}
+
+const FILED_ALBUM: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f01";
+const FILED_RELEASE: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f02";
+
+/// A release's files come back with the lists its screens show beside them:
+/// every image, the images a cover can be made from, the files no track
+/// plays from, and their count and sizes summed, each file counted once.
+#[tokio::test]
+async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
+    use bae_records::source_audio::{SourceAudioFile, SourceAudioLayout};
+    use bae_records::ReleaseFileRole::{Artwork, Audio, Document, TrackSheet};
+    use bae_util::content_type::ContentType;
+    let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(SIDED_ENGINEER, "Artist Name")
+        .album(FILED_ALBUM, "Album Title", None, &[SIDED_ENGINEER])
+        .release(FILED_ALBUM, FILED_RELEASE)
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
+    let source = |layout| SourceAudioFile {
+        layout,
+        format: bae_types::audio_format::AudioFormat {
+            codec: "FLAC".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: Some(16),
+            bitrate_kbps: None,
+            channels: 2,
+        },
+        content_type: ContentType::Flac,
+        container: bae_util::audio_container::AudioContainer::from_name("flac"),
+        duration_ms: 60_000,
+    };
+    for (index, (name, mime, role, layout, size)) in [
+        ("disc.flac", "audio/flac", Audio, Some(Some(SourceAudioLayout::Cue)), 1_000),
+        ("odd.flac", "audio/flac", Audio, Some(None), 2_000),
+        ("disc.cue", "application/x-cue", TrackSheet, None, 3_000),
+        ("rip.log", "text/plain", Document(bae_records::DocumentKind::RipLog), None, 4_000),
+        ("cover.jpg", "image/jpeg", Artwork, None, 5_000),
+        ("back.png", "image/png", Artwork, None, 6_000),
+        ("scan.bmp", "image/bmp", Artwork, None, 7_000),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut file = NewReleaseFile::new(
+            FILED_RELEASE,
+            name,
+            ContentType::from_mime(mime),
+            role,
+            bae_util::test_ids::test_uuid(&format!("filed-{index}")),
+            chrono::Utc::now(),
+        );
+        file.source_audio = layout.map(source);
+        insert_file(&db, tmp.path(), file, size).await;
+    }
+
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_release_detail(FILED_RELEASE)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let names = |files: &[crate::album_detail::FileDetail]| -> Vec<String> {
+        files.iter().map(|file| file.original_filename.clone()).collect()
+    };
+    assert_eq!(
+        names(&detail.files),
+        ["back.png", "cover.jpg", "disc.cue", "disc.flac", "odd.flac", "rip.log", "scan.bmp"]
+    );
+    assert_eq!(names(&detail.image_files), ["back.png", "cover.jpg", "scan.bmp"]);
+    assert_eq!(names(&detail.cover_files), ["back.png", "cover.jpg"]);
+    assert_eq!(
+        names(&detail.other_files),
+        ["back.png", "cover.jpg", "disc.cue", "odd.flac", "rip.log", "scan.bmp"]
+    );
+    assert_eq!(detail.summary.file_count, 7);
+    assert_eq!(detail.summary.total_size, 28_000);
+}
+
+const ONE_GROUP_RELEASE: &str = "d0f4b8a5-6e72-4f9b-8a31-4c5d6e7f8a02";
+
+/// A release of one group shows no time beside it, and a credit over every
+/// track prints no tracks, however many credits add up to that, while a
+/// qualifier keeps two credits of one role apart and one artist in two roles
+/// is two rows.
+#[tokio::test]
+async fn a_release_of_one_group_shows_no_group_time_and_its_credits_by_qualifier() {
+    use bae_types::credit_role::RoleQualifier;
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let source = bae_catalogs::catalog::Catalog::MusicBrainz;
+    let mut assistant = CreditedAs::of(CreditRoleKind::Engineer);
+    assistant.qualifiers = vec![RoleQualifier::Stated("assistant".to_string())];
+    let ids = |n: u32| format!("d0f4b8a5-6e72-4f9b-8a31-4c5d6e7f8a{n:02}");
+    RecordsFixture::new()
+        .artist(&ids(10), "Mixer Name")
+        .artist(&ids(11), "Engineer Name")
+        .artist(&ids(12), "Assistant Name")
+        .album(&ids(1), "Album Title", None, &[ids(10).as_str()])
+        .release(&ids(1), ONE_GROUP_RELEASE)
+        .tracks(ONE_GROUP_RELEASE, &[(&ids(20), "Track Title 1"), (&ids(21), "Track Title 2")])
+        .track_role(&ids(30), &ids(20), &ids(10), (source, CreditedAs::of(CreditRoleKind::Mixer)))
+        .track_role(&ids(31), &ids(21), &ids(10), (source, CreditedAs::of(CreditRoleKind::Mixer)))
+        .release_role(
+            &ids(32),
+            ONE_GROUP_RELEASE,
+            &ids(11),
+            (source, CreditedAs::of(CreditRoleKind::Engineer)),
+        )
+        .release_role(&ids(33), ONE_GROUP_RELEASE, &ids(12), (source, assistant.clone()))
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
+
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_release_detail(ONE_GROUP_RELEASE)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(detail.track_groups.len(), 1);
+    assert!(!detail.track_groups[0].shows_time);
+    let rows: Vec<(CreditedAs, Vec<&str>, Vec<String>)> = detail
+        .credits
+        .iter()
+        .map(|row| {
+            (
+                row.role.clone(),
+                row.artists.names().iter().map(|credited| credited.name.as_str()).collect(),
+                row.tracks.clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (CreditedAs::of(CreditRoleKind::Engineer), vec!["Engineer Name"], vec![]),
+            (assistant, vec!["Assistant Name"], vec![]),
+            (CreditedAs::of(CreditRoleKind::Mixer), vec!["Mixer Name"], vec![]),
         ]
     );
 }
