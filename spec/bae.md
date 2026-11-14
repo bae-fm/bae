@@ -5437,6 +5437,14 @@ release's or track's id as UTF-8, or a candidate's key.
   open. The iOS app, once it has a library to show, calls it on
   `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
   The macOS app doesn't: the OS ends no app there for holding memory.
+- **What a read is.** A read that must follow changes (a screen, or a bridge,
+  automation or MCP subscriber) is one SQL query subscribed as a coven live
+  query, and everything a screen shows beside its rows (counts, totals, groups
+  and section headers, "N of M", sums, facets) comes from SQL, in the same
+  query or its own live query; any other read is a plain SQL read. SQLite
+  filters, sorts, joins, groups, counts and windows. Nothing is kept in memory between reads, no pass walks rows beside a
+  live query, no value is written only to make a query read again, and no size
+  cutoff sends a read down one of two paths.
 - **Screen subscriptions** are objects the app pulls from, built only in the
   bridge's `screens` module (`screens.rs` and its submodules) from a live
   query: `next()` answers the first value at

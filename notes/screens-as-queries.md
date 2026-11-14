@@ -30,6 +30,15 @@ screen that reads what it changed.
   `import_candidate_failure`), so the list's query reads them with everything
   else.
 
+- **The read is the query and nothing else.** No places, counts, windows or
+  last results kept in Rust between reads; no side pass beside a live query; no
+  field written into a request or a table only to make a query rerun; no size
+  cutoff choosing between two read paths. Everything a screen shows beside its
+  rows (counts, totals, groups, headers, sums, facets) comes from SQL, in the
+  same query or its own live query. A read that need not follow changes is a plain SQL
+  read, not a live query. The rule agents load is
+  `~/dev/agent-instructions/projects/bae-rules/reactive-screens-read-plain-live-queries.md`.
+
 ## Why
 
 - **A read costs what it returns.** An indexed window touches about the rows
