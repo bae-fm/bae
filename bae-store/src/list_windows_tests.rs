@@ -342,3 +342,94 @@ async fn a_write_reruns_only_the_window_whose_range_holds_it() {
         assert!(!lower.is_marked_for_rerun() && !upper.is_marked_for_rerun(), "{id}");
     }
 }
+
+/// Windows over a list ordered by a nullable value: the NULLs sort first, so
+/// one window holds NULLs only, one crosses from the NULLs into the values,
+/// and one holds values only. A write reruns exactly the window whose range
+/// holds its row, whether the row's value is NULL or not.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_it() {
+    use bae_util::test_channels::HANG_GUARD;
+    let (store, _tmp) = crate::test_fixtures::temp_db(
+        crate::Schema::new(&[]).followed_by(
+            "CREATE TABLE t (id TEXT PRIMARY KEY NOT NULL, n INTEGER); \
+         CREATE INDEX t_by ON t (n IS NULL, n, id);"
+                .to_string(),
+        ),
+    )
+    .await;
+    crate::test_fixtures::exec_batch(
+        &store,
+        "INSERT INTO t (id, n) VALUES ('n010', NULL), ('n020', NULL), ('n030', NULL), \
+         ('n040', NULL), ('v100', 100), ('v200', 200), ('v300', 300), ('v400', 400)",
+    )
+    .await;
+    let order =
+        ListOrder::new(vec![SortTerm::ascending("t.n").nullable(), SortTerm::ascending("t.id")]);
+    let null_key = |id: &str| OrderKey::new(vec![SortValue::Null, SortValue::Text(id.to_string())]);
+    let value_key = |n: i64, id: &str| {
+        OrderKey::new(vec![SortValue::Integer(n), SortValue::Text(id.to_string())])
+    };
+    let subscribe = |window: ListWindow| {
+        let rows_order = order.clone();
+        store.subscribe_list_window(window, order.clone(), move |sql, seek, limit, offset| {
+            let statement = format!(
+                "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {ordering} \
+                 LIMIT :limit OFFSET :offset",
+                keys = rows_order.key_columns(),
+                condition = rows_order.condition(seek),
+                ordering = rows_order.ordering(seek),
+            );
+            seek.bound(limit, offset, |params| {
+                sql.query(&statement, params, |row| {
+                    Ok((row.get::<_, String>(0)?, rows_order.key_of(row)?))
+                })
+            })
+            .map_err(crate::DbError::from)
+        })
+    };
+    // The first window holds NULLs only, the second the NULLs after n030 and
+    // the values below 200, the third the values from 200 on.
+    let mut windows = [
+        subscribe(ListWindow::Forward { from: None, until: Some(null_key("n030")), limit: 100 }),
+        subscribe(ListWindow::Forward {
+            from: Some(null_key("n030")),
+            until: Some(value_key(200, "v200")),
+            limit: 100,
+        }),
+        subscribe(ListWindow::Forward {
+            from: Some(value_key(200, "v200")),
+            until: None,
+            limit: 100,
+        }),
+    ];
+    for query in &mut windows {
+        tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap();
+    }
+    let write = |sql: &'static str| {
+        let store = &store;
+        async move { crate::test_fixtures::exec_batch(store, sql).await }
+    };
+
+    // Each write lands in one window and reruns that one alone.
+    let writes: [(&'static str, [bool; 3]); 6] = [
+        ("INSERT INTO t (id, n) VALUES ('n015', NULL)", [true, false, false]),
+        ("INSERT INTO t (id, n) VALUES ('n035', NULL)", [false, true, false]),
+        ("INSERT INTO t (id, n) VALUES ('v150', 150)", [false, true, false]),
+        ("INSERT INTO t (id, n) VALUES ('v250', 250)", [false, false, true]),
+        // A row moving from the NULLs into the values leaves one window and
+        // enters another.
+        ("UPDATE t SET n = 500 WHERE id = 'n020'", [true, false, true]),
+        ("UPDATE t SET n = NULL WHERE id = 'v300'", [false, true, true]),
+    ];
+    for (sql, expected) in writes {
+        write(sql).await;
+        let marked: Vec<bool> = windows.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, expected, "{sql}");
+        for (query, marked) in windows.iter_mut().zip(expected) {
+            if marked {
+                tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap();
+            }
+        }
+    }
+}

@@ -738,7 +738,8 @@ async fn a_write_reruns_the_window_it_lands_in_and_the_count_alone() {
 /// Whatever the grid's order, flat or grouped by artist, a write adding an
 /// album reruns the one window whose range the album's sort values fall in,
 /// and not the windows beside it: coven narrows on every term of every order,
-/// a nullable year and the artist's sort key among them.
+/// a nullable year and the artist's sort key among them. A write that changes
+/// what a row shows, its cover, reruns only the windows showing that row.
 #[tokio::test]
 async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
     use bae_util::test_channels::HANG_GUARD;
@@ -796,18 +797,7 @@ async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
             }
             assert_eq!(holds.iter().filter(|holds| **holds).count(), 1, "{sort:?}: {holds:?}");
             let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-            // Coven's narrowing leaves a window reading a nullable term of the
-            // order (the year's, and the flat grid's credits' under Artist
-            // ascending) wider than its range: it reruns for writes outside
-            // it too. Those orders still rerun the window the row lands in.
-            let narrows = !(sort.iter().any(|c| c.field == AlbumSortField::Year)
-                || (!group_by_artist
-                    && sort.first().is_some_and(|c| {
-                        c.field == AlbumSortField::Artist && c.direction == SortDirection::Ascending
-                    })));
-            let reran_where_it_landed =
-                marked.iter().zip(&holds).all(|(marked, holds)| *marked || !holds);
-            if narrows && marked != holds || !reran_where_it_landed {
+            if marked != holds {
                 wrong.push(format!(
                     "{sort:?} grouped {group_by_artist}: reran {marked:?}, landed in {holds:?}"
                 ));
@@ -815,4 +805,51 @@ async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
         }
     }
     assert!(wrong.is_empty(), "windows rerun by a write outside them:\n{}", wrong.join("\n"));
+}
+
+/// A cover written for an album, through the records domain's own write,
+/// reruns only the windows showing that album, flat and grouped by artist,
+/// for a sort whose windows split the grid in three.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
+    use bae_util::test_channels::HANG_GUARD;
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
+    for group_by_artist in [false, true] {
+        let (db, _dir) = grouped_library().await;
+        let views = LibraryViews::new(db.clone());
+        let bounds = [
+            key_of_row(&db, &sort, group_by_artist, 1).await,
+            key_of_row(&db, &sort, group_by_artist, 3).await,
+        ];
+        let windows = [
+            ListWindow::Forward { from: None, until: Some(bounds[0].clone()), limit: 50 },
+            ListWindow::Forward {
+                from: Some(bounds[0].clone()),
+                until: Some(bounds[1].clone()),
+                limit: 50,
+            },
+            ListWindow::Forward { from: Some(bounds[1].clone()), until: None, limit: 50 },
+        ];
+        let mut live: Vec<_> = windows
+            .iter()
+            .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
+            .collect();
+        for query in &mut live {
+            tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+        }
+        let album = grouped_album(2);
+        let mut holds = Vec::new();
+        for window in &windows {
+            let rows = window_under(&db, &sort, group_by_artist, window.clone()).await.rows;
+            holds.push(rows.iter().any(|row| row.album.id == album));
+        }
+        assert_eq!(holds.iter().filter(|holds| **holds).count(), 1, "{holds:?}");
+
+        bae_records::test_fixtures::write_cover(&test_records(&db), &grouped_release(2), "a cover")
+            .await;
+
+        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, holds, "grouped {group_by_artist}");
+    }
 }

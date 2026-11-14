@@ -5224,7 +5224,9 @@ Reads come two ways:
   (the top of the grid when it has none) and before those of another (no end
   when it has none), at most a page of them, read as a run of index seeks, each
   an index range with both ends set, so coven reruns a window for a write that
-  changes a row inside its range and no other. The screen holds a chain of
+  changes a row inside its range and no other, for every order, a nullable
+  term's NULLs included. A write to what a row shows, such as an album's
+  cover, reruns only the windows showing that row. The screen holds a chain of
   windows that share bounds, so every row is in exactly one: each delivery
   names the window it answers, the sort values of its first row, and those of
   the row past its far end, read as one row more than the page, which the
