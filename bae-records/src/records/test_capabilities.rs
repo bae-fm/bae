@@ -160,6 +160,25 @@ impl Records {
         self.store.write(move |sql| rows.write_on(&sql, &pressing)).await
     }
 
+    /// Set `release_id`'s release name, the one column written, which no list
+    /// of albums reads.
+    pub async fn set_release_name_for_test(
+        &self,
+        release_id: &str,
+        name: &str,
+    ) -> Result<(), DbError> {
+        let (release_id, name) = (release_id.to_string(), name.to_string());
+        self.store
+            .write(move |sql| {
+                sql.execute(
+                    "UPDATE releases SET release_name = ? WHERE id = ?",
+                    params![name, release_id],
+                )?;
+                Ok::<(), DbError>(())
+            })
+            .await
+    }
+
     /// Save `release_id`'s metadata as a person's edit of it does: the
     /// album, the release, its tracks and their credits as they stand, with
     /// what `edit` changes of them.

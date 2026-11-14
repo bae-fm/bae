@@ -210,12 +210,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         next_album_page_is_only_a_rename(&db, &mut live, hidden_other_album, "Album Title Shown")
             .await;
 
-    records
-        .save_release_metadata_for_test(OTHER_RELEASE_ID, |rows| {
-            rows.release.release_name = Some("Unread Release Name".to_string());
-        })
-        .await
-        .unwrap();
+    records.set_release_name_for_test(OTHER_RELEASE_ID, "Unread Release Name").await.unwrap();
     let second_and_beyond =
         [LibraryPageWindow { offset: 1, limit: 2 }].into_iter().collect::<BTreeSet<_>>();
     let shown_again =
