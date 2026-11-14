@@ -22,18 +22,19 @@ struct WelcomeLibraryDetails: View {
         return nil
     }
 
+    /// The popover's own inset, as the boards draw it: 14 at the sides and
+    /// bottom, and the title 18 down.
+    private let popoverInset: CGFloat = 14
+
     var body: some View {
-        Form {
-            Section(library.title) {
-                rows
-                    .listRowBackground(Rectangle().fill(Theme.surface))
-            }
+        SettingsTitledBox(title: Text(verbatim: library.title)) {
+            rows
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+        .padding(.horizontal, popoverInset)
+        .padding(.top, popoverInset + ThemeSpace.inline)
+        .padding(.bottom, popoverInset)
+        .frame(width: 348)
         .background(Theme.surfaceElevated)
-        .scrollDisabled(true)
-        .frame(width: 350)
         .task { await load() }
     }
 
