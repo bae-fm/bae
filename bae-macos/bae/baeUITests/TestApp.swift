@@ -203,6 +203,10 @@ extension XCTestCase {
         app.launchEnvironment["HOME"] = home.path
         app.launchEnvironment["BAE_UI_TESTING"] = "1"
         app.launchEnvironment["BAE_UI_TESTING_CREATE_LIBRARY"] = "1"
+        // The app's log, at every level, which the test attaches and, when it
+        // failed, prints into the job log.
+        let appLog = root.appendingPathComponent("app.log")
+        app.launchEnvironment["BAE_UI_TESTING_LOG"] = appLog.path
         if !library.isEmpty {
             let fixture = root.appendingPathComponent("library.json")
             let encoder = JSONEncoder()
@@ -223,6 +227,25 @@ extension XCTestCase {
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
+        // Registered after the app's termination, so it runs before it: the
+        // app is still up to describe.
+        addTeardownBlock { [self, app] in
+            let text =
+                (try? String(contentsOf: appLog, encoding: .utf8)) ?? ""
+            let attachment = XCTAttachment(string: text)
+            attachment.name = "app.log"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            if (testRun?.totalFailureCount ?? 0) > 0 {
+                print("---- app log of \(name) ----\n\(text)---- end ----")
+                // What the app showed when the test failed, cut to what a
+                // job log can hold.
+                let shown = String(app.debugDescription.prefix(60_000))
+                print(
+                    "---- accessibility tree of \(name) ----\n\(shown)\n---- end ----"
+                )
+            }
+        }
         // The window says "Loading…" until the library opens, and only then
         // shows the title bar's Library section.
         guard
