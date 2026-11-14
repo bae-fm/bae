@@ -5437,7 +5437,10 @@ release's or track's id as UTF-8, or a candidate's key.
   open. The iOS app, once it has a library to show, calls it on
   `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
   The macOS app doesn't: the OS ends no app there for holding memory.
-- **What a read is.** A read that must follow changes (a screen, or a bridge,
+- **What a read is.** Everything a screen shows comes from SQL, except values
+  that change many times a second (keyed latest-value streams, §10.2) and state
+  that lives only on screen (hover, focus, an open popover or menu, a drag in
+  progress), which the view holds. A read that must follow changes (a screen, or a bridge,
   automation or MCP subscriber) is one SQL query subscribed as a coven live
   query, and everything a screen shows beside its rows (counts, totals, groups
   and section headers, "N of M", sums, facets) comes from SQL, in the same

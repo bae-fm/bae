@@ -30,6 +30,9 @@ screen that reads what it changed.
   `import_candidate_failure`), so the list's query reads them with everything
   else.
 
+- **Two things never come from SQL.** A value that changes many times a second
+  (on its keyed stream, below) and state that lives only on screen: hover,
+  focus, an open popover or menu, a drag in progress. The view holds that.
 - **The read is the query and nothing else.** No places, counts, windows or
   last results kept in Rust between reads; no side pass beside a live query; no
   field written into a request or a table only to make a query rerun; no size
