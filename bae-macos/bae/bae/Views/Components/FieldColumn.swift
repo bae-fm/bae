@@ -43,6 +43,7 @@ struct MacTextField<Field: View>: View {
                 .gridColumnAlignment(.trailing)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 field
+                    .accessibilityLabel(Text(label))
                 if let note {
                     FieldNote(note)
                 }
