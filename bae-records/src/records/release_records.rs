@@ -336,18 +336,15 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
 /// One statement answers every check: the checks go in as one JSON array,
 /// each matched by plain equality on the index its kind of record has — its
 /// pressing on `idx_release_records_catalog_key`, its album on
-/// `idx_release_records_catalog_album` — and the rows come back in check
-/// order, each check's albums holding its pressing first, then by age.
+/// `idx_release_records_catalog_album` — and one row comes back for each
+/// check, in check order, holding its albums as a JSON array, those holding
+/// its pressing first, then by age.
 pub fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
-    let mut statuses = checks
-        .iter()
-        .map(|check| LibraryStatus { release_id: check.release_id.clone(), albums: Vec::new() })
-        .collect::<Vec<_>>();
     if checks.is_empty() {
-        return Ok(statuses);
+        return Ok(Vec::new());
     }
     let checks_json = serde_json::Value::Array(
         checks
@@ -358,7 +355,7 @@ pub fn check_releases_in_library_on(
             .collect(),
     )
     .to_string();
-    let rows = sql.query(
+    Ok(sql.query(
         r#"
             WITH checks(position, release_id, catalog, group_id) AS (
                 SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)
@@ -379,34 +376,51 @@ pub fn check_releases_in_library_on(
                  AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = checks.group_id
                 JOIN releases r ON r.id = rr.release_id
                 WHERE checks.group_id IS NOT NULL
+            ),
+            found AS MATERIALIZED (
+                SELECT matches.position, a.id AS album_id, a.title AS album_title,
+                       a.created_at, MAX(matches.holds_release) AS holds_release
+                FROM matches
+                JOIN albums a ON a.id = matches.album_id
+                GROUP BY matches.position, a.id
             )
-            SELECT
-                matches.position,
-                a.id AS album_id,
-                a.title AS album_title,
-                MAX(matches.holds_release) AS holds_release
-            FROM matches
-            JOIN albums a ON a.id = matches.album_id
-            GROUP BY matches.position, a.id
-            ORDER BY matches.position, holds_release DESC, a.created_at, a.id
+            SELECT checks.release_id,
+                   (SELECT json_group_array(json_object(
+                        'album_id', found.album_id,
+                        'album_title', found.album_title,
+                        'holds_release', found.holds_release)
+                        ORDER BY found.holds_release DESC, found.created_at, found.album_id)
+                    FROM found WHERE found.position = checks.position) AS albums
+            FROM checks
+            ORDER BY checks.position
         "#,
         params![checks_json],
         |row| {
-            Ok((
-                row.get::<_, i64>("position")?,
-                crate::LibraryAlbumMatch {
-                    album_id: row.get("album_id")?,
-                    album_title: row.get("album_title")?,
-                    holds_release: row.get::<_, i64>("holds_release")? != 0,
-                },
-            ))
+            let text: String = row.get("albums")?;
+            let albums: Vec<serde_json::Value> = serde_json::from_str(&text)
+                .map_err(|error| column_conversion_error(row, "albums", error))?;
+            let unreadable = |reason: &str| column_conversion_error(row, "albums", reason);
+            Ok(LibraryStatus {
+                release_id: row.get("release_id")?,
+                albums: albums
+                    .iter()
+                    .map(|album| {
+                        Ok(crate::LibraryAlbumMatch {
+                            album_id: album["album_id"]
+                                .as_str()
+                                .ok_or_else(|| unreadable("an album has no id"))?
+                                .to_string(),
+                            album_title: album["album_title"]
+                                .as_str()
+                                .ok_or_else(|| unreadable("an album has no title"))?
+                                .to_string(),
+                            holds_release: album["holds_release"].as_i64() != Some(0),
+                        })
+                    })
+                    .collect::<rusqlite::Result<Vec<_>>>()?,
+            })
         },
-    )?;
-    for (position, album) in rows {
-        let position = usize::try_from(position).expect("a check's position is an index");
-        statuses[position].albums.push(album);
-    }
-    Ok(statuses)
+    )?)
 }
 
 #[cfg(test)]

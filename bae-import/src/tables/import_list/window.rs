@@ -395,7 +395,11 @@ impl ImportedReads {
         }
         Ok(Self {
             uploads: release_upload_progress_on(sql, &release_ids)?,
-            records: get_releases_records_on(sql, &release_ids)?,
+            records: release_ids
+                .iter()
+                .cloned()
+                .zip(get_releases_records_on(sql, &release_ids)?)
+                .collect(),
         })
     }
 }

@@ -73,6 +73,22 @@ async fn release_records_are_read_in_catalog_order() {
         ]
     );
 
+    // One list for each id asked, in the order asked, an empty one for a
+    // release no catalog describes.
+    let lists = db
+        .read(|sql| {
+            crate::records::read::get_releases_records_on(
+                &sql,
+                &[RELEASE_A.to_string(), "no-such-release".to_string(), RELEASE_A.to_string()],
+            )
+        })
+        .await
+        .unwrap();
+    assert_eq!(lists.len(), 3);
+    assert_eq!(lists[0].len(), 3);
+    assert!(lists[1].is_empty());
+    assert_eq!(lists[0], lists[2]);
+
     let plan = db
         .read(|sql| {
             sql.query(

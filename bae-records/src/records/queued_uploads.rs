@@ -218,8 +218,8 @@ pub fn release_upload_progress_on(
     release_rows_on(sql, RELEASE_UPLOAD_COUNT_COLUMNS, release_ids, release_upload_progress_in_row)
 }
 
-/// The releases among `release_ids` whose `columns` map to a value, each by
-/// its id.
+/// The releases among `release_ids` with a file waiting in the upload queue,
+/// each by its id, its `columns` mapped by `map`.
 fn release_rows_on<T>(
     sql: &impl coven::SqlRead,
     columns: &str,
@@ -231,12 +231,23 @@ fn release_rows_on<T>(
             "SELECT storage.release_id AS release_id, {columns} \
              FROM release_storage storage \
              LEFT JOIN ({RELEASES_SENDING}) sending ON sending.release_id = storage.release_id \
-             WHERE storage.release_id IN (SELECT value FROM json_each(?1))"
+             WHERE storage.release_id IN (SELECT value FROM json_each(?1)) \
+               AND storage.queued_count > 0"
         ),
         [serde_json::json!(release_ids).to_string()],
-        |row| Ok((row.get::<_, String>("release_id")?, map(row)?)),
+        |row| {
+            let release_id: String = row.get("release_id")?;
+            let value = map(row)?.ok_or_else(|| {
+                bae_store::read::column_conversion_error(
+                    row,
+                    "queued_count",
+                    format!("release {release_id} waits to upload and has no upload"),
+                )
+            })?;
+            Ok((release_id, value))
+        },
     )?;
-    Ok(rows.into_iter().filter_map(|(id, value)| value.map(|value| (id, value))).collect())
+    Ok(rows.into_iter().collect())
 }
 
 /// Each file this process is sending now and, when it is one of a release's

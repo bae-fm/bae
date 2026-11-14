@@ -207,15 +207,17 @@ pub fn get_files_for_release_on(
     Ok(files)
 }
 
-/// Every catalog's description of each of the releases `?1` names, a JSON
-/// array of release ids: release by release, each in the order surfaces list
-/// catalogs (`bae_catalog_rank`), read from the index of each release's
-/// records in that order.
-pub(super) const RELEASES_RECORDS_IN_ORDER: &str =
-    "SELECT rr.release_id, rr.catalog, rr.kind, rr.key, rr.album_key \
-     FROM release_records rr \
-     WHERE rr.release_id IN (SELECT value FROM json_each(?1)) \
-     ORDER BY rr.release_id, bae_catalog_rank(rr.catalog)";
+/// Each of the releases `?1` names, a JSON array of release ids, as one row
+/// in the array's order (`json_each` walks it so) holding its records: every catalog's description of
+/// it, in the order surfaces list catalogs (`bae_catalog_rank`), as a JSON
+/// array that is empty for a release no catalog describes.
+pub(super) const RELEASES_RECORDS_IN_ORDER: &str = "SELECT (SELECT json_group_array(json_object( \
+                 'catalog', ordered.catalog, 'key', ordered.key, 'kind', ordered.kind, \
+                 'album_key', ordered.album_key)) \
+             FROM (SELECT rr.catalog, rr.key, rr.kind, rr.album_key FROM release_records rr \
+                   WHERE rr.release_id = r.value ORDER BY bae_catalog_rank(rr.catalog)) \
+                 AS ordered) AS records \
+     FROM json_each(?1) r";
 
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
@@ -224,45 +226,53 @@ pub fn get_release_records_on(
     release_id: &str,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, DbError> {
     Ok(get_releases_records_on(sql, &[release_id.to_string()])?
-        .remove(release_id)
+        .into_iter()
+        .next()
         .unwrap_or_default())
 }
 
 /// Every catalog's description of each of `release_ids`, in one statement:
-/// per release, in the order surfaces list catalogs. A release described by
-/// no catalog has no entry.
+/// one list for each id, in the ids' order, each in the order surfaces list
+/// catalogs; empty for a release no catalog describes.
 pub fn get_releases_records_on(
     sql: &impl coven::SqlRead,
     release_ids: &[String],
-) -> Result<HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
-    let mut by_release: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>> = HashMap::new();
-    for (release_id, record) in sql.query(
+) -> Result<Vec<Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
+    Ok(sql.query(
         RELEASES_RECORDS_IN_ORDER,
         params![serde_json::json!(release_ids).to_string()],
         |row| {
-            let identity = bae_catalogs::records::MetadataRef::new(
-                parsed_column(row, "catalog")?,
-                row.get::<_, String>("key")?,
-            );
-            let record = match row.get::<_, String>("kind")?.as_str() {
-                "pressing" => {
-                    bae_catalogs::records::ReleaseRecord::new(&identity, row.get("album_key")?)
-                }
-                "album" => bae_catalogs::records::ReleaseRecord::album(&identity),
-                kind => {
-                    return Err(column_conversion_error(
-                        row,
-                        "kind",
-                        format!("unknown record kind: {kind}"),
-                    ))
-                }
-            };
-            Ok((row.get::<_, String>("release_id")?, record))
+            let text: String = row.get("records")?;
+            let records: Vec<serde_json::Value> = serde_json::from_str(&text)
+                .map_err(|error| column_conversion_error(row, "records", error))?;
+            records
+                .iter()
+                .map(|record| record_of(row, record))
+                .collect::<rusqlite::Result<Vec<_>>>()
         },
-    )? {
-        by_release.entry(release_id).or_default().push(record);
+    )?)
+}
+
+/// One record of a `records` column's JSON array.
+fn record_of(
+    row: &Row,
+    record: &serde_json::Value,
+) -> rusqlite::Result<bae_catalogs::records::ReleaseRecord> {
+    let text = |field: &str| record[field].as_str().map(str::to_string);
+    let unreadable = |reason: String| column_conversion_error(row, "records", reason);
+    let catalog = text("catalog")
+        .ok_or_else(|| unreadable("a record has no catalog".to_string()))?
+        .parse()
+        .map_err(unreadable)?;
+    let key = text("key").ok_or_else(|| unreadable("a record has no key".to_string()))?;
+    let identity = bae_catalogs::records::MetadataRef::new(catalog, key);
+    match record["kind"].as_str() {
+        Some("pressing") => {
+            Ok(bae_catalogs::records::ReleaseRecord::new(&identity, text("album_key")))
+        }
+        Some("album") => Ok(bae_catalogs::records::ReleaseRecord::album(&identity)),
+        kind => Err(unreadable(format!("unknown record kind: {kind:?}"))),
     }
-    Ok(by_release)
 }
 
 // ─── Entity row readers ──────────────────────────────────────────────────────
