@@ -46,6 +46,15 @@
         override func accessibilityRole() -> NSAccessibility.Role? { .menu }
 
         override func accessibilityChildren() -> [Any]? { items }
+
+        /// The line under a screen point, so a line is what an assistive
+        /// technology or a UI test finds there and reaches. Without it the
+        /// point answers with the menu, and a UI test calls the line it can
+        /// see not hittable.
+        override func accessibilityHitTest(_ point: NSPoint) -> Any? {
+            items.first { $0.accessibilityFrame().contains(point) }
+                ?? super.accessibilityHitTest(point)
+        }
     }
 
     /// One open menu or submenu.
