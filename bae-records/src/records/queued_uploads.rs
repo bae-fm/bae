@@ -47,33 +47,55 @@ macro_rules! release_upload_count_columns {
 /// many of a release's files wait and how many are being sent.
 pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
+/// The moves of the files of the release whose `release_storage` row is
+/// `storage` that wait in this device's upload queue, and its failed moves.
+macro_rules! release_moves {
+    () => {
+        "SELECT upload.move FROM release_files AS f \
+         JOIN coven_uploads AS upload ON upload.file = f.file \
+         WHERE f.release_id = storage.release_id \
+         UNION \
+         SELECT moves.move FROM release_files AS f \
+         JOIN coven_moves AS moves ON moves.file = f.file \
+         WHERE f.release_id = storage.release_id AND moves.state = 'failed'"
+    };
+}
+
+/// The name of a release file whose original a pending record of the
+/// release's moves says failed as `$failure`, found by the original's path.
+macro_rules! original_named {
+    ($failure:literal) => {
+        concat!(
+            "CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
+                 (SELECT f.original_filename FROM release_files AS f \
+                  JOIN coven_user_files AS original ON original.file = f.file \
+                  WHERE f.release_id = storage.release_id AND original.path IN ( \
+                      SELECT pending.original_path FROM coven_pending AS pending \
+                      WHERE pending.reason_kind = 'original' \
+                        AND json_extract(CAST(pending.record AS TEXT), \
+                                         '$.reason.Original.failure') = '",
+            $failure,
+            "' AND pending.move IN (",
+            release_moves!(),
+            ")) ORDER BY f.id LIMIT 1) END"
+        )
+    };
+}
+
 /// The columns a release's upload reads beside `release_storage storage`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: its counts
-/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the pending records of the
-/// release's moves, its failed move's among them, with its originals' paths
-/// and names, which name the original a move waits for or failed on. How far
-/// the files being sent have got is the release's transfer.
+/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the names of the release's files
+/// whose original a move of the release waits for or failed on, as the
+/// move's pending record names the original by its path. How far the files
+/// being sent have got is the release's transfer.
 pub const RELEASE_UPLOAD_COLUMNS: &str = concat!(
     release_upload_count_columns!(),
-    ", \
-     CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
-         (SELECT json_group_array(json(CAST(pending.record AS TEXT))) \
-          FROM coven_pending AS pending \
-          WHERE pending.move IN (SELECT upload.move FROM release_files AS f \
-              JOIN coven_uploads AS upload ON upload.file = f.file \
-              WHERE f.release_id = storage.release_id \
-              UNION \
-              SELECT moves.move FROM release_files AS f \
-              JOIN coven_moves AS moves ON moves.file = f.file \
-              WHERE f.release_id = storage.release_id AND moves.state = 'failed')) \
-     END AS upload_move_records, \
-     CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
-         (SELECT json_group_array(json_object('path', hex(original.path), \
-              'name', f.original_filename)) \
-          FROM release_files AS f \
-          JOIN coven_user_files AS original ON original.file = f.file \
-          WHERE f.release_id = storage.release_id) END AS upload_original_names"
+    ", ",
+    original_named!("Missing"),
+    " AS upload_missing_original, ",
+    original_named!("Changed"),
+    " AS upload_changed_original"
 );
 
 /// The columns the upload queue's hold reads: whether uploads are paused, how
@@ -128,84 +150,35 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
     let Some((waiting, sending, stored)) = upload_counts_in_row(row)? else {
         return Ok(None);
     };
-    let missing =
-        if sending > 0 { None } else { original_in_row(row, coven::FileSourceFailure::Missing)? };
+    let missing = if sending > 0 { None } else { row.get("upload_missing_original")? };
     Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
 }
 
 /// The name of the release file whose original changed and failed the
 /// release's move, as [`RELEASE_UPLOAD_COLUMNS`] read it.
 pub fn changed_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
-    original_in_row(row, coven::FileSourceFailure::Changed)
+    row.get("upload_changed_original")
 }
 
-/// The name of the release file whose original a move of the release waits
-/// for (`Missing`) or failed on (`Changed`), as the move's pending record
-/// names the original by its path.
-fn original_in_row(
-    row: &Row<'_>,
-    wanted: coven::FileSourceFailure,
-) -> rusqlite::Result<Option<String>> {
-    let Some(records) = row.get::<_, Option<String>>("upload_move_records")? else {
-        return Ok(None);
-    };
-    let records: Vec<coven::PendingRecord> = serde_json::from_str(&records).map_err(|error| {
-        bae_store::read::column_conversion_error(
-            row,
-            row.as_ref().column_index("upload_move_records").unwrap_or(0),
-            format!("a pending record: {error}"),
-        )
-    })?;
-    let paths: Vec<String> = records
-        .iter()
-        .filter_map(|record| match &record.reason {
-            coven::PendingReason::Original { path, failure } if *failure == wanted => {
-                Some(hex::encode(coven::path_bytes(path)))
-            }
-            _ => None,
-        })
-        .collect();
-    if paths.is_empty() {
-        return Ok(None);
-    }
-    let names: Vec<OriginalName> =
-        serde_json::from_str(&row.get::<_, String>("upload_original_names")?).map_err(|error| {
-            bae_store::read::column_conversion_error(
-                row,
-                row.as_ref().column_index("upload_original_names").unwrap_or(0),
-                format!("the release's originals: {error}"),
-            )
-        })?;
-    Ok(names
-        .into_iter()
-        .find(|original| paths.contains(&original.path.to_lowercase()))
-        .map(|original| original.name))
-}
-
-/// A release file and the path of the original coven holds of it, as
-/// `upload_original_names` lists them.
-#[derive(serde::Deserialize)]
-struct OriginalName {
-    /// The path's bytes in hex.
-    path: String,
-    name: String,
-}
-
-/// What of the release `release_id` waits in this device's upload queue.
+/// What of the release `release_id` waits in this device's upload queue;
+/// `None` when none of its files waits.
 pub fn release_upload_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Option<DbReleaseUpload>, DbError> {
-    Ok(release_uploads_on(sql, &[release_id.to_string()])?.remove(release_id))
-}
-
-/// What of each of `release_ids` waits in this device's upload queue, in one
-/// statement. A release none of whose files waits has no entry.
-pub fn release_uploads_on(
-    sql: &impl coven::SqlRead,
-    release_ids: &[String],
-) -> Result<HashMap<String, DbReleaseUpload>, DbError> {
-    release_rows_on(sql, RELEASE_UPLOAD_COLUMNS, release_ids, release_upload_in_row)
+    Ok(sql
+        .query_row(
+            &format!(
+                "SELECT {RELEASE_UPLOAD_COLUMNS} FROM release_storage storage \
+                 LEFT JOIN ({RELEASES_SENDING}) sending \
+                     ON sending.release_id = storage.release_id \
+                 WHERE storage.release_id = ?1 AND storage.queued_count > 0"
+            ),
+            [release_id],
+            release_upload_in_row,
+        )
+        .optional()?
+        .flatten())
 }
 
 /// How many files of each of `release_ids` wait and are being sent, in one
