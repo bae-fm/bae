@@ -16,12 +16,13 @@
 
 pub(super) const SQL: &str = include_str!("search_rows.sql");
 
+use super::cards_read::{groups_of, search_cards_sql};
 use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::match_rows::load_search_matches_on;
 use super::match_rows::{store_match, Listing, MatchOwner, Written};
 use super::*;
-use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
+use crate::candidate_search::{CandidateSearch, SearchRun, SourceSearch};
 use crate::CandidateFiles;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
@@ -167,9 +168,9 @@ fn load_on(
     let searches = sql.query(
         &format!(
             "SELECT search_run, candidate_key, mode, artist, album, catalog_number, barcode, \
-                    {picks} AS picks \
+                    {cards} AS cards \
              FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1",
-            picks = picks_column("import_candidate_search.search_run")
+            cards = search_cards_sql("import_candidate_search.search_run")
         ),
         params![key],
         |row| {
@@ -177,7 +178,7 @@ fn load_on(
                 row.get::<_, i64>("search_run")?,
                 row.get::<_, CandidateKey>("candidate_key")?,
                 query_of(row),
-                row.get::<_, String>("picks")?,
+                row.get::<_, String>("cards")?,
             ))
         },
     )?;
@@ -208,11 +209,12 @@ fn load_on(
     }
     let mut releases = load_search_matches_on(sql, key, None)?;
     let mut loaded = HashMap::new();
-    for (run, key, query, picks) in searches {
+    for (run, key, query, cards) in searches {
         let query = query?;
-        let picked = picks_of(&picks)?;
+        let rows = releases.remove(&run).unwrap_or_default();
+        let groups = groups_of(&cards, &rows.iter().map(|row| &row.result).collect::<Vec<_>>())?;
         let mut by_catalog: HashMap<LookupCatalog, Vec<MetadataResult>> = HashMap::new();
-        for row in releases.remove(&run).unwrap_or_default() {
+        for row in rows {
             let Listing::Returned = row.listing else {
                 return Err(DbError::unreadable(
                     format!(
@@ -242,9 +244,17 @@ fn load_on(
                 sources.iter().map(|(catalog, _)| catalog.as_str()).collect::<Vec<_>>(),
             ));
         }
-        loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, picked)));
+        loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, groups)));
     }
     Ok(loaded)
+}
+
+/// A MusicBrainz result a pick read: what its documents state its album is on
+/// the other lookup catalog, `Unread` where they could not be had.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct PickedResult {
+    pub(super) release_id: String,
+    pub(super) links: AlbumLinks,
 }
 
 /// The picks of the search a column names, as one JSON list column in the

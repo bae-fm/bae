@@ -69,6 +69,7 @@ pub enum CandidateStateRefusal {
 mod album_pick_rows;
 mod blank_draft_rows;
 mod candidate_rows;
+mod cards_read;
 mod cover_rows;
 mod draft_store;
 pub(super) mod failure_rows;

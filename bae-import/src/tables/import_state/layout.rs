@@ -125,7 +125,7 @@ impl ListLayout {
             .enumerate()
             .map(|(row, found)| RowStatements {
                 pressing: pressing_of[row],
-                statements: found.pressing.statements(),
+                statements: found.pressing.statements().clone(),
             })
             .collect();
         Self {

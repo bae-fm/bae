@@ -309,7 +309,7 @@ impl BridgePressing {
         // `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());
         let bae_identify::release_group::Statements { years, labels, barcodes, areas, media } =
-            pressing.statements();
+            pressing.statements().clone();
         BridgePressing {
             document_failure: pressing
                 .document_failure()

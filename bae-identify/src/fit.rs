@@ -109,7 +109,7 @@ pub struct UnattendedPick<'a> {
 
 impl UnattendedPick<'_> {
     pub fn pressing(&self) -> crate::release_group::Pressing {
-        crate::release_group::Pressing { releases: self.records.to_vec() }
+        crate::release_group::Pressing::over(self.records.to_vec())
     }
 }
 

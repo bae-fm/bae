@@ -110,11 +110,12 @@ fn a_lone_row_is_picked_with_no_partner() {
 /// names MusicBrainz first, and a row one catalog lists names that one alone.
 #[test]
 fn a_row_names_its_catalogs_in_the_order_surfaces_list_them() {
-    let discogs_led = Pressing {
-        releases: vec![discogs("dg-1", Some("7"), Some(1992)), mb("mb-1", Some("g"), Some(1992))],
-    };
+    let discogs_led = Pressing::over(vec![
+        discogs("dg-1", Some("7"), Some(1992)),
+        mb("mb-1", Some("g"), Some(1992)),
+    ]);
     assert_eq!(discogs_led.sources(), [LookupCatalog::MusicBrainz, LookupCatalog::Discogs]);
-    let unpaired = Pressing { releases: vec![mb("mb-1", Some("g"), Some(1992))] };
+    let unpaired = Pressing::over(vec![mb("mb-1", Some("g"), Some(1992))]);
     assert_eq!(unpaired.sources(), [LookupCatalog::MusicBrainz]);
 }
 

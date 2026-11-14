@@ -29,13 +29,11 @@ fn line(name: &str, numbers: &[&str]) -> bae_types::pressing::LabelLine {
 /// the place the name first appears; storage keeps one entry per label.
 #[test]
 fn a_name_is_shown_once_with_every_number_under_it() {
-    let pressing = Pressing {
-        releases: vec![record(
-            LookupCatalog::Discogs,
-            "dg-1",
-            &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("label one", "EF-300")],
-        )],
-    };
+    let pressing = Pressing::over(vec![record(
+        LookupCatalog::Discogs,
+        "dg-1",
+        &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("label one", "EF-300")],
+    )]);
     assert_eq!(pressing.labels().len(), 3);
     assert_eq!(
         pressing.label_lines(),
@@ -47,20 +45,18 @@ fn a_name_is_shown_once_with_every_number_under_it() {
 /// leads with; what only the other record states follows.
 #[test]
 fn a_merged_row_lists_its_labels_in_its_lead_s_order() {
-    let pressing = Pressing {
-        releases: vec![
-            record(
-                LookupCatalog::MusicBrainz,
-                "mb-1",
-                &[("Label One", "EF-300"), ("Label One", "AB-100")],
-            ),
-            record(
-                LookupCatalog::Discogs,
-                "dg-1",
-                &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("Label One", "EF 300")],
-            ),
-        ],
-    };
+    let pressing = Pressing::over(vec![
+        record(
+            LookupCatalog::MusicBrainz,
+            "mb-1",
+            &[("Label One", "EF-300"), ("Label One", "AB-100")],
+        ),
+        record(
+            LookupCatalog::Discogs,
+            "dg-1",
+            &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("Label One", "EF 300")],
+        ),
+    ]);
     assert_eq!(
         pressing.label_lines(),
         vec![line("Label One", &["EF-300", "AB-100"]), line("Label Two", &["CD-200"]),]
@@ -72,12 +68,10 @@ fn a_merged_row_lists_its_labels_in_its_lead_s_order() {
 /// the row lists it once.
 #[test]
 fn a_label_written_two_ways_is_listed_once() {
-    let pressing = Pressing {
-        releases: vec![
-            record(LookupCatalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
-            record(LookupCatalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
-        ],
-    };
+    let pressing = Pressing::over(vec![
+        record(LookupCatalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
+        record(LookupCatalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
+    ]);
     let paired = crate::pressing_evidence::PressingEvidence::between(
         &crate::pressing_evidence::ComparedPressing::of(&pressing.releases[0]),
         &crate::pressing_evidence::ComparedPressing::of(&pressing.releases[1]),

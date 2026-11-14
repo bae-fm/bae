@@ -7,6 +7,7 @@
 //! one record states alone is listed as stated, with no catalog named: there
 //! is nothing to tell apart.
 
+use super::labels::labels_of;
 use super::Pressing;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::MetadataResult;
@@ -110,11 +111,12 @@ impl<K: PartialEq, V> Stated<K, V> {
     }
 }
 
-impl Pressing {
-    /// What the row's records state for each fact the row lists them for.
-    pub fn statements(&self) -> Statements {
+impl Statements {
+    /// What `releases`, the records of one row in the order they lead, state
+    /// for each fact the row lists them for.
+    pub(super) fn of(releases: &[MetadataResult]) -> Self {
         let records = |stated: fn(&MetadataResult) -> Vec<(String, String)>| {
-            Stated::of(self.releases.iter().map(|release| (release.source, stated(release))))
+            Stated::of(releases.iter().map(|release| (release.source, stated(release))))
         };
         let numbers = records(|release| {
             release
@@ -131,8 +133,7 @@ impl Pressing {
                 .filter_map(|stated| Some((comparison_key(stated).ok()?, stated.clone())))
                 .collect()
         });
-        let labels = self
-            .label_lines()
+        let labels = bae_types::pressing::label_lines(&labels_of(releases))
             .into_iter()
             .map(|line| StatedLabelLine {
                 names: line.names,
@@ -149,17 +150,17 @@ impl Pressing {
             })
             .collect();
         Statements {
-            years: Stated::of(self.releases.iter().map(|release| {
+            years: Stated::of(releases.iter().map(|release| {
                 (release.source, release.year.map(|y| (y, y)).into_iter().collect())
             }))
             .statements(),
             labels,
             barcodes: barcodes.statements(),
-            areas: Stated::of(self.releases.iter().map(|release| {
+            areas: Stated::of(releases.iter().map(|release| {
                 (release.source, release.area.map(|a| (a, a)).into_iter().collect())
             }))
             .statements(),
-            media: Stated::of(self.releases.iter().map(|release| {
+            media: Stated::of(releases.iter().map(|release| {
                 let counts = release.media.counts();
                 (
                     release.source,
@@ -169,7 +170,9 @@ impl Pressing {
             .statements(),
         }
     }
+}
 
+impl Pressing {
     /// The note each of the row's records has, as the row lists them: the
     /// notes of the records that state one, each naming its catalog where the
     /// notes differ. `note_of` is the one note a record has to show.

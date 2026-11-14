@@ -1,7 +1,7 @@
 //! One physical pressing as a row: the records that name it, which of them
 //! leads, and what picking the row claims.
 
-use super::Judged;
+use super::{Judged, Statements};
 use crate::agreements::Agreements;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::{LookupRef, MetadataRef};
@@ -41,6 +41,9 @@ impl PressingLink {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,
+    /// What the row lists where its records state a fact, as the grouping
+    /// worked it out when the row was formed.
+    statements: Statements,
 }
 
 impl Pressing {
@@ -76,12 +79,29 @@ impl Pressing {
             )
         });
         let mut releases: Vec<Option<MetadataResult>> = releases.drain(..).map(Some).collect();
-        Self {
-            releases: order
-                .into_iter()
-                .map(|at| releases[at].take().expect("each record is placed once"))
-                .collect(),
-        }
+        let releases: Vec<MetadataResult> = order
+            .into_iter()
+            .map(|at| releases[at].take().expect("each record is placed once"))
+            .collect();
+        Self::over(releases)
+    }
+
+    /// The row of `releases`, in the order they are given: the first leads.
+    pub fn over(releases: Vec<MetadataResult>) -> Self {
+        assert!(!releases.is_empty(), "a pressing is built from at least one release");
+        Self { statements: Statements::of(&releases), releases }
+    }
+
+    /// The row whose records, in the order they lead, and whose statements a
+    /// store holds: the rows a list laid out are read as they were formed.
+    pub fn stored(releases: Vec<MetadataResult>, statements: Statements) -> Self {
+        assert!(!releases.is_empty(), "a pressing is built from at least one release");
+        Self { releases, statements }
+    }
+
+    /// What the row lists where its records state a fact.
+    pub fn statements(&self) -> &Statements {
+        &self.statements
     }
 
     /// Every catalog listing this pressing, in the order surfaces list

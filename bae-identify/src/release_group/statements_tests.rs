@@ -7,7 +7,7 @@ fn record(source: LookupCatalog, id: &str) -> MetadataResult {
 }
 
 fn pressing(releases: Vec<MetadataResult>) -> Pressing {
-    Pressing { releases }
+    Pressing::over(releases)
 }
 
 fn statement<T>(value: T, catalogs: &[LookupCatalog]) -> Statement<T> {
@@ -70,7 +70,7 @@ fn catalog_numbers_differ_by_what_they_say_not_how_they_are_spelled() {
         numbered(MusicBrainz, "mb", &["HR-1042"]),
         numbered(Discogs, "dg", &["HR 1042"]),
     ]);
-    let lines = alike.statements().labels;
+    let lines = alike.statements().labels.clone();
     assert_eq!(lines.len(), 1);
     assert_eq!(lines[0].catalog_numbers, vec![statement("HR-1042".to_string(), &[])]);
 
@@ -78,7 +78,7 @@ fn catalog_numbers_differ_by_what_they_say_not_how_they_are_spelled() {
         numbered(MusicBrainz, "mb", &["HR-1042"]),
         numbered(Discogs, "dg", &["HR 1042", "HRX-7"]),
     ]);
-    let lines = differing.statements().labels;
+    let lines = differing.statements().labels.clone();
     assert_eq!(
         lines[0].catalog_numbers,
         vec![
@@ -125,7 +125,7 @@ fn records_stating_different_formats_list_each() {
         made_of(MusicBrainz, "mb", vec![Some(Medium::Cd)]),
         made_of(Discogs, "dg", vec![Some(Medium::Cd), Some(Medium::Cd)]),
     ]);
-    let media = row.statements().media;
+    let media = row.statements().media.clone();
     assert_eq!(media.len(), 2);
     assert_eq!(media[0].catalogs, vec![MusicBrainz]);
     assert_eq!(media[1].catalogs, vec![Discogs]);

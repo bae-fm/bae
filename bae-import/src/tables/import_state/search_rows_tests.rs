@@ -457,7 +457,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     );
     let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
-    assert_eq!(search.picked, vec![PickedResult { release_id: "mb-1".to_string(), links }]);
+    assert_cards_are_the_rules_cards(&search);
 }
 
 /// A search of a folder the scan no longer holds, as one removed after the
@@ -736,5 +736,224 @@ async fn switching_a_catalog_off_lays_out_the_rest_again() {
         card_text(&tables, run).await.len(),
         2,
         "the one card that is left names its title and its artist"
+    );
+}
+
+/// The cards a search reads are the cards the rules make of the releases the
+/// search holds, as they were laid out when the last write changed them.
+fn assert_cards_are_the_rules_cards(search: &CandidateSearch) {
+    let landed: Vec<MetadataResult> = search
+        .sources
+        .iter()
+        .flat_map(|(_, part)| match part {
+            SourceSearch::Done { results } => results.clone(),
+            _ => Vec::new(),
+        })
+        .collect();
+    assert_eq!(
+        search.groups,
+        bae_identify::release_group::group_results(
+            bae_identify::release_group::unranked(landed),
+            None
+        )
+    );
+}
+
+/// A MusicBrainz release of the group `group` pressed in `year`.
+fn pressed_in(id: &str, group: &str, code: &str, year: Option<i32>) -> MetadataResult {
+    MetadataResult { year, ..pressed(LookupCatalog::MusicBrainz, id, group, code) }
+}
+
+/// The rows of a card read most-agreed-with first, which a search leaves at
+/// the pressing year: the earliest year first and the pressing nobody dates
+/// last, rows of one year in the order they were listed.
+#[tokio::test]
+async fn search_cards_statement_orders_rows_by_pressing_year() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![
+                pressed_in("mb-1995", "group-x", "012345678905", Some(1995)),
+                pressed_in("mb-undated", "group-x", "5051961234567", None),
+                pressed_in("mb-1992", "group-x", "4006381333931", Some(1992)),
+                pressed_in("mb-1995-again", "group-x", "7318599911112", Some(1995)),
+            ]),
+        )
+        .await
+    );
+
+    let search = search_of(&tables, key).await.unwrap();
+
+    assert_eq!(search.groups.len(), 1);
+    let rows: Vec<&str> = search.groups[0].sections[0]
+        .pressings
+        .iter()
+        .map(|row| row.lead().release_id.as_str())
+        .collect();
+    assert_eq!(rows, ["mb-1992", "mb-1995", "mb-1995-again", "mb-undated"]);
+    assert_cards_are_the_rules_cards(&search);
+}
+
+/// Two albums of one catalog on one card — two MusicBrainz groups a Discogs
+/// master's two releases pair with — split the card into a section for each
+/// album, headed by it, and no row of a section is of the other's album.
+#[tokio::test]
+async fn search_cards_statement_splits_a_card_holding_two_albums_of_one_catalog() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    let titled = |mut release: MetadataResult, title: &str| {
+        release.title = title.to_string();
+        release
+    };
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![
+                titled(
+                    pressed(LookupCatalog::MusicBrainz, "mb-1", "group-x", "012345678905"),
+                    "First Album"
+                ),
+                titled(
+                    pressed(LookupCatalog::MusicBrainz, "mb-2", "group-y", "5051961234567"),
+                    "Second Album"
+                ),
+            ]),
+        )
+        .await
+    );
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![
+                pressed(LookupCatalog::Discogs, "dg-1", "master-7", "012345678905"),
+                pressed(LookupCatalog::Discogs, "dg-2", "master-7", "5051961234567"),
+            ]),
+        )
+        .await
+    );
+
+    let search = search_of(&tables, key).await.unwrap();
+
+    assert_eq!(search.groups.len(), 1, "the master joins both albums' rows on one card");
+    let sections = &search.groups[0].sections;
+    let headed: Vec<Option<&str>> = sections
+        .iter()
+        .map(|section| section.album.as_ref().map(|album| album.title.as_str()))
+        .collect();
+    assert_eq!(headed, [Some("First Album"), Some("Second Album")]);
+    assert_cards_are_the_rules_cards(&search);
+}
+
+/// Discogs landing merges into the card MusicBrainz already drew: same
+/// album's barcode, so one card with one row on both catalogs, the
+/// MusicBrainz record leading, and the card names both catalogs.
+#[tokio::test]
+async fn a_later_catalog_merges_into_the_card_already_drawn() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![pressed(LookupCatalog::MusicBrainz, "mb-1", "group-x", "012345678905")]),
+        )
+        .await
+    );
+    let drawn = search_of(&tables, key).await.unwrap();
+    assert_eq!(drawn.groups.len(), 1);
+    assert_eq!(drawn.groups[0].pressings().count(), 1);
+    assert_cards_are_the_rules_cards(&drawn);
+
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![pressed(LookupCatalog::Discogs, "dg-1", "master-7", "012345678905")]),
+        )
+        .await
+    );
+
+    let merged = search_of(&tables, key).await.unwrap();
+    assert_eq!(merged.groups.len(), 1);
+    assert_eq!(merged.groups[0].sources.len(), 2);
+    let ids: Vec<&str> = merged.groups[0].sections[0].pressings[0]
+        .releases
+        .iter()
+        .map(|release| release.release_id.as_str())
+        .collect();
+    assert_eq!(ids, ["mb-1", "dg-1"]);
+    assert_cards_are_the_rules_cards(&merged);
+}
+
+/// A picked result whose documents link nothing is read against what the
+/// landed list prints: one catalog number under one label joins the albums,
+/// and that is what the group is kept as. Before it is picked the same
+/// numbers join nothing.
+#[tokio::test]
+async fn a_picked_result_no_document_links_is_joined_by_what_the_list_prints() {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    let numbered = |source: LookupCatalog, id: &str, group: &str| MetadataResult {
+        barcodes: Vec::new(),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))],
+        source_group_id: Some(group.to_string()),
+        ..search_result(source, id)
+    };
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::MusicBrainz,
+            Ok(vec![numbered(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
+        )
+        .await
+    );
+    assert!(
+        land(
+            &tables,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![numbered(LookupCatalog::Discogs, "dg-1", "master-7")]),
+        )
+        .await
+    );
+    assert_eq!(
+        search_of(&tables, key).await.unwrap().groups.len(),
+        2,
+        "nothing joins before a pick"
+    );
+
+    tables
+        .land_candidate_search_pick(
+            key,
+            &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
+            AlbumLinks::Read(Vec::new()),
+        )
+        .await
+        .unwrap();
+
+    let search = search_of(&tables, key).await.unwrap();
+    assert_eq!(search.groups.len(), 1);
+    assert_cards_are_the_rules_cards(&search);
+    assert_eq!(
+        kept_for(&tables, "group-x").await,
+        [bae_catalogs::album_links::GroupAlbum {
+            group: "group-x".to_string(),
+            album: MetadataRef::new(Catalog::Discogs, "master-7"),
+        }],
     );
 }

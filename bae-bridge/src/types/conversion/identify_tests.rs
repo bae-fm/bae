@@ -206,12 +206,10 @@ fn a_pressing_row_crosses_with_every_record_s_values() {
         area: Some(ReleaseArea::Country(Country::from_code(country).expect("a country"))),
         ..MetadataResult::for_test(source, "id", None)
     };
-    let row = BridgePressing::from_core(bae_identify::release_group::Pressing {
-        releases: vec![
-            record(LookupCatalog::MusicBrainz, 1992, "US"),
-            record(LookupCatalog::Discogs, 1993, "DE"),
-        ],
-    });
+    let row = BridgePressing::from_core(bae_identify::release_group::Pressing::over(vec![
+        record(LookupCatalog::MusicBrainz, 1992, "US"),
+        record(LookupCatalog::Discogs, 1993, "DE"),
+    ]));
     assert_eq!(
         row.years,
         vec![

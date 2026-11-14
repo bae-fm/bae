@@ -87,7 +87,7 @@ impl Shown {
                     release.source_group_id.clone().map(|group| (release.source, group))
                 })
                 .collect(),
-            stated: row.statements(),
+            stated: row.statements().clone(),
             status: row.lead().status,
             packaging: row.lead().packaging,
             discogs_details: row.lead().discogs_details.clone(),

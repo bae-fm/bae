@@ -30,6 +30,10 @@ pub(crate) use catalog_rank::CATALOG_RANK;
 // Only the desktop's import offers a cover or states its track table, so
 // only it states them in SQL.
 #[cfg(desktop)]
+mod catalog_group_url;
+#[cfg(desktop)]
+pub(crate) use catalog_group_url::CATALOG_GROUP_URL;
+#[cfg(desktop)]
 mod layout_text;
 #[cfg(desktop)]
 pub(crate) use layout_text::{LENGTHS_DISAGREE, MEDIUM_IS_SIDED, SIDE_LETTERS, TRIM};
@@ -159,6 +163,7 @@ pub const SCHEMA: bae_store::SchemaPart =
 #[cfg(desktop)]
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &CATALOG_RANK,
+    &CATALOG_GROUP_URL,
     &RELEASE_GROUP_COVER,
     &SIDE_LETTERS,
     &MEDIUM_IS_SIDED,

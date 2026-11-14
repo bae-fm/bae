@@ -319,13 +319,7 @@ impl BridgeCandidateSearch {
         let status = BridgeSearchStatus::from_core(search.status());
         let unusable_barcode =
             search.query.unusable_barcode().map(BridgeUnusableBarcode::from_core);
-        let bae_import::CandidateSearch {
-            query,
-            sources,
-            groups,
-            // Which cards the picked results join is already in `groups`.
-            picked: _,
-        } = search;
+        let bae_import::CandidateSearch { query, sources, groups } = search;
         Self {
             status,
             unusable_barcode,
