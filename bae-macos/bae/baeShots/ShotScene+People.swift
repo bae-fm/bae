@@ -260,6 +260,38 @@ extension ShotScene {
         ) {
             makeAdmin(role: .admin, state: .done)
         },
+        ShotScene(
+            id: "mac.settings.listening-history.choosing",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(
+                menu: {
+                    AnyView(
+                        MacMenuInPlace(
+                            {
+                                MacMenuItem(
+                                    verbatim: "Off",
+                                    checked: false
+                                ) {}
+                                MacMenuItem(
+                                    verbatim: "Only me",
+                                    checked: true
+                                ) {}
+                                MacMenuItem(
+                                    verbatim: "Everyone",
+                                    checked: false
+                                ) {}
+                            },
+                            highlighted: 1,
+                            isPopUp: true
+                        )
+                        .padding(.leading, 548)
+                        .padding(.top, 128)
+                    )
+                }
+            )
+        },
     ]
 
     /// The shot people with the other person named Ben, who has a tablet.
@@ -382,7 +414,8 @@ extension ShotScene {
         invites: [BridgeInvite] = [],
         refusedInvites: [BridgeRefusedInvite] = [],
         shown: BridgeSyncShown = .fixtureSynced,
-        sheet: (@MainActor () -> AnyView)? = nil
+        sheet: (@MainActor () -> AnyView)? = nil,
+        menu: (@MainActor () -> AnyView)? = nil
     ) -> ShotStage {
         let membership = MembershipStore.stub(
             people: peopleWithBen(role: .member),
@@ -405,9 +438,19 @@ extension ShotScene {
                 )
                 .environment(membership)
         )
-        let content =
+        let framed =
             sheet.map { AnyView(OverWindow.sheet($0(), over: window)) }
             ?? AnyView(window)
+        // An open menu sits in the window at the point the board draws it.
+        let content =
+            menu.map { openMenu in
+                AnyView(
+                    ZStack(alignment: .topLeading) {
+                        framed
+                        openMenu()
+                    }
+                )
+            } ?? framed
         return ShotStage(content) {
             membership.members != nil
         }
