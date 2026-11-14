@@ -87,7 +87,7 @@ struct MacImportSidebarContainer: View {
     let onAddFolder: () -> Void
     /// Stop watching `path`.
     let onRemoveFolder: (_ path: Data) -> Void
-    let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
+    let onRefreshFolder: (_ folder: BridgeWatchedFolderScanStatus) -> Void
     /// Read every release below the header's folder as one.
     let onCombineFolder: (_ key: BridgeFolderReleaseDecisionKey) -> Void
     /// Read the release at `key` as the folders it is made of.
@@ -163,9 +163,8 @@ struct MacImportSidebarContainer: View {
                 onCancelAll: onCancelAllImports
             )
             FolderScanActivitySlot(importStore: importStore)
-            if let watchedFolders = importStore.watchedFolders {
+            if importStore.watchedFolders != nil {
                 CandidateListMenu(
-                    watchedFolders: watchedFolders,
                     refreshingFolders: uiStore.refreshingWatchedFolders,
                     hasGroups: summary?.hasGroups ?? false,
                     sortOrder: listSlot.sortOrder,

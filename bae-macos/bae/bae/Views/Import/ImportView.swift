@@ -143,14 +143,19 @@ struct ImportView: View {
         }
     }
 
-    func refreshWatchedFolder(_ folder: BridgeWatchedFolder) {
-        uiStore.setWatchedFolderRefreshing(folder.path, true)
+    func refreshWatchedFolder(_ folder: BridgeWatchedFolderScanStatus) {
+        uiStore.setWatchedFolderRefreshing(folder.watchedFolderPath, true)
         Task {
             defer {
-                uiStore.setWatchedFolderRefreshing(folder.path, false)
+                uiStore.setWatchedFolderRefreshing(
+                    folder.watchedFolderPath,
+                    false
+                )
             }
             do {
-                try await importer.refreshWatchedFolder(folder.path)
+                try await importer.refreshWatchedFolder(
+                    folder.watchedFolderPath
+                )
             }
             catch {
                 guard let displayed = DisplayError(error) else {
@@ -158,7 +163,7 @@ struct ImportView: View {
                 }
                 uiStore.showError(
                     displayed.addingContext(
-                        "\(folder.name) (\(folder.pathText))"
+                        "\(folder.watchedFolderName) (\(folder.watchedFolderPathText))"
                     )
                 )
             }

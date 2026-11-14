@@ -75,8 +75,8 @@ fn a_stored_outcome_stands_while_the_root_is_being_read() {
     );
 }
 
-/// A folder no scan has opened a generation for is listed once a failure is
-/// held for it, on the volume the failing pass found it on, and not before.
+/// A folder no scan has opened a generation for is not scanned yet, until a
+/// failure is held for it, on the volume the failing pass found it on.
 #[test]
 fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
     let never_scanned =
@@ -91,13 +91,17 @@ fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
         [WatchedFolderScanStatus {
             watched_folder_path: PathBuf::from("/music"),
             watched_folder_name: "music".to_string(),
+            watched_folder_path_text: "/music".to_string(),
             status: FolderScanStatus::Failed { error: "the disk is full".to_string() },
             on_network_volume: true,
         }]
     );
 
     for in_memory in [FolderScansInMemory::new(), holding(RootScanInMemory::Running)] {
-        assert_eq!(FolderScanProgress::of(never_scanned(), &in_memory).statuses, []);
+        let progress = FolderScanProgress::of(never_scanned(), &in_memory);
+        assert_eq!(progress.statuses.len(), 1);
+        assert_eq!(status(&progress), &FolderScanStatus::NotScanned);
+        assert!(!progress.has_problem);
     }
 }
 

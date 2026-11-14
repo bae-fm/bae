@@ -45,10 +45,9 @@ struct PendingFilterMenuTests {
     ) -> [MacMenuItem] {
         let controller = CandidateListMenuController(
             state: CandidateListMenuState(
-                watchedFolders: [],
+                folders: [],
+                hasScanProblem: false,
                 refreshingFolders: [],
-                scanStatuses: [:],
-                networkFolders: [],
                 hasGroups: false,
                 sortOrder: .newestFirst,
                 pendingFilter: selected,

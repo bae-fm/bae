@@ -27,7 +27,7 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
 mirror_enum! {
     crate::types::BridgeFolderScanStatus = bae_import::FolderScanStatus,
     from_core: fn,
-    variants: { Scanning, Complete, Failed { error }, NotWatched { reason } },
+    variants: { NotScanned, Scanning, Complete, Failed { error }, NotWatched { reason } },
 }
 
 impl crate::types::BridgeWatchedFolderScanStatus {
@@ -35,12 +35,14 @@ impl crate::types::BridgeWatchedFolderScanStatus {
         let bae_import::WatchedFolderScanStatus {
             watched_folder_path,
             watched_folder_name,
+            watched_folder_path_text,
             on_network_volume,
             status,
         } = status;
         Self {
             watched_folder_path: coven::path_bytes(&watched_folder_path),
             watched_folder_name,
+            watched_folder_path_text,
             on_network_volume,
             status: crate::types::BridgeFolderScanStatus::from_core(status),
         }
@@ -505,6 +507,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         statuses: (each crate::types::BridgeWatchedFolderScanStatus),
+        has_problem,
         activity: (opt crate::types::BridgeFolderScanActivity),
     },
 }

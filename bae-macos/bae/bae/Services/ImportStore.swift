@@ -41,6 +41,7 @@ class ImportStore {
     /// it changed, so each delivery is written as it comes.
     private(set) var folderScans = BridgeFolderScans(
         statuses: [],
+        hasProblem: false,
         activity: nil
     )
 
@@ -476,7 +477,7 @@ extension ImportStore {
                 reported = ReportedScan(kind: .failed, detail: detail)
             case .notWatched(let reason):
                 reported = ReportedScan(kind: .notWatched, detail: reason)
-            case .scanning, .complete:
+            case .scanning, .complete, .notScanned:
                 continue
             }
             current[status.watchedFolderPath] = reported

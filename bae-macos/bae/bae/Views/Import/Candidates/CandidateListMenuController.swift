@@ -4,14 +4,15 @@ import SwiftUI
 
 /// What the candidate list's menu shows.
 struct CandidateListMenuState {
-    let watchedFolders: [BridgeWatchedFolder]
+    /// Every watched root with where its scan stands and whether it is on a
+    /// network volume, which is checked on a schedule rather than reported
+    /// the moment it changes: core's folder scans.
+    let folders: [BridgeWatchedFolderScanStatus]
+    /// Whether any root's last scan failed or left it not watched, which
+    /// also marks the trigger.
+    let hasScanProblem: Bool
     /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<Data>
-    /// Each root's scan state, by path.
-    let scanStatuses: [Data: BridgeFolderScanStatus]
-    /// Roots on a network volume, which are checked on a schedule rather than
-    /// reported the moment they change.
-    let networkFolders: Set<Data>
     /// Whether the queue has folder groups; without any, Expand all and
     /// Collapse all are disabled.
     let hasGroups: Bool
@@ -23,17 +24,6 @@ struct CandidateListMenuState {
     let pendingFilterEntries: [BridgePendingFilterEntry]
     /// Whether the tab on show is Found, the one tab the filter applies to.
     let pendingFilterApplies: Bool
-
-    /// Whether any root's last scan failed or left it not watched, which
-    /// also marks the trigger.
-    var hasScanProblem: Bool {
-        scanStatuses.values.contains { status in
-            switch status {
-            case .failed, .notWatched: true
-            case .scanning, .complete: false
-            }
-        }
-    }
 }
 
 /// What choosing each of the menu's items does.
@@ -43,7 +33,7 @@ struct CandidateListMenuActions {
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
-    let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
+    let onRefreshFolder: (_ folder: BridgeWatchedFolderScanStatus) -> Void
     /// Stop watching `path`.
     let onRemoveFolder: (_ path: Data) -> Void
 }
@@ -134,7 +124,7 @@ final class CandidateListMenuController {
                 }
             )
         )
-        lines.append(contentsOf: state.watchedFolders.map(folderLine))
+        lines.append(contentsOf: state.folders.map(folderLine))
         lines.append(.divider)
         lines.append(.header(String(localized: "Groups")))
         for (title, expanded) in [
@@ -180,11 +170,13 @@ final class CandidateListMenuController {
 
     /// One root's line: its scan state is the glyph, and a failed scan's
     /// error or a folder's reason it is not watched is the tooltip.
-    private func folderLine(_ folder: BridgeWatchedFolder) -> MacMenuEntry {
-        let onNetwork = state.networkFolders.contains(folder.path)
+    private func folderLine(_ folder: BridgeWatchedFolderScanStatus)
+        -> MacMenuEntry
+    {
+        let onNetwork = folder.onNetworkVolume
         let networkLine = onNetwork ? Self.networkLine() : nil
         let accessory: MacMenuAccessory?
-        switch state.scanStatuses[folder.path] {
+        switch folder.status {
         case .scanning:
             accessory = MacMenuAccessory(
                 symbol: "progress.indicator",
@@ -198,7 +190,7 @@ final class CandidateListMenuController {
                 help: [detail, networkLine].compactMap { $0 }
                     .joined(separator: "\n")
             )
-        case .complete, nil:
+        case .complete, .notScanned:
             accessory =
                 onNetwork
                 ? MacMenuAccessory(
@@ -207,9 +199,11 @@ final class CandidateListMenuController {
                     help: networkLine
                 ) : nil
         }
-        let refreshing = state.refreshingFolders.contains(folder.path)
+        let refreshing = state.refreshingFolders.contains(
+            folder.watchedFolderPath
+        )
         let submenu = MacMenuSubmenu(
-            verbatim: folder.name,
+            verbatim: folder.watchedFolderName,
             accessory: accessory
         ) {
             MacMenuItem(
@@ -221,11 +215,11 @@ final class CandidateListMenuController {
                 self?.actions.onRefreshFolder(folder)
             }
             MacMenuItem("Reveal in Finder") {
-                SystemActions.revealInFinder(folder: folder.path)
+                SystemActions.revealInFinder(folder: folder.watchedFolderPath)
             }
             MacMenuDivider()
             MacMenuItem("Remove folder") { [weak self] in
-                self?.actions.onRemoveFolder(folder.path)
+                self?.actions.onRemoveFolder(folder.watchedFolderPath)
             }
         }
         return submenu.entries[0]

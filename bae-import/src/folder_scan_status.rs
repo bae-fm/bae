@@ -17,6 +17,8 @@ use std::path::PathBuf;
 pub struct WatchedFolderScanStatus {
     pub watched_folder_path: std::path::PathBuf,
     pub watched_folder_name: String,
+    /// The whole path, shown as text.
+    pub watched_folder_path_text: String,
     pub status: FolderScanStatus,
     /// Whether this folder lives on a volume served over the network, which
     /// changes how it is watched: a filesystem watch on such a volume reports
@@ -28,6 +30,9 @@ pub struct WatchedFolderScanStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderScanStatus {
+    /// No scan has opened a generation for the folder yet, and no failure is
+    /// held for it.
+    NotScanned,
     Scanning,
     Complete,
     Failed {
@@ -61,8 +66,10 @@ pub(crate) const SCAN_STOPPED_UNSTORED: &str = "the scan stopped before its resu
 /// writes that move it rerun neither this read nor reach the screen with it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
-    /// Every scanned root, in watched-folder order.
+    /// Every watched root, in watched-folder order.
     pub statuses: Vec<WatchedFolderScanStatus>,
+    /// Whether any root's last scan failed or left it not watched.
+    pub has_problem: bool,
     /// The current walks, already filtered and totalled for the filter-bar
     /// activity control. Absent as soon as no root is scanning.
     pub activity: Option<FolderScanActivity>,
@@ -74,19 +81,19 @@ impl FolderScanProgress {
     /// volume the failing pass found it on; then the outcome its generation
     /// stored; a generation with none is scanning while the folder is being
     /// read, and otherwise ended without storing it. A folder with no scan
-    /// stored and no failure held has no status yet, and is not listed: a
-    /// pass reading it stores its generation, with its volume, as it starts.
+    /// stored and no failure held is not scanned yet: a pass reading it
+    /// stores its generation, with its volume, as it starts.
     pub(crate) fn of(stored: Vec<StoredRootScan>, in_memory: &FolderScansInMemory) -> Self {
         let statuses: Vec<WatchedFolderScanStatus> = stored
             .into_iter()
-            .filter_map(|root| {
+            .map(|root| {
                 let held = in_memory.get(&root.watched_folder_path);
                 let (status, on_network_volume) = match (held, root.last_scan) {
                     (Some(RootScanInMemory::UnstoredFailure(failure)), _) => (
                         FolderScanStatus::Failed { error: failure.error.clone() },
                         failure.volume == crate::VolumeKind::Network,
                     ),
-                    (_, None) => return None,
+                    (_, None) => (FolderScanStatus::NotScanned, false),
                     (held, Some(StoredScan { outcome, on_network_volume })) => {
                         let status = match (held, outcome) {
                             (_, StoredScanOutcome::Complete) => FolderScanStatus::Complete,
@@ -109,15 +116,16 @@ impl FolderScanProgress {
                         (status, on_network_volume)
                     }
                 };
-                Some(WatchedFolderScanStatus {
+                WatchedFolderScanStatus {
                     watched_folder_name: crate::WatchedFolder::from_path(
                         root.watched_folder_path.clone(),
                     )
                     .name,
+                    watched_folder_path_text: coven::path_text(&root.watched_folder_path),
                     watched_folder_path: root.watched_folder_path,
                     status,
                     on_network_volume,
-                })
+                }
             })
             .collect();
         let folders: Vec<ActiveFolderScan> = statuses
@@ -127,13 +135,20 @@ impl FolderScanProgress {
                     watched_folder_path: folder.watched_folder_path.clone(),
                     watched_folder_name: folder.watched_folder_name.clone(),
                 }),
-                FolderScanStatus::Complete
+                FolderScanStatus::NotScanned
+                | FolderScanStatus::Complete
                 | FolderScanStatus::Failed { .. }
                 | FolderScanStatus::NotWatched { .. } => None,
             })
             .collect();
         let activity = (!folders.is_empty()).then_some(FolderScanActivity { folders });
-        Self { statuses, activity }
+        let has_problem = statuses.iter().any(|folder| {
+            matches!(
+                folder.status,
+                FolderScanStatus::Failed { .. } | FolderScanStatus::NotWatched { .. }
+            )
+        });
+        Self { statuses, has_problem, activity }
     }
 }
 

@@ -221,6 +221,8 @@ pub enum BridgeTriageImportStatus {
 pub struct BridgeWatchedFolderScanStatus {
     pub watched_folder_path: Vec<u8>,
     pub watched_folder_name: String,
+    /// The whole path, shown as text.
+    pub watched_folder_path_text: String,
     pub status: BridgeFolderScanStatus,
     /// Whether this folder is on a network volume, which is also checked on a
     /// schedule because a watch misses changes made on the server.
@@ -243,6 +245,8 @@ pub fn bridge_network_folder_check_minutes() -> u32 {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeFolderScanStatus {
+    /// No scan has read the folder yet.
+    NotScanned,
     Scanning,
     Complete,
     Failed {

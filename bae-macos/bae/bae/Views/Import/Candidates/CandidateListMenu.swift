@@ -10,7 +10,6 @@ import SwiftUI
 /// `importStore`, so a count moving or a scan stepping re-renders the trigger
 /// alone and reaches the menu, open or not.
 struct CandidateListMenu: View {
-    let watchedFolders: [BridgeWatchedFolder]
     /// Roots with a refresh in flight; their Refresh entry is disabled.
     let refreshingFolders: Set<Data>
     /// Whether the queue has folder groups; without any, Expand all and
@@ -32,19 +31,10 @@ struct CandidateListMenu: View {
     private var accent
 
     private var state: CandidateListMenuState {
-        let statuses = importStore.folderScans.statuses
-        return CandidateListMenuState(
-            watchedFolders: watchedFolders,
+        CandidateListMenuState(
+            folders: importStore.folderScans.statuses,
+            hasScanProblem: importStore.folderScans.hasProblem,
             refreshingFolders: refreshingFolders,
-            // Each root's scan state, by path. A failed scan also marks the
-            // trigger.
-            scanStatuses: Dictionary(
-                statuses.map { ($0.watchedFolderPath, $0.status) },
-                uniquingKeysWith: { first, _ in first }
-            ),
-            networkFolders: Set(
-                statuses.filter(\.onNetworkVolume).map(\.watchedFolderPath)
-            ),
             hasGroups: hasGroups,
             sortOrder: sortOrder,
             pendingFilter: pendingFilter,

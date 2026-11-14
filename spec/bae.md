@@ -864,6 +864,10 @@ that starts the passes holds it in memory, so it ends with the process and a
 folder never reads as scanning with nothing scanning it. A folder whose
 current scan stored an outcome shows it. One whose scan stored none reads as
 scanning while a scan of all of it runs or is owed, or a removal holds it.
+A folder no scan has opened a generation for yet reads as not scanned. The
+folder scans list every watched folder with its status and whether it is on a
+network volume, and say whether any folder's last scan failed or left it not
+watched, so the list's menu draws them without joining anything.
 How many folders the scan has stored moves with every folder it walks, so it
 is not part of that status: it has a stream of its own, keyed by the folder's
 path, which the scan indicator's list of folders reads each display frame. A pass whose failure the store won't

@@ -158,8 +158,10 @@ pub struct BridgeImportCounts {
 /// `bae_import::FolderScanProgress`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderScans {
-    /// Every scanned root, in watched-folder order.
+    /// Every watched root, in watched-folder order.
     pub statuses: Vec<BridgeWatchedFolderScanStatus>,
+    /// Whether any root's last scan failed or left it not watched.
+    pub has_problem: bool,
     /// The roots being scanned, for the filter bar's activity control;
     /// absent while no root is scanning.
     pub activity: Option<BridgeFolderScanActivity>,

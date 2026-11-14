@@ -14,16 +14,22 @@ struct CandidateListMenuTests {
         scanStatus: BridgeFolderScanStatus = .complete
     ) -> CandidateListMenuState {
         CandidateListMenuState(
-            watchedFolders: [
-                BridgeWatchedFolder(
-                    path: Data("/Imports".utf8),
-                    pathText: "/Imports",
-                    name: "Imports"
+            folders: [
+                BridgeWatchedFolderScanStatus(
+                    watchedFolderPath: Data("/Imports".utf8),
+                    watchedFolderName: "Imports",
+                    watchedFolderPathText: "/Imports",
+                    status: scanStatus,
+                    onNetworkVolume: false
                 )
             ],
+            hasScanProblem: {
+                switch scanStatus {
+                case .failed, .notWatched: true
+                case .notScanned, .scanning, .complete: false
+                }
+            }(),
             refreshingFolders: [],
-            scanStatuses: [Data("/Imports".utf8): scanStatus],
-            networkFolders: [],
             hasGroups: false,
             sortOrder: .newestFirst,
             pendingFilter: .all,

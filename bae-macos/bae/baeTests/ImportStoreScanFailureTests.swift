@@ -10,7 +10,16 @@ struct ImportStoreScanFailureTests {
     private static func scans(
         _ statuses: [BridgeWatchedFolderScanStatus]
     ) -> BridgeFolderScans {
-        BridgeFolderScans(statuses: statuses, activity: nil)
+        BridgeFolderScans(
+            statuses: statuses,
+            hasProblem: statuses.contains { status in
+                switch status.status {
+                case .failed, .notWatched: true
+                case .notScanned, .scanning, .complete: false
+                }
+            },
+            activity: nil
+        )
     }
 
     private static func failed(
@@ -20,6 +29,7 @@ struct ImportStoreScanFailureTests {
         BridgeWatchedFolderScanStatus(
             watchedFolderPath: Data(path.utf8),
             watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
+            watchedFolderPathText: path,
             status: .failed(error: error),
             onNetworkVolume: false
         )
@@ -32,6 +42,7 @@ struct ImportStoreScanFailureTests {
         BridgeWatchedFolderScanStatus(
             watchedFolderPath: Data(path.utf8),
             watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
+            watchedFolderPathText: path,
             status: .notWatched(reason: reason),
             onNetworkVolume: false
         )
@@ -43,6 +54,7 @@ struct ImportStoreScanFailureTests {
         BridgeWatchedFolderScanStatus(
             watchedFolderPath: Data(path.utf8),
             watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
+            watchedFolderPathText: path,
             status: .complete,
             onNetworkVolume: false
         )
