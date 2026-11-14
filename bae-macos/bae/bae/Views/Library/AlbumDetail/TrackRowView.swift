@@ -110,6 +110,9 @@ struct TrackRowView: View {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
+    /// Rate the track with these stars, or clear its rating with none; `nil`
+    /// for a person who can't rate, whose menu has no Rate.
+    var onRate: ((BridgeStars?) -> Void)?
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
     /// Picking several tracks, or `nil` where the list has none.
@@ -126,18 +129,23 @@ struct TrackRowView: View {
     private var highlightOpacity: Double = 0
 
     var body: some View {
-        MacTrackRow(
-            track: track,
-            artist: artist,
-            positionWidth: positionWidth,
-            isCurrent: isCurrent,
-            isPlaying: isPlaying,
-            hover: isHovered,
-            picked: picking?.picked.contains(track.id) ?? false,
-            highlight: highlightOpacity,
-            onPlay: onPlay,
-            onTogglePlayPause: onTogglePlayPause
-        )
+        HStack(spacing: ThemeSpace.compact) {
+            MacTrackRow(
+                track: track,
+                artist: artist,
+                positionWidth: positionWidth,
+                isCurrent: isCurrent,
+                isPlaying: isPlaying,
+                hover: isHovered,
+                picked: picking?.picked.contains(track.id) ?? false,
+                highlight: highlightOpacity,
+                onPlay: onPlay,
+                onTogglePlayPause: onTogglePlayPause
+            )
+            if let stars = track.myStars {
+                Stars(value: stars.number, size: 10)
+            }
+        }
         .revealsAsTrackRow(track.id)
         // Keyed on the flash's `seq` so a remounted row still sees the flash
         // and a repeat navigation fires it again.
@@ -224,6 +232,9 @@ struct TrackRowView: View {
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuDivider()
+            if let onRate {
+                TrackRateMenu(stars: track.myStars, onRate: onRate)
+            }
             playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }

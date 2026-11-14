@@ -135,6 +135,9 @@ struct AlbumDetailView: View {
                     onRateAlbum: { stars in
                         rate(.album(id: albumId), stars)
                     },
+                    onRateTrack: { trackId, stars in
+                        rate(.track(id: trackId), stars)
+                    },
                     playlists: trackPlaylistChoices,
                     picking: trackPicking
                 )

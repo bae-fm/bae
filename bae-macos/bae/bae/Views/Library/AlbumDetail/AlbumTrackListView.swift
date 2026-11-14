@@ -14,6 +14,9 @@ struct AlbumTrackListView: View {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
+    /// Rate a track with these stars, or clear its rating with none; `nil` for
+    /// a person who can't rate.
+    var onRateTrack: ((String, BridgeStars?) -> Void)?
     var playlists = TrackPlaylistChoices.none
     var picking: TrackPicking?
 
@@ -106,6 +109,9 @@ struct AlbumTrackListView: View {
                     onAddNext: onAddNext,
                     onAddToQueue: onAddToQueue,
                     onExportTrack: onExportTrack,
+                    onRate: onRateTrack.map { rate in
+                        { rate(track.id, $0) }
+                    },
                     playlists: playlists,
                     picking: picking,
                     rowOrder: { release.tracks.map(\.id) }

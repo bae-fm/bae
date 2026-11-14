@@ -36,6 +36,8 @@ struct AlbumExpansionContent: View {
     let onExportTrack: (String) -> Void
     /// Rate the album with these stars, or clear its rating with none.
     let onRateAlbum: (BridgeStars?) -> Void
+    /// Rate a track with these stars, or clear its rating with none.
+    let onRateTrack: (String, BridgeStars?) -> Void
     var playlists = TrackPlaylistChoices.none
     /// Picking several tracks of the list, or `nil` where the list has none.
     var picking: TrackPicking?
@@ -110,6 +112,7 @@ struct AlbumExpansionContent: View {
                         onAddNext: onAddNext,
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
+                        onRateTrack: detail.rating.canRate ? onRateTrack : nil,
                         playlists: playlists,
                         picking: picking
                     )

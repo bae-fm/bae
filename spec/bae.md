@@ -2889,6 +2889,10 @@ with that many stars, and clicking the star the person already gave clears the
 rating. A person without a profile sees no stars, only the line of who rated
 the album.
 
+On macOS a track's row shows the person's stars for it, and its menu offers
+*Rate* to a person who can rate: a submenu of five stars down to one, the
+person's own checked, then *Clear rating*.
+
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
 store, with its entries, and everyone sees it. A move between the store and a
