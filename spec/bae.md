@@ -6032,6 +6032,7 @@ reads it again once.
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
+| `scan_candidate_unit`, `scan_candidate_sheet_offer` | each candidate's audio units in play order with each unit's length and preview range, and each CUE `FILE` line's offered audio, written with its files |
 
 Every folder path and candidate key in these tables, and in A.5 and A.7, is a
 BLOB: a path as coven's bytes for it, a folder below a watched folder as its

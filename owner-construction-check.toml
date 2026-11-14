@@ -1409,6 +1409,8 @@ tables = [
     "folder_scan_directory",
     "scan_candidate",
     "scan_candidate_file",
+    "scan_candidate_unit",
+    "scan_candidate_sheet_offer",
     "scan_candidate_tag_snapshot",
     "scan_candidate_file_tag",
     "scan_candidate_part",

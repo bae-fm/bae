@@ -574,3 +574,39 @@ impl Fixture {
         dir
     }
 }
+
+/// A file decision rewrites the candidate's file rows, and the audio units
+/// stored with them follow: ignoring the sheet leaves its container one unit.
+#[tokio::test(flavor = "multi_thread")]
+async fn file_decision_rewrites_the_units_with_the_files() {
+    let (fixture, hash) = three_track_draft().await;
+    let units = |fixture: &StoredCandidate| {
+        let tables = fixture.handle.services.tables.clone();
+        let hash = hash.clone();
+        async move {
+            tables
+                .load_units_for_test(&hash)
+                .await
+                .into_iter()
+                .map(|unit| (unit.file_id, unit.slice_index))
+                .collect::<Vec<_>>()
+        }
+    };
+    let carved = units(&fixture).await;
+    assert_eq!(carved.len(), 3, "the sheet carves one container into two, beside the other file");
+
+    fixture
+        .handle
+        .set_sheet_disc(
+            fixture.key.clone(),
+            "Disc.cue".to_string(),
+            crate::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
+    let whole = units(&fixture).await;
+    shut_down(fixture.handle).await;
+
+    assert_eq!(whole.len(), 2, "ignoring the sheet leaves each file one unit");
+    assert!(whole.iter().all(|(_, slice)| slice.is_none()), "{whole:?}");
+}

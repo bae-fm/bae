@@ -35,8 +35,9 @@ fn delete_entry_row(
 
 /// Every table that hangs off a `scan_candidate` row by foreign key: what an
 /// entry written again clears before its rows are written anew.
-pub(super) const ENTRY_ROW_TABLES: [&str; 5] = [
+pub(super) const ENTRY_ROW_TABLES: [&str; 6] = [
     "scan_candidate_tag_snapshot",
+    "scan_candidate_unit",
     "scan_candidate_part",
     "scan_candidate_file",
     "scan_skipped_file",
@@ -354,7 +355,7 @@ pub(crate) fn insert_candidate_files(
             )?;
         }
     }
-    Ok(())
+    super::units::insert_units(sql, watched_folder_path, candidate_path, files)
 }
 
 fn insert_file(

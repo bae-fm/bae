@@ -52,6 +52,10 @@ pub(crate) fn settle_candidate_files(
                     "DELETE FROM scan_candidate_file WHERE watched_folder_path = ? AND candidate_path = ?",
                     params![coven::path_bytes(&watched_folder_path), path],
                 )?;
+                sql.execute(
+                    "DELETE FROM scan_candidate_unit WHERE watched_folder_path = ? AND candidate_path = ?",
+                    params![coven::path_bytes(&watched_folder_path), path],
+                )?;
                 insert_candidate_files(sql, &watched_folder_path, &path, files)?;
                 if let Some(reading) = reading {
                     tag_snapshot::replace_candidate_file_tag_snapshot(

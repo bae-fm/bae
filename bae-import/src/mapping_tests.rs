@@ -16,7 +16,7 @@ use std::path::Path;
 /// The 34-byte STREAMINFO packs the sample rate (20 bits), channels − 1
 /// (3 bits) and bits-per-sample − 1 (5 bits) across three bytes, then the
 /// total sample count and an MD5 signature.
-fn synthetic_flac_bytes() -> Vec<u8> {
+pub(crate) fn synthetic_flac_bytes() -> Vec<u8> {
     const CHANNELS_MINUS_1: u8 = 1;
     const BPS_MINUS_1: u8 = 15;
     let sample_rate: u32 = 44_100;
@@ -36,13 +36,13 @@ fn synthetic_flac_bytes() -> Vec<u8> {
     buf
 }
 
-fn write_flac(path: &Path) {
+pub(crate) fn write_flac(path: &Path) {
     fs::write(path, synthetic_flac_bytes()).expect("write flac");
 }
 
 /// A sheet naming one container for the whole disc, its entries a fifth of
 /// a second apart so every entry but the last has a length of its own.
-fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
+pub(crate) fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
     crate::cue_sheet::tests::cue_text(
         Some(("Artist Name", "Album Title")),
         &format!("\"{audio_file_name}\""),
@@ -52,7 +52,7 @@ fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
     )
 }
 
-fn scan(root: &Path) -> CategorizedFiles {
+pub(crate) fn scan(root: &Path) -> CategorizedFiles {
     collect_release_candidate_files_with_scope(
         root,
         crate::ReleaseFileScope::Recursive,

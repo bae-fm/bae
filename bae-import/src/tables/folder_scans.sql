@@ -401,5 +401,57 @@ CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
+-- Each audio unit of a candidate, in the order its tracks play: a whole file,
+-- or one slice a bound CUE sheet carves out of a container. Written with the
+-- file rows, since the layout is a fact of those files. `cue_track_position`
+-- names the `scan_cue_track` of a slice; `start_sample` and `end_sample` are
+-- the slice's preview range in its container (`end_sample` is NULL for the
+-- last slice of a container, and both for a whole file). `disc` and `number`
+-- are the folder's own: the disc its sheet or folder gives it, and its number
+-- on that disc.
+CREATE TABLE IF NOT EXISTS scan_candidate_unit (
+    watched_folder_path BLOB NOT NULL,
+    candidate_path      BLOB NOT NULL,
+    position            INTEGER NOT NULL CHECK (position >= 0),
+    file_kind           TEXT NOT NULL CHECK (file_kind IN ('standalone', 'sheet_slice')),
+    file_id             TEXT NOT NULL,
+    sheet_id            TEXT,
+    slice_index         INTEGER CHECK (slice_index IS NULL OR slice_index >= 0),
+    cue_track_position  INTEGER CHECK (cue_track_position IS NULL OR cue_track_position >= 0),
+    duration_ms         INTEGER NOT NULL CHECK (duration_ms >= 0),
+    start_sample        INTEGER CHECK (start_sample IS NULL OR start_sample >= 0),
+    end_sample          INTEGER CHECK (end_sample IS NULL OR end_sample >= 0),
+    disc                INTEGER CHECK (disc IS NULL OR disc >= 0),
+    number              INTEGER NOT NULL CHECK (number >= 1),
+    PRIMARY KEY (watched_folder_path, candidate_path, position),
+    FOREIGN KEY (watched_folder_path, candidate_path)
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    CHECK (
+        (file_kind = 'standalone' AND sheet_id IS NULL AND slice_index IS NULL
+            AND cue_track_position IS NULL AND start_sample IS NULL AND end_sample IS NULL)
+        OR (file_kind = 'sheet_slice' AND sheet_id IS NOT NULL AND slice_index IS NOT NULL
+            AND cue_track_position IS NOT NULL AND start_sample IS NOT NULL)
+    )
+) STRICT;
+
+-- The audio each FILE reference of a track sheet can be bound to, and whether
+-- bae offers it: the choices the sheet's header lists. Written with the file
+-- rows.
+CREATE TABLE IF NOT EXISTS scan_candidate_sheet_offer (
+    watched_folder_path BLOB NOT NULL,
+    candidate_path      BLOB NOT NULL,
+    sheet_relative_path TEXT NOT NULL,
+    file_reference      TEXT NOT NULL,
+    audio_relative_path TEXT NOT NULL,
+    offer               TEXT NOT NULL CHECK (offer IN ('offered', 'refused_timing', 'refused_codec', 'refused_unreadable')),
+    codec               TEXT,
+    PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, file_reference, audio_relative_path),
+    FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE,
+    FOREIGN KEY (watched_folder_path, candidate_path, audio_relative_path)
+        REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE,
+    CHECK ((offer = 'refused_codec') = (codec IS NOT NULL))
+) STRICT;
+
 -- What the import list's triggers look a changed row's releases up by.
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_folder ON scan_candidate (folder);

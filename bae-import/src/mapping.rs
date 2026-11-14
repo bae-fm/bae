@@ -721,4 +721,4 @@ fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
 
 #[cfg(test)]
 #[path = "mapping_tests.rs"]
-mod tests;
+pub(crate) mod tests;
