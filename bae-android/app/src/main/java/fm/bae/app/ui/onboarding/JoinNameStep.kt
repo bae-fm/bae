@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import fm.bae.app.DisplayError
@@ -60,7 +61,13 @@ internal fun JoinNameStep(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.onboarding_your_name)) },
-                placeholder = { Text(stringResource(R.string.onboarding_name_placeholder)) },
+                // The field's name is its label; the hint in the empty field is drawn but not read as part of the name.
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.onboarding_name_placeholder),
+                        modifier = Modifier.clearAndSetSemantics {},
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
                 keyboardOptions =
