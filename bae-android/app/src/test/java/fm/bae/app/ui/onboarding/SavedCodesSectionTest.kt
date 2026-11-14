@@ -109,7 +109,7 @@ class SavedCodesSectionTest {
 
         compose
             .onNodeWithText(
-                "This removes the restore code from this device only. " +
+                "This removes the restore code for Home Library from this device only. " +
                     "It does not delete the library, or anything in the cloud.",
             ).assertIsDisplayed()
         assertEquals(emptyList<String>(), host.forgotten)
