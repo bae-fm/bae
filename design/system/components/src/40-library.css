@@ -95,7 +95,7 @@
 .bae-a-libscreen { font-family: var(--font-android); }
 .bae-a-libheader { flex: none; display: flex; align-items: center; padding: 8px 4px 0 16px; background: var(--background); }
 .bae-a-libheader-collapsed { padding: 4px 4px 4px 16px; background: var(--surface); }
-.bae-a-libhead-title { flex: 1; min-width: 0; margin: 0; display: flex; align-items: center; gap: 6px; font: 800 32px/40px var(--font-android); letter-spacing: -1.1px; }
+.bae-a-libhead-title { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: none; color: inherit; text-align: start; cursor: pointer; display: flex; align-items: center; gap: 6px; font: 800 32px/40px var(--font-android); letter-spacing: -1.1px; }
 .bae-a-libhead-title > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-a-libheader-collapsed .bae-a-libhead-title { font: 700 22px/28px var(--font-android); letter-spacing: -0.3px; }
 .bae-a-libhead-chevron { color: var(--text-secondary); fill: currentColor; }

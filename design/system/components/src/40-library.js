@@ -304,7 +304,7 @@
       props.searching ? h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }),
           h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 20 }) : null))
         : h('header', { className: cx('bae-a-libheader', collapsed && 'bae-a-libheader-collapsed') },
-          h('h1', { className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 16 : 20, className: 'bae-a-libhead-chevron' })),
+          h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 16 : 20, className: 'bae-a-libhead-chevron' })),
           h(AndroidIconButton, { icon: 'search', label: 'Search' }),
           props.sync === 'moving' ? h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 })) : null,
           props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', tone: 'warning' }) : null,
@@ -319,7 +319,7 @@
     var split = splitOverlays(props.children);
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h('header', { className: 'bae-a-detailbar' },
-        h(AndroidIconButton, { icon: 'back', label: props.back ? 'Back to ' + props.back : 'Back to Library' }),
+        h(AndroidIconButton, { icon: 'back', label: props.back ? 'Back to ' + props.back : 'Back to library' }),
         h('span', { style: { flex: 1 } }),
         props.menu ? h(AndroidIconButton, { icon: 'more', label: 'Album options' }) : null),
       h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, split.content),
