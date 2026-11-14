@@ -79,7 +79,8 @@ mod release_credits;
 mod release_deletion;
 mod release_detail;
 pub use release_detail::{
-    release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows, OtherDeviceError, NO_STARS,
+    release_detail_rows_on, unstored_audio_column, unstored_audio_json_sql, unstored_audio_on,
+    DbReleaseDetailRows, OtherDeviceError, NO_STARS,
 };
 mod release_file;
 mod release_locality;

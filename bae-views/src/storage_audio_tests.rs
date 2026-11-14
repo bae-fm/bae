@@ -5,7 +5,7 @@ use bae_records::test_fixtures::storage_listing::*;
 use bae_records::test_fixtures::*;
 
 /// A release's Storage Manager row lists its audio held on this device as the
-/// original here, which is read after the row's query returns.
+/// original here, in the row's own statement.
 #[tokio::test]
 async fn a_storage_row_shows_the_audio_this_device_holds() {
     let (db, tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;

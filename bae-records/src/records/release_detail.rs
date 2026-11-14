@@ -135,48 +135,106 @@ fn release_files_on(
     })
 }
 
+/// The release files, the registrations of the devices they are on and the
+/// members those belong to, as [`unstored_audio_on`] and
+/// [`release_file_other_device`](Records::release_file_other_device) read
+/// them: `f`, `coven`, the file's original `u` on this device when
+/// `coven_user_files` lists it, its device `d` and that device's member `m`.
+const UNSTORED_FILES: &str = "FROM release_files f JOIN coven_files coven ON coven.id = f.file \
+     LEFT JOIN coven_user_files u ON u.file = f.file \
+     LEFT JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
+     LEFT JOIN coven_members m ON m.member = d.member";
+
+/// The columns of one release file on one device only, as an `UnstoredRow`
+/// reads them.
+const UNSTORED_COLUMNS: &str = "f.file, u.file IS NOT NULL AS original_here, \
+     d.is_self, d.name, d.state, m.removed AS member_removed";
+
+/// What coven records this device holding for each audio file of the release
+/// `release_expr` (an SQL expression) that is on one device only, in file
+/// order, as a JSON array for [`unstored_audio_column`]: its original, when
+/// `coven_user_files`, which lists exactly this device's originals, lists it;
+/// otherwise the device it is on, from `coven_devices`, and whether that
+/// device or its person was removed from the library. The disk is not asked.
+pub fn unstored_audio_json_sql(release_expr: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+              'file', f.file, 'original_here', u.file IS NOT NULL, 'is_self', d.is_self, \
+              'name', d.name, 'state', d.state, 'member_removed', m.removed) ORDER BY f.id) \
+          {UNSTORED_FILES} \
+          WHERE f.release_id = {release_expr} AND f.content_type GLOB 'audio/*' \
+              AND coven_file_device(coven.coordinates) IS NOT NULL)"
+    )
+}
+
+/// The audio [`unstored_audio_json_sql`] reads into `column`; SQLite writes
+/// each flag in the JSON as 0 or 1.
+pub fn unstored_audio_column(
+    row: &Row<'_>,
+    column: &str,
+) -> rusqlite::Result<Vec<DbUnstoredAudio>> {
+    #[derive(serde::Deserialize)]
+    struct Stored {
+        file: String,
+        original_here: i64,
+        is_self: Option<i64>,
+        name: Option<String>,
+        state: Option<String>,
+        member_removed: Option<i64>,
+    }
+    let stored: Vec<Stored> = bae_store::read::json_column(row, column)?;
+    stored
+        .into_iter()
+        .map(|stored| {
+            UnstoredRow {
+                file: stored.file,
+                original_here: stored.original_here != 0,
+                is_self: stored.is_self.map(|is_self| is_self != 0),
+                name: stored.name,
+                state: stored.state,
+                member_removed: stored.member_removed.map(|removed| removed != 0),
+            }
+            .into_unstored_audio()
+            .map_err(|error| {
+                bae_store::read::column_conversion_error(row, column, error.to_string())
+            })
+        })
+        .collect()
+}
+
 /// What coven records this device holding for each of a release's audio
-/// files on one device only: its original, when `coven_user_files`, which
-/// lists exactly this device's originals, lists it; otherwise the device it
-/// is on, from `coven_devices`, and whether that device or its person was
-/// removed from the library. The disk is not asked.
+/// files on one device only (see [`unstored_audio_json_sql`]).
 pub fn unstored_audio_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    unstored_rows_on(sql, "f.release_id = ? AND f.content_type GLOB 'audio/*'", release_id)?
-        .into_iter()
-        .map(UnstoredRow::into_unstored_audio)
-        .collect()
+    Ok(sql.query_row(
+        &format!("SELECT {} AS unstored_audio", unstored_audio_json_sql("?1")),
+        params![release_id],
+        |row| unstored_audio_column(row, "unstored_audio"),
+    )?)
 }
 
-/// The release files `filter` picks, binding `value`, that are on one device
-/// only, with what coven records of that device.
-fn unstored_rows_on(
+/// The release file `file_id`, when it is on one device only, with what coven
+/// records of that device.
+fn unstored_row_of_file_on(
     sql: &impl coven::SqlRead,
-    filter: &str,
-    value: &str,
+    file_id: &str,
 ) -> Result<Vec<UnstoredRow>, DbError> {
     Ok(sql.query(
         &format!(
-            "SELECT f.file, u.file IS NOT NULL, \
-                    d.is_self, d.name, d.state, m.removed \
-             FROM release_files f JOIN coven_files coven ON coven.id = f.file \
-             LEFT JOIN coven_user_files u ON u.file = f.file \
-             LEFT JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
-             LEFT JOIN coven_members m ON m.member = d.member \
-             WHERE {filter} AND coven_file_device(coven.coordinates) IS NOT NULL \
-             ORDER BY f.id"
+            "SELECT {UNSTORED_COLUMNS} {UNSTORED_FILES} \
+             WHERE f.id = ?1 AND coven_file_device(coven.coordinates) IS NOT NULL"
         ),
-        params![value],
+        params![file_id],
         |row| {
             Ok(UnstoredRow {
-                file: row.get(0)?,
-                original_here: row.get(1)?,
-                is_self: row.get(2)?,
-                name: row.get(3)?,
-                state: row.get(4)?,
-                member_removed: row.get(5)?,
+                file: row.get("file")?,
+                original_here: row.get("original_here")?,
+                is_self: row.get("is_self")?,
+                name: row.get("name")?,
+                state: row.get("state")?,
+                member_removed: row.get("member_removed")?,
             })
         },
     )?)
@@ -209,7 +267,7 @@ impl Records {
         let audio = self
             .store
             .read(move |sql| {
-                let mut rows = unstored_rows_on(&sql, "f.id = ?", &file)?;
+                let mut rows = unstored_row_of_file_on(&sql, &file)?;
                 match (rows.pop(), rows.pop()) {
                     (Some(row), None) => Ok(Some(row.into_unstored_audio()?)),
                     _ => Ok(None),

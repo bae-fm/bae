@@ -298,8 +298,7 @@ fn storage_row_parts(row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {
 fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
     let id: String = row.get("release_id")?;
     Ok(DbReleaseSummary {
-        // Read once the query has returned: the row mapper reads columns only.
-        unstored_audio: Vec::new(),
+        unstored_audio: unstored_audio_column(row, "unstored_audio")?,
         id,
         album_id: row.get("album_id")?,
         media: read_media(row, "release_media")?,
@@ -391,10 +390,12 @@ fn storage_row_columns(extra: &str) -> String {
          listing.created_at AS date_added, \
          {release_cover} AS release_cover_version, \
          {RELEASE_UPLOAD_COLUMNS}, \
+         {unstored_audio} AS unstored_audio, \
          {download_entry}, \
          {album_columns}{extra}",
         release_cover = cover_version_sql("r.id"),
         release_media = release_media_sql("r.id"),
+        unstored_audio = unstored_audio_json_sql("r.id"),
         download_entry = download_entry_sql("r.id"),
     )
 }
@@ -514,7 +515,7 @@ pub(crate) fn storage_rows_on(
 ) -> Result<Vec<Keyed<StorageRowParts>>, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let statement = storage_window_query(order, filter, rows, seek);
-    let mut rows = seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, offset, |params| {
         let mut params = params.to_vec();
         if let Some(pattern) = &pattern {
             params.push((":search", pattern));
@@ -522,11 +523,7 @@ pub(crate) fn storage_rows_on(
         sql.query(&statement, params.as_slice(), |row| {
             Ok((storage_row_parts(row)?, order.key_of(row)?))
         })
-    })?;
-    for ((release, ..), _key) in &mut rows {
-        release.unstored_audio = unstored_audio_on(sql, &release.id)?;
-    }
-    Ok(rows)
+    })?)
 }
 
 pub(crate) fn process_storage_rows(
@@ -587,11 +584,7 @@ pub(crate) fn storage_selected_on(
     if let Some(pattern) = &pattern {
         params.push((":search", pattern));
     }
-    let mut rows = sql.query(&query, params.as_slice(), storage_row_parts)?;
-    for (release, ..) in &mut rows {
-        release.unstored_audio = unstored_audio_on(sql, &release.id)?;
-    }
-    Ok(rows)
+    Ok(sql.query(&query, params.as_slice(), storage_row_parts)?)
 }
 
 /// The Storage Manager list's order over `release_listing listing`. Every
