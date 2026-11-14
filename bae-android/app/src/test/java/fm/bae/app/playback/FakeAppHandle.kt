@@ -798,9 +798,8 @@ internal open class FakeAppHandle(
         unfaked("reconnectSync")
     }
 
-    override suspend fun setSortLanguage(tag: String) {
-        unfaked("setSortLanguage")
-    }
+    /** Every session tells its handle the app's language as it starts, so a fake that refused would fail every session's start. */
+    override suspend fun setSortLanguage(tag: String) {}
 
     override suspend fun releaseMemory() {
         unfaked("releaseMemory")
