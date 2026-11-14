@@ -118,6 +118,7 @@ impl BridgeRelease {
             tracks,
             track_groups,
             credits,
+            performs_works,
             // The Storage sheet reads the files in the order it sorts by
             // (`subscribe_release_files`), not the detail's.
             files: _,
@@ -172,6 +173,7 @@ impl BridgeRelease {
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             track_groups: track_groups.into_iter().map(BridgeTrackGroup::from_core).collect(),
             credits: credits.into_iter().map(crate::types::BridgeCreditRow::from_core).collect(),
+            performs_works,
             other_files: other_files.into_iter().map(BridgeFile::from_core).collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
             cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),

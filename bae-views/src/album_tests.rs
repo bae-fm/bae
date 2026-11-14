@@ -866,6 +866,25 @@ async fn a_release_names_the_works_each_track_performs_in_order() {
         ]
     );
     assert!(detail.tracks[1].works.is_empty());
+    assert!(detail.performs_works);
+}
+
+/// A release none of whose tracks performs a work says so.
+#[tokio::test]
+async fn a_release_whose_tracks_perform_no_work_says_so() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    RecordsFixture::new()
+        .artist(ARTIST_ALBUM, "Album Artist A")
+        .album(ALBUM_A, "Album Title A", None, &[ARTIST_ALBUM])
+        .release(ALBUM_A, RELEASE_A)
+        .tracks(RELEASE_A, &[(TRACK_A, "Track A")])
+        .write(&test_records(&db))
+        .await;
+
+    let detail =
+        crate::LibraryViews::new(db.clone()).find_release_detail(RELEASE_A).await.unwrap().unwrap();
+
+    assert!(!detail.performs_works);
 }
 
 /// A person with no profile cannot rate: the album's page reads that, no one

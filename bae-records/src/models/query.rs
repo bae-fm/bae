@@ -13,6 +13,8 @@ pub struct DbReleaseDetail {
     /// them: the release's own, then each track's in playing order, a
     /// track's own before the non-writing credits of the works it performs.
     pub credits: Vec<DbCreditRow>,
+    /// Whether any track of the release performs a work.
+    pub performs_works: bool,
     pub files: DbReleaseFiles,
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.

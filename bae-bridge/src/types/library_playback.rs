@@ -435,6 +435,8 @@ pub struct BridgeRelease {
     /// Who did what on the release and its tracks, in every role, by role and
     /// artist.
     pub credits: Vec<crate::types::BridgeCreditRow>,
+    /// Whether any track of the release performs a work.
+    pub performs_works: bool,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The files no track plays from, in the release's file order: a cue sheet,
     /// a rip log, an image.

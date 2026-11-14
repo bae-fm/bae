@@ -130,6 +130,7 @@ fn one_track(
             shows_time: false,
         }],
         credits: Vec::new(),
+        performs_works: false,
         files: bae_records::DbReleaseFiles {
             files: Vec::new(),
             images: Vec::new(),

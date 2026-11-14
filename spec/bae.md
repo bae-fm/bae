@@ -574,9 +574,10 @@ is on a numbered disc when the release holds more than one medium, and plain
 otherwise. Each group states the playing time of its tracks, and whether the
 release has more than one group, which is when each shows its time beside the
 release's. Each track carries its own credits (or the album's), the works it
-performs and the stars the person gave it. The release's files come with the
-lists the page shows beside them (the images, the images a cover can be made
-from, the files no track plays from), their count and their total size.
+performs and the stars the person gave it. The release says whether any of its
+tracks performs a work. Its files come with the lists the page shows beside
+them (the images, the images a cover can be made from, the files no track plays
+from), their count and their total size.
 
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track
@@ -588,7 +589,10 @@ and one artist in two roles is two rows. A row covering every track names no
 tracks. Rows go in the order of their first credit: the release's credits in
 the catalog's order, then each track's by track, then by the credit's order. A
 release with no credit has no row. On macOS the Credits are listed above the
-Works; on Android they follow the tracks, each row a role at the start and its artists at the end, without the tracks each covers.
+Works, which list each work a track performs in the track order, as the
+track's number, the work and its composers, and a click on a work opens its
+page; on Android the Credits follow the tracks, each row a role at the start and
+its artists at the end, without the tracks each covers.
 
 **The composer list** shows every artist credited on a work in a writing role
 (Appendix H), and every artist holding a catalog role credit in a writing role

@@ -134,6 +134,8 @@ pub struct ReleaseDetail {
     /// Who did what on the release and its tracks, every role: see
     /// [`CreditRow`].
     pub credits: Vec<CreditRow>,
+    /// Whether any track of the release performs a work.
+    pub performs_works: bool,
     pub files: Vec<FileDetail>,
     /// The files no track plays from, in `files` order: the files the editor's
     /// Files section lists.
@@ -268,6 +270,7 @@ impl ReleaseDetail {
             tracks,
             track_groups,
             credits,
+            performs_works: raw.performs_works,
             files,
             other_files,
             source_audio,

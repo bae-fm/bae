@@ -72,6 +72,7 @@ pub fn release_details_on<X>(
                 {total_duration} AS total_duration_ms, \
                 {track_groups} AS track_groups, \
                 {credits} AS credits, \
+                {performs_works} AS performs_works, \
                 {files} AS files, \
                 {records} AS records, \
                 {unstored_audio} AS unstored_audio, \
@@ -89,6 +90,7 @@ pub fn release_details_on<X>(
         total_duration = total_duration_sql("rel.id"),
         track_groups = track_groups_json_sql("rel.id", my_stars),
         credits = release_credits_json_sql("rel.id"),
+        performs_works = performs_works_sql("rel.id"),
         files = release_files_json_sql("rel.id"),
         records = release_records_json_sql("rel.id"),
         unstored_audio = unstored_audio_json_sql("rel.id"),
@@ -105,6 +107,7 @@ pub fn release_details_on<X>(
             total_duration_ms: bae_store::read::count_column(row, "total_duration_ms")?,
             track_groups: track_groups_column(row, "track_groups")?,
             credits: credit_rows_column(row, "credits")?,
+            performs_works: row.get("performs_works")?,
             files: release_files_column(row, "files")?,
             records: records_column(row, "records")?,
             unstored_audio: unstored_audio_column(row, "unstored_audio")?,
@@ -124,6 +127,7 @@ pub struct DbReleaseDetailRows {
     total_duration_ms: u64,
     track_groups: Vec<DbTrackGroup>,
     credits: Vec<DbCreditRow>,
+    performs_works: bool,
     files: DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     unstored_audio: Vec<DbUnstoredAudio>,
@@ -146,6 +150,7 @@ impl DbReleaseDetailRows {
             total_duration_ms: self.total_duration_ms,
             track_groups: self.track_groups,
             credits: self.credits,
+            performs_works: self.performs_works,
             files: self.files,
             records: self.records,
             unstored_audio: self.unstored_audio,
@@ -155,6 +160,15 @@ impl DbReleaseDetailRows {
             cover_version: self.cover_version,
         }
     }
+}
+
+/// Whether any track of the release `release` (an SQL expression naming its
+/// id) performs a work.
+fn performs_works_sql(release: &str) -> String {
+    format!(
+        "EXISTS (SELECT 1 FROM track_works tw JOIN tracks t ON t.id = tw.track_id \
+         WHERE t.release_id = {release})"
+    )
 }
 
 /// The release `release` (an SQL expression naming its id)'s files, and among

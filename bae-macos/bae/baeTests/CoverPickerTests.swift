@@ -137,6 +137,7 @@ struct CoverPickerTests {
             tracks: [],
             trackGroups: [],
             credits: [],
+            performsWorks: false,
             sourceAudio: nil,
             otherFiles: [],
             imageFiles: [file, bitmap],

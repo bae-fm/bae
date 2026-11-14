@@ -63,6 +63,7 @@ func makeBridgeRelease(
         tracks: [],
         trackGroups: [],
         credits: credits,
+        performsWorks: false,
         sourceAudio: nil,
         otherFiles: [],
         imageFiles: [],

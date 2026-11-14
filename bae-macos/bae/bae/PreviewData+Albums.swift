@@ -192,6 +192,7 @@
                 tracks: tracks,
                 trackGroups: groups,
                 credits: [],
+                performsWorks: false,
                 sourceAudio: nil,
                 otherFiles: [],
                 imageFiles: [],

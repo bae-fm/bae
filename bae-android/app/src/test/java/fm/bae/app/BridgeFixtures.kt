@@ -119,6 +119,7 @@ object BridgeFixtures {
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
             credits = emptyList(),
+            performsWorks = false,
             sourceAudio = sourceAudio,
             otherFiles = emptyList(),
             imageFiles = emptyList(),
