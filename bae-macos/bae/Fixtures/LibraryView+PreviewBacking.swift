@@ -9,6 +9,19 @@ import SwiftUI
 // session over a canned-page library, so shots exercise the actual
 // empty-state, grid, and composer-detail branches rather than stand-ins.
 extension LibraryView {
+    /// The playlists read of a library with none: the library window reads
+    /// them whenever it opens, as the app's does.
+    static let noPlaylists:
+        @Sendable () -> PulledValues<BridgePlaylistListing> = {
+            .fixed(
+                BridgePlaylistListing(
+                    listed: [],
+                    addTargets: [],
+                    canCreate: true
+                )
+            )
+        }
+
     /// A `Library` whose album/composer counts and pages are all empty,
     /// driving the real `loadInitial()` → `totalCount == 0` path so the
     /// shots below hit the actual empty-state branches in
@@ -17,7 +30,8 @@ extension LibraryView {
         Library(
             albumBrowse: { _, _ in .fixed([], answers: UnansweredCount()) },
             composerBrowse: { _ in .fixed([], answers: UnansweredCount()) },
-            artistBrowse: { _ in .fixed([], answers: UnansweredCount()) }
+            artistBrowse: { _ in .fixed([], answers: UnansweredCount()) },
+            playlists: noPlaylists
         )
     }
 
@@ -69,6 +83,7 @@ extension LibraryView {
             getAlbumIndex: { _, albumId, _ in
                 albums.firstIndex { $0.id == albumId }.map(UInt64.init)
             },
+            playlists: noPlaylists
         )
         let session = LibraryBrowseSession(
             library: library,
@@ -127,6 +142,7 @@ extension LibraryView {
             workDetail: {
                 .fixed(answers: UnansweredCount()) { _ in workDetail }
             },
+            playlists: noPlaylists
         )
         let session = LibraryBrowseSession(
             library: library,

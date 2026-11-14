@@ -4,6 +4,32 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
+    /// The Add device sheet when a new device has asked to join, the board
+    /// `mac.settings.add-device.request`.
+    static let addDeviceScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.settings.add-device.request",
+            size: CGSize(width: 440, height: 220)
+        ) {
+            ShotStage(
+                AddDeviceSheetContent(
+                    result: nil,
+                    face: .request(
+                        deviceName: "Tablet",
+                        confirmation: "412 778"
+                    ),
+                    busy: false,
+                    error: nil,
+                    onApprove: {},
+                    onDecline: {},
+                    onDismiss: {}
+                )
+            )
+        }
+    ]
+}
+
+extension ShotScene {
     /// People and devices: the first page for an admin and for a member, a
     /// person's page, this person's devices, the sheet that renames this
     /// person, the sheet that asks to approve a join request, the sheet that
@@ -74,25 +100,6 @@ extension ShotScene {
                         )
                     ),
                     face: .code,
-                    busy: false,
-                    error: nil,
-                    onApprove: {},
-                    onDecline: {},
-                    onDismiss: {}
-                )
-            )
-        },
-        ShotScene(
-            id: "mac.settings.add-device.request",
-            size: CGSize(width: 440, height: 220)
-        ) {
-            ShotStage(
-                AddDeviceSheetContent(
-                    result: nil,
-                    face: .request(
-                        deviceName: "Tablet",
-                        confirmation: "412 778"
-                    ),
                     busy: false,
                     error: nil,
                     onApprove: {},

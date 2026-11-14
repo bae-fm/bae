@@ -358,7 +358,8 @@ extension LibraryView {
                     ),
                     answers: UnansweredCount()
                 )
-            }
+            },
+            playlists: noPlaylists
         )
         let session = LibraryBrowseSession(
             library: library,
