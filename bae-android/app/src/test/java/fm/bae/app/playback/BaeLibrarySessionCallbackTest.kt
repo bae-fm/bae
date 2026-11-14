@@ -22,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeListWindow
 import java.util.concurrent.TimeUnit
 
 @RunWith(BaeRobolectricTestRunner::class)
@@ -29,7 +30,7 @@ import java.util.concurrent.TimeUnit
 class BaeLibrarySessionCallbackTest {
     @Test
     fun legacyGetChildrenEstablishesInterestBeforeRequestingAWindow() {
-        val handle = FakeAppHandle(deliverAlbumBaselineImmediately = false)
+        val handle = FakeAppHandle(albumList = FakeAlbumList(albums(25), deliverImmediately = false))
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val request =
@@ -40,18 +41,26 @@ class BaeLibrarySessionCallbackTest {
             ) { "not found: $it" }.getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
 
         assertFalse(request.isDone)
-        assertTrue(handle.albumPageWindows.isEmpty())
-        handle.albumBrowseSubscriptions.single().emitCount(0uL)
+        assertTrue(handle.albumList.windows.isEmpty())
+        handle.albumList.emitCount()
+        handle.albumList.windows
+            .single()
+            .deliver()
 
         assertEquals(SessionResult.RESULT_SUCCESS, request.get(1, TimeUnit.SECONDS).resultCode)
-        assertEquals(listOf(0uL to 20uL), handle.albumPageWindows)
+        assertEquals(
+            listOf(BridgeListWindow.Forward(handle.albumList.key(0), null, 20uL)),
+            handle.albumList.windows
+                .single()
+                .requested,
+        )
         tree.close()
         scope.cancel()
     }
 
     @Test
     fun repeatedGetChildrenCoalescesOneParentCollection() {
-        val handle = FakeAppHandle()
+        val handle = FakeAppHandle(albumList = FakeAlbumList(albums(5)))
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val callback = BaeLibrarySessionCallback(tree, grants(), scope) { "not found: $it" }
@@ -67,7 +76,8 @@ class BaeLibrarySessionCallbackTest {
             )
         }
 
-        assertEquals(1, handle.albumBrowseSubscriptions.size)
+        assertEquals(1, handle.albumList.counts.size)
+        assertEquals(1, handle.albumList.windows.size)
         tree.close()
         scope.cancel()
     }
@@ -75,7 +85,7 @@ class BaeLibrarySessionCallbackTest {
     /** A failed read is an I/O error for the car, not an unknown one. */
     @Test
     fun aFailedReadIsAnIoError() {
-        val handle = FakeAppHandle(initialAlbumPageError = queryFailure())
+        val handle = FakeAppHandle(albumList = FakeAlbumList(albums(5), windowFailure = queryFailure()))
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
@@ -91,7 +101,7 @@ class BaeLibrarySessionCallbackTest {
 
     @Test
     fun databaseSnapshotNotifiesAndTheFollowingReadUsesIt() {
-        val handle = FakeAppHandle(albumPages = { _, _ -> listOf(BridgeFixtures.album(id = "album-old")) })
+        val handle = FakeAppHandle(albumList = FakeAlbumList(listOf(BridgeFixtures.album(id = "album-old"))))
         val notifications = mutableListOf<Pair<String, Int>>()
         val tree = tree(handle) { parent, count -> notifications += parent to count }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -99,10 +109,8 @@ class BaeLibrarySessionCallbackTest {
         val browser = controller()
         callback.getChildren(browser, BrowseId.Albums.mediaId, 0, 20, null).get(1, TimeUnit.SECONDS)
 
-        handle.albumBrowseSubscriptions.single().emitRows(
-            listOf(BridgeFixtures.album(id = "album-new")),
-            1uL,
-        )
+        handle.albumList.albums = listOf(BridgeFixtures.album(id = "album-new"))
+        handle.albumList.changed()
         val result = callback.getChildren(browser, BrowseId.Albums.mediaId, 0, 20, null).get(1, TimeUnit.SECONDS)
 
         assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
@@ -203,6 +211,8 @@ class BaeLibrarySessionCallbackTest {
             true,
             Bundle.EMPTY,
         )
+
+    private fun albums(count: Int) = List(count) { BridgeFixtures.album(id = "album-%04d".format(it)) }
 
     private fun queryFailure() =
         uniffi.bae_bridge.BridgeException.Diagnostic(

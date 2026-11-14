@@ -38,13 +38,7 @@ struct HostedAlbumGrid {
         let albums = Self.albums
         let answers = UnansweredCount()
         let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(
-                query: query(
-                    albums: albums,
-                    sections: sections,
-                    answers: answers
-                )
-            ),
+            queries: .fixed(albums, answers: answers, sections: sections),
             onError: { error in
                 preconditionFailure("Hosted grid failed: \(error)")
             }
@@ -83,28 +77,6 @@ struct HostedAlbumGrid {
         )
         try await hosted.settle()
         return hosted
-    }
-
-    private static func query(
-        albums: [BridgeAlbum],
-        sections: [BridgeLibraryBrowseSection],
-        answers: UnansweredCount
-    ) -> LibraryBrowseQuery<BridgeAlbum> {
-        let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(
-                albums,
-                answers: answers
-            )
-        return LibraryBrowseQuery(
-            setWindows: fixed.setWindows,
-            values: PulledValues(fixed.values) { page in
-                LibraryBrowseDelivery(
-                    windows: page.windows,
-                    totalCount: page.totalCount,
-                    sections: sections
-                )
-            }
-        )
     }
 
     /// Where the grid's views are and where it is scrolled to.

@@ -71,46 +71,6 @@ macro_rules! browse_snapshot {
     };
 }
 
-browse_window! {
-    /// One requested window of the album grid, with the albums that landed in
-    /// it.
-    window: BridgeAlbumBrowseWindow,
-    row: bae_views::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
-}
-
-/// The album grid as of one revision. Grouped by artist, an album shows once
-/// in each of its artists' sections, so the grid's positions count
-/// appearances: `row_count` of them, over `total_count` albums. Flat, the two
-/// are equal.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeAlbumBrowseSnapshot {
-    pub windows: Vec<BridgeAlbumBrowseWindow>,
-    pub total_count: u64,
-    pub row_count: u64,
-    pub request_revision: u64,
-    pub cause: crate::types::BridgeLiveQueryCause,
-}
-
-impl BridgeAlbumBrowseSnapshot {
-    fn from_core(snapshot: bae_views::AlbumBrowseSnapshot) -> Self {
-        let bae_views::AlbumBrowseSnapshot { list, row_count } = snapshot;
-        Self {
-            windows: list.windows.into_iter().map(BridgeAlbumBrowseWindow::from_core).collect(),
-            total_count: list.total_count,
-            row_count,
-            request_revision: list.request_revision,
-            cause: crate::types::BridgeLiveQueryCause::from_core(list.cause),
-        }
-    }
-}
-
-browse_subscription! {
-    object: AlbumBrowseSubscription,
-    inner: bae_views::LiveAlbumBrowse,
-    built by album_browse,
-    snapshot: BridgeAlbumBrowseSnapshot,
-}
-
 browse_snapshot! {
     snapshot: BridgeArtistBrowseSnapshot,
     window: BridgeArtistBrowseWindow,
@@ -206,7 +166,7 @@ impl crate::types::BridgeSortValue {
             .collect()
     }
 
-    fn into_core(self) -> bae_store::list_windows::SortValue {
+    pub(crate) fn into_core(self) -> bae_store::list_windows::SortValue {
         use bae_store::list_windows::SortValue;
         match self {
             Self::Null => SortValue::Null,

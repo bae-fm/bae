@@ -65,7 +65,11 @@ private final class ArtistSearchFeed: @unchecked Sendable {
     }
 }
 
-private let firstPage = BridgeLibraryPageWindow(offset: 0, limit: 50)
+private let firstPage = BridgeLibraryPageWindow(
+    offset: 0,
+    limit: 50,
+    cursor: nil
+)
 
 private func artist(_ id: String) -> BridgeArtistSearchResult {
     BridgeArtistSearchResult(
@@ -86,7 +90,14 @@ private func snapshot(
     rows: [BridgeArtistSearchResult]
 ) -> BridgeArtistSearchSnapshot {
     BridgeArtistSearchSnapshot(
-        windows: [BridgeArtistSearchWindow(window: firstPage, rows: rows)],
+        windows: [
+            BridgeArtistSearchWindow(
+                window: firstPage,
+                rows: rows,
+                first: nil,
+                last: nil
+            )
+        ],
         totalCount: UInt64(rows.count),
         requestRevision: revision
     )

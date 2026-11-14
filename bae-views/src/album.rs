@@ -3,7 +3,8 @@
 
 use super::*;
 use listing::{
-    album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
+    album_appearance_count_on, album_count_on, album_sections_on, album_seek_count_on,
+    grouped_artist_direction,
 };
 pub(crate) use listing::{album_browse_order, album_rows_on, AlbumAppearanceRow};
 
@@ -106,41 +107,72 @@ impl LibraryViews {
         Ok(rows.into_iter().map(crate::album_detail::AlbumSummary::from_raw).collect())
     }
 
-    /// Follow the album list under `sort`, flat or grouped by artist, in the
-    /// windows its request names, each read from its cursor when it has one
-    /// (`list_windows`).
-    pub fn subscribe_album_browse(
+    /// Follow one window of the album list under `sort`, flat or grouped by
+    /// artist: a range of the grid's order (`list_windows`), which coven
+    /// reruns for a write inside it alone.
+    pub fn subscribe_album_window(
         &self,
         sort: &[AlbumSortCriterion],
         group_by_artist: bool,
-        initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        AlbumBrowseProjection,
-        bae_store::DbError,
-    > {
+        initial: ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbAlbumAppearance>, bae_store::DbError>
+    {
+        let (_, order) = album_browse_order(sort, group_by_artist);
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+                album_rows_on(sql, group_by_artist, &read_order, seek, limit, offset)
+            })
+            .process(|window| window.try_map_rows(AlbumAppearanceRow::process))
+    }
+
+    /// Follow how many rows the album grid has: its albums, and flat or
+    /// grouped by artist, its rows, which grouped is an album under each of
+    /// its artists. Its own query, never beside a window's rows: every album
+    /// added or removed moves it.
+    pub fn subscribe_album_count(
+        &self,
+        group_by_artist: bool,
+    ) -> coven::LiveQuery<AlbumCounts, bae_store::DbError> {
+        self.store.subscribe(move |sql| {
+            let albums = album_count_on(&sql)?;
+            let rows = if group_by_artist { album_appearance_count_on(&sql)? } else { albums };
+            Ok(AlbumCounts { albums, rows })
+        })
+    }
+
+    /// Follow how many rows of the album grid come before the row at a key,
+    /// a count over index ranges that moves in place with the key.
+    pub fn subscribe_album_position(
+        &self,
+        sort: &[AlbumSortCriterion],
+        group_by_artist: bool,
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let (_, order) = album_browse_order(sort, group_by_artist);
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            rows_before(&order, key, |seek| {
+                album_seek_count_on(&sql, group_by_artist, &order, seek)
+            })
+        })
+    }
+
+    /// The key of the row at `position` of the album grid, or of its last row
+    /// when it ends before it; `None` for an empty grid.
+    pub async fn album_key_at(
+        &self,
+        sort: &[AlbumSortCriterion],
+        group_by_artist: bool,
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
         let (_, order) = album_browse_order(sort, group_by_artist);
         self.store
-            .subscribe_reconfigurable(initial_windows, move |requested, sql| {
-                let total_count = album_count_on(&sql)?;
-                let row_count =
-                    if group_by_artist { album_appearance_count_on(&sql)? } else { total_count };
-                let windows = read_windows(&order, requested, |seek, limit, offset| {
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
                     album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
-                })?;
-                let windows: Vec<_> =
-                    windows.into_iter().map(CursorWindowRead::into_browse).collect();
-                Ok((windows, total_count, row_count))
+                })
             })
-            .process(move |(windows, total_count, row_count)| {
-                let windows = windows
-                    .into_iter()
-                    .map(|window: bae_store::LibraryBrowseWindow<AlbumAppearanceRow>| {
-                        window.try_map_rows(AlbumAppearanceRow::process)
-                    })
-                    .collect::<Result<_, DbError>>()?;
-                Ok(AlbumBrowseProjection { windows, total_count, row_count })
-            })
+            .await
     }
 
     /// Follow the artist sections of the album grid grouped by artist under
@@ -281,25 +313,13 @@ impl LibraryViews {
     }
 }
 
-/// One delivery of the album grid as the grid shows it.
-pub fn resolve_album_browse(
-    projection: AlbumBrowseProjection,
-    request_revision: u64,
-    cause: coven::LiveQueryCause,
-) -> crate::AlbumBrowseSnapshot {
-    crate::AlbumBrowseSnapshot {
-        list: crate::LibraryBrowseSnapshot {
-            windows: projection
-                .windows
-                .into_iter()
-                .map(|window| window.map_rows(crate::album_detail::AlbumAppearance::from_raw))
-                .collect(),
-            total_count: projection.total_count,
-            request_revision,
-            cause,
-        },
-        row_count: projection.row_count,
-    }
+/// One delivery of an album grid window as the grid shows it.
+pub fn resolve_album_window(read: WindowRead<DbAlbumAppearance>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, |rows| {
+        crate::ListRows::Albums(
+            rows.into_iter().map(crate::album_detail::AlbumAppearance::from_raw).collect(),
+        )
+    })
 }
 
 /// One delivery of the album detail as the detail view shows it.
@@ -561,11 +581,14 @@ impl AlbumDetailRows {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct AlbumBrowseProjection {
-    pub windows: Vec<bae_store::LibraryBrowseWindow<DbAlbumAppearance>>,
-    pub total_count: u64,
-    pub row_count: u64,
+/// How many rows the album grid has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlbumCounts {
+    /// The albums.
+    pub albums: u64,
+    /// The grid's rows: the albums, or grouped by artist an appearance of
+    /// each album under each of its artists.
+    pub rows: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -40,7 +40,7 @@ extension ShotScene {
         playlistDetails: [String: BridgePlaylistDetail] = [:]
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
-            albumBrowse: { _, _ in
+            albumList: { _, _ in
                 .fixed(boardAlbums, answers: UnansweredCount())
             },
             getAlbumIndex: { _, albumId, _ in

@@ -12,13 +12,15 @@ struct AlbumGridCellsTests {
                 id: "artist-a",
                 title: "Artist A",
                 image: nil,
-                window: .init(offset: 0, limit: 3)
+                firstPosition: 0,
+                albumCount: 3
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-b",
                 title: "Artist B",
                 image: nil,
-                window: .init(offset: 3, limit: 2)
+                firstPosition: 3,
+                albumCount: 2
             ),
         ]
         let loaded: [(position: Int, id: String)] = [

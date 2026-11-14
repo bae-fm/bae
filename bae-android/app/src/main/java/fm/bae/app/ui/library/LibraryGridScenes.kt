@@ -26,7 +26,6 @@ import fm.bae.app.ui.PreviewTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 // Enough fixture albums to fill the screen below the scrolled scene's first row.
 private const val SCENE_ALBUM_COUNT = 24
@@ -45,7 +44,7 @@ private val SCENE_SECTIONS: List<BridgeLibraryBrowseSection> =
             "Fourth Artist" to 4uL,
             "Fifth Artist" to 6uL,
         )) {
-            add(BridgeLibraryBrowseSection("artist-$size", name, null, BridgeLibraryPageWindow(offset, albums)))
+            add(BridgeLibraryBrowseSection("artist-$size", name, null, offset, albums))
             offset += albums
         }
     }
@@ -122,7 +121,7 @@ private fun BoxScope.SceneMenu(
 @Composable
 private fun SceneGroupedAlbums(gridState: LazyGridState) {
     AndroidAlbumGrid(
-        count = SCENE_SECTIONS.sumOf { it.window.limit.toInt() },
+        count = SCENE_SECTIONS.sumOf { it.albumCount.toInt() },
         sections = SCENE_SECTIONS,
         rowAt = ::sceneGroupedRow,
         gridState = gridState,

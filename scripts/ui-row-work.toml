@@ -3,15 +3,15 @@
 # count. `allowed` holds uses over values that are not a screen's rows.
 
 frozen = [
-    { path = "BaeKit/Sources/BaeKit/Services/PaginatedList.swift", operation = "filter", count = 1, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
-    { path = "BaeKit/Sources/BaeKit/Services/PaginatedList.swift", operation = "sorted", count = 2, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
+    { path = "BaeKit/Sources/BaeKit/Services/OffsetPaginatedList.swift", operation = "filter", count = 1, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
+    { path = "BaeKit/Sources/BaeKit/Services/OffsetPaginatedList.swift", operation = "sorted", count = 2, finding = "stitches separately delivered windows into app-held runs and drops held pages by distance in the app (found by the audit: rows cached across deliveries)" },
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "max", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "BaeKit/Sources/BaeKit/Services/PlaybackStore.swift", operation = "sorted", count = 1, finding = "remembers a set of upcoming windows and drops the farthest in the app (found by the audit: windows remembered app-side)" },
     { path = "BaeKit/Sources/BaeKit/Services/StorageManagerStore.swift", operation = "Dictionary(uniqueKeysWithValues:", count = 1, finding = "joins the selection to the rows the list holds and keeps them by id in the app (found by the audit: filter and join in the Storage Manager)" },
     { path = "BaeKit/Sources/BaeKit/Services/StorageManagerStore.swift", operation = "filter", count = 1, finding = "joins the selection to the rows the list holds and keeps them by id in the app (found by the audit: filter and join in the Storage Manager)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/data/BrowserPageStores.kt", operation = "filter", count = 1, finding = "drops cached rows past the delivered total in the app (found by the audit: cache across deliveries)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/data/PhonePendingRecords.kt", operation = "partition", count = 1, finding = "partitions out the pending records only the Mac handles before showing (found by the audit: app filter)" },
-    { path = "bae-android/app/src/main/java/fm/bae/app/playback/LiveBrowseProjection.kt", operation = "associate", count = 3, finding = "builds a map of windows to rows for the Android Auto browse tree; Media3's paged API forces part of the shape, so this stays unsettled (found by the audit: unsure, leaning violation)" },
+    { path = "bae-android/app/src/main/java/fm/bae/app/playback/LiveBrowseProjection.kt", operation = "associate", count = 2, finding = "builds a map of windows to rows for the Android Auto browse tree; Media3's paged API forces part of the shape, so this stays unsettled (found by the audit: unsure, leaning violation)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "filterNot", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "maxBy", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
     { path = "bae-android/app/src/main/java/fm/bae/app/playback/QueueUpcomingSource.kt", operation = "sortedBy", count = 1, finding = "remembers pinned and scrolled ranges, evicts by distance and flattens them in the app; whether the held ranges are a violation is unsettled (found by the audit: unsure)" },
@@ -59,6 +59,8 @@ frozen = [
 ]
 
 allowed = [
+    { path = "BaeKit/Sources/BaeKit/Services/PaginatedList.swift", operation = "max", count = 1, reason = "the last of the positions on screen, which the rows hold; positions, not rows" },
+    { path = "BaeKit/Sources/BaeKit/Services/PaginatedList.swift", operation = "min", count = 1, reason = "the first of the positions on screen, which the rows hold; positions, not rows" },
     { path = "BaeKit/Sources/BaeKit/BaeCrashReporting.swift", operation = "filter", count = 1, reason = "the names of build settings that are unset, listed in a warning the app logs; no row is read" },
     { path = "BaeKit/Sources/BaeKit/ImageLoader.swift", operation = "shown-count", count = 1, reason = "the byte length of an image in its debug description; not shown on a screen" },
     { path = "BaeKit/Sources/BaeKit/Services/ArtistSearch.swift", operation = "sorted", count = 1, reason = "the order of the request's own windows (offset, limit), which the app sends; not rows" },

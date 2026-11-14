@@ -124,8 +124,8 @@ func makeBridgeAlbumDetail(
 }
 
 @MainActor
-func makeList(albums: [BridgeAlbum]) -> AlbumList {
-    AlbumList(
+func makeList(albums: [BridgeAlbum]) -> OffsetPaginatedList<BridgeAlbum> {
+    OffsetPaginatedList(
         pageSource: FixedAlbumPageSource(albums: albums),
         onError: { _ in },
     )

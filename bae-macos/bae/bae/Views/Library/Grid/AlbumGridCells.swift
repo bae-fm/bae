@@ -84,8 +84,8 @@ struct AlbumGridLayout: RandomAccessCollection {
             for section in sections {
                 let cells = AlbumGridCells(
                     positions: Int(
-                        section.window.offset
-                    )..<Int(section.window.offset + section.window.limit),
+                        section.firstPosition
+                    )..<Int(section.firstPosition + section.albumCount),
                     columnCount: columnCount,
                     loaded: loaded,
                     openAlbumId: openSectionId == section.id

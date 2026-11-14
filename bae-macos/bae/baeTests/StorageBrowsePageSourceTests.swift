@@ -77,8 +77,14 @@ private func snapshot(
         searching: !search.isEmpty,
         windows: [
             BridgeStorageBrowseWindow(
-                window: BridgeLibraryPageWindow(offset: 0, limit: 50),
-                rows: rows
+                window: BridgeLibraryPageWindow(
+                    offset: 0,
+                    limit: 50,
+                    cursor: nil
+                ),
+                rows: rows,
+                first: nil,
+                last: nil
             )
         ],
         totalCount: UInt64(rows.count),
@@ -130,7 +136,7 @@ struct StorageBrowsePageSourceTests {
         #expect(feed.requested.last?.sort == bySize)
         #expect(
             feed.requested.last?.windows
-                == [BridgeLibraryPageWindow(offset: 0, limit: 50)],
+                == [BridgeLibraryPageWindow(offset: 0, limit: 50, cursor: nil)],
             "the old list's late cancel leaves the new list's window alone"
         )
 
@@ -206,7 +212,7 @@ struct StorageBrowsePageSourceTests {
         #expect(feed.requested.last?.selected == [rows[0].id, "rel-gone"])
         #expect(
             feed.requested.last?.windows
-                == [BridgeLibraryPageWindow(offset: 0, limit: 50)],
+                == [BridgeLibraryPageWindow(offset: 0, limit: 50, cursor: nil)],
             "a selection leaves the pages as they are"
         )
 

@@ -1,21 +1,7 @@
 import Foundation
 import Observation
 
-// MARK: - Album page sources
-
-/// The full library grid's pages under one sort, served by one browse
-/// query over the windows the visible pages ask for.
-public typealias LibraryAlbumPageSource = LibraryBrowsePageSource<BridgeAlbum>
-
-extension LibraryBrowsePageSource where Row == BridgeAlbum {
-    public convenience init(
-        library: Library,
-        sort: [BridgeSortCriterion],
-        groupByArtist: Bool = false
-    ) {
-        self.init(query: library.albumBrowse(sort, groupByArtist))
-    }
-}
+// MARK: - Page sources
 
 public typealias LibraryComposerPageSource = LibraryBrowsePageSource<
     BridgeComposerSummary
@@ -74,21 +60,24 @@ extension BridgeStorageRow: Identifiable {
 
 // MARK: - Lists
 
-/// The library grid's paginated list; each card draws the `BridgeAlbum` the
-/// grid's query returned at its position.
-public typealias AlbumList = PaginatedList<BridgeAlbum>
-public typealias ComposerList = PaginatedList<BridgeComposerSummary>
+public typealias ComposerList = OffsetPaginatedList<BridgeComposerSummary>
 /// A composer's page rows, a page at a time.
-public typealias ComposerDetailRowList = PaginatedList<BridgeComposerDetailRow>
-public typealias ArtistList = PaginatedList<BridgeArtistSummary>
+public typealias ComposerDetailRowList = OffsetPaginatedList<
+    BridgeComposerDetailRow
+>
+public typealias ArtistList = OffsetPaginatedList<BridgeArtistSummary>
 
 /// The storage manager's paginated list; each row draws the
 /// `BridgeStorageRow` (a release and its album) the manager's query returned
 /// at its position.
-public typealias StorageList = PaginatedList<BridgeStorageRow>
+public typealias StorageList = OffsetPaginatedList<BridgeStorageRow>
 
 // MARK: - BridgeAlbum: Identifiable
 
 /// `BridgeAlbum` already has an `id: String` — lift it into the
 /// `Identifiable` protocol so `PaginatedList<BridgeAlbum>` compiles.
 extension BridgeAlbum: Identifiable {}
+
+/// The library grid's list; each card draws the `BridgeAlbum` the grid's
+/// windows delivered at its position.
+public typealias AlbumList = PaginatedList<BridgeAlbum>

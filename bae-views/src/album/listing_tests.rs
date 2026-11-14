@@ -15,7 +15,7 @@ use bae_records::test_fixtures::{
 };
 use bae_records::DbArtist;
 use bae_store::test_fixtures::temp_db;
-use bae_store::{LibraryPageWindow, LibraryPageWindows};
+use bae_store::{ListWindow, WindowRead};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeSet;
 
@@ -55,19 +55,67 @@ async fn sections_under(
         .unwrap()
 }
 
+/// The window of the grid's first `limit` rows.
+fn top(limit: u64) -> ListWindow {
+    ListWindow::Forward { from: None, until: None, limit }
+}
+
+/// The window of `limit` rows of the grid from the row at `key`.
+fn from_key(key: OrderKey, limit: u64) -> ListWindow {
+    ListWindow::Forward { from: Some(key), until: None, limit }
+}
+
+/// What the grid's live query of `window` first delivers.
+async fn window_under(
+    db: &Store,
+    sort: &[AlbumSortCriterion],
+    group_by_artist: bool,
+    window: ListWindow,
+) -> WindowRead<DbAlbumAppearance> {
+    crate::LibraryViews::new(db.clone())
+        .subscribe_album_window(sort, group_by_artist, window)
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+}
+
+/// What the grid's live count first delivers.
+async fn counts_of(db: &Store, group_by_artist: bool) -> AlbumCounts {
+    crate::LibraryViews::new(db.clone())
+        .subscribe_album_count(group_by_artist)
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap()
+}
+
+/// The key of the grid's row at `position`.
+async fn key_of_row(
+    db: &Store,
+    sort: &[AlbumSortCriterion],
+    group_by_artist: bool,
+    position: u64,
+) -> OrderKey {
+    crate::LibraryViews::new(db.clone())
+        .album_key_at(sort, group_by_artist, position)
+        .await
+        .unwrap()
+        .expect("the grid has a row there")
+}
+
 /// The grid grouped by artist: each section's artist, its first row and its
 /// length, and the album ids of the rows in order.
 async fn grouped(db: &Store) -> (Vec<(String, u64, u64)>, Vec<String>) {
-    let windows = [LibraryPageWindow::at(0, 50)].into_iter().collect::<BTreeSet<_>>();
-    let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, windows);
-    let shown = live.next().await.expect("the query stays open").result.unwrap();
+    let shown = window_under(db, &[], true, top(50)).await;
     (
         sections_under(db, &[])
             .await
             .iter()
-            .map(|section| (section.id.clone(), section.window.offset, section.window.limit))
+            .map(|section| (section.id.clone(), section.first_position, section.album_count))
             .collect(),
-        shown.windows[0].rows.iter().map(|row| row.album.id.clone()).collect(),
+        shown.rows.iter().map(|row| row.album.id.clone()).collect(),
     )
 }
 
@@ -228,14 +276,8 @@ async fn grouped_library() -> (Store, tempfile::TempDir) {
 async fn grouped_by_title(db: &Store) -> Vec<String> {
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
-    let shown = LibraryViews::new(db.clone())
-        .subscribe_album_browse(&sort, true, [LibraryPageWindow::at(0, 20)].into())
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    shown.windows[0].rows.iter().map(|row| row.album.title.clone()).collect()
+    let shown = window_under(db, &sort, true, top(20)).await;
+    shown.rows.iter().map(|row| row.album.title.clone()).collect()
 }
 
 /// Renaming an album moves it among its artist's albums in the grid grouped
@@ -264,22 +306,18 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
                 direction: SortDirection::Descending,
             },
         ];
-        let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
-            &sort,
-            true,
-            [LibraryPageWindow::at(2, 1)].into(),
-        );
-        let value = browse.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(value.windows[0].rows.len(), 1);
-        assert_eq!(value.total_count, 5);
+        let at_two = key_of_row(&db, &sort, true, 2).await;
+        let value = window_under(&db, &sort, true, from_key(at_two, 1)).await;
+        assert_eq!(value.rows.len(), 1);
+        let counts = counts_of(&db, true).await;
+        assert_eq!(counts, AlbumCounts { albums: 5, rows: 5 });
         let sections = sections_under(&db, &sort).await;
         assert_eq!(sections.len(), 3);
-        assert_eq!(value.row_count, 5);
         let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 10).await.unwrap();
         let mut offset = 0;
         for section in &sections {
-            assert_eq!(section.window.offset, offset);
-            let albums = &page[offset as usize..(offset + section.window.limit) as usize];
+            assert_eq!(section.first_position, offset);
+            let albums = &page[offset as usize..(offset + section.album_count) as usize];
             assert!(albums.iter().all(|album| album.artist_line.plain_text() == section.title));
             assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
             for (position, album) in albums.iter().enumerate() {
@@ -291,31 +329,32 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
                     Some(offset + position as u64)
                 );
             }
-            offset += section.window.limit;
+            offset += section.album_count;
         }
         assert_eq!(offset, 5);
-        assert_eq!(value.windows[0].rows[0].album.id, page[2].id);
+        assert_eq!(value.rows[0].album.id, page[2].id);
     }
 }
 
 /// Moving the grid to other windows delivers its rows; a write that changes
-/// an artist delivers the new sections from their own query, and the grid's
-/// rows with their counts from its own.
+/// an artist delivers the new sections from their own query.
 #[tokio::test]
 async fn the_artist_sections_are_their_own_live_query() {
     let (db, _dir) = grouped_library().await;
     let views = LibraryViews::new(db.clone());
-    let mut browse = views.subscribe_album_browse(&[], true, BTreeSet::new());
+    let mut browse = views.subscribe_album_window(&[], true, top(1));
     let mut sections = views.subscribe_album_sections(&[]);
     let requests = browse.requests();
     browse.next().await.expect("the query stays open").result.unwrap();
     let first = sections.next().await.expect("the query stays open").unwrap();
     assert_eq!(first.len(), 3);
 
-    for offset in [2, 0, 4] {
-        requests.set([LibraryPageWindow::at(offset, 1)].into()).unwrap();
+    for position in [2, 0, 4] {
+        let key = key_of_row(&db, &[], true, position).await;
+        let window = from_key(key, 1);
+        requests.set(window.clone()).unwrap();
         let moved = browse.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(moved.windows[0].window.offset, offset);
+        assert_eq!(moved.window, window);
     }
 
     delete_release(&test_records(&db), &grouped_release(4)).await;
@@ -325,7 +364,7 @@ async fn the_artist_sections_are_their_own_live_query() {
         .expect("the query stays open")
         .unwrap();
     assert_eq!(changed.len(), 2);
-    assert_eq!(changed.iter().map(|section| section.window.limit).sum::<u64>(), 4);
+    assert_eq!(changed.iter().map(|section| section.album_count).sum::<u64>(), 4);
 }
 
 /// The MusicBrainz artist whose library artist is the renames test's third.
@@ -367,7 +406,7 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
             }
         };
         assert_eq!(renamed[2].title, "Renamed Artist");
-        assert_eq!(renamed[2].window.offset, 4);
+        assert_eq!(renamed[2].first_position, 4);
 
         delete_release(&test_records(db), &grouped_release(4)).await;
         let removed = sections.next().await.expect("the query stays open").unwrap();
@@ -385,20 +424,14 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     records.credit_album_for_test(album_id, &[ARTIST_A, ARTIST_B]).await.unwrap();
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
-    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
-        &sort,
-        true,
-        [LibraryPageWindow::at(0, 20)].into(),
-    );
-    let value = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(value.total_count, 5);
-    assert_eq!(value.row_count, 6);
-    let rows = &value.windows[0].rows;
+    let value = window_under(&db, &sort, true, top(20)).await;
+    assert_eq!(counts_of(&db, true).await, AlbumCounts { albums: 5, rows: 6 });
+    let rows = &value.rows;
     let mut appearances = Vec::new();
     let sections = sections_under(&db, &sort).await;
     for section in &sections {
-        let start = section.window.offset as usize;
-        let end = start + section.window.limit as usize;
+        let start = section.first_position as usize;
+        let end = start + section.album_count as usize;
         let albums = &rows[start..end];
         assert!(albums.windows(2).all(|pair| pair[0].album.title > pair[1].album.title));
         if albums.iter().any(|row| row.album.id == album_id) {
@@ -410,18 +443,11 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         LibraryViews::new(db.clone()).get_album_index(&sort, album_id, true).await.unwrap(),
         rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
     );
-    let mut flat = LibraryViews::new(db.clone()).subscribe_album_browse(
-        &sort,
-        false,
-        [LibraryPageWindow::at(0, 20)].into(),
-    );
-    let flat = flat.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(flat.row_count, 5);
-    assert_eq!(flat.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+    let flat = window_under(&db, &sort, false, top(20)).await;
+    assert_eq!(counts_of(&db, false).await, AlbumCounts { albums: 5, rows: 5 });
+    assert_eq!(flat.rows.iter().filter(|row| row.album.id == album_id).count(), 1);
     records.credit_album_for_test(album_id, &[ARTIST_A]).await.unwrap();
-    let removed = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(removed.row_count, 5);
-    assert_eq!(removed.total_count, 5);
+    assert_eq!(counts_of(&db, true).await, AlbumCounts { albums: 5, rows: 5 });
 }
 
 /// An album crediting A twice, then B, lists once under each; once A and B
@@ -440,31 +466,27 @@ fn merged_and_repeated_credits_make_one_appearance_per_artist() {
                 test_records(db).find_album_by_id(&grouped_album(4)).await.unwrap().is_some()
             })
             .await;
-        let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
-            &[],
-            true,
-            [LibraryPageWindow::at(0, 20)].into(),
-        );
-        let initial = browse.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(initial.row_count, 6);
+        let views = LibraryViews::new(db.clone());
+        let mut counts = views.subscribe_album_count(true);
+        assert_eq!(counts.next().await.expect("the query stays open").unwrap().rows, 6);
 
         merge_apart(devices, ("Artist Name A", "Artist Name B"), "discogs-grouped").await;
         let merged = loop {
-            let shown = tokio::time::timeout(HANG_GUARD, browse.next())
+            let shown = tokio::time::timeout(HANG_GUARD, counts.next())
                 .await
-                .expect("the merge reaches the browse")
+                .expect("the merge reaches the count")
                 .expect("the query stays open")
-                .result
                 .unwrap();
-            if shown.row_count == 5 {
+            if shown.rows == 5 {
                 break shown;
             }
         };
-        assert_eq!(merged.total_count, 5);
+        assert_eq!(merged.albums, 5);
         let sections = sections_under(db, &[]).await;
         assert_eq!(sections.len(), 2);
         assert!(sections.iter().all(|section| section.id != ARTIST_A));
-        assert_eq!(merged.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+        let rows = window_under(db, &[], true, top(20)).await.rows;
+        assert_eq!(rows.iter().filter(|row| row.album.id == album_id).count(), 1);
     });
 }
 
@@ -517,20 +539,13 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         .credit_album_for_test(&grouped_album(0), &[ARTIST_A, ARTIST_B])
         .await
         .unwrap();
-    let windows = [LibraryPageWindow::at(0, 20)];
-    let grouped = LibraryViews::new(db.clone())
-        .subscribe_album_browse(&[], true, windows.clone().into())
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let rows = &grouped.windows[0].rows;
+    let grouped = window_under(&db, &[], true, top(20)).await;
+    let rows = &grouped.rows;
     let mut credited_with = BTreeSet::new();
     let sections = sections_under(&db, &[]).await;
     for section in &sections {
-        let start = section.window.offset as usize;
-        let end = start + section.window.limit as usize;
+        let start = section.first_position as usize;
+        let end = start + section.album_count as usize;
         for row in &rows[start..end] {
             credited_with.insert((
                 section.id.as_str(),
@@ -551,14 +566,8 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         ]
         .into()
     );
-    let flat = LibraryViews::new(db.clone())
-        .subscribe_album_browse(&[], false, windows.into())
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    assert!(flat.windows[0].rows.iter().all(|row| row.credited_with.is_none()));
+    let flat = window_under(&db, &[], false, top(20)).await;
+    assert!(flat.rows.iter().all(|row| row.credited_with.is_none()));
 }
 
 /// An artist's group carries the artist's picture, and follows it as it
@@ -642,76 +651,168 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
     }
 }
 
-/// The album list's ids at `window`, as a read by offset finds them.
-async fn albums_at(db: &Store, window: &LibraryPageWindow) -> Vec<String> {
-    crate::LibraryViews::new(db.clone())
-        .get_album_page(&[], window.offset, window.limit)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|album| album.id)
-        .collect()
+/// Windows of the grid sharing bounds, each its own live query, and the
+/// grid's count its own: a write that lands in one window's range reruns that
+/// window and the count and no other window, flat and grouped by artist.
+#[tokio::test]
+async fn a_write_reruns_the_window_it_lands_in_and_the_count_alone() {
+    use bae_util::test_channels::HANG_GUARD;
+    for group_by_artist in [false, true] {
+        let (db, _dir) = grouped_library().await;
+        let views = LibraryViews::new(db.clone());
+        let sort = [AlbumSortCriterion {
+            field: AlbumSortField::Title,
+            direction: SortDirection::Ascending,
+        }];
+        // Flat: A, B, C, D, E. Grouped: E, B, D, A, C. Either way a window
+        // from the second row to the fourth holds the album written below.
+        let (second, fourth) = (
+            key_of_row(&db, &sort, group_by_artist, 1).await,
+            key_of_row(&db, &sort, group_by_artist, 3).await,
+        );
+        let windows = [
+            ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
+            ListWindow::Forward { from: Some(second), until: Some(fourth.clone()), limit: 50 },
+            ListWindow::Forward { from: Some(fourth), until: None, limit: 50 },
+        ];
+        let mut live: Vec<_> = windows
+            .iter()
+            .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
+            .collect();
+        let mut count = views.subscribe_album_count(group_by_artist);
+        for query in &mut live {
+            tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+        }
+        count.next().await.expect("the query stays open").unwrap();
+
+        // "Album BB" is B's, which sorts between Album B and Album D grouped
+        // or flat.
+        let id = grouped_album(5);
+        RecordsFixture::new()
+            .album(&id, "Album BB", None, &[ARTIST_B])
+            .release(&id, &grouped_release(5))
+            .write(&test_records(&db))
+            .await;
+        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, [false, true, false], "grouped {group_by_artist}");
+        assert!(count.is_marked_for_rerun());
+        let rows = tokio::time::timeout(HANG_GUARD, live[1].next())
+            .await
+            .unwrap()
+            .expect("the query stays open")
+            .result
+            .unwrap()
+            .rows;
+        assert!(rows.iter().any(|row| row.album.title == "Album BB"));
+        count.next().await.expect("the query stays open").unwrap();
+
+        // A second album, in the first window's range this time: it reruns
+        // that window and the count, and not the one below it.
+        let (title, artist) =
+            if group_by_artist { ("Album EE", ARTIST_C) } else { ("Album AA", ARTIST_A) };
+        let id = grouped_album(6);
+        RecordsFixture::new()
+            .album(&id, title, None, &[artist])
+            .release(&id, &grouped_release(6))
+            .write(&test_records(&db))
+            .await;
+        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, [true, false, false], "grouped {group_by_artist}");
+        assert!(count.is_marked_for_rerun());
+        live[0].next().await.expect("the query stays open").result.unwrap();
+        count.next().await.expect("the query stays open").unwrap();
+
+        // And one in the last window's range, which is open below.
+        let id = grouped_album(7);
+        RecordsFixture::new()
+            .album(&id, "Album Z", None, &[ARTIST_A])
+            .release(&id, &grouped_release(7))
+            .write(&test_records(&db))
+            .await;
+        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, [false, false, true], "grouped {group_by_artist}");
+        assert!(count.is_marked_for_rerun());
+    }
 }
 
-/// The next value of the album list's live query once `windows` are asked
-/// for, as each window's ids.
-async fn read_albums(
-    query: &mut coven::ReconfigurableLiveQuery<
-        LibraryPageWindows,
-        AlbumBrowseProjection,
-        bae_store::DbError,
-    >,
-    windows: LibraryPageWindows,
-) -> Vec<Vec<String>> {
-    query.requests().set(windows.clone()).unwrap();
-    loop {
-        let event = query.next().await.unwrap();
-        if event.request == windows {
-            return event
-                .result
-                .unwrap()
-                .windows
-                .into_iter()
-                .map(|window| window.rows.into_iter().map(|row| row.album.id).collect())
-                .collect();
+/// Whatever the grid's order, flat or grouped by artist, a write adding an
+/// album reruns the one window whose range the album's sort values fall in,
+/// and not the windows beside it: coven narrows on every term of every order,
+/// a nullable year and the artist's sort key among them.
+#[tokio::test]
+async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
+    use bae_util::test_channels::HANG_GUARD;
+    let mut sorts = vec![Vec::new()];
+    for field in [
+        AlbumSortField::Title,
+        AlbumSortField::Artist,
+        AlbumSortField::Year,
+        AlbumSortField::DateAdded,
+    ] {
+        for (field, direction) in both_ways(field) {
+            sorts.push(vec![AlbumSortCriterion { field, direction }]);
         }
     }
-}
-
-/// A live album list scrolled a window at a time, down then back up, holds
-/// what reads by offset hold at each window; and after a write adds an
-/// album above the window it scrolls from, the next window still holds what
-/// a read by offset does, not the rows past where the last read's row sat
-/// before the write.
-#[tokio::test]
-async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
-    let (db, _tmp) = library().await;
-    let window = |offset| LibraryPageWindow::at(offset, 50);
-    let mut query = crate::LibraryViews::new(db.clone()).subscribe_album_browse(
-        &[],
-        false,
-        LibraryPageWindows::new(),
-    );
-    query.next().await.unwrap().result.unwrap();
-    for offset in [100, 150, 200, 150, 100] {
-        assert_eq!(
-            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
-            vec![albums_at(&db, &window(offset)).await],
-            "at {offset}"
-        );
+    let mut wrong = Vec::new();
+    for group_by_artist in [false, true] {
+        for sort in &sorts {
+            let (db, _dir) = grouped_library().await;
+            let views = LibraryViews::new(db.clone());
+            let bounds = [
+                key_of_row(&db, sort, group_by_artist, 1).await,
+                key_of_row(&db, sort, group_by_artist, 3).await,
+            ];
+            let windows = [
+                ListWindow::Forward { from: None, until: Some(bounds[0].clone()), limit: 50 },
+                ListWindow::Forward {
+                    from: Some(bounds[0].clone()),
+                    until: Some(bounds[1].clone()),
+                    limit: 50,
+                },
+                ListWindow::Forward { from: Some(bounds[1].clone()), until: None, limit: 50 },
+            ];
+            let mut live: Vec<_> = windows
+                .iter()
+                .map(|window| views.subscribe_album_window(sort, group_by_artist, window.clone()))
+                .collect();
+            for query in &mut live {
+                tokio::time::timeout(HANG_GUARD, query.next())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .result
+                    .unwrap();
+            }
+            let id = grouped_album(5);
+            RecordsFixture::new()
+                .album(&id, "Album M", None, &[ARTIST_B])
+                .release(&id, &grouped_release(5))
+                .write(&test_records(&db))
+                .await;
+            let mut holds = Vec::new();
+            for window in &windows {
+                let rows = window_under(&db, sort, group_by_artist, window.clone()).await.rows;
+                holds.push(rows.iter().any(|row| row.album.id == id));
+            }
+            assert_eq!(holds.iter().filter(|holds| **holds).count(), 1, "{sort:?}: {holds:?}");
+            let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+            // Coven's narrowing leaves a window reading a nullable term of the
+            // order (the year's, and the flat grid's credits' under Artist
+            // ascending) wider than its range: it reruns for writes outside
+            // it too. Those orders still rerun the window the row lands in.
+            let narrows = !(sort.iter().any(|c| c.field == AlbumSortField::Year)
+                || (!group_by_artist
+                    && sort.first().is_some_and(|c| {
+                        c.field == AlbumSortField::Artist && c.direction == SortDirection::Ascending
+                    })));
+            let reran_where_it_landed =
+                marked.iter().zip(&holds).all(|(marked, holds)| *marked || !holds);
+            if narrows && marked != holds || !reran_where_it_landed {
+                wrong.push(format!(
+                    "{sort:?} grouped {group_by_artist}: reran {marked:?}, landed in {holds:?}"
+                ));
+            }
+        }
     }
-    // The newest album sorts first in the default order.
-    RecordsFixture::new()
-        .at("2099-01-01T00:00:00Z")
-        .album("f0000000-0000-4000-8000-000000000001", "Album Title", None, &[])
-        .release("f0000000-0000-4000-8000-000000000001", "f0000000-0000-4000-8000-000000000002")
-        .write(&test_records(&db))
-        .await;
-    for offset in [150, 50] {
-        assert_eq!(
-            read_albums(&mut query, LibraryPageWindows::from([window(offset)])).await,
-            vec![albums_at(&db, &window(offset)).await],
-            "at {offset} after the write"
-        );
-    }
+    assert!(wrong.is_empty(), "windows rerun by a write outside them:\n{}", wrong.join("\n"));
 }

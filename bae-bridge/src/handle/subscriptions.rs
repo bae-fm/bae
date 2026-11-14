@@ -8,18 +8,44 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    /// The album list under `sort_criteria`, grouped by artist or not,
-    /// reading no windows until `set_windows`.
-    pub fn subscribe_album_browse(
+    /// `window` of `list`, a range of its order, read live from now on.
+    pub fn subscribe_list_window(
         &self,
-        sort_criteria: Vec<BridgeSortCriterion>,
-        group_by_artist: bool,
-    ) -> Arc<crate::AlbumBrowseSubscription> {
-        let sort: Vec<_> = sort_criteria.into_iter().map(BridgeSortCriterion::into_core).collect();
-        crate::screens::album_browse(
-            self.services.subscribe_album_browse(&sort, group_by_artist),
-            self.runtime.clone(),
-        )
+        list: BridgeList,
+        window: BridgeListWindow,
+    ) -> Arc<crate::ListWindowSubscription> {
+        let window = window.into_core();
+        let live = match list {
+            BridgeList::AlbumGrid { sort, group_by_artist } => self
+                .services
+                .subscribe_album_window(&BridgeList::album_sort(sort), group_by_artist, window),
+        };
+        crate::screens::list_window(live, self.runtime.clone())
+    }
+
+    /// How many rows `list` has, and what changes with them, read live.
+    pub fn subscribe_list_count(&self, list: BridgeList) -> Arc<crate::ListCountSubscription> {
+        let live = match list {
+            BridgeList::AlbumGrid { group_by_artist, .. } => {
+                self.services.subscribe_album_count(group_by_artist)
+            }
+        };
+        crate::screens::list_count(live, self.runtime.clone())
+    }
+
+    /// How many rows of `list` come before the row at `key`, read live.
+    pub fn subscribe_list_position(
+        &self,
+        list: BridgeList,
+        key: Vec<BridgeSortValue>,
+    ) -> Arc<crate::ListPositionSubscription> {
+        let key = crate::screens::order_key(key);
+        let live = match list {
+            BridgeList::AlbumGrid { sort, group_by_artist } => self
+                .services
+                .subscribe_album_position(&BridgeList::album_sort(sort), group_by_artist, key),
+        };
+        crate::screens::list_position(live, self.runtime.clone())
     }
 
     /// The artist sections of the album grid grouped by artist under

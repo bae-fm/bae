@@ -114,13 +114,13 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let kept_files =
         manager.store.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
-    let mut browse = views(manager).subscribe_album_browse(
+    let mut browse = views(manager).subscribe_album_window(
         &[],
         false,
-        [bae_store::LibraryPageWindow::at(0, 10)].into(),
+        bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
     );
-    let listed = |browse: &bae_views::AlbumBrowseProjection| -> Vec<String> {
-        browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()
+    let listed = |browse: &bae_store::WindowRead<bae_views::DbAlbumAppearance>| -> Vec<String> {
+        browse.rows.iter().map(|row| row.album.id.clone()).collect()
     };
     let before = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);
@@ -133,7 +133,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let after = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let value = browse.next().await.expect("the query stays open").result.unwrap();
-            if value.total_count == 1 {
+            if value.rows.len() == 1 {
                 return value;
             }
         }

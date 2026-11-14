@@ -48,7 +48,8 @@ struct ImportListPageSourceTests {
         init(offset: UInt64, limit: UInt64, keys: [String]) {
             self.window = BridgeLibraryPageWindow(
                 offset: offset,
-                limit: limit
+                limit: limit,
+                cursor: nil
             )
             self.keys = keys
         }
@@ -202,7 +203,9 @@ struct ImportListPageSourceTests {
             windows: windows.map { fixture in
                 BridgeImportListWindow(
                     window: fixture.window,
-                    rows: fixture.keys.map(item)
+                    rows: fixture.keys.map(item),
+                    first: nil,
+                    last: nil
                 )
             },
             totalCount: totalCount,
@@ -671,7 +674,7 @@ extension ImportListPageSourceTests {
         )
         let importStore = ImportStore()
         let delivered = DeliveredPages()
-        let list = PaginatedList<BridgeImportListItem>(
+        let list = OffsetPaginatedList<BridgeImportListItem>(
             pageSource: source,
             ingest: {
                 delivered.count += 1
@@ -783,7 +786,7 @@ extension ImportListPageSourceTests {
     /// fixture row shows its key as its path.
     @MainActor
     private func loadedKeys(
-        _ list: PaginatedList<BridgeImportListItem>,
+        _ list: OffsetPaginatedList<BridgeImportListItem>,
         _ importStore: ImportStore,
         _ positions: Range<Int>
     ) -> [String] {

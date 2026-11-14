@@ -4,8 +4,8 @@ import fm.bae.app.BridgeFixtures
 import kotlinx.coroutines.CompletableDeferred
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
-import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
+import uniffi.bae_bridge.AlbumSectionsSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistBrowseSubscription
@@ -38,6 +38,8 @@ import uniffi.bae_bridge.BridgeJoinRequest
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
+import uniffi.bae_bridge.BridgeList
+import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
@@ -61,6 +63,7 @@ import uniffi.bae_bridge.BridgeSetupCancellation
 import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSortCriterion
+import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeStorageFilter
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -82,6 +85,9 @@ import uniffi.bae_bridge.InvitesSubscription
 import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
+import uniffi.bae_bridge.ListCountSubscription
+import uniffi.bae_bridge.ListPositionSubscription
+import uniffi.bae_bridge.ListWindowSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
@@ -110,7 +116,7 @@ internal fun unfaked(method: String): Nothing = throw AssertionError("the test r
  * fails with [unfaked].
  */
 internal open class FakeAppHandle(
-    private val albumPages: (offset: ULong, limit: ULong) -> List<BridgeAlbum> = { _, _ -> emptyList() },
+    val albumList: FakeAlbumList = FakeAlbumList(),
     private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
     private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
@@ -118,25 +124,14 @@ internal open class FakeAppHandle(
     private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
-    private val initialAlbumPageError: uniffi.bae_bridge.BridgeException? = null,
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
-    var deliverAlbumPagesImmediately: Boolean = true,
-    var deliverAlbumBaselineImmediately: Boolean = true,
     var deliverSearchResultsImmediately: Boolean = true,
 ) : EditionFakeAppHandle() {
     var pauseCount = 0
     var resumeCount = 0
 
-    /** Offset/limit of each window the album browse was asked for — lets
-     *  browse-paging tests assert the requested window reached the bridge
-     *  unaltered. */
-    val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
     val playTracksCalls = mutableListOf<Pair<List<String>, UInt>>()
-    val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
-
-    /** The first album browse the handle opened, once it has. */
-    val firstAlbumBrowse = CompletableDeferred<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
     val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
@@ -221,19 +216,29 @@ internal open class FakeAppHandle(
         searchSubscriptions[subscription].emit(Result.success(value), revision)
     }
 
-    override fun subscribeAlbumBrowse(
-        sortCriteria: List<BridgeSortCriterion>,
-        groupByArtist: Boolean,
-    ): AlbumBrowseSubscription =
-        FakeAlbumBrowseSubscription(
-            albumPages,
-            albumPageWindows,
-            deliverAlbumPagesImmediately,
-            deliverAlbumBaselineImmediately,
-            initialAlbumPageError,
-        ).also {
-            albumBrowseSubscriptions += it
-            firstAlbumBrowse.complete(it)
+    override fun subscribeAlbumSections(sortCriteria: List<BridgeSortCriterion>): AlbumSectionsSubscription =
+        unfaked("subscribeAlbumSections")
+
+    override fun subscribeListWindow(
+        list: BridgeList,
+        window: BridgeListWindow,
+    ): ListWindowSubscription = albumGrid(list).openWindow(window)
+
+    override fun subscribeListCount(list: BridgeList): ListCountSubscription = albumGrid(list).openCount()
+
+    override fun subscribeListPosition(
+        list: BridgeList,
+        key: List<BridgeSortValue>,
+    ): ListPositionSubscription = albumGrid(list).openPosition(key)
+
+    override suspend fun listKeyAt(
+        list: BridgeList,
+        position: ULong,
+    ): List<BridgeSortValue>? = albumGrid(list).keyAt(position)
+
+    private fun albumGrid(list: BridgeList): FakeAlbumList =
+        when (list) {
+            is BridgeList.AlbumGrid -> albumList
         }
 
     override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =

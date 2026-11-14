@@ -234,7 +234,8 @@ public final class StorageBrowsePageSource: PageSource, @unchecked Sendable {
                     .map {
                         BridgeLibraryPageWindow(
                             offset: $0.offset,
-                            limit: $0.limit
+                            limit: $0.limit,
+                            cursor: nil
                         )
                     },
                 selected: selected

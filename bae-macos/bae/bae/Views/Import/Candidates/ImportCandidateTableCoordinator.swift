@@ -9,7 +9,7 @@ import SwiftUI
 final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     NSTableViewDelegate
 {
-    private(set) var list: PaginatedList<BridgeImportListItem>
+    private(set) var list: OffsetPaginatedList<BridgeImportListItem>
     let importStore: ImportStore
     let listSlot: ImportListSlot
     var actions: ImportListEntryActions
@@ -53,7 +53,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     let pinnedStrip = ImportListPinnedHeaderStrip()
 
     init(
-        list: PaginatedList<BridgeImportListItem>,
+        list: OffsetPaginatedList<BridgeImportListItem>,
         importStore: ImportStore,
         listSlot: ImportListSlot,
         actions: ImportListEntryActions,
@@ -139,7 +139,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// scroll as the content change asks, highlight the rows `shownSelected`
     /// names, and hold the pages of the rows in view.
     func update(
-        list: PaginatedList<BridgeImportListItem>,
+        list: OffsetPaginatedList<BridgeImportListItem>,
         rows: ImportCandidateTableRows,
         read: ImportCandidateListContentRead,
         shownSelected: Set<Data>,

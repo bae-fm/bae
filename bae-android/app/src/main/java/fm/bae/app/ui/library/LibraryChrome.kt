@@ -38,7 +38,7 @@ import fm.bae.app.ui.components.AndroidInlineIconButton
 /** A later page of the album grid that failed to load, above the rows that did, with Retry. */
 @Composable
 internal fun AndroidErrorBannerContainer(page: AlbumPageStore) {
-    val appendError = (if (page.rows.isNotEmpty()) page.error else null) ?: return
+    val appendError = (if (page.hasRows) page.error else null) ?: return
     AndroidErrorBanner(
         title = stringResource(R.string.albums_append_failed),
         error = appendError.error,

@@ -4,7 +4,7 @@
 use crate::*;
 use bae_records::test_fixtures::album_listing::*;
 use bae_records::test_fixtures::test_records;
-use bae_store::{LibraryPageWindow, LibraryPageWindows};
+use bae_store::{ListWindow, WindowRead};
 
 async fn retitle(db: &Store, titles: [&str; 3]) {
     for (album, title) in [ALBUM_ONE, ALBUM_TWO, ALBUM_THREE].into_iter().zip(titles) {
@@ -12,19 +12,19 @@ async fn retitle(db: &Store, titles: [&str; 3]) {
     }
 }
 
-fn first_window() -> LibraryPageWindows {
-    [LibraryPageWindow::at(0, 50)].into_iter().collect()
+fn first_window() -> ListWindow {
+    ListWindow::Forward { from: None, until: None, limit: 50 }
 }
 
 async fn album_titles_next(
     live: &mut coven::ReconfigurableLiveQuery<
-        LibraryPageWindows,
-        AlbumBrowseProjection,
+        ListWindow,
+        WindowRead<DbAlbumAppearance>,
         bae_store::DbError,
     >,
 ) -> Vec<String> {
     let shown = live.next().await.expect("the query stays open").result.unwrap();
-    shown.windows[0].rows.iter().map(|row| row.album.title.clone()).collect()
+    shown.rows.iter().map(|row| row.album.title.clone()).collect()
 }
 
 #[tokio::test]
@@ -34,7 +34,7 @@ async fn a_language_change_reorders_the_window_a_list_shows() {
     let views = LibraryViews::new(db.clone());
     let by_title =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
-    let mut live = views.subscribe_album_browse(&by_title, false, first_window());
+    let mut live = views.subscribe_album_window(&by_title, false, first_window());
 
     assert_eq!(
         album_titles_next(&mut live).await,

@@ -65,8 +65,8 @@ struct LibraryBrowsePageSourceTests {
             }
         )
         var total: Int?
-        let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(query: query),
+        let list = OffsetPaginatedList<BridgeAlbum>(
+            pageSource: LibraryBrowsePageSource(query: query),
             onError: { Issue.record("Page failed: \($0)") },
             onSnapshot: { _, count in total = count }
         )
@@ -79,92 +79,12 @@ struct LibraryBrowsePageSourceTests {
     }
 
     @MainActor
-    @Test("artist headings and ranges arrive with the paged album rows")
-    func sectionsAccompanyPages() async {
-        let rows = (0..<120).map { makeBridgeAlbum(id: "album-\($0)") }
-        let sections = [
-            BridgeLibraryBrowseSection(
-                id: "artist-a",
-                title: "Artist A",
-                image: nil,
-                window: .init(offset: 0, limit: 75)
-            ),
-            BridgeLibraryBrowseSection(
-                id: "artist-b",
-                title: "Artist B",
-                image: nil,
-                window: .init(offset: 75, limit: 45)
-            ),
-        ]
-        let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(rows, answers: UnansweredCount())
-        let query = LibraryBrowseQuery<BridgeAlbum>(
-            setWindows: fixed.setWindows,
-            values: PulledValues(fixed.values) { page in
-                LibraryBrowseDelivery(
-                    windows: page.windows,
-                    totalCount: page.totalCount,
-                    sections: sections
-                )
-            }
-        )
-        let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(query: query),
-            onError: { Issue.record("Page failed: \($0)") }
-        )
-        await list.loadInitial()
-        #expect(list.sections == sections)
-        #expect(list.idAt(90) == nil)
-        await list.withPage(containing: 90) {}
-        #expect(list.idAt(90) == "album-90")
-        #expect(list.sections == sections)
-        list.cancel()
-    }
-
-    @MainActor
-    @Test("a delivery without sections leaves the last ones standing")
-    func sectionsStandUntilAnotherArrive() async throws {
-        let rows = (0..<120).map { makeBridgeAlbum(id: "album-\($0)") }
-        let sections = [
-            BridgeLibraryBrowseSection(
-                id: "artist-a",
-                title: "Artist A",
-                image: nil,
-                window: .init(offset: 0, limit: 120)
-            )
-        ]
-        let fixed = LibraryBrowseQuery<BridgeAlbum>
-            .fixed(rows, answers: UnansweredCount())
-        let delivered = DeliveryCount()
-        let query = LibraryBrowseQuery<BridgeAlbum>(
-            setWindows: fixed.setWindows,
-            values: PulledValues(fixed.values) { page in
-                LibraryBrowseDelivery(
-                    windows: page.windows,
-                    totalCount: page.totalCount,
-                    sections: delivered.next() == 1 ? sections : nil
-                )
-            }
-        )
-        let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(query: query),
-            onError: { Issue.record("Page failed: \($0)") }
-        )
-        await list.loadInitial()
-        try await Wait.until { list.sections == sections }
-        await list.withPage(containing: 90) {}
-        #expect(list.idAt(90) == "album-90")
-        #expect(list.sections == sections)
-        list.cancel()
-    }
-
-    @MainActor
     @Test("every page of a list is read through one query's windows")
     func pagesShareOneQuery() async {
         let albums = (0..<120).map { makeBridgeAlbum(id: "album-\($0)") }
         let browse = RecordingBrowse(rows: albums)
-        let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(query: browse.query()),
+        let list = OffsetPaginatedList<BridgeAlbum>(
+            pageSource: LibraryBrowsePageSource(query: browse.query()),
             onError: { _ in }
         )
 
@@ -177,8 +97,8 @@ struct LibraryBrowsePageSourceTests {
         #expect(
             browse.requested.last
                 == [
-                    BridgeLibraryPageWindow(offset: 0, limit: 50),
-                    BridgeLibraryPageWindow(offset: 50, limit: 50),
+                    BridgeLibraryPageWindow(offset: 0, limit: 50, cursor: nil),
+                    BridgeLibraryPageWindow(offset: 50, limit: 50, cursor: nil),
                 ],
             "one request carries both pages' windows"
         )
@@ -190,8 +110,8 @@ struct LibraryBrowsePageSourceTests {
         let browse = RecordingBrowse(
             rows: [makeBridgeAlbum(id: "album-0")]
         )
-        let list = AlbumList(
-            pageSource: LibraryAlbumPageSource(query: browse.query()),
+        let list = OffsetPaginatedList<BridgeAlbum>(
+            pageSource: LibraryBrowsePageSource(query: browse.query()),
             onError: { _ in }
         )
 

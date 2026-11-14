@@ -5,8 +5,19 @@ import Observation
 
 private let logger = Logger.bae("BrowseListSlot")
 
-/// One library-browse mode's list machinery: the warm `PaginatedList`, its
-/// live subscription, the persisted sort criteria, and the
+/// A list a slot keeps warm: it reads its first rows when asked, and stops
+/// reading when the slot replaces it.
+@MainActor
+protocol WarmList: AnyObject {
+    func loadInitial() async
+    func cancel()
+}
+
+extension PaginatedList: WarmList {}
+extension OffsetPaginatedList: WarmList {}
+
+/// One library-browse mode's list machinery: the warm list, its
+/// live subscriptions, the persisted sort criteria, and the
 /// reload task that rebuilds the list when the criteria change. The album,
 /// composer, and artist modes are three instances of this shape; whether a
 /// slot loads eagerly (albums, at session construction) or on first mode
@@ -15,32 +26,27 @@ private let logger = Logger.bae("BrowseListSlot")
 @MainActor
 @Observable
 final class BrowseListSlot<
-    Row: Identifiable & Sendable & Equatable,
+    List: WarmList,
     Criterion: SortCriterionRepresentable & Codable
-> where Row.ID: Sendable {
-    private(set) var list: PaginatedList<Row>?
+> {
+    private(set) var list: List?
     private(set) var sortCriteria: [Criterion]
 
     private var reloadTask: Task<Void, Never>?
 
     private let defaults: UserDefaults
     private let defaultsKey: String
-    private let makePageSource: ([Criterion]) -> any PageSource<Row>
-    /// Takes the error, not a rendered line: whether a failure is worth showing
-    /// is core's answer, and the sink is the one place that drops it.
-    private let onError: (any Error) -> Void
+    private let makeList: ([Criterion]) -> List
 
     init(
         defaults: UserDefaults = .standard,
         defaultsKey: String,
         defaultCriteria: [Criterion],
-        makePageSource: @escaping ([Criterion]) -> any PageSource<Row>,
-        onError: @escaping (any Error) -> Void
+        makeList: @escaping ([Criterion]) -> List
     ) {
         self.defaults = defaults
         self.defaultsKey = defaultsKey
-        self.makePageSource = makePageSource
-        self.onError = onError
+        self.makeList = makeList
         sortCriteria = Self.loadCriteria(
             defaults: defaults,
             key: defaultsKey,
@@ -76,15 +82,15 @@ final class BrowseListSlot<
     }
 
     private func reload() async {
-        let newList = PaginatedList<Row>(
-            pageSource: makePageSource(sortCriteria),
-            onError: onError
-        )
+        let newList = makeList(sortCriteria)
         await newList.loadInitial()
         guard !Task.isCancelled else {
+            newList.cancel()
             return
         }
+        let old = list
         list = newList
+        old?.cancel()
     }
 
     /// The saved criteria, or `defaultCriteria` when none are saved. A saved

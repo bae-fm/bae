@@ -350,7 +350,7 @@ extension LibraryView {
         uiStore: UiStore
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
-            albumBrowse: { _, _ in
+            albumList: { _, _ in
                 .failing(
                     BridgeError.Diagnostic(
                         category: .databaseBusy,

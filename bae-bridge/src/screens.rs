@@ -200,6 +200,7 @@ mod detail;
 mod files;
 #[cfg(desktop)]
 mod import_list;
+mod lists;
 mod queue;
 mod search;
 mod setup;
@@ -215,6 +216,7 @@ pub use detail::*;
 pub use files::*;
 #[cfg(desktop)]
 pub use import_list::*;
+pub use lists::*;
 pub use queue::*;
 pub use search::*;
 pub use setup::*;

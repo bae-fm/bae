@@ -167,5 +167,5 @@ class QueueUpcomingWindowTest {
     private fun window(
         offset: Int,
         limit: Int,
-    ) = BridgeLibraryPageWindow(offset.toULong(), limit.toULong())
+    ) = BridgeLibraryPageWindow(offset.toULong(), limit.toULong(), null)
 }

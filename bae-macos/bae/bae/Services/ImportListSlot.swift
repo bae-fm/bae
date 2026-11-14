@@ -2,7 +2,7 @@ import BaeKit
 import Foundation
 import Observation
 
-/// The import sidebar's list machinery: the warm `PaginatedList`, the page
+/// The import sidebar's list machinery: the warm `OffsetPaginatedList`, the page
 /// source behind it, and the view that source is showing.
 ///
 /// The view — which tab, which filter text, which order — and the groups
@@ -20,7 +20,7 @@ import Observation
 @MainActor
 @Observable
 final class ImportListSlot {
-    private(set) var list: PaginatedList<BridgeImportListItem>?
+    private(set) var list: OffsetPaginatedList<BridgeImportListItem>?
     /// Whether the rows the list holds answer the view it shows: false from
     /// the moment another tab, filter or order is asked for until the read
     /// that reflects it has landed. Before then the list's rows are the
@@ -232,7 +232,7 @@ final class ImportListSlot {
         }
         guard !Task.isCancelled else { return }
         let importStore = importStore
-        let newList = PaginatedList<BridgeImportListItem>(
+        let newList = OffsetPaginatedList<BridgeImportListItem>(
             pageSource: pages.source,
             ingest: { (items: [BridgeImportListItem]) in
                 importStore.ingest(items)
@@ -251,7 +251,7 @@ final class ImportListSlot {
             }
         )
         await newList.loadInitial()
-        // The first page's failure never reaches `onError`: `PaginatedList`
+        // The first page's failure never reaches `onError`: `OffsetPaginatedList`
         // keeps it as `initialLoadError` for a list view to render inline, the
         // way every other list surface reads it. The import tab is not a bare
         // list — it decides between three panes before one is drawn — so it has
@@ -315,7 +315,7 @@ final class ImportListSlot {
             )
             importStore.ingest(items)
             importStore.applyPendingFilterEntries(pendingFilterEntries)
-            let list = PaginatedList<BridgeImportListItem>(
+            let list = OffsetPaginatedList<BridgeImportListItem>(
                 pageSource: FixedImportListPageSource(items: items),
                 onError: { _ in }
             )
@@ -461,7 +461,7 @@ extension ImportListSlot {
     }
 }
 
-extension PaginatedList<BridgeImportListItem> {
+extension OffsetPaginatedList<BridgeImportListItem> {
     /// Whether the list holds `stableKey` at `position`, once the page that
     /// covers it has answered.
     fileprivate func holds(_ stableKey: String, at position: Int) async -> Bool

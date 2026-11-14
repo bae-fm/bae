@@ -69,6 +69,20 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
+    /// The sort values of the row at `position` of `list`, read by offset, or
+    /// of its last row when the list ends before it; none for an empty list.
+    /// A jump to a position starts the windows a screen holds there.
+    fn list_key_at(list: BridgeList, position: u64) -> Option<Vec<BridgeSortValue>> {
+        let key = match list {
+            BridgeList::AlbumGrid { sort, group_by_artist } => this
+                .services
+                .album_key_at(&BridgeList::album_sort(sort), group_by_artist, position)
+                .await
+                .map_err(BridgeError::from)?,
+        };
+        Ok(key.as_ref().map(BridgeSortValue::of_key))
+    }
+
     /// 0-based position of `album_id` under the given sort, or `None` if the
     /// album isn't present.
     /// Lets the grid load the page containing an album and scroll to it

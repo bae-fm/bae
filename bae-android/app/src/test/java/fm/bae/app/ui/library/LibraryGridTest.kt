@@ -21,7 +21,6 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 // A phone's size, so the grid lays out two columns and composes every card.
 @RunWith(BaeRobolectricTestRunner::class)
@@ -61,7 +60,7 @@ class LibraryGridTest {
     fun aGroupOpensWithItsArtistAndItsCardsGiveTheYearAndOtherCredits() {
         var opened: String? = null
         showGrid(
-            sections = listOf(BridgeLibraryBrowseSection("artist-a", "Group Artist", null, BridgeLibraryPageWindow(0uL, 3uL))),
+            sections = listOf(BridgeLibraryBrowseSection("artist-a", "Group Artist", null, 0uL, 3uL)),
             onSelectArtist = { opened = it },
         )
 

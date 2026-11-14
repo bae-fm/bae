@@ -210,12 +210,11 @@ extension LibraryView {
     }
 
     private func sortControls<
-        Row: Identifiable & Sendable & Equatable,
+        List: WarmList,
         Criterion: SortCriterionRepresentable & Codable
     >(
-        _ slot: BrowseListSlot<Row, Criterion>
-    ) -> some View
-    where Row.ID: Sendable {
+        _ slot: BrowseListSlot<List, Criterion>
+    ) -> some View {
         MacSortCriteria(
             criteria: Binding(
                 get: { slot.sortCriteria },

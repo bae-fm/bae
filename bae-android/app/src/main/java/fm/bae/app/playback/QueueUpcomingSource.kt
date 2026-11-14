@@ -158,7 +158,7 @@ internal class QueueUpcomingWindows(
             (query ?: open()).setWindows(
                 read
                     .sortedBy { it.first }
-                    .map { BridgeLibraryPageWindow(it.first.toULong(), it.count().toULong()) },
+                    .map { BridgeLibraryPageWindow(it.first.toULong(), it.count().toULong(), null) },
             )
         } catch (error: BridgeException) {
             logger.error("upcoming windows $read were not requested", error)

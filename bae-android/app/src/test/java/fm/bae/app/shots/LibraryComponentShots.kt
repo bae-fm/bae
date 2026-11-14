@@ -31,14 +31,13 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeTermLabel
 
 private val callbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
-private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, BridgeLibraryPageWindow(0uL, 12uL))
+private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL)
 
 /** The component shots of the library's parts: the album grid and its tiles, the artist heading, the album header and track rows. */
 class LibraryComponentShots : BoardShot() {

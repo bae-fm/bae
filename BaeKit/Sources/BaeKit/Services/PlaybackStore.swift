@@ -269,7 +269,8 @@ extension PlaybackStore {
                     .map {
                         BridgeLibraryPageWindow(
                             offset: UInt64($0.lowerBound),
-                            limit: UInt64($0.count)
+                            limit: UInt64($0.count),
+                            cursor: nil
                         )
                     }
             )

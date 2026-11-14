@@ -32,36 +32,27 @@ fn delete_album_takes_the_album_out_of_the_grid() {
             playing: None,
         },
     );
-    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
-    subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
-            offset: 0,
-            limit: 10,
-            cursor: None,
-        }])
-        .expect("request the grid's window");
-    let titles = |rows: &[crate::types::BridgeAlbumAppearance]| -> Vec<String> {
+    let list = crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false };
+    let top = crate::types::BridgeListWindow::Forward { from: None, until: None, limit: 10 };
+    let subscription = handle.handle().subscribe_list_window(list.clone(), top);
+    let counts = handle.handle().subscribe_list_count(list);
+    let titles = |value: &crate::types::BridgeListWindowValue| -> Vec<String> {
+        let crate::types::BridgeListRows::Albums { rows } = &value.rows;
         rows.iter().map(|row| row.album.title.clone()).collect()
     };
-    let listed = loop {
-        let snapshot = handle
-            .handle()
-            .runtime
-            .block_on(subscription.clone().next())
-            .expect("album browse snapshot");
-        if !snapshot.windows.is_empty() {
-            break snapshot;
-        }
-    };
-    assert_eq!(titles(&listed.windows[0].rows), ["Kept Album", "Deleted Album"]);
-    let deleted = listed.windows[0]
-        .rows
+    let listed =
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("album window value");
+    assert_eq!(titles(&listed), ["Kept Album", "Deleted Album"]);
+    let crate::types::BridgeListRows::Albums { rows } = &listed.rows;
+    let deleted = rows
         .iter()
         .find(|row| row.album.title == "Deleted Album")
         .expect("the album to delete is listed")
         .album
         .id
         .clone();
+    let count = handle.handle().runtime.block_on(counts.clone().next()).expect("album count");
+    assert_eq!(count.rows, 2);
 
     handle
         .handle()
@@ -69,17 +60,11 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         .block_on(Arc::clone(handle.handle()).delete_album(deleted.clone()))
         .expect("delete the album");
 
-    let after = loop {
-        let snapshot = handle
-            .handle()
-            .runtime
-            .block_on(subscription.clone().next())
-            .expect("album browse snapshot");
-        if snapshot.total_count == 1 {
-            break snapshot;
-        }
-    };
-    assert_eq!(titles(&after.windows[0].rows), ["Kept Album"]);
+    let after =
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("album window value");
+    assert_eq!(titles(&after), ["Kept Album"]);
+    let count = handle.handle().runtime.block_on(counts.clone().next()).expect("album count");
+    assert_eq!(count.rows, 1);
     let again = handle.handle().runtime.block_on(Arc::clone(handle.handle()).delete_album(deleted));
     assert!(matches!(again, Err(crate::types::BridgeError::Diagnostic { .. })), "{again:?}");
 }

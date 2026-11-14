@@ -118,7 +118,7 @@ struct LibraryMenuCommandsTests {
                 pauseBetweenSides: pauseBetweenSides
             ),
             libraryBrowseSession: LibraryBrowseSession(
-                library: Library(albumBrowse: { _, _ in
+                library: Library(albumList: { _, _ in
                     .fixed(albums, answers: UnansweredCount())
                 }),
                 uiStore: uiStore

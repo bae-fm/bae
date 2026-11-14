@@ -13,7 +13,7 @@ import SwiftUI
 /// clicks, Command- and Shift-clicks, arrow keys, typing a row's first
 /// letters, Select All — goes to core as the change it is.
 struct ImportCandidateTable: NSViewRepresentable {
-    let list: PaginatedList<BridgeImportListItem>
+    let list: OffsetPaginatedList<BridgeImportListItem>
     /// The queue's summary, which names the narrowing the rows answer.
     let summary: BridgeImportQueueSummary
     let importStore: ImportStore

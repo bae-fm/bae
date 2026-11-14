@@ -43,6 +43,14 @@ impl LiveRequest for crate::ListWindow {
     }
 }
 
+/// A read for another key answers about a place the reader no longer asks
+/// after.
+impl LiveRequest for crate::list_windows::OrderKey {
+    fn still_answers(&self, current: &Self) -> bool {
+        self == current
+    }
+}
+
 /// Each window a read names holds that window's rows as of the read, whatever
 /// windows are set since.
 impl LiveRequest for LibraryPageWindows {

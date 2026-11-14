@@ -4,62 +4,84 @@ import Testing
 
 @testable import bae
 
-/// Stands in for the album browse query: records the windows the list's pages
-/// ask for, and answers them with whatever rows a test emits.
-private final class AlbumBrowseProbe: @unchecked Sendable {
-    private let lock = NSLock()
-    private var windows: [BridgeLibraryPageWindow] = []
-    private var pending: [LibraryBrowseDelivery<BridgeAlbum>] = []
-    private var waiter:
-        CheckedContinuation<LibraryBrowseDelivery<BridgeAlbum>, any Error>?
+/// One feed of values a probe answers a read with: a test emits, the read
+/// takes them in order.
+private final class Feed<Value: Sendable>: @unchecked Sendable {
+    private let stream: AsyncStream<Value>
+    private let continuation: AsyncStream<Value>.Continuation
+    private var iterator: AsyncStream<Value>.AsyncIterator
 
-    var query: LibraryBrowseQuery<BridgeAlbum> {
-        LibraryBrowseQuery(
-            setWindows: { [self] windows in
-                lock.recording { self.windows = windows }
+    init() {
+        (stream, continuation) = AsyncStream.makeStream()
+        iterator = stream.makeAsyncIterator()
+    }
+
+    func emit(_ value: Value) { continuation.yield(value) }
+
+    func next() async throws -> Value {
+        guard let value = await iterator.next() else {
+            throw CancellationError()
+        }
+        return value
+    }
+}
+
+/// Stands in for the album list: records the window its list asks for, and
+/// answers it and the count with whatever rows a test emits.
+private final class AlbumListProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var requested: BridgeListWindow?
+    private let windows = Feed<ListWindowDelivery<BridgeAlbum>>()
+    private let counts = Feed<BridgeListCount>()
+
+    var queries: BridgeListQueries<BridgeAlbum> {
+        BridgeListQueries(
+            window: { [self] first in
+                lock.recording { requested = first }
+                return ListWindowQuery(
+                    setWindow: { [self] window in
+                        lock.recording { requested = window }
+                    },
+                    values: PulledValues(read: { [self] in
+                        try await windows.next()
+                    })
+                )
             },
-            values: PulledValues(read: { [self] in try await nextDelivery() })
+            count: { [self] in
+                PulledValues(read: { try await self.counts.next() })
+            },
+            position: { _ in
+                ListPositionQuery(
+                    setKey: { _ in },
+                    values: PulledValues(read: {
+                        try await Task.sleep(for: .seconds(3600))
+                        throw CancellationError()
+                    })
+                )
+            },
+            keyAt: { _ in nil }
         )
     }
 
-    /// Answer every requested window with `rows`, laid out from offset zero.
+    /// Answer the window with `rows` from the top of the list, and the count
+    /// with `total`.
     func emit(rows: [BridgeAlbum], total: UInt64) {
-        let delivery = lock.withLock {
-            LibraryBrowseDelivery(
-                windows: windows.map { window in
-                    let start = min(Int(window.offset), rows.count)
-                    let end = min(start + Int(window.limit), rows.count)
-                    return .init(window: window, rows: Array(rows[start..<end]))
-                },
-                totalCount: Int(total)
+        guard let window = lock.withLock({ requested }),
+            case .forward(_, _, let limit) = window
+        else { return }
+        windows.emit(
+            ListWindowDelivery(
+                window: window,
+                rows: Array(rows.prefix(Int(limit))),
+                first: rows.isEmpty ? nil : [.integer(value: 0)],
+                beyond: nil
             )
-        }
-        let waiter = lock.withLock {
-            let waiter = self.waiter
-            self.waiter = nil
-            if waiter == nil { pending.append(delivery) }
-            return waiter
-        }
-        waiter?.resume(returning: delivery)
+        )
+        counts.emit(BridgeListCount(rows: total, extra: .none))
     }
 
     var isSubscribed: Bool {
-        lock.withLock { !windows.isEmpty }
-    }
-
-    private func nextDelivery() async throws -> LibraryBrowseDelivery<
-        BridgeAlbum
-    > {
-        try await withCheckedThrowingContinuation { continuation in
-            let ready = lock.withLock {
-                if pending.isEmpty {
-                    waiter = continuation
-                    return nil as LibraryBrowseDelivery<BridgeAlbum>?
-                }
-                return pending.removeFirst()
-            }
-            if let ready { continuation.resume(returning: ready) }
-        }
+        lock.withLock { requested != nil }
     }
 }
 
@@ -385,10 +407,10 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         "the app-owned album list updates count while no library view is mounted"
     )
     func unmountedListUpdatesAlbumTotal() async throws {
-        let probe = AlbumBrowseProbe()
+        let probe = AlbumListProbe()
         let session = LibraryBrowseSession(
             library: Library(
-                albumBrowse: { _, _ in probe.query }
+                albumList: { _, _ in probe.queries }
             ),
             uiStore: UiStore()
         )
@@ -405,11 +427,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
     @MainActor
     @Test("page eviction does not clear a selected album")
     func pageEvictionKeepsSelection() async throws {
-        let pageProbe = AlbumBrowseProbe()
+        let pageProbe = AlbumListProbe()
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
             library: Library(
-                albumBrowse: { _, _ in pageProbe.query },
+                albumList: { _, _ in pageProbe.queries },
                 albumSelection: { selectionProbe.query() }
             ),
             uiStore: UiStore()

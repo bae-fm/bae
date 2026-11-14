@@ -254,64 +254,69 @@ pub(super) fn start_test_handle(
     TestHandle { handle, root }
 }
 
-#[test]
-fn album_browse_subscription_pulls_count_before_any_windows() {
-    let handle = fresh_bridge_handle("album-browse-empty-windows");
-    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
+/// The whole album grid, flat, in the order the grid shows it by default.
+fn flat_albums() -> crate::types::BridgeList {
+    crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false }
+}
 
-    let snapshot = handle
-        .handle()
-        .runtime
-        .block_on(subscription.clone().next())
-        .expect("album browse snapshot");
-
-    assert_eq!(snapshot.total_count, 0);
-    assert!(snapshot.windows.is_empty());
-    assert_eq!(snapshot.cause, crate::types::BridgeLiveQueryCause::Request);
-    assert_eq!(snapshot.request_revision, 0);
-
-    subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
-            offset: 0,
-            limit: 50,
-            cursor: None,
-        }])
-        .expect("request first album window");
-    let requested = handle
-        .handle()
-        .runtime
-        .block_on(subscription.clone().next())
-        .expect("requested album browse snapshot");
-    assert_eq!(requested.cause, crate::types::BridgeLiveQueryCause::Request);
-    assert_eq!(requested.request_revision, 1);
-    assert_eq!(requested.windows.len(), 1);
-    assert_eq!(requested.windows[0].window.offset, 0);
-    assert_eq!(requested.windows[0].window.limit, 50);
-    assert!(requested.windows[0].rows.is_empty());
+fn top_window(limit: u64) -> crate::types::BridgeListWindow {
+    crate::types::BridgeListWindow::Forward { from: None, until: None, limit }
 }
 
 #[test]
-fn cancelling_album_browse_finishes_pending_next() {
-    let handle = fresh_bridge_handle("album-browse-cancel");
-    let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
+fn an_album_window_answers_the_window_it_was_asked_for() {
+    let handle = fresh_bridge_handle("album-window-empty");
+    let subscription = handle.handle().subscribe_list_window(flat_albums(), top_window(50));
+
+    let value =
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("album window value");
+
+    assert_eq!(value.window, top_window(50));
+    assert!(
+        matches!(value.rows, crate::types::BridgeListRows::Albums { ref rows } if rows.is_empty())
+    );
+    assert!(value.first.is_none() && value.beyond.is_none());
+
+    subscription.set_window(top_window(10)).expect("move the window");
+    let moved = handle
+        .handle()
+        .runtime
+        .block_on(subscription.clone().next())
+        .expect("moved album window value");
+    assert_eq!(moved.window, top_window(10));
+}
+
+#[test]
+fn an_album_count_pulls_before_any_window() {
+    let handle = fresh_bridge_handle("album-count-empty");
+    let count = handle.handle().subscribe_list_count(flat_albums());
+    let value = handle.handle().runtime.block_on(count.clone().next()).expect("album count");
+    assert_eq!(value.rows, 0);
+    assert!(matches!(value.extra, crate::types::BridgeListCountExtra::AlbumGrid { albums: 0 }));
+}
+
+#[test]
+fn cancelling_an_album_window_finishes_pending_next() {
+    let handle = fresh_bridge_handle("album-window-cancel");
+    let subscription = handle.handle().subscribe_list_window(flat_albums(), top_window(50));
     handle
         .handle()
         .runtime
         .block_on(subscription.clone().next())
-        .expect("initial album browse snapshot");
+        .expect("initial album window value");
 
     let result = handle.handle().runtime.block_on(async {
         let pending = tokio::spawn({
             let subscription = subscription.clone();
             async move { subscription.next().await }
         });
-        subscription.clone().cancel().await.expect("cancel album browse subscription");
+        subscription.clone().cancel().await.expect("cancel album window subscription");
         pending.await.expect("next task joins")
     });
 
     assert!(matches!(result, Err(crate::types::BridgeError::Cancelled)));
     assert!(matches!(
-        subscription.set_windows(Vec::new()),
+        subscription.set_window(top_window(10)),
         Err(crate::types::BridgeError::Cancelled)
     ));
 }

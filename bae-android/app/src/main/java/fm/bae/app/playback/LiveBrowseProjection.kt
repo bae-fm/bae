@@ -1,7 +1,6 @@
 package fm.bae.app.playback
 
 import androidx.media3.common.MediaItem
-import fm.bae.app.data.AlbumBrowseQuery
 import fm.bae.app.data.CollectionBrowseQuery
 import fm.bae.app.data.ComposerBrowseQuery
 import fm.bae.app.data.ComposerDetailRowsQuery
@@ -35,26 +34,6 @@ internal data class CollectionSnapshotReader<Row, Snapshot>(
 
 internal typealias ComposerCollectionProjection =
     CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, uniffi.bae_bridge.BridgeComposerBrowseSnapshot>
-
-internal fun albumCollectionProjection(
-    scope: CoroutineScope,
-    query: AlbumBrowseQuery,
-    onChanged: (Int) -> Unit,
-    onError: (BridgeException) -> Unit,
-) = CollectionProjection(
-    scope,
-    query,
-    CollectionSnapshotReader(
-        // The browse tree lists the flat grid, whose rows are each one album.
-        windows = { snapshot ->
-            snapshot.windows.associate { window -> window.window to window.rows.map { it.album } }
-        },
-        totalCount = { it.totalCount.toInt() },
-        cause = { it.cause },
-    ),
-    onChanged,
-    onError,
-)
 
 internal fun composerCollectionProjection(
     scope: CoroutineScope,
@@ -266,7 +245,7 @@ internal object BrowsePaging {
     fun window(
         page: Int,
         pageSize: Int,
-    ) = BridgeLibraryPageWindow(offsetOf(page, pageSize), pageSize.toULong())
+    ) = BridgeLibraryPageWindow(offsetOf(page, pageSize), pageSize.toULong(), null)
 
     private fun offsetOf(
         page: Int,

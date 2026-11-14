@@ -42,48 +42,23 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     assert_eq!(deleted, vec![ALBUM_ID, "missing-album"]);
 }
 
-/// Rename the one album `shown` holds, and assert the next page delivered is
-/// `shown` with that title and nothing else. The browse reads every commit
-/// since its last page in one run, so a change it should not follow, committed
-/// before the rename, would show in that page too.
-async fn next_album_page_is_only_a_rename(
-    db: &Store,
-    live: &mut coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        AlbumBrowseProjection,
-        bae_store::DbError,
-    >,
-    shown: AlbumBrowseProjection,
-    title: &str,
-) -> AlbumBrowseProjection {
-    let album_id = shown.windows[0].rows[0].album.id.clone();
-    test_records(db).rename_album_for_test(&album_id, title).await.unwrap();
-    let renamed = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("renaming the shown album wakes album browse")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let mut expected = shown;
-    expected.windows[0].rows[0].album.title = title.to_string();
-    // The title is a term of the order, so the row's sort values moved with it.
-    expected.windows[0].first = renamed.windows[0].first.clone();
-    expected.windows[0].last = renamed.windows[0].last.clone();
-    assert_eq!(renamed, expected, "the page carries more than the rename");
-    renamed
+/// The window of the albums' first `limit` rows.
+fn top(limit: u64) -> ListWindow {
+    ListWindow::Forward { from: None, until: None, limit }
 }
 
 #[tokio::test]
-async fn album_browse_delivers_rows_count_and_cover_versions() {
+async fn album_window_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let mut live =
-        crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
+    let views = crate::LibraryViews::new(db.clone());
+    let mut live = views.subscribe_album_window(&[], false, top(50));
+    let counts = views.subscribe_album_count(false).next().await.unwrap().unwrap();
+    assert_eq!(counts, AlbumCounts { albums: 1, rows: 1 });
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.windows[0].rows[0].album.title, "Album Title");
-    assert_eq!(initial.windows[0].rows[0].album.cover_version, None);
+    assert_eq!(initial.rows[0].album.title, "Album Title");
+    assert_eq!(initial.rows[0].album.cover_version, None);
 
     let cover = bae_records::test_fixtures::write_cover(&records, RELEASE_ID, "cover bytes").await;
 
@@ -93,19 +68,18 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.windows[0].rows[0].album.cover_version.as_deref(), Some(cover.as_str()));
+    assert_eq!(updated.rows[0].album.cover_version.as_deref(), Some(cover.as_str()));
 }
 
 /// A grid card shows its album's primary release's cover, so that is the one
 /// cover the browse reads: another release of the album gaining a cover is
 /// not a change to the grid.
 #[tokio::test]
-async fn album_browse_reads_only_the_primary_releases_cover() {
+async fn album_window_reads_only_the_primary_releases_cover() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
     records.insert_release(&DbRelease::new_test(ALBUM_ID, OTHER_RELEASE_ID)).await.unwrap();
-    let mut live =
-        crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
+    let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_window(&[], false, top(50));
     live.next().await.expect("the query stays open").result.unwrap();
 
     bae_records::test_fixtures::write_cover(
@@ -126,178 +100,97 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.windows[0].rows[0].album.cover_version.as_deref(), Some(primary.as_str()));
+    assert_eq!(updated.rows[0].album.cover_version.as_deref(), Some(primary.as_str()));
 }
 
+/// One window's request moves in place, each value naming the window it
+/// answers; a write inside its range wakes it, one outside it does not, and a
+/// row whose sort values move it out of the range leaves it.
 #[tokio::test]
-async fn album_browse_subscription_reconfigures_bounded_windows() {
+async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
-    let mut live =
-        crate::LibraryViews::new(db.clone()).subscribe_album_browse(&sort, false, BTreeSet::new());
-    let requests = live.requests();
-    let initial_event = live.next().await.expect("the query stays open");
-    assert_eq!(initial_event.revision.0, 0);
-    let initial = initial_event.result.unwrap();
-    assert_eq!(initial.total_count, 1);
-    assert!(initial.windows.is_empty());
-
     RecordsFixture::new()
         .album(OTHER_ALBUM_ID, "Album Title Second", None, &[ARTIST_ID])
         .release(OTHER_ALBUM_ID, OTHER_RELEASE_ID)
         .write(&records)
         .await;
-    let inserted = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(inserted.total_count, 2);
-    assert!(inserted.windows.is_empty());
-
-    let first_window = LibraryPageWindow::at(0, 1);
-    let second_window = LibraryPageWindow::at(1, 1);
-    let requested =
-        [first_window.clone(), second_window.clone()].into_iter().collect::<BTreeSet<_>>();
-    let pages_revision = requests.set(requested.clone()).unwrap();
-    let pages_event = live.next().await.expect("the query stays open");
-    assert_eq!(pages_event.request, requested);
-    assert_eq!(pages_event.revision, pages_revision);
-    let pages = pages_event.result.unwrap();
-    assert_eq!(
-        pages
-            .windows
-            .iter()
-            .map(|window| (window.window.clone(), window.rows[0].album.id.as_str()))
-            .collect::<Vec<_>>(),
-        vec![(first_window.clone(), ALBUM_ID), (second_window.clone(), OTHER_ALBUM_ID),]
-    );
-
-    let second_page = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
-    let second_page_revision = requests.set(second_page.clone()).unwrap();
-    let second_page_event = live.next().await.expect("the query stays open");
-    assert_eq!(second_page_event.request, second_page);
-    assert_eq!(second_page_event.revision, second_page_revision);
-    let second_page_initial = second_page_event.result.unwrap();
-    assert_eq!(second_page_initial.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
-
-    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Title Renamed").await.unwrap();
-    let renamed_event = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("non-first album metadata wakes album browse")
-        .expect("the query stays open");
-    assert_eq!(renamed_event.revision, second_page_revision);
-    let renamed = renamed_event.result.unwrap();
-    assert_eq!(renamed.windows[0].rows[0].album.title, "Album Title Renamed");
-
-    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title").await.unwrap();
-    let reordered = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("non-first album ordering field wakes album browse")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    assert_eq!(reordered.windows[0].rows[0].album.id, ALBUM_ID);
-
-    let first_page = [first_window].into_iter().collect::<BTreeSet<_>>();
-    requests.set(first_page).unwrap();
-    let reordered_first = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(reordered_first.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
-
-    requests.set([second_window].into_iter().collect::<BTreeSet<_>>()).unwrap();
-    let hidden_other_album = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(hidden_other_album.windows[0].rows[0].album.id, ALBUM_ID);
-
-    // The edited album is outside the requested window, and its new title
-    // keeps it there, so its metadata changes nothing the browse delivers.
-    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Hidden").await.unwrap();
-    let shown =
-        next_album_page_is_only_a_rename(&db, &mut live, hidden_other_album, "Album Title Shown")
-            .await;
-
-    records.set_release_name_for_test(OTHER_RELEASE_ID, "Unread Release Name").await.unwrap();
-    let second_and_beyond = [LibraryPageWindow::at(1, 2)].into_iter().collect::<BTreeSet<_>>();
-    let shown_again =
-        next_run_is_only_the_request(&mut live, second_and_beyond).await.result.unwrap();
-    assert_eq!(shown_again.windows[0].rows, shown.windows[0].rows);
-    let shown = shown_again;
-
-    let other_cover =
-        bae_records::test_fixtures::write_cover(&records, OTHER_RELEASE_ID, "other cover bytes")
-            .await;
-    // Only the requested rows' covers are read, so a cover on the album
-    // outside the window changes nothing the browse delivers.
-    next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
-    let other_album_page = [LibraryPageWindow::at(0, 1)].into_iter().collect::<BTreeSet<_>>();
-    requests.set(other_album_page).unwrap();
-    let covered = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(covered.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
-    assert_eq!(
-        covered.windows[0].rows[0].album.cover_version.as_deref(),
-        Some(other_cover.as_str())
-    );
-
-    let replaced_other_cover = bae_records::test_fixtures::write_cover(
-        &records,
-        OTHER_RELEASE_ID,
-        "replaced other cover bytes",
-    )
-    .await;
-    let cover_updated = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("a requested album's cover version wakes album browse")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    assert_eq!(
-        cover_updated.windows[0].rows[0].album.cover_version.as_deref(),
-        Some(replaced_other_cover.as_str())
-    );
-
-    requests.set([LibraryPageWindow::at(1, 1)].into_iter().collect::<BTreeSet<_>>()).unwrap();
-    live.next().await.expect("the query stays open").result.unwrap();
-    delete_release(&records, OTHER_RELEASE_ID).await;
-    let deleted = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(deleted.total_count, 1);
-    assert!(deleted.windows[0].rows.is_empty());
-}
-
-/// A search follows its text by moving its request: the same subscription
-/// answers each query, a blank one reads nothing, and a commit to a row the
-/// current query found wakes it.
-#[tokio::test]
-async fn library_search_moves_between_queries_on_one_subscription() {
-    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let mut live = crate::LibraryViews::new(db.clone()).subscribe_library_search(None, 50);
+    let views = crate::LibraryViews::new(db.clone());
+    let mut live = views.subscribe_album_window(&sort, false, top(50));
     let requests = live.requests();
+    let initial_event = live.next().await.expect("the query stays open");
+    assert_eq!(initial_event.revision.0, 0);
+    let initial = initial_event.result.unwrap();
+    assert_eq!(initial.window, top(50));
+    assert_eq!(
+        initial.rows.iter().map(|row| row.album.id.as_str()).collect::<Vec<_>>(),
+        [ALBUM_ID, OTHER_ALBUM_ID]
+    );
+    assert_eq!(initial.beyond, None);
 
-    let idle = live.next().await.expect("the query stays open").result.unwrap();
-    assert!(idle.results.albums.is_empty(), "no query finds nothing");
+    // The window from the second album on.
+    let second = views.album_key_at(&sort, false, 1).await.unwrap().unwrap();
+    let from_second = ListWindow::Forward { from: Some(second), until: None, limit: 50 };
+    let revision = requests.set(from_second.clone()).unwrap();
+    let event = live.next().await.expect("the query stays open");
+    assert_eq!((&event.request, event.revision), (&from_second, revision));
+    let moved = event.result.unwrap();
+    assert_eq!(moved.window, from_second);
+    assert_eq!(moved.rows.len(), 1);
+    assert_eq!(moved.rows[0].album.id, OTHER_ALBUM_ID);
 
-    requests.set(crate::LibrarySearchQuery::parse("Album Title")).unwrap();
-    let found = live.next().await.expect("the query stays open");
-    assert_eq!(found.request.as_ref().map(|query| query.as_str()), Some("Album Title"));
-    let found = found.result.unwrap();
-    assert_eq!(found.results.albums.len(), 1);
-    assert_eq!(found.results.albums[0].id, ALBUM_ID);
-
-    test_records(&db).rename_album_for_test(ALBUM_ID, "Album Title Renamed").await.unwrap();
+    // An edit that keeps the album in the range wakes it.
+    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Title Second Renamed").await.unwrap();
     let renamed = tokio::time::timeout(HANG_GUARD, live.next())
         .await
-        .expect("a found album's edit wakes the search")
+        .expect("an album in the window's range wakes it")
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(renamed.results.albums[0].title, "Album Title Renamed");
+    assert_eq!(renamed.rows[0].album.title, "Album Title Second Renamed");
 
-    requests.set(crate::LibrarySearchQuery::parse("   ")).unwrap();
-    let cleared = live.next().await.expect("the query stays open").result.unwrap();
-    assert!(cleared.results.albums.is_empty(), "a blank query is no search");
+    // A cover on an album in the range wakes it.
+    let cover_in_range =
+        bae_records::test_fixtures::write_cover(&records, OTHER_RELEASE_ID, "inside").await;
+    let covered = tokio::time::timeout(HANG_GUARD, live.next())
+        .await
+        .expect("a cover of an album in the range wakes the window")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(covered.rows[0].album.cover_version.as_deref(), Some(cover_in_range.as_str()));
+
+    // A title that sorts the album above the window's start takes it out of
+    // the range: the window delivers none, and the album's edits after that
+    // are outside it.
+    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title").await.unwrap();
+    let left = tokio::time::timeout(HANG_GUARD, live.next())
+        .await
+        .expect("an album leaving the range wakes the window")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert!(left.rows.is_empty());
+    records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title Again").await.unwrap();
+    assert!(!live.is_marked_for_rerun(), "an album that left the range");
+
+    // The top of the list holds it again, first.
+    requests.set(top(50)).unwrap();
+    let top_again = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(top_again.rows[0].album.id, OTHER_ALBUM_ID);
+
+    delete_release(&records, OTHER_RELEASE_ID).await;
+    let deleted = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(deleted.rows.len(), 1);
+    assert_eq!(views.subscribe_album_count(false).next().await.unwrap().unwrap().rows, 1);
 }
 
 #[tokio::test]
-async fn album_browse_ignores_an_unread_table() {
+async fn album_window_ignores_an_unread_table() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let mut live =
-        crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], false, first_page());
+    let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_window(&[], false, top(50));
     let initial = live.next().await.expect("the query stays open").result.unwrap();
 
     bae_playback::tables::PlaybackQueueTables::new(db.clone())
@@ -308,12 +201,9 @@ async fn album_browse_ignores_an_unread_table() {
         .await
         .unwrap();
 
-    let window = LibraryPageWindow::at(0, 49);
-    let moved = next_run_is_only_the_request(&mut live, [window].into_iter().collect())
-        .await
-        .result
-        .unwrap();
-    assert_eq!(moved.windows[0].rows, initial.windows[0].rows);
+    assert!(!live.is_marked_for_rerun(), "a table the window does not read");
+    let moved = next_run_is_only_the_request(&mut live, top(49)).await.result.unwrap();
+    assert_eq!(moved.rows, initial.rows);
 }
 
 #[tokio::test]
@@ -339,12 +229,9 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
     bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let writer = devices.a();
         let reader = devices.b();
-        let mut live = crate::LibraryViews::new(reader.clone()).subscribe_album_browse(
-            &[],
-            false,
-            first_page(),
-        );
-        assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
+        let mut live =
+            crate::LibraryViews::new(reader.clone()).subscribe_album_window(&[], false, top(50));
+        assert!(live.next().await.expect("the query stays open").result.unwrap().rows.is_empty());
         RecordsFixture::new()
             .artist(ARTIST_ID, "Artist Name")
             .album(ALBUM_ID, "Synced Album", None, &[ARTIST_ID])
@@ -366,7 +253,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
             .expect("the query stays open")
             .result
             .unwrap();
-        assert_eq!(updated.windows[0].rows[0].album.title, "Synced Album");
+        assert_eq!(updated.rows[0].album.title, "Synced Album");
     });
 }
 

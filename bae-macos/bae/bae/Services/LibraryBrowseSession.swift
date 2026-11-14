@@ -99,7 +99,7 @@ enum ComposerPaneSelection: Equatable {
 // MARK: - LibraryBrowseSession
 
 /// The library browser's session state: the album/composer/artist list slots,
-/// each holding its live `PaginatedList`, subscription, and sort
+/// each holding its live list and sort
 /// criteria (see `BrowseListSlot`), plus the current selections. Constructed
 /// once at the app root, alongside `UiStore` — so unmounting `LibraryView` on
 /// a tab switch loses none of it. The lists stay warm (no reload flash on
@@ -113,10 +113,9 @@ enum ComposerPaneSelection: Equatable {
 @Observable
 final class LibraryBrowseSession {
     let albumGrouping: AlbumGrouping
-    let albums: BrowseListSlot<BridgeAlbum, BridgeSortCriterion>
-    let composers:
-        BrowseListSlot<BridgeComposerSummary, BridgeComposerSortCriterion>
-    let artists: BrowseListSlot<BridgeArtistSummary, BridgeArtistSortCriterion>
+    let albums: BrowseListSlot<AlbumList, BridgeSortCriterion>
+    let composers: BrowseListSlot<ComposerList, BridgeComposerSortCriterion>
+    let artists: BrowseListSlot<ArtistList, BridgeArtistSortCriterion>
 
     /// Album-grid multi-selection, a browsing-session concern owned here (the
     /// Storage Manager precedent) and passed down to the grid.
@@ -155,20 +154,30 @@ final class LibraryBrowseSession {
                     direction: .ascending
                 )
             ],
-            makePageSource: {
-                LibraryComposerPageSource(library: library, sort: $0)
-            },
-            onError: { uiStore.showError($0) }
+            makeList: {
+                ComposerList(
+                    pageSource: LibraryComposerPageSource(
+                        library: library,
+                        sort: $0
+                    ),
+                    onError: { uiStore.showError($0) }
+                )
+            }
         )
         artists = BrowseListSlot(
             defaultsKey: "libraryArtistSortCriteria",
             defaultCriteria: [
                 BridgeArtistSortCriterion(field: .name, direction: .ascending)
             ],
-            makePageSource: {
-                LibraryArtistPageSource(library: library, sort: $0)
-            },
-            onError: { uiStore.showError($0) }
+            makeList: {
+                ArtistList(
+                    pageSource: LibraryArtistPageSource(
+                        library: library,
+                        sort: $0
+                    ),
+                    onError: { uiStore.showError($0) }
+                )
+            }
         )
     }
 
@@ -176,20 +185,18 @@ final class LibraryBrowseSession {
         library: Library,
         uiStore: UiStore,
         grouping: AlbumGrouping
-    ) -> BrowseListSlot<BridgeAlbum, BridgeSortCriterion> {
+    ) -> BrowseListSlot<AlbumList, BridgeSortCriterion> {
         BrowseListSlot(
             defaultsKey: "librarySortCriteria",
             defaultCriteria: [
                 BridgeSortCriterion(field: .dateAdded, direction: .descending)
             ],
-            makePageSource: {
-                LibraryAlbumPageSource(
-                    library: library,
-                    sort: $0,
-                    groupByArtist: grouping.byArtist
+            makeList: {
+                AlbumList(
+                    queries: library.albumList($0, grouping.byArtist),
+                    onError: { uiStore.showError($0) }
                 )
-            },
-            onError: { uiStore.showError($0) }
+            }
         )
     }
 

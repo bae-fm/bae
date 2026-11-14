@@ -324,7 +324,7 @@ struct Bound {
 
 impl Seek {
     /// The parameters the seek's condition names, as a statement binds them.
-    pub(super) fn params(&self) -> Vec<(&str, &dyn ToSql)> {
+    pub fn params(&self) -> Vec<(&str, &dyn ToSql)> {
         self.binds.iter().map(|(name, value)| (name.as_str(), value as &dyn ToSql)).collect()
     }
 

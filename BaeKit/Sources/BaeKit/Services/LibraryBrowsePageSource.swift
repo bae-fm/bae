@@ -3,8 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-private final class LibraryBrowseSections {
-    var values: [BridgeLibraryBrowseSection] = []
+private final class LibraryBrowseItemCount {
     var itemCount: Int?
     nonisolated init() {}
 }
@@ -25,20 +24,15 @@ public struct LibraryBrowseDelivery<Row: Sendable>: Sendable {
     public let windows: [Window]
     public let totalCount: Int
     public let itemCount: Int?
-    /// The album grid's artist sections when they changed since the delivery
-    /// before and these are the rows they fit; nil says the last stand.
-    public let sections: [BridgeLibraryBrowseSection]?
 
     public init(
         windows: [Window],
         totalCount: Int,
-        itemCount: Int? = nil,
-        sections: [BridgeLibraryBrowseSection]? = nil
+        itemCount: Int? = nil
     ) {
         self.windows = windows
         self.totalCount = totalCount
         self.itemCount = itemCount
-        self.sections = sections
     }
 }
 
@@ -62,7 +56,7 @@ public struct LibraryBrowseQuery<Row: Sendable>: Sendable {
 
 /// The pages of one library list, all served by one browse query.
 ///
-/// `PaginatedList` asks for pages one at a time; each page registers its
+/// `OffsetPaginatedList` asks for pages one at a time; each page registers its
 /// window here, and the whole set of registered windows is what the query
 /// reads. One read per database change answers every visible page, instead of
 /// one live query per page each rerunning on its own. Dropping a page removes
@@ -85,11 +79,9 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     }
 
     private let query: LibraryBrowseQuery<Row>
-    private let sectionStore = LibraryBrowseSections()
+    private let itemCountStore = LibraryBrowseItemCount()
     @MainActor
-    public var sections: [BridgeLibraryBrowseSection] { sectionStore.values }
-    @MainActor
-    public var itemCount: Int? { sectionStore.itemCount }
+    public var itemCount: Int? { itemCountStore.itemCount }
     private let lock = NSLock()
     private var sinks: [WindowKey: Sink] = [:]
     /// How many `coalescingRequests` are running, and whether a change to the
@@ -168,7 +160,13 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     private func requestedWindows() -> [BridgeLibraryPageWindow] {
         sinks.keys
             .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
-            .map { BridgeLibraryPageWindow(offset: $0.offset, limit: $0.limit) }
+            .map {
+                BridgeLibraryPageWindow(
+                    offset: $0.offset,
+                    limit: $0.limit,
+                    cursor: nil
+                )
+            }
     }
 
     private func push(
@@ -193,12 +191,7 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     @MainActor
     private func deliver(_ delivery: LibraryBrowseDelivery<Row>) {
         let calls = hearingThis(delivery)
-        // Sections and rows land in this one turn: a delivery that carries
-        // sections is the one whose rows they fit.
-        if let sections = delivery.sections, sections != sectionStore.values {
-            sectionStore.values = sections
-        }
-        sectionStore.itemCount = delivery.itemCount
+        itemCountStore.itemCount = delivery.itemCount
         for (sink, rows) in calls {
             sink.value(rows, delivery.totalCount)
         }

@@ -51,7 +51,7 @@ internal fun AndroidAlbumGridContainer(
         AndroidAlbumGrid(
             count = page.totalCount,
             sections = if (groupByArtist) page.sections else emptyList(),
-            rowAt = page.rows::get,
+            rowAt = page::rowAt,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
             onSelectArtist = onSelectArtist,
@@ -101,7 +101,7 @@ internal fun AndroidAlbumGrid(
                     )
                 }
                 albumItems(
-                    section.window.offset.toInt() until (section.window.offset + section.window.limit).toInt(),
+                    section.firstPosition.toInt() until (section.firstPosition + section.albumCount).toInt(),
                     rowAt,
                     grouped = true,
                     onSelectAlbum,

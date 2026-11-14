@@ -17,7 +17,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -229,7 +228,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val workDetails = exactProjectionCache(scope, library::workDetails, onQueryError)
     private val releaseDetails = exactProjectionCache(scope, library::releaseDetails, onQueryError)
     private val spokenSearches = exactProjectionCache(scope, library::searchResults, onQueryError)
-    private var albums: CollectionProjection<uniffi.bae_bridge.BridgeAlbum, BridgeAlbumBrowseSnapshot>? = null
+    private var albums: AlbumListProjection? = null
     private var composers:
         CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, BridgeComposerBrowseSnapshot>? = null
 
@@ -271,9 +270,12 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             BrowseId.Albums -> {
-                albumProjection()
-                    .rows(BrowsePaging.window(page, pageSize))
-                    .map { nodes.album(it.id, it.title, it.cover) }
+                val offset = page.toLong() * pageSize
+                if (offset > Int.MAX_VALUE) {
+                    emptyList()
+                } else {
+                    albumProjection().rows(offset.toInt(), pageSize).map { nodes.album(it.id, it.title, it.cover) }
+                }
             }
 
             BrowseId.Composers -> {
@@ -507,12 +509,12 @@ internal class LibraryBrowseTree<Owner : Any>(
         spokenSearches.cancelAll(error)
     }
 
-    private fun albumProjection(): CollectionProjection<uniffi.bae_bridge.BridgeAlbum, BridgeAlbumBrowseSnapshot> =
+    private fun albumProjection(): AlbumListProjection =
         synchronized(lock) {
             check(!closed)
-            albums ?: albumCollectionProjection(
+            albums ?: AlbumListProjection(
                 scope,
-                library.albumBrowse(listOf(ALBUM_SORT)),
+                library.albumList(listOf(ALBUM_SORT)),
                 onChanged = { count -> notifyParent(BrowseId.Albums.mediaId, count) },
                 onError = onQueryError,
             ).also { albums = it }

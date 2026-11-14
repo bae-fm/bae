@@ -6,11 +6,11 @@ import Foundation
 /// catalog, narrow to what view layers ask for — plus the library page's
 /// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {
-    /// The album list under one sort, read through the windows its visible
-    /// pages ask for.
-    public let albumBrowse:
+    /// The album list under one sort and grouping: its windows, count and
+    /// positions, each a live read of its own.
+    public let albumList:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool)
-            -> LibraryBrowseQuery<BridgeAlbum>
+            -> BridgeListQueries<BridgeAlbum>
     public let getAlbumIndex:
         @Sendable (
             _ sortCriteria: [BridgeSortCriterion], _ albumId: String,
@@ -88,10 +88,10 @@ public final class Library: Sendable, Observable {
             -> Void
 
     public init(
-        albumBrowse:
+        albumList:
             @escaping @Sendable ([BridgeSortCriterion], Bool)
-            -> LibraryBrowseQuery<BridgeAlbum> = { _, _ in
-                fatalError("Library album browse is not installed")
+            -> BridgeListQueries<BridgeAlbum> = { _, _ in
+                fatalError("Library album list is not installed")
             },
         getAlbumIndex:
             @escaping @Sendable ([BridgeSortCriterion], String, Bool)
@@ -179,7 +179,7 @@ public final class Library: Sendable, Observable {
                 _ in throw StubError.notImplemented
             }
     ) {
-        self.albumBrowse = albumBrowse
+        self.albumList = albumList
         self.getAlbumIndex = getAlbumIndex
         self.albumsInBrowseOrder = albumsInBrowseOrder
         self.composerBrowse = composerBrowse
@@ -218,7 +218,7 @@ extension Library {
     #if os(macOS)
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                albumBrowse: Self.albumBrowse(handle),
+                albumList: Self.albumList(handle),
                 getAlbumIndex: Self.albumIndex(handle),
                 albumsInBrowseOrder: Self.albumsInBrowseOrder(handle),
                 composerBrowse: {
@@ -353,41 +353,60 @@ extension Library {
 
         /// The album list read through `handle`, under each sort and grouping
         /// asked for.
-        private static func albumBrowse(
+        private static func albumList(
             _ handle: any AppHandleProtocol
         )
-            -> @Sendable ([BridgeSortCriterion], Bool) -> LibraryBrowseQuery<
+            -> @Sendable ([BridgeSortCriterion], Bool) -> BridgeListQueries<
                 BridgeAlbum
             >
         {
-            {
-                LibraryBrowseQuery(
-                    handle.subscribeAlbumBrowse(
-                        sortCriteria: $0,
-                        groupByArtist: $1
+            let list:
+                @Sendable ([BridgeSortCriterion], Bool) -> BridgeListQueries<
+                    BridgeAlbum
+                > = {
+                    sort,
+                    groupByArtist in
+                    var sections:
+                        (
+                            @Sendable () -> PulledValues<
+                                [BridgeLibraryBrowseSection]
+                            >
+                        )?
+                    if groupByArtist {
+                        sections = {
+                            let read = handle.subscribeAlbumSections(
+                                sortCriteria: sort
+                            )
+                            return PulledValues<[BridgeLibraryBrowseSection]>(
+                                read
+                            )
+                        }
+                    }
+                    let rows: @Sendable (BridgeListRows) -> [BridgeAlbum] = Self
+                        .albumRows
+                    return BridgeListQueries<BridgeAlbum>(
+                        handle: handle,
+                        list: BridgeList.albumGrid(
+                            sort: sort,
+                            groupByArtist: groupByArtist
+                        ),
+                        sections: sections,
+                        rows: rows
                     )
+                }
+            return list
+        }
+
+        /// The albums of a delivery of the album grid's window.
+        private static func albumRows(_ rows: BridgeListRows) -> [BridgeAlbum] {
+            guard case .albums(let appearances) = rows else {
+                preconditionFailure(
+                    "the album grid delivered rows of another list"
                 )
             }
+            return appearances.map(\.album)
         }
     #endif
-}
-
-extension LibraryBrowseQuery where Row == BridgeAlbum {
-    init(_ subscription: AlbumBrowseSubscription) {
-        self.init(
-            setWindows: { try subscription.setWindows(windows: $0) },
-            values: PulledValues(subscription) { snapshot in
-                LibraryBrowseDelivery(
-                    windows: snapshot.windows.map {
-                        .init(window: $0.window, rows: $0.rows.map(\.album))
-                    },
-                    totalCount: Int(snapshot.rowCount),
-                    itemCount: Int(snapshot.totalCount),
-                    sections: snapshot.sections
-                )
-            }
-        )
-    }
 }
 
 extension LibraryBrowseQuery where Row == BridgeComposerSummary {

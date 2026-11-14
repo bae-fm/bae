@@ -22,33 +22,11 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class BrowserPageStoresTest {
-    @Test
-    fun artistSectionsArriveWithPagesAndLeaveWithTheQuery() {
-        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
-        val sections =
-            listOf(
-                BridgeLibraryBrowseSection("artist-a", "Artist A", null, BridgeLibraryPageWindow(0uL, 200uL)),
-                BridgeLibraryBrowseSection("artist-b", "Artist B", null, BridgeLibraryPageWindow(200uL, 300uL)),
-            )
-        store.activate("grouped")
-        store.queries.single().emit(window(0), "album", sections)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(sections, store.beside)
-        assertEquals("album", store.rows[0])
-        // A delivery without sections leaves the last ones standing, beside its rows.
-        store.queries.single().emit(window(60), "next")
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(sections, store.beside)
-        store.deactivate()
-        assertTrue(store.beside.isEmpty())
-    }
-
     @Test
     fun oneQueryReadsAtMostThreeVisibleWindows() {
         val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
@@ -180,26 +158,25 @@ class BrowserPageStoresTest {
         assertEquals(false, store.error?.error?.offersRetry)
     }
 
-    private fun window(offset: Int) = BridgeLibraryPageWindow(offset.toULong(), BROWSER_PAGE_SIZE.toULong())
+    private fun window(offset: Int) = BridgeLibraryPageWindow(offset.toULong(), BROWSER_PAGE_SIZE.toULong(), null)
 
     private class RecordingPageStore(
         scope: CoroutineScope,
         loadMoreFailed: Int = R.string.library_load_more_albums_failed,
         errors: ErrorDisplays = NoErrorDisplays,
-    ) : WindowedBrowserPageStore<String, String, AlbumGridSections>(
+    ) : WindowedBrowserPageStore<String, String>(
             RuntimeEnvironment.getApplication(),
             errors,
             scope,
-            emptyList(),
             loadMoreFailed,
         ) {
         val queries = mutableListOf<RecordingQuery>()
 
-        override fun open(parameter: String): BrowseRowsQuery<String, AlbumGridSections> = RecordingQuery().also(queries::add)
+        override fun open(parameter: String): BrowseRowsQuery<String> = RecordingQuery().also(queries::add)
     }
 
-    private class RecordingQuery : BrowseRowsQuery<String, AlbumGridSections> {
-        private val values = Channel<Result<BrowseRows<String, AlbumGridSections>>>(Channel.UNLIMITED)
+    private class RecordingQuery : BrowseRowsQuery<String> {
+        private val values = Channel<Result<BrowseRows<String>>>(Channel.UNLIMITED)
         var windows = emptyList<BridgeLibraryPageWindow>()
             private set
         var cancelled = false
@@ -209,7 +186,7 @@ class BrowserPageStoresTest {
             this.windows = windows
         }
 
-        override suspend fun next(): BrowseRows<String, AlbumGridSections> = values.receive().getOrThrow()
+        override suspend fun next(): BrowseRows<String> = values.receive().getOrThrow()
 
         override suspend fun cancel() {
             cancelled = true
@@ -218,9 +195,8 @@ class BrowserPageStoresTest {
         fun emit(
             window: BridgeLibraryPageWindow,
             row: String,
-            sections: AlbumGridSections? = null,
         ) {
-            values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500, beside = sections)))
+            values.trySend(Result.success(BrowseRows(listOf(window to listOf(row)), totalCount = 500)))
         }
 
         fun fail(error: BridgeException) {

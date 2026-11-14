@@ -145,19 +145,22 @@ struct AlbumGridRevealTests {
                 id: "artist-a",
                 title: "Artist A",
                 image: nil,
-                window: .init(offset: 0, limit: 203)
+                firstPosition: 0,
+                albumCount: 203
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-b",
                 title: "Artist B",
                 image: nil,
-                window: .init(offset: 203, limit: 202)
+                firstPosition: 203,
+                albumCount: 202
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-c",
                 title: "Artist C",
                 image: nil,
-                window: .init(offset: 405, limit: 195)
+                firstPosition: 405,
+                albumCount: 195
             ),
         ]
         let hosted = try await HostedAlbumGrid.host(

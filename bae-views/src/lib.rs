@@ -60,7 +60,7 @@ pub use sync_activity::{
     UploadQueueActivity, UploadQueueCounts,
 };
 
-pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
+pub use album::{AlbumCounts, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{ArtistBrowseProjection, ArtistDetailProjection};
 pub use artist_search::{ArtistSearchProjection, DbArtistSearchRow};
 pub use composer::{ComposerBrowseProjection, WorkDetailProjection};
@@ -83,7 +83,9 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{read_windows, CursorWindowRead, Keyed, ListOrder, Seek, SortTerm};
+use bae_store::list_windows::{
+    key_at, read_windows, rows_before, CursorWindowRead, Keyed, ListOrder, OrderKey, Seek, SortTerm,
+};
 use bae_store::read::*;
 use bae_store::syncs_on;
 use bae_store::*;

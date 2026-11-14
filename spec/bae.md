@@ -5074,18 +5074,34 @@ Reads come two ways:
   live. A read that fails is delivered as a value and the
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
-  ends the subscription. A subscription that shows a window of a long list is
-  pointed at a new window in place as the person scrolls, and a window that
-  leaves the screen before its first value is let go of then, so the
-  windows a fast scroll stops on are not read behind every one it passed;
-  one that has ended takes the new window and reads nothing more. A value of
-  such a list carries every window its request names, read fresh, with the
-  list's count, and the screen swaps in the rows. The album grid grouped by artist reads its artists' headings (name, picture, where its albums start) as a live query of their own, which delivers them again whenever what they read changes. The downloads list on the phones is such a list: it
-  reads how many releases the queue holds and the windows on screen, and its
-  pause and retry controls and summary line read how many are in each phase.
-  Each list sorts by terms that end with a unique one, so every row has one
-  place, and an index serves each of its sorts. A list pages by cursor: a window
-  carries the sort values of the row at the screen's edge, the first or last
+  ends the subscription. The album grid is shown as windows, each its own
+  live query, with its count and the position of a key in it live queries of
+  their own, the same objects for every list (a list is a value naming it, and
+  one handle call each opens a window, a count or a position). A window is a
+  range of the grid's order: the rows at or after the sort values of one row
+  (the top of the grid when it has none) and before those of another (no end
+  when it has none), at most a page of them, read as a run of index seeks, each
+  an index range with both ends set, so coven reruns a window for a write that
+  changes a row inside its range and no other. The screen holds a chain of
+  windows that share bounds, so every row is in exactly one: each delivery
+  names the window it answers, the sort values of its first row, and those of
+  the row past its far end, read as one row more than the page, which the
+  screen sends back as the bound of the window beside it. A window that
+  reaches its bound is closed on it; a closed window that gains rows past its
+  page is split at the row beyond it; one left with no rows is dropped into
+  its neighbour. The chain grows downward from its last window's beyond row and
+  upward by a window that ends at its first window's start, and drops windows
+  more than two pages off the visible rows. Rows are drawn at the chain's start
+  position plus the rows of the windows above them; a chain that starts at the
+  top starts at row 0, and otherwise at a live count of the rows before its
+  first key. The grid's count is its own live query delivering its row count,
+  which sizes the scroll view, and its album count, which grouped by artist
+  is less than its rows. A jump (a scrollbar drag, the end key, a reveal)
+  reads the sort values of the row at a position once, by offset, and starts a
+  chain there. A row whose sort values move it from one window to its
+  neighbour can show in both or in neither until the second window's value
+  arrives. The other long lists page by cursor: a window carries the sort
+  values of the row at the screen's edge, the first or last
   row of a window the screen was delivered, and is read from them through the
   index, starting just past that row or ending just short of it, so its cost
   does not grow with how deep in the list it is. Every delivered window
@@ -5497,10 +5513,13 @@ release's or track's id as UTF-8, or a candidate's key.
   query or its own live query; any other read is a plain SQL read. SQLite
   filters, sorts, joins, groups, counts and windows. Nothing is kept in memory between reads, no pass walks rows beside a
   live query, no value is written only to make a query read again, and no size
-  cutoff sends a read down one of two paths. A long list pages by cursor: its
-  request carries the sort values of the row at the screen's edge and the next
-  window is sought from them through the order's index; a jump to a position
-  reads by offset, indexed only when it measures slow enough to warrant one.
+  cutoff sends a read down one of two paths. A long list's window, its count
+  and its section headers are separate live queries: a window is a range of the
+  order bounded by the sort values of a row at each end, sought through the
+  order's index, so only a write inside it reruns it, and the windows the
+  screen holds share bounds; a jump to a position reads the key at that
+  position by offset, indexed only when it measures slow enough to warrant one,
+  and starts the windows there.
 - **Screen subscriptions** are objects the app pulls from, built only in the
   bridge's `screens` module (`screens.rs` and its submodules) from a live
   query: `next()` answers the first value at

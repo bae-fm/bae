@@ -72,8 +72,10 @@ internal class UpcomingFeed {
                 windows =
                     listOf(
                         BridgeQueueUpcomingWindow(
-                            window = BridgeLibraryPageWindow(offset.toULong(), read.size.toULong()),
+                            window = BridgeLibraryPageWindow(offset.toULong(), read.size.toULong(), null),
                             rows = read,
+                            first = null,
+                            last = null,
                         ),
                     ).filter { read.isNotEmpty() },
             ),

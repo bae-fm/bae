@@ -179,7 +179,10 @@ extension LibraryNameSubscription: PulledSubscription {}
 extension DeviceStorageSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}
 extension StorageSetupFinishingSubscription: PulledSubscription {}
-extension AlbumBrowseSubscription: PulledSubscription {}
+extension ListWindowSubscription: PulledSubscription {}
+extension ListCountSubscription: PulledSubscription {}
+extension ListPositionSubscription: PulledSubscription {}
+extension AlbumSectionsSubscription: PulledSubscription {}
 extension ArtistBrowseSubscription: PulledSubscription {}
 extension ComposerBrowseSubscription: PulledSubscription {}
 extension ComposerDetailRowsSubscription: PulledSubscription {}

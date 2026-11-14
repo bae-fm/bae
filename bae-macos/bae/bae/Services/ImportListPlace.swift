@@ -30,7 +30,7 @@ struct ImportListPlace: Equatable {
     /// Where the row sits in `list` now, when `list` has loaded it.
     @MainActor
     func loadedPosition(
-        in list: PaginatedList<BridgeImportListItem>
+        in list: OffsetPaginatedList<BridgeImportListItem>
     ) -> Int? {
         switch row {
         case .candidate(let stableKey, _), .entry(let stableKey):

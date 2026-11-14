@@ -266,19 +266,58 @@ impl AppServices {
         self.inner.manager.follow_preferences(part)
     }
 
-    pub fn subscribe_album_browse(
+    /// One window of the album grid under `sort`, flat or grouped by artist:
+    /// the first value at once, then one for each write inside its range, and
+    /// one for each window it is moved to.
+    pub fn subscribe_album_window(
         &self,
         sort: &[bae_views::AlbumSortCriterion],
         group_by_artist: bool,
-    ) -> bae_views::LiveAlbumBrowse {
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
         let manager = &self.inner.manager;
-        let query = manager.until_closed(self.inner.views.subscribe_album_browse(
+        let query = manager.until_closed(self.inner.views.subscribe_album_window(
             sort,
             group_by_artist,
-            std::collections::BTreeSet::new(),
+            window,
         ));
-        bae_views::LiveAlbumBrowse::new(query, |read, projection| {
-            Some(bae_views::album::resolve_album_browse(projection, read.revision, read.cause))
+        bae_views::LiveListWindow::new(query, |_read, window| {
+            Some(bae_views::album::resolve_album_window(window))
+        })
+    }
+
+    /// How many rows the album grid has, and how many albums: the first
+    /// value at once, then one each time a write moves either.
+    pub fn subscribe_album_count(
+        &self,
+        group_by_artist: bool,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        self.inner.manager.values_until_closed(
+            self.inner.views.subscribe_album_count(group_by_artist).process(|counts| {
+                Ok(bae_views::ListCount {
+                    rows: counts.rows,
+                    extra: bae_views::ListCountExtra::AlbumGrid { albums: counts.albums },
+                })
+            }),
+        )
+    }
+
+    /// How many rows of the album grid come before the row at `key`, as one
+    /// live query whose key moves in place.
+    pub fn subscribe_album_position(
+        &self,
+        sort: &[bae_views::AlbumSortCriterion],
+        group_by_artist: bool,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        let manager = &self.inner.manager;
+        let query = manager.until_closed(self.inner.views.subscribe_album_position(
+            sort,
+            group_by_artist,
+            key,
+        ));
+        bae_views::LiveListPosition::new(query, |read, rows_before| {
+            Some(bae_views::ListPosition { key: read.request.clone(), rows_before })
         })
     }
 
@@ -543,6 +582,7 @@ impl AppServices {
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
+    delegate_view!(album_key_at => album_key_at(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);

@@ -105,9 +105,12 @@ private final class UpcomingFeed: @unchecked Sendable {
                     BridgeQueueUpcomingWindow(
                         window: BridgeLibraryPageWindow(
                             offset: offset,
-                            limit: 1
+                            limit: 1,
+                            cursor: nil
                         ),
-                        rows: [queueEntry(entryId)]
+                        rows: [queueEntry(entryId)],
+                        first: nil,
+                        last: nil
                     )
                 ]
             } ?? []
@@ -179,9 +182,9 @@ struct PlaybackStoreUpcomingWindowTests {
         #expect(feed.openedCount == 1)
         #expect(
             feed.requested.last == [
-                BridgeLibraryPageWindow(offset: 100, limit: 60),
-                BridgeLibraryPageWindow(offset: 200, limit: 60),
-                BridgeLibraryPageWindow(offset: 300, limit: 60),
+                BridgeLibraryPageWindow(offset: 100, limit: 60, cursor: nil),
+                BridgeLibraryPageWindow(offset: 200, limit: 60, cursor: nil),
+                BridgeLibraryPageWindow(offset: 300, limit: 60, cursor: nil),
             ],
             "the window farthest from the newest one is dropped"
         )
@@ -314,7 +317,7 @@ struct PlaybackStoreUpcomingFailureTests {
         #expect(feed.openedCount == 2, "Retry opens the read again")
         #expect(
             feed.requested.last == [
-                BridgeLibraryPageWindow(offset: 100, limit: 60)
+                BridgeLibraryPageWindow(offset: 100, limit: 60, cursor: nil)
             ],
             "over the windows it covered"
         )

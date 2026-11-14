@@ -40,6 +40,40 @@ pub struct WindowRead<R> {
     pub beyond: Option<OrderKey>,
 }
 
+impl<R> WindowRead<R> {
+    /// The window with its rows made into others all at once by `convert`.
+    pub fn try_convert_rows<Other, E>(
+        self,
+        convert: impl FnOnce(Vec<R>) -> Result<Vec<Other>, E>,
+    ) -> Result<WindowRead<Other>, E> {
+        Ok(WindowRead {
+            window: self.window,
+            rows: convert(self.rows)?,
+            first: self.first,
+            beyond: self.beyond,
+        })
+    }
+
+    /// The window with each row made into another by `convert`, or the first
+    /// error it gives.
+    pub fn try_map_rows<Other, E>(
+        self,
+        convert: impl FnMut(R) -> Result<Other, E>,
+    ) -> Result<WindowRead<Other>, E> {
+        self.try_convert_rows(|rows| rows.into_iter().map(convert).collect())
+    }
+
+    /// The window with each row made into another by `convert`.
+    pub fn map_rows<Other>(self, convert: impl FnMut(R) -> Other) -> WindowRead<Other> {
+        WindowRead {
+            window: self.window,
+            rows: self.rows.into_iter().map(convert).collect(),
+            first: self.first,
+            beyond: self.beyond,
+        }
+    }
+}
+
 impl ListOrder {
     /// How the term at `at` ranks two values, the way the order runs.
     fn compare_term(&self, at: usize, left: &Value, right: &Value) -> Ordering {

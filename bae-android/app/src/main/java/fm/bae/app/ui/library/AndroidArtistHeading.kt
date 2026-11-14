@@ -70,7 +70,7 @@ internal fun AndroidArtistHeading(
             Spacer(modifier = Modifier.width(ThemeSpace.group))
             Column(modifier = Modifier.weight(1f)) {
                 ArtistName(section)
-                val albums = section.window.limit
+                val albums = section.albumCount
                 Text(
                     text = pluralStringResource(R.plurals.album_count, albums.toInt(), albums.toLong()),
                     style = ThemeText.detail.style,

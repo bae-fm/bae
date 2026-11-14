@@ -14,6 +14,24 @@ pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
+/// How many rows of the album grid come before the rows `seek` reads: what a
+/// count over one of the seeks before a key adds up to.
+pub(super) fn album_seek_count_on(
+    sql: &SqlReadContext<'_>,
+    group_by_artist: bool,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let statement = format!(
+        "SELECT COUNT(*) {tables} WHERE {condition}",
+        tables = album_order_tables(group_by_artist),
+        condition = order.condition(seek),
+    );
+    Ok(sql
+        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
+}
+
 /// The grid grouped by artist's sections: each artist in the grouped order
 /// with its name, its picture and where its albums start in the grid's rows.
 pub(super) fn album_sections_on(
@@ -25,10 +43,8 @@ pub(super) fn album_sections_on(
             id: row.get(0)?,
             title: row.get(1)?,
             image: bae_records::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
-            window: LibraryPageWindow::at(
-                row.get::<_, i64>(2)? as u64,
-                row.get::<_, i64>(3)? as u64,
-            ),
+            first_position: row.get::<_, i64>(2)? as u64,
+            album_count: row.get::<_, i64>(3)? as u64,
         })
     })?)
 }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
+import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeArtistBrowseSnapshot
 import uniffi.bae_bridge.BridgeArtistDetail
@@ -20,13 +20,19 @@ import uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeDownloadBrowseSnapshot
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
+import uniffi.bae_bridge.BridgeList
+import uniffi.bae_bridge.BridgeListPosition
+import uniffi.bae_bridge.BridgeListRows
+import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSortCriterion
+import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.LibrarySearchSubscription
 
@@ -113,13 +119,55 @@ private fun <Value> detailFlow(
 class Library(
     private val handle: AppHandleInterface,
 ) {
-    internal fun albumBrowse(
+    /** The album grid under one sort and grouping: its windows, count and positions, each a live read of its own. */
+    internal fun albumList(
         sortCriteria: List<BridgeSortCriterion>,
         groupByArtist: Boolean = false,
-    ): AlbumBrowseQuery =
-        handle.subscribeAlbumBrowse(sortCriteria, groupByArtist).let {
-            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+    ): ListReads<BridgeAlbumAppearance> =
+        listReads(
+            BridgeList.AlbumGrid(sortCriteria, groupByArtist),
+            sections =
+                if (groupByArtist) {
+                    {
+                        handle.subscribeAlbumSections(sortCriteria).let { pulled(it::next, it::cancel) }
+                    }
+                } else {
+                    null
+                },
+        ) { rows ->
+            (rows as? BridgeListRows.Albums)?.rows ?: error("the album grid delivered rows of another list")
         }
+
+    /** The reads of [list], taking its rows out of the variant of [BridgeListRows] they come in. */
+    private fun <Row> listReads(
+        list: BridgeList,
+        sections: (() -> PulledSubscription<List<BridgeLibraryBrowseSection>>)? = null,
+        rows: (BridgeListRows) -> List<Row>,
+    ): ListReads<Row> =
+        ListReads(
+            window = { window ->
+                handle.subscribeListWindow(list, window).let { subscription ->
+                    val pulls =
+                        pulled(subscription::next, subscription::cancel).map {
+                            ListWindowDelivery(it.window, rows(it.rows), it.first, it.beyond)
+                        }
+                    object : ListWindowRead<Row>, PulledSubscription<ListWindowDelivery<Row>> by pulls {
+                        override fun setWindow(window: BridgeListWindow) = subscription.setWindow(window)
+                    }
+                }
+            },
+            count = { handle.subscribeListCount(list).let { pulled(it::next, it::cancel) } },
+            position = { key ->
+                handle.subscribeListPosition(list, key).let { subscription ->
+                    val pulls = pulled(subscription::next, subscription::cancel)
+                    object : ListPositionRead, PulledSubscription<BridgeListPosition> by pulls {
+                        override fun setKey(key: List<BridgeSortValue>) = subscription.setKey(key)
+                    }
+                }
+            },
+            keyAt = { position -> handle.listKeyAt(list, position) },
+            sections = sections,
+        )
 
     /** A detail view's live reads, each moved to every item its view shows in place. */
     internal fun albumDetail(): DetailRead<BridgeAlbumDetail> =
@@ -254,8 +302,6 @@ private class BridgeBrowseQuery<Snapshot>(
     PulledSubscription<Snapshot> by pulls {
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) = set(windows)
 }
-
-internal typealias AlbumBrowseQuery = CollectionBrowseQuery<BridgeAlbumBrowseSnapshot>
 
 internal typealias ComposerBrowseQuery = CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
 

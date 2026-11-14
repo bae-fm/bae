@@ -234,7 +234,9 @@
                     let end = min(start + Int(window.limit), rows.count)
                     return BridgeStorageBrowseWindow(
                         window: window,
-                        rows: Array(rows[start..<end])
+                        rows: Array(rows[start..<end]),
+                        first: nil,
+                        last: nil
                     )
                 },
                 totalCount: UInt64(rows.count),
@@ -287,7 +289,9 @@
                                 )
                                 return BridgeArtistSearchWindow(
                                     window: window,
-                                    rows: Array(results[start..<end])
+                                    rows: Array(results[start..<end]),
+                                    first: nil,
+                                    last: nil
                                 )
                             },
                             totalCount: UInt64(results.count),
@@ -354,17 +358,162 @@
         }
     }
 
+    extension BridgeListQueries {
+        /// The key a fixed list gives its row at `position`: the position
+        /// itself, since the rows arrive already in order.
+        public static func fixedKey(_ position: Int) -> [BridgeSortValue] {
+            [.integer(value: Int64(position))]
+        }
+
+        private static func fixedPosition(_ key: [BridgeSortValue]) -> Int {
+            if case .integer(let value)? = key.first { return Int(value) }
+            return 0
+        }
+
+        /// The delivery a fixed list answers `window` with: the rows of its
+        /// range, where the keys are positions.
+        static func fixedDelivery(
+            of window: BridgeListWindow,
+            rows: [Row]
+        ) -> ListWindowDelivery<Row> {
+            switch window {
+            case .forward(let from, let until, let limit):
+                let start = min(from.map(fixedPosition) ?? 0, rows.count)
+                let end = min(
+                    until.map(fixedPosition) ?? rows.count,
+                    rows.count
+                )
+                let stop = min(start + Int(limit), end)
+                return ListWindowDelivery(
+                    window: window,
+                    rows: start < stop ? Array(rows[start..<stop]) : [],
+                    first: start < stop ? fixedKey(start) : nil,
+                    beyond: stop < end ? fixedKey(stop) : nil
+                )
+            case .backward(let until, let limit):
+                let end = min(fixedPosition(until), rows.count)
+                let start = max(0, end - Int(limit))
+                return ListWindowDelivery(
+                    window: window,
+                    rows: start < end ? Array(rows[start..<end]) : [],
+                    first: start < end ? fixedKey(start) : nil,
+                    beyond: start > 0 ? fixedKey(start - 1) : nil
+                )
+            }
+        }
+
+        /// A list over fixed, already-sorted rows, for shots and tests: every
+        /// window is answered with its range of `rows`, and a key is the
+        /// position of its row. Each window request counts in `answers` until
+        /// it is answered.
+        public static func fixed(
+            _ rows: [Row],
+            answers: UnansweredCount,
+            itemCount: Int? = nil,
+            sections: [BridgeLibraryBrowseSection] = []
+        ) -> BridgeListQueries<Row> {
+            let extra: BridgeListCountExtra =
+                itemCount.map {
+                    BridgeListCountExtra.albumGrid(albums: UInt64($0))
+                }
+                ?? BridgeListCountExtra.none
+            let window: @Sendable (BridgeListWindow) -> ListWindowQuery<Row> = {
+                first in
+                let requests = FixedRequests<BridgeListWindow>(answers: answers)
+                requests.request(first)
+                let values = PulledValues<ListWindowDelivery<Row>>(
+                    read: {
+                        let asked = try await requests.take()
+                        return Self.fixedDelivery(of: asked, rows: rows)
+                    },
+                    cancel: { requests.close() }
+                )
+                return ListWindowQuery(
+                    setWindow: { requests.request($0) },
+                    values: values
+                )
+            }
+            let count: @Sendable () -> PulledValues<BridgeListCount> = {
+                let value = BridgeListCount(
+                    rows: UInt64(rows.count),
+                    extra: extra
+                )
+                return PulledValues<BridgeListCount>.fixed(value)
+            }
+            let position: @Sendable ([BridgeSortValue]) -> ListPositionQuery = {
+                key in
+                let value = BridgeListPosition(
+                    key: key,
+                    rowsBefore: UInt64(Self.fixedPosition(key))
+                )
+                return ListPositionQuery(
+                    setKey: { _ in },
+                    values: PulledValues<BridgeListPosition>.fixed(value)
+                )
+            }
+            let keyAt: @Sendable (UInt64) async throws -> [BridgeSortValue]? = {
+                position in
+                if rows.isEmpty { return nil }
+                return Self.fixedKey(min(Int(position), rows.count - 1))
+            }
+            var headings:
+                (@Sendable () -> PulledValues<[BridgeLibraryBrowseSection]>)?
+            if !sections.isEmpty {
+                headings = {
+                    PulledValues<[BridgeLibraryBrowseSection]>.fixed(sections)
+                }
+            }
+            return BridgeListQueries<Row>(
+                window: window,
+                count: count,
+                position: position,
+                keyAt: keyAt,
+                sections: headings
+            )
+        }
+
+        /// A list whose every window read fails with `error`, for shots and
+        /// tests of the screen that shows a list that could not be read.
+        public static func failing(
+            _ error: any Error & Sendable,
+            answers: UnansweredCount
+        ) -> BridgeListQueries<Row> {
+            let empty = BridgeListQueries<Row>.fixed([], answers: answers)
+            return BridgeListQueries<Row>(
+                window: { first -> ListWindowQuery<Row> in
+                    let requests = FixedRequests<BridgeListWindow>(
+                        answers: answers
+                    )
+                    requests.request(first)
+                    return ListWindowQuery(
+                        setWindow: { requests.request($0) },
+                        values: PulledValues<ListWindowDelivery<Row>>(
+                            read: {
+                                _ = try await requests.take()
+                                throw error
+                            },
+                            cancel: { requests.close() }
+                        )
+                    )
+                },
+                count: empty.count,
+                position: empty.position,
+                keyAt: empty.keyAt
+            )
+        }
+    }
+
     extension AlbumList {
         /// A pre-populated list for shots and tests, seeded with
         /// `albums` so the view renders without waiting for an async
         /// round-trip.
         ///
         /// Rows render in the order given. The live grid is ordered by the database,
-        /// through the `ORDER BY` its page query builds; a shot holds a hand-written
+        /// through the `ORDER BY` its window queries build; a shot holds a hand-written
         /// list with no database, so it presents the order its author wrote.
         public static func preview(albums: [BridgeAlbum]) -> AlbumList {
             let list = AlbumList(
-                pageSource: FixedAlbumPageSource(albums: albums),
+                queries: .fixed(albums, answers: UnansweredCount()),
                 onError: { _ in },
             )
             list.preloadRows(rows: albums)

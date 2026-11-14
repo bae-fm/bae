@@ -18,13 +18,17 @@ struct BrowseListSlotSortTests {
 
     private func makeSlot(
         _ defaults: UserDefaults
-    ) -> BrowseListSlot<BridgeAlbum, BridgeSortCriterion> {
+    ) -> BrowseListSlot<OffsetPaginatedList<BridgeAlbum>, BridgeSortCriterion> {
         BrowseListSlot(
             defaults: defaults,
             defaultsKey: Self.key,
             defaultCriteria: Self.defaultCriteria,
-            makePageSource: { _ in FixedAlbumPageSource(albums: []) },
-            onError: { _ in }
+            makeList: { _ in
+                OffsetPaginatedList(
+                    pageSource: FixedAlbumPageSource(albums: []),
+                    onError: { _ in }
+                )
+            }
         )
     }
 

@@ -69,7 +69,9 @@ private final class PreviewUpcomingFeed: @unchecked Sendable {
                 let end = min(start + Int(window.limit), rows.count)
                 return BridgeQueueUpcomingWindow(
                     window: window,
-                    rows: Array(rows[start..<end])
+                    rows: Array(rows[start..<end]),
+                    first: nil,
+                    last: nil
                 )
             }
         )

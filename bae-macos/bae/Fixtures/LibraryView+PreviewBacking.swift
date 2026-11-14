@@ -29,7 +29,7 @@ extension LibraryView {
     /// `albumContent`/`composerContent` rather than a hand-built stand-in.
     static func emptyLibrary() -> Library {
         Library(
-            albumBrowse: { _, _ in .fixed([], answers: UnansweredCount()) },
+            albumList: { _, _ in .fixed([], answers: UnansweredCount()) },
             composerBrowse: { _ in .fixed([], answers: UnansweredCount()) },
             artistBrowse: { _ in .fixed([], answers: UnansweredCount()) },
             playlists: noPlaylists
@@ -78,7 +78,7 @@ extension LibraryView {
                 )
             }
         let library = Library(
-            albumBrowse: { _, _ in
+            albumList: { _, _ in
                 .fixed(albums, answers: UnansweredCount())
             },
             getAlbumIndex: { _, albumId, _ in

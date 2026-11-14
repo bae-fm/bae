@@ -104,7 +104,7 @@ import Foundation
     /// The import list's pages, all served by one bridge subscription.
     ///
     /// The bridge object takes a set of windows and answers with one value holding
-    /// every one of them, so the pages a `PaginatedList` asks for are registered
+    /// every one of them, so the pages a `OffsetPaginatedList` asks for are registered
     /// here and handed the window that matches them. The chrome around the list —
     /// the tab counts, the watched folders — rides on the same value and goes to
     /// `onSummary`, Found's filter entries with their counts go to
@@ -377,7 +377,11 @@ import Foundation
             sinks.keys
                 .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
                 .map {
-                    BridgeLibraryPageWindow(offset: $0.offset, limit: $0.limit)
+                    BridgeLibraryPageWindow(
+                        offset: $0.offset,
+                        limit: $0.limit,
+                        cursor: nil
+                    )
                 }
         }
 

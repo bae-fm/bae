@@ -1,826 +1,334 @@
-import AppKit
 import BaeKit
 import Foundation
-import Observation
-import SwiftUI
 import Testing
-import XCTest
 
 @testable import bae
 
-// MARK: - PaginatedList tests
+/// A list of albums in the order of their ids, which answers each window with
+/// the range of ids it names: a key is a row's id, so a key is as stable as the
+/// row, and a test changes the list and delivers the change to every window
+/// the list opened.
+private final class ProbeList: @unchecked Sendable {
+    final class Window: @unchecked Sendable {
+        fileprivate let feed = Feed<ListWindowDelivery<BridgeAlbum>>()
+        fileprivate(set) var request: BridgeListWindow
+        fileprivate(set) var stopped = false
+
+        init(_ request: BridgeListWindow) { self.request = request }
+    }
+
+    private let lock = NSLock()
+    private var albums: [BridgeAlbum]
+    private var open: [Window] = []
+    private let counts = Feed<BridgeListCount>()
+    private var keyReads: [UInt64] = []
+
+    init(_ ids: [String]) {
+        albums = ids.map { makeBridgeAlbum(id: $0) }
+    }
+
+    func key(_ id: String) -> [BridgeSortValue] { [.text(value: id)] }
+
+    var windows: [Window] { lock.withLock { open } }
+
+    var requests: [BridgeListWindow] { windows.map(\.request) }
+
+    var keyAtReads: [UInt64] { lock.withLock { keyReads } }
+
+    /// Replace the list's rows and deliver the change to every window and the
+    /// count.
+    func set(_ ids: [String]) {
+        let (windows, count) = lock.withLock {
+            albums = ids.sorted().map { makeBridgeAlbum(id: $0) }
+            return (open.filter { !$0.stopped }, albums.count)
+        }
+        counts.emit(BridgeListCount(rows: UInt64(count), extra: .none))
+        for window in windows { deliver(to: window) }
+    }
+
+    private func seek(_ key: [BridgeSortValue]) -> Int {
+        guard case .text(let id)? = key.first else { return 0 }
+        return albums.firstIndex { $0.id >= id } ?? albums.count
+    }
+
+    private func delivery(of window: BridgeListWindow) -> ListWindowDelivery<
+        BridgeAlbum
+    > {
+        lock.withLock {
+            let start: Int
+            let stop: Int
+            let beyond: Int?
+            switch window {
+            case .forward(let from, let until, let limit):
+                start = from.map(seek) ?? 0
+                let end = until.map(seek) ?? albums.count
+                stop = min(start + Int(limit), end)
+                beyond = stop < end ? stop : nil
+            case .backward(let until, let limit):
+                stop = seek(until)
+                start = max(0, stop - Int(limit))
+                beyond = start > 0 ? start - 1 : nil
+            }
+            let rows = start < stop ? Array(albums[start..<stop]) : []
+            return ListWindowDelivery(
+                window: window,
+                rows: rows,
+                first: rows.first.map { key($0.id) },
+                beyond: beyond.map { key(albums[$0].id) }
+            )
+        }
+    }
+
+    func deliver(to window: Window) {
+        window.feed.emit(delivery(of: window.request))
+    }
+
+    /// A value for `window` as it is, whatever the list holds.
+    func deliver(_ value: ListWindowDelivery<BridgeAlbum>, to window: Window) {
+        window.feed.emit(value)
+    }
+
+    var queries: BridgeListQueries<BridgeAlbum> {
+        BridgeListQueries(
+            window: { [self] first in
+                let window = Window(first)
+                lock.withLock { open.append(window) }
+                deliver(to: window)
+                return ListWindowQuery(
+                    setWindow: { [self] next in
+                        window.request = next
+                        deliver(to: window)
+                    },
+                    values: PulledValues(
+                        read: { try await window.feed.next() },
+                        cancel: { window.stopped = true }
+                    )
+                )
+            },
+            count: { [self] in
+                counts.emit(
+                    BridgeListCount(
+                        rows: UInt64(lock.withLock { albums.count }),
+                        extra: .none
+                    )
+                )
+                return PulledValues(read: { try await self.counts.next() })
+            },
+            position: { [self] key in
+                let feed = Feed<BridgeListPosition>()
+                let emit: @Sendable ([BridgeSortValue]) -> Void = { key in
+                    feed.emit(
+                        BridgeListPosition(
+                            key: key,
+                            rowsBefore: UInt64(
+                                self.lock.withLock { self.seek(key) }
+                            )
+                        )
+                    )
+                }
+                emit(key)
+                return ListPositionQuery(
+                    setKey: emit,
+                    values: PulledValues(read: { try await feed.next() })
+                )
+            },
+            keyAt: { [self] position in
+                lock.withLock {
+                    keyReads.append(position)
+                    guard !albums.isEmpty else { return nil }
+                    return key(albums[min(Int(position), albums.count - 1)].id)
+                }
+            }
+        )
+    }
+}
+
+/// One feed of values a probe answers a read with: a test emits, the read
+/// takes them in order.
+private final class Feed<Value: Sendable>: @unchecked Sendable {
+    private let stream: AsyncStream<Value>
+    private let continuation: AsyncStream<Value>.Continuation
+    private var iterator: AsyncStream<Value>.AsyncIterator
+
+    init() {
+        (stream, continuation) = AsyncStream.makeStream()
+        iterator = stream.makeAsyncIterator()
+    }
+
+    func emit(_ value: Value) { continuation.yield(value) }
+
+    func next() async throws -> Value {
+        guard let value = await iterator.next() else {
+            throw CancellationError()
+        }
+        return value
+    }
+}
+
+private func ids(_ range: ClosedRange<Int>) -> [String] {
+    range.map { String(format: "a%04d", $0) }
+}
 
 @Suite("PaginatedList")
 struct PaginatedListTests {
     @MainActor
-    @Test("loadInitial delivers the first live page and total count")
-    func loadInitialAllocates() async {
-        let list = makeList(
-            albums: [
-                makeBridgeAlbum(id: "a1"),
-                makeBridgeAlbum(id: "a2"),
-                makeBridgeAlbum(id: "a3"),
-            ]
+    private func open(_ list: ProbeList) async -> PaginatedList<BridgeAlbum> {
+        let list = PaginatedList(
+            queries: list.queries,
+            onError: { Issue.record("List failed: \($0)") }
         )
-
         await list.loadInitial()
-
-        #expect(list.totalCount == 3)
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(2) == "a3")
+        return list
     }
 
     @MainActor
-    @Test("a page's rows land at their positions")
-    func pagePopulatesPositions() async {
-        let list = makeList(
-            albums: (0..<60)
-                .map {
-                    makeBridgeAlbum(id: "a\($0)", title: "Title \($0)")
-                }
-        )
-        await list.loadInitial()
-        #expect(list.row(at: 55) == nil)
+    private func held(
+        _ list: PaginatedList<BridgeAlbum>,
+        _ positions: ClosedRange<Int>
+    ) -> [Task<Void, Never>] {
+        positions.map { position in
+            Task { await list.holdPage(containing: position) }
+        }
+    }
 
-        let held = await list.withPage(containing: 55) {
-            (list.idAt(50), list.idAt(59), list.row(at: 55)?.title)
+    @MainActor
+    private func idsAt(
+        _ list: PaginatedList<BridgeAlbum>,
+        _ positions: ClosedRange<Int>
+    ) -> [String?] {
+        positions.map { list.idAt($0) }
+    }
+
+    @MainActor
+    @Test("loadInitial reads the top window and the count")
+    func loadInitialReadsTopAndCount() async {
+        let probe = ProbeList(ids(0...29))
+        let list = await open(probe)
+
+        #expect(list.totalCount == 30)
+        #expect(idsAt(list, 0...29) == ids(0...29).map(Optional.init))
+        #expect(idsAt(list, 30...30) == [nil])
+    }
+
+    @MainActor
+    @Test("a window cut by its limit closes at the key beyond it")
+    func closesAtBeyond() async throws {
+        let probe = ProbeList(ids(0...199))
+        let list = await open(probe)
+        let tasks = held(list, 0...10)
+        defer {
+            for task in tasks { task.cancel() }
         }
 
-        #expect(held == ("a50", "a59", "Title 55"))
+        try await Wait.until {
+            probe.requests.first
+                == .forward(
+                    from: nil,
+                    until: probe.key("a0050"),
+                    limit: 50
+                )
+        }
     }
 
     @MainActor
-    @Test("a row is held only while its page is: a dropped page's rows go")
-    func droppedPageTakesItsRows() async {
-        let list = makeList(
-            albums: (0..<300).map { makeBridgeAlbum(id: "a\($0)") }
-        )
-        await list.loadInitial()
-        #expect(list.row(of: "a0")?.id == "a0")
+    @Test("a split on beyond keeps every row once")
+    func splitKeepsEveryRowOnce() async throws {
+        let probe = ProbeList(ids(0...199))
+        let list = await open(probe)
+        let tasks = held(list, 0...10)
+        defer {
+            for task in tasks { task.cancel() }
+        }
+        try await Wait.until { list.idAt(49) == "a0049" }
 
-        // Four more pages nobody holds: the first, farthest from the last
-        // asked for, is dropped past the cap of three.
-        for offset in stride(from: 50, through: 200, by: 50) {
-            await list.withPage(containing: offset) {}
+        // Rows land inside the first window's range, so it holds more than
+        // its limit.
+        let added = (1...5).map { "a0010x\($0)" }
+        let all = (ids(0...199) + added).sorted()
+        probe.set(all)
+
+        try await Wait.until {
+            idsAt(list, 0...(all.count - 1 > 100 ? 100 : all.count - 1))
+                == all.prefix(101).map(Optional.init)
+        }
+        #expect(list.totalCount == all.count)
+    }
+
+    @MainActor
+    @Test("a window that goes empty is dropped into its neighbour")
+    func emptyWindowIsDropped() async throws {
+        let probe = ProbeList(ids(0...129))
+        let list = await open(probe)
+        let tasks = held(list, 0...110)
+        defer {
+            for task in tasks { task.cancel() }
+        }
+        try await Wait.until { list.idAt(129) == "a0129" }
+
+        // Every row of the middle window goes.
+        let rest = ids(0...49) + ids(100...129)
+        probe.set(rest)
+
+        try await Wait.until { idsAt(list, 0...79) == rest.map(Optional.init) }
+        #expect(list.idAt(80) == nil)
+    }
+
+    @MainActor
+    @Test("a jump starts a chain at the key the list has there")
+    func jumpStartsAtKey() async throws {
+        let probe = ProbeList(ids(0...999))
+        let list = await open(probe)
+
+        await list.withPage(containing: 900) {
+            #expect(list.idAt(900) == "a0900")
         }
 
-        #expect(list.row(at: 0) == nil)
-        #expect(list.row(of: "a0") == nil)
-        #expect(list.row(of: "a200")?.id == "a200")
-    }
-
-    @MainActor
-    @Test("the item count is unknown until the query answers")
-    func itemCountFollowsTheQuery() async {
-        let list = makeList(
-            albums: (0..<3).map { makeBridgeAlbum(id: "a\($0)") }
-        )
-        #expect(list.itemCount == nil)
-
-        await list.loadInitial()
-
-        #expect(list.itemCount == 3)
-    }
-
-    @MainActor
-    @Test("a page already live is not asked for again")
-    func livePageNotAskedAgain() async {
-        let source = CountingAlbumPageSource(albums: [
-            makeBridgeAlbum(id: "a1", title: "Alpha"),
-            makeBridgeAlbum(id: "a2", title: "Beta"),
-        ])
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        #expect(source.pageCallCount == 1)
-
-        await list.withPage(containing: 1) {}
-
-        #expect(source.pageCallCount == 1)
-    }
-
-    @MainActor
-    @Test("empty page source yields totalCount == 0 and empty ids")
-    func emptyList() async {
-        let list = makeList(albums: [])
-
-        await list.loadInitial()
-
-        #expect(list.totalCount == 0)
+        #expect(probe.keyAtReads == [900])
         #expect(list.idAt(0) == nil)
     }
 
     @MainActor
-    @Test("loadInitial surfaces a cold count failure as initialLoadError")
-    func loadInitialSurfacesInitialLoadError() async {
-        // A cold count-load failure is not an empty library: it lands on the
-        // list's `initialLoadError` (which the grid renders as error + Retry),
-        // not on `onError` (which would surface a redundant banner over the
-        // empty grid).
-        let source = ThrowingAlbumPageSource(
-            albums: [],
-            countError: PaginatedListTestError(message: "count failed")
-        )
-        var errors: [DisplayError] = []
-        let list = AlbumList(
-            pageSource: source,
-            onError: { error in DisplayError(error).map { errors.append($0) } },
-        )
+    @Test("a value for a replaced window draws nothing")
+    func replacedWindowDrawsNothing() async throws {
+        let probe = ProbeList(ids(0...199))
+        let list = await open(probe)
+        let tasks = held(list, 0...10)
+        defer {
+            for task in tasks { task.cancel() }
+        }
+        try await Wait.until {
+            probe.requests.first
+                == .forward(from: nil, until: probe.key("a0050"), limit: 50)
+        }
+        let first = try #require(probe.windows.first)
 
-        await list.loadInitial()
+        // The window answered the request it was opened with, which it has
+        // since left.
+        probe.deliver(
+            ListWindowDelivery(
+                window: .forward(from: nil, until: nil, limit: 50),
+                rows: [makeBridgeAlbum(id: "stale")],
+                first: probe.key("stale"),
+                beyond: nil
+            ),
+            to: first
+        )
+        // Let the value be taken, if it is going to be.
+        for _ in 0..<20 { await Task.yield() }
 
-        #expect(list.initialLoadError == DisplayError(line: "count failed"))
-        #expect(errors.isEmpty)
-        #expect(list.totalCount == 0)
+        #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
     }
 
     @MainActor
-    @Test("a successful retry clears initialLoadError and sets the count")
-    func retryClearsInitialLoadError() async {
-        let source = ThrowingAlbumPageSource(
-            albums: [makeBridgeAlbum(id: "a1")],
-            countError: PaginatedListTestError(message: "count failed")
-        )
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        #expect(list.initialLoadError != nil)
-
-        source.countError = nil
-        await list.loadInitial()
-
-        #expect(list.initialLoadError == nil)
-        #expect(list.totalCount == 1)
-    }
-
-    @MainActor
-    @Test("a page's failure is reported")
-    func pageReportsErrors() async {
-        let albums = (0..<51).map { makeBridgeAlbum(id: "a\($0)") }
-        let source = ThrowingAlbumPageSource(
-            albums: albums,
-            pageError: PaginatedListTestError(message: "page failed")
-        )
-        var errors: [DisplayError] = []
-        let list = AlbumList(
-            pageSource: source,
-            onError: { error in DisplayError(error).map { errors.append($0) } },
-        )
-
-        await list.loadInitial()
-        await list.withPage(containing: 50) {}
-
-        #expect(errors == [DisplayError(line: "page failed")])
-    }
-}
-
-// MARK: - RowLoadID (row task-restart identity)
-
-/// Every paginated row keys its load `.task(id:)` on a `RowLoadID` (the list's
-/// `loadEpoch` + the row position). These exercise that id — the value the views
-/// actually key on. A list swap changes the identity; page deliveries do not,
-/// because the active subscription updates that list in place.
-@Suite("PaginatedList row load identity")
-struct PaginatedListRowLoadIDTests {
-    @MainActor
-    @Test("a row's task id differs across a list swap, at a fixed position")
-    func differsAcrossSwap() async {
-        let albums = [makeBridgeAlbum(id: "a1")]
-        let first = makeList(albums: albums)
-        let second = makeList(albums: albums)
-        await first.loadInitial()
-        await second.loadInitial()
-
-        // Position alone cannot tell the lists apart. The instance identity in
-        // the epoch makes the swapped-in row's task restart.
-        #expect(
-            RowLoadID(epoch: first.loadEpoch, index: 0)
-                != RowLoadID(epoch: second.loadEpoch, index: 0)
-        )
-    }
-
-    @MainActor
-    @Test("a content load leaves a row's task id unchanged")
-    func stableAcrossContentLoad() async {
-        let list = makeList(albums: [makeBridgeAlbum(id: "a1")])
-        await list.loadInitial()
-        let before = RowLoadID(epoch: list.loadEpoch, index: 0)
-
-        await list.withPage(containing: 0) {}
-
-        #expect(RowLoadID(epoch: list.loadEpoch, index: 0) == before)
-    }
-}
-
-// MARK: - Segment coalescing
-
-/// Segments are private, so these drive them through the pages that fill
-/// them and observe the merged result through `allLoadedIds` / `idAt`.
-/// Without coalescing the loaded ids would carry duplicates, gaps, or stale
-/// positions.
-@Suite("PaginatedList segment management")
-struct PaginatedListSegmentTests {
-    @MainActor
-    private func albumList() -> AlbumList {
-        makeList(albums: (0..<200).map { makeBridgeAlbum(id: "a\($0)") })
-    }
-
-    @MainActor
-    @Test("adjacent pages coalesce into one contiguous run")
-    func adjacentCoalesce() async {
-        let list = albumList()
-        await list.loadInitial()
-
-        await list.withPage(containing: 50) {}
-
-        #expect(list.allLoadedIds == (0..<100).map { "a\($0)" })
-        #expect(list.idAt(99) == "a99")
-    }
-
-    @MainActor
-    @Test("disjoint pages stay separate and sort by position")
-    func disjointSortsByPosition() async {
-        let list = albumList()
-        await list.loadInitial()
-
-        await list.withPage(containing: 150) {}
-        await list.withPage(containing: 100) {}
-
-        #expect(
-            list.allLoadedIds
-                == (0..<50).map { "a\($0)" } + (100..<200).map { "a\($0)" }
-        )
-        #expect(list.idAt(50) == nil)  // the gap stays unloaded
-        // Each loaded id at its own position, skipping the gap.
-        let entries = list.loadedEntries
-        #expect(entries.map(\.position) == Array(0..<50) + Array(100..<200))
-        #expect(entries.map(\.id) == list.allLoadedIds)
-    }
-
-    @MainActor
-    @Test("callers asking for a page on its way wait on its one fetch")
-    func concurrentPageAsksCoalesce() async throws {
-        let source = GatedAlbumPageSource(
-            albums: (0..<100).map { makeBridgeAlbum(id: "a\($0)") }
-        )
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-
-        let first = Task {
-            await list.withPage(containing: 50) { list.idAt(50) }
-        }
-        // The first subscription is now held at the gate.
-        await source.waitForPageEntry()
-
-        var secondStarted = false
-        let second = Task {
-            secondStarted = true
-            Wait.happened()
-            return await list.withPage(containing: 51) { list.idAt(51) }
-        }
-        // Started on the main actor, the second caller has run up to where
-        // it waits: on the first's fetch, or on one of its own.
-        try await Wait.until { secondStarted }
-        #expect(source.pageCallCount == 2)
-        await source.openGate()
-
-        // Each body ran once the page had answered.
-        #expect(await first.value == "a50")
-        #expect(await second.value == "a51")
-        #expect(source.pageCallCount == 2)
-    }
-
-    @MainActor
-    @Test("a shrinking final page removes ids beyond the new total")
-    func shrinkingFinalPageClipsLoadedIds() async {
-        let source = MutableAlbumPageSource(count: 55)
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        await list.withPage(containing: 50) {}
-
-        await source.setCount(52)
-
-        #expect(list.totalCount == 52)
-        #expect(list.idAt(50) == "a50")
-        #expect(list.idAt(51) == "a51")
-        #expect(list.idAt(52) == nil)
-        #expect(list.allLoadedIds == (0..<52).map { "a\($0)" })
-    }
-
-    @MainActor
-    @Test("a page value repeating the held rows notifies no observer")
-    func repeatedPageValueIsNotAChange() async {
-        let source = MutableAlbumPageSource(count: 120)
-        let ingests = IngestCount()
-        let list = AlbumList(
-            pageSource: source,
-            ingest: { _ in ingests.value += 1 },
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        await list.withPage(containing: 60) {}
-        let revision = list.contentRevision
-        let ingested = ingests.value
-        let notified = ObservationFlag()
-        withObservationTracking {
-            _ = list.idAt(0)
-            _ = list.totalCount
-            _ = list.contentRevision
-        } onChange: {
-            notified.set()
-        }
-
-        // Every page answers again with what it answered before, the way the
-        // import list's source answers all of them when another is asked for.
-        await source.setCount(120)
-
-        #expect(!notified.isSet)
-        #expect(list.contentRevision == revision)
-        #expect(ingests.value == ingested)
-    }
-
-    @MainActor
-    @Test("a page value with a changed row is taken in")
-    func changedRowIsTakenIn() async {
-        let source = MutableAlbumPageSource(count: 120)
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        let revision = list.contentRevision
-
-        await source.retitle("a3", "Retitled")
-
-        #expect(list.contentRevision > revision)
-        #expect(list.row(at: 3)?.title == "Retitled")
-        #expect(list.idAt(3) == "a3")
-    }
-
-    @MainActor
-    @Test("pages nobody holds stay bounded while scrolling")
-    func unheldPagesStayBounded() async {
-        let source = MutableAlbumPageSource(count: 500)
-        var errors: [String] = []
-        let list = AlbumList(
-            pageSource: source,
-            onError: { errors.append($0.localizedDescription) },
-        )
-        await list.loadInitial()
-
-        for offset in stride(from: 50, through: 250, by: 50) {
-            await list.withPage(containing: offset) {}
-        }
-
-        #expect(source.activeCount <= 3)
-        #expect(!source.activeOffsets.contains(0))
-        #expect(list.idAt(0) == nil)
-
-        await source.setCount(501)
-
-        #expect(list.totalCount == 501)
-        #expect(list.idAt(0) == nil)
-
-        await source.deliverCancelledValue(offset: 0, totalCount: 999)
-        await source.deliverCancelledError(offset: 0)
-
-        #expect(list.totalCount == 501)
-        #expect(list.idAt(0) == nil)
-        #expect(errors.isEmpty)
-    }
-
-    @MainActor
-    @Test("a screenful of rows stays loaded while scrolling row by row")
-    func scrollingNeverBlanksRowsOnScreen() async {
-        let total = 180
-        let source = MutableAlbumPageSource(count: total)
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in }
-        )
-        await list.loadInitial()
-
-        let viewport = Viewport(list: list)
-        // Sampled on the main actor after the list has registered the page it
-        // was just asked for — and dropped any for it — but before that page's
-        // first value lands. That gap is a frame the list renders, so a row on
-        // screen has to resolve there too.
-        source.onBeforeDelivery { viewport.sample() }
-
-        // A screenful walking down the list one row at a time, the way a
-        // `List` mounts rows: each row that appears holds the page holding
-        // it, and each row that leaves lets its hold go. The row that just
-        // appeared may be a placeholder until its page answers; the rows
-        // already above it may not.
-        var rows: [Int: Task<Void, Never>] = [:]
-        for index in 0..<total {
-            viewport.positions = max(0, index - 18)..<index
-            for (row, hold) in rows where !viewport.positions.contains(row) {
-                await release(hold)
-                rows.removeValue(forKey: row)
-            }
-            rows[index] = await hold(index, of: list)
-            viewport.sample()
-        }
-
-        #expect(viewport.blanked.isEmpty)
-        // Four aligned pages answer all 180 rows. A window centred on the row
-        // that asked would be a fresh page per row instead.
-        #expect(source.subscribedOffsets == [0, 50, 100, 150])
-    }
-}
-
-// MARK: - Page holds
-
-/// Who holds a page decides whether it stays live: rows on screen and a
-/// reveal on its way each hold theirs, and only pages nobody holds are
-/// dropped.
-@Suite("PaginatedList page holds")
-struct PaginatedListHoldTests {
-    @MainActor
-    private func scrolledList() async -> (AlbumList, MutableAlbumPageSource) {
-        let source = MutableAlbumPageSource(count: 500)
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in }
-        )
-        await list.loadInitial()
-        return (list, source)
-    }
-
-    @MainActor
-    @Test("a held page stays live however many pages are asked for after it")
-    func heldPageNeverDropped() async {
-        let (list, source) = await scrolledList()
-        let held = await hold(0, of: list)
-
-        for offset in stride(from: 50, through: 300, by: 50) {
-            await list.withPage(containing: offset) {}
-        }
-
-        #expect(source.activeOffsets.contains(0))
-        #expect(list.idAt(0) == "a0")
-        // The held page and the three unheld pages nearest the last asked.
-        #expect(source.activeOffsets == [0, 200, 250, 300])
-        await release(held)
-    }
-
-    @MainActor
-    @Test("a page let go of is dropped like any other unheld page")
-    func releasedPageDropped() async {
-        let (list, source) = await scrolledList()
-        let held = await hold(0, of: list)
-        for offset in stride(from: 50, through: 300, by: 50) {
-            await list.withPage(containing: offset) {}
-        }
-
-        await release(held)
-
-        #expect(source.activeOffsets == [200, 250, 300])
-        #expect(list.idAt(0) == nil)
-    }
-
-    @MainActor
-    @Test("a hold let go of before it starts never asks for its page")
-    func holdCancelledBeforeItStartsAsksNothing() async {
-        let (list, source) = await scrolledList()
-
-        // A row a fast scroll carries past: on screen for one frame, its
-        // hold taken and let go of before the hold's task first runs.
-        let hold = Task { await list.holdPage(containing: 200) }
-        hold.cancel()
-        await hold.value
-
-        #expect(!source.subscribedOffsets.contains(200))
-        #expect(list.idAt(200) == nil)
-    }
-
-    @MainActor
-    @Test("a hold let go of while its page loads lets go without waiting")
-    func holdCancelledWhileLoadingLetsGo() async throws {
-        let source = GatedAlbumPageSource(
-            albums: (0..<100).map { makeBridgeAlbum(id: "a\($0)") }
-        )
-        let list = AlbumList(
-            pageSource: source,
-            onError: { _ in },
-        )
-        await list.loadInitial()
-        var letGo = false
-        let hold = Task {
-            await list.holdPage(containing: 50)
-            letGo = true
-            Wait.happened()
-        }
-        // The page's subscription is held at the gate, unanswered.
-        await source.waitForPageEntry()
-
-        hold.cancel()
-
-        try await Wait.until { letGo }
-        await source.openGate()
-    }
-
-    @MainActor
-    @Test("the cap on live pages counts only pages nobody holds")
-    func capCountsUnheldPages() async {
-        let (list, source) = await scrolledList()
-        var held: [Task<Void, Never>] = []
-        for offset in stride(from: 0, through: 150, by: 50) {
-            held.append(await hold(offset, of: list))
-        }
-        for offset in stride(from: 200, through: 300, by: 50) {
-            await list.withPage(containing: offset) {}
-        }
-        #expect(source.activeCount == 7)
-
-        await list.withPage(containing: 350) {}
-
-        #expect(
-            source.activeOffsets == [0, 50, 100, 150, 250, 300, 350]
-        )
-        for hold in held {
-            await release(hold)
-        }
-    }
-}
-
-/// Hold `position`'s page from a task of its own, the way a row on screen
-/// does, returning once the page has answered.
-@MainActor
-private func hold(_ position: Int, of list: AlbumList) async -> Task<
-    Void, Never
-> {
-    let (answered, signal) = AsyncStream.makeStream(of: Void.self)
-    let task = Task {
-        await list.withPage(containing: position) {
-            signal.yield()
-            await Task.untilCancelled()
-        }
-    }
-    for await _ in answered {
-        break
-    }
-    return task
-}
-
-/// Let a hold go and wait until the list has taken it back.
-@MainActor
-private func release(_ hold: Task<Void, Never>) async {
-    hold.cancel()
-    await hold.value
-}
-
-/// The rows on screen, and every position that resolved to no id while it was
-/// one of them.
-@MainActor
-private final class Viewport {
-    var positions: Range<Int> = 0..<0
-    private(set) var blanked: [Int] = []
-
-    private let list: AlbumList
-
-    init(list: AlbumList) {
-        self.list = list
-    }
-
-    func sample() {
-        blanked.append(contentsOf: positions.filter { list.idAt($0) == nil })
-    }
-}
-
-@MainActor
-private final class IngestCount {
-    var value = 0
-}
-
-private final class ObservationFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var raised = false
-
-    var isSet: Bool { lock.withLock { raised } }
-
-    func set() {
-        lock.withLock { raised = true }
-    }
-}
-
-private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
-    private struct Active {
-        let offset: Int
-        let limit: Int
-        let onValue: @MainActor @Sendable ([BridgeAlbum], Int) -> Void
-        let onError: @MainActor @Sendable (any Error) -> Void
-    }
-
-    private let lock = NSLock()
-    private var count: Int
-    private var active: [UUID: Active] = [:]
-    private var cancelled: [Active] = []
-    private var subscribed: [Int] = []
-    private var beforeDelivery: @MainActor @Sendable () -> Void = {}
-    private var titles: [String: String] = [:]
-
-    init(count: Int) {
-        self.count = count
-    }
-
-    var activeCount: Int { lock.withLock { active.count } }
-    var activeOffsets: Set<Int> {
-        lock.withLock { Set(active.values.map(\.offset)) }
-    }
-
-    /// Every offset this source was asked for, in order, without repeats — how
-    /// many distinct pages a scroll opened.
-    var subscribedOffsets: [Int] { lock.withLock { subscribed } }
-
-    /// Run `hook` on the main actor once per subscription, after the list has
-    /// finished registering it and before its first value is delivered.
-    func onBeforeDelivery(_ hook: @escaping @MainActor @Sendable () -> Void) {
-        lock.withLock { beforeDelivery = hook }
-    }
-
-    func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        let id = UUID()
-        let active = Active(
-            offset: offset,
-            limit: limit,
-            onValue: onValue,
-            onError: onError
-        )
-        let hook = lock.withLock { () -> @MainActor @Sendable () -> Void in
-            self.active[id] = active
-            if !self.subscribed.contains(offset) {
-                self.subscribed.append(offset)
-            }
-            return self.beforeDelivery
-        }
-        Task { @MainActor in hook() }
-        Task { await deliver(active) }
-        return MutablePageSubscription { [weak self] in
-            guard let self else { return }
-            self.lock.withLock {
-                if let removed = self.active.removeValue(forKey: id) {
-                    self.cancelled.append(removed)
-                }
-            }
-        }
-    }
-
-    func deliverCancelledValue(offset: Int, totalCount: Int) async {
-        let subscription = lock.withLock {
-            cancelled.first { $0.offset == offset }
-        }
-        guard let subscription else { return }
-        let end = min(subscription.offset + subscription.limit, totalCount)
-        let rows =
-            subscription.offset < end
-            ? (subscription.offset..<end)
-                .map { makeBridgeAlbum(id: "stale-a\($0)") }
-            : []
-        await subscription.onValue(rows, totalCount)
-    }
-
-    func deliverCancelledError(offset: Int) async {
-        let subscription = lock.withLock {
-            cancelled.first { $0.offset == offset }
-        }
-        guard let subscription else { return }
-        await subscription.onError(
-            PaginatedListTestError(message: "stale error")
-        )
-    }
-
-    func setCount(_ count: Int) async {
-        let subscriptions = lock.withLock {
-            self.count = count
-            return Array(active.values)
-        }
-        for subscription in subscriptions {
-            await deliver(subscription)
-        }
-    }
-
-    /// Give the album `id` a new title and answer every page again.
-    func retitle(_ id: String, _ title: String) async {
-        let subscriptions = lock.withLock {
-            titles[id] = title
-            return Array(active.values)
-        }
-        for subscription in subscriptions {
-            await deliver(subscription)
-        }
-    }
-
-    private func deliver(_ active: Active) async {
-        let (count, titles) = lock.withLock { (self.count, self.titles) }
-        let end = min(active.offset + active.limit, count)
-        let rows =
-            active.offset < end
-            ? (active.offset..<end)
-                .map { index -> BridgeAlbum in
-                    let id = "a\(index)"
-                    return titles[id].map { makeBridgeAlbum(id: id, title: $0) }
-                        ?? makeBridgeAlbum(id: id)
-                }
-            : []
-        await active.onValue(rows, count)
-    }
-}
-
-private final class MutablePageSubscription: PageSubscription,
-    @unchecked Sendable
-{
-    private let onCancel: @Sendable () -> Void
-
-    init(onCancel: @escaping @Sendable () -> Void) {
-        self.onCancel = onCancel
-    }
-
-    func cancel() {
-        onCancel()
-    }
-}
-
-/// One-shot async gate: `page()` awaits `wait()`; the test resumes every waiter
-/// with `open()`. Lets a test hold a fetch mid-flight while it drives the list.
-private actor FetchGate {
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-    private var isOpen = false
-
-    func wait() async {
-        if isOpen { return }
-        await withCheckedContinuation { waiters.append($0) }
-    }
-
-    func open() {
-        isOpen = true
-        for waiter in waiters { waiter.resume() }
-        waiters.removeAll()
-    }
-}
-
-/// Page source that blocks each `page()` on a gate the test opens, and signals
-/// when a fetch enters. Used to exercise the in-flight dedupe and the
-/// subscription coalescing, which needs the first subscription held in flight.
-final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
-    let albums: [BridgeAlbum]
-    var pageCallCount = 0
-
-    private let gate = FetchGate()
-    private let entries: AsyncStream<Void>
-    private let entryContinuation: AsyncStream<Void>.Continuation
-
-    init(albums: [BridgeAlbum]) {
-        self.albums = albums
-        (entries, entryContinuation) = AsyncStream.makeStream(of: Void.self)
-    }
-
-    func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue: @escaping @MainActor @Sendable ([BridgeAlbum], Int) -> Void,
-        onError _: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        pageCallCount += 1
-        let albums = albums
-        let gate = gate
-        let entryContinuation = entryContinuation
-        return TestPageSubscription(
-            Task { @MainActor in
-                if !(offset == 0 && limit == 50) {
-                    entryContinuation.yield(())
-                    await gate.wait()
-                }
-                let start = min(offset, albums.count)
-                let end = min(start + limit, albums.count)
-                onValue(Array(albums[start..<end]), albums.count)
-            }
-        )
-    }
-
-    /// Suspend until a `page()` call has entered (and is blocked on the gate).
-    func waitForPageEntry() async {
-        var iterator = entries.makeAsyncIterator()
-        _ = await iterator.next()
-    }
-
-    func openGate() async {
-        await gate.open()
+    @Test("the rows of a window are its last value only")
+    func rowsAreTheLastValueOnly() async throws {
+        let probe = ProbeList(ids(0...29))
+        let list = await open(probe)
+
+        probe.set(ids(0...9))
+
+        try await Wait.until { list.totalCount == 10 }
+        try await Wait.until { list.idAt(10) == nil }
+        #expect(idsAt(list, 0...9) == ids(0...9).map(Optional.init))
     }
 }

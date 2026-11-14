@@ -84,13 +84,13 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         .collect();
     assert_eq!(credited, ["Artist A", "Artist B"]);
 
-    let mut browse = views(manager).subscribe_album_browse(
+    let mut browse = views(manager).subscribe_album_window(
         &[],
         true,
-        [bae_store::LibraryPageWindow::at(0, 10)].into(),
+        bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
-    let rows = &grouped.windows[0].rows;
+    let rows = &grouped.rows;
     let found = views(manager)
         .subscribe_album_sections(&[])
         .next()
@@ -100,8 +100,8 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let sections: Vec<(String, Vec<String>)> = found
         .iter()
         .map(|section| {
-            let start = section.window.offset as usize;
-            let end = start + section.window.limit as usize;
+            let start = section.first_position as usize;
+            let end = start + section.album_count as usize;
             (
                 section.title.clone(),
                 rows[start..end].iter().map(|row| row.album.title.clone()).collect(),

@@ -23,7 +23,6 @@ import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeSortCriterion
 
@@ -48,19 +47,14 @@ internal interface BrowserPageState {
     val totalCount: Int
 }
 
-/**
- * One value a browse query delivered: each requested window with its rows, the list's total, and
- * what the list delivers [beside] its rows when that changed (the album grid's artist sections, in
- * the delivery whose rows they fit; null says the last ones stand; [Unit] for the other lists).
- */
-internal class BrowseRows<Row, Beside>(
+/** One value a browse query delivered: each requested window with its rows, and the list's total. */
+internal class BrowseRows<Row>(
     val windows: List<Pair<BridgeLibraryPageWindow, List<Row>>>,
     val totalCount: Int,
-    val beside: Beside?,
 )
 
 /** A live browse over one library list whose windows change in place, pulled as rows by window. */
-internal interface BrowseRowsQuery<Row, Beside> : PulledSubscription<BrowseRows<Row, Beside>> {
+internal interface BrowseRowsQuery<Row> : PulledSubscription<BrowseRows<Row>> {
     fun setWindows(windows: List<BridgeLibraryPageWindow>)
 }
 
@@ -69,13 +63,11 @@ internal interface BrowseRowsQuery<Row, Beside> : PulledSubscription<BrowseRows<
  * query. The visible range decides which pages the query reads; one read per database change
  * answers every visible page, rather than one live query per page each rerunning on its own.
  */
-internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
+internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     private val appContext: Context,
     /** Core's answer to whether a failed read is worth reading again. */
     private val errors: ErrorDisplays,
     protected val scope: CoroutineScope,
-    /** What [beside] holds while no value has been delivered. */
-    private val nothingBeside: Beside,
     /** The headline for a later page that failed to load, naming what this list holds. */
     @StringRes private val loadMoreFailed: Int,
     /** The headline for the first page failing to load, naming what this list holds. */
@@ -83,9 +75,6 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
 ) : BrowserPageState {
     val rows = mutableStateMapOf<Int, Row>()
 
-    /** What the last value delivered beside its rows. */
-    var beside by mutableStateOf(nothingBeside)
-        private set
     override var totalCount by mutableStateOf(0)
         private set
     override var loading by mutableStateOf(true)
@@ -97,15 +86,14 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
     private var parameter: Parameter? = null
     private var active = false
     private var generation = 0
-    private var query: BrowseRowsQuery<Row, Beside>? = null
-    private var deliveries: ScreenSubscription<BrowseRows<Row, Beside>>? = null
+    private var query: BrowseRowsQuery<Row>? = null
+    private var deliveries: ScreenSubscription<BrowseRows<Row>>? = null
     private var windows = emptySet<Int>()
 
     fun activate(parameter: Parameter) {
         if (active && this.parameter == parameter) return
         closeQuery()
         rows.clear()
-        beside = nothingBeside
         totalCount = 0
         loading = true
         error = null
@@ -127,7 +115,6 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         active = false
         closeQuery()
         rows.clear()
-        beside = nothingBeside
         totalCount = 0
     }
 
@@ -154,7 +141,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         activate(current)
     }
 
-    protected abstract fun open(parameter: Parameter): BrowseRowsQuery<Row, Beside>
+    protected abstract fun open(parameter: Parameter): BrowseRowsQuery<Row>
 
     private fun requestWindows(offsets: Set<Int>) {
         if (offsets == windows) return
@@ -162,7 +149,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         val current = query ?: return
         try {
             current.setWindows(
-                offsets.sorted().map { BridgeLibraryPageWindow(it.toULong(), BROWSER_PAGE_SIZE.toULong()) },
+                offsets.sorted().map { BridgeLibraryPageWindow(it.toULong(), BROWSER_PAGE_SIZE.toULong(), null) },
             )
         } catch (value: BridgeException) {
             fail(value)
@@ -175,9 +162,9 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
      * no longer update, until [retry] opens another.
      */
     private fun deliver(
-        query: BrowseRowsQuery<Row, Beside>,
+        query: BrowseRowsQuery<Row>,
         openedGeneration: Int,
-    ): ScreenSubscription<BrowseRows<Row, Beside>> {
+    ): ScreenSubscription<BrowseRows<Row>> {
         val current = { active && openedGeneration == generation }
         return ScreenSubscription(
             query,
@@ -193,7 +180,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
     }
 
     /** A value answers the windows it was read for; a window dropped since keeps nothing. */
-    private fun apply(delivered: BrowseRows<Row, Beside>) {
+    private fun apply(delivered: BrowseRows<Row>) {
         for ((window, windowRows) in delivered.windows) {
             val offset = window.offset.toInt()
             if (offset !in windows) continue
@@ -203,8 +190,6 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
         }
         rows.keys.filter { it >= delivered.totalCount }.forEach(rows::remove)
         totalCount = delivered.totalCount
-        // Rows and what came with them land in this one turn.
-        delivered.beside?.let { beside = it }
         loading = false
         error = null
     }
@@ -239,9 +224,6 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row, Beside>(
     }
 }
 
-/** The album grid's artist sections, which its browse delivers beside its rows; none when it is flat. */
-internal typealias AlbumGridSections = List<BridgeLibraryBrowseSection>
-
 internal data class AlbumBrowseParameters(
     val criterion: BridgeSortCriterion,
     val groupByArtist: Boolean,
@@ -252,15 +234,12 @@ internal class AlbumPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance, AlbumGridSections>(
+) : ChainBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance>(
         appContext,
         errors,
         scope,
-        nothingBeside = emptyList(),
         loadMoreFailed = R.string.library_load_more_albums_failed,
     ) {
-    val sections: AlbumGridSections get() = beside
-
     fun activate(
         criterion: BridgeSortCriterion,
         groupByArtist: Boolean = false,
@@ -268,14 +247,8 @@ internal class AlbumPageStore(
         activate(AlbumBrowseParameters(criterion, groupByArtist))
     }
 
-    override fun open(parameter: AlbumBrowseParameters): BrowseRowsQuery<BridgeAlbumAppearance, AlbumGridSections> =
-        SnapshotRowsQuery(library.albumBrowse(listOf(parameter.criterion), parameter.groupByArtist)) { snapshot ->
-            BrowseRows(
-                snapshot.windows.map { it.window to it.rows },
-                snapshot.rowCount.toInt(),
-                snapshot.sections,
-            )
-        }
+    override fun open(parameter: AlbumBrowseParameters): ListReads<BridgeAlbumAppearance> =
+        library.albumList(listOf(parameter.criterion), parameter.groupByArtist)
 }
 
 internal class ArtistPageStore(
@@ -283,16 +256,15 @@ internal class ArtistPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary, Unit>(
+) : WindowedBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary>(
         appContext,
         errors,
         scope,
-        nothingBeside = Unit,
         loadMoreFailed = R.string.library_load_more_artists_failed,
     ) {
-    override fun open(parameter: BridgeArtistSortCriterion): BrowseRowsQuery<BridgeArtistSummary, Unit> =
+    override fun open(parameter: BridgeArtistSortCriterion): BrowseRowsQuery<BridgeArtistSummary> =
         SnapshotRowsQuery(library.artistBrowse(parameter)) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt(), Unit)
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
         }
 }
 
@@ -301,16 +273,15 @@ internal class ComposerPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary, Unit>(
+) : WindowedBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary>(
         appContext,
         errors,
         scope,
-        nothingBeside = Unit,
         loadMoreFailed = R.string.library_load_more_composers_failed,
     ) {
-    override fun open(parameter: BridgeComposerSortCriterion): BrowseRowsQuery<BridgeComposerSummary, Unit> =
+    override fun open(parameter: BridgeComposerSortCriterion): BrowseRowsQuery<BridgeComposerSummary> =
         SnapshotRowsQuery(library.composerBrowse(parameter)) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt(), Unit)
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
         }
 }
 
@@ -320,17 +291,16 @@ internal class ComposerDetailRowsPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<String, BridgeComposerDetailRow, Unit>(
+) : WindowedBrowserPageStore<String, BridgeComposerDetailRow>(
         appContext,
         errors,
         scope,
-        nothingBeside = Unit,
         loadMoreFailed = R.string.composer_detail_load_failed,
         loadFailed = R.string.composer_detail_load_failed,
     ) {
-    override fun open(parameter: String): BrowseRowsQuery<BridgeComposerDetailRow, Unit> =
+    override fun open(parameter: String): BrowseRowsQuery<BridgeComposerDetailRow> =
         SnapshotRowsQuery(library.composerDetailRows(parameter)) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt(), Unit)
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
         }
 }
 
@@ -340,26 +310,25 @@ internal class DownloadPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<Unit, BridgeDownloadOp, Unit>(
+) : WindowedBrowserPageStore<Unit, BridgeDownloadOp>(
         appContext,
         errors,
         scope,
-        nothingBeside = Unit,
         loadMoreFailed = R.string.pinning_load_more_failed,
         loadFailed = R.string.pinning_load_failed,
     ) {
-    override fun open(parameter: Unit): BrowseRowsQuery<BridgeDownloadOp, Unit> =
+    override fun open(parameter: Unit): BrowseRowsQuery<BridgeDownloadOp> =
         SnapshotRowsQuery(library.downloadBrowse()) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt(), Unit)
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
         }
 }
 
 /** A collection browse query read as rows by window, through [read]. */
-private class SnapshotRowsQuery<Snapshot, Row, Beside>(
+private class SnapshotRowsQuery<Snapshot, Row>(
     private val query: CollectionBrowseQuery<Snapshot>,
-    read: (Snapshot) -> BrowseRows<Row, Beside>,
-) : BrowseRowsQuery<Row, Beside>,
-    PulledSubscription<BrowseRows<Row, Beside>> by query.map(read) {
+    read: (Snapshot) -> BrowseRows<Row>,
+) : BrowseRowsQuery<Row>,
+    PulledSubscription<BrowseRows<Row>> by query.map(read) {
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) = query.setWindows(windows)
 }
 

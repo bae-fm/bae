@@ -147,7 +147,11 @@ public final class ArtistSearchPageSource: PageSource, @unchecked Sendable {
             let windows = sinks.keys
                 .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
                 .map {
-                    BridgeLibraryPageWindow(offset: $0.offset, limit: $0.limit)
+                    BridgeLibraryPageWindow(
+                        offset: $0.offset,
+                        limit: $0.limit,
+                        cursor: nil
+                    )
                 }
             do {
                 _ = try query.setView(text, windows)
@@ -220,7 +224,9 @@ public final class ArtistSearchPageSource: PageSource, @unchecked Sendable {
 }
 
 /// The artists an artist search finds, a page at a time.
-public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
+public typealias ArtistSearchList = OffsetPaginatedList<
+    BridgeArtistSearchResult
+>
 
 /// One artist picker's search while it is open: the list of what the text
 /// typed last finds, read through the picker's one live query.

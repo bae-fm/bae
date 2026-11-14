@@ -2,10 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// The composer/artist browser's master list: virtualized rows over a
-/// `PaginatedList`, each visible row holding the page it sits in.
+/// `OffsetPaginatedList`, each visible row holding the page it sits in.
 struct BrowseList<Row: Identifiable & Sendable & Equatable, RowView: View>: View
 where Row.ID: Sendable {
-    let list: PaginatedList<Row>
+    let list: OffsetPaginatedList<Row>
     let row: (Int) -> RowView
 
     var body: some View {
