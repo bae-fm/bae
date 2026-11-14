@@ -21,6 +21,13 @@ concurrency:
 jobs:
   ci:
     name: CI
+    # A called workflow gets at most the token permissions its caller grants,
+    # and the repository's default token reads contents and packages only.
+    # ci.yml's checker-tests job lists workflow runs, which needs `actions`.
+    permissions:
+      contents: read
+      packages: read
+      actions: read
     uses: ./.github/workflows/ci.yml
 
   # Rust lint + test suite on Linux, and the Avalonia skeleton's Linux build.
@@ -28,13 +35,6 @@ jobs:
   # Rust gates and CI keeps only the macOS build.
   linux:
     name: Linux
-    # A called workflow gets at most the token permissions its caller grants,
-    # and the repository's default token reads contents and packages only.
-    # linux.yml's checker-tests job lists workflow runs, which needs `actions`.
-    permissions:
-      contents: read
-      packages: read
-      actions: read
     uses: ./.github/workflows/linux.yml
 
   android:

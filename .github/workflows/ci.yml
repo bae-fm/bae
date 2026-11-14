@@ -189,3 +189,44 @@ jobs:
 
     - name: Guard — baeium bridge exports no OAuth/CloudKit binding
       run: ./scripts/check-baeium-exports.sh
+
+  checker-tests:
+    # The tests of bae's own checkers: the `test` lines of .checks whose paths a
+    # push touched since the last passing run of this workflow on main. One job,
+    # since starting a job is slow.
+    name: Checker tests
+    # builds uses macOS process and file-lock calls, so it compiles only on a Mac.
+    runs-on: macos-26
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # The agent-instructions commit builds is installed from.
+      BUILDS_REV: 19345a95436a261971ca3e2be6c58e18421dcd7d
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.ref || github.sha }}
+        fetch-depth: 0
+
+    - name: Setup Rust environment
+      uses: ./.github/actions/setup-rust
+
+    - name: Install builds
+      run: >
+        cargo install --locked --root "$RUNNER_TEMP/builds"
+        --git https://github.com/hideselfview/agent-instructions
+        --rev "$BUILDS_REV" builds
+
+    - name: Run the tests of the checkers this push touched
+      run: |
+        since=$(gh run list --workflow build.yml --branch main --status success \
+          --limit 1 --json headSha --jq '.[0].headSha // ""')
+        # No passing run, or one outside this history: every test runs.
+        if [ -z "$since" ] || ! git cat-file -e "$since^{commit}" 2>/dev/null; then
+          since=$(git rev-list --max-parents=0 HEAD | tail -1)
+        fi
+        "$RUNNER_TEMP/builds/bin/builds" checks tests --since "$since" --run
