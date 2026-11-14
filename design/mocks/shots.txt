@@ -42,6 +42,7 @@ android.playback.bar.waiting-on-cloud
 android.playback.cast-picker
 android.playback.casting
 android.playback.full-player
+android.playback.full-player.no-volume
 android.playback.queue
 android.playback.queue.failed
 android.search.open
@@ -209,6 +210,7 @@ mac.playback.bar.side-ended-no-pause
 mac.playback.bar.waiting-on-cloud
 mac.playback.cast-picker
 mac.playback.casting
+mac.playback.casting.no-volume
 mac.playback.queue
 mac.playback.queue.dropping
 mac.playback.queue.nothing-up-next
