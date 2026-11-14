@@ -4330,6 +4330,13 @@ When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
 with *Details* and *Retry*, which reads them again.
 
+Dragging a row in the queue sends nothing until it is dropped: the drop is the
+one reorder, however many rows the held row passed. While it is held, the Mac
+draws a line over the gap where it will land and no row moves, as Mac lists
+show a drop (no line over a gap that leaves it where it is, or before a row not
+read yet); Android's held row follows the finger and the other rows slide apart
+around an open slot where it will land.
+
 The queue screens read each part with its version: a row dragged to a new
 place stays there until the part's read reaches the version the move
 answered, so it never jumps back while the move is on its way, and a move

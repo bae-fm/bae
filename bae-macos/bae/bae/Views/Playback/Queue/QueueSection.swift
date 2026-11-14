@@ -128,20 +128,16 @@ struct QueueSection: View {
                         .clipped()
                         .opacity(isRemoving ? 0 : 1)
                         .animation(.linear(duration: 0.25), value: isRemoving)
-                        // The manual lane's insertion line sits on the bottom
-                        // of the row above the gap; gap 0 uses row 0's top.
+                        // The drop line sits over the gap, on the bottom of
+                        // the row above it; gap 0 uses row 0's top.
                         .overlay(alignment: .bottom) {
-                            if acceptsExternalDrops,
-                                insertGapForLine == slot.displaySlot + 1
-                            {
+                            if insertGapForLine == slot.displaySlot + 1 {
                                 insertionLine
                                     .allowsHitTesting(false)
                             }
                         }
                         .overlay(alignment: .top) {
-                            if acceptsExternalDrops, slot.displaySlot == 0,
-                                insertGapForLine == 0
-                            {
+                            if slot.displaySlot == 0, insertGapForLine == 0 {
                                 insertionLine
                                     .allowsHitTesting(false)
                             }
@@ -241,14 +237,23 @@ struct QueueSection: View {
 
 /// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
-    /// The manual lane's insertion gap from an external drop or a cross-lane
-    /// drag; `nil` hides the line.
+    /// The gap the lane draws its drop line over, `nil` hiding it: the manual
+    /// lane's from an external drop or a cross-lane drag, either lane's from a
+    /// row of its own held over a gap, unless the row after that gap isn't
+    /// loaded yet, where the release moves nothing.
     private var insertGapForLine: Int? {
-        guard acceptsExternalDrops else {
+        if acceptsExternalDrops,
+            let gap = dropInsertIndex
+                ?? coordinator.manualInsertGap(manualCount: count)
+        {
+            return gap
+        }
+        guard let gap = coordinator.dropGap(in: laneId, count: count),
+            gap == count || itemAt(gap) != nil
+        else {
             return nil
         }
-        return dropInsertIndex
-            ?? coordinator.manualInsertGap(manualCount: count)
+        return gap
     }
 
     /// Resolves a finished drag: a reorder commits unless the row after the

@@ -17,8 +17,8 @@ private struct QueueLaneGeometry {
 
 /// The in-flight reorder drag. Owned by the row's own `DragGesture` — no
 /// AppKit drag session, no floating drag image, no item providers: the lane
-/// draws a copy of the row under the cursor, sibling rows shift around its
-/// slot continuously, and the gesture's `onEnded` is the one deterministic
+/// draws a copy of the row under the cursor, a line marks the gap it will land
+/// in while no sibling row moves, and the gesture's `onEnded` is the one deterministic
 /// end-of-drag signal (releases, including outside the pane, always deliver
 /// it).
 private struct ActiveQueueDrag {
@@ -112,7 +112,7 @@ struct QueueFloatingRow: Equatable {
 
 /// Shared drag state for both `QueueSection`s: the active gesture, the row
 /// settling after a release, each lane's measured geometry, and the
-/// post-commit hold. All display effects (sibling shifts, the floating copy's
+/// post-commit hold. All display effects (the drop line, the floating copy's
 /// position, the cross-lane insertion gap) are DERIVED from `active` +
 /// geometry per render — there is no stored permutation to go stale when the
 /// queue changes mid-drag.
@@ -221,10 +221,8 @@ final class QueueDragCoordinator {
         active?.location = location
     }
 
-    /// The display slot the dragged row currently occupies in its own lane:
-    /// the slot under the cursor, clamped to the lane. Sibling rows shift
-    /// around it as this crosses row boundaries — continuously, not on
-    /// enter/leave events.
+    /// The slot the dragged row would take in its own lane: the slot under the
+    /// cursor, clamped to the lane.
     func gapSlot(count: Int) -> Int? {
         guard let active, let geo = geometry[active.lane],
             geo.rowCount > 0,
@@ -239,25 +237,42 @@ final class QueueDragCoordinator {
         return min(max(Int(rel.rounded(.down)), 0), count - 1)
     }
 
-    /// The move the lane's display order shows: the live one while a drag is
-    /// underway here, the held post-commit one while core's echo is in
-    /// flight, else none — canonical order. Derived against the CURRENT
-    /// `count`, so a queue change mid-drag can never leave a move over slots
-    /// the lane no longer has — the drag simply falls back to canonical if
-    /// its start slot no longer exists.
+    /// The move the lane's display order shows: the held post-commit one while
+    /// core's echo is in flight, else none — canonical order. A live drag
+    /// moves no row: the lane marks where the row will land with a line
+    /// (`dropGap`). Derived against the CURRENT `count`, so a queue change
+    /// can never leave a move over slots the lane no longer has.
     func displayMove(for lane: QueueLaneID, count: Int) -> QueueRowMove? {
-        if let active, active.lane == lane {
-            guard !isCrossLaneTargeting,
-                let gap = gapSlot(count: count), gap != active.startSlot
-            else {
-                return nil
-            }
-            return QueueRowMove(from: active.startSlot, to: gap, count: count)
-        }
         if let hold = held[lane], hold.move.count == count {
             return hold.move
         }
         return nil
+    }
+
+    /// The move a release of the live same-lane drag makes: the row from its
+    /// start slot to the slot under the cursor, or none when it would land
+    /// where it is or the drag is aimed at the manual lane.
+    private func dragMove(count: Int) -> QueueRowMove? {
+        guard let active, !isCrossLaneTargeting,
+            let slot = gapSlot(count: count), slot != active.startSlot
+        else {
+            return nil
+        }
+        return QueueRowMove(from: active.startSlot, to: slot, count: count)
+    }
+
+    /// The between-row gap (0...count) the live same-lane drag will drop its
+    /// row into, which the lane draws as a line over the gap; `nil` when the
+    /// release would leave the row where it is, or the drag is aimed at the
+    /// manual lane. The row after the gap is the lane's canonical row at this
+    /// index, whichever way the row moves.
+    func dropGap(in lane: QueueLaneID, count: Int) -> Int? {
+        guard let active, active.lane == lane,
+            let move = dragMove(count: count)
+        else {
+            return nil
+        }
+        return move.to > move.from ? move.to + 1 : move.to
     }
 
     /// The row `lane` draws as a floating copy over its rows region: under
@@ -334,7 +349,7 @@ final class QueueDragCoordinator {
                 landingSlot: active.startSlot
             )
         }
-        guard let move = displayMove(for: active.lane, count: count) else {
+        guard let move = dragMove(count: count) else {
             return .none
         }
         return .reorder(entryId: active.item.id, move: move, lane: active.lane)

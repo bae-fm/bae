@@ -276,8 +276,16 @@ struct QueueDragCoordinatorTests {
             location: CGPoint(x: 200, y: 10.5 * Self.pitch)
         )
         coordinator.update(location: CGPoint(x: 200, y: 12.5 * Self.pitch))
-        let move = coordinator.displayMove(for: .context, count: lane)
+        #expect(
+            coordinator.displayMove(for: .context, count: lane) == nil,
+            "a live drag moves no row"
+        )
+        guard case .reorder(_, let move, _) = coordinator.finish(count: lane)
+        else {
+            Issue.record("expected a same-lane reorder")
+            return
+        }
         #expect(move == QueueRowMove(from: 10, to: 12, count: lane))
-        #expect(move?.source(at: lane - 1) == lane - 1)
+        #expect(move.source(at: lane - 1) == lane - 1)
     }
 }

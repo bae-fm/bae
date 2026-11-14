@@ -42,19 +42,32 @@ internal class QueueOrder {
     /** The lanes whose holds ended while their moves still lie over them, until re-seeded. */
     private val landed = mutableSetOf<OrderLane>()
 
+    /** Where the drag's last step left its row, which its release sends core. */
+    private var pending: LaneDrop? = null
+
     /** The last value [apply] took, which an answer or the end of a drag shows again. */
     private var latest: QueueValue? = null
 
     /**
      * Move the row keyed [fromKey] to where the row keyed [toKey] shows, as a step of a drag does, and
-     * say what core is to be told. A step moves within one lane; one that spans the lanes, names no row
+     * answer where the row then sits. A step moves within one lane; one that spans the lanes, names no row
      * (a section header matches no row key), or would drop a row just before one not read yet
-     * ([ContextLaneOrder.moveBefore]) moves nothing and answers null.
+     * ([ContextLaneOrder.moveBefore]) moves nothing and answers null. Core is told nothing until the drag
+     * ends: [released] answers the one reorder the drag's steps made, and the lane is held from the first
+     * step so core's read can't undo them before then.
      */
     fun drop(
         fromKey: String,
         toKey: String,
-    ): LaneDrop? = manualDrop(fromKey, toKey) ?: contextDrop(fromKey, toKey)
+    ): LaneDrop? {
+        val drop = manualDrop(fromKey, toKey) ?: contextDrop(fromKey, toKey) ?: return null
+        if (pending?.lane != drop.lane) moveSent(drop.lane)
+        pending = drop
+        return drop
+    }
+
+    /** The drag ended: the reorder to send core, where the dragged row now sits, or null when it moved nothing. */
+    fun released(): LaneDrop? = pending.also { pending = null }
 
     /** [drop] within Up Next, which is read whole, so the row after the drop is always known. */
     private fun manualDrop(
@@ -86,7 +99,7 @@ internal class QueueOrder {
         dragging = true
     }
 
-    /** The sheet sent core a reorder of a row of [lane]. */
+    /** A reorder of a row of [lane] is held until core answers it: the drag's first step makes it. */
     fun moveSent(lane: OrderLane) {
         holds.getOrPut(lane) { LaneHold() }.unanswered++
     }

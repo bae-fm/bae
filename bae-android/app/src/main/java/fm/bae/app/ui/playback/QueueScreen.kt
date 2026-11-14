@@ -94,6 +94,8 @@ fun QueueScreen(
 internal class ReorderableQueue(
     val order: QueueOrder,
     val reorderState: ReorderableLazyListState,
+    /** A drag ended: sends core the one reorder its steps made. */
+    val onDropped: () -> Unit,
     val failures: QueueFailures,
     /** The queue's last read failed, so its order is no longer known to be current; shown in its place. */
     val readFailure: DisplayError?,
@@ -115,15 +117,16 @@ internal fun rememberReorderableQueue(
     val scope = rememberCoroutineScope()
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
-            // Each move is held over its lane until core's read shows it; one that moved nothing, or
-            // that failed (and shows its error), shows the lane's read at once.
-            val drop = order.drop(from.key as? String ?: "", to.key as? String ?: "")
-            if (drop == null) {
+            // A step of the drag moves the rows on screen only; its release sends the one reorder.
+            if (order.drop(from.key as? String ?: "", to.key as? String ?: "") == null) {
                 logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")
-                return@rememberReorderableLazyListState
             }
+        }
+    // The move is held over its lane until core's read shows it; one that failed (and shows its error)
+    // shows the lane's read at once.
+    val onDropped: () -> Unit = {
+        order.released()?.let { drop ->
             val beforeEntryId = (drop.place as? LanePlace.Before)?.entryId
-            order.moveSent(drop.lane)
             scope.launch {
                 val version =
                     failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
@@ -132,6 +135,7 @@ internal fun rememberReorderableQueue(
                 if (version != null) order.moveAnswered(drop.lane, version) else order.moveFailed(drop.lane)
             }
         }
+    }
 
     // Values wait out a drag, then re-seed the lanes; a page of the tail fills only its rows.
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
@@ -141,7 +145,7 @@ internal fun rememberReorderableQueue(
             order.apply(queue.manual, queue.context, queue.manualVersion, queue.contextVersion)
         }
     }
-    return ReorderableQueue(order, reorderState, failures, readFailure, queue.shuffled)
+    return ReorderableQueue(order, reorderState, onDropped, failures, readFailure, queue.shuffled)
 }
 
 // The queue's lanes, an empty message, or the failure of its last read, below the caller's now-playing header;
@@ -154,7 +158,6 @@ internal fun LazyListScope.queueContent(
     onSkipped: (() -> Unit)?,
 ) {
     val order = queue.order
-    val reorderState = queue.reorderState
     val failures = queue.failures
     item(key = "command-failure") { QueueCommandFailure(failures) }
     queue.readFailure?.let { failure ->
@@ -186,8 +189,7 @@ internal fun LazyListScope.queueContent(
         queueRows(
             session,
             QueueLane(size = order.manual.size, itemAt = order.manual::get, changes = 0uL, loadRange = null),
-            reorderState,
-            failures,
+            queue,
             onSkipped,
         )
     }
@@ -229,8 +231,7 @@ private fun LazyListScope.contextLane(
             changes = order.contextVersion ?: 0uL,
             loadRange = { offset, limit -> session.playback.loadUpcomingRange(offset, limit) },
         ),
-        queue.reorderState,
-        queue.failures,
+        queue,
         onSkipped,
     )
     item(key = "upcoming-failure") { UpcomingFailureNotice(session) }
@@ -249,10 +250,10 @@ private class QueueLane(
 private fun LazyListScope.queueRows(
     session: OpenLibrary,
     lane: QueueLane,
-    reorderState: ReorderableLazyListState,
-    failures: QueueFailures,
+    queue: ReorderableQueue,
     onSkipped: (() -> Unit)?,
 ) {
+    val failures = queue.failures
     items(count = lane.size, key = { index -> lane.itemAt(index)?.entryId ?: "placeholder-$index" }) { index ->
         val item = lane.itemAt(index)
         val scope = rememberCoroutineScope()
@@ -265,7 +266,7 @@ private fun LazyListScope.queueRows(
             }
             AndroidQueuePlaceholderRow()
         } else {
-            ReorderableItem(reorderState, key = item.entryId) { isDragging ->
+            ReorderableItem(queue.reorderState, key = item.entryId) { isDragging ->
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                     AndroidQueueRow(
                         title = item.display.title,
@@ -273,7 +274,7 @@ private fun LazyListScope.queueRows(
                         album = item.display.albumTitle,
                         cover = item.display.coverImage,
                         duration = LocalContext.current.durationClockLabel(item.durationClock),
-                        dragHandleModifier = Modifier.draggableHandle(),
+                        dragHandleModifier = Modifier.draggableHandle(onDragStopped = queue.onDropped),
                         onClick = {
                             scope.launch {
                                 failures

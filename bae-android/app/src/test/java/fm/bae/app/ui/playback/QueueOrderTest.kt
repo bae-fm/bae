@@ -177,4 +177,42 @@ class QueueOrderTest {
         assertEquals(LanePlace.End, lane.moveBefore(from = 0, to = 2))
         assertEquals(listOf("b", "c", "a"), lane.shown())
     }
+
+    @Test
+    fun aDragSendsCoreOneReorderAtItsReleaseHoldingTheLaneThroughIt() {
+        val order = QueueOrder()
+        order.apply(
+            listOf(entry("m"), entry("n"), entry("o"), entry("p")),
+            context(total = 0),
+            manualVersion = 1u,
+            contextVersion = 1u,
+        )
+        order.dragging()
+        // The held row passes "n" then "o": the rows move on screen, and nothing is sent.
+        order.drop("m", "n")
+        order.drop("m", "o")
+        assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
+        // The drag's end re-seeds the lanes from core's read, which the lane's hold keeps from undoing the moves.
+        order.apply(listOf(entry("m"), entry("n"), entry("o"), entry("p")), context(total = 0), manualVersion = 1u, contextVersion = 1u)
+        assertEquals("the moves stay until core answers", listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
+
+        assertEquals(
+            "one reorder, for where the row now sits",
+            LaneDrop(OrderLane.MANUAL, "m", LanePlace.Before("p")),
+            order.released(),
+        )
+        assertNull("a release sends once", order.released())
+        order.moveAnswered(OrderLane.MANUAL, version = 2u)
+        order.apply(listOf(entry("n"), entry("o"), entry("m"), entry("p")), context(total = 0), manualVersion = 2u, contextVersion = 1u)
+        assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
+    }
+
+    @Test
+    fun aDragThatMovedNothingSendsNothing() {
+        val order = QueueOrder()
+        order.apply(listOf(entry("m"), entry("n")), context(total = 0), manualVersion = 1u, contextVersion = 1u)
+        order.dragging()
+        assertNull(order.drop("m", "header"))
+        assertNull(order.released())
+    }
 }
