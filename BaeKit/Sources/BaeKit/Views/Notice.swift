@@ -194,9 +194,12 @@ public struct Notice: View {
     }
 
     /// The glyph is 1.19 times the notice's text, which the boards draw it at.
-    private static var glyphFont: Font {
+    private static var glyphFont: Font { glyphFont(scaledTo: .body) }
+
+    /// The glyph at 1.19 times the size of `text`, the words beside it.
+    private static func glyphFont(scaledTo text: ThemeText) -> Font {
         #if canImport(AppKit)
-            .system(size: ThemeText.body.macOSSize * 1.19, weight: .semibold)
+            .system(size: text.macOSSize * 1.19, weight: .semibold)
         #else
             ThemeIcon.medium.font
         #endif
@@ -355,11 +358,13 @@ extension Notice {
             ) {
                 if onStage, let symbol = tone.outlineSymbol {
                     Image(systemName: symbol)
+                        .font(Self.glyphFont(scaledTo: .heading))
                         .foregroundStyle(Theme.onFillSecondary)
                         .accessibilityHidden(true)
                 }
                 else {
                     StatusGlyph(tone, outline: true, muted: true)
+                        .font(Self.glyphFont(scaledTo: .heading))
                         .accessibilityHidden(true)
                 }
                 Text(verbatim: centeredTitle)
