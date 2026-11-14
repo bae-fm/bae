@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -58,6 +60,9 @@ internal fun AndroidSegmentedButtons(
                     onClick = { onSelect(index) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                     colors = colors,
+                    // Material draws the chosen segment above the others, which lists it last in the semantics tree;
+                    // the reading order is the segments' order on screen.
+                    modifier = Modifier.semantics { traversalIndex = index.toFloat() },
                 ) {
                     Text(option)
                 }

@@ -45,9 +45,10 @@ internal object ElementList {
         ) {
             val here = Listed(element(node, density), parent)
             listed.add(here)
-            node.children.forEach { visit(it, here) }
+            // A node's children read in their traversal order, as TalkBack reads them, not in the order they are drawn.
+            node.children.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }.forEach { visit(it, here) }
         }
-        root.children.forEach { visit(it, null) }
+        root.children.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }.forEach { visit(it, null) }
         // The tree keeps a bare, childless node where an embedded view sits; its elements are read there, in
         // the view's order. A view with no such node is read where the reading order reaches its box.
         var from = 0
