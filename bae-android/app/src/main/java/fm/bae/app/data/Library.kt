@@ -11,17 +11,16 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeArtistBrowseSnapshot
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
-import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
+import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerDetail
-import uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot
+import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
-import uniffi.bae_bridge.BridgeDownloadBrowseSnapshot
+import uniffi.bae_bridge.BridgeComposerSummary
+import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeList
 import uniffi.bae_bridge.BridgeListPosition
@@ -237,26 +236,28 @@ class Library(
      */
     internal fun albumDetails(id: String): DetailEvents<BridgeAlbumDetail> = detailFlow(::albumDetail, id)
 
-    internal fun composerBrowse(sortCriterion: BridgeComposerSortCriterion): ComposerBrowseQuery =
-        handle.subscribeComposerBrowse(listOf(sortCriterion)).let {
-            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+    /** The composer list under one sort. */
+    internal fun composerList(sortCriterion: BridgeComposerSortCriterion): ListReads<BridgeComposerSummary> =
+        listReads(BridgeList.Composers(listOf(sortCriterion))) { rows ->
+            (rows as? BridgeListRows.Composers)?.rows ?: error("the composer list delivered rows of another list")
         }
 
-    /** One composer's page rows, in windows that move as its screen scrolls. */
-    internal fun composerDetailRows(artistId: String): ComposerDetailRowsQuery =
-        handle.subscribeComposerDetailRows(artistId).let {
-            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+    /** One composer's page rows. */
+    internal fun composerPageList(artistId: String): ListReads<BridgeComposerDetailRow> =
+        listReads(BridgeList.ComposerPage(artistId)) { rows ->
+            (rows as? BridgeListRows.ComposerPage)?.rows ?: error("a composer's page delivered rows of another list")
         }
 
-    internal fun artistBrowse(sortCriterion: BridgeArtistSortCriterion): ArtistBrowseQuery =
-        handle.subscribeArtistBrowse(listOf(sortCriterion)).let {
-            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+    /** The artist list under one sort. */
+    internal fun artistList(sortCriterion: BridgeArtistSortCriterion): ListReads<BridgeArtistSummary> =
+        listReads(BridgeList.Artists(listOf(sortCriterion))) { rows ->
+            (rows as? BridgeListRows.Artists)?.rows ?: error("the artist list delivered rows of another list")
         }
 
-    /** The download queue as the Downloads screen draws it, in windows that move as it scrolls. */
-    internal fun downloadBrowse(): DownloadBrowseQuery =
-        handle.subscribeDownloadBrowse().let {
-            BridgeBrowseQuery(it::setWindows, pulled(it::next, it::cancel))
+    /** The download queue as the Downloads screen draws it, in the order queued. */
+    internal fun downloadList(): ListReads<BridgeDownloadOp> =
+        listReads(BridgeList.Downloads) { rows ->
+            (rows as? BridgeListRows.Downloads)?.rows ?: error("the download queue delivered rows of another list")
         }
 
     internal fun composerDetails(id: String): DetailEvents<BridgeComposerDetail> = detailFlow(::composerDetail, id)
@@ -289,27 +290,6 @@ class Library(
             awaitClose(search::release)
         }
 }
-
-/** A live browse over one library list whose windows change in place; each value answers them all. */
-internal interface CollectionBrowseQuery<Snapshot> : PulledSubscription<Snapshot> {
-    fun setWindows(windows: List<BridgeLibraryPageWindow>)
-}
-
-private class BridgeBrowseQuery<Snapshot>(
-    private val set: (List<BridgeLibraryPageWindow>) -> Unit,
-    pulls: PulledSubscription<Snapshot>,
-) : CollectionBrowseQuery<Snapshot>,
-    PulledSubscription<Snapshot> by pulls {
-    override fun setWindows(windows: List<BridgeLibraryPageWindow>) = set(windows)
-}
-
-internal typealias ComposerBrowseQuery = CollectionBrowseQuery<BridgeComposerBrowseSnapshot>
-
-internal typealias ComposerDetailRowsQuery = CollectionBrowseQuery<BridgeComposerDetailRowsSnapshot>
-
-internal typealias ArtistBrowseQuery = CollectionBrowseQuery<BridgeArtistBrowseSnapshot>
-
-internal typealias DownloadBrowseQuery = CollectionBrowseQuery<BridgeDownloadBrowseSnapshot>
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */
 internal interface LibrarySearch : PulledSubscription<BridgeLibrarySearchSnapshot> {

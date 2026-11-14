@@ -19,6 +19,19 @@ impl AppHandle {
             BridgeList::AlbumGrid { sort, group_by_artist } => self
                 .services
                 .subscribe_album_window(&BridgeList::album_sort(sort), group_by_artist, window),
+            BridgeList::Artists { sort } => {
+                self.services.subscribe_artist_window(&BridgeList::artist_sort(sort), window)
+            }
+            BridgeList::Composers { sort } => {
+                self.services.subscribe_composer_window(&BridgeList::composer_sort(sort), window)
+            }
+            BridgeList::ComposerPage { artist_id } => {
+                self.services.subscribe_composer_page_window(&artist_id, window)
+            }
+            BridgeList::Downloads => self.services.subscribe_download_window(window),
+            BridgeList::ArtistSearch { text } => self
+                .services
+                .subscribe_artist_search_window(BridgeList::artist_search_query(&text), window),
         };
         crate::screens::list_window(live, self.runtime.clone())
     }
@@ -28,6 +41,15 @@ impl AppHandle {
         let live = match list {
             BridgeList::AlbumGrid { group_by_artist, .. } => {
                 self.services.subscribe_album_count(group_by_artist)
+            }
+            BridgeList::Artists { .. } => self.services.subscribe_artist_count(),
+            BridgeList::Composers { .. } => self.services.subscribe_composer_count(),
+            BridgeList::ComposerPage { artist_id } => {
+                self.services.subscribe_composer_page_count(&artist_id)
+            }
+            BridgeList::Downloads => self.services.subscribe_download_count(),
+            BridgeList::ArtistSearch { text } => {
+                self.services.subscribe_artist_search_count(BridgeList::artist_search_query(&text))
             }
         };
         crate::screens::list_count(live, self.runtime.clone())
@@ -44,6 +66,19 @@ impl AppHandle {
             BridgeList::AlbumGrid { sort, group_by_artist } => self
                 .services
                 .subscribe_album_position(&BridgeList::album_sort(sort), group_by_artist, key),
+            BridgeList::Artists { sort } => {
+                self.services.subscribe_artist_position(&BridgeList::artist_sort(sort), key)
+            }
+            BridgeList::Composers { sort } => {
+                self.services.subscribe_composer_position(&BridgeList::composer_sort(sort), key)
+            }
+            BridgeList::ComposerPage { artist_id } => {
+                self.services.subscribe_composer_page_position(&artist_id, key)
+            }
+            BridgeList::Downloads => self.services.subscribe_download_position(key),
+            BridgeList::ArtistSearch { text } => self
+                .services
+                .subscribe_artist_search_position(BridgeList::artist_search_query(&text), key),
         };
         crate::screens::list_position(live, self.runtime.clone())
     }
@@ -57,55 +92,6 @@ impl AppHandle {
         let sort: Vec<_> = sort_criteria.into_iter().map(BridgeSortCriterion::into_core).collect();
         crate::screens::album_sections(
             self.services.subscribe_album_sections(&sort),
-            self.runtime.clone(),
-        )
-    }
-
-    /// The artist list under `sort_criteria`, reading no windows until
-    /// `set_windows`.
-    pub fn subscribe_artist_browse(
-        &self,
-        sort_criteria: Vec<BridgeArtistSortCriterion>,
-    ) -> Arc<crate::ArtistBrowseSubscription> {
-        let sort: Vec<_> =
-            sort_criteria.into_iter().map(BridgeArtistSortCriterion::into_core).collect();
-        crate::screens::artist_browse(
-            self.services.subscribe_artist_browse(&sort),
-            self.runtime.clone(),
-        )
-    }
-
-    /// The composer list under `sort_criteria`, reading no windows until
-    /// `set_windows`.
-    pub fn subscribe_composer_browse(
-        &self,
-        sort_criteria: Vec<BridgeComposerSortCriterion>,
-    ) -> Arc<crate::ComposerBrowseSubscription> {
-        let sort: Vec<_> =
-            sort_criteria.into_iter().map(BridgeComposerSortCriterion::into_core).collect();
-        crate::screens::composer_browse(
-            self.services.subscribe_composer_browse(&sort),
-            self.runtime.clone(),
-        )
-    }
-
-    /// The rows of `artist_id`'s composer page, reading no windows until
-    /// `set_windows`.
-    pub fn subscribe_composer_detail_rows(
-        &self,
-        artist_id: String,
-    ) -> Arc<crate::ComposerDetailRowsSubscription> {
-        crate::screens::composer_detail_rows(
-            self.services.subscribe_composer_detail_rows(&artist_id),
-            self.runtime.clone(),
-        )
-    }
-
-    /// A read of the download queue that reads no windows until
-    /// `set_windows`.
-    pub fn subscribe_download_browse(&self) -> Arc<crate::DownloadBrowseSubscription> {
-        crate::screens::download_browse(
-            self.services.subscribe_download_browse(),
             self.runtime.clone(),
         )
     }
@@ -125,12 +111,6 @@ impl AppHandle {
             self.services.subscribe_library_search(),
             self.runtime.clone(),
         )
-    }
-
-    /// A live artist search with no text and no windows until `set_view`
-    /// names them.
-    pub fn subscribe_artist_search(&self) -> Arc<crate::ArtistSearchSubscription> {
-        crate::screens::artist_search(self.services.subscribe_artist_search(), self.runtime.clone())
     }
 
     /// The album detail view's read, showing nothing until `set_id`.

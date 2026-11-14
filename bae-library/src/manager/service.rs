@@ -498,17 +498,40 @@ impl LibraryManager {
         self.downloads.subscribe()
     }
 
-    /// Follow how many downloads the queue holds and the windows `initial`
-    /// names of them, as the Downloads pane draws them.
-    pub fn subscribe_download_windows(
+    /// Follow one window of the download queue's entries as the Downloads
+    /// pane draws them: a range of the order queued.
+    pub fn subscribe_download_window(
         &self,
-        initial: bae_store::LibraryPageWindows,
+        initial: bae_store::ListWindow,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        bae_transfers::ReleaseQueueWindows<bae_transfers::DownloadRequest>,
+        bae_store::ListWindow,
+        bae_store::WindowRead<bae_transfers::DownloadRow>,
         bae_store::DbError,
     > {
-        self.downloads.subscribe_windows(initial)
+        self.downloads.subscribe_window(initial)
+    }
+
+    /// Follow how many downloads the queue holds.
+    pub fn subscribe_download_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
+        self.downloads.subscribe_row_count()
+    }
+
+    /// Follow how many downloads come before the row at `key`.
+    pub fn subscribe_download_position(
+        &self,
+        key: bae_store::list_windows::OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
+    {
+        self.downloads.subscribe_position(key)
+    }
+
+    /// The key of the download at `position`, or of the last one; `None`
+    /// for an empty queue.
+    pub async fn download_key_at(
+        &self,
+        position: u64,
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError> {
+        Ok(self.downloads.key_at(position).await?)
     }
 
     /// How many downloads are in each phase now, and whether the queue is

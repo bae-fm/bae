@@ -1,13 +1,13 @@
-//! The artist picker's live search: one subscription moved between texts and
-//! windows, and woken by writes to what it finds.
+//! The artist picker's live search: each window of what its text finds, the
+//! count and the position of a key their own queries, woken by writes to what
+//! it finds.
 
+use crate::LibrarySearchQuery;
 use crate::*;
-use crate::{ArtistSearchView, LibrarySearchQuery};
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::live_query::write_artist_image;
 use bae_records::test_fixtures::{credit, test_records};
 use bae_store::test_fixtures::temp_db;
-use bae_store::LibraryPageWindow;
 use bae_util::test_channels::HANG_GUARD;
 
 const FIRST: &str = "1a7c1f53-6d0e-4f43-9a52-0c3f3a9f0a01";
@@ -27,62 +27,146 @@ async fn seeded() -> (Store, tempfile::TempDir) {
     (db, tmp)
 }
 
-fn window(offset: u64, limit: u64) -> LibraryPageWindow {
-    LibraryPageWindow::at(offset, limit)
+fn query(text: &str) -> Option<LibrarySearchQuery> {
+    LibrarySearchQuery::parse(text)
 }
 
-fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
-    ArtistSearchView {
-        query: LibrarySearchQuery::parse(text),
-        windows: windows.iter().cloned().collect(),
-    }
+/// A window of the first `limit` rows found.
+fn first(limit: u64) -> ListWindow {
+    ListWindow::Forward { from: None, until: None, limit }
 }
 
-fn ids(window: &bae_store::LibraryBrowseWindow<DbArtistSearchRow>) -> Vec<&str> {
+fn ids(window: &WindowRead<DbArtistSearchRow>) -> Vec<&str> {
     window.rows.iter().map(|row| row.artist.id.as_str()).collect()
 }
 
-/// Each window answers with its slice of what the text finds, and the count is
-/// of everything found; a new text on the same subscription reads its own, and
-/// no text finds nothing while still answering every window.
-#[tokio::test]
-async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
-    let (db, _tmp) = seeded().await;
-    let mut live = LibraryViews::new(db.clone())
-        .subscribe_artist_search(view("artist name", &[window(0, 2), window(2, 2)]));
-    let requests = live.requests();
-
-    let found = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(found.total_count, 3);
-    assert_eq!(found.windows.len(), 2);
-    assert_eq!(ids(&found.windows[0]), vec![FIRST, SECOND]);
-    assert_eq!(ids(&found.windows[1]), vec![THIRD]);
-
-    requests.set(view("composer", &[window(0, 2)])).unwrap();
-    let other = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(other.total_count, 1);
-    assert_eq!(ids(&other.windows[0]), vec![OTHER]);
-
-    requests.set(view("   ", &[window(0, 2)])).unwrap();
-    let none = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(none.total_count, 0);
-    assert_eq!(none.windows.len(), 1, "every window answers");
-    assert!(none.windows[0].rows.is_empty());
+/// The first window of what `text` finds, read once.
+async fn found(db: &Store, text: &str) -> WindowRead<DbArtistSearchRow> {
+    LibraryViews::new(db.clone())
+        .subscribe_artist_search_window(query(text), first(10))
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
 }
 
-/// A window whose offset is past what SQLite counts finds no rows, rather than
-/// the list's first.
+/// Each window answers with its slice of what the text finds, and the count
+/// is of everything found, a query of its own; another text is other queries,
+/// and no text finds nothing while still answering.
 #[tokio::test]
-async fn a_window_far_past_the_end_is_empty() {
+async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     let (db, _tmp) = seeded().await;
-    let mut live = LibraryViews::new(db.clone()).subscribe_artist_search(view(
-        "artist name",
-        &[window(1 << 63, 2), window(u64::MAX, u64::MAX)],
-    ));
+    let views = LibraryViews::new(db.clone());
+    let mut top = views.subscribe_artist_search_window(query("artist name"), first(2));
+    let top = top.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(ids(&top), vec![FIRST, SECOND]);
+    let beyond = top.beyond.clone().expect("the limit cut the window short");
+    let below = views
+        .subscribe_artist_search_window(
+            query("artist name"),
+            ListWindow::Forward { from: Some(beyond), until: None, limit: 2 },
+        )
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(ids(&below), vec![THIRD]);
+    let count = views
+        .subscribe_artist_search_count(query("artist name"))
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(count, 3);
 
-    let found = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(found.total_count, 3);
-    assert!(found.windows.iter().all(|window| window.rows.is_empty()));
+    assert_eq!(ids(&found(&db, "composer").await), vec![OTHER]);
+    let none = found(&db, "   ").await;
+    assert!(none.rows.is_empty());
+    let count = views.subscribe_artist_search_count(query("   ")).next().await.unwrap().unwrap();
+    assert_eq!(count, 0);
+}
+
+/// The position of a key in what the text finds counts the artists before it,
+/// and a key at an offset is the row there.
+#[tokio::test]
+async fn artist_search_positions_and_jumps_by_key() {
+    let (db, _tmp) = seeded().await;
+    let views = LibraryViews::new(db.clone());
+    let second =
+        views.artist_search_key_at(query("artist name"), 1).await.unwrap().expect("a row at 1");
+    let position = views
+        .subscribe_artist_search_position(query("artist name"), second.clone())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(position, 1);
+    let from_there = views
+        .subscribe_artist_search_window(
+            query("artist name"),
+            ListWindow::Forward { from: Some(second), until: None, limit: 10 },
+        )
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(ids(&from_there), vec![SECOND, THIRD]);
+    let last = views.artist_search_key_at(query("artist name"), 99).await.unwrap();
+    assert_eq!(
+        last,
+        views.artist_search_key_at(query("artist name"), 2).await.unwrap(),
+        "a position past the end is the last row's key"
+    );
+    assert_eq!(views.artist_search_key_at(query("   "), 0).await.unwrap(), None);
+}
+
+/// A new artist the text finds lands in the one window whose range its sort
+/// values fall in, and the count follows. Every window of a search reruns for
+/// the write, and delivers only what changed: the search's order ranks by an
+/// expression of the text, which coven's narrowing of a live query to the
+/// range it reads does not reach.
+#[tokio::test]
+async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows() {
+    let (db, _tmp) = seeded().await;
+    let views = LibraryViews::new(db.clone());
+    let second =
+        views.artist_search_key_at(query("artist name"), 1).await.unwrap().expect("a row there");
+    let third =
+        views.artist_search_key_at(query("artist name"), 2).await.unwrap().expect("a row there");
+    let mut windows: Vec<_> = [
+        ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
+        ListWindow::Forward { from: Some(second), until: Some(third.clone()), limit: 50 },
+        ListWindow::Forward { from: Some(third), until: None, limit: 50 },
+    ]
+    .into_iter()
+    .map(|window| views.subscribe_artist_search_window(query("artist name"), window))
+    .collect();
+    let mut count = views.subscribe_artist_search_count(query("artist name"));
+    for window in &mut windows {
+        tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap().result.unwrap();
+    }
+    count.next().await.expect("the query stays open").unwrap();
+
+    // "Artist Name BB" sorts between B and C.
+    test_records(&db).find_or_create_artists(&[credit("Artist Name BB")]).await.unwrap();
+    // The windows above and below hold what they held, so a rerun of either
+    // delivers nothing new; the middle one delivers the artist.
+    let middle = tokio::time::timeout(HANG_GUARD, windows[1].next())
+        .await
+        .expect("a write the text finds reruns the window")
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert_eq!(
+        middle.rows.iter().map(|row| row.artist.name.as_str()).collect::<Vec<_>>(),
+        ["Artist Name B", "Artist Name BB"]
+    );
+    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
+    assert_eq!(counted, 4);
 }
 
 /// A new artist the text finds, and another printed name of a found artist,
@@ -91,15 +175,12 @@ async fn a_window_far_past_the_end_is_empty() {
 async fn artist_search_follows_writes_to_what_it_finds() {
     let (db, _tmp) = seeded().await;
     let records = test_records(&db);
-    let mut live = LibraryViews::new(db.clone())
-        .subscribe_artist_search(view("artist name", &[window(0, 10)]));
-    let first = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(first.total_count, 3);
-    assert!(first
-        .windows
-        .iter()
-        .flat_map(|window| &window.rows)
-        .all(|row| row.credit_names.is_empty()));
+    let views = LibraryViews::new(db.clone());
+    let mut live = views.subscribe_artist_search_window(query("artist name"), first(10));
+    let mut count = views.subscribe_artist_search_count(query("artist name"));
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+    assert!(initial.rows.iter().all(|row| row.credit_names.is_empty()));
 
     records.find_or_create_artists(&[credit("Artist Name D")]).await.unwrap();
     let added = tokio::time::timeout(HANG_GUARD, live.next())
@@ -108,7 +189,8 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(added.total_count, 4);
+    assert_eq!(added.rows.len(), 4);
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 4);
 
     records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Artist Alias").unwrap())
@@ -121,9 +203,8 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .result
         .unwrap();
     let names = &named
-        .windows
+        .rows
         .iter()
-        .flat_map(|window| &window.rows)
         .find(|row| row.artist.id == FIRST)
         .expect("the artist is found")
         .credit_names;
@@ -147,18 +228,8 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
         .unwrap();
     let image = write_artist_image(&records, FIRST, "artist image bytes").await;
 
-    let found = LibraryViews::new(db.clone())
-        .subscribe_artist_search(view("artist name", &[window(0, 10)]))
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let first = found.windows[0]
-        .rows
-        .iter()
-        .find(|row| row.artist.id == FIRST)
-        .expect("the artist is found");
+    let found = found(&db, "artist name").await;
+    let first = found.rows.iter().find(|row| row.artist.id == FIRST).expect("the artist is found");
     assert_eq!(first.image_version.as_deref(), Some(image.as_str()));
     assert_eq!(
         first.credit_names.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
@@ -178,15 +249,8 @@ async fn the_picker_folds_case_past_ascii() {
         .write(&test_records(&db))
         .await;
 
-    let found = LibraryViews::new(db.clone())
-        .subscribe_artist_search(view("émile", &[window(0, 10)]))
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
     assert_eq!(
-        ids(&found.windows[0]),
+        ids(&found(&db, "émile").await),
         vec!["7ad27fb9-cd6e-4fa9-9ab8-6c9f9a5f6a07", "6fc16ea8-bc5d-4e98-8fa7-5b8e8f4e5f06"]
     );
 }

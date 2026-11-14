@@ -166,14 +166,6 @@ pub struct ReleaseQueueSnapshot<Extra, Progress> {
     pub paused: bool,
 }
 
-/// How many entries a queue holds, and the windows its pane draws of them in
-/// the order queued, each beside its release.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReleaseQueueWindows<Extra> {
-    pub windows: Vec<bae_store::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
-    pub total_count: u64,
-}
-
 /// One release's entries in the download and export queues: what the
 /// storage inspector shows of the release.
 #[cfg(desktop)]

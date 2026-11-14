@@ -191,12 +191,12 @@ extension PreviewData {
 
     /// The library an artist field's search reads in shots.
     static func artistAssignmentsLibrary() -> Library {
-        Library(artistSearch: { artistSearch() })
+        Library(artistSearch: { _ in artistSearch() })
     }
 
     /// Two library artists of one name for an artist field's search,
     /// whatever is typed; the first with another printed name.
-    static func artistSearch() -> ArtistSearchQuery {
+    static func artistSearch() -> BridgeListQueries<BridgeArtistSearchResult> {
         .fixed(
             [
                 BridgeArtistSearchResult(

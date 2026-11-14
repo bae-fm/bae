@@ -112,10 +112,7 @@ public final class LibraryProjectionStore {
         composerRowsArtistId = id
         composerRowsLoad?.cancel()
         let list = ComposerDetailRowList(
-            pageSource: LibraryComposerDetailPageSource(
-                library: library,
-                artistId: id
-            ),
+            queries: library.composerPageList(id),
             onError: { [weak self] error in
                 guard let self else { return }
                 composer = LibraryProjectionState(

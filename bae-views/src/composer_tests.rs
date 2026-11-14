@@ -16,7 +16,6 @@ use bae_store::test_fixtures::*;
 use bae_types::credit_role::part::{Instrument, Part};
 use bae_types::credit_role::{CreditRole, CreditRoleKind, CreditedAs};
 use bae_util::test_channels::HANG_GUARD;
-use std::collections::BTreeSet;
 
 const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
 const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
@@ -471,44 +470,15 @@ async fn composer_page_sorts_names_descending_with_ids_ascending() {
     );
 }
 
-/// [`next_album_page_is_only_a_rename`] for the composer grid: credit the one
-/// composer `shown` holds on the work `work`, which it then counts.
-async fn next_composer_page_is_only_a_work(
-    records: &bae_records::Records,
-    live: &mut coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        ComposerBrowseProjection,
-        bae_store::DbError,
-    >,
-    shown: ComposerBrowseProjection,
-    work: &str,
-) -> ComposerBrowseProjection {
-    let composer_id = shown.windows[0].rows[0].artist.id.clone();
-    RecordsFixture::new()
-        .work(work, "Work Title Probe")
-        .composer(work, &composer_id)
-        .write(records)
-        .await;
-    let counted = tokio::time::timeout(HANG_GUARD, live.next())
-        .await
-        .expect("a work credited on the shown composer wakes composer browse")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let mut expected = shown;
-    expected.windows[0].rows[0].work_count += 1;
-    assert_eq!(counted, expected, "the page carries more than the work");
-    counted
-}
-
 /// The MusicBrainz artist the browse test's second composer is.
 const SECOND_COMPOSER_MUSICBRAINZ: &str = "mb-composer-second";
 
-/// The composer browse reads the windows asked for: another device naming a
-/// shown composer otherwise moves it, and a write to a composer outside every
-/// window delivers nothing.
+/// The composer list's windows each follow their own range: another device
+/// naming a composer moves it in the window holding it, and a write to a
+/// composer in one window reruns that window and no other. Descending by
+/// name, the second composer ("Second", then renamed) is above the first.
 #[test]
-fn composer_browse_subscription_reconfigures_bounded_windows() {
+fn composer_windows_follow_the_composers_in_their_ranges() {
     bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
         let db = devices.a();
         let records = test_records(db);
@@ -529,28 +499,24 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
             field: ComposerSortField::Name,
             direction: SortDirection::Descending,
         }];
-        let second_window = LibraryPageWindow::at(1, 1);
-        let initial_request = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
-        let mut live = crate::LibraryViews::new(db.clone())
-            .subscribe_composer_browse(&sort, initial_request.clone());
-        let requests = live.requests();
-        let initial_event = live.next().await.expect("the query stays open");
-        assert_eq!(initial_event.request, initial_request);
-        assert_eq!(initial_event.revision.0, 0);
-        let initial = initial_event.result.unwrap();
-        assert_eq!(initial.total_count, 2);
-        assert_eq!(initial.windows[0].rows[0].artist.id, COMPOSER_ID);
-
-        let both_pages = [LibraryPageWindow::at(0, 1), second_window.clone()]
-            .into_iter()
-            .collect::<BTreeSet<_>>();
-        let both_pages_revision = requests.set(both_pages.clone()).unwrap();
-        let both_event = live.next().await.expect("the query stays open");
-        assert_eq!(both_event.revision, both_pages_revision);
-        let both = both_event.result.unwrap();
-        assert_eq!(both.windows.len(), 2);
-        assert_eq!(both.windows[0].rows[0].artist.id, other);
-        assert_eq!(both.windows[1].rows[0].artist.id, COMPOSER_ID);
+        let views = crate::LibraryViews::new(db.clone());
+        let first_composer = views
+            .composer_key_at(&sort, 1)
+            .await
+            .unwrap()
+            .expect("the second row is the first composer");
+        let above =
+            ListWindow::Forward { from: None, until: Some(first_composer.clone()), limit: 50 };
+        let below = ListWindow::Forward { from: Some(first_composer), until: None, limit: 50 };
+        let mut above = views.subscribe_composer_window(&sort, above);
+        let mut below = views.subscribe_composer_window(&sort, below);
+        let mut count = views.subscribe_composer_count();
+        let id_of = |window: &WindowRead<DbComposerSummary>| window.rows[0].artist.id.clone();
+        let initial_above = above.next().await.expect("the query stays open").result.unwrap();
+        let initial_below = below.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 2);
+        assert_eq!(id_of(&initial_above), other);
+        assert_eq!(id_of(&initial_below), COMPOSER_ID);
 
         // B, apart, meets the second composer under another name; the later
         // write's name lands on A.
@@ -562,27 +528,18 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
         )
         .await;
         devices.resume().await;
-        let renamed_event = tokio::time::timeout(HANG_GUARD, async {
+        let renamed = tokio::time::timeout(HANG_GUARD, async {
             loop {
-                let event = live.next().await.expect("the query stays open");
-                let shown = event.result.as_ref().unwrap();
-                if shown.windows[0].rows[0].artist.name == "Composer Name Renamed" {
-                    return event;
+                let event = above.next().await.expect("the query stays open");
+                let shown = event.result.unwrap();
+                if shown.rows[0].artist.name == "Composer Name Renamed" {
+                    return shown;
                 }
             }
         })
         .await
-        .expect("the other device's name wakes composer browse");
-        assert_eq!(renamed_event.revision, both_pages_revision);
-        let renamed = renamed_event.result.unwrap();
-        assert_eq!(
-            renamed
-                .windows
-                .iter()
-                .map(|window| window.rows[0].artist.id.as_str())
-                .collect::<Vec<_>>(),
-            vec![other.as_str(), COMPOSER_ID]
-        );
+        .expect("the other device's name wakes the window holding the composer");
+        assert_eq!(id_of(&renamed), other);
         devices
             .settle("both libraries", async |_, db| {
                 test_records(db).find_artist_by_id(&other).await.unwrap().is_some()
@@ -595,79 +552,75 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
         // version the one its write returned, so the events wait on writes
         // alone.
         devices.pause().await;
+        settled(&mut above).await;
+        settled(&mut below).await;
 
-        requests.set([second_window].into_iter().collect::<BTreeSet<_>>()).unwrap();
-        let hidden_other_composer =
-            live.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(hidden_other_composer.windows[0].rows[0].artist.id, COMPOSER_ID);
+        // A work credited on the composer in the lower window counts it
+        // there, and the window above stays as it is.
+        RecordsFixture::new()
+            .work("5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b01", "Work Title Probe")
+            .composer("5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b01", COMPOSER_ID)
+            .write(&records)
+            .await;
+        assert!(below.is_marked_for_rerun());
+        assert!(!above.is_marked_for_rerun());
+        let counted = below.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(counted.rows[0].work_count, 2);
 
-        // The edited composer is outside the requested window, so its sort
-        // name, filled in by a credit naming it with one, changes nothing the
-        // browse delivers.
-        meet_musicbrainz_artist(
-            &records,
-            SECOND_COMPOSER_MUSICBRAINZ,
-            "Composer Name Renamed",
-            Some("Composer Sort Hidden"),
-        )
-        .await;
-        let shown = next_composer_page_is_only_a_work(
-            &records,
-            &mut live,
-            hidden_other_composer,
-            "5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b01",
-        )
-        .await;
-
+        // An image on the composer in the upper window reruns that window
+        // with the image's version, and not the one below.
         let composer_image = write_artist_image(&records, &other, "composer image bytes").await;
-        // Only the requested rows' images are read, so an image on the
-        // composer outside the window changes nothing the browse delivers.
-        next_composer_page_is_only_a_work(
-            &records,
-            &mut live,
-            shown,
-            "5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b02",
-        )
-        .await;
-        let other_composer_page =
-            [LibraryPageWindow::at(0, 1)].into_iter().collect::<BTreeSet<_>>();
-        requests.set(other_composer_page).unwrap();
-        let imaged = live.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(imaged.windows[0].rows[0].artist.id, other);
+        assert!(above.is_marked_for_rerun());
+        assert!(!below.is_marked_for_rerun());
+        let imaged = above.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(
-            imaged.windows[0].rows[0].image.as_ref().map(|image| image.version.as_str()),
+            imaged.rows[0].image.as_ref().map(|image| image.version.as_str()),
             Some(composer_image.as_str())
         );
 
-        let replaced_composer_image =
-            write_artist_image(&records, &other, "replaced composer image bytes").await;
-        let image_updated = tokio::time::timeout(HANG_GUARD, live.next())
-            .await
-            .expect("a requested composer's image version wakes composer browse")
-            .expect("the query stays open")
-            .result
-            .unwrap();
-        assert_eq!(
-            image_updated.windows[0].rows[0].image.as_ref().map(|image| image.version.as_str()),
-            Some(replaced_composer_image.as_str())
-        );
-
-        requests.set(BTreeSet::new()).unwrap();
-        let count_only = live.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(count_only.total_count, 2);
-        assert!(count_only.windows.is_empty());
-
+        // A composer sorting into the upper window reruns it and the count.
         RecordsFixture::new()
             .at("2026-01-03T00:00:00Z")
-            .artist(INSERTED_COMPOSER_ID, "Composer Name Inserted")
+            .artist(INSERTED_COMPOSER_ID, "Composer Name Zzz Inserted")
             .work(INSERTED_COMPOSER_WORK_ID, "Work Title Inserted")
             .composer(INSERTED_COMPOSER_WORK_ID, INSERTED_COMPOSER_ID)
             .write(&records)
             .await;
-        let inserted = live.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(inserted.total_count, 3);
-        assert!(inserted.windows.is_empty());
+        assert!(above.is_marked_for_rerun());
+        assert!(!below.is_marked_for_rerun());
+        assert!(count.is_marked_for_rerun());
+        let inserted = above.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(inserted.rows.len(), 2);
+        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
     });
+}
+
+/// Read what a window has been marked to rerun for, so the next write finds it
+/// at rest.
+async fn settled(
+    window: &mut coven::ReconfigurableLiveQuery<
+        ListWindow,
+        WindowRead<DbComposerSummary>,
+        bae_store::DbError,
+    >,
+) {
+    while window.is_marked_for_rerun() {
+        tokio::time::timeout(HANG_GUARD, window.next())
+            .await
+            .expect("a window marked for a rerun delivers it")
+            .expect("the query stays open")
+            .result
+            .unwrap();
+    }
+}
+
+/// The composer count's next value, which changes with a write.
+async fn next_count(count: &mut coven::LiveQuery<u64, bae_store::DbError>) -> u64 {
+    tokio::time::timeout(HANG_GUARD, count.next())
+        .await
+        .expect("a write that moves the count wakes it")
+        .expect("the query stays open")
+        .unwrap()
 }
 
 /// The composer list on B is a local table B's triggers keep from the synced
@@ -683,19 +636,21 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             field: ComposerSortField::Name,
             direction: SortDirection::Ascending,
         }];
-        let mut live =
-            crate::LibraryViews::new(reader.clone()).subscribe_composer_browse(&sort, first_page());
-        assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
+        let views = crate::LibraryViews::new(reader.clone());
+        let mut live = views.subscribe_composer_window(&sort, top_window());
+        let mut count = views.subscribe_composer_count();
+        live.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
-            bae_store::LibraryPageWindows,
-            ComposerBrowseProjection,
+            ListWindow,
+            WindowRead<DbComposerSummary>,
             bae_store::DbError,
         >,
                             expected: Vec<(&str, i64)>| {
             tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let shown = live.next().await.expect("the query stays open").result.unwrap();
-                    let rows = shown.windows[0]
+                    let rows = shown
                         .rows
                         .iter()
                         .map(|row| (row.artist.id.clone(), row.work_count))
@@ -711,7 +666,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                 }
             })
             .await
-            .expect("B's composer browse delivers the listing A's write makes")
+            .expect("B's composer window delivers the listing A's write makes")
         };
 
         RecordsFixture::new()
@@ -732,13 +687,13 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                     .is_some()
             })
             .await;
-        let credited = listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
-        assert_eq!(credited.total_count, 2);
+        listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
+        assert_eq!(next_count(&mut count).await, 2);
 
         merge_apart(devices, ("Composer Name First", "Composer Name Second"), "discogs-browse")
             .await;
-        let merged = listed(&mut live, vec![(OTHER_COMPOSER_ID, 2)]).await;
-        assert_eq!(merged.total_count, 1);
+        listed(&mut live, vec![(OTHER_COMPOSER_ID, 2)]).await;
+        assert_eq!(next_count(&mut count).await, 1);
     });
 }
 

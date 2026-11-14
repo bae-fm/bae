@@ -343,21 +343,67 @@ where
         self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
     }
 
-    /// Follow how many entries the queue holds and the windows `initial`
-    /// names of them, as its pane draws them.
-    pub fn subscribe_windows(
+    /// Follow one window of the queue's entries, a range of the order
+    /// queued, each beside its release, as its pane draws them: coven reruns
+    /// it for a write inside the range alone.
+    pub fn subscribe_window(
         &self,
-        initial: bae_store::LibraryPageWindows,
+        initial: bae_store::ListWindow,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        crate::release_queue::ReleaseQueueWindows<Extra>,
+        bae_store::ListWindow,
+        bae_store::WindowRead<crate::release_queue::ReleaseQueueRow<Extra, ()>>,
         bae_store::DbError,
     > {
-        self.store
-            .subscribe_reconfigurable(initial, move |windows, sql| {
-                tables::release_queue_windows_on::<Extra>(&sql, windows)
+        self.store.subscribe_list_window(
+            initial,
+            tables::queue_order(),
+            move |sql, seek, limit, offset| {
+                tables::queue_window_rows_on::<Extra>(
+                    sql,
+                    &tables::queue_order(),
+                    seek,
+                    limit,
+                    offset,
+                )
+            },
+        )
+    }
+
+    /// Follow how many entries the queue holds. Its own query, never beside
+    /// a window's rows.
+    pub fn subscribe_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
+        self.store.subscribe(|sql| tables::release_queue_row_count_on::<Extra>(&sql))
+    }
+
+    /// Follow how many entries come before the row at `initial`, a count
+    /// over index ranges that moves in place with the key.
+    pub fn subscribe_position(
+        &self,
+        initial: bae_store::list_windows::OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<bae_store::list_windows::OrderKey, u64, bae_store::DbError>
+    {
+        let order = tables::queue_order();
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            bae_store::list_windows::rows_before(&order, key, |seek| {
+                tables::queue_seek_count_on::<Extra>(&sql, &order, seek)
             })
-            .process(Ok)
+        })
+    }
+
+    /// The key of the entry at `position`, or of the last one when the queue
+    /// ends before it; `None` for an empty queue.
+    pub async fn key_at(
+        &self,
+        position: u64,
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, DbError> {
+        self.store
+            .read(move |sql| {
+                let order = tables::queue_order();
+                bae_store::list_windows::key_at(&order, position, &mut |seek, limit, offset| {
+                    tables::queue_window_rows_on::<Extra>(&sql, &order, seek, limit, offset)
+                })
+            })
+            .await
     }
 
     /// How many entries are in each phase now, and whether it is paused.

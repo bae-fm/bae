@@ -395,27 +395,60 @@ async fn the_queue_reads_are_planned_on_their_keys() {
     assert!(!pane.contains("TEMP B-TREE"), "{pane}");
 }
 
-/// A pane's window holds the entries it names in the order queued, and the
-/// read says how many the queue holds; a window past the end holds none.
+/// A pane's window holds the entries of its range in the order queued; the
+/// queue's length is a query of its own, a key at a position is the entry
+/// there, and the position of a key counts the entries before it.
 #[tokio::test]
-async fn a_window_reads_its_entries_and_the_queue_length() {
+async fn a_window_reads_its_range_and_the_queue_length_its_own() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let releases: Vec<String> =
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
-    let mut live =
-        crate::Downloads::new(db.clone()).subscribe_windows(bae_store::LibraryPageWindows::from([
-            bae_store::LibraryPageWindow::at(1, 2),
-            bae_store::LibraryPageWindow::at(9, 2),
-        ]));
+    let downloads = crate::Downloads::new(db.clone());
+    let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
+    let fourth = downloads.key_at(3).await.unwrap().expect("a row at 3");
+    let mut live = downloads.subscribe_window(bae_store::ListWindow::Forward {
+        from: Some(second.clone()),
+        until: Some(fourth),
+        limit: 50,
+    });
     let read = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(read.total_count, 5);
-    let shown: Vec<Vec<String>> = read
-        .windows
-        .iter()
-        .map(|window| window.rows.iter().map(|row| row.op.release_id.clone()).collect())
-        .collect();
-    assert_eq!(shown, vec![releases[1..3].to_vec(), Vec::<String>::new()]);
+    let shown: Vec<String> = read.rows.iter().map(|row| row.op.release_id.clone()).collect();
+    assert_eq!(shown, releases[1..3].to_vec());
+    assert_eq!(read.beyond, None);
+    let count = downloads.subscribe_row_count().next().await.expect("open").unwrap();
+    assert_eq!(count, 5);
+    let before = downloads.subscribe_position(second).next().await.expect("open").result.unwrap();
+    assert_eq!(before, 1);
+    let past_the_end = downloads.key_at(99).await.unwrap();
+    assert_eq!(past_the_end, downloads.key_at(4).await.unwrap());
+}
+
+/// A write to an entry inside one window's range reruns that window and
+/// the length, and not a window beside it.
+#[tokio::test]
+async fn an_entry_reruns_the_window_it_lands_in_and_the_length_alone() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let releases: Vec<String> =
+        (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
+    enqueue_releases(&db, releases[..4].iter().map(|id| download(id)).collect()).await.unwrap();
+    let downloads = crate::Downloads::new(db.clone());
+    let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
+    let mut windows = [
+        bae_store::ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
+        bae_store::ListWindow::Forward { from: Some(second), until: None, limit: 50 },
+    ]
+    .map(|window| downloads.subscribe_window(window));
+    let mut length = downloads.subscribe_row_count();
+    for window in &mut windows {
+        window.next().await.expect("the query stays open").result.unwrap();
+    }
+    length.next().await.expect("open").unwrap();
+
+    enqueue_releases(&db, vec![download(&releases[4])]).await.unwrap();
+    assert!(!windows[0].is_marked_for_rerun());
+    assert!(windows[1].is_marked_for_rerun());
+    assert!(length.is_marked_for_rerun());
 }
 
 /// The download batch's rows, each a release and its kind, in kind order.

@@ -37,13 +37,17 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     let subscription = handle.handle().subscribe_list_window(list.clone(), top);
     let counts = handle.handle().subscribe_list_count(list);
     let titles = |value: &crate::types::BridgeListWindowValue| -> Vec<String> {
-        let crate::types::BridgeListRows::Albums { rows } = &value.rows;
+        let crate::types::BridgeListRows::Albums { rows } = &value.rows else {
+            panic!("the album grid's window holds albums");
+        };
         rows.iter().map(|row| row.album.title.clone()).collect()
     };
     let listed =
         handle.handle().runtime.block_on(subscription.clone().next()).expect("album window value");
     assert_eq!(titles(&listed), ["Kept Album", "Deleted Album"]);
-    let crate::types::BridgeListRows::Albums { rows } = &listed.rows;
+    let crate::types::BridgeListRows::Albums { rows } = &listed.rows else {
+        panic!("the album grid's window holds albums");
+    };
     let deleted = rows
         .iter()
         .find(|row| row.album.title == "Deleted Album")

@@ -183,12 +183,8 @@ extension ListWindowSubscription: PulledSubscription {}
 extension ListCountSubscription: PulledSubscription {}
 extension ListPositionSubscription: PulledSubscription {}
 extension AlbumSectionsSubscription: PulledSubscription {}
-extension ArtistBrowseSubscription: PulledSubscription {}
-extension ComposerBrowseSubscription: PulledSubscription {}
-extension ComposerDetailRowsSubscription: PulledSubscription {}
 extension AlbumSelectionSubscription: PulledSubscription {}
 extension LibrarySearchSubscription: PulledSubscription {}
-extension ArtistSearchSubscription: PulledSubscription {}
 extension AlbumDetailSubscription: PulledSubscription {}
 extension ReleaseDetailSubscription: PulledSubscription {}
 extension ArtistDetailSubscription: PulledSubscription {}

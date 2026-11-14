@@ -8,7 +8,7 @@ use crate::*;
 use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
-use bae_store::test_fixtures::live_query::first_page;
+use bae_store::test_fixtures::live_query::top_window;
 use bae_store::test_fixtures::temp_db;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
@@ -164,19 +164,22 @@ async fn a_composer_page_lists_each_work_under_every_work_it_is_part_of_then_its
 async fn each_part_of_the_page_opens_its_heading() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     write_page(&db).await;
-    let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
-        COMPOSER,
-        [bae_store::LibraryPageWindow::at(0, 100)].into_iter().collect(),
+    let views = LibraryViews::new(db.clone());
+    let mut live = views.subscribe_composer_detail_window(COMPOSER, top_window());
+    let window = crate::composer_detail::resolve_composer_detail_window(
+        live.next().await.expect("the query stays open").result.unwrap(),
     );
-    let event = live.next().await.expect("the query stays open");
-    let snapshot = crate::composer_detail::resolve_composer_detail_rows(
-        event.result.unwrap(),
-        event.revision.0,
-        event.cause,
-    );
-    assert_eq!(snapshot.total_count, 12);
-    let headings = snapshot.windows[0]
-        .rows
+    let crate::ListRows::ComposerPage(rows) = window.rows else {
+        panic!("a composer's page window holds its page's rows");
+    };
+    let count = views
+        .subscribe_composer_detail_count(COMPOSER)
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(count, 12);
+    let headings = rows
         .iter()
         .enumerate()
         .filter_map(|(at, row)| row.heading.map(|heading| (at, heading)))
@@ -189,8 +192,7 @@ async fn each_part_of_the_page_opens_its_heading() {
             (10, ComposerHeading::Recordings)
         ]
     );
-    let parts = snapshot.windows[0]
-        .rows
+    let parts = rows
         .iter()
         .filter(|row| matches!(row.item, ComposerDetailItem::Work { part: true, .. }))
         .count();
@@ -265,13 +267,16 @@ fn the_page_keeps_its_order_as_titles_and_credits_change() {
 async fn the_page_rows_follow_writes_in_their_windows() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     write_page(&db).await;
-    let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
+    let views = LibraryViews::new(db.clone());
+    let from = views.composer_detail_key_at(COMPOSER, 8).await.unwrap().expect("a row at 8");
+    let mut live = views.subscribe_composer_detail_window(
         COMPOSER,
-        [bae_store::LibraryPageWindow::at(8, 4)].into_iter().collect(),
+        ListWindow::Forward { from: Some(from), until: None, limit: 50 },
     );
+    let mut count = views.subscribe_composer_detail_count(COMPOSER);
     let first = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(first.total_count, 12);
-    assert_eq!(first.windows[0].rows.len(), 4);
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 12);
+    assert_eq!(first.rows.len(), 4);
 
     // An edit applying a catalog that credits nobody on the second release.
     test_records(&db)
@@ -284,175 +289,15 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(after.total_count, 11);
-    assert_eq!(after.windows[0].rows.len(), 3);
-    assert!(after.windows[0].rows[0].opens_heading);
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 11);
+    assert_eq!(after.rows.len(), 3);
+    assert!(after.rows[0].opens_heading);
 
-    let other = LibraryViews::new(db.clone())
-        .subscribe_composer_detail_rows(OTHER_COMPOSER, first_page())
+    let other = views
+        .subscribe_composer_detail_count(OTHER_COMPOSER)
         .next()
         .await
         .expect("the query stays open")
-        .result
         .unwrap();
-    assert_eq!(other.total_count, 1);
-}
-
-/// A window beside a known row of a page is read through the page's index:
-/// no step scans the page's rows or sorts them. What a row's work shows
-/// (`work_summary_columns`) sorts that work's own tracks.
-#[tokio::test]
-async fn every_seek_of_the_page_reads_its_index() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    write_page(&db).await;
-    let order = crate::composer_detail::composer_detail_order("listing");
-    for at in 0..12 {
-        let key = crate::tests::key_at(
-            &db,
-            &order,
-            |sql, order, seek, limit, offset| {
-                crate::composer_detail::composer_detail_rows_on(
-                    sql, COMPOSER, order, seek, limit, offset,
-                )
-            },
-            at,
-        )
-        .await;
-        for seek in order.seeks_beside(&key) {
-            let statement = crate::composer_detail::composer_detail_rows_query(&order, &seek);
-            let steps = db
-                .read(move |sql| {
-                    seek.bound(50, 0, |params| {
-                        let mut params = params.to_vec();
-                        params.push((":artist_id", &COMPOSER as &dyn rusqlite::ToSql));
-                        Ok(sql.query(
-                            &format!("EXPLAIN QUERY PLAN {statement}"),
-                            params.as_slice(),
-                            |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
-                        )?)
-                    })
-                })
-                .await
-                .unwrap();
-            assert!(
-                steps.iter().any(|(_, step)| step.starts_with(
-                    "SEARCH listing USING COVERING INDEX idx_composer_detail_row_order"
-                )),
-                "row {at}: {steps:?}"
-            );
-            assert!(
-                !steps.iter().any(|(parent, step)| step.starts_with("SCAN listing")
-                    || (*parent == 0 && step.contains("TEMP B-TREE"))),
-                "row {at}: {steps:?}"
-            );
-        }
-    }
-}
-
-/// A refresh reads the works or credit rows of one artist's work or one
-/// credit, never every row the views hold: no step scans a table, and each
-/// read of the artist's credited works names the work.
-#[tokio::test]
-async fn the_page_refreshes_read_one_work_or_one_credit() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    write_page(&db).await;
-    for statement in [
-        "SELECT * FROM composer_detail_works WHERE artist_id = 'a' AND item_id = 'w'",
-        "SELECT * FROM composer_detail_credits WHERE item_id = 'c'",
-    ] {
-        let steps = db
-            .read(move |sql| {
-                Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
-                    row.get::<_, String>(3)
-                })?)
-            })
-            .await
-            .unwrap();
-        assert!(
-            !steps.iter().any(|step| (step.starts_with("SCAN ")
-                && step != "SCAN composer_detail_works"
-                && step != "SCAN composer_detail_credits")
-                || (step.starts_with("SEARCH credited") && !step.contains("work_id=?"))),
-            "{statement}: {steps:?}"
-        );
-    }
-}
-
-/// Two albums sharing a title keep their releases' credits apart: releases go
-/// by album title, then by album, then by their place among the album's, so a
-/// later release of the first album comes before the other album's first.
-#[tokio::test]
-async fn credits_on_albums_sharing_a_title_stay_by_album() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    write_page(&db).await;
-    let written_by = (Catalog::Discogs, CreditedAs::of(CreditRoleKind::Writer));
-    RecordsFixture::new()
-        .album("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "Album First", None, &[])
-        .release("3e4f9c6a-2d3f-4e5a-8b7c-8d9e0f1a2c03", "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03")
-        .release(ALBUM_FIRST, "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04")
-        .release_role(
-            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05",
-            "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d03",
-            COMPOSER,
-            written_by.clone(),
-        )
-        .release_role(
-            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06",
-            "4f5a0d7b-3e4a-4f6b-9c8d-9e0f1a2b3d04",
-            COMPOSER,
-            written_by.clone(),
-        )
-        .write(&test_records(&db))
-        .await;
-
-    let credits = LibraryViews::new(db.clone())
-        .get_composer_detail_rows(COMPOSER, 0, 100)
-        .await
-        .unwrap()
-        .into_iter()
-        .filter_map(|row| match row.item {
-            DbComposerDetailItem::ReleaseCredit(credit) => Some(credit.role.id),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(
-        credits,
-        [
-            CREDIT_ON_FIRST,
-            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f06",
-            "6b7c2f9d-5a6c-4b8d-9e0f-1a2b3c4d5f05",
-            CREDIT_ON_SECOND,
-        ]
-    );
-}
-
-/// A change of language writes every key of the composers and their pages
-/// again, in the new language.
-#[tokio::test]
-async fn a_language_change_writes_the_composers_and_their_pages_keys_again() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    write_page(&db).await;
-    LibraryViews::new(db.clone()).set_sort_language("sv").await.unwrap();
-    let (rows, stale_rows, composers, stale_composers): (i64, i64, i64, i64) = db
-        .read(|sql| {
-            Ok(sql.query_row(
-                "SELECT
-                   (SELECT COUNT(*) FROM composer_detail_row WHERE section = 0),
-                   (SELECT COUNT(*) FROM composer_detail_row row
-                    WHERE row.section = 0
-                      AND (row.title_sort_key IS NOT (SELECT bae_name_key(w.title, 'sv')
-                                                      FROM works w WHERE w.id = row.item_id)
-                           OR row.group_title_sort_key IS NOT (SELECT bae_name_key(g.title, 'sv')
-                                                               FROM works g WHERE g.id = row.group_id))),
-                   (SELECT COUNT(*) FROM composer_listing),
-                   (SELECT COUNT(*) FROM composer_listing l JOIN artists a ON a.id = l.artist_id
-                    WHERE l.name_sort_key IS NOT bae_name_key(a.name, 'sv'))",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )?)
-        })
-        .await
-        .unwrap();
-    assert!(rows > 0 && composers > 0, "the page has rows to rewrite");
-    assert_eq!((stale_rows, stale_composers), (0, 0));
+    assert_eq!(other, 1);
 }

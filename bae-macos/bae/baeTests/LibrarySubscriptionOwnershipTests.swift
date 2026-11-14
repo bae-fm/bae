@@ -278,7 +278,7 @@ struct LibraryProjectionStoreDetailTests {
         let store = LibraryProjectionStore(
             library: Library(
                 composerDetail: { feed.query() },
-                composerDetailRows: { artistId in
+                composerPageList: { artistId in
                     rowReads.opened(artistId)
                     return .fixed([], answers: UnansweredCount())
                 }

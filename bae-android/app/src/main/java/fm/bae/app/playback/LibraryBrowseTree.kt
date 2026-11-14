@@ -17,10 +17,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeComposerBrowseSnapshot
+import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
+import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeException.Diagnostic
@@ -228,12 +231,11 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val workDetails = exactProjectionCache(scope, library::workDetails, onQueryError)
     private val releaseDetails = exactProjectionCache(scope, library::releaseDetails, onQueryError)
     private val spokenSearches = exactProjectionCache(scope, library::searchResults, onQueryError)
-    private var albums: AlbumListProjection? = null
-    private var composers:
-        CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, BridgeComposerBrowseSnapshot>? = null
+    private var albums: ListProjection<BridgeAlbumAppearance, BridgeAlbum>? = null
+    private var composers: ListProjection<BridgeComposerSummary, BridgeComposerSummary>? = null
 
     /** Each retained composer's page rows, by the composer's media id. */
-    private val composerPages = mutableMapOf<String, ComposerPageProjection>()
+    private val composerPages = mutableMapOf<String, ListProjection<BridgeComposerDetailRow, BridgeComposerDetailRow>>()
     private var closed = false
 
     /** [parentId]'s children on the page asked for, or null for a parent or page that names nothing. */
@@ -270,22 +272,19 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             BrowseId.Albums -> {
-                val offset = page.toLong() * pageSize
-                if (offset > Int.MAX_VALUE) {
-                    emptyList()
-                } else {
-                    albumProjection().rows(offset.toInt(), pageSize).map { nodes.album(it.id, it.title, it.cover) }
+                pageAt(page, pageSize) { offset ->
+                    albumProjection().rows(offset, pageSize).map { nodes.album(it.id, it.title, it.cover) }
                 }
             }
 
             BrowseId.Composers -> {
-                composerProjection().rows(BrowsePaging.window(page, pageSize)).map(nodes::composer)
+                pageAt(page, pageSize) { offset -> composerProjection().rows(offset, pageSize).map(nodes::composer) }
             }
 
             is BrowseId.Composer -> {
-                composerPageProjection(parentId, id.artistId)
-                    .rows(BrowsePaging.window(page, pageSize))
-                    .map(nodes::composerPageRow)
+                pageAt(page, pageSize) { offset ->
+                    composerPageProjection(parentId, id.artistId).rows(offset, pageSize).map(nodes::composerPageRow)
+                }
             }
 
             is BrowseId.Album,
@@ -481,7 +480,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     fun close() = runBlocking { closeSuspending() }
 
     private suspend fun closeSuspending() {
-        val pages = mutableListOf<ComposerPageProjection>()
+        val pages = mutableListOf<ListProjection<BridgeComposerDetailRow, BridgeComposerDetailRow>>()
         val state =
             synchronized(lock) {
                 if (closed) return
@@ -509,23 +508,25 @@ internal class LibraryBrowseTree<Owner : Any>(
         spokenSearches.cancelAll(error)
     }
 
-    private fun albumProjection(): AlbumListProjection =
+    private fun albumProjection(): ListProjection<BridgeAlbumAppearance, BridgeAlbum> =
         synchronized(lock) {
             check(!closed)
-            albums ?: AlbumListProjection(
+            albums ?: ListProjection(
                 scope,
                 library.albumList(listOf(ALBUM_SORT)),
+                BridgeAlbumAppearance::album,
                 onChanged = { count -> notifyParent(BrowseId.Albums.mediaId, count) },
                 onError = onQueryError,
             ).also { albums = it }
         }
 
-    private fun composerProjection(): ComposerCollectionProjection =
+    private fun composerProjection(): ListProjection<BridgeComposerSummary, BridgeComposerSummary> =
         synchronized(lock) {
             check(!closed)
-            composers ?: composerCollectionProjection(
+            composers ?: ListProjection(
                 scope,
-                library.composerBrowse(COMPOSER_SORT),
+                library.composerList(COMPOSER_SORT),
+                { it },
                 onChanged = { count -> notifyParent(BrowseId.Composers.mediaId, count) },
                 onError = onQueryError,
             ).also { composers = it }
@@ -535,12 +536,13 @@ internal class LibraryBrowseTree<Owner : Any>(
     private fun composerPageProjection(
         parentId: String,
         artistId: String,
-    ): ComposerPageProjection =
+    ): ListProjection<BridgeComposerDetailRow, BridgeComposerDetailRow> =
         synchronized(lock) {
             check(!closed)
-            composerPages[parentId] ?: composerPageCollectionProjection(
+            composerPages[parentId] ?: ListProjection(
                 scope,
-                library.composerDetailRows(artistId),
+                library.composerPageList(artistId),
+                { it },
                 onChanged = { count -> notifyParent(parentId, count) },
                 onError = onQueryError,
             ).also { composerPages[parentId] = it }
@@ -621,3 +623,13 @@ private fun parentInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superse
 private fun searchInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superseded("search interest ended")
 
 private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.Internal, message)
+
+/** The items [read] answers for the page's offset, none when the offset is past what an int holds. */
+private suspend fun <Item> pageAt(
+    page: Int,
+    pageSize: Int,
+    read: suspend (Int) -> List<Item>,
+): List<Item> {
+    val offset = page.toLong() * pageSize
+    return if (offset > Int.MAX_VALUE) emptyList() else read(offset.toInt())
+}

@@ -26,12 +26,14 @@ public final class Library: Sendable, Observable {
             _ groupByArtist: Bool
         )
             async throws -> [BridgeAlbum]
-    public let composerBrowse:
+    /// The composer list under one sort.
+    public let composerList:
         @Sendable (_ sortCriteria: [BridgeComposerSortCriterion])
-            -> LibraryBrowseQuery<BridgeComposerSummary>
-    public let artistBrowse:
+            -> BridgeListQueries<BridgeComposerSummary>
+    /// The artist list under one sort.
+    public let artistList:
         @Sendable (_ sortCriteria: [BridgeArtistSortCriterion])
-            -> LibraryBrowseQuery<BridgeArtistSummary>
+            -> BridgeListQueries<BridgeArtistSummary>
     /// One live library search, pointed at each new query in place.
     public let librarySearch: @Sendable () -> LibrarySearch
     /// Open a detail view's live read, pointed at each item it shows in place.
@@ -39,11 +41,10 @@ public final class Library: Sendable, Observable {
     public let releaseDetail: @Sendable () -> DetailQuery<BridgeRelease>
     public let artistDetail: @Sendable () -> DetailQuery<BridgeArtistDetail>
     public let composerDetail: @Sendable () -> DetailQuery<BridgeComposerDetail>
-    /// The rows of one composer's page, read through the windows its visible
-    /// pages ask for.
-    public let composerDetailRows:
+    /// The rows of one composer's page.
+    public let composerPageList:
         @Sendable (_ artistId: String)
-            -> LibraryBrowseQuery<BridgeComposerDetailRow>
+            -> BridgeListQueries<BridgeComposerDetailRow>
     public let workDetail: @Sendable () -> DetailQuery<BridgeWorkDetail>
     /// Open the live read of every playlist this device holds.
     public let playlists: @Sendable () -> PulledValues<BridgePlaylistListing>
@@ -53,9 +54,9 @@ public final class Library: Sendable, Observable {
     /// One live read of the album grid's multi-selection, pointed at each new
     /// selection in place.
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
-    /// Open an artist picker's live search, pointed at each new text and
-    /// window in place.
-    public let artistSearch: @Sendable () -> ArtistSearchQuery
+    /// The artists an artist picker's text finds: each text is a list of its
+    /// own.
+    public let artistSearch: ArtistSearchOpener
     /// The Storage Manager list under a first sort and filter, read through
     /// one query whose view moves in place.
     public let storageBrowse:
@@ -101,15 +102,15 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable ([BridgeSortCriterion], [String], Bool)
             async throws
             -> [BridgeAlbum] = { _, _, _ in throw StubError.notImplemented },
-        composerBrowse:
+        composerList:
             @escaping @Sendable ([BridgeComposerSortCriterion])
-            -> LibraryBrowseQuery<BridgeComposerSummary> = { _ in
-                fatalError("Library composer browse is not installed")
+            -> BridgeListQueries<BridgeComposerSummary> = { _ in
+                fatalError("Library composer list is not installed")
             },
-        artistBrowse:
+        artistList:
             @escaping @Sendable ([BridgeArtistSortCriterion])
-            -> LibraryBrowseQuery<BridgeArtistSummary> = { _ in
-                fatalError("Library artist browse is not installed")
+            -> BridgeListQueries<BridgeArtistSummary> = { _ in
+                fatalError("Library artist list is not installed")
             },
         librarySearch: @escaping @Sendable () -> LibrarySearch = {
             fatalError("Library search is not installed")
@@ -129,10 +130,10 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable () -> DetailQuery<BridgeComposerDetail> = {
                 fatalError("Library composer detail is not installed")
             },
-        composerDetailRows:
+        composerPageList:
             @escaping @Sendable (String)
-            -> LibraryBrowseQuery<BridgeComposerDetailRow> = { _ in
-                fatalError("Library composer detail rows are not installed")
+            -> BridgeListQueries<BridgeComposerDetailRow> = { _ in
+                fatalError("Library composer page list is not installed")
             },
         workDetail: @escaping @Sendable () -> DetailQuery<BridgeWorkDetail> = {
             fatalError("Library work detail is not installed")
@@ -148,7 +149,7 @@ public final class Library: Sendable, Observable {
         albumSelection: @escaping @Sendable () -> AlbumSelectionQuery = {
             fatalError("Library album selection is not installed")
         },
-        artistSearch: @escaping @Sendable () -> ArtistSearchQuery = {
+        artistSearch: @escaping ArtistSearchOpener = { _ in
             fatalError("Library artist search is not installed")
         },
         storageBrowse:
@@ -182,14 +183,14 @@ public final class Library: Sendable, Observable {
         self.albumList = albumList
         self.getAlbumIndex = getAlbumIndex
         self.albumsInBrowseOrder = albumsInBrowseOrder
-        self.composerBrowse = composerBrowse
-        self.artistBrowse = artistBrowse
+        self.composerList = composerList
+        self.artistList = artistList
         self.librarySearch = librarySearch
         self.albumDetail = albumDetail
         self.releaseDetail = releaseDetail
         self.artistDetail = artistDetail
         self.composerDetail = composerDetail
-        self.composerDetailRows = composerDetailRows
+        self.composerPageList = composerPageList
         self.workDetail = workDetail
         self.playlists = playlists
         self.playlistDetail = playlistDetail
@@ -221,16 +222,8 @@ extension Library {
                 albumList: Self.albumList(handle),
                 getAlbumIndex: Self.albumIndex(handle),
                 albumsInBrowseOrder: Self.albumsInBrowseOrder(handle),
-                composerBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeComposerBrowse(sortCriteria: $0)
-                    )
-                },
-                artistBrowse: {
-                    LibraryBrowseQuery(
-                        handle.subscribeArtistBrowse(sortCriteria: $0)
-                    )
-                },
+                composerList: Self.composerList(handle),
+                artistList: Self.artistList(handle),
                 librarySearch: {
                     LibrarySearch(handle.subscribeLibrarySearch())
                 },
@@ -240,20 +233,14 @@ extension Library {
                 composerDetail: {
                     DetailQuery(handle.subscribeComposerDetail())
                 },
-                composerDetailRows: {
-                    LibraryBrowseQuery(
-                        handle.subscribeComposerDetailRows(artistId: $0)
-                    )
-                },
+                composerPageList: Self.composerPageList(handle),
                 workDetail: { DetailQuery(handle.subscribeWorkDetail()) },
                 playlists: Self.playlists(handle),
                 playlistDetail: Self.playlistDetail(handle),
                 albumSelection: {
                     AlbumSelectionQuery(handle.subscribeAlbumSelection())
                 },
-                artistSearch: {
-                    ArtistSearchQuery(handle.subscribeArtistSearch())
-                },
+                artistSearch: Self.artistSearch(handle),
                 storageBrowse: {
                     StorageBrowseQuery(
                         handle.subscribeStorageBrowse(sort: $0, filter: $1)
@@ -406,55 +393,114 @@ extension Library {
             }
             return appearances.map(\.album)
         }
+
+        /// The composer list under each sort asked for, read through `handle`.
+        private static func composerList(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable ([BridgeComposerSortCriterion]) -> BridgeListQueries<
+                BridgeComposerSummary
+            >
+        {
+            { sort in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .composers(sort: sort),
+                    rows: Self.composerRows
+                )
+            }
+        }
+
+        /// The artist list under each sort asked for, read through `handle`.
+        private static func artistList(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable ([BridgeArtistSortCriterion]) -> BridgeListQueries<
+                BridgeArtistSummary
+            >
+        {
+            { sort in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .artists(sort: sort),
+                    rows: Self.artistRows
+                )
+            }
+        }
+
+        /// One composer's page rows, read through `handle`.
+        private static func composerPageList(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (String) -> BridgeListQueries<BridgeComposerDetailRow>
+        {
+            { artistId in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .composerPage(artistId: artistId),
+                    rows: Self.composerPageRows
+                )
+            }
+        }
+
+        /// The artists each text an artist picker types finds, read through
+        /// `handle`.
+        private static func artistSearch(
+            _ handle: any AppHandleProtocol
+        ) -> ArtistSearchOpener {
+            { text in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .artistSearch(text: text),
+                    rows: Self.artistSearchRows
+                )
+            }
+        }
+
+        private static func composerRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeComposerSummary] {
+            guard case .composers(let rows) = rows else {
+                preconditionFailure(
+                    "the composer list delivered rows of another list"
+                )
+            }
+            return rows
+        }
+
+        private static func artistRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeArtistSummary] {
+            guard case .artists(let rows) = rows else {
+                preconditionFailure(
+                    "the artist list delivered rows of another list"
+                )
+            }
+            return rows
+        }
+
+        private static func composerPageRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeComposerDetailRow] {
+            guard case .composerPage(let rows) = rows else {
+                preconditionFailure(
+                    "a composer's page delivered rows of another list"
+                )
+            }
+            return rows
+        }
+
+        private static func artistSearchRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeArtistSearchResult] {
+            guard case .artistSearch(let rows) = rows else {
+                preconditionFailure(
+                    "the artist search delivered rows of another list"
+                )
+            }
+            return rows
+        }
     #endif
-}
-
-extension LibraryBrowseQuery where Row == BridgeComposerSummary {
-    init(_ subscription: ComposerBrowseSubscription) {
-        self.init(
-            setWindows: { try subscription.setWindows(windows: $0) },
-            values: PulledValues(subscription) { snapshot in
-                LibraryBrowseDelivery(
-                    windows: snapshot.windows.map {
-                        .init(window: $0.window, rows: $0.rows)
-                    },
-                    totalCount: Int(snapshot.totalCount)
-                )
-            }
-        )
-    }
-}
-
-extension LibraryBrowseQuery where Row == BridgeComposerDetailRow {
-    init(_ subscription: ComposerDetailRowsSubscription) {
-        self.init(
-            setWindows: { try subscription.setWindows(windows: $0) },
-            values: PulledValues(subscription) { snapshot in
-                LibraryBrowseDelivery(
-                    windows: snapshot.windows.map {
-                        .init(window: $0.window, rows: $0.rows)
-                    },
-                    totalCount: Int(snapshot.totalCount)
-                )
-            }
-        )
-    }
-}
-
-extension LibraryBrowseQuery where Row == BridgeArtistSummary {
-    init(_ subscription: ArtistBrowseSubscription) {
-        self.init(
-            setWindows: { try subscription.setWindows(windows: $0) },
-            values: PulledValues(subscription) { snapshot in
-                LibraryBrowseDelivery(
-                    windows: snapshot.windows.map {
-                        .init(window: $0.window, rows: $0.rows)
-                    },
-                    totalCount: Int(snapshot.totalCount)
-                )
-            }
-        )
-    }
 }
 
 extension KeyedDetailQuery where Id == String, Value == BridgeAlbumDetail {

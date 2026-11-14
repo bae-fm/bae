@@ -52,65 +52,6 @@
         }
     }
 
-    extension LibraryBrowseQuery {
-        /// A query over a fixed, already-sorted list, for shots and tests:
-        /// every window request is answered with its slice.
-        public static func fixed(
-            _ rows: [Row],
-            answers: UnansweredCount
-        ) -> LibraryBrowseQuery<Row> {
-            let requests = FixedRequests<[BridgeLibraryPageWindow]>(
-                answers: answers
-            )
-            return LibraryBrowseQuery(
-                setWindows: { requests.request($0) },
-                values: PulledValues(
-                    read: {
-                        let windows = try await requests.take()
-                        return LibraryBrowseDelivery(
-                            windows: windows.map { window in
-                                let start = min(Int(window.offset), rows.count)
-                                let end = min(
-                                    start + Int(window.limit),
-                                    rows.count
-                                )
-                                return .init(
-                                    window: window,
-                                    rows: Array(rows[start..<end])
-                                )
-                            },
-                            totalCount: rows.count
-                        )
-                    },
-                    cancel: { requests.close() }
-                )
-            )
-        }
-    }
-
-    extension LibraryBrowseQuery {
-        /// A query whose every read fails with `error`, for shots and
-        /// tests of the screen that shows a list that could not be read.
-        public static func failing(
-            _ error: any Error & Sendable,
-            answers: UnansweredCount
-        ) -> LibraryBrowseQuery<Row> {
-            let requests = FixedRequests<[BridgeLibraryPageWindow]>(
-                answers: answers
-            )
-            return LibraryBrowseQuery(
-                setWindows: { requests.request($0) },
-                values: PulledValues(
-                    read: {
-                        _ = try await requests.take()
-                        throw error
-                    },
-                    cancel: { requests.close() }
-                )
-            )
-        }
-    }
-
     /// The requests a fixed query answers: the latest one not yet answered,
     /// handed to the one reader waiting for it. A request counts in `answers`
     /// from when it is made until its reader asks for the next one, or the
@@ -253,67 +194,6 @@
                 } ?? [],
                 queues: queues
             )
-        }
-    }
-
-    extension ArtistSearchQuery {
-        /// A search over a fixed, already-ordered list, for shots and tests:
-        /// every view is answered with its windows' slices of `results`, whatever
-        /// the text.
-        public static func fixed(
-            _ results: [BridgeArtistSearchResult],
-            answers: UnansweredCount
-        ) -> ArtistSearchQuery {
-            let requests = FixedRequests<(UInt64, [BridgeLibraryPageWindow])>(
-                answers: answers
-            )
-            let revisions = FixedRevisions()
-            return ArtistSearchQuery(
-                setView: { _, windows in
-                    let revision = revisions.advance()
-                    requests.request((revision, windows))
-                    return revision
-                },
-                values: PulledValues(
-                    read: {
-                        let (revision, windows) = try await requests.take()
-                        return BridgeArtistSearchSnapshot(
-                            windows: windows.map { window in
-                                let start = min(
-                                    Int(window.offset),
-                                    results.count
-                                )
-                                let end = min(
-                                    start + Int(window.limit),
-                                    results.count
-                                )
-                                return BridgeArtistSearchWindow(
-                                    window: window,
-                                    rows: Array(results[start..<end]),
-                                    first: nil,
-                                    last: nil
-                                )
-                            },
-                            totalCount: UInt64(results.count),
-                            requestRevision: revision
-                        )
-                    },
-                    cancel: { requests.close() }
-                )
-            )
-        }
-    }
-
-    /// The revisions a fixed search hands out, one per view.
-    private final class FixedRevisions: @unchecked Sendable {
-        private let lock = NSLock()
-        private var revision: UInt64 = 0
-
-        func advance() -> UInt64 {
-            lock.withLock {
-                revision += 1
-                return revision
-            }
         }
     }
 

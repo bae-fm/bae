@@ -75,6 +75,16 @@ impl BridgeLibraryBrowseSection {
 pub enum BridgeList {
     /// The album grid under `sort`, flat or grouped by artist.
     AlbumGrid { sort: Vec<crate::types::BridgeSortCriterion>, group_by_artist: bool },
+    /// The artist list under `sort`.
+    Artists { sort: Vec<crate::types::BridgeArtistSortCriterion> },
+    /// The composer list under `sort`.
+    Composers { sort: Vec<crate::types::BridgeComposerSortCriterion> },
+    /// The rows of a composer's page.
+    ComposerPage { artist_id: String },
+    /// The download queue, in the order queued.
+    Downloads,
+    /// The artists an artist picker's `text` finds; blank text finds none.
+    ArtistSearch { text: String },
 }
 
 /// A window of a list: a range of its order, bounded by the sort values of a
@@ -93,6 +103,11 @@ pub enum BridgeListWindow {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeListRows {
     Albums { rows: Vec<crate::types::BridgeAlbumAppearance> },
+    Artists { rows: Vec<crate::types::BridgeArtistSummary> },
+    Composers { rows: Vec<crate::types::BridgeComposerSummary> },
+    ComposerPage { rows: Vec<crate::types::BridgeComposerDetailRow> },
+    Downloads { rows: Vec<crate::types::BridgeDownloadOp> },
+    ArtistSearch { rows: Vec<crate::types::BridgeArtistSearchResult> },
 }
 
 /// One delivery of a list's window.

@@ -266,61 +266,6 @@ impl AppServices {
         self.inner.manager.follow_preferences(part)
     }
 
-    /// One window of the album grid under `sort`, flat or grouped by artist:
-    /// the first value at once, then one for each write inside its range, and
-    /// one for each window it is moved to.
-    pub fn subscribe_album_window(
-        &self,
-        sort: &[bae_views::AlbumSortCriterion],
-        group_by_artist: bool,
-        window: bae_store::ListWindow,
-    ) -> bae_views::LiveListWindow {
-        let manager = &self.inner.manager;
-        let query = manager.until_closed(self.inner.views.subscribe_album_window(
-            sort,
-            group_by_artist,
-            window,
-        ));
-        bae_views::LiveListWindow::new(query, |_read, window| {
-            Some(bae_views::album::resolve_album_window(window))
-        })
-    }
-
-    /// How many rows the album grid has, and how many albums: the first
-    /// value at once, then one each time a write moves either.
-    pub fn subscribe_album_count(
-        &self,
-        group_by_artist: bool,
-    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
-        self.inner.manager.values_until_closed(
-            self.inner.views.subscribe_album_count(group_by_artist).process(|counts| {
-                Ok(bae_views::ListCount {
-                    rows: counts.rows,
-                    extra: bae_views::ListCountExtra::AlbumGrid { albums: counts.albums },
-                })
-            }),
-        )
-    }
-
-    /// How many rows of the album grid come before the row at `key`, as one
-    /// live query whose key moves in place.
-    pub fn subscribe_album_position(
-        &self,
-        sort: &[bae_views::AlbumSortCriterion],
-        group_by_artist: bool,
-        key: bae_store::list_windows::OrderKey,
-    ) -> bae_views::LiveListPosition {
-        let manager = &self.inner.manager;
-        let query = manager.until_closed(self.inner.views.subscribe_album_position(
-            sort,
-            group_by_artist,
-            key,
-        ));
-        bae_views::LiveListPosition::new(query, |read, rows_before| {
-            Some(bae_views::ListPosition { key: read.request.clone(), rows_before })
-        })
-    }
-
     /// The artist sections of the album grid grouped by artist under `sort`:
     /// every artist's heading and where its albums start, the first value at
     /// once and another each time what they read changes.
@@ -361,24 +306,6 @@ impl AppServices {
         })
     }
 
-    /// One live search of the library's artists for an artist picker,
-    /// pointed at a new text and new windows in place as the person types and
-    /// scrolls; it starts with no text and no windows.
-    pub fn subscribe_artist_search(&self) -> bae_views::LiveArtistSearch {
-        let manager = &self.inner.manager;
-        bae_views::LiveArtistSearch::new(
-            manager.until_closed(self.inner.views.subscribe_artist_search(
-                bae_views::ArtistSearchView {
-                    query: None,
-                    windows: bae_store::LibraryPageWindows::new(),
-                },
-            )),
-            |read, projection| {
-                Some(bae_views::artist_search::resolve_artist_search(projection, read.revision))
-            },
-        )
-    }
-
     /// The library membership of the releases an import pane offers, as one
     /// live query whose checks move in place as the pane's offers change; it
     /// starts with none.
@@ -393,57 +320,6 @@ impl AppServices {
                 })
             },
         )
-    }
-
-    pub fn subscribe_artist_browse(
-        &self,
-        sort: &[bae_views::ArtistSortCriterion],
-    ) -> bae_views::LiveArtistBrowse {
-        let manager = &self.inner.manager;
-        let query = manager.until_closed(
-            self.inner.views.subscribe_artist_browse(sort, std::collections::BTreeSet::new()),
-        );
-        bae_views::LiveArtistBrowse::new(query, |read, projection| {
-            Some(bae_views::artist::resolve_artist_browse(projection, read.revision, read.cause))
-        })
-    }
-
-    pub fn subscribe_composer_browse(
-        &self,
-        sort: &[bae_views::ComposerSortCriterion],
-    ) -> bae_views::LiveComposerBrowse {
-        let manager = &self.inner.manager;
-        let query = manager.until_closed(
-            self.inner.views.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
-        );
-        bae_views::LiveComposerBrowse::new(query, |read, projection| {
-            Some(bae_views::composer::resolve_composer_browse(
-                projection,
-                read.revision,
-                read.cause,
-            ))
-        })
-    }
-
-    /// The rows of `artist_id`'s composer page, reading no windows until
-    /// they are set.
-    pub fn subscribe_composer_detail_rows(
-        &self,
-        artist_id: &str,
-    ) -> bae_views::LiveComposerDetailRows {
-        let manager = &self.inner.manager;
-        let query = manager.until_closed(
-            self.inner
-                .views
-                .subscribe_composer_detail_rows(artist_id, std::collections::BTreeSet::new()),
-        );
-        bae_views::LiveComposerDetailRows::new(query, |read, projection| {
-            Some(bae_views::composer_detail::resolve_composer_detail_rows(
-                projection,
-                read.revision,
-                read.cause,
-            ))
-        })
     }
 
     pub fn subscribe_playback_progress(&self) -> bae_playback::PlaybackProgressFeed {
@@ -582,6 +458,10 @@ impl AppServices {
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
+    delegate_view!(artist_key_at => artist_key_at(sort: &[bae_views::ArtistSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(composer_key_at => composer_key_at(sort: &[bae_views::ComposerSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(composer_detail_key_at => composer_detail_key_at(artist_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(artist_search_key_at => artist_search_key_at(query: Option<bae_views::LibrarySearchQuery>, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(album_key_at => album_key_at(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
@@ -961,6 +841,7 @@ impl AppServices {
 mod detail_reads;
 #[cfg(desktop)]
 mod import;
+mod list_reads;
 #[cfg(desktop)]
 mod pane;
 mod playback_reads;

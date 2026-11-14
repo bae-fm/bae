@@ -7,14 +7,14 @@ use tracing::info;
 use crate::types::BridgeServerStatus;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
-    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeComposerDetail,
-    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeError, BridgeFile, BridgeGalleryItem,
-    BridgeGallerySource, BridgeList, BridgeListWindow, BridgePreviewTarget, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeSortValue, BridgeStorageFilter,
-    BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort, BridgeStoreKeyState, BridgeTrack,
-    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome,
-    BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
+    BridgeArtistSummary, BridgeComposerDetail, BridgeComposerSummary, BridgeError, BridgeFile,
+    BridgeGalleryItem, BridgeGallerySource, BridgeList, BridgeListWindow, BridgePreviewTarget,
+    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
+    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeSortValue,
+    BridgeStorageFilter, BridgeStorageRow, BridgeStorageRowStatus, BridgeStorageSort,
+    BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
+    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(desktop)]
 use crate::types::{BridgeCoverSelection, BridgeDiscogsSaveOutcome};

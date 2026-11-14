@@ -8,7 +8,6 @@ use bae_records::test_fixtures::{test_records, ARTIST_A, ARTIST_B, ARTIST_C, ART
 use bae_store::test_fixtures::live_query::*;
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
-use std::collections::BTreeSet;
 
 const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
 const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
@@ -58,10 +57,7 @@ async fn seeded_db() -> (Store, tempfile::TempDir) {
 /// The first ten artists `text` finds.
 async fn search(db: &Store, text: &str) -> Vec<DbArtist> {
     LibraryViews::new(db.clone())
-        .search_artists(
-            &crate::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-            bae_store::LibraryPageWindow::at(0, 10),
-        )
+        .search_artists(&crate::LibrarySearchQuery::parse(text).expect("the text is not blank"), 10)
         .await
         .unwrap()
 }
@@ -339,19 +335,20 @@ async fn artist_detail_absent_or_album_less_artist_is_none() {
         .is_none());
 }
 
-/// The artist grid reads the artists its windows hold, and follows the images
-/// of those artists only: an image on an artist outside every window changes
-/// nothing it delivers.
+/// The artist grid reads the artists its window holds, and follows the images
+/// of those artists only: the count it reads beside is its own query.
 #[tokio::test]
-async fn artist_browse_reads_its_windows_and_their_images() {
+async fn artist_window_reads_its_rows_and_their_images() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let mut live = crate::LibraryViews::new(db.clone()).subscribe_artist_browse(&[], first_page());
+    let views = crate::LibraryViews::new(db.clone());
+    let mut live = views.subscribe_artist_window(&[], top_window());
+    let mut count = views.subscribe_artist_count();
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.windows[0].rows[0].artist.id, ARTIST_ID);
-    assert!(initial.windows[0].rows[0].image.is_none());
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 1);
+    assert_eq!(initial.rows[0].artist.id, ARTIST_ID);
+    assert!(initial.rows[0].image.is_none());
 
     let artist_image = write_artist_image(&records, ARTIST_ID, "artist image bytes").await;
     let imaged = tokio::time::timeout(HANG_GUARD, live.next())
@@ -361,12 +358,60 @@ async fn artist_browse_reads_its_windows_and_their_images() {
         .result
         .unwrap();
     assert_eq!(
-        imaged.windows[0].rows[0].image.as_ref().map(|image| image.version.as_str()),
+        imaged.rows[0].image.as_ref().map(|image| image.version.as_str()),
         Some(artist_image.as_str())
     );
+}
 
-    live.requests().set(BTreeSet::new()).unwrap();
-    let count_only = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(count_only.total_count, 1);
-    assert!(count_only.windows.is_empty());
+/// Windows of the artist list sharing bounds, each its own live query, and the
+/// list's count its own: a write that lands in one window's range reruns that
+/// window and the count and no other window.
+#[tokio::test]
+async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let mut library = RecordsFixture::new();
+    for (at, name) in ["A", "C", "E", "G", "I"].into_iter().enumerate() {
+        let (artist, album, release) = (artist_id(at), album_id(at), release_id(at));
+        library = library
+            .artist(&artist, &format!("Artist Name {name}"))
+            .album(&album, &format!("Album {name}"), None, &[&artist])
+            .release(&album, &release);
+    }
+    library.write(&test_records(&db)).await;
+    let views = crate::LibraryViews::new(db.clone());
+    let second = views.artist_key_at(&[], 1).await.unwrap().expect("a row there");
+    let fourth = views.artist_key_at(&[], 3).await.unwrap().expect("a row there");
+    let mut live: Vec<_> = windows_split_at(second, fourth)
+        .into_iter()
+        .map(|window| views.subscribe_artist_window(&[], window))
+        .collect();
+    let mut count = views.subscribe_artist_count();
+    for query in &mut live {
+        tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+    }
+    count.next().await.expect("the query stays open").unwrap();
+
+    // "D" sorts between the second row and the fourth.
+    let (artist, album) = (artist_id(5), album_id(5));
+    RecordsFixture::new()
+        .artist(&artist, "Artist Name D")
+        .album(&album, "Album D", None, &[&artist])
+        .release(&album, &release_id(5))
+        .write(&test_records(&db))
+        .await;
+    let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+    assert_eq!(marked, [false, true, false]);
+    assert!(count.is_marked_for_rerun());
+}
+
+fn artist_id(at: usize) -> String {
+    format!("5e6f7a8b-0c1d-4e2f-8a3b-4c5d6e7f80{at:02}")
+}
+
+fn album_id(at: usize) -> String {
+    format!("6f7a8b9c-1d2e-4f3a-9b4c-5d6e7f8a90{at:02}")
+}
+
+fn release_id(at: usize) -> String {
+    format!("7a8b9c0d-2e3f-4a4b-8c5d-6e7f8a9b00{at:02}")
 }

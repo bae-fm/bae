@@ -65,30 +65,67 @@ impl LibraryViews {
             .await
     }
 
-    /// Follow the rows of `artist_id`'s page in the windows its request
-    /// names, each read from its cursor when it has one (`list_windows`),
-    /// with how many rows the page holds.
-    pub fn subscribe_composer_detail_rows(
+    /// Follow one window of `artist_id`'s page: a range of its order
+    /// (`list_windows`), which coven reruns for a write inside it alone.
+    pub fn subscribe_composer_detail_window(
         &self,
         artist_id: &str,
-        initial_windows: bae_store::LibraryPageWindows,
+        initial: ListWindow,
     ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        ComposerDetailRowsProjection,
+        ListWindow,
+        WindowRead<DbComposerDetailRow>,
         bae_store::DbError,
     > {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
-        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let total_count = composer_detail_row_count_on(&sql, &artist_id)?;
-            let windows = read_windows(&order, requested, |seek, limit, offset| {
-                composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
-            })?;
-            Ok(ComposerDetailRowsProjection {
-                windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
-                total_count,
+        let read_order = order.clone();
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+            composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit, offset)
+        })
+    }
+
+    /// Follow how many rows `artist_id`'s page holds. Its own query, never
+    /// beside a window's rows.
+    pub fn subscribe_composer_detail_count(
+        &self,
+        artist_id: &str,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        let artist_id = artist_id.to_string();
+        self.store.subscribe(move |sql| composer_detail_row_count_on(&sql, &artist_id))
+    }
+
+    /// Follow how many rows of `artist_id`'s page come before the row at a
+    /// key, a count over index ranges that moves in place with the key.
+    pub fn subscribe_composer_detail_position(
+        &self,
+        artist_id: &str,
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let artist_id = artist_id.to_string();
+        let order = composer_detail_order("listing");
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            rows_before(&order, key, |seek| {
+                composer_detail_seek_count_on(&sql, &artist_id, &order, seek)
             })
         })
+    }
+
+    /// The key of the row at `position` of `artist_id`'s page, or of its last
+    /// row when it ends before it; `None` for an empty page.
+    pub async fn composer_detail_key_at(
+        &self,
+        artist_id: &str,
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let artist_id = artist_id.to_string();
+        let order = composer_detail_order("listing");
+        self.store
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
+                })
+            })
+            .await
     }
 }
 
@@ -102,22 +139,13 @@ pub fn resolve_composer_detail_projection(
         .map(|raw| ComposerDetail { composer: raw.composer, default_work_id: raw.default_work_id })
 }
 
-/// One delivery of a composer's page's rows as the page shows them.
-pub fn resolve_composer_detail_rows(
-    projection: ComposerDetailRowsProjection,
-    request_revision: u64,
-    cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<ComposerDetailRow> {
-    crate::LibraryBrowseSnapshot {
-        windows: projection
-            .windows
-            .into_iter()
-            .map(|window| window.map_rows(composer_detail_row_of))
-            .collect(),
-        total_count: projection.total_count,
-        request_revision,
-        cause,
-    }
+/// One delivery of a composer's page's window as the page shows it.
+pub fn resolve_composer_detail_window(
+    read: WindowRead<DbComposerDetailRow>,
+) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, |rows| {
+        crate::ListRows::ComposerPage(rows.into_iter().map(composer_detail_row_of).collect())
+    })
 }
 
 /// A row of a composer's page as its read found it, with the heading it
@@ -201,6 +229,25 @@ fn find_composer_detail_on(
         )
         .optional()?;
     Ok(Some(DbComposerDetail { composer, default_work_id }))
+}
+
+/// How many rows of `artist_id`'s page come before the rows `seek` reads.
+fn composer_detail_seek_count_on(
+    sql: &SqlReadContext<'_>,
+    artist_id: &str,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let statement = format!(
+        "SELECT COUNT(*) FROM composer_detail_row listing \
+         WHERE listing.artist_id = :artist_id AND {}",
+        order.condition(seek)
+    );
+    let mut params = seek.params();
+    params.push((":artist_id", &artist_id as &dyn rusqlite::ToSql));
+    Ok(sql
+        .query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
 }
 
 fn composer_detail_row_count_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Result<u64, DbError> {
@@ -370,12 +417,6 @@ fn row_to_composer_detail_row(row: &Row<'_>) -> rusqlite::Result<DbComposerDetai
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerDetailProjection {
     pub detail: Option<DbComposerDetail>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ComposerDetailRowsProjection {
-    pub windows: Vec<bae_store::LibraryBrowseWindow<DbComposerDetailRow>>,
-    pub total_count: u64,
 }
 
 #[cfg(test)]

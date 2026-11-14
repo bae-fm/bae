@@ -56,9 +56,9 @@ internal fun ComposerListContent(
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(
                 count = page.totalCount,
-                key = { index -> page.rows[index]?.artistId ?: "composer-slot-$index" },
+                key = { index -> page.rowAt(index)?.artistId ?: "composer-slot-$index" },
             ) { index ->
-                page.rows[index]?.let { composer ->
+                page.rowAt(index)?.let { composer ->
                     AndroidLibraryRow(
                         title = composer.name,
                         subtitle = context.coreString(composer.countLine),

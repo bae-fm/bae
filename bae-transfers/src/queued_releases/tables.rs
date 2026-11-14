@@ -16,11 +16,11 @@ use crate::output_snapshot::{OutputKind, OutputRequest};
 use crate::release_queue::ReleaseQueueSnapshot;
 use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
-    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
+    ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
 };
-use bae_store::list_windows::{read_windows, CursorWindowRead, Keyed, ListOrder, Seek, SortTerm};
+use bae_store::list_windows::{Keyed, ListOrder, Seek, SortTerm};
 use bae_store::read::column_conversion_error;
-use bae_store::{DbError, LibraryPageWindows};
+use bae_store::DbError;
 use coven::{CovenWrite, SqlReadContext};
 #[cfg(desktop)]
 use rusqlite::types::Value;
@@ -294,23 +294,23 @@ pub fn queue_window_rows_on<P: QueuedPayload>(
     })?)
 }
 
-/// How many entries the queue holds, and the windows `windows` names of
-/// them in the order queued, each beside its release, each read from its
-/// cursor when it has one (`list_windows`).
-pub(crate) fn release_queue_windows_on<P: QueuedPayload>(
+/// How many entries the queue holds.
+pub(crate) fn release_queue_row_count_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
-    windows: &LibraryPageWindows,
-) -> Result<ReleaseQueueWindows<P>, DbError> {
-    let total_count: u64 =
-        sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?;
-    let order = queue_order();
-    let windows = read_windows(&order, windows, |seek, limit, offset| {
-        queue_window_rows_on::<P>(sql, &order, seek, limit, offset)
-    })?;
-    Ok(ReleaseQueueWindows {
-        windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
-        total_count,
-    })
+) -> Result<u64, DbError> {
+    Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?)
+}
+
+/// How many entries of the queue come before the rows `seek` reads.
+pub(crate) fn queue_seek_count_on<P: QueuedPayload>(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let statement = format!("SELECT COUNT(*) FROM {} q WHERE {}", P::TABLE, order.condition(seek));
+    Ok(sql
+        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
 }
 
 fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {

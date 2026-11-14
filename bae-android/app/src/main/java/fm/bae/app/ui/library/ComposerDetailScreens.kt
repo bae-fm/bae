@@ -163,9 +163,9 @@ private fun ComposerDetailContent(
             }
             items(
                 count = rows.totalCount,
-                key = { index -> rows.rows[index]?.id ?: "composer-row-slot-$index" },
+                key = { index -> rows.rowAt(index)?.id ?: "composer-row-slot-$index" },
             ) { index ->
-                rows.rows[index]?.let { row ->
+                rows.rowAt(index)?.let { row ->
                     ComposerDetailRowContent(
                         row = row,
                         onSelectWork = onSelectWork,

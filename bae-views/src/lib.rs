@@ -45,7 +45,6 @@ mod uploads;
 pub use activity_bytes::{
     activity_bytes_on, ActivityBytes, DownloadBytes, SendingFile, UploadBytes, WaitingRelease,
 };
-pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use browse::*;
 #[cfg(desktop)]
 pub use release_files::{
@@ -61,10 +60,10 @@ pub use sync_activity::{
 };
 
 pub use album::{AlbumCounts, AlbumDetailProjection, LibrarySearchProjection};
-pub use artist::{ArtistBrowseProjection, ArtistDetailProjection};
-pub use artist_search::{ArtistSearchProjection, DbArtistSearchRow};
-pub use composer::{ComposerBrowseProjection, WorkDetailProjection};
-pub use composer_detail::{ComposerDetailProjection, ComposerDetailRowsProjection};
+pub use artist::ArtistDetailProjection;
+pub use artist_search::DbArtistSearchRow;
+pub use composer::WorkDetailProjection;
+pub use composer_detail::ComposerDetailProjection;
 pub use models::*;
 pub use release::ReleaseDetailProjection;
 pub use storage::{StorageBrowseProjection, StorageBrowseRequest};
@@ -84,7 +83,7 @@ use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
 use bae_store::list_windows::{
-    key_at, read_windows, rows_before, CursorWindowRead, Keyed, ListOrder, OrderKey, Seek, SortTerm,
+    key_at, read_windows, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm,
 };
 use bae_store::read::*;
 use bae_store::syncs_on;

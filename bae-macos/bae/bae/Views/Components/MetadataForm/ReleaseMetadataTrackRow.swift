@@ -12,7 +12,7 @@ struct ReleaseMetadataTrackRow: View {
     /// How the track's place reads ("A1", "3"): core's, and never edited.
     let position: String
     /// Opens the live artist search the artist field reads while open.
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
     let onChange: @MainActor (BridgeRawTrackEdit) async -> Void
 
     var body: some View {

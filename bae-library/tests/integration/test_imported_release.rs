@@ -472,15 +472,18 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
     fixture.import(&key).await.unwrap_or_else(|error| panic!("import failed: {error}"));
 
     let mut search = bae_views::LibraryViews::new(fixture.library.store().clone())
-        .subscribe_artist_search(bae_views::ArtistSearchView {
-            query: bae_views::LibrarySearchQuery::parse("Track Artist"),
-            windows: [bae_store::LibraryPageWindow::at(0, 50)].into(),
-        });
+        .subscribe_artist_search_window(
+            bae_views::LibrarySearchQuery::parse("Track Artist"),
+            bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
+        );
     let found = search.next().await.expect("the artist search stays open").result.unwrap();
-    let result = bae_views::artist_search::resolve_artist_search(found, 0)
-        .windows
+    let bae_views::ListRows::ArtistSearch(rows) =
+        bae_views::artist_search::resolve_artist_search_window(found).rows
+    else {
+        panic!("an artist search window holds artists");
+    };
+    let result = rows
         .into_iter()
-        .flat_map(|window| window.rows)
         .find(|result| {
             result.artist.discogs_artist_id.as_deref() == Some(&track_artist_id.to_string())
         })

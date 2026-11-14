@@ -111,7 +111,7 @@ struct InlineFieldHeightTests {
                 values: session.draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
-                artistSearch: { .fixed([], answers: UnansweredCount()) },
+                artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
                 cover: { EmptyView() },
                 audioFacts: { EmptyView() }
             )

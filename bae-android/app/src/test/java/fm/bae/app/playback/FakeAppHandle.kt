@@ -1,28 +1,22 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
-import kotlinx.coroutines.CompletableDeferred
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AlbumSectionsSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
 import uniffi.bae_bridge.AppHandleInterface
-import uniffi.bae_bridge.ArtistBrowseSubscription
 import uniffi.bae_bridge.ArtistDetailSubscription
-import uniffi.bae_bridge.ArtistSearchSubscription
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddDeviceRequest
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
-import uniffi.bae_bridge.BridgeComposerSortCriterion
-import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -74,12 +68,9 @@ import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastReceiversSubscription
-import uniffi.bae_bridge.ComposerBrowseSubscription
-import uniffi.bae_bridge.ComposerDetailRowsSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
 import uniffi.bae_bridge.ConfigSubscription
 import uniffi.bae_bridge.DeviceStorageSubscription
-import uniffi.bae_bridge.DownloadBrowseSubscription
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.InvitesSubscription
 import uniffi.bae_bridge.KeyedValueStream
@@ -117,7 +108,7 @@ internal fun unfaked(method: String): Nothing = throw AssertionError("the test r
  */
 internal open class FakeAppHandle(
     val albumList: FakeAlbumList = FakeAlbumList(),
-    private val composerPages: (offset: ULong, limit: ULong) -> List<BridgeComposerSummary> = { _, _ -> emptyList() },
+    val composerList: FakeComposerList = FakeComposerList(),
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
     private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
     private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
@@ -132,7 +123,6 @@ internal open class FakeAppHandle(
 
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
     val playTracksCalls = mutableListOf<Pair<List<String>, UInt>>()
-    val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
     val albumDetailSubscriptions = mutableListOf<FakeAlbumDetailSubscription>()
     val searchSubscriptions = mutableListOf<FakeLibrarySearchSubscription>()
 
@@ -161,8 +151,6 @@ internal open class FakeAppHandle(
     override fun subscribeDownloadCounts(): DownloadCountsSubscription = FakeDownloadCountsSubscription()
 
     override fun subscribeDeviceStorage(): DeviceStorageSubscription = unfaked("subscribeDeviceStorage")
-
-    override fun subscribeDownloadBrowse(): DownloadBrowseSubscription = unfaked("subscribeDownloadBrowse")
 
     override fun feedDownloadTransfers(): KeyedValueStream = FakeKeyedValueStream()
 
@@ -236,22 +224,35 @@ internal open class FakeAppHandle(
         position: ULong,
     ): List<BridgeSortValue>? = albumGrid(list).keyAt(position)
 
-    private fun albumGrid(list: BridgeList): FakeAlbumList =
-        when (list) {
-            is BridgeList.AlbumGrid -> albumList
-        }
+    private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
 
-    override fun subscribeComposerBrowse(sortCriteria: List<BridgeComposerSortCriterion>): ComposerBrowseSubscription =
-        FakeComposerBrowseSubscription(composerPages).also(composerBrowseSubscriptions::add)
+    /** The list [list] names, which a test changes and delivers. */
+    private fun albumGrid(list: BridgeList): FakeList<*> =
+        when (list) {
+            is BridgeList.AlbumGrid -> {
+                albumList
+            }
+
+            is BridgeList.Composers -> {
+                composerList
+            }
+
+            is BridgeList.ComposerPage -> {
+                composerPageLists.getOrPut(
+                    list.artistId,
+                ) { FakeComposerPage(composerDetailRows[list.artistId].orEmpty()) }
+            }
+
+            is BridgeList.Artists, BridgeList.Downloads, is BridgeList.ArtistSearch -> {
+                unfaked("the list $list")
+            }
+        }
 
     override fun subscribeAlbumDetail(): AlbumDetailSubscription =
         FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it] }).also(albumDetailSubscriptions::add)
 
     override fun subscribeComposerDetail(): ComposerDetailSubscription =
         FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })
-
-    override fun subscribeComposerDetailRows(artistId: String): ComposerDetailRowsSubscription =
-        FakeComposerDetailRowsSubscription(composerDetailRows[artistId].orEmpty())
 
     override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { workDetails[it] })
 
@@ -432,8 +433,6 @@ internal open class FakeAppHandle(
         setup: BridgeLibrarySetup?,
     ): BridgeStorageSetup = unfaked("saveSyncConfig")
 
-    override fun subscribeArtistSearch(): ArtistSearchSubscription = unfaked("subscribeArtistSearch")
-
     override fun seekByRatio(ratio: Double) {
         unfaked("seekByRatio")
     }
@@ -507,9 +506,6 @@ internal open class FakeAppHandle(
         releaseId: String,
         source: BridgeGallerySource,
     ): ByteArray = unfaked("fetchReleaseImageBytes")
-
-    override fun subscribeArtistBrowse(sortCriteria: List<BridgeArtistSortCriterion>): ArtistBrowseSubscription =
-        unfaked("subscribeArtistBrowse")
 
     override suspend fun lockActiveLibrary() {
         unfaked("lockActiveLibrary")

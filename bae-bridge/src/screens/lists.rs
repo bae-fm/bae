@@ -64,6 +64,27 @@ impl BridgeList {
     }
 }
 
+impl BridgeList {
+    /// The artist list's sort in core's terms.
+    pub(crate) fn artist_sort(
+        sort: Vec<crate::types::BridgeArtistSortCriterion>,
+    ) -> Vec<bae_views::ArtistSortCriterion> {
+        sort.into_iter().map(crate::types::BridgeArtistSortCriterion::into_core).collect()
+    }
+
+    /// The composer list's sort in core's terms.
+    pub(crate) fn composer_sort(
+        sort: Vec<crate::types::BridgeComposerSortCriterion>,
+    ) -> Vec<bae_views::ComposerSortCriterion> {
+        sort.into_iter().map(crate::types::BridgeComposerSortCriterion::into_core).collect()
+    }
+
+    /// What an artist picker's text searches for: a blank text is no search.
+    pub(crate) fn artist_search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {
+        bae_views::LibrarySearchQuery::parse(text)
+    }
+}
+
 impl BridgeListWindow {
     pub(crate) fn into_core(self) -> ListWindow {
         let key = |key: Vec<BridgeSortValue>| order_key(key);
@@ -99,6 +120,33 @@ impl BridgeListWindowValue {
                     rows: rows
                         .into_iter()
                         .map(crate::types::BridgeAlbumAppearance::from_core)
+                        .collect(),
+                },
+                bae_views::ListRows::Artists(rows) => BridgeListRows::Artists {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeArtistSummary::from_core)
+                        .collect(),
+                },
+                bae_views::ListRows::Composers(rows) => BridgeListRows::Composers {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeComposerSummary::from_core)
+                        .collect(),
+                },
+                bae_views::ListRows::ComposerPage(rows) => BridgeListRows::ComposerPage {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeComposerDetailRow::from_core)
+                        .collect(),
+                },
+                bae_views::ListRows::Downloads(rows) => BridgeListRows::Downloads {
+                    rows: rows.into_iter().map(crate::types::BridgeDownloadOp::from_core).collect(),
+                },
+                bae_views::ListRows::ArtistSearch(rows) => BridgeListRows::ArtistSearch {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeArtistSearchResult::from_core)
                         .collect(),
                 },
             },

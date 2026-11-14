@@ -34,6 +34,16 @@ pub struct LibraryBrowseSnapshot<Row> {
 pub enum ListRows {
     /// The album grid's rows, each an album appearance.
     Albums(Vec<crate::album_detail::AlbumAppearance>),
+    /// The artist list's rows.
+    Artists(Vec<crate::DbArtistSummary>),
+    /// The composer list's rows.
+    Composers(Vec<crate::DbComposerSummary>),
+    /// A composer's page's rows: its works, then its unlinked credits.
+    ComposerPage(Vec<crate::album_detail::ComposerDetailRow>),
+    /// The download queue's entries, each beside its release.
+    Downloads(Vec<bae_transfers::DownloadRow>),
+    /// The artists an artist picker's text finds.
+    ArtistSearch(Vec<crate::album_detail::ArtistSearchResult>),
 }
 
 /// One delivery of a list's window: the request it answers, its rows, the
@@ -92,13 +102,3 @@ pub type LiveListPosition = LiveRead<OrderKey, ListPosition>;
 /// read resolves to the snapshot its screen takes, carrying every window the
 /// request names, read fresh.
 pub type LiveLibraryBrowse<Snapshot> = LiveRead<LibraryPageWindows, Snapshot>;
-
-pub type LiveArtistBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<crate::DbArtistSummary>>;
-pub type LiveComposerBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<crate::DbComposerSummary>>;
-/// A composer's page's rows, in the windows its screen shows.
-pub type LiveComposerDetailRows =
-    LiveLibraryBrowse<LibraryBrowseSnapshot<crate::album_detail::ComposerDetailRow>>;
-
-/// The download queue as the Downloads pane draws it: its windows, each row
-/// an entry beside its release.
-pub type LiveDownloadBrowse = LiveLibraryBrowse<LibraryBrowseSnapshot<bae_transfers::DownloadRow>>;

@@ -156,10 +156,7 @@ final class LibraryBrowseSession {
             ],
             makeList: {
                 ComposerList(
-                    pageSource: LibraryComposerPageSource(
-                        library: library,
-                        sort: $0
-                    ),
+                    queries: library.composerList($0),
                     onError: { uiStore.showError($0) }
                 )
             }
@@ -171,10 +168,7 @@ final class LibraryBrowseSession {
             ],
             makeList: {
                 ArtistList(
-                    pageSource: LibraryArtistPageSource(
-                        library: library,
-                        sort: $0
-                    ),
+                    queries: library.artistList($0),
                     onError: { uiStore.showError($0) }
                 )
             }

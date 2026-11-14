@@ -211,6 +211,26 @@ struct PaginatedListTests {
     }
 
     @MainActor
+    @Test("repeated rows keep the distinct count the list's count carries")
+    func distinctItemCount() async {
+        let album = makeBridgeAlbum(id: "shared")
+        let list = PaginatedList<BridgeAlbum>(
+            queries: .fixed(
+                [album, album],
+                answers: UnansweredCount(),
+                itemCount: 1
+            ),
+            onError: { Issue.record("List failed: \($0)") }
+        )
+        await list.loadInitial()
+        #expect(list.totalCount == 2)
+        #expect(list.itemCount == 1)
+        #expect(list.idAt(0) == "shared")
+        #expect(list.idAt(1) == "shared")
+        list.cancel()
+    }
+
+    @MainActor
     @Test("a window cut by its limit closes at the key beyond it")
     func closesAtBeyond() async throws {
         let probe = ProbeList(ids(0...199))

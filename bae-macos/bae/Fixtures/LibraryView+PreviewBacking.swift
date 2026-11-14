@@ -30,8 +30,8 @@ extension LibraryView {
     static func emptyLibrary() -> Library {
         Library(
             albumList: { _, _ in .fixed([], answers: UnansweredCount()) },
-            composerBrowse: { _ in .fixed([], answers: UnansweredCount()) },
-            artistBrowse: { _ in .fixed([], answers: UnansweredCount()) },
+            composerList: { _ in .fixed([], answers: UnansweredCount()) },
+            artistList: { _ in .fixed([], answers: UnansweredCount()) },
             playlists: noPlaylists
         )
     }
@@ -131,13 +131,13 @@ extension LibraryView {
             }
         let workDetail = previewWorkDetail(work: works[0])
         let library = Library(
-            composerBrowse: { _ in
+            composerList: { _ in
                 .fixed(composers, answers: UnansweredCount())
             },
             composerDetail: {
                 .fixed(answers: UnansweredCount()) { _ in composerDetail }
             },
-            composerDetailRows: { _ in
+            composerPageList: { _ in
                 .fixed(rows, answers: UnansweredCount())
             },
             workDetail: {

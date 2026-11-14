@@ -30,28 +30,55 @@ impl LibraryViews {
             .await
     }
 
-    /// Follow the artist list under `sort` in the windows its request
-    /// names, each read from its cursor when it has one (`list_windows`).
-    pub fn subscribe_artist_browse(
+    /// Follow one window of the artist list under `sort`: a range of its
+    /// order (`list_windows`), which coven reruns for a write inside it alone.
+    pub fn subscribe_artist_window(
         &self,
         sort: &[ArtistSortCriterion],
-        initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        ArtistBrowseProjection,
-        bae_store::DbError,
-    > {
+        initial: ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbArtistSummary>, bae_store::DbError>
+    {
         let order = artist_order(sort);
-        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let total_count = artist_count_on(&sql)?;
-            let windows = read_windows(&order, requested, |seek, limit, offset| {
-                artist_rows_on(&sql, &order, seek, limit, offset)
-            })?;
-            Ok(ArtistBrowseProjection {
-                windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
-                total_count,
-            })
+        let read_order = order.clone();
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+            artist_rows_on(sql, &read_order, seek, limit, offset)
         })
+    }
+
+    /// Follow how many artists the list has. Its own query, never beside a
+    /// window's rows: every artist added or removed moves it.
+    pub fn subscribe_artist_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
+        self.store.subscribe(|sql| artist_count_on(&sql))
+    }
+
+    /// Follow how many artists come before the row at a key, a count over
+    /// index ranges that moves in place with the key.
+    pub fn subscribe_artist_position(
+        &self,
+        sort: &[ArtistSortCriterion],
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let order = artist_order(sort);
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            rows_before(&order, key, |seek| artist_seek_count_on(&sql, &order, seek))
+        })
+    }
+
+    /// The key of the artist at `position`, or of the last one when the list
+    /// ends before it; `None` for an empty list.
+    pub async fn artist_key_at(
+        &self,
+        sort: &[ArtistSortCriterion],
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let order = artist_order(sort);
+        self.store
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    artist_rows_on(&sql, &order, seek, limit, offset)
+                })
+            })
+            .await
     }
 
     /// The artist's page as its view shows it. `None` when the artist
@@ -101,18 +128,9 @@ impl LibraryViews {
     }
 }
 
-/// One delivery of the artist list as the list shows it.
-pub fn resolve_artist_browse(
-    projection: ArtistBrowseProjection,
-    request_revision: u64,
-    cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<DbArtistSummary> {
-    crate::LibraryBrowseSnapshot {
-        windows: projection.windows,
-        total_count: projection.total_count,
-        request_revision,
-        cause,
-    }
+/// One delivery of an artist list window as the list shows it.
+pub fn resolve_artist_window(read: WindowRead<DbArtistSummary>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, crate::ListRows::Artists)
 }
 
 /// One delivery of the artist detail as the detail view shows it.
@@ -202,6 +220,20 @@ pub(crate) fn artist_rows_on(
     })?)
 }
 
+/// How many artists come before the rows `seek` reads: what a count over one
+/// of the seeks before a key adds up to.
+fn artist_seek_count_on(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let statement =
+        format!("SELECT COUNT(*) FROM artist_listing listing WHERE {}", order.condition(seek));
+    Ok(sql
+        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
+}
+
 fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
     sql.query_row("SELECT COUNT(*) FROM artist_listing", [], |row| row.get::<_, i64>(0))
         .map(|count| count as u64)
@@ -271,12 +303,6 @@ pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
         .collect::<Vec<_>>();
     let ordered_by_name = sort.iter().any(|c| c.field == ArtistSortField::Name);
     ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ArtistBrowseProjection {
-    pub windows: Vec<bae_store::LibraryBrowseWindow<DbArtistSummary>>,
-    pub total_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

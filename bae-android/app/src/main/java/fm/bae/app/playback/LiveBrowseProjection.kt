@@ -1,76 +1,16 @@
 package fm.bae.app.playback
 
 import androidx.media3.common.MediaItem
-import fm.bae.app.data.CollectionBrowseQuery
-import fm.bae.app.data.ComposerBrowseQuery
-import fm.bae.app.data.ComposerDetailRowsQuery
 import fm.bae.app.data.LiveQueryEvent
-import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.yield
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibraryPageWindow
-import uniffi.bae_bridge.BridgeLiveQueryCause
-import java.util.LinkedHashMap
 
-private const val ACCESS_ORDER_INITIAL_CAPACITY = 16
-private const val ACCESS_ORDER_LOAD_FACTOR = 0.75f
 private const val MAXIMUM_EXACT_SUBSCRIPTIONS = 24
-
-internal data class CollectionSnapshotReader<Row, Snapshot>(
-    val windows: (Snapshot) -> Map<BridgeLibraryPageWindow, List<Row>>,
-    val totalCount: (Snapshot) -> Int,
-    val cause: (Snapshot) -> BridgeLiveQueryCause,
-)
-
-internal typealias ComposerCollectionProjection =
-    CollectionProjection<uniffi.bae_bridge.BridgeComposerSummary, uniffi.bae_bridge.BridgeComposerBrowseSnapshot>
-
-internal fun composerCollectionProjection(
-    scope: CoroutineScope,
-    query: ComposerBrowseQuery,
-    onChanged: (Int) -> Unit,
-    onError: (BridgeException) -> Unit,
-) = CollectionProjection(
-    scope,
-    query,
-    CollectionSnapshotReader(
-        windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
-        totalCount = { it.totalCount.toInt() },
-        cause = { it.cause },
-    ),
-    onChanged,
-    onError,
-)
-
-internal typealias ComposerPageProjection =
-    CollectionProjection<uniffi.bae_bridge.BridgeComposerDetailRow, uniffi.bae_bridge.BridgeComposerDetailRowsSnapshot>
-
-internal fun composerPageCollectionProjection(
-    scope: CoroutineScope,
-    query: ComposerDetailRowsQuery,
-    onChanged: (Int) -> Unit,
-    onError: (BridgeException) -> Unit,
-) = CollectionProjection(
-    scope,
-    query,
-    CollectionSnapshotReader(
-        windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
-        totalCount = { it.totalCount.toInt() },
-        cause = { it.cause },
-    ),
-    onChanged,
-    onError,
-)
 
 internal fun <Key, Value> exactProjectionCache(
     scope: CoroutineScope,
@@ -80,155 +20,6 @@ internal fun <Key, Value> exactProjectionCache(
     LiveProjectionCache(scope, MAXIMUM_EXACT_SUBSCRIPTIONS, flow) { _, event, _ ->
         (event as? LiveQueryEvent.Error)?.let { onError(it.error) }
     }
-
-internal class CollectionProjection<Row : Any, Snapshot : Any>(
-    scope: CoroutineScope,
-    private val query: CollectionBrowseQuery<Snapshot>,
-    private val snapshotReader: CollectionSnapshotReader<Row, Snapshot>,
-    private val onChanged: (Int) -> Unit,
-    private val onError: (BridgeException) -> Unit,
-) {
-    private data class Waiter<Row>(
-        val window: BridgeLibraryPageWindow,
-        val result: CompletableDeferred<List<Row>>,
-    )
-
-    private val mutex = Mutex()
-    private val requested =
-        LinkedHashMap<BridgeLibraryPageWindow, Unit>(
-            ACCESS_ORDER_INITIAL_CAPACITY,
-            ACCESS_ORDER_LOAD_FACTOR,
-            true,
-        )
-    private val waiters = mutableListOf<Waiter<Row>>()
-    private val ready = CompletableDeferred<Unit>()
-
-    /** The rows of each requested window delivered so far; a value names only the windows that changed. */
-    private var delivered: Map<BridgeLibraryPageWindow, List<Row>> = emptyMap()
-    private var lastCount: Int? = null
-    private var closed = false
-    private val consumer: Job =
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            consume()
-        }
-
-    suspend fun awaitReady() {
-        ready.await()
-    }
-
-    suspend fun rows(window: BridgeLibraryPageWindow): List<Row> {
-        awaitReady()
-        val waiter = CompletableDeferred<List<Row>>()
-        mutex.withLock {
-            checkOpen()
-            requested[window] = Unit
-            val evicted = mutableListOf<BridgeLibraryPageWindow>()
-            while (requested.size > MAXIMUM_WINDOWS) {
-                requested.entries.first().key.also {
-                    requested.remove(it)
-                    evicted += it
-                }
-            }
-            waiters.removeAll { pending ->
-                if (pending.window in evicted) {
-                    pending.result.completeExceptionally(windowEvicted())
-                    true
-                } else {
-                    false
-                }
-            }
-            delivered = delivered - evicted.toSet()
-            val absolute = requested.keys.toList()
-            val held = delivered[window]
-            if (held != null) {
-                waiter.complete(held)
-                // Nothing to ask for unless a window was dropped, which core
-                // forgets having delivered only when the request says so.
-                if (evicted.isEmpty()) return@withLock
-            } else {
-                waiters += Waiter(window, waiter)
-            }
-            try {
-                query.setWindows(absolute)
-            } catch (error: BridgeException) {
-                waiters.removeAll { it.result === waiter }
-                waiter.completeExceptionally(error)
-            }
-        }
-        return waiter.await()
-    }
-
-    suspend fun close() {
-        val error = treeClosedError()
-        val shouldClose =
-            mutex.withLock {
-                if (closed) {
-                    false
-                } else {
-                    closed = true
-                    waiters.forEach { it.result.completeExceptionally(error) }
-                    waiters.clear()
-                    ready.complete(Unit)
-                    true
-                }
-            }
-        if (!shouldClose) return
-        try {
-            query.cancel()
-        } finally {
-            consumer.cancelAndJoin()
-        }
-    }
-
-    /** Each value brings the windows whose rows changed; nothing reaches a projection once it is closed. */
-    private suspend fun consume() {
-        query.pullEach(
-            onValue = { snapshot ->
-                val notify =
-                    mutex.withLock {
-                        if (closed) return@pullEach
-                        val value = snapshotReader.windows(snapshot)
-                        val count = snapshotReader.totalCount(snapshot)
-                        delivered = (delivered + value).filterKeys { it in requested }
-                        lastCount = count
-                        waiters.removeAll { waiter ->
-                            value[waiter.window]?.let(waiter.result::complete) ?: false
-                        }
-                        ready.complete(Unit)
-                        when (snapshotReader.cause(snapshot)) {
-                            BridgeLiveQueryCause.WRITE,
-                            BridgeLiveQueryCause.REQUEST_AND_WRITE,
-                            -> true
-
-                            BridgeLiveQueryCause.REQUEST -> false
-                        }
-                    }
-                if (notify) onChanged(snapshotReader.totalCount(snapshot))
-            },
-            onError = { error ->
-                val count =
-                    mutex.withLock {
-                        if (closed) return@pullEach
-                        waiters.forEach { it.result.completeExceptionally(error) }
-                        waiters.clear()
-                        ready.complete(Unit)
-                        lastCount
-                    }
-                onError(error)
-                count?.let(onChanged)
-                yield()
-            },
-        )
-    }
-
-    private fun checkOpen() {
-        if (closed) throw treeClosedError()
-    }
-
-    private companion object {
-        const val MAXIMUM_WINDOWS = 12
-    }
-}
 
 /**
  * A controller's page of a browse list, exactly as it asked: [pageSize] items
@@ -241,11 +32,6 @@ internal object BrowsePaging {
         page: Int,
         pageSize: Int,
     ): Boolean = page >= 0 && pageSize >= 1
-
-    fun window(
-        page: Int,
-        pageSize: Int,
-    ) = BridgeLibraryPageWindow(offsetOf(page, pageSize), pageSize.toULong(), null)
 
     private fun offsetOf(
         page: Int,

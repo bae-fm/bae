@@ -31,7 +31,7 @@ pub use release_queue::ReleaseQueueEntries;
 pub use release_queue::{
     transfer_summary, QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry,
     ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
-    ReleaseQueueWindows, TransferCount, TransferStage,
+    TransferCount, TransferStage,
 };
 pub use release_state::release_download_entry_on;
 pub use release_transfers::{

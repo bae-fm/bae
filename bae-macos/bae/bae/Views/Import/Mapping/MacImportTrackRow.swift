@@ -13,7 +13,7 @@ struct MacImportTrackRow: View {
     let actions: ImportMappingActions
     /// Opens the live artist search the track's artist field reads while
     /// open.
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {

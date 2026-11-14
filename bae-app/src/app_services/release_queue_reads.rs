@@ -8,27 +8,43 @@ use super::*;
 use bae_library::LibraryError;
 
 impl AppServices {
-    /// The download queue as the Downloads pane draws it: how many entries it
-    /// holds, and the windows the pane asks for, none until the first
-    /// [`set`](bae_store::live_query::LiveRead::set).
-    /// One query serves every window, and reads them again as an entry
-    /// comes, goes, starts or fails, or a release a window shows changes.
-    pub fn subscribe_download_browse(&self) -> bae_views::LiveDownloadBrowse {
-        let manager = &self.inner.manager;
-        let query = manager
-            .until_closed(manager.subscribe_download_windows(bae_store::LibraryPageWindows::new()));
-        bae_views::LiveDownloadBrowse::new(
-            query,
-            |read, queue: bae_transfers::ReleaseQueueWindows<bae_transfers::DownloadRequest>| {
-                Some(bae_views::LibraryBrowseSnapshot {
-                    windows: queue.windows,
-                    total_count: queue.total_count,
-                    request_revision: read.revision,
-                    cause: read.cause,
-                })
-            },
+    /// One window of the download queue as the Downloads pane draws it: a
+    /// range of the order queued, each entry beside its release. Coven reruns
+    /// it as an entry in the range comes, goes, starts or fails, or a release
+    /// it shows changes.
+    pub fn subscribe_download_window(
+        &self,
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
+        super::list_reads::list_window(
+            &self.inner.manager,
+            self.inner.manager.subscribe_download_window(window),
+            |read| bae_views::ListWindowValue::of(read, bae_views::ListRows::Downloads),
         )
     }
+
+    /// How many entries the download queue holds.
+    pub fn subscribe_download_count(
+        &self,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        super::list_reads::list_rows(
+            &self.inner.manager,
+            self.inner.manager.subscribe_download_row_count(),
+        )
+    }
+
+    /// How many downloads come before the row at `key`.
+    pub fn subscribe_download_position(
+        &self,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        super::list_reads::list_position(
+            &self.inner.manager,
+            self.inner.manager.subscribe_download_position(key),
+        )
+    }
+
+    delegate_async!(manager, download_key_at => download_key_at(position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError>);
 
     /// How many downloads are in each phase now, and whether the queue is
     /// paused.

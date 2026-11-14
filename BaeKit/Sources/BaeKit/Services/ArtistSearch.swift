@@ -1,239 +1,25 @@
 import Foundation
 import Observation
 
-/// An artist picker's live search of the library's artists: its text and
-/// the windows of its list on screen change in place, and each value answers
-/// every window at once, naming the revision of the view it was read for.
-public struct ArtistSearchQuery: Sendable {
-    public let setView:
-        @Sendable (_ text: String, _ windows: [BridgeLibraryPageWindow]) throws
-            -> UInt64
-    public let values: PulledValues<BridgeArtistSearchSnapshot>
-
-    public init(
-        setView:
-            @escaping @Sendable (String, [BridgeLibraryPageWindow]) throws
-            -> UInt64,
-        values: PulledValues<BridgeArtistSearchSnapshot>
-    ) {
-        self.setView = setView
-        self.values = values
-    }
-
-    init(_ subscription: ArtistSearchSubscription) {
-        self.init(
-            setView: { try subscription.setView(query: $0, windows: $1) },
-            values: PulledValues(subscription)
-        )
-    }
-}
+/// How an artist picker opens the list of the artists a text finds: each text
+/// is a list of its own, whose windows, count and positions are live reads
+/// like any other list's.
+public typealias ArtistSearchOpener =
+    @Sendable (_ text: String) -> BridgeListQueries<BridgeArtistSearchResult>
 
 extension BridgeArtistSearchResult: Identifiable {
     public var id: String { artist.artistId }
 }
 
-/// The pages of what an artist search finds, all served by one query for as
-/// long as the picker is open.
-///
-/// A new text is a new view on the same query: `setText` drops the pages the
-/// previous text's list registered, and the next list registers its own. The
-/// whole set of registered windows under the current text is what the query
-/// reads, and a value read for a view older than the text is not delivered.
-public final class ArtistSearchPageSource: PageSource, @unchecked Sendable {
-    private struct WindowKey: Hashable {
-        let offset: UInt64
-        let limit: UInt64
-    }
-
-    private struct Sink {
-        let value:
-            @MainActor @Sendable ([BridgeArtistSearchResult], Int) -> Void
-        let error: @MainActor @Sendable (any Error) -> Void
-    }
-
-    private let query: ArtistSearchQuery
-    private let lock = NSLock()
-    private var text = ""
-    /// The revision of the first view read for the current text: a value
-    /// answering an older one was read for another text.
-    private var textRevision: UInt64 = 0
-    /// Moves with each text, so a page of a previous text's list that cancels
-    /// late cannot take a window the current list registered.
-    private var generation = 0
-    private var sinks: [WindowKey: Sink] = [:]
-    private var deliveries:
-        ScreenSubscription<PulledValues<BridgeArtistSearchSnapshot>>?
-    /// The read failure this source died of, kept so a page registered after
-    /// it hears about it instead of waiting on reads that already stopped.
-    private var failure: (any Error)?
-
-    public init(query: ArtistSearchQuery) {
-        self.query = query
-        deliveries = ScreenSubscription(
-            query.values,
-            onValue: { [weak self] snapshot in self?.deliver(snapshot) },
-            onError: { [weak self] error in
-                self?.failEveryPage(with: error)
-                self?.deliveries?.stop()
-            }
-        )
-    }
-
-    /// End the read: no value is delivered after this, and core drops the
-    /// query.
-    public func close() {
-        deliveries?.stop()
-    }
-
-    /// Search for `text`, with no pages until its list registers them.
-    public func setText(_ text: String) {
-        let error: (any Error)? = lock.withLock {
-            self.text = text
-            generation += 1
-            sinks = [:]
-            do {
-                textRevision = try query.setView(text, [])
-                return nil
-            }
-            catch {
-                return error
-            }
-        }
-        if let error {
-            failEveryPage(with: error)
-        }
-    }
-
-    public func subscribe(
-        offset: Int,
-        limit: Int,
-        onValue:
-            @escaping @MainActor @Sendable (
-                [BridgeArtistSearchResult], Int
-            ) -> Void,
-        onError: @escaping @MainActor @Sendable (any Error) -> Void
-    ) -> any PageSubscription {
-        let key = WindowKey(offset: UInt64(offset), limit: UInt64(limit))
-        let (failure, generation) = lock.withLock {
-            sinks[key] = Sink(value: onValue, error: onError)
-            return (self.failure, self.generation)
-        }
-        let page = PageWindow(source: self, key: key, generation: generation)
-        if let failure {
-            Task { @MainActor in onError(failure) }
-            return page
-        }
-        push(failing: onError)
-        return page
-    }
-
-    private func remove(_ key: WindowKey, generation: Int) {
-        let removed = lock.withLock {
-            guard generation == self.generation else { return false }
-            sinks.removeValue(forKey: key)
-            return true
-        }
-        if removed {
-            push(failing: nil)
-        }
-    }
-
-    /// The current text with every registered page as a window, in offset
-    /// order, so the same pages make the same request.
-    private func push(
-        failing onError: (@MainActor @Sendable (any Error) -> Void)?
-    ) {
-        let error: (any Error)? = lock.withLock {
-            let windows = sinks.keys
-                .sorted { ($0.offset, $0.limit) < ($1.offset, $1.limit) }
-                .map {
-                    BridgeLibraryPageWindow(
-                        offset: $0.offset,
-                        limit: $0.limit,
-                        cursor: nil
-                    )
-                }
-            do {
-                _ = try query.setView(text, windows)
-                return nil
-            }
-            catch {
-                return error
-            }
-        }
-        guard let error else { return }
-        // The page that just registered waits on its first value, so it has
-        // to hear about a request that never reached core.
-        if let onError {
-            Task { @MainActor in onError(error) }
-        }
-        else {
-            failEveryPage(with: error)
-        }
-    }
-
-    /// Hand on `snapshot` if it was read for the text shown now.
-    @MainActor
-    private func deliver(_ snapshot: BridgeArtistSearchSnapshot) {
-        let sinks: [WindowKey: Sink]? = lock.withLock {
-            guard snapshot.requestRevision >= textRevision else { return nil }
-            return self.sinks
-        }
-        guard let sinks else { return }
-        for window in snapshot.windows {
-            let key = WindowKey(
-                offset: window.window.offset,
-                limit: window.window.limit
-            )
-            sinks[key]?.value(window.rows, Int(snapshot.totalCount))
-        }
-    }
-
-    /// Tell every page the source died of `error`. Only the first failure
-    /// is told: a later one, such as a request to the stopped read, follows
-    /// from it.
-    private func failEveryPage(with error: any Error) {
-        let sinks: [WindowKey: Sink]? = lock.withLock {
-            guard failure == nil else { return nil }
-            failure = error
-            return self.sinks
-        }
-        guard let sinks else { return }
-        Task { @MainActor in
-            for sink in sinks.values {
-                sink.error(error)
-            }
-        }
-    }
-
-    private final class PageWindow: PageSubscription, @unchecked Sendable {
-        private let source: ArtistSearchPageSource
-        private let key: WindowKey
-        private let generation: Int
-
-        init(source: ArtistSearchPageSource, key: WindowKey, generation: Int) {
-            self.source = source
-            self.key = key
-            self.generation = generation
-        }
-
-        func cancel() {
-            source.remove(key, generation: generation)
-        }
-    }
-}
-
 /// The artists an artist search finds, a page at a time.
-public typealias ArtistSearchList = OffsetPaginatedList<
-    BridgeArtistSearchResult
->
+public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 
 /// One artist picker's search while it is open: the list of what the text
-/// typed last finds, read through the picker's one live query.
+/// typed last finds.
 ///
-/// A new text waits out typing, then moves the query; the list it found
-/// before stays until the new text's list has answered, so the results never
-/// blank between keystrokes.
+/// A new text waits out typing, then opens the list of its own; the list the
+/// text before it found stays until the new one has answered, so the results
+/// never blank between keystrokes.
 @MainActor
 @Observable
 public final class ArtistSearchResults {
@@ -243,7 +29,7 @@ public final class ArtistSearchResults {
     public private(set) var error: DisplayError?
 
     @ObservationIgnored
-    private let source: ArtistSearchPageSource
+    private let opener: ArtistSearchOpener
     @ObservationIgnored
     private var pending: Task<Void, Never>?
     @ObservationIgnored
@@ -252,17 +38,17 @@ public final class ArtistSearchResults {
     @ObservationIgnored
     private let clock: any Clock<Duration>
 
-    /// Open the picker's search through `open`, which opens the live query.
+    /// Open the picker's search through `open`, which opens the list of the
+    /// artists a text finds.
     public init(
-        open: @Sendable () -> ArtistSearchQuery,
+        open: @escaping ArtistSearchOpener,
         clock: any Clock<Duration> = ContinuousClock()
     ) {
-        source = ArtistSearchPageSource(query: open())
+        self.opener = open
         self.clock = clock
     }
 
-    /// Follow `text`: once typing pauses, the query moves to it and its list
-    /// replaces the one shown.
+    /// Follow `text`: once typing pauses, its list replaces the one shown.
     public func search(_ text: String) {
         pending?.cancel()
         generation += 1
@@ -280,9 +66,8 @@ public final class ArtistSearchResults {
     }
 
     private func read(_ text: String, generation current: Int) async {
-        source.setText(text)
         let next = ArtistSearchList(
-            pageSource: source,
+            queries: opener(text),
             onError: { [weak self] error in
                 self?.error = DisplayError(error)
             }
@@ -303,6 +88,5 @@ public final class ArtistSearchResults {
         pending = nil
         generation += 1
         list?.cancel()
-        source.close()
     }
 }

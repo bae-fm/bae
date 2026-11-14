@@ -28,28 +28,55 @@ impl LibraryViews {
             .await
     }
 
-    /// Follow the composer list under `sort` in the windows its request
-    /// names, each read from its cursor when it has one (`list_windows`).
-    pub fn subscribe_composer_browse(
+    /// Follow one window of the composer list under `sort`: a range of its
+    /// order (`list_windows`), which coven reruns for a write inside it alone.
+    pub fn subscribe_composer_window(
         &self,
         sort: &[ComposerSortCriterion],
-        initial_windows: bae_store::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_store::LibraryPageWindows,
-        ComposerBrowseProjection,
-        bae_store::DbError,
-    > {
+        initial: ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbComposerSummary>, bae_store::DbError>
+    {
         let order = composer_order(sort);
-        self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let total_count = composer_count_on(&sql)?;
-            let windows = read_windows(&order, requested, |seek, limit, offset| {
-                composer_rows_on(&sql, &order, seek, limit, offset)
-            })?;
-            Ok(ComposerBrowseProjection {
-                windows: windows.into_iter().map(CursorWindowRead::into_browse).collect(),
-                total_count,
-            })
+        let read_order = order.clone();
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+            composer_rows_on(sql, &read_order, seek, limit, offset)
         })
+    }
+
+    /// Follow how many composers the list has. Its own query, never beside a
+    /// window's rows.
+    pub fn subscribe_composer_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
+        self.store.subscribe(|sql| composer_count_on(&sql))
+    }
+
+    /// Follow how many composers come before the row at a key, a count over
+    /// index ranges that moves in place with the key.
+    pub fn subscribe_composer_position(
+        &self,
+        sort: &[ComposerSortCriterion],
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let order = composer_order(sort);
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            rows_before(&order, key, |seek| composer_seek_count_on(&sql, &order, seek))
+        })
+    }
+
+    /// The key of the composer at `position`, or of the last one when the
+    /// list ends before it; `None` for an empty list.
+    pub async fn composer_key_at(
+        &self,
+        sort: &[ComposerSortCriterion],
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let order = composer_order(sort);
+        self.store
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    composer_rows_on(&sql, &order, seek, limit, offset)
+                })
+            })
+            .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -83,18 +110,9 @@ impl LibraryViews {
     }
 }
 
-/// One delivery of the composer list as the list shows it.
-pub fn resolve_composer_browse(
-    projection: ComposerBrowseProjection,
-    request_revision: u64,
-    cause: coven::LiveQueryCause,
-) -> crate::LibraryBrowseSnapshot<DbComposerSummary> {
-    crate::LibraryBrowseSnapshot {
-        windows: projection.windows,
-        total_count: projection.total_count,
-        request_revision,
-        cause,
-    }
+/// One delivery of a composer list window as the list shows it.
+pub fn resolve_composer_window(read: WindowRead<DbComposerSummary>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, crate::ListRows::Composers)
 }
 
 /// One delivery of the work detail as the detail view shows it.
@@ -173,6 +191,19 @@ fn find_work_detail_on(
         },
     )?;
     Ok(Some(DbWorkDetail { work, child_works, releases, tracks }))
+}
+
+/// How many composers come before the rows `seek` reads.
+fn composer_seek_count_on(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, DbError> {
+    let statement =
+        format!("SELECT COUNT(*) FROM composer_listing listing WHERE {}", order.condition(seek));
+    Ok(sql
+        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)?)
 }
 
 fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
@@ -412,12 +443,6 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
         .collect::<Vec<_>>();
     let ordered_by_name = sort.iter().any(|c| c.field == ComposerSortField::Name);
     ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ComposerBrowseProjection {
-    pub windows: Vec<bae_store::LibraryBrowseWindow<DbComposerSummary>>,
-    pub total_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -62,7 +62,7 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     /// Opens the live artist search the album artist field reads while open.
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
     @ViewBuilder
     let cover: () -> Cover
     /// The audio's codec, rate and depth as the identity column's last line;
@@ -107,7 +107,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
     @ViewBuilder
     let audioFacts: () -> AudioFacts
 
@@ -532,7 +532,7 @@ struct ArtistAssignmentsField: View {
     var inheritsAlbumArtists = false
     var onUseAlbumArtists: (() -> Void)?
     /// Opens the live artist search the open field reads while it is open.
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
     let onChange: ([BridgeCredited]) -> Void
 
     @Environment(UiStore.self)
@@ -605,7 +605,7 @@ private struct ArtistAssignmentsEditor: View {
 
     let assignments: [BridgeCredited]
     let onUseAlbumArtists: (() -> Void)?
-    let artistSearch: @Sendable () -> ArtistSearchQuery
+    let artistSearch: ArtistSearchOpener
     let onChange: ([BridgeCredited]) -> Void
     /// Show a library artist's page, closing the field.
     let onViewArtist: (String) -> Void

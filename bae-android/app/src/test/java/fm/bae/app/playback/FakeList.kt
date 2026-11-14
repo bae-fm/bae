@@ -4,6 +4,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumAppearance
+import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListCountExtra
@@ -18,12 +20,15 @@ import uniffi.bae_bridge.ListWindowSubscription
 import uniffi.bae_bridge.NoHandle
 
 /**
- * The album grid as the bridge lists it, over [albums] in the order of their ids: a key is a row's id, a
+ * A list as the bridge lists it, over [rows] in the order of their ids: a key is a row's id, a
  * window answers the range of ids it names, and every window and count the handle opened
  * is kept so a test can change the list and deliver the change.
  */
-internal class FakeAlbumList(
-    var albums: List<BridgeAlbum> = emptyList(),
+internal open class FakeList<Row>(
+    var rows: List<Row>,
+    private val idOf: (Row) -> String,
+    private val wrap: (List<Row>) -> BridgeListRows,
+    private val extra: (Int) -> BridgeListCountExtra = { BridgeListCountExtra.None },
     /** Whether a window or a count answers as soon as it is opened; otherwise a test delivers with [changed]. */
     var deliverImmediately: Boolean = true,
     /** The failure each window answers with instead of its rows. */
@@ -39,45 +44,45 @@ internal class FakeAlbumList(
     /** The first window the handle opened, once it has. */
     val firstWindow = CompletableDeferred<FakeListWindowSubscription>()
 
-    /** The key of the album at [position] of the list as it stands: its id, which the list is in the order of. */
-    fun key(position: Int): List<BridgeSortValue> = keyOf(albums[position].id)
+    /** The key of the row at [position] of the list as it stands: its id, which the list is in the order of. */
+    fun key(position: Int): List<BridgeSortValue> = keyOf(idOf(rows[position]))
 
     fun keyOf(id: String): List<BridgeSortValue> = listOf(BridgeSortValue.Text(id))
 
     private fun id(key: List<BridgeSortValue>): String = (key.single() as BridgeSortValue.Text).value
 
-    /** The position of the first album whose id is not before [key]'s: where a row with that key is or would be. */
-    private fun seek(key: List<BridgeSortValue>): Int = albums.indexOfFirst { it.id >= id(key) }.let { if (it < 0) albums.size else it }
+    /** The position of the first row whose id is not before [key]'s: where a row with that key is or would be. */
+    private fun seek(key: List<BridgeSortValue>): Int = rows.indexOfFirst { idOf(it) >= id(key) }.let { if (it < 0) rows.size else it }
 
-    fun keyAt(position: ULong): List<BridgeSortValue>? = if (albums.isEmpty()) null else key(minOf(position.toInt(), albums.size - 1))
+    fun keyAt(position: ULong): List<BridgeSortValue>? = if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1))
 
-    fun count() = BridgeListCount(albums.size.toULong(), BridgeListCountExtra.AlbumGrid(albums.size.toULong()))
+    fun count() = BridgeListCount(rows.size.toULong(), extra(rows.size))
 
     fun value(window: BridgeListWindow): BridgeListWindowValue {
-        val rows: List<BridgeAlbum>
+        val held: List<Row>
         val first: Int?
         val beyond: Int?
         when (window) {
             is BridgeListWindow.Forward -> {
                 val start = window.from?.let(::seek) ?: 0
-                val end = window.until?.let(::seek) ?: albums.size
+                val end = window.until?.let(::seek) ?: rows.size
                 val stop = minOf(start + window.limit.toInt(), end)
-                rows = if (start < stop) albums.subList(start, stop) else emptyList()
-                first = start.takeIf { rows.isNotEmpty() }
+                held = if (start < stop) rows.subList(start, stop) else emptyList()
+                first = start.takeIf { held.isNotEmpty() }
                 beyond = stop.takeIf { it < end }
             }
 
             is BridgeListWindow.Backward -> {
                 val end = seek(window.until)
                 val start = maxOf(0, end - window.limit.toInt())
-                rows = if (start < end) albums.subList(start, end) else emptyList()
-                first = start.takeIf { rows.isNotEmpty() }
+                held = if (start < end) rows.subList(start, end) else emptyList()
+                first = start.takeIf { held.isNotEmpty() }
                 beyond = (start - 1).takeIf { start > 0 }
             }
         }
         return BridgeListWindowValue(
             window,
-            BridgeListRows.Albums(rows.map { BridgeAlbumAppearance(album = it, creditedWith = null) }),
+            wrap(held),
             first?.let(::key),
             beyond?.let(::key),
         )
@@ -90,7 +95,7 @@ internal class FakeAlbumList(
         positions.toList().forEach { it.deliver() }
     }
 
-    /** Deliver the count alone, as a write that adds or removes an album does beside the windows. */
+    /** Deliver the count alone, as a write that adds or removes a row does beside the windows. */
     fun emitCount() = counts.toList().forEach { it.deliver() }
 
     fun openWindow(window: BridgeListWindow): FakeListWindowSubscription =
@@ -118,7 +123,7 @@ internal class FakeAlbumList(
 }
 
 internal class FakeListWindowSubscription(
-    private val list: FakeAlbumList,
+    private val list: FakeList<*>,
     window: BridgeListWindow,
 ) : ListWindowSubscription(NoHandle) {
     private val events = Channel<Result<BridgeListWindowValue>>(Channel.UNLIMITED)
@@ -155,7 +160,7 @@ internal class FakeListWindowSubscription(
 }
 
 internal class FakeListCountSubscription(
-    private val list: FakeAlbumList,
+    private val list: FakeList<*>,
 ) : ListCountSubscription(NoHandle) {
     private val events = Channel<Result<BridgeListCount>>(Channel.UNLIMITED)
     var cancelled = false
@@ -177,7 +182,7 @@ internal class FakeListCountSubscription(
 }
 
 internal class FakeListPositionSubscription(
-    private val list: FakeAlbumList,
+    private val list: FakeList<*>,
     key: List<BridgeSortValue>,
 ) : ListPositionSubscription(NoHandle) {
     private val events = Channel<Result<BridgeListPosition>>(Channel.UNLIMITED)
@@ -197,3 +202,41 @@ internal class FakeListPositionSubscription(
         events.trySend(Result.success(BridgeListPosition(key, list.rowsBefore(key))))
     }
 }
+
+/** The album grid as the bridge lists it, over [albums] in the order of their ids. */
+internal class FakeAlbumList(
+    albums: List<BridgeAlbum> = emptyList(),
+    deliverImmediately: Boolean = true,
+    windowFailure: BridgeException? = null,
+) : FakeList<BridgeAlbum>(
+        albums,
+        idOf = { it.id },
+        wrap = { held -> BridgeListRows.Albums(held.map { BridgeAlbumAppearance(album = it, creditedWith = null) }) },
+        extra = { BridgeListCountExtra.AlbumGrid(it.toULong()) },
+        deliverImmediately = deliverImmediately,
+        windowFailure = windowFailure,
+    ) {
+    var albums: List<BridgeAlbum>
+        get() = rows
+        set(value) {
+            rows = value
+        }
+}
+
+/** A composer's page as the bridge lists it, over [rows] in the order of their numbers as text. */
+internal class FakeComposerPage(
+    rows: List<BridgeComposerDetailRow> = emptyList(),
+) : FakeList<BridgeComposerDetailRow>(
+        rows,
+        idOf = { it.id.toString() },
+        wrap = { BridgeListRows.ComposerPage(it) },
+    )
+
+/** The composer list as the bridge lists it, over [rows] in the order of their artist ids. */
+internal class FakeComposerList(
+    rows: List<BridgeComposerSummary> = emptyList(),
+) : FakeList<BridgeComposerSummary>(
+        rows,
+        idOf = { it.artistId },
+        wrap = { BridgeListRows.Composers(it) },
+    )

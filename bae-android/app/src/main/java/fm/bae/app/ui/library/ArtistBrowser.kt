@@ -54,8 +54,8 @@ internal fun ArtistListContent(
         }
         val context = LocalContext.current
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "artist-slot-$index" }) { index ->
-                page.rows[index]?.let { artist ->
+            items(page.totalCount, key = { index -> page.rowAt(index)?.artistId ?: "artist-slot-$index" }) { index ->
+                page.rowAt(index)?.let { artist ->
                     AndroidLibraryRow(
                         title = artist.name,
                         subtitle = context.coreString(artist.countLine),

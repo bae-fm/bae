@@ -114,7 +114,7 @@ private fun DownloadsBody(
                 )
             }
 
-            pageError != null && page.rows.isEmpty() -> {
+            pageError != null && !page.hasRows -> {
                 AndroidNotice(
                     error = pageError.error,
                     look = NoticeLook.CENTERED,
@@ -123,7 +123,7 @@ private fun DownloadsBody(
             }
 
             // The first window is a local read; nothing shows until it lands.
-            page.loading && page.rows.isEmpty() -> {}
+            page.loading && !page.hasRows -> {}
 
             page.totalCount == 0 -> {
                 Text(
@@ -140,7 +140,7 @@ private fun DownloadsBody(
                 DownloadsList(
                     summary = summary,
                     count = page.totalCount,
-                    row = { index -> page.rows[index] },
+                    row = { index -> page.rowAt(index) },
                     downloads = session.downloadStore,
                     listState = listState,
                     onCancel = { releaseId ->

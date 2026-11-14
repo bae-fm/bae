@@ -108,9 +108,7 @@ extension PreviewData {
         _ rows: [BridgeComposerDetailRow] = composerDetailRowValues
     ) -> ComposerDetailRowList {
         let list = ComposerDetailRowList(
-            pageSource: LibraryComposerDetailPageSource(
-                query: .fixed(rows, answers: UnansweredCount())
-            ),
+            queries: .fixed(rows, answers: UnansweredCount()),
             onError: { _ in },
         )
         list.preloadRows(rows: rows)
@@ -150,9 +148,7 @@ extension PreviewData {
                 )
             }
         return ComposerDetailRowList(
-            pageSource: LibraryComposerDetailPageSource(
-                query: .fixed(rows, answers: UnansweredCount())
-            ),
+            queries: .fixed(rows, answers: UnansweredCount()),
             onError: { _ in },
         )
     }
@@ -243,9 +239,7 @@ extension PreviewData {
     @MainActor
     static func composerList() -> ComposerList {
         let list = ComposerList(
-            pageSource: LibraryComposerPageSource(
-                query: .fixed(composerSummaries, answers: UnansweredCount())
-            ),
+            queries: .fixed(composerSummaries, answers: UnansweredCount()),
             onError: { _ in },
         )
         list.preloadRows(rows: composerSummaries)

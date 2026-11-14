@@ -79,6 +79,31 @@ forward! { async this => {
                 .album_key_at(&BridgeList::album_sort(sort), group_by_artist, position)
                 .await
                 .map_err(BridgeError::from)?,
+            BridgeList::Artists { sort } => this
+                .services
+                .artist_key_at(&BridgeList::artist_sort(sort), position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::Composers { sort } => this
+                .services
+                .composer_key_at(&BridgeList::composer_sort(sort), position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::ComposerPage { artist_id } => this
+                .services
+                .composer_detail_key_at(&artist_id, position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::Downloads => this
+                .services
+                .download_key_at(position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::ArtistSearch { text } => this
+                .services
+                .artist_search_key_at(BridgeList::artist_search_query(&text), position)
+                .await
+                .map_err(BridgeError::from)?,
         };
         Ok(key.as_ref().map(BridgeSortValue::of_key))
     }

@@ -28,7 +28,7 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: MappingTrackActionRecorder()),
-                artistSearch: { .fixed([], answers: UnansweredCount()) }
+                artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
@@ -83,7 +83,7 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: recorder),
-                artistSearch: { .fixed([], answers: UnansweredCount()) }
+                artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
@@ -184,7 +184,7 @@ struct ImportMappingTracksLayoutTests {
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: MappingTrackActionRecorder()),
-                artistSearch: { .fixed([], answers: UnansweredCount()) }
+                artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .frame(width: size.width, height: size.height, alignment: .leading)
             .environment(UiStore()),
@@ -472,7 +472,7 @@ extension ImportMappingTracksLayoutTests {
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
                 actions: actions(recording: recorder),
-                artistSearch: { .fixed([], answers: UnansweredCount()) }
+                artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)

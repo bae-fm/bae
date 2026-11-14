@@ -1,7 +1,7 @@
-//! Searches as their screens pull them: the library search, an artist
-//! picker's search, and whether the releases an import pane offers are
-//! already in the library. Each is one live query for as long as its screen
-//! is open, moved in place to each text the person types.
+//! Searches as their screens pull them: the library search, and whether the
+//! releases an import pane offers are already in the library. Each is one
+//! live query for as long as its screen is open, moved in place to each text
+//! the person types.
 
 use crate::types::BridgeError;
 
@@ -41,62 +41,6 @@ impl LibrarySearchSubscription {
     pub fn set_query(&self, query: Option<String>) -> Result<u64, BridgeError> {
         self.inner
             .set(query.as_deref().and_then(bae_views::LibrarySearchQuery::parse))
-            .map_err(BridgeError::from)
-    }
-}
-
-browse_window! {
-    /// One requested window of an artist search, with the artists that
-    /// landed in it.
-    window: BridgeArtistSearchWindow,
-    row: bae_views::album_detail::ArtistSearchResult => crate::types::BridgeArtistSearchResult,
-}
-
-/// Every requested window of an artist search as of one read, how many
-/// artists its text found, and the revision of the `set_view` call it
-/// answers.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtistSearchSnapshot {
-    pub windows: Vec<BridgeArtistSearchWindow>,
-    pub total_count: u64,
-    pub request_revision: u64,
-}
-
-impl BridgeArtistSearchSnapshot {
-    fn from_core(snapshot: bae_views::ArtistSearchSnapshot) -> Self {
-        Self {
-            windows: snapshot
-                .windows
-                .into_iter()
-                .map(BridgeArtistSearchWindow::from_core)
-                .collect(),
-            total_count: snapshot.total_count,
-            request_revision: snapshot.request_revision,
-        }
-    }
-}
-
-pulled_read! {
-    /// An artist picker's live search of the library's artists: one query for
-    /// as long as the picker is open, moved in place to each text the person
-    /// types and to the windows of its list on screen. It has no text and no
-    /// windows until `set_view` names them.
-    ArtistSearchSubscription: bae_views::LiveArtistSearch => BridgeArtistSearchSnapshot,
-    converted by BridgeArtistSearchSnapshot::from_core,
-    built by artist_search
-}
-
-#[uniffi::export]
-impl ArtistSearchSubscription {
-    /// Read `windows` of what `query` finds from now on; a blank one is no
-    /// search. Returns the revision the answer will carry.
-    pub fn set_view(
-        &self,
-        query: String,
-        windows: Vec<crate::types::BridgeLibraryPageWindow>,
-    ) -> Result<u64, BridgeError> {
-        self.inner
-            .set(bae_views::ArtistSearchView::of(&query, super::core_windows(windows)))
             .map_err(BridgeError::from)
     }
 }
