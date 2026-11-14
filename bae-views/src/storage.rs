@@ -249,17 +249,13 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
                 "SELECT EXISTS (SELECT 1 FROM {table} WHERE state IN ('queued', 'active')), \
                      (SELECT paused FROM release_queues WHERE queue = ?1), \
                      (SELECT release_id FROM {table} WHERE state = 'active'), \
-                     (SELECT usable FROM coven_network)"
+                     (SELECT usable FROM coven_network WHERE ?2)"
             ),
-            [queue],
+            params![queue, watches_network],
             |row| {
                 Ok(if row.get::<_, bool>(0)? {
-                    let network_usable: Option<bool> = row.get(3)?;
                     Some(crate::ReleaseQueueRun {
-                        wait: bae_transfers::QueueWait::of(
-                            row.get(1)?,
-                            network_usable.filter(|_| watches_network),
-                        ),
+                        wait: bae_transfers::QueueWait::of(row.get(1)?, row.get(3)?),
                         active: row.get(2)?,
                     })
                 } else {
