@@ -31,7 +31,7 @@ impl ImportServiceHandle {
             .tables
             .load_import_candidate(candidate_key)
             .await?
-            .is_some_and(|projection| projection.verdict.is_some());
+            .is_some_and(|projection| projection.verdict_stored);
         Ok(!stored)
     }
 
@@ -153,7 +153,7 @@ impl ImportServiceHandle {
                 })
             }
         };
-        let mut session = draft.session_or_initial(projection.verdict.is_some());
+        let mut session = draft.session_or_initial(projection.verdict_stored);
         change(&mut session);
         self.services.tables.save_import_candidate_session(&content_hash, &session).await?;
         Ok(())

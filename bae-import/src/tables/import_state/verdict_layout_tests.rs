@@ -268,3 +268,169 @@ async fn verdict_cards_statement_counts_rows_set_aside() {
     assert_eq!(cards.narrowed_out_count, 2);
     assert!(!cards.offers_shared_album, "one offered row is not several pressings");
 }
+
+/// A found verdict of `matches` (each its own row unless `pressings` says
+/// otherwise), for a folder of `track_count` tracks.
+fn found(
+    matches: Vec<MetadataResult>,
+    pressings: Vec<u32>,
+    medium_conflict: Option<bae_identify::MediumConflict>,
+    track_count: u32,
+) -> TerminalVerdict {
+    TerminalVerdict::Found {
+        findings: Findings {
+            matches,
+            pressings,
+            named_notes: Vec::new(),
+            medium_conflict,
+            ..sample_findings()
+        },
+        track_count,
+        ledger: None,
+    }
+}
+
+/// A release of one album whose tracklist is `source_tracks`.
+fn listing(
+    release_id: &str,
+    source_tracks: Option<bae_catalogs::search::SourceTracks>,
+) -> MetadataResult {
+    MetadataResult { source_tracks, ..release(release_id, "CAT") }
+}
+
+/// The statement states, with the cards, the check against the folder the
+/// found release failed and the release the verdict picks, for each case the
+/// rules tell apart, as the rules judge them.
+#[tokio::test]
+async fn verdict_cards_statement_states_the_folder_check_and_the_pick() {
+    use bae_catalogs::search::SourceTracks::{Listed, Nothing, Unreadable};
+    let fits = || listing("fits", Some(Listed { count: 11 }));
+    let cases: Vec<(&str, TerminalVerdict)> = vec![
+        ("one pressing that fits picks itself", found(vec![fits()], vec![0], None, 11)),
+        (
+            "two records of one pressing count once",
+            found(
+                vec![fits(), listing("second", Some(Listed { count: 11 }))],
+                vec![0, 0],
+                None,
+                11,
+            ),
+        ),
+        (
+            "several pressings pick none",
+            found(vec![fits(), listing("other", Some(Listed { count: 11 }))], vec![0, 1], None, 11),
+        ),
+        (
+            "a tracklist not read yet states its check",
+            found(vec![listing("a", None)], vec![0], None, 11),
+        ),
+        (
+            "a source that lists no tracks states its check",
+            found(vec![listing("a", Some(Nothing))], vec![0], None, 11),
+        ),
+        (
+            "another track count states no check and picks none",
+            found(vec![listing("a", Some(Listed { count: 12 }))], vec![0], None, 11),
+        ),
+        (
+            "an unreadable tracklist states no check and picks none",
+            found(vec![listing("a", Some(Unreadable))], vec![0], None, 11),
+        ),
+        (
+            "an unread document picks none",
+            found(
+                vec![MetadataResult {
+                    document_failure: Some(bae_catalogs::LookupFailure::Network),
+                    ..fits()
+                }],
+                vec![0],
+                None,
+                11,
+            ),
+        ),
+        (
+            "a medium the folder rules out states it, over a fitting release",
+            found(vec![fits()], vec![0], Some(bae_identify::MediumConflict::CdRip), 11),
+        ),
+        (
+            "a medium the folder rules out states it, over several pressings",
+            found(
+                vec![fits(), listing("other", Some(Listed { count: 11 }))],
+                vec![0, 1],
+                Some(bae_identify::MediumConflict::NotCdAudio),
+                11,
+            ),
+        ),
+        ("a verdict that found nothing", found(Vec::new(), Vec::new(), None, 11)),
+        ("not found anywhere", TerminalVerdict::NotFoundAnywhere { ledger: None }),
+        (
+            "a failed verdict picks none, however well its findings fit",
+            TerminalVerdict::Failed {
+                failures: vec![bae_identify::IdentifyFailure::Search(
+                    bae_catalogs::search::SourceFailure {
+                        source: bae_catalogs::catalog::Catalog::MusicBrainz,
+                        failure: bae_catalogs::LookupFailure::Provider { status: Some(503) },
+                    },
+                )],
+                findings: Findings {
+                    matches: vec![fits()],
+                    pressings: vec![0],
+                    named_notes: Vec::new(),
+                    ..sample_findings()
+                },
+                track_count: 11,
+                ledger: None,
+            },
+        ),
+    ];
+    for (name, verdict) in cases {
+        let (db, hash) = stored_with_text(&verdict, Vec::new()).await;
+        let read = stored_cards(&db, &hash, &verdict).await;
+        let expected = bae_identify::view::reference_cards_of(
+            &bae_identify::RunOutcome::Answered(verdict),
+            &bae_identify::CandidateText::of(&[], &[], &[]),
+        );
+        assert_eq!(
+            (read.folder_check, read.unattended_pick),
+            (expected.folder_check, expected.unattended_pick),
+            "{name}"
+        );
+    }
+}
+
+/// The two verdicts the rules pick and check from are not the same: the
+/// statement's values are not the reference's defaults.
+#[tokio::test]
+async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check() {
+    use bae_catalogs::search::SourceTracks::{Listed, Nothing};
+    let picked = found(vec![listing("fits", Some(Listed { count: 11 }))], vec![0], None, 11);
+    let (db, hash) = stored_with_text(&picked, Vec::new()).await;
+    let cards = stored_cards(&db, &hash, &picked).await;
+    assert_eq!((cards.folder_check, cards.unattended_pick), (None, Some("fits".to_string())));
+
+    let unchecked = found(vec![listing("a", Some(Nothing))], vec![0], None, 11);
+    let (db, hash) = stored_with_text(&unchecked, Vec::new()).await;
+    let cards = stored_cards(&db, &hash, &unchecked).await;
+    assert_eq!(
+        (cards.folder_check, cards.unattended_pick),
+        (Some(bae_identify::FolderCheck::SourceTracksUnknown), None)
+    );
+
+    let ruled_out = found(
+        vec![listing("a", Some(Listed { count: 11 }))],
+        vec![0],
+        Some(bae_identify::MediumConflict::CdRip),
+        11,
+    );
+    let (db, hash) = stored_with_text(&ruled_out, Vec::new()).await;
+    let cards = stored_cards(&db, &hash, &ruled_out).await;
+    assert_eq!(
+        (cards.folder_check, cards.unattended_pick),
+        (
+            Some(bae_identify::FolderCheck::MediumDisagrees {
+                folder: bae_identify::MediumConflict::CdRip
+            }),
+            None
+        )
+    );
+}

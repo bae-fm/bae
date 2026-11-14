@@ -330,16 +330,18 @@ pub(super) fn save_preparation_on(
         CandidatePaneWrite::Keep => {}
         CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {
             // Only a save that stores an identification asks to open on it.
-            let identification = prep.identification.as_ref().unwrap_or_else(|| {
-                panic!("candidate {content_hash} opens on a result it stores none of")
-            });
-            if bae_identify::VerdictSummary::of(
-                &identification.verdict,
-                identification.kept_own_draft,
-            )
-            .folder_check()
-            .is_none()
-            {
+            assert!(
+                prep.identification.is_some(),
+                "candidate {content_hash} opens on a result it stores none of"
+            );
+            // The verdict's rows were written above, in this transaction.
+            let check_failed: bool = sql.query_row(
+                "SELECT folder_check IS NOT NULL \
+                 FROM import_candidate_verdict_decision WHERE content_hash = ?",
+                [content_hash],
+                |row| row.get(0),
+            )?;
+            if !check_failed {
                 super::session_rows::move_pane_on(
                     sql,
                     content_hash,

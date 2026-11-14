@@ -1,16 +1,19 @@
-//! What the queue reads of a stored verdict, and the two judgements made from
-//! it: which check against the folder the found release failed, which the pane
-//! states beside Import and under the release in Find online, and whether the
-//! verdict picks its one release unattended — applied to the draft as the run
-//! settles, and taken by automatic import.
+//! The check of the found release against the folder that did not pass, which
+//! the pane states beside Import and under the release in Find online, and,
+//! for tests, the rules' reference for what a stored verdict decides: which
+//! check its release failed, and whether it picks its one release unattended.
 //!
-//! Derived on read, never stored: the verdict's own columns are the whole
-//! input. Whether the release is already in the library is not part of either —
-//! importing a second copy is the person's to moderate. Nothing here blocks an
-//! import a person asks for.
+//! A stored verdict's decision is read from its rows, in the view
+//! `import_candidate_verdict_decision`; the summary works the same out of a
+//! verdict in memory, so a test holds the rows' decision to the rules. Whether the release is already in the library
+//! is not part of either — importing a second copy is the person's to
+//! moderate. Nothing here blocks an import a person asks for.
 
+#[cfg(any(test, feature = "test-utils"))]
 use super::fit::Declined;
+#[cfg(any(test, feature = "test-utils"))]
 use super::fit::TracklistFit;
+#[cfg(any(test, feature = "test-utils"))]
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
 
@@ -29,6 +32,7 @@ pub enum FolderCheck {
 }
 
 /// Which shape a stored verdict has, as its `kind` column says.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerdictKind {
     Found,
@@ -41,13 +45,11 @@ pub enum VerdictKind {
     },
 }
 
-/// As much of a stored verdict as the queue's list reads: which shape it is,
-/// how many pressings it named, and how its lead match's tracklist fits the
-/// folder.
-///
-/// The list reads these off the candidate's verdict row and its match rows
-/// rather than rebuilding a [`TerminalVerdict`] — the pane, which shows the
-/// failures and the matched barcode too, still reads the whole verdict.
+/// As much of a verdict as its decisions consult: which shape it is, how many
+/// pressings it named, and how its lead match's tracklist fits the folder. The
+/// reference a stored verdict's decision is held to; nothing reads a verdict
+/// this way.
+#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerdictSummary {
     pub kind: VerdictKind,
@@ -72,8 +74,9 @@ pub struct VerdictSummary {
     pub kept_own_draft: bool,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl VerdictSummary {
-    /// A stored verdict's summary, with whether the person kept their own
+    /// A verdict's summary, with whether the person kept their own
     /// draft over it.
     pub fn of(verdict: &TerminalVerdict, kept_own_draft: bool) -> Self {
         let kind = match verdict {
@@ -92,13 +95,6 @@ impl VerdictSummary {
         // A failed verdict leads with what its answering lookups found, as a
         // found one does; its kind is what keeps it from being auto-importable.
         Self::with_findings(kind, track_count, verdict.findings(), kept_own_draft)
-    }
-
-    /// A found verdict's summary, from what its lookups found and the
-    /// folder's track count. It was just reached, so nobody has decided
-    /// anything about it.
-    pub(crate) fn of_found(findings: &super::Findings, track_count: u32) -> Self {
-        Self::with_findings(VerdictKind::Found, Some(track_count), Some(findings), false)
     }
 
     fn with_findings(
@@ -123,6 +119,7 @@ impl VerdictSummary {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl VerdictSummary {
     /// Why a found verdict picks none of its releases unattended, by the one
     /// rule ([`super::fit::unattended_pick`]); `None` when it picks one, and for the

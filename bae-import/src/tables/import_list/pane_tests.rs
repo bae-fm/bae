@@ -333,7 +333,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .expect("the scanned candidate still reads back");
 
     assert!(matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Idle));
-    assert!(detail.verdict.is_none());
+    assert!(!detail.verdict_stored);
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which

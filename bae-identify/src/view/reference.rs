@@ -63,6 +63,8 @@ pub fn reference_cards(
         groups: cards,
         agreements,
         narrowed_out_count,
+        folder_check: None,
+        unattended_pick: None,
     }
 }
 
@@ -79,7 +81,18 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         ) => (findings, ledger.as_ref(), *track_count),
         RunOutcome::Answered(_) => return VerdictCards::default(),
     };
-    reference_cards(findings.clone(), ledger, text, track_count)
+    let mut cards = reference_cards(findings.clone(), ledger, text, track_count);
+    // What a found verdict states of the check it failed, and the release it
+    // picks, as the summary of its findings judges them.
+    if let RunOutcome::Answered(verdict @ TerminalVerdict::Found { findings, .. }) = outcome {
+        let summary = crate::VerdictSummary::of(verdict, false);
+        cards.folder_check = summary.folder_check();
+        cards.unattended_pick = summary
+            .picks_unattended()
+            .then(|| findings.matches.first().map(|lead| lead.release_id.clone()))
+            .flatten();
+    }
+    cards
 }
 
 impl From<IdentifyState> for IdentifyStateView {

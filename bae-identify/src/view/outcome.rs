@@ -8,7 +8,7 @@ use super::{run_view, IdentifyRunView, IdentifyStateView, VerdictCards};
 use crate::combine::{combine_results, Findings, LookupAnswers};
 use crate::signals::Signals;
 use crate::state::{IdentifyState, PressingLookup};
-use crate::{TerminalVerdict, VerdictSummary};
+use crate::TerminalVerdict;
 
 /// How a run stands, as its rows hold it.
 #[derive(Debug, Clone, PartialEq)]
@@ -104,22 +104,15 @@ impl IdentifyStateView {
                     narrowed_out_count: cards.narrowed_out_count,
                 }
             }
-            RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, ledger }) => {
-                let summary = VerdictSummary::of_found(&findings, track_count);
-                // A verdict that picks unattended has one pressing, whose lead
-                // is the findings' first match: the release the settle reads.
-                let unattended_pick = summary
-                    .picks_unattended()
-                    .then(|| findings.matches.first().map(|lead| lead.release_id.clone()))
-                    .flatten();
+            RunOutcome::Answered(TerminalVerdict::Found { findings: _, track_count, ledger }) => {
                 IdentifyStateView::Found {
                     run: ledger,
                     groups: cards.groups,
                     track_count,
                     agreements: cards.agreements,
                     narrowed_out_count: cards.narrowed_out_count,
-                    folder_check: summary.folder_check(),
-                    unattended_pick,
+                    folder_check: cards.folder_check,
+                    unattended_pick: cards.unattended_pick,
                     offers_shared_album: cards.offers_shared_album,
                 }
             }

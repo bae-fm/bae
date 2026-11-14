@@ -78,3 +78,41 @@ fn every_failure_of_a_run_with_no_ledger_has_a_line() {
     };
     assert_eq!(failure_lines, failures);
 }
+
+/// The view states the check and the pick its cards stored; it does not
+/// judge the findings again. A found verdict whose one release fits the
+/// folder shows no pick when its cards state none.
+#[test]
+fn a_found_view_states_what_its_cards_stored_without_judging_its_findings() {
+    let verdict = TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![MetadataResult {
+                source_tracks: Some(bae_catalogs::search::SourceTracks::Listed { count: 13 }),
+                ..MetadataResult::for_test(DG, "dg-1", Some("g"))
+            }],
+            pressings: vec![0],
+            ..Findings::default()
+        },
+        track_count: 13,
+        ledger: None,
+    };
+    let stored = VerdictCards {
+        folder_check: Some(crate::FolderCheck::SourceTracksUnknown),
+        unattended_pick: Some("stored-pick".to_string()),
+        ..VerdictCards::default()
+    };
+    let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
+        IdentifyStateView::of(RunOutcome::Answered(verdict.clone()), stored)
+    else {
+        panic!("a found verdict");
+    };
+    assert_eq!(folder_check, Some(crate::FolderCheck::SourceTracksUnknown));
+    assert_eq!(unattended_pick.as_deref(), Some("stored-pick"));
+
+    let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
+        IdentifyStateView::of(RunOutcome::Answered(verdict), VerdictCards::default())
+    else {
+        panic!("a found verdict");
+    };
+    assert_eq!((folder_check, unattended_pick), (None, None));
+}

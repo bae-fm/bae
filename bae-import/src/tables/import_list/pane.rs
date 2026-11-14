@@ -20,7 +20,6 @@ use crate::tables::source_releases::{
 use crate::{DraftProjection, ProjectedStage};
 use crate::{ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
-use bae_identify::VerdictSummary;
 use bae_records::records::release_records::{album_records_name_on, check_releases_in_library_on};
 
 #[derive(Clone, PartialEq)]
@@ -240,11 +239,11 @@ impl CandidateDetailRows {
         let lookup_choices =
             current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
-        let mut verdict = None;
+        let mut verdict_folder_check = None;
         let mut resumed_identify_state = bae_identify::IdentifyStateView::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
-            verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
+            verdict_folder_check = cards.folder_check.clone();
             // The rows' judgement is stored with them against the candidate's
             // own text, so striking a number out has already reordered them.
             resumed_identify_state = bae_identify::IdentifyStateView::of(
@@ -299,7 +298,8 @@ impl CandidateDetailRows {
             actionable,
             skipped,
             resumed_identify_state,
-            verdict,
+            verdict_stored: identify.is_some(),
+            verdict_folder_check,
             signals,
             standing,
             listed,

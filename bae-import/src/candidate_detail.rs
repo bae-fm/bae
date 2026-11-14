@@ -15,7 +15,7 @@ use crate::CandidateSession;
 use crate::TriageTab;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_identify::signals::Signals;
-use bae_identify::{IdentifyStateView, VerdictSummary};
+use bae_identify::IdentifyStateView;
 use bae_records::LibraryStatus;
 
 /// One candidate as the pane reads it, before its commands are decided.
@@ -31,9 +31,11 @@ pub struct ImportCandidateDetailProjection {
     /// The identify state the stored verdict stands back up as, its cards as its
     /// rows stored them — the answer a row shows when no run is in flight.
     pub resumed_identify_state: IdentifyStateView,
-    /// The stored verdict's columns, as the list reads them. `None` with no
-    /// stored verdict for the candidate's current file shape.
-    pub verdict: Option<VerdictSummary>,
+    /// Whether a verdict is stored for the candidate's current file shape.
+    pub verdict_stored: bool,
+    /// The check against the folder the stored verdict's found release
+    /// failed, as its rows decide it.
+    pub verdict_folder_check: Option<bae_identify::FolderCheck>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
     /// What is running for the candidate, from its standing.
@@ -147,7 +149,8 @@ impl ImportCandidateDetailProjection {
             actionable,
             skipped,
             resumed_identify_state,
-            verdict,
+            verdict_stored,
+            verdict_folder_check,
             signals,
             standing: facts,
             listed,
@@ -165,7 +168,7 @@ impl ImportCandidateDetailProjection {
                 CandidateStage::Imported { release, images },
             ),
             ProjectedStage::Drafting(draft) => {
-                let session = draft.session_or_initial(verdict.is_some());
+                let session = draft.session_or_initial(verdict_stored);
                 let DraftProjection {
                     metadata_provenance,
                     release_link,
@@ -192,7 +195,7 @@ impl ImportCandidateDetailProjection {
                 // The attempt running now is what the pane shows; an earlier
                 // failure is behind it.
                 let failure = if importing { None } else { failure };
-                let verdict = verdict.as_ref().filter(|_| actionable);
+                let verdict_folder_check = verdict_folder_check.filter(|_| actionable);
                 // The catalogs the linked release is described in, as the row
                 // names them: only a linked candidate names any.
                 let draft_records = || {
@@ -208,7 +211,13 @@ impl ImportCandidateDetailProjection {
                 let pane_placement = match placement.tab() {
                     TriageTab::Pending => CandidatePanePlacement::Pending {
                         folder_check: (placement == TriagePlacement::Pending)
-                            .then(|| stated_folder_check(metadata_author, draft_valid, verdict))
+                            .then(|| {
+                                stated_folder_check(
+                                    metadata_author,
+                                    draft_valid,
+                                    verdict_folder_check,
+                                )
+                            })
                             .flatten(),
                         records: draft_records(),
                     },
@@ -268,7 +277,7 @@ pub enum CandidatePanePlacement {
     Pending {
         /// The check against the folder the candidate's found release did
         /// not pass, stated beside its Import: the release's
-        /// [`bae_identify::VerdictSummary::folder_check`].
+        /// [`ImportCandidateDetailProjection::verdict_folder_check`].
         folder_check: Option<bae_identify::FolderCheck>,
         /// Every catalog the linked release is described in, in the order
         /// surfaces list catalogs. Empty for a candidate linked to no release.

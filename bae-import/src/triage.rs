@@ -13,15 +13,15 @@
 //! [`FolderCheck`] variant carrying its operands, so each platform builds the
 //! sentence in its own locale.
 //!
-//! **Nothing here re-judges a verdict.** [`bae_identify::VerdictSummary`]
-//! already says which check against the folder its release failed; this module
+//! **Nothing here re-judges a verdict.** The verdict's stored rows already
+//! say which check against the folder its release failed; this module
 //! decides where the row goes and what it shows. Which rows exist and in what
 //! order is [`crate::list`]'s.
 
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::types::ReleaseLink;
 use super::MetadataAuthor;
-use bae_identify::{FolderCheck, VerdictSummary};
+use bae_identify::FolderCheck;
 
 mod actions;
 mod model;
@@ -41,7 +41,7 @@ pub use standing::{BadgeTone, NeedsYouReason, PendingBadge, PendingStanding, Pen
 pub fn stated_folder_check(
     author: MetadataAuthor,
     draft_valid: bool,
-    verdict: Option<&VerdictSummary>,
+    verdict_check: Option<FolderCheck>,
 ) -> Option<FolderCheck> {
     // Spelled out: who wrote the draft decides whether the verdict judges it.
     let answered = match author {
@@ -51,7 +51,7 @@ pub fn stated_folder_check(
     if answered {
         return None;
     }
-    verdict.and_then(VerdictSummary::folder_check)
+    verdict_check
 }
 
 /// What the last import of a candidate left in the tables.

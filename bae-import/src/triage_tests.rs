@@ -7,14 +7,6 @@ use bae_catalogs::catalog::LookupCatalog;
 /// their answer and states none.
 #[test]
 fn a_person_s_draft_states_no_folder_check() {
-    let unchecked = VerdictSummary {
-        kind: bae_identify::VerdictKind::Found,
-        pressing_count: 1,
-        lead: Some(bae_identify::TracklistFit::ListsNothing),
-        medium_conflict: None,
-        unread_document: false,
-        kept_own_draft: false,
-    };
     let check = Some(FolderCheck::SourceTracksUnknown);
     for (author, draft_valid, stated) in [
         (MetadataAuthor::Identification, true, check.clone()),
@@ -24,7 +16,7 @@ fn a_person_s_draft_states_no_folder_check() {
         (MetadataAuthor::Prefill, true, None),
     ] {
         assert_eq!(
-            stated_folder_check(author, draft_valid, Some(&unchecked)),
+            stated_folder_check(author, draft_valid, check.clone()),
             stated,
             "{author:?}, valid: {draft_valid}"
         );

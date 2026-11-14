@@ -317,6 +317,12 @@ pub struct VerdictCards {
     pub narrowed_out_count: u32,
     /// Whether the offered rows are several pressings of one album.
     pub offers_shared_album: bool,
+    /// The check against the folder the found release failed: why a found
+    /// verdict picks none of its releases. `None` for every other shape.
+    pub folder_check: Option<super::FolderCheck>,
+    /// The release a found verdict picks without a person: the lead of its one
+    /// pressing. `None` when it picks none, and for every other shape.
+    pub unattended_pick: Option<String>,
 }
 
 /// A verdict's releases judged against the folder's text, and the album

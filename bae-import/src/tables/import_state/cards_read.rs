@@ -229,9 +229,10 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
 /// The SQL of a scalar subquery reading the cards of the verdict-shaped row
 /// joined as `verdict` (a candidate's verdict, or a run's): the cards of its
 /// offered and set-aside releases with what the folder's text agrees with
-/// about each row, how many rows were set aside, and whether the offered rows
-/// are several pressings of one album. A JSON object read by
-/// [`verdict_cards_of`].
+/// about each row, how many rows were set aside, whether the offered rows
+/// are several pressings of one album, and the check against the folder and
+/// the release the verdict decides on (`import_candidate_verdict_decision`).
+/// A JSON object read by [`verdict_cards_of`].
 pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     let owner = format!(
         "{{table}}.content_hash IS {verdict}.content_hash \
@@ -262,6 +263,14 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     );
     format!(
         "json_object('cards', json({cards}), \
+            'folder_check', (SELECT decision.folder_check \
+                             FROM import_candidate_verdict_decision AS decision \
+                             WHERE decision.content_hash IS {verdict}.content_hash \
+                               AND decision.identify_run IS {verdict}.identify_run), \
+            'unattended_pick', (SELECT decision.unattended_pick \
+                                FROM import_candidate_verdict_decision AS decision \
+                                WHERE decision.content_hash IS {verdict}.content_hash \
+                                  AND decision.identify_run IS {verdict}.identify_run), \
             'narrowed_out_count', (SELECT COUNT(DISTINCT found.pressing) \
                                    FROM import_candidate_match AS found \
                                    WHERE {found} AND found.listing = 'narrowed_out'), \
@@ -306,6 +315,9 @@ pub(super) struct StoredVerdictCards {
     cards: Vec<StoredCard>,
     narrowed_out_count: u32,
     offers_shared_album: i64,
+    /// 'cd_rip', 'not_cd_audio' or 'source_tracks_unknown'.
+    folder_check: Option<String>,
+    unattended_pick: Option<String>,
 }
 
 /// The cards of a verdict that [`verdict_cards_sql`] answered, over its
@@ -314,9 +326,14 @@ pub(super) fn verdict_cards_of(
     json: &str,
     list: &[&MetadataResult],
 ) -> Result<VerdictCards, DbError> {
-    let StoredVerdictCards { cards, narrowed_out_count, offers_shared_album } =
-        serde_json::from_str(json)
-            .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
+    let StoredVerdictCards {
+        cards,
+        narrowed_out_count,
+        offers_shared_album,
+        folder_check,
+        unattended_pick,
+    } = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
     let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
     for card in &cards {
         let rows = card
@@ -359,7 +376,20 @@ pub(super) fn verdict_cards_of(
         agreements,
         narrowed_out_count,
         offers_shared_album: offers_shared_album != 0,
+        folder_check: folder_check.as_deref().map(folder_check_of).transpose()?,
+        unattended_pick,
     })
+}
+
+/// The check against the folder a verdict row's decision names.
+fn folder_check_of(stored: &str) -> Result<bae_identify::FolderCheck, DbError> {
+    use bae_identify::{FolderCheck, MediumConflict};
+    match stored {
+        "source_tracks_unknown" => Ok(FolderCheck::SourceTracksUnknown),
+        "cd_rip" => Ok(FolderCheck::MediumDisagrees { folder: MediumConflict::CdRip }),
+        "not_cd_audio" => Ok(FolderCheck::MediumDisagrees { folder: MediumConflict::NotCdAudio }),
+        other => Err(DbError::unreadable("a verdict's folder check", other)),
+    }
 }
 
 /// One card as [`cards_sql`] answers it.

@@ -47,7 +47,9 @@ pub use state::{
     SearchProgress, TitleSearch, ValueLookup,
 };
 pub use verdict::{IdentifyFailure, TerminalVerdict};
-pub use verdict_summary::{FolderCheck, VerdictKind, VerdictSummary};
+pub use verdict_summary::FolderCheck;
+#[cfg(any(test, feature = "test-utils"))]
+pub use verdict_summary::{VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings, LookupView, ProviderCell,

@@ -363,36 +363,9 @@ FROM (
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
                     WHERE m.content_hash = v.content_hash AND m.listing = 'offered') AS pressings,
                    -- Why a found verdict picks none of its releases
-                   -- unattended, judged from what it found that agreement
-                   -- kept, led by the lowest position.
-                   CASE WHEN v.kind <> 'found' THEN NULL
-                        WHEN v.medium_conflict IS NOT NULL THEN 'medium_disagrees'
-                        ELSE (SELECT CASE
-                                  WHEN lead.position IS NULL THEN 'nothing_found'
-                                  WHEN (SELECT COUNT(DISTINCT m.pressing)
-                                        FROM import_candidate_match AS m
-                                        WHERE m.content_hash = v.content_hash
-                                          AND m.listing = 'offered') <> 1
-                                      THEN 'several'
-                                  WHEN EXISTS (SELECT 1 FROM import_candidate_match AS m
-                                               WHERE m.content_hash = v.content_hash
-                                                 AND m.listing = 'offered'
-                                                 AND m.document_failure IS NOT NULL)
-                                      THEN 'unread_document'
-                                  WHEN lead.source_tracks_kind = 'listed'
-                                   AND lead.source_tracks_count = COALESCE(v.track_count, 0)
-                                      THEN NULL
-                                  WHEN lead.source_tracks_kind IN ('listed', 'unreadable')
-                                      THEN 'nothing_found'
-                                  ELSE 'source_tracks_unknown' END
-                              FROM (SELECT NULL) AS one
-                              LEFT JOIN import_candidate_match AS lead
-                                  ON lead.content_hash = v.content_hash
-                                 AND lead.position = (SELECT MIN(m.position)
-                                                      FROM import_candidate_match AS m
-                                                      WHERE m.content_hash = v.content_hash
-                                                        AND m.listing = 'offered'))
-                   END AS declined,
+                   -- unattended, as its rows decide it.
+                   (SELECT decision.declined FROM import_candidate_verdict_decision AS decision
+                    WHERE decision.content_hash = v.content_hash) AS declined,
                    st.identification, st.import_step AS running_import, st.save_failure_error,
                    t.album_title AS tag_title, t.credits AS tag_credits,
                    e.album_title AS draft_title,
