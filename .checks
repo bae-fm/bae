@@ -30,7 +30,7 @@ check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
 check uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
 check screen-pulls bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-android/screensubscription/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/check-screen-pulls.py,scripts/source_tokens.py python3 scripts/check-screen-pulls.py
 check swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,scripts/swift-owner-dependency-boundary.py python3 scripts/swift-owner-dependency-boundary.py
-check ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
+check ui-projection-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/source_tokens.py python3 scripts/ui-projection-boundary.py
 check keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
 check test-keychain *.rs,*.swift,*.kt,*.cs python3 scripts/check-test-keychain.py {files}
 check test-keychain-all project.yml,*.csproj,scripts/check-test-keychain.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-test-keychain.py
@@ -66,7 +66,8 @@ check shots-without-boards design/mocks/**,design/system/components/**,bae-andro
 check actionlint .github/workflows/**,.github/actions/** env SHELLCHECK_OPTS=--severity=error actionlint -color
 
 # Checker tests, run in CI when a push touches a checker or its test
-test ui-projection-boundary-test scripts/ui-projection-boundary.py,scripts/ui_view_sources.py,scripts/source_tokens.py,scripts/tests/ui-projection-boundary-test.py python3 scripts/tests/ui-projection-boundary-test.py
+test ui-row-work-test scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/source_tokens.py,scripts/tests/ui-row-work-test.py python3 scripts/tests/ui-row-work-test.py
+test ui-projection-boundary-test scripts/ui-projection-boundary.py,scripts/ui_row_work.py,scripts/ui-row-work.toml,scripts/ui_view_sources.py,scripts/source_tokens.py,scripts/tests/ui-projection-boundary-test.py python3 scripts/tests/ui-projection-boundary-test.py
 test coven-builder-boundary-test scripts/coven-builder-boundary.py,scripts/tests/coven-builder-boundary-test.py python3 scripts/tests/coven-builder-boundary-test.py
 test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scripts/tests/keyed-value-stream-boundary-test.py python3 scripts/tests/keyed-value-stream-boundary-test.py
 test uniffi-boundary-test scripts/check-uniffi-runtime-boundary.py,scripts/tests/check-uniffi-runtime-boundary-test.py python3 scripts/tests/check-uniffi-runtime-boundary-test.py

@@ -24,6 +24,8 @@ from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
+from ui_row_work import REMEDY as ROW_WORK_REMEDY
+from ui_row_work import check as row_work_violations
 from ui_view_sources import (
     RenderLeaf,
     SourceFragment,
@@ -574,7 +576,12 @@ def main() -> int:
             "Render leaves receive entity facts through their declared projection only.",
             file=sys.stderr,
         )
-    return 1 if violations else 0
+    row_work = row_work_violations(args.root)
+    for violation in row_work:
+        print(violation)
+    if row_work:
+        print(ROW_WORK_REMEDY, file=sys.stderr)
+    return 1 if violations or row_work else 0
 
 
 if __name__ == "__main__":
