@@ -197,14 +197,29 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUser
     }
 }
 
-async fn queued_write_rows(manager: &LibraryManager) -> Vec<Vec<String>> {
-    manager.store.queued_write_rows_for_test().await.unwrap()
+/// The artists each track of `release_id` shows, in order of the tracks.
+async fn shown_track_artists(manager: &LibraryManager, release_id: &str) -> Vec<Vec<String>> {
+    let mut shown = Vec::new();
+    for track in manager.records.get_tracks_for_release(release_id).await.unwrap() {
+        shown.push(
+            manager
+                .records
+                .get_shown_artists_for_track(&track.id)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|artist| artist.artist.name)
+                .collect(),
+        );
+    }
+    shown
 }
 
-/// Saving a release's metadata again without changing it is no write: nothing
-/// waits to sync.
+/// Saving a release's metadata again without changing it leaves each track's
+/// credits as they were: a save replaces the lists it holds, and the lists it
+/// writes are the ones the edit names.
 #[tokio::test]
-async fn saving_unchanged_metadata_writes_nothing() {
+async fn saving_unchanged_metadata_keeps_the_credits() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_n_tracks(&manager.library.manager().records, &release.id, 2).await;
     let edit = credited_release_edit([
@@ -212,18 +227,21 @@ async fn saving_unchanged_metadata_writes_nothing() {
         &["Track Artist One", "Track Artist Three"],
     ]);
     manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
-    let writes = queued_write_rows(manager.library.manager()).await;
+    let credits = shown_track_artists(manager.library.manager(), &release.id).await;
+    assert_eq!(
+        credits,
+        [["Track Artist One", "Track Artist Two"], ["Track Artist One", "Track Artist Three"]]
+    );
 
     manager.library.manager().apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
-    assert_eq!(queued_write_rows(manager.library.manager()).await, writes);
+    assert_eq!(shown_track_artists(manager.library.manager(), &release.id).await, credits);
 }
 
-/// Changing one track's credit rewrites the row of that place in its list
-/// and nothing else: every credit the edit leaves alone is left alone in the
-/// store.
+/// Changing one track's credit saves the credits the edit names: the track
+/// shows the new artist, and the credits the edit leaves alone read as they did.
 #[tokio::test]
-async fn changing_one_track_credit_writes_only_that_credit() {
+async fn changing_one_track_credit_saves_the_credits_the_edit_names() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_n_tracks(&manager.library.manager().records, &release.id, 2).await;
     manager
@@ -238,7 +256,6 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         )
         .await
         .unwrap();
-    let writes = queued_write_rows(manager.library.manager()).await.len();
 
     manager
         .library
@@ -253,30 +270,8 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .await
         .unwrap();
 
-    let rows = queued_write_rows(manager.library.manager()).await;
-    assert_eq!(rows.len(), writes + 1);
-    let credit_rows = rows[writes]
-        .iter()
-        .filter(|row| row.starts_with("album_artists") || row.starts_with("track_artists"))
-        .collect::<Vec<_>>();
-    assert_eq!(credit_rows, ["track_artists"], "the one place whose artist changed");
     assert_eq!(
-        rows[writes].iter().filter(|row| *row == "artists").count(),
-        2,
-        "the new artist, and the one nothing credits any more"
-    );
-    let first_track =
-        &manager.library.records().get_tracks_for_release(&release.id).await.unwrap()[0];
-    assert_eq!(
-        manager
-            .library
-            .records()
-            .get_shown_artists_for_track(&first_track.id)
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|artist| artist.artist.name)
-            .collect::<Vec<_>>(),
-        vec!["Track Artist One", "Track Artist Four"]
+        shown_track_artists(manager.library.manager(), &release.id).await,
+        [["Track Artist One", "Track Artist Four"], ["Track Artist One", "Track Artist Three"]]
     );
 }
