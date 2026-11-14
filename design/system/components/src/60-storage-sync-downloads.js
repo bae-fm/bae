@@ -71,32 +71,29 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as StorageStateLabel draws it: one chip. At rest: Local, Pinned, In cloud. Moving: Uploading, Pinning and Moving to This Mac… fill with `progress`. Waiting: Queued to pin, Queued to upload, Queued to move to This Mac; an upload held by a missing original, Waiting for that `file`, in warning (`uploadBlocked`). Failed, in danger: Couldn’t pin, Move failed (`file`), Could not move to This Mac. Nothing says how many wait ahead or what holds the queue back.
+  // The Storage column, as StorageStateLabel draws it: one chip of one word, with no icon. At rest: Local, Pinned, Cloud. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn reads Queued (`queued`, `uploadQueued`, `makeLocalQueued`). An upload held by a missing original reads Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed reads Error, in danger (`downloadFailed`, `moveFailed`, `makeLocalFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
-      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Moving to This Mac…';
+      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Moving';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
-    if (s === 'downloadFailed') return chip('danger', 'Could not pin');
-    if (s === 'moveFailed') return chip('danger', 'Move failed: ' + (props.file || '01 Harbor Lights.flac') + ' changed since import');
-    if (s === 'makeLocalFailed') return chip('danger', 'Could not move to This Mac');
-    if (s === 'queued') return chip('activity', 'Queued to pin');
-    if (s === 'uploadQueued') return chip('activity', 'Queued to upload');
-    if (s === 'uploadBlocked') return chip('warning', 'Waiting for ' + (props.file || '01 Harbor Lights.flac'));
-    if (s === 'makeLocalQueued') return chip('activity', 'Queued to move to This Mac');
-    var icon = { local: 'folder', pinned: 'pin', cloud: 'cloud' }[s];
-    return h(StatusChip, { tone: 'neutral' }, h(Sym, { name: icon, size: 10 }), { local: 'Local', pinned: 'Pinned', cloud: 'In cloud' }[s]);
+    if (s === 'downloadFailed' || s === 'moveFailed' || s === 'makeLocalFailed') return chip('danger', 'Error');
+    if (s === 'queued' || s === 'uploadQueued' || s === 'makeLocalQueued') return chip('activity', 'Queued');
+    if (s === 'uploadBlocked') return chip('warning', 'Waiting');
+    return chip('neutral', { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
   }
 
-  // DownloadRow's failed row in the inspector: the kind's icon, title and detail, the cancel mark; under them the failure (Couldn’t pin, or Could not move to This Mac) with Details and Retry.
+  // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`makeLocal`) that failed reads Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
   function MacDownloadRow(props) {
-    var makeLocal = props.kind === 'makeLocal';
+    var kind = props.kind || 'pin';
+    var icon = { makeLocal: 'folder', upload: 'up', pin: 'pin' }[kind];
+    var notice = props.notice || (kind === 'makeLocal' ? 'Could not move to This Mac' : 'Could not pin');
     return h('div', { className: 'bae-m-dlrow' },
-      h(MacItem, { lead: h(Sym, { name: makeLocal ? 'folder' : 'pin', size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
+      h(MacItem, { lead: h(Sym, { name: icon, size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
-      h(MacNotice, { quiet: true, tone: 'danger', title: makeLocal ? 'Could not move to This Mac' : 'Could not pin', secondary: 'Details', action: 'Retry' }));
+      h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }
 
   // Under the list: how many releases, the total, then per queue with work its rate, or in its place what holds the whole queue back (`uploadsWait`, `pinsWait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause, or Resume while the person has paused it (`Paused`).
@@ -124,11 +121,12 @@
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
       h('div', { className: 'bae-m-bar' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
   }
-  // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), its name and size.
+  // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size.
   function MacFileRow(props) {
     var s = props.state || 'rest';
     var p = Number(props.progress || 0.4), C = 2 * Math.PI * 6;
-    var mark = s === 'rest' ? null :
+    var bang = function (tone) { return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', style: { color: 'var(--' + tone + ')' } }, h('circle', { cx: 8, cy: 8, r: 6.5, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }), h('path', { d: 'M8 4.6v4.2M8 11.2v.1', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round' })); };
+    var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
       s === 'queued' ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
       h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: s === 'pinning' ? 'bae-pinning' : 'bae-activity' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeDasharray: (C * p) + ' ' + C, transform: 'rotate(-90 8 8)' }));
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },

@@ -2207,7 +2207,8 @@ file (one already moving waits or fails as below), and an export fails.
 
 A release is *uploaded* once every one of its files is in storage.
 In the apps' words the library's place in storage is *the cloud*: a release
-there reads In cloud, the move is Move to cloud, and no screen says "storage"
+there reads In cloud (Cloud in the Storage manager's Storage column), the
+move is Move to cloud, and no screen says "storage"
 alone for it. Where sync is set up, the place itself, the folder or bucket on
 the household's provider that coven's store lives in, is the person's *cloud
 home*: the Sync settings section and the setup steps. The Storage manager and a
@@ -2344,18 +2345,20 @@ state core gives it: on one device, or in storage, pinned here or not. Only a
 file in storage is pinned, so no release reads as both on one device and
 pinned.
 
-A release with files waiting to upload shows, in its row and in its album's
-storage band, Queued to upload, or Uploading filled as far as its bytes have
-come (its Done row in the import list shows the phase that makes, §3.2); the
+A release with files waiting to upload shows Uploading, filled as far as its
+bytes have come, in its row and in its album's storage band, or before then
+Queued in its row and Queued to upload in its band (its Done row in the import
+list shows the phase that makes, §3.2); the
 Storage manager's inspector shows how many wait, are being sent and are
 stored, and how many bytes of its whole size are stored or sent. The counts
 are read in the same query as the row: which files are being sent comes
 from coven's `coven_sending`, a live view of the uploads in flight. While none
-is being sent, the row reads Queued to upload, and names nothing else that
-holds the files back but a file whose original is missing, from coven's
-`coven_pending`: Waiting for that file, named, since only restoring it lets
-the move go on; the release's storage band shows Queued to upload and, under it, a
-warning that names the file. A pause, the network, a metered network or a retry's time holds the whole
+is being sent, the row reads Queued, and shows nothing else that holds the
+files back but a file whose original is missing, from coven's
+`coven_pending`: the row reads Waiting, and the inspector says *Waiting for a
+file*, names the file and offers *Restore source file…*, since only restoring
+it lets the move go on; the release's storage band shows Queued to upload and,
+under it, a warning that names the file. A pause, the network, a metered network or a retry's time holds the whole
 queue, so it shows once, where the queue shows, never on a release: in place of
 the queue's rate under the list, on the Activity panel's Uploading line, and on
 the phones' Pinning screen. How far
@@ -2379,15 +2382,21 @@ shows a download its files have finished. The storage rows and the album and
 release detail read the entry in their own query.
 
 Each row's storage state is the place it sorts by, which core reads with the
-row: Could not pin, its error behind *Details* (§9.7), or Move failed, naming the file whose
-original changed since import, first; Uploading, its chip filled as far
-as its bytes have come while any file is being sent, or Queued to upload while its files only wait; Pinning, filled as far
-as its download has come once it starts, or Queued to pin before; a move to This Mac, Moving to This Mac… filled as far as its copies have downloaded
-(§4.4), or Queued to move to This Mac before, or Could not move to This Mac, its error behind *Details*, in the first place with
-Could not pin; Local, Pinned or
-In cloud at rest. No rate shows beside it, nor how many entries wait ahead
-of it or what holds the queue back: a row's storage is its state and at most
-the one change on its way, every waiting state naming what it waits to do.
+row, and the Storage column shows it as one word with no icon: Error, first,
+for a pin, a move to the cloud or a move to This Mac that failed; Waiting, for
+an upload held by a missing original; Uploading, filled as far as its bytes
+have come while any file is being sent; Pinning, filled as far as its download
+has come; Moving, filled as far as a move to This Mac's copies have downloaded
+(§4.4); Queued, for an upload, a pin or a move to This Mac that waits its turn;
+Local, Pinned or Cloud at rest. The inspector says the rest for the selected
+release: how many files are queued, moving or done, with Cancel; for a failed
+pin, *Could not pin*, and for a failed move to This Mac, *Could not move to
+This Mac*, each with *Details* (§9.7) and *Retry*; for a failed move to the
+cloud, *Could not move to the cloud*, naming the file whose original changed
+since import, with *Details* and *Cancel upload*; and the file the trouble is
+with, marked in the release's file list. No rate shows beside a row, nor how
+many entries wait ahead of it or what holds the queue back: a row's storage
+is its state and at most the one change on its way.
 A move fails when a file's original changed before its upload
 (coven lists the failed move's files in `coven_moves` until it is cancelled,
 and its pending record names the original, §6.4); the release stays on this
@@ -2454,7 +2463,7 @@ platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
 its rate under the Storage manager's list, on the Activity panel's Pinning
 and Moving to This Mac lines and on the phones' Pinning screen, never on a release. A pin that fails stays in the queue with its error,
-nothing of it pinned, and its row sorts first, reading Could not pin; one that breaks on a bug fails the
+nothing of it pinned, and its row sorts first, reading Error, with Could not pin in the inspector; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. While a release's pin waits, its
@@ -2519,8 +2528,9 @@ pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again
 from its start; the queue is kept across restarts, its entries and pause, and
 the entry that was running starts again. A queued move-to-this-device reads Queued to
-move to This Mac; one that fails stays with its error, reading
-Could not move to This Mac, until retried or cancelled. A cancel takes the entry out
+move to This Mac, and Queued in the Storage manager's row; one that fails
+stays with its error, reading Could not move to This Mac, and Error in the
+row, until retried or cancelled. A cancel takes the entry out
 and stops the download. bae hands coven the folder and each release's file
 paths below it, in one call
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).

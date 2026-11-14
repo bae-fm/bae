@@ -4202,6 +4202,62 @@
    "w": 690,
    "x": 1316,
    "y": 9640
+  },
+  "mac.storage.window.move-failed.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a failed move to the cloud, in the inspector",
+   "w": 1100,
+   "x": 6360,
+   "y": 2160
+  },
+  "mac.storage.window.upload-waiting.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: an upload waiting for its original, in the inspector",
+   "w": 1100,
+   "x": 7540,
+   "y": 2160
+  },
+  "mac.storage.window.make-local-failed.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a failed move to This Mac, in the inspector",
+   "w": 1100,
+   "x": 8720,
+   "y": 2160
+  },
+  "mac.storage.window.upload-queued.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release queued to upload, in the inspector",
+   "w": 1100,
+   "x": 6360,
+   "y": 2940
+  },
+  "mac.storage.window.pin-queued.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release queued to pin, in the inspector",
+   "w": 1100,
+   "x": 7540,
+   "y": 2940
+  },
+  "mac.storage.window.make-local-queued.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release queued to move to This Mac, in the inspector",
+   "w": 1100,
+   "x": 8720,
+   "y": 2940
+  },
+  "mac.storage.window.moving-to-mac.dc.html": {
+   "h": 660,
+   "page": "storage",
+   "title": "macOS: a release moving to This Mac, in the inspector",
+   "w": 1100,
+   "x": 9900,
+   "y": 2940
   }
  },
  "createdOnFiles": {
