@@ -151,41 +151,19 @@ pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<
         .collect())
 }
 
-/// The other printed names of each of `artist_ids` (artists as they show,
-/// after merges), each artist's in the order of `order_key` (a SQL expression
-/// over `credit_name.name`: the name's sort key): its own rows and those of
-/// the artists merged into it.
+/// The other printed names of the artist `artist_id` shows as, in the order
+/// of `order_key` (a SQL expression over `credit_name.name`: the name's sort
+/// key): its own rows and those of the artists merged into it.
 pub fn credit_names_of_on(
     sql: &SqlReadContext<'_>,
-    artist_ids: &[String],
+    artist_id: &str,
     order_key: &str,
-) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {
-    let mut names: HashMap<String, Vec<ArtistCreditName>> = HashMap::new();
-    for chunk in artist_ids.chunks(SQL_MAX_IN_VARS) {
-        let query = format!(
-            "SELECT shown.shown_artist_id AS shown_id, credit_name.artist_id, \
-                    credit_name.name_key, credit_name.name \
-             FROM artist_shown_as shown \
-             JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
-             WHERE shown.shown_artist_id IN ({placeholders}) \
-             ORDER BY shown_id, {order_key}, credit_name.name_key",
-            placeholders = in_clause_placeholders(chunk.len()),
-        );
-        for (shown_id, name) in
-            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    ArtistCreditName {
-                        artist_id: row.get(1)?,
-                        credit: CreditName { key: row.get(2)?, name: row.get(3)? },
-                    },
-                ))
-            })?
-        {
-            names.entry(shown_id).or_default().push(name);
-        }
-    }
-    Ok(names)
+) -> Result<Vec<ArtistCreditName>, DbError> {
+    Ok(sql.query_row(
+        &format!("SELECT {} AS names", credit_names_json_sql("?1", order_key)),
+        params![artist_id],
+        |row| credit_names_column(row, "names"),
+    )?)
 }
 
 impl Records {

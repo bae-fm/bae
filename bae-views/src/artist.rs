@@ -176,11 +176,9 @@ fn find_artist_detail_on(
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
-        std::slice::from_ref(&artist.artist.id),
+        &artist.artist.id,
         &crate::name_sort::sort_key_sql("credit_name.name"),
-    )?
-    .remove(&artist.artist.id)
-    .unwrap_or_default();
+    )?;
     Ok(Some(ArtistDetailRows { artist, credit_names, albums }))
 }
 

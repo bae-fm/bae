@@ -20,7 +20,7 @@ async fn a_name_for_an_artist_no_longer_held_is_refused() {
     );
     let held = records
         .store
-        .read(|sql| credit_names_of_on(&sql, &["gone".to_string()], "credit_name.name"))
+        .read(|sql| credit_names_of_on(&sql, "gone", "credit_name.name"))
         .await
         .unwrap();
     assert!(held.is_empty());
@@ -91,11 +91,11 @@ async fn role_and_work_credits_link_the_names_they_print() {
 
     let held = records
         .store
-        .read(|sql| credit_names_of_on(&sql, &[ARTIST_COMPOSER.to_string()], "credit_name.name"))
+        .read(|sql| credit_names_of_on(&sql, ARTIST_COMPOSER, "credit_name.name"))
         .await
         .unwrap();
     assert_eq!(
-        held[ARTIST_COMPOSER].iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
+        held.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
         ["Printed Name"]
     );
     assert_eq!(linked().await, vec![Some(printed.key.clone()); 3]);
