@@ -274,9 +274,12 @@ pub(crate) fn load_pane_rows_on(
     content_hash: &str,
 ) -> Result<DbCandidatePaneRows, DbError> {
     let (draft, cover) = load_draft_and_cover_on(sql, content_hash)?;
+    let (draft_blank, draft_valid) = load_draft_columns_on(sql, content_hash, &draft)?;
     Ok(DbCandidatePaneRows {
         cover,
         draft,
+        draft_blank,
+        draft_valid,
         failure: load_failure_on(sql, content_hash)?,
         session: load_session_on(sql, content_hash)?,
     })
@@ -293,6 +296,28 @@ impl ImportTables {
         let content_hash = content_hash.to_string();
         self.store.read(move |sql| load_pane_rows_on(&sql, &content_hash)).await
     }
+}
+
+/// Whether the draft of `content_hash` is blank and whether it would import,
+/// as its row stores them beside its fields, in the write that stored them.
+/// A candidate with no draft row reads as the blank draft its files make,
+/// which `draft` is.
+fn load_draft_columns_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+    draft: &CandidateDraft,
+) -> Result<(bool, bool), DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT draft_blank, draft_valid FROM import_candidate_edit WHERE content_hash = ?",
+            [content_hash],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?
+        .unwrap_or_else(|| {
+            let edit = draft.release_edit();
+            (edit.is_blank(), edit.shape().is_ok())
+        }))
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
@@ -834,6 +859,10 @@ pub struct DbCandidatePaneRows {
     /// The candidate's one stored draft: album fields and one row per audio
     /// slot, each carrying its physical decision.
     pub draft: crate::CandidateDraft,
+    /// Whether the draft is blank, as its write stored it.
+    pub draft_blank: bool,
+    /// Whether the draft would import, as its write stored it.
+    pub draft_valid: bool,
     /// Where the pane was when the person last left this candidate. `None`
     /// before the pane has been touched.
     pub session: Option<crate::CandidateSession>,
@@ -843,6 +872,25 @@ pub struct DbCandidatePaneRows {
 
 #[cfg(test)]
 impl ImportTables {
+    /// Plant damage for a test: every draft in the library under `directory`
+    /// states itself valid, whatever its fields say. Every draft write stores
+    /// the validity of the draft it writes, so no write leaves one that
+    /// disagrees.
+    pub(crate) async fn plant_draft_valid_for_test(directory: &std::path::Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_blocking::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "import_candidate_edit",
+                // The list's trigger that follows the column would run the
+                // list's functions, which this connection lacks.
+                "DROP TRIGGER IF EXISTS import_list_on_draft_changed; \
+                 UPDATE import_candidate_edit SET draft_valid = 1;",
+            )
+        })
+        .await;
+    }
+
     /// Plant damage for a test: every draft track in the library under
     /// `directory` plays the file `file_id`. A draft is written over its
     /// folder's audio, so no write stores a track over a file the folder

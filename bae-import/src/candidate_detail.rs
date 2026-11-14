@@ -78,6 +78,10 @@ pub struct DraftProjection {
     pub album: crate::DraftAlbum,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
+    /// Whether the draft is blank, as the write that stored it judged.
+    pub draft_blank: bool,
+    /// Whether the draft would import, as the write that stored it judged.
+    pub draft_valid: bool,
     /// What the library holds, as this read found it, for every artist credit
     /// the draft carries.
     pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
@@ -170,6 +174,8 @@ impl ImportCandidateDetailProjection {
                     picked_library_status,
                     album,
                     metadata_draft,
+                    draft_blank,
+                    draft_valid,
                     artist_resolutions,
                     mapping,
                     cover,
@@ -187,7 +193,6 @@ impl ImportCandidateDetailProjection {
                 // failure is behind it.
                 let failure = if importing { None } else { failure };
                 let verdict = verdict.as_ref().filter(|_| actionable);
-                let draft_valid = metadata_draft.clone().shape().is_ok();
                 // The catalogs the linked release is described in, as the row
                 // names them: only a linked candidate names any.
                 let draft_records = || {
@@ -212,7 +217,6 @@ impl ImportCandidateDetailProjection {
                     }
                     TriageTab::Done => CandidatePanePlacement::Done,
                 };
-                let metadata_draft_is_blank = metadata_draft.is_blank();
                 (
                     import_status,
                     pane_placement,
@@ -221,7 +225,7 @@ impl ImportCandidateDetailProjection {
                         album,
                         metadata_draft,
                         artist_resolutions,
-                        metadata_draft_is_blank,
+                        metadata_draft_is_blank: draft_blank,
                         metadata_provenance,
                         release_link,
                         metadata_author,

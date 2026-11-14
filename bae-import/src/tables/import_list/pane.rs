@@ -260,6 +260,8 @@ impl CandidateDetailRows {
                     picked_library_status,
                     album,
                     metadata_draft: pane.edit,
+                    draft_blank: pane_rows.draft_blank,
+                    draft_valid: pane_rows.draft_valid,
                     artist_resolutions,
                     mapping: pane.mapping,
                     cover,

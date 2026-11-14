@@ -130,28 +130,27 @@ async fn the_row_and_the_pane_name_the_same_records() {
     assert_eq!(pane_records, records, "the pane names the records the queue's row does");
 }
 
-/// A verdict whose releases the folder's files rule out reads back as the
-/// check the pane states beside Import, and the resumed state reads where
-/// the audio came from, and the rate that rules a CD out, off the stored
-/// signals.
-#[tokio::test]
-async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
-    let (db, _tmp, root) = watched_root().await;
+/// A scanned hi-res folder with a stored verdict whose pick the folder rules
+/// out: the verdict as stored, and the candidate.
+async fn scanned_with_a_ruled_out_verdict(
+    db: &bae_store::Store,
+    root: &std::path::Path,
+) -> (crate::folder_scanner::FolderCandidate, TerminalVerdict) {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let mut candidate = candidate(&root, "Album");
+    let mut candidate = candidate(root, "Album");
     for file in &mut candidate.files.files {
         if let Some(audio) = &mut file.file.source_audio {
             audio.format.sample_rate_hz = 96_000;
             audio.format.bits_per_sample = Some(24);
         }
     }
-    tables.add_watched_import_folder(&root).await.unwrap();
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables
-        .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
         .await
         .unwrap();
-    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
     let conflict = bae_identify::MediumConflict::NotCdAudio;
     let TerminalVerdict::Found { mut findings, track_count, ledger } = verdict("mb-verdict", None)
     else {
@@ -159,7 +158,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     };
     findings.medium_conflict = Some(conflict);
     let stored = TerminalVerdict::Found { findings, track_count, ledger };
-    assert!(crate::tables::ImportTables::new(db.clone())
+    assert!(tables
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,
@@ -182,6 +181,19 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         })
         .await
         .unwrap());
+    (candidate, stored)
+}
+
+/// A verdict whose releases the folder's files rule out reads back as the
+/// check the pane states beside Import, and the resumed state reads where
+/// the audio came from, and the rate that rules a CD out, off the stored
+/// signals.
+#[tokio::test]
+async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, stored) = scanned_with_a_ruled_out_verdict(&db, &root).await;
+    let conflict = bae_identify::MediumConflict::NotCdAudio;
 
     let state = tables
         .load_import_candidate_state(&candidate.files.content_hash())
@@ -616,4 +628,43 @@ async fn a_draft_that_cannot_be_drawn_fails_the_pane_as_the_import() {
         .expect_err("a track over a file the folder does not hold is not drawn");
 
     assert!(matches!(error, crate::ImportError::Internal { .. }), "{error:?}");
+}
+
+/// The folder check the pane states beside Import follows the validity the
+/// draft's write stored, not a second judgement of the fields at read time.
+#[tokio::test]
+async fn pane_folder_check_reads_the_stored_draft_validity() {
+    let (db, tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, _) = scanned_with_a_ruled_out_verdict(&db, &root).await;
+    let hash = candidate.files.content_hash();
+    PaneControls::of(&db, &candidate)
+        .type_field(&hash, crate::CandidateEditField::AlbumYear, "not a year")
+        .await
+        .unwrap();
+    let folder_check = |tables: &crate::tables::ImportTables| {
+        let tables = tables.clone();
+        let key = crate::CandidateKey::folder(&candidate.path);
+        async move {
+            let detail =
+                tables.load_import_candidate(&key).await.unwrap().expect("the pane").resolve();
+            let crate::CandidatePanePlacement::Pending { folder_check, .. } = detail.placement
+            else {
+                panic!("a typed draft is pending, got {:?}", detail.placement);
+            };
+            folder_check
+        }
+    };
+    assert!(
+        folder_check(&tables).await.is_some(),
+        "a year that does not parse leaves the draft invalid, and the pane says so"
+    );
+
+    crate::tables::ImportTables::plant_draft_valid_for_test(tmp.path()).await;
+
+    assert_eq!(
+        folder_check(&tables).await,
+        None,
+        "the pane reads the validity the draft row stores"
+    );
 }
