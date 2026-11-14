@@ -184,6 +184,7 @@ final class StepProgressNSView<Step: ProgressStep>: NSView {
             let title = titled(progress)
             if label.stringValue != title {
                 label.stringValue = title
+                bar.setAccessibilityLabel(title)
             }
             bar.progress = progress.fraction
         }
@@ -266,6 +267,7 @@ struct MacProgress<Bar: View>: View {
                 .foregroundStyle(Theme.textPrimary)
             bar
                 .frame(height: ProgressTrackNSView.trackHeight)
+                .accessibilityLabel(title)
         }
     }
 }
