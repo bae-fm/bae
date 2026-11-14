@@ -5447,7 +5447,10 @@ release's or track's id as UTF-8, or a candidate's key.
   query or its own live query; any other read is a plain SQL read. SQLite
   filters, sorts, joins, groups, counts and windows. Nothing is kept in memory between reads, no pass walks rows beside a
   live query, no value is written only to make a query read again, and no size
-  cutoff sends a read down one of two paths.
+  cutoff sends a read down one of two paths. A long list pages by cursor: its
+  request carries the sort values of the row at the screen's edge and the next
+  window is sought from them through the order's index; a jump to a position
+  reads by offset, indexed only when it measures slow enough to warrant one.
 - **Screen subscriptions** are objects the app pulls from, built only in the
   bridge's `screens` module (`screens.rs` and its submodules) from a live
   query: `next()` answers the first value at

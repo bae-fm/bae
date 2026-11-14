@@ -33,6 +33,10 @@ screen that reads what it changed.
 - **Two things never come from SQL.** A value that changes many times a second
   (on its keyed stream, below) and state that lives only on screen: hover,
   focus, an open popover or menu, a drag in progress. The view holds that.
+- **A long list pages by cursor and jumps by offset.** The request carries the
+  sort values of the row at the screen's edge, and the next window is sought from
+  them through the order's index. A jump to a position reads by offset, with an
+  index for it only when it measures slow enough to warrant one.
 - **The read is the query and nothing else.** No places, counts, windows or
   last results kept in Rust between reads; no side pass beside a live query; no
   field written into a request or a table only to make a query rerun; no size
