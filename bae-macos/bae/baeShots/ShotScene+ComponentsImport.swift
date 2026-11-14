@@ -35,7 +35,7 @@ extension ShotScene {
             height: 100
         ) {
             MacIdentifierBand(
-                run: PreviewData.identifyRunFound,
+                run: PreviewData.identifyRunBandBoard,
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},

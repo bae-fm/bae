@@ -146,6 +146,40 @@ extension PreviewData {
         readingArtwork: false
     )
 
+    /// The identifier band as its component board draws it: a Disc ID MusicBrainz
+    /// matched twice, a barcode only Discogs matched once, no catalog number
+    /// and no ISRC.
+    static let identifyRunBandBoard = BridgeIdentifyRun(
+        providers: [.musicBrainz, .discogs],
+        discId: .read(discs: [
+            BridgeDiscIdRow(
+                discId: "v8n2Kq1Z…",
+                lookup: .found(count: 2, groups: [searchGroupExactBridge])
+            )
+        ]),
+        barcode: .rows(
+            rows: [
+                BridgeSignalValueRow(
+                    value: "0 41234 56789 2",
+                    excluded: false,
+                    cells: [
+                        BridgeProviderCell(
+                            source: .discogs,
+                            lookup: .found(
+                                count: 1,
+                                groups: [searchGroupExactBridge]
+                            )
+                        )
+                    ]
+                )
+            ]
+        ),
+        catalog: .numbers(rows: [], candidates: []),
+        isrc: .absent,
+        search: .notNeeded,
+        readingArtwork: false
+    )
+
     /// No Disc ID or barcode, only catalog numbers to pick from.
     static let identifyRunAwaitingCatalog = BridgeIdentifyRun(
         providers: [.musicBrainz, .discogs],
