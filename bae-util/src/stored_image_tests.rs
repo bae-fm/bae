@@ -144,3 +144,37 @@ fn a_48_megapixel_photo_is_stored() {
     let out = stored_jpeg(jpeg.get_ref()).unwrap();
     assert_eq!(decoded_dims(&out), (600, 450));
 }
+
+/// A JPEG of a gradient, `width` by `height`.
+fn jpeg_source(width: u32, height: u32) -> Vec<u8> {
+    let photo = image::RgbImage::from_fn(width, height, |x, y| {
+        image::Rgb([(x % 251) as u8, (y % 241) as u8, 90])
+    });
+    let mut jpeg = Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(photo).write_to(&mut jpeg, image::ImageFormat::Jpeg).unwrap();
+    jpeg.into_inner()
+}
+
+/// A JPEG decodes at the largest 1/2, 1/4 or 1/8 scale whose longer side still
+/// covers the 600-pixel output, so the decoded pixels follow the output and
+/// not the photo.
+#[test]
+fn a_jpeg_decodes_at_the_largest_scale_that_covers_the_output() {
+    for (source, decoded) in [
+        ((4800, 3600), (600, 450)),
+        ((8064, 6048), (1008, 756)),
+        ((3000, 2000), (750, 500)),
+        ((1500, 1000), (750, 500)),
+        ((1000, 700), (1000, 700)),
+    ] {
+        let (image, _) = decode_image(&jpeg_source(source.0, source.1)).unwrap();
+        assert_eq!((image.width(), image.height()), decoded, "a {source:?} JPEG");
+    }
+}
+
+/// A scaled decode of a large JPEG still stores a 600-pixel image.
+#[test]
+fn a_large_jpeg_is_stored_at_600_pixels_from_its_scaled_decode() {
+    let out = stored_jpeg(&jpeg_source(4800, 3600)).unwrap();
+    assert_eq!(decoded_dims(&out), (600, 450));
+}

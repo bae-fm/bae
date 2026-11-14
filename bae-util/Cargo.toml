@@ -53,6 +53,10 @@ hex = { workspace = true }
 # imported it. Decode JPEG, PNG, GIF and WebP without default features (no
 # rayon), including mobile.
 image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
+# A JPEG decodes at 1/2, 1/4 or 1/8 scale (src/stored_image.rs), so the memory
+# a camera photo takes follows the 600-pixel output; the image crate's decoder
+# has no scaled decode.
+jpeg-decoder = { workspace = true }
 
 # The open-file limit (src/open_file_limit.rs) is a Unix resource limit, and the
 # frame clock (src/frame_clock.rs) reads the Unix monotonic clocks.

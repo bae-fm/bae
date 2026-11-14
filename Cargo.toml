@@ -132,6 +132,7 @@ hkdf = "0.12"
 if-addrs = "0.15"
 if-watch = { version = "3.2", features = ["tokio"] }
 image = { version = "0.25", default-features = false }
+jpeg-decoder = { version = "0.3", default-features = false }
 keyring-core = "1.0.1"
 libc = "0.2"
 libsqlite3-sys = "0.39.0"

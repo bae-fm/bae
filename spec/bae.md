@@ -2092,7 +2092,9 @@ Two kinds of file, matching coven's
   downscaled to at most 600 pixels as JPEG, and hands the bytes to coven,
   which keeps them. It makes one from an image up to 8,192 pixels on its
   longer side, a 48-megapixel camera photo included; a 16-bit PNG, which
-  takes twice the memory to decode, up to about 5,800 pixels square.
+  takes twice the memory to decode, up to about 5,800 pixels square. A JPEG
+  decodes at the largest 1/2, 1/4 or 1/8 scale whose longer side still reaches
+  600 pixels, so the memory it takes follows the stored size, not the photo's.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. A row references its image by the id of a coven file, the record coven
