@@ -111,9 +111,8 @@ impl BridgePendingReason {
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,
             R::Paused => K::Paused,
-            // A joined device whose admission the library refused was never
-            // in it: shown as a removal is (coven §13.2).
-            R::Removed | R::NotAdmitted => K::Removed,
+            // Removed from the library, or never admitted to it (coven §13.2).
+            R::Removed(_) => K::Removed,
             R::MemberKeysReplaced { .. } => K::MemberKeysReplaced,
         };
         let causes = match reason {

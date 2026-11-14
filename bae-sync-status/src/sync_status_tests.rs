@@ -216,8 +216,8 @@ fn only_a_moving_pass_is_syncing() {
     assert!(!syncing(synced()));
     assert!(!syncing(coven::SyncState::WaitingToSync(coven::SyncWait::NotSyncing)));
     assert!(!syncing(offline()));
-    assert!(!syncing(blocked(coven::PendingReason::Removed, None, coven::SyncState::Removed)));
-    assert!(!syncing(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)));
+    assert!(!syncing(removed_state()));
+    assert!(!syncing(removed_state()));
     assert!(!snapshot(synced(), Vec::new(), coven::RetryEffect::NotSyncing).syncing());
     assert!(!syncing(disconnected()));
 }
@@ -254,10 +254,6 @@ pub(crate) fn record(reason: coven::PendingReason) -> coven::PendingRecord {
     coven::PendingRecord::new(coven::PendingSubject::Connection, reason)
 }
 
-fn failed(failure: coven::StatusFailure, named: Names) -> SyncStatusSnapshot {
-    alone(failed_status(failure, named))
-}
-
 fn category(snapshot: &SyncStatusSnapshot) -> bae_diagnostics::UiErrorCategory {
     let Some(UiError::Diagnostic { category, .. }) = snapshot.failure() else {
         panic!("the failed pass is the status's failure");
@@ -269,11 +265,11 @@ fn category(snapshot: &SyncStatusSnapshot) -> bae_diagnostics::UiErrorCategory {
 /// register it again: its record is only reviewed, never reset.
 #[test]
 fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
-    assert_eq!(pending_action(&record(coven::PendingReason::Removed), None), PendingAction::Review);
     assert_eq!(
-        category(&failed(coven::StatusFailure::Removed, coven::SyncState::Removed)),
-        bae_diagnostics::UiErrorCategory::DeviceRemoved
+        pending_action(&record(coven::PendingReason::Removed(coven::Removal::Device)), None),
+        PendingAction::Review
     );
+    assert_eq!(category(&alone(removed_state())), bae_diagnostics::UiErrorCategory::DeviceRemoved);
 }
 
 /// A joined device whose admission the library refused was never in it, and
@@ -282,15 +278,15 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
 #[test]
 fn a_device_whose_admission_was_refused_shows_as_removed() {
     assert_eq!(
-        pending_action(&record(coven::PendingReason::NotAdmitted), None),
+        pending_action(&record(coven::PendingReason::Removed(coven::Removal::NeverAdmitted)), None),
         PendingAction::Review
     );
     assert_eq!(
-        category(&failed(coven::StatusFailure::NotAdmitted, coven::SyncState::Removed)),
+        category(&alone(removed(coven::Removal::NeverAdmitted))),
         bae_diagnostics::UiErrorCategory::DeviceRemoved
     );
     let refused = SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Failed {
-        error: coven::SyncFailure::NotAdmitted,
+        error: coven::SyncFailure::Removed(coven::Removal::NeverAdmitted),
     }));
     assert!(
         matches!(
@@ -319,10 +315,7 @@ fn replaced_member_keys_offer_restoring_from_the_code() {
 #[test]
 fn another_copy_of_this_device_is_answered_by_a_reset() {
     assert_eq!(
-        category(&failed(
-            coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
-            coven::SyncState::NeedsReset,
-        )),
+        category(&alone(needs_reset_state())),
         bae_diagnostics::UiErrorCategory::DeviceResetRequired
     );
 }
@@ -367,7 +360,7 @@ fn a_failed_retry_answers_with_the_failure_the_status_shows() {
         "{offline:?}"
     );
     let removed = SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Failed {
-        error: coven::SyncFailure::Removed,
+        error: coven::SyncFailure::Removed(coven::Removal::Device),
     }));
     assert!(
         matches!(
@@ -385,7 +378,7 @@ fn a_retry_held_by_a_slot_blocked_before_opening_names_its_reason() {
     let blocked =
         SyncRetryOutcome::from(coven::RetryOutcome::Failed(coven::PassFailure::Blocked {
             slot: coven::Slot::new(7).unwrap(),
-            reason: coven::PendingReason::Removed,
+            reason: coven::PendingReason::Removed(coven::Removal::Device),
             error: None,
         }));
     assert!(
@@ -519,13 +512,9 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
 /// records: the record shows it.
 #[test]
 fn a_state_a_record_names_shows_no_failure_of_its_own() {
-    let removed = record(coven::PendingReason::Removed);
-    let status = snapshot(
-        coven::SyncState::Removed(coven::SyncCause::Pending(removed.clone())),
-        vec![removed],
-        coven::RetryEffect::Pass,
-    );
-    assert_eq!(status.failure(), None);
+    let removed = record(coven::PendingReason::Removed(coven::Removal::Device));
+    let status = snapshot(removed_state(), vec![removed], coven::RetryEffect::Pass);
+    assert_eq!(status.shown_failure(), None);
     assert_eq!(status.shown().status, SyncStatusWord::RemovedFromTheLibrary);
 }
 
@@ -534,9 +523,9 @@ fn a_state_a_record_names_shows_no_failure_of_its_own() {
 #[test]
 fn a_blocked_slot_is_not_logged_again() {
     let blocked = alone(blocked(
-        coven::PendingReason::Removed,
+        coven::PendingReason::Removed(coven::Removal::Device),
         Some(UNREACHABLE_S3),
-        coven::SyncState::Removed,
+        coven::SyncState::Failed,
     ));
     assert_eq!(blocked.failure_to_log(Some(&alone(moving()))), None);
     assert!(blocked.failure().is_some());
@@ -553,6 +542,25 @@ fn a_record_keeps_the_error_coven_keeps_for_it() {
     record.cause = Some("disk full".into());
     let status = snapshot(offline(), vec![record], coven::RetryEffect::Pass);
     assert_eq!(status.pending[0].wait.cause.as_deref(), Some("disk full"));
+}
+
+/// A device an admin removed, with nothing left unsent.
+pub(crate) fn removed_state() -> coven::SyncState {
+    removed(coven::Removal::Device)
+}
+
+/// A device that isn't in the library for `removal`, with nothing left
+/// unsent.
+pub(crate) fn removed(removal: coven::Removal) -> coven::SyncState {
+    coven::SyncState::Removed { removal, unsent: coven::UnsentWork { writes: 0, files: 0 } }
+}
+
+/// An installation another one replaced, with nothing left unsent.
+pub(crate) fn needs_reset_state() -> coven::SyncState {
+    coven::SyncState::NeedsReset {
+        reason: coven::ResetReason::Replaced,
+        unsent: coven::UnsentWork { writes: 0, files: 0 },
+    }
 }
 
 pub(crate) fn synced() -> coven::SyncState {

@@ -238,7 +238,7 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
         .await;
         let [AdminChange {
             change: AdminChangeKind::RemoveDevice { device, name },
-            state: AdminChangeState::Stopped(coven::DeviceStop::Removed),
+            state: AdminChangeState::Stopped(coven::DeviceStop::Removed(coven::Removal::Device)),
             ..
         }] = stopped.as_slice()
         else {
@@ -394,7 +394,9 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         tablet.store().start_sync().await.unwrap();
         let stopped = RequestedProfile {
             name: "Robin".into(),
-            state: RequestedProfileState::Stopped(coven::DeviceStop::Removed),
+            state: RequestedProfileState::Stopped(coven::DeviceStop::Removed(
+                coven::Removal::Device,
+            )),
         };
         crate::followed::value_matching(&mut requested, |requested| {
             requested.as_ref() == Some(&stopped)

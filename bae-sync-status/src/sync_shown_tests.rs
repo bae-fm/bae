@@ -115,16 +115,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
     );
 
     let by_pass = |failure, named: Names| dropbox(failed_status(failure, named));
-    check(
-        by_pass(
-            coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
-            coven::SyncState::NeedsReset,
-        ),
-        W::DeviceNeedsReset,
-        T::Danger,
-        None,
-        Some(F::ResetDevice),
-    );
+    check(dropbox(needs_reset_state()), W::DeviceNeedsReset, T::Danger, None, Some(F::ResetDevice));
     check(
         by_pass(
             coven::StatusFailure::Storage(coven::StorageFailure::PermissionDenied),
@@ -156,7 +147,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         None,
     );
     check(
-        by_pass(coven::StatusFailure::Removed, coven::SyncState::Removed),
+        dropbox(removed_state()),
         W::RemovedFromTheLibrary,
         T::Danger,
         Some(C::OldCopy),
@@ -318,10 +309,7 @@ fn last_synced_shows_under_a_problem_state_only() {
         at(coven::SyncState::SignedOut { provider: coven::CloudProvider::Dropbox, cause: None }),
         Some(finished())
     );
-    assert_eq!(
-        at(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)),
-        Some(finished())
-    );
+    assert_eq!(at(removed_state()), Some(finished()));
     assert_eq!(
         at(coven::SyncState::WaitingToSync(coven::SyncWait::CoolingDown { until: finished() })),
         Some(finished())
@@ -360,8 +348,5 @@ fn a_running_setup_names_the_state_until_a_problem_does() {
     assert_eq!(setting_up(moving()), setup);
     assert_eq!(setting_up(synced()), setup);
     assert_eq!(setting_up(offline()), SyncStatusWord::Offline);
-    assert_eq!(
-        setting_up(failed_status(coven::StatusFailure::Removed, coven::SyncState::Removed)),
-        SyncStatusWord::RemovedFromTheLibrary
-    );
+    assert_eq!(setting_up(removed_state()), SyncStatusWord::RemovedFromTheLibrary);
 }

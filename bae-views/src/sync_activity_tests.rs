@@ -401,13 +401,10 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
 #[test]
 fn a_failure_no_record_shows_is_its_own_line() {
     let mut copied = status();
-    copied.coven.state = named(
-        coven::LastPass::Failed {
-            failure: coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
-            error: "another copy uses this device's id".into(),
-        },
-        coven::SyncState::NeedsReset,
-    );
+    copied.coven.state = coven::SyncState::NeedsReset {
+        reason: coven::ResetReason::Replaced,
+        unsent: coven::UnsentWork { writes: 0, files: 0 },
+    };
     copied.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&copied).failure.is_some());
 

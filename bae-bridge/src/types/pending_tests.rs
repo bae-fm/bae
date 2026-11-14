@@ -20,9 +20,14 @@ fn a_write_waiting_for_a_reload_or_a_catch_up_names_the_wait() {
 #[test]
 fn a_refused_admission_reads_as_a_removal() {
     let key = |reason| BridgePendingReason::from_core(reason, None).key;
-    assert_eq!(key(coven::PendingReason::NotAdmitted), key(coven::PendingReason::Removed));
     assert_eq!(
-        crate::BridgeDeviceStop::from_core(coven::DeviceStop::NotAdmitted),
+        key(coven::PendingReason::Removed(coven::Removal::NeverAdmitted)),
+        key(coven::PendingReason::Removed(coven::Removal::Device))
+    );
+    assert_eq!(
+        crate::BridgeDeviceStop::from_core(coven::DeviceStop::Removed(
+            coven::Removal::NeverAdmitted
+        )),
         crate::BridgeDeviceStop::Removed
     );
 }

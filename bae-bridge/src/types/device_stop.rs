@@ -5,7 +5,7 @@
 pub enum BridgeDeviceStop {
     /// This device, or its person, was removed from the library; or the
     /// library refused the admission of a joined device, which was never in
-    /// it, and which shows as a removal does (coven §13.2).
+    /// it (coven §13.2).
     Removed,
     /// A restore put another copy of bae in this device's place.
     Replaced,
@@ -17,7 +17,7 @@ pub enum BridgeDeviceStop {
 impl BridgeDeviceStop {
     pub(crate) fn from_core(stop: coven::DeviceStop) -> Self {
         match stop {
-            coven::DeviceStop::Removed | coven::DeviceStop::NotAdmitted => Self::Removed,
+            coven::DeviceStop::Removed(_) => Self::Removed,
             coven::DeviceStop::Replaced => Self::Replaced,
             coven::DeviceStop::Copied => Self::Copied,
             coven::DeviceStop::MemberKeysReplaced => Self::MemberKeysReplaced,

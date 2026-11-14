@@ -63,15 +63,35 @@ pub struct SyncStatusSnapshot {
     pub provider: Option<coven::CloudProvider>,
 }
 
+/// Why this device isn't in the library, as the failure's detail says it.
+fn removal_text(removal: coven::Removal) -> &'static str {
+    match removal {
+        coven::Removal::Device => "an admin removed this device from the library",
+        coven::Removal::Member => "this device's member was removed from the library or left it",
+        coven::Removal::NeverAdmitted => "the library refused this device's admission",
+    }
+}
+
+/// Why this installation can't send, as the failure's detail says it.
+fn reset_text(reason: coven::ResetReason) -> &'static str {
+    match reason {
+        coven::ResetReason::Replaced => {
+            "a reset or restore registered another installation in this one's place"
+        }
+        coven::ResetReason::MemberKeysReplaced { .. } => {
+            "the member's keys were replaced with a pair this device does not hold"
+        }
+    }
+}
+
 /// The category a whole-pass sync failure shows under.
 fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiErrorCategory {
     use bae_diagnostics::UiErrorCategory as C;
     match error {
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        // A joined device whose admission the library refused shows as a
-        // removed one (coven §13.2).
-        coven::SyncFailure::Removed | coven::SyncFailure::NotAdmitted => C::DeviceRemoved,
+        // Removed from the library, or never admitted to it (coven §13.2).
+        coven::SyncFailure::Removed(_) => C::DeviceRemoved,
         coven::SyncFailure::Storage(error) => bae_diagnostics::storage_error_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
     }
@@ -84,7 +104,7 @@ fn status_failure_category(failure: &coven::StatusFailure) -> bae_diagnostics::U
     match failure {
         coven::StatusFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::StatusFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        coven::StatusFailure::Removed | coven::StatusFailure::NotAdmitted => C::DeviceRemoved,
+        coven::StatusFailure::Removed(_) => C::DeviceRemoved,
         coven::StatusFailure::Storage(failure) => bae_diagnostics::storage_category(*failure),
         coven::StatusFailure::Operation(_) | coven::StatusFailure::Other => C::Internal,
     }
@@ -255,10 +275,10 @@ impl SyncStatusSnapshot {
             | S::FolderMissing(cause)
             | S::ClockWrong(cause)
             | S::UpdateNeeded(cause)
-            | S::Removed(cause)
-            | S::NeedsReset(cause)
             | S::Failed(cause) => cause,
             S::NotSynced
+            | S::Removed { .. }
+            | S::NeedsReset { .. }
             | S::Syncing(_)
             | S::WaitingToSync(_)
             | S::Synced
@@ -310,6 +330,23 @@ impl SyncStatusSnapshot {
     fn failure_recorded(&self) -> bool {
         use coven::{LastPass as S, PendingReason as R, StatusFailure as F};
         use PendingSubjectName as N;
+        // A device that stopped for good has a record of why, beside its
+        // state, when its pending records hold one.
+        match &self.coven.state {
+            coven::SyncState::Removed { .. } => {
+                return self.pending.iter().any(|item| matches!(item.wait.reason, R::Removed(_)))
+            }
+            coven::SyncState::NeedsReset {
+                reason: coven::ResetReason::MemberKeysReplaced { .. },
+                ..
+            } => {
+                return self
+                    .pending
+                    .iter()
+                    .any(|item| matches!(item.wait.reason, R::MemberKeysReplaced { .. }))
+            }
+            _ => {}
+        }
         let Some(pass) = self.shown_pass() else {
             return false;
         };
@@ -348,6 +385,15 @@ impl SyncStatusSnapshot {
             return Some(error.clone());
         }
         use bae_diagnostics::UiErrorCategory as C;
+        match &self.coven.state {
+            coven::SyncState::Removed { removal, .. } => {
+                return Some(UiError::diagnostic(C::DeviceRemoved, removal_text(*removal)))
+            }
+            coven::SyncState::NeedsReset { reason, .. } => {
+                return Some(UiError::diagnostic(C::DeviceResetRequired, reset_text(*reason)))
+            }
+            _ => {}
+        }
         match self.shown_pass()? {
             coven::LastPass::Offline { error, .. } => Some(UiError::diagnostic(C::Network, error)),
             coven::LastPass::Failed { failure, error } => {
@@ -463,7 +509,7 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
         R::FileUnavailable(coven::FileMissingReason::Lost) => PendingAction::Review,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
         R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
-        R::Removed | R::NotAdmitted => PendingAction::Review,
+        R::Removed(_) => PendingAction::Review,
         _ => match record.retry() {
             coven::Retry::Automatic => PendingAction::Wait,
             coven::Retry::AfterUpdate => PendingAction::UpdateApp,

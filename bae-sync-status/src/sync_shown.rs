@@ -203,10 +203,10 @@ impl SyncStatusSnapshot {
             SyncState::UpdateNeeded(_) => SyncShown::new(W::UpdateNeeded, T::Warning)
                 .because(SyncCauseLine::UpdateBae)
                 .fixed_by(SyncFix::CheckForUpdates),
-            SyncState::Removed(_) => SyncShown::new(W::RemovedFromTheLibrary, T::Danger)
+            SyncState::Removed { .. } => SyncShown::new(W::RemovedFromTheLibrary, T::Danger)
                 .because(SyncCauseLine::OldCopy)
                 .fixed_by(SyncFix::RemoveFromThisDevice),
-            SyncState::NeedsReset(_) => {
+            SyncState::NeedsReset { .. } => {
                 SyncShown::new(W::DeviceNeedsReset, T::Danger).fixed_by(SyncFix::ResetDevice)
             }
             SyncState::Failed(cause) => SyncShown::new(W::SyncFailed, T::Danger)
@@ -282,8 +282,7 @@ impl SyncStatusSnapshot {
                     return self.storage_cause(*failure, error);
                 }
                 StatusFailure::UpdateRequired(_)
-                | StatusFailure::Removed
-                | StatusFailure::NotAdmitted
+                | StatusFailure::Removed(_)
                 | StatusFailure::DeviceIdInUse(_)
                 | StatusFailure::Other => None,
             },
