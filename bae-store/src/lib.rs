@@ -18,9 +18,7 @@ pub use file_stream::FileStream;
 mod file_version;
 pub use file_version::file_version_sql;
 pub mod list_windows;
-pub use list_windows::{
-    LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows, SortDirection, WindowsTold,
-};
+pub use list_windows::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows, SortDirection};
 pub mod live_query;
 pub mod path_column;
 pub mod query;

@@ -134,8 +134,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
             .await
             .unwrap(),
     );
-    list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
-        .unwrap();
+    list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
     let (list_tx, mut list_seen) = tokio::sync::watch::channel(0_u64);
     let reading = list.clone();
     tokio::spawn(async move {

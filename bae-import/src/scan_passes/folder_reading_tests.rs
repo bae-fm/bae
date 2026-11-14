@@ -268,7 +268,7 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
     let projection = tables
         .load_import_list(crate::ImportListRequest {
             list,
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
         })
         .await
         .unwrap();

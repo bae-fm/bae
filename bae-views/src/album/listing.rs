@@ -14,69 +14,23 @@ pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
-/// The tables whose rows the grid's artist sections read, as
-/// `library_list_versions` names them: the artists with their names, order
-/// and album counts, and their pictures.
-const SECTION_SOURCES: &[&str] = &["artist_listing", "artist_image"];
-
-/// What one read of the album browse found of the grid's artist sections: the
-/// versions of what they read and the sections, when those versions differ
-/// from the ones the last delivery carried sections at.
-#[derive(Clone, PartialEq)]
-pub(super) struct SectionsFound(Option<(Vec<i64>, Vec<crate::LibraryBrowseSection>)>);
-
-/// When the album browse delivers the grid's artist sections: in its first
-/// delivery and in the first one after what they read changed, and in no
-/// other, so a window the grid moves to reads and sends no artist. The
-/// delivery that carries them is the read whose rows they fit.
-pub(super) struct SectionsDelivery {
-    /// The grouped sections' statement; none for the flat grid, whose first
-    /// delivery carries no sections.
-    query: Option<String>,
-    /// The versions the last delivery carried sections at.
-    delivered: std::sync::Mutex<Option<Vec<i64>>>,
-}
-
-impl SectionsDelivery {
-    pub(super) fn new(query: Option<String>) -> Self {
-        Self { query, delivered: std::sync::Mutex::new(None) }
-    }
-
-    /// Read the sections in this read, unless the last delivery carried them
-    /// at the versions it stands at.
-    pub(super) fn read(&self, sql: &SqlReadContext<'_>) -> Result<SectionsFound, DbError> {
-        let standing = match &self.query {
-            Some(_) => list_versions_on(sql, crate::versions::TABLE, SECTION_SOURCES)?,
-            None => Vec::new(),
-        };
-        if self.delivered.lock().expect("sections lock poisoned").as_ref() == Some(&standing) {
-            return Ok(SectionsFound(None));
-        }
-        let sections = match &self.query {
-            Some(query) => sql.query(query, [], |row| {
-                Ok(crate::LibraryBrowseSection {
-                    id: row.get(0)?,
-                    title: row.get(1)?,
-                    image: bae_records::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
-                    window: LibraryPageWindow {
-                        offset: row.get::<_, i64>(2)? as u64,
-                        limit: row.get::<_, i64>(3)? as u64,
-                    },
-                })
-            })?,
-            None => Vec::new(),
-        };
-        Ok(SectionsFound(Some((standing, sections))))
-    }
-
-    /// The sections a read found, as its delivery carries them; the
-    /// delivery is what records the versions they were read at, so a read
-    /// that never reached one leaves them to the next.
-    pub(super) fn deliver(&self, found: SectionsFound) -> Option<Vec<crate::LibraryBrowseSection>> {
-        let (standing, sections) = found.0?;
-        *self.delivered.lock().expect("sections lock poisoned") = Some(standing);
-        Some(sections)
-    }
+/// The grid grouped by artist's sections: each artist in the grouped order
+/// with its name, its picture and where its albums start in the grid's rows.
+pub(super) fn album_sections_on(
+    sql: &SqlReadContext<'_>,
+    direction: SortDirection,
+) -> Result<Vec<crate::LibraryBrowseSection>, DbError> {
+    Ok(sql.query(&album_browse_sections_query(direction), [], |row| {
+        Ok(crate::LibraryBrowseSection {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            image: bae_records::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
+            window: LibraryPageWindow::at(
+                row.get::<_, i64>(2)? as u64,
+                row.get::<_, i64>(3)? as u64,
+            ),
+        })
+    })?)
 }
 
 /// How many places the grid grouped by artist has: one for each album under
@@ -260,16 +214,6 @@ pub(super) fn grouped_artist_direction(sort: &[AlbumSortCriterion]) -> SortDirec
     sort.iter()
         .find(|c| c.field == AlbumSortField::Artist)
         .map_or(SortDirection::Ascending, |c| c.direction)
-}
-
-/// The tables whose rows the album list's order reads, flat or grouped by
-/// artist, as `library_list_versions` names them.
-pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static str] {
-    if group_by_artist {
-        &["album_artist_link", "artist_listing"]
-    } else {
-        &["album_listing"]
-    }
 }
 
 /// The grid's sections when grouped by artist: each artist in the grouped

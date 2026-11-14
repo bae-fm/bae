@@ -20,8 +20,7 @@
 //! the search index (`search`), the lists a surface has open (`views`), the
 //! triggers that place a release again when a table it is kept from changes
 //! (`follows_scans`, `follows_groupings`, `follows_candidates`,
-//! `follows_library`), and the versions of the tables the list's order reads
-//! (`versions`).
+//! `follows_library`).
 
 mod counts;
 mod follows_candidates;
@@ -37,7 +36,6 @@ mod read;
 mod search;
 mod selection;
 mod summary;
-mod versions;
 mod views;
 mod window;
 mod writes;
@@ -79,7 +77,7 @@ impl coven::task::CarriesBug for ImportListError {
 /// The import list's part of the library's schema. Each file runs after the
 /// ones creating the tables its triggers fire on: the placement first, the
 /// lists a surface has open before the triggers that follow other domains'
-/// tables, and the versions after the placement.
+/// tables.
 pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     placement::SQL,
     groups::SQL,
@@ -90,7 +88,6 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     follows_groupings::SQL,
     follows_candidates::SQL,
     follows_library::SQL,
-    versions::SQL,
 ])
 .functions(SQL_FUNCTIONS)
 .collations(SQL_COLLATIONS);

@@ -476,7 +476,7 @@ async fn transition_completions_deliver_storage_values() {
             },
             filter: StorageFilter::All,
             search: String::new(),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
             selected: Default::default(),
         },
     );
@@ -532,7 +532,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
             filter: StorageFilter::Local,
             search: String::new(),
             // One row on screen, so one selected release sits outside it.
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 1)].into_iter().collect(),
             selected: selected.clone(),
         },
     );
@@ -612,7 +612,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         filter: StorageFilter::All,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_store::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+        windows: [bae_store::LibraryPageWindow::at(0, 1)].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
     let values = bae_app::live_reads::subscribe_storage_browse(

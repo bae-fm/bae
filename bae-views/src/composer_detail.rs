@@ -66,8 +66,8 @@ impl LibraryViews {
     }
 
     /// Follow the rows of `artist_id`'s page in the windows its request
-    /// names, each read from the row beside it when one is known
-    /// (`list_windows`), with how many rows the page holds.
+    /// names, each read from its cursor when it has one (`list_windows`),
+    /// with how many rows the page holds.
     pub fn subscribe_composer_detail_rows(
         &self,
         artist_id: &str,
@@ -79,21 +79,13 @@ impl LibraryViews {
     > {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
-        let places = KnownPlaces::new();
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let versions =
-                list_versions_on(&sql, crate::versions::TABLE, &["composer_detail_row"])?;
             let total_count = composer_detail_row_count_on(&sql, &artist_id)?;
-            let WindowsRead { windows, found } =
-                read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
-                    composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
-                })?;
-            places.keep(versions, found);
+            let windows = read_windows(&order, requested, |seek, limit, offset| {
+                composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
+            })?;
             Ok(ComposerDetailRowsProjection {
-                windows: windows
-                    .into_iter()
-                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
-                    .collect(),
+                windows: windows.into_iter().map(WindowRead::into_browse).collect(),
                 total_count,
             })
         })
@@ -120,10 +112,7 @@ pub fn resolve_composer_detail_rows(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| bae_store::LibraryBrowseWindow {
-                window: window.window,
-                rows: window.rows.into_iter().map(composer_detail_row_of).collect(),
-            })
+            .map(|window| window.map_rows(composer_detail_row_of))
             .collect(),
         total_count: projection.total_count,
         request_revision,

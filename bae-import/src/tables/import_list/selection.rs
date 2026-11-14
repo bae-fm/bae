@@ -164,10 +164,7 @@ impl ImportTables {
                         };
                         items.select_window(
                             sql,
-                            &LibraryPageWindow {
-                                offset: from.min(to),
-                                limit: from.abs_diff(to) + 1,
-                            },
+                            &LibraryPageWindow::at(from.min(to), from.abs_diff(to) + 1),
                         )?;
                     }
                 }

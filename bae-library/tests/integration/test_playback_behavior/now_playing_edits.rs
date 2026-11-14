@@ -89,10 +89,7 @@ async fn first_upcoming_until(
 fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
     let queue = bae_library::subscribe_queue_upcoming(library.manager());
     queue
-        .set(bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
-            offset: 0,
-            limit: 1,
-        }]))
+        .set(bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(0, 1)]))
         .expect("the read takes its window");
     queue
 }

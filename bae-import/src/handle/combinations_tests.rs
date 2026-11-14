@@ -20,7 +20,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
                 order: crate::ImportListOrder::PathAscending,
                 ..crate::ImportListView::default()
             },
-            [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
         )
         .await
         .unwrap();

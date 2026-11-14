@@ -9,8 +9,7 @@
 //! album grid's (`album/listing.sql`), the artist list's (`artist.sql`), the
 //! composer list's (`composer.sql`), a composer's page's
 //! (`composer_detail.sql`), the Storage Manager's (`storage.sql`), library
-//! search's (`search.sql`) and the versions of the tables those lists page
-//! (`versions.sql`). Each holds values a list sorts, filters or counts by that
+//! search's (`search.sql`). Each holds values a list sorts, filters or counts by that
 //! come from several library tables, each kept in a device-local table so an
 //! index serves it. Local triggers write them in the same write as the rows
 //! they come from, so they always match those rows.
@@ -42,7 +41,6 @@ mod sync_activity;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod trigger_families;
 mod uploads;
-mod versions;
 
 pub use activity_bytes::{
     activity_bytes_on, ActivityBytes, DownloadBytes, SendingFile, UploadBytes, WaitingRelease,
@@ -85,9 +83,7 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, unstored_audio_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{
-    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
-};
+use bae_store::list_windows::{read_windows, Keyed, ListOrder, Seek, SortTerm, WindowRead};
 use bae_store::read::*;
 use bae_store::syncs_on;
 use bae_store::*;
@@ -110,7 +106,6 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
     storage::SQL,
     sync_activity::SQL,
     search::SQL,
-    versions::SQL,
 ])
 .functions(SQL_FUNCTIONS)];
 

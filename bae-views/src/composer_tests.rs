@@ -529,7 +529,7 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
             field: ComposerSortField::Name,
             direction: SortDirection::Descending,
         }];
-        let second_window = LibraryPageWindow { offset: 1, limit: 1 };
+        let second_window = LibraryPageWindow::at(1, 1);
         let initial_request = [second_window.clone()].into_iter().collect::<BTreeSet<_>>();
         let mut live = crate::LibraryViews::new(db.clone())
             .subscribe_composer_browse(&sort, initial_request.clone());
@@ -541,7 +541,7 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
         assert_eq!(initial.total_count, 2);
         assert_eq!(initial.windows[0].rows[0].artist.id, COMPOSER_ID);
 
-        let both_pages = [LibraryPageWindow { offset: 0, limit: 1 }, second_window.clone()]
+        let both_pages = [LibraryPageWindow::at(0, 1), second_window.clone()]
             .into_iter()
             .collect::<BTreeSet<_>>();
         let both_pages_revision = requests.set(both_pages.clone()).unwrap();
@@ -630,7 +630,7 @@ fn composer_browse_subscription_reconfigures_bounded_windows() {
         )
         .await;
         let other_composer_page =
-            [LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect::<BTreeSet<_>>();
+            [LibraryPageWindow::at(0, 1)].into_iter().collect::<BTreeSet<_>>();
         requests.set(other_composer_page).unwrap();
         let imaged = live.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(imaged.windows[0].rows[0].artist.id, other);

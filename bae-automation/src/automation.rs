@@ -622,7 +622,7 @@ impl Automation {
 /// A window over every item the list holds. Automation presents the whole
 /// queue at once; the paging the tab does is a rendering concern.
 fn whole_list() -> bae_store::LibraryPageWindows {
-    std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX }).collect()
+    std::iter::once(bae_store::LibraryPageWindow::at(0, u64::MAX)).collect()
 }
 
 #[cfg(test)]

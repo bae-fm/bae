@@ -109,7 +109,7 @@ async fn a_window_starting_inside_a_group_names_the_header_before_it() {
     lib.run(lib.scan("A/Disc 1") + lib.scan("A/Disc 2") + lib.scan("A/Disc 3") + lib.scan("Loose"))
         .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 3 }).await;
+    let read = lib.read_through(list, LibraryPageWindow::at(2, 3)).await;
     assert_eq!(sequence(&read), ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]);
     assert_eq!(header_positions(&read), [Some(0), Some(0), None]);
 }
@@ -146,7 +146,7 @@ async fn a_folded_lists_members_name_their_headers_position() {
         ]
     );
     assert_eq!(header_positions(&read), [None, None, Some(1), Some(1), Some(1), None]);
-    let window = lib.read_through(list, LibraryPageWindow { offset: 3, limit: 3 }).await;
+    let window = lib.read_through(list, LibraryPageWindow::at(3, 3)).await;
     assert_eq!(sequence(&window), ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]);
     assert_eq!(header_positions(&window), [Some(1), Some(1), None]);
 }
@@ -274,7 +274,7 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
         ["group A", "candidate A/Old", "group B", "candidate B/Old"]
     );
     assert_eq!(
-        sequence(&lib.read_through(list, LibraryPageWindow { offset: 1, limit: 2 }).await),
+        sequence(&lib.read_through(list, LibraryPageWindow::at(1, 2)).await),
         ["candidate A/Old", "group B"]
     );
     tables.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
@@ -288,11 +288,10 @@ async fn a_window_past_the_end_holds_what_is_left() {
     let lib = Library::new().await;
     lib.run(lib.scan("A") + lib.scan("B") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 5 }).await;
+    let read = lib.read_through(list, LibraryPageWindow::at(2, 5)).await;
     assert_eq!(sequence(&read), ["candidate C"]);
     assert_eq!(read.total_count, 3);
-    assert!(sequence(&lib.read_through(list, LibraryPageWindow { offset: 5, limit: 5 }).await)
-        .is_empty());
+    assert!(sequence(&lib.read_through(list, LibraryPageWindow::at(5, 5)).await).is_empty());
 }
 
 impl Library {

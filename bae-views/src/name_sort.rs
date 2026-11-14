@@ -50,7 +50,7 @@ pub(crate) fn sort_key_sql(name: &str) -> String {
 
 impl LibraryViews {
     /// Order this device's names in the language `tag`: every stored name key
-    /// is written again in it, and the lists' versions advance with the keys,
+    /// is written again in it,
     /// in one write that commits whole or not at all. A device already
     /// ordering in `tag` with keys of the current collation data writes
     /// nothing, so this is safe to call at every start, and to call again

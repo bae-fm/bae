@@ -13,7 +13,7 @@ async fn retitle(db: &Store, titles: [&str; 3]) {
 }
 
 fn first_window() -> LibraryPageWindows {
-    [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect()
+    [LibraryPageWindow::at(0, 50)].into_iter().collect()
 }
 
 async fn album_titles_next(

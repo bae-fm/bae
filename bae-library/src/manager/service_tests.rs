@@ -138,7 +138,7 @@ async fn read_list(
     tables
         .load_import_list(bae_import::ImportListRequest {
             list,
-            windows: std::iter::once(bae_store::LibraryPageWindow { offset, limit }).collect(),
+            windows: std::iter::once(bae_store::LibraryPageWindow::at(offset, limit)).collect(),
         })
         .await
         .unwrap()
@@ -240,7 +240,7 @@ async fn a_done_row_carries_its_release_upload() {
             order: bae_import::ImportListOrder::PathAscending,
             ..bae_import::ImportListView::default()
         },
-        std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
     )
     .await
     .unwrap();
@@ -346,9 +346,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     assert!(initial.windows.is_empty());
 
     subscription
-        .set_windows(
-            std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
-        )
+        .set_windows(std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect())
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
@@ -456,7 +454,7 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         .unwrap();
     assert!(matches!(ended, Err(LiveQueryError::Cancelled)), "{ended:?}");
     assert!(matches!(
-        read.set([bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into()),
+        read.set([bae_store::LibraryPageWindow::at(0, 10)].into()),
         Err(LiveQueryError::Cancelled)
     ));
 }

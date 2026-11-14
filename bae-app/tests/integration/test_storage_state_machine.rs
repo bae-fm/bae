@@ -483,7 +483,7 @@ async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
             },
             filter: StorageFilter::All,
             search: String::new(),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
             selected: Default::default(),
         },
     );

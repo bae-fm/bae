@@ -567,9 +567,9 @@ async fn test_offset_windows_read_with_the_tail_length() {
     f.play_from("t000").await;
 
     let windows = bae_store::LibraryPageWindows::from([
-        bae_store::LibraryPageWindow { offset: 0, limit: 3 },
-        bae_store::LibraryPageWindow { offset: 100, limit: 20 },
-        bae_store::LibraryPageWindow { offset: 125, limit: 20 },
+        bae_store::LibraryPageWindow::at(0, 3),
+        bae_store::LibraryPageWindow::at(100, 20),
+        bae_store::LibraryPageWindow::at(125, 20),
     ]);
     let mut live = crate::tables::subscribe_queue_upcoming(&f.db, windows);
     let read = live.next().await.expect("the query stays open").result.unwrap();
@@ -606,10 +606,7 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     let mut value = crate::tables::subscribe_queue_value(&f.db);
     let mut upcoming = crate::tables::subscribe_queue_upcoming(
         &f.db,
-        bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
-            offset: 0,
-            limit: 10,
-        }]),
+        bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(0, 10)]),
     );
     macro_rules! value_until {
         ($check:expr) => {

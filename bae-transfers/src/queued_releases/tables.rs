@@ -5,7 +5,7 @@
 //! the detail views and the sync activity read the same tables through live
 //! queries.
 //!
-//! Its tables, and the versions of their order, are `tables.sql`.
+//! Its tables are `tables.sql`.
 
 /// The SQL creating this part's tables and triggers.
 pub(crate) const SQL: &str = include_str!("tables.sql");
@@ -18,11 +18,9 @@ use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
     ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
-use bae_store::list_windows::{
-    list_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm, WindowsRead,
-};
+use bae_store::list_windows::{read_windows, Keyed, ListOrder, Seek, SortTerm, WindowRead};
 use bae_store::read::column_conversion_error;
-use bae_store::{DbError, LibraryBrowseWindow, LibraryPageWindows};
+use bae_store::{DbError, LibraryPageWindows};
 use coven::{CovenWrite, SqlReadContext};
 #[cfg(desktop)]
 use rusqlite::types::Value;
@@ -297,27 +295,20 @@ pub fn queue_window_rows_on<P: QueuedPayload>(
 }
 
 /// How many entries the queue holds, and the windows `windows` names of
-/// them in the order queued, each beside its release, each read from the
-/// entry beside it when `places` knows one (`list_windows`).
+/// them in the order queued, each beside its release, each read from its
+/// cursor when it has one (`list_windows`).
 pub(crate) fn release_queue_windows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     windows: &LibraryPageWindows,
-    places: &KnownPlaces<Vec<i64>>,
 ) -> Result<ReleaseQueueWindows<P>, DbError> {
-    let versions = list_versions_on(sql, "release_queue_versions", &[P::TABLE])?;
     let total_count: u64 =
         sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?;
     let order = queue_order();
-    let WindowsRead { windows, found } =
-        read_windows(&order, windows, places.under(&versions), |seek, limit, offset| {
-            queue_window_rows_on::<P>(sql, &order, seek, limit, offset)
-        })?;
-    places.keep(versions, found);
+    let windows = read_windows(&order, windows, |seek, limit, offset| {
+        queue_window_rows_on::<P>(sql, &order, seek, limit, offset)
+    })?;
     Ok(ReleaseQueueWindows {
-        windows: windows
-            .into_iter()
-            .map(|(window, rows)| LibraryBrowseWindow { window, rows })
-            .collect(),
+        windows: windows.into_iter().map(WindowRead::into_browse).collect(),
         total_count,
     })
 }

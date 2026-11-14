@@ -33,5 +33,5 @@ where
 
 /// The first page of a list, as the one window a browse query reads.
 pub fn first_page() -> BTreeSet<LibraryPageWindow> {
-    [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect()
+    [LibraryPageWindow::at(0, 50)].into_iter().collect()
 }

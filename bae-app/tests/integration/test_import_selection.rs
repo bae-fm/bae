@@ -80,8 +80,7 @@ async fn list_showing(
     count: u64,
 ) -> (LiveImportList, ImportListSnapshot) {
     let list = services.subscribe_import_list(view).await.unwrap();
-    list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
-        .unwrap();
+    list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
     let snapshot = until(&list, |snapshot| {
         snapshot.total_count == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
@@ -243,10 +242,7 @@ fn descending() -> ImportListView {
 /// The candidate keys `view` shows, top to bottom.
 async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_import::CandidateKey> {
     let list = services
-        .load_import_list(
-            view,
-            std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect(),
-        )
+        .load_import_list(view, std::iter::once(LibraryPageWindow::at(0, 50)).collect())
         .await
         .unwrap();
     list.windows

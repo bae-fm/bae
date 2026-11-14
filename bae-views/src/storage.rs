@@ -63,16 +63,15 @@ impl LibraryViews {
     }
 
     /// Follow the Storage Manager list: every window the request names under
-    /// its sort, filter and search, each read from the row beside it when one
-    /// is known (`list_windows`), with the filtered set's count and total
+    /// its sort, filter and search, each read from its cursor when it has one
+    /// (`list_windows`), with the filtered set's count and total
     /// size and the rows of the selected releases it holds read once per run.
     /// A new sort, filter, search, window set, selection, or upload queue
     /// points the same query at it through its request handle.
     ///
     /// A search's count is read first, from what it finds: it decides
     /// whether each window is read from those releases or through the
-    /// order's index (`StorageSearch`). Its rows' places hold for the next
-    /// read only while what library search finds has not moved either.
+    /// order's index (`StorageSearch`).
     pub fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
@@ -81,42 +80,23 @@ impl LibraryViews {
         StorageBrowseProjection,
         bae_store::DbError,
     > {
-        let places = KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |request, sql| {
                 let order = storage_order(&request.sort);
                 let query = crate::LibrarySearchQuery::parse(&request.search);
                 let (total_count, total_size, search) =
                     storage_totals_on(&sql, request.filter, query.as_ref())?;
-                // The places a read found hold for the next only under the
-                // same sort, filter and search.
-                let sources: &[&str] = match query {
-                    Some(_) => &["release_listing", "library_search"],
-                    None => &["release_listing"],
-                };
-                let standing = (
-                    request.sort,
-                    request.filter,
-                    query,
-                    list_versions_on(&sql, crate::versions::TABLE, sources)?,
-                );
-                let WindowsRead { windows, found } = read_windows(
-                    &order,
-                    &request.windows,
-                    places.under(&standing),
-                    |seek, limit, offset| {
-                        storage_rows_on(
-                            &sql,
-                            &order,
-                            request.filter,
-                            search.as_ref(),
-                            seek,
-                            limit,
-                            offset,
-                        )
-                    },
-                )?;
-                places.keep(standing, found);
+                let windows = read_windows(&order, &request.windows, |seek, limit, offset| {
+                    storage_rows_on(
+                        &sql,
+                        &order,
+                        request.filter,
+                        search.as_ref(),
+                        seek,
+                        limit,
+                        offset,
+                    )
+                })?;
                 let selected =
                     storage_selected_on(&sql, request.filter, search.as_ref(), &request.selected)?;
                 let queues = storage_queues_on(&sql)?;
@@ -146,12 +126,7 @@ impl LibraryViews {
                 )| {
                     let windows = windows
                         .into_iter()
-                        .map(|(window, rows)| {
-                            Ok(bae_store::LibraryBrowseWindow {
-                                window,
-                                rows: process_storage_rows(rows)?,
-                            })
-                        })
+                        .map(|window| window.into_browse().try_convert_rows(process_storage_rows))
                         .collect::<Result<Vec<_>, DbError>>()?;
                     Ok(StorageBrowseProjection {
                         sort: request.sort,
@@ -174,14 +149,7 @@ impl LibraryViews {
 pub fn resolve_storage_browse(projection: StorageBrowseProjection) -> crate::StorageBrowseSnapshot {
     let syncs = projection.syncs;
     let resolve = |raw: DbStorageRow| StorageRow::from_raw(raw, syncs);
-    let windows = projection
-        .windows
-        .into_iter()
-        .map(|window| bae_store::LibraryBrowseWindow {
-            window: window.window,
-            rows: window.rows.into_iter().map(&resolve).collect(),
-        })
-        .collect();
+    let windows = projection.windows.into_iter().map(|window| window.map_rows(&resolve)).collect();
     let selected: Vec<StorageRow> = projection.selected.into_iter().map(&resolve).collect();
     crate::StorageBrowseSnapshot {
         sort: projection.sort,

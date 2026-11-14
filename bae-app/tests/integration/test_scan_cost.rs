@@ -122,8 +122,7 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
             let list = std::sync::Arc::new(
                 services.subscribe_import_list(ImportListView::default()).await.unwrap(),
             );
-            list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
-                .unwrap();
+            list.set_windows(std::iter::once(LibraryPageWindow::at(0, 50)).collect()).unwrap();
             let reading = list.clone();
             let reader = tokio::spawn(async move {
                 let mut answers = 0_u64;

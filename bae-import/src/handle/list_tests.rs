@@ -239,10 +239,7 @@ async fn one_row_on_the_page(
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
     let list = handle
-        .subscribe_list_window(
-            ImportListView::default(),
-            bae_store::LibraryPageWindow { offset: 0, limit: 1 },
-        )
+        .subscribe_list_window(ImportListView::default(), bae_store::LibraryPageWindow::at(0, 1))
         .await;
     let snapshot = delivered(&list).await;
     let on_page: Vec<crate::CandidateKey> = snapshot

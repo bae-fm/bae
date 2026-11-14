@@ -3,8 +3,7 @@
 
 use super::*;
 use listing::{
-    album_appearance_count_on, album_browse_sections_query, album_browse_sources, album_count_on,
-    grouped_artist_direction, SectionsDelivery,
+    album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
 };
 pub(crate) use listing::{album_browse_order, album_rows_on, AlbumAppearanceRow};
 
@@ -108,8 +107,8 @@ impl LibraryViews {
     }
 
     /// Follow the album list under `sort`, flat or grouped by artist, in the
-    /// windows its request names. A window next to one this read or the
-    /// last read held is read from the row beside it (`list_windows`).
+    /// windows its request names, each read from its cursor when it has one
+    /// (`list_windows`).
     pub fn subscribe_album_browse(
         &self,
         sort: &[AlbumSortCriterion],
@@ -121,51 +120,37 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         let (_, order) = album_browse_order(sort, group_by_artist);
-        let sources = album_browse_sources(group_by_artist);
-        let places = KnownPlaces::new();
-        let sections = std::sync::Arc::new(SectionsDelivery::new(
-            group_by_artist.then(|| album_browse_sections_query(grouped_artist_direction(sort))),
-        ));
-        let delivery = sections.clone();
         self.store
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
-                let versions = list_versions_on(&sql, crate::versions::TABLE, sources)?;
-                let sections_found = sections.read(&sql)?;
                 let total_count = album_count_on(&sql)?;
                 let row_count =
                     if group_by_artist { album_appearance_count_on(&sql)? } else { total_count };
-                let WindowsRead { windows, found } = read_windows(
-                    &order,
-                    requested,
-                    places.under(&versions),
-                    |seek, limit, offset| {
-                        album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
-                    },
-                )?;
-                places.keep(versions, found);
-                let windows = windows
-                    .into_iter()
-                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
-                    .collect::<Vec<_>>();
-                Ok((windows, total_count, row_count, sections_found))
+                let windows = read_windows(&order, requested, |seek, limit, offset| {
+                    album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
+                })?;
+                let windows: Vec<_> = windows.into_iter().map(WindowRead::into_browse).collect();
+                Ok((windows, total_count, row_count))
             })
-            .process(move |(windows, total_count, row_count, sections_found)| {
+            .process(move |(windows, total_count, row_count)| {
                 let windows = windows
                     .into_iter()
                     .map(|window: bae_store::LibraryBrowseWindow<AlbumAppearanceRow>| {
-                        Ok(bae_store::LibraryBrowseWindow {
-                            window: window.window,
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(AlbumAppearanceRow::process)
-                                .collect::<Result<_, _>>()?,
-                        })
+                        window.try_map_rows(AlbumAppearanceRow::process)
                     })
                     .collect::<Result<_, DbError>>()?;
-                let sections = delivery.deliver(sections_found);
-                Ok(AlbumBrowseProjection { windows, total_count, row_count, sections })
+                Ok(AlbumBrowseProjection { windows, total_count, row_count })
             })
+    }
+
+    /// Follow the artist sections of the album grid grouped by artist under
+    /// `sort`: each artist's heading and where its albums start, read again
+    /// whenever what they read changes.
+    pub fn subscribe_album_sections(
+        &self,
+        sort: &[AlbumSortCriterion],
+    ) -> coven::LiveQuery<Vec<crate::LibraryBrowseSection>, bae_store::DbError> {
+        let direction = grouped_artist_direction(sort);
+        self.store.subscribe(move |sql| album_sections_on(&sql, direction))
     }
 
     /// Follow which of the albums `initial` names — the grid's
@@ -306,20 +291,12 @@ pub fn resolve_album_browse(
             windows: projection
                 .windows
                 .into_iter()
-                .map(|window| bae_store::LibraryBrowseWindow {
-                    window: window.window,
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(crate::album_detail::AlbumAppearance::from_raw)
-                        .collect(),
-                })
+                .map(|window| window.map_rows(crate::album_detail::AlbumAppearance::from_raw))
                 .collect(),
             total_count: projection.total_count,
             request_revision,
             cause,
         },
-        sections: projection.sections,
         row_count: projection.row_count,
     }
 }
@@ -588,11 +565,6 @@ pub struct AlbumBrowseProjection {
     pub windows: Vec<bae_store::LibraryBrowseWindow<DbAlbumAppearance>>,
     pub total_count: u64,
     pub row_count: u64,
-    /// The grid's artist sections as of this read, when they changed since
-    /// the read before it or this is the first: `Some` is exactly the read
-    /// whose rows they fit, and `None` says the last `Some` still stands.
-    /// A flat grid has none: its first read is `Some` of nothing.
-    pub sections: Option<Vec<crate::LibraryBrowseSection>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -87,14 +87,17 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let mut browse = views(manager).subscribe_album_browse(
         &[],
         true,
-        [bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_store::LibraryPageWindow::at(0, 10)].into(),
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
-    let sections: Vec<(String, Vec<String>)> = grouped
-        .sections
-        .as_ref()
-        .expect("the first delivery carries the sections")
+    let found = views(manager)
+        .subscribe_album_sections(&[])
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap();
+    let sections: Vec<(String, Vec<String>)> = found
         .iter()
         .map(|section| {
             let start = section.window.offset as usize;
@@ -177,8 +180,7 @@ async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjectio
     tables
         .load_import_list(bae_import::ImportListRequest {
             list,
-            windows: std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 })
-                .collect(),
+            windows: std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
         })
         .await
         .unwrap()

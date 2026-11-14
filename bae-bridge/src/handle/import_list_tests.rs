@@ -77,7 +77,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
+    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50, cursor: None }]).unwrap();
     until(handle.handle(), &list, |snapshot| rows(snapshot).0 == parts);
 
     let revision = handle
@@ -130,7 +130,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
+    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50, cursor: None }]).unwrap();
     until(handle.handle(), &list, |snapshot| rows(snapshot).0 == [key.clone()]);
     let revision = handle
         .handle()

@@ -305,6 +305,7 @@ task_types = [
     "AdminChangesSubscription",
     "AlbumBrowseSubscription",
     "AlbumDetailSubscription",
+    "AlbumSectionsSubscription",
     "AlbumSelectionSubscription",
     "ArtistBrowseSubscription",
     "ArtistDetailSubscription",
@@ -1545,7 +1546,6 @@ tables = [
     "import_list",
     "import_list_collapsed",
     "import_list_selection",
-    "import_list_versions",
 ]
 
 [[database.domains]]
@@ -1561,7 +1561,6 @@ tables = [
     "download_batch",
     "download_batch_number",
     "output_queue",
-    "release_queue_versions",
 ]
 
 [[database.domains]]
@@ -1590,7 +1589,6 @@ tables = [
     "artist_search",
     "artist_credit_search_entry",
     "artist_credit_search",
-    "library_list_versions",
     "name_sort",
 ]
 

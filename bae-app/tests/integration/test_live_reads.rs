@@ -280,7 +280,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
             },
             filter: bae_views::StorageFilter::All,
             search: String::new(),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
             selected: Default::default(),
         },
     );
@@ -329,7 +329,7 @@ async fn next_storage_value(
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _storage, _temp_dir) = open_library().await;
     seed_albums(&manager, 3).await;
-    let window = |offset, limit| bae_store::LibraryPageWindow { offset, limit };
+    let window = |offset, limit| bae_store::LibraryPageWindow::at(offset, limit);
     let view = |direction, filter, windows: &[bae_store::LibraryPageWindow]| {
         bae_views::StorageBrowseRequest {
             sort: bae_views::StorageSortCriterion {
@@ -415,7 +415,7 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
             },
             filter: bae_views::StorageFilter::All,
             search: String::new(),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
             selected: Default::default(),
         },
     );

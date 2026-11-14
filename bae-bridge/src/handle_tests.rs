@@ -271,7 +271,11 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
     assert_eq!(snapshot.request_revision, 0);
 
     subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 50 }])
+        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
+            offset: 0,
+            limit: 50,
+            cursor: None,
+        }])
         .expect("request first album window");
     let requested = handle
         .handle()

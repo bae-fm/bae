@@ -238,7 +238,7 @@ the query, from the same language row, so a change of language reorders them
 too. A change of language, or
 of the collation data the keys were written with (checked as the library
 opens, before anything reads it), rewrites every key and
-advances the lists' versions in one write, so a list is in one order or the
+rewrites them in one write, so a list is in one order or the
 other and never between them. The keys are device-local and are not synced;
 every reader of the library file on the device (the app, MCP and Subsonic)
 sees the one order.
@@ -1144,24 +1144,18 @@ counts — are kept beside the placement as rows move, so reading them costs
 the same however long the queue is. Each tab's count is not part of the
 list's value: it moves with every commit of a scan, so it is a read of its
 own, sent on a stream keyed by tab, and the tab bar's labels read it each
-display frame. A search counts the rows its index finds, once for each state of the placement,
-folds and filter: a live list keeps those counts beside the places it found, under
-the versions of the tables it reads (§9.2), and counts again only when one has
-moved:
+display frame. A search counts the rows its index finds in every read of the list:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the
 rows holding it, and a shorter one reads every release's text from the
-index. A window is read in the list's order from whichever start passes the
-fewest rows before it: the list's top, its end, read backwards, or the nearest
-row the list already placed, the rows between skipped by counting them through
-the index; a window beside such a row, as scrolling asks for it, starts just
-past it. A read that passes many rows notes the place of a row about every
-thousand of the tab's rows it passes, which hold, like every place a read
-finds, while the list stands as it stood (§9.2), so a later jump anywhere the
-read passed starts within about a thousand rows of it. A search reads each
+index. A window that carries a cursor, the sort values of the row the screen holds
+beside it, is read through the order's index starting just past that row (or
+ending just short of it), running on into the next part of the tab, or back
+into the one before it, when its part holds too few rows; a window without one,
+a jump, is read by its offset from the top of the tab. A search reads each
 row the list's order passes and tests it; one that finds few rows reads a
 window from the rows it finds instead, sorted, when that reads fewer rows
-than the order would pass from its nearest start.
+than the order would pass from the top or end of the list.
 The header of the group a window starts inside is placed by counting the
 group's rows before the window, not the list's. Found reads its windows past
 the members of the groups it folds shut, so
@@ -5085,24 +5079,20 @@ Reads come two ways:
   leaves the screen before its first value is let go of then, so the
   windows a fast scroll stops on are not read behind every one it passed;
   one that has ended takes the new window and reads nothing more. A value of
-  such a list carries the rows of only the windows whose rows differ from the
-  last value delivered for them, and of every window asked for since, with
-  the list's count always: a write that moves a count, or a row no window
-  shows, delivers no rows. The album grid grouped by artist delivers its artists' headings (name, picture, where its albums start) in the delivery whose rows they fit, the first and then only one after what they read changed (`artist_listing`, `artist_image`), so scrolling to another window sends no artist. The downloads list on the phones is such a list: it
+  such a list carries every window its request names, read fresh, with the
+  list's count, and the screen swaps in the rows. The album grid grouped by artist reads its artists' headings (name, picture, where its albums start) as a live query of their own, which delivers them again whenever what they read changes. The downloads list on the phones is such a list: it
   reads how many releases the queue holds and the windows on screen, and its
   pause and retry controls and summary line read how many are in each phase.
   Each list sorts by terms that end with a unique one, so every row has one
-  place, and an index serves each of its sorts. A window next to a row whose
-  place the read knows is read from that row's sort values through the index,
-  starting just past it or ending just short of it, so its cost does not grow
-  with how deep in the list it is. The read knows the places of the first and
-  last rows of each window it read before, and of each window its last read
-  held while no row of the list has moved since: the tables a list sorts keep
-  a count of the writes that inserted, deleted or reordered their rows
-  (`library_list_versions`, `release_queue_versions`, `import_list_versions`, Appendix A), and a read
-  starts from its last read's rows only while those counts stand. Any other window, such as one a jump to
-  the middle of the list reaches, is read by its offset, past every row before
-  it; the import list's instead from its nearest start, as §3.2 says. The playback queue's upcoming tracks are read by offset alone: the
+  place, and an index serves each of its sorts. A list pages by cursor: a window
+  carries the sort values of the row at the screen's edge, the first or last
+  row of a window the screen was delivered, and is read from them through the
+  index, starting just past that row or ending just short of it, so its cost
+  does not grow with how deep in the list it is. Every delivered window
+  carries the sort values of its first and last rows, which the screen sends
+  back for the window beside it. Nothing about where rows sit is kept between
+  reads. Any other window, such as one a jump to the middle of the list
+  reaches, is read by its offset, past every row before it. The playback queue's upcoming tracks are read by offset alone: the
   offset passes over the context lane's positions before any track is read,
   so a deep window costs little. The Storage manager's search counts what it
   finds first: from library search's indexes when its text is in fewer
@@ -5115,8 +5105,7 @@ Reads come two ways:
   the index reaches by its album's own text in the search tables; so a
   search finding a handful of releases never walks the whole index, and a
   window of one finding most of them costs about what the unsearched list's
-  does. Its rows' places also hold only while what library search finds
-  stands (`library_search` in `library_list_versions`). The artist picker's
+  does. The artist picker's
   search reads every
   artist its text finds and sorts them, so each window of it is read by its
   offset.
@@ -5831,7 +5820,7 @@ bae-transfers', under `bae-transfers/src/`: the transfer queues'
 under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
 list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
 page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library
-search's (`search.sql`) and the lists' versions (`versions.sql`). A part runs
+search's (`search.sql`). A part runs
 after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.
@@ -5928,7 +5917,6 @@ What the library lists, bae-views' part, kept by its triggers:
 | `release_listing_totals` | uploaded or not: how many releases are, and their files' total size |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
-| `library_list_versions` | table a library list sorts or narrows by (`album_listing`, `album_artist_link`, `artist_listing`, `artist_image` for the artists' pictures the album grid's sections carry, `composer_listing`, `composer_detail_row`, `release_listing`, and `library_search` for what library search finds of albums, which the Storage manager's search narrows by): how many writes have inserted, deleted or reordered its rows, or for `library_search` changed or deleted an album's title, an artist's name or other printed name, an album's credits or the artist a credit shows as, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key and, for a track or a work, its title to order by |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
@@ -6060,7 +6048,6 @@ Beside them, keyed by the release an import made:
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order, where its view opened (its first selected row when the view was set, or its top), and the revisions of its view and its selection, which every change moves so a surface can wait for the read that reflects one |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 | `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
-| `import_list_versions` | table the import list's order reads (`import_list_placement` and, for its Done tab's uploads, `local_release_origin`, `release_storage` and `scan_candidate`): how many writes have inserted, deleted or reordered its rows, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the
@@ -6092,7 +6079,6 @@ write commits, so the release and the row naming it land in either order.
 | Table | Holds |
 |---|---|
 | `release_queues` | whether the pin queue and the export and save queue are paused |
-| `release_queue_versions` | queue table (`download_queue`, `output_queue`): how many writes have added, removed or moved its entries, advanced by its triggers in each such write, so a read knows whether its last read's rows still sit where they did (§9.2) |
 | `download_queue` | release queued to pin or to move to this device, in the order queued: pin or move to this device, with a move-to-this-device's folder, a BLOB of coven's bytes for its path; and queued, downloading, or failed with its error (§4.3, §4.4) |
 | `download_batch` | release and kind the download queue has held since that kind last had none waiting or downloading, which the Activity panel's Pinning and Moving to This Mac lines count (§6.4) |
 | `download_batch_number` | kind (pin or move to this device): how many batches of it have begun, the number of the one `download_batch` holds, advanced as its first release joins, by which the Pinning and Moving to This Mac lines' bars tell a new batch from the one whose bytes they held (§6.4) |

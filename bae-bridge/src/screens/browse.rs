@@ -49,7 +49,7 @@ macro_rules! browse_snapshot {
             row: $core_row => $bridge_row,
         }
 
-        /// Every requested window as of one revision, and what moved.
+        /// Every requested window as of one revision.
         #[derive(Debug, Clone, uniffi::Record)]
         pub struct $snapshot {
             pub windows: Vec<$window>,
@@ -81,13 +81,10 @@ browse_window! {
 /// The album grid as of one revision. Grouped by artist, an album shows once
 /// in each of its artists' sections, so the grid's positions count
 /// appearances: `row_count` of them, over `total_count` albums. Flat, the two
-/// are equal and there are no sections. Grouped, `sections` are the artists'
-/// headings when they changed since the snapshot before and in the one whose
-/// rows they fit, the first always; `None` says the last ones still stand.
+/// are equal.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumBrowseSnapshot {
     pub windows: Vec<BridgeAlbumBrowseWindow>,
-    pub sections: Option<Vec<crate::types::BridgeLibraryBrowseSection>>,
     pub total_count: u64,
     pub row_count: u64,
     pub request_revision: u64,
@@ -96,20 +93,9 @@ pub struct BridgeAlbumBrowseSnapshot {
 
 impl BridgeAlbumBrowseSnapshot {
     fn from_core(snapshot: bae_views::AlbumBrowseSnapshot) -> Self {
-        let bae_views::AlbumBrowseSnapshot { list, sections, row_count } = snapshot;
+        let bae_views::AlbumBrowseSnapshot { list, row_count } = snapshot;
         Self {
             windows: list.windows.into_iter().map(BridgeAlbumBrowseWindow::from_core).collect(),
-            sections: sections.map(|sections| {
-                sections
-                    .into_iter()
-                    .map(|section| crate::types::BridgeLibraryBrowseSection {
-                        id: section.id,
-                        title: section.title,
-                        image: section.image.map(crate::types::BridgeImageRef::from_core),
-                        window: crate::types::BridgeLibraryPageWindow::from_core(section.window),
-                    })
-                    .collect()
-            }),
             total_count: list.total_count,
             row_count,
             request_revision: list.request_revision,
@@ -166,11 +152,69 @@ browse_subscription! {
 
 impl crate::types::BridgeLibraryPageWindow {
     pub(crate) fn from_core(window: bae_store::LibraryPageWindow) -> Self {
-        Self { offset: window.offset, limit: window.limit }
+        Self {
+            offset: window.offset,
+            limit: window.limit,
+            cursor: window.cursor.map(crate::types::BridgeWindowCursor::from_core),
+        }
     }
 
     pub(crate) fn into_core(self) -> bae_store::LibraryPageWindow {
-        bae_store::LibraryPageWindow { offset: self.offset, limit: self.limit }
+        bae_store::LibraryPageWindow {
+            offset: self.offset,
+            limit: self.limit,
+            cursor: self.cursor.map(crate::types::BridgeWindowCursor::into_core),
+        }
+    }
+}
+
+impl crate::types::BridgeWindowCursor {
+    fn from_core(cursor: bae_store::list_windows::Cursor) -> Self {
+        use bae_store::list_windows::Cursor;
+        let (side, key) = match cursor {
+            Cursor::After(key) => (crate::types::BridgeCursorSide::After, key),
+            Cursor::Before(key) => (crate::types::BridgeCursorSide::Before, key),
+        };
+        Self { side, key: crate::types::BridgeSortValue::of_key(&key) }
+    }
+
+    fn into_core(self) -> bae_store::list_windows::Cursor {
+        use bae_store::list_windows::{Cursor, OrderKey};
+        let key = OrderKey::new(
+            self.key.into_iter().map(crate::types::BridgeSortValue::into_core).collect(),
+        );
+        match self.side {
+            crate::types::BridgeCursorSide::After => Cursor::After(key),
+            crate::types::BridgeCursorSide::Before => Cursor::Before(key),
+        }
+    }
+}
+
+impl crate::types::BridgeSortValue {
+    /// The values of `key`, which a screen sends back as a cursor.
+    pub(crate) fn of_key(key: &bae_store::list_windows::OrderKey) -> Vec<Self> {
+        use bae_store::list_windows::SortValue;
+        key.values()
+            .iter()
+            .map(|value| match value {
+                SortValue::Null => Self::Null,
+                SortValue::Integer(value) => Self::Integer { value: *value },
+                SortValue::Real(value) => Self::Real { value: *value },
+                SortValue::Text(value) => Self::Text { value: value.clone() },
+                SortValue::Blob(value) => Self::Blob { value: value.clone() },
+            })
+            .collect()
+    }
+
+    fn into_core(self) -> bae_store::list_windows::SortValue {
+        use bae_store::list_windows::SortValue;
+        match self {
+            Self::Null => SortValue::Null,
+            Self::Integer { value } => SortValue::Integer(value),
+            Self::Real { value } => SortValue::Real(value),
+            Self::Text { value } => SortValue::Text(value),
+            Self::Blob { value } => SortValue::Blob(value),
+        }
     }
 }
 

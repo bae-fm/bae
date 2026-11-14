@@ -102,9 +102,8 @@ impl LibraryViews {
                     windows: view
                         .windows
                         .iter()
-                        .map(|window| bae_store::LibraryBrowseWindow {
-                            window: window.clone(),
-                            rows: Vec::new(),
+                        .map(|window| {
+                            bae_store::LibraryBrowseWindow::unkeyed(window.clone(), Vec::new())
                         })
                         .collect(),
                     total_count: 0,
@@ -115,10 +114,10 @@ impl LibraryViews {
                 .windows
                 .iter()
                 .map(|window| {
-                    Ok(bae_store::LibraryBrowseWindow {
-                        window: window.clone(),
-                        rows: artist_search_rows_on(&sql, query, window)?,
-                    })
+                    Ok(bae_store::LibraryBrowseWindow::unkeyed(
+                        window.clone(),
+                        artist_search_rows_on(&sql, query, window)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, DbError>>()?;
             Ok(ArtistSearchProjection { windows, total_count })
@@ -136,17 +135,12 @@ pub fn resolve_artist_search(
     crate::ArtistSearchSnapshot {
         windows: windows
             .into_iter()
-            .map(|window| bae_store::LibraryBrowseWindow {
-                window: window.window,
-                rows: window
-                    .rows
-                    .into_iter()
-                    .map(|row| crate::album_detail::ArtistSearchResult {
-                        image: bae_records::artist_image_ref(&row.artist.id, row.image_version),
-                        credit_names: row.credit_names,
-                        artist: row.artist,
-                    })
-                    .collect(),
+            .map(|window| {
+                window.map_rows(|row| crate::album_detail::ArtistSearchResult {
+                    image: bae_records::artist_image_ref(&row.artist.id, row.image_version),
+                    credit_names: row.credit_names,
+                    artist: row.artist,
+                })
             })
             .collect(),
         total_count,

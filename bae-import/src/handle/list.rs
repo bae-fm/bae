@@ -154,11 +154,7 @@ impl ImportServiceHandle {
     /// that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn subscribe_whole_list(&self, view: crate::ImportListView) -> crate::LiveImportList {
-        self.subscribe_list_window(
-            view,
-            bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX },
-        )
-        .await
+        self.subscribe_list_window(view, bae_store::LibraryPageWindow::at(0, u64::MAX)).await
     }
 
     /// The import list for `view` through one window, for a test that

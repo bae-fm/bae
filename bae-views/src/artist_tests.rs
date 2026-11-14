@@ -60,7 +60,7 @@ async fn search(db: &Store, text: &str) -> Vec<DbArtist> {
     LibraryViews::new(db.clone())
         .search_artists(
             &crate::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-            bae_store::LibraryPageWindow { offset: 0, limit: 10 },
+            bae_store::LibraryPageWindow::at(0, 10),
         )
         .await
         .unwrap()

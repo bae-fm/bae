@@ -39,10 +39,9 @@ async fn measure_view(
             .unwrap();
         let request = |offset| ImportListRequest {
             list,
-            windows: bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
-                offset,
-                limit: LIMIT,
-            }]),
+            windows: bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(
+                offset, LIMIT,
+            )]),
         };
         for (at, offset) in offsets(n) {
             let away = if offset >= n / 2 { offset - n / 4 } else { offset + n / 4 };
@@ -178,7 +177,7 @@ pub(super) async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     let list = tables.open_import_list(view).await.unwrap();
     let request = crate::ImportListRequest {
         list,
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: 1 }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(0, 1)]),
     };
     let total = tables.load_import_list(request).await.unwrap().total_count;
     tables.close_import_list(list).await.unwrap();
@@ -241,7 +240,7 @@ async fn measure_import_list_typed(db: &Store) {
             .unwrap();
         let mut query = tables.subscribe_import_list(ImportListRequest {
             list,
-            windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: LIMIT }]),
+            windows: LibraryPageWindows::from([LibraryPageWindow::at(0, LIMIT)]),
         });
         query.next().await.unwrap().result.unwrap();
         let mut runs = Vec::with_capacity(RUNS);
@@ -294,7 +293,7 @@ async fn measure_import_list_first_selected(db: &Store) {
     let total = rows_shown(db, found_view("", PendingFilter::All, PathAscending)).await;
     let window = |offset, limit| crate::ImportListRequest {
         list,
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(offset, limit)]),
     };
     let candidates = async |offset: u64| -> Vec<crate::CandidateKey> {
         import_items(db, window(offset, 10)).await[0]

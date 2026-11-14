@@ -17,7 +17,7 @@
 use super::views::tab_column;
 use super::*;
 use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
-use bae_store::list_windows::OrderKey;
+use bae_store::list_windows::{read_window, Cursor, OrderKey};
 use bae_store::LibraryPageWindow;
 use rusqlite::ToSql;
 
@@ -270,10 +270,6 @@ pub(super) fn uploading_cte() -> String {
     )
 }
 
-/// Where the headers of a list's groups sit, by watched folder and group, as
-/// their bytes.
-pub(super) type HeaderPlaces = std::collections::BTreeMap<(Vec<u8>, Vec<u8>), u64>;
-
 /// Which rows a stream of a list's items runs over.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Shown<'a> {
@@ -309,13 +305,18 @@ pub(super) struct Items<'a> {
     ran: std::cell::RefCell<Vec<String>>,
 }
 
-/// The stretch of one part a window reaches: the part, the places in the
-/// list it runs over (to the list's end for the last part), and the offset
-/// and limit the window reads it at.
+/// The items of one window, in order, with the keys of the first and the
+/// last: what a cursor beside the window is made of.
+pub(super) struct WindowItems {
+    pub(super) keys: Vec<ItemKey>,
+    pub(super) first: Option<OrderKey>,
+    pub(super) last: Option<OrderKey>,
+}
+
+/// The stretch of one part a window reaches: the part, and the offset and
+/// limit the window reads it at.
 struct PartWindow {
     part: Part,
-    start: u64,
-    end: Option<u64>,
     offset: u64,
     limit: u64,
 }
@@ -601,7 +602,6 @@ impl<'a> Items<'a> {
         window: &LibraryPageWindow,
     ) -> Result<Vec<PartWindow>, DbError> {
         let mut reached = Vec::new();
-        let mut start = 0;
         let mut offset = window.offset;
         let mut limit = window.limit;
         let parts = self.parts();
@@ -610,73 +610,112 @@ impl<'a> Items<'a> {
                 break;
             }
             if at + 1 == parts.len() {
-                reached.push(PartWindow { part, start, end: None, offset, limit });
+                reached.push(PartWindow { part, offset, limit });
                 break;
             }
             let held = self.count(sql, part)?;
             if offset >= held {
                 offset -= held;
-                start += held;
                 continue;
             }
             let read = limit.min(held - offset);
-            reached.push(PartWindow { part, start, end: Some(start + held), offset, limit: read });
+            reached.push(PartWindow { part, offset, limit: read });
             limit -= read;
             offset = 0;
-            start += held;
         }
         Ok(reached)
     }
 
-    /// The items `window` covers, in order, clamped to the list's
-    /// `reach.total`, and the places of its first and last items in each
-    /// part and of the items its read stepped to: read by offset from the
-    /// rows a search finds, else from whichever of the part's top, its end
-    /// and the rows `known` places passes the fewest items, stepping
-    /// `reach.stride` at a time (`list_windows`).
+    /// The part whose order a cursor's key is a key of: the parts of a tab
+    /// order by different terms, so a key holds as many values as its part's
+    /// order has terms. `None` for a key that fits no part, as one read under
+    /// another tab's or sort's order does.
+    fn part_of(&self, key: &OrderKey) -> Option<usize> {
+        self.parts().iter().position(|&part| self.part_order(part).term_count() == key.len())
+    }
+
+    /// `window`'s rows of one `part`, from its cursor or by its offset.
+    fn part_rows(
+        &self,
+        sql: &impl coven::SqlRead,
+        part: Part,
+        window: &LibraryPageWindow,
+    ) -> Result<Vec<Keyed<ItemKeyColumns>>, DbError> {
+        let order = self.part_order(part);
+        let mut read =
+            |seek: &Seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset);
+        read_window(&order, window, &mut read)
+    }
+
+    /// The items `window` covers, in order, with the keys of the first and
+    /// last of them: read from its cursor through the order's index when it
+    /// has one, running on into the next part, or back into the one before,
+    /// when its part holds too few; otherwise by its offset from the top of
+    /// each part it reaches (`list_windows`).
     pub(super) fn window(
         &self,
         sql: &impl coven::SqlRead,
         window: &LibraryPageWindow,
-        known: &Places,
-        reach: Reach,
-    ) -> Result<(Vec<ItemKey>, Places), DbError> {
-        let mut items = Vec::new();
-        let mut found = Places::new();
-        for PartWindow { part, start, end, offset, limit } in self.window_parts(sql, window)? {
-            let order = self.part_order(part);
-            // The part's places, in its own count from its first row.
-            let in_part = known
-                .range(start..)
-                .take_while(|(place, _)| end.is_none_or(|end| **place < end))
-                .map(|(place, key)| (place - start, key.clone()))
-                .collect();
-            let windows =
-                bae_store::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]);
-            let read =
-                |seek: &Seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset);
-            let WindowsRead { windows: read, found: places } = match self.shown {
-                Shown::Found => read_windows(&order, &windows, Places::new(), read)?,
-                Shown::View | Shown::Revealing { .. } => read_windows_reaching(
-                    &order,
-                    &windows,
-                    in_part,
-                    Reach {
-                        total: end.unwrap_or(reach.total.max(start)) - start,
-                        stride: reach.stride,
-                    },
-                    read,
-                    |seek, cap| self.count_seek(sql, part, &order, seek, Some(cap)),
-                )?,
-            };
-            found.extend(places.into_iter().map(|(place, key)| (place + start, key)));
-            for (_, keys) in read {
-                for columns in keys {
-                    items.push(ItemKey::of(columns)?);
+    ) -> Result<WindowItems, DbError> {
+        let mut rows: Vec<Keyed<ItemKeyColumns>> = Vec::new();
+        let cursor = window.cursor.as_ref().and_then(|cursor| match cursor {
+            Cursor::After(key) | Cursor::Before(key) => {
+                self.part_of(key).map(|part| (part, cursor))
+            }
+        });
+        match cursor {
+            None => {
+                let by_offset = LibraryPageWindow::at(window.offset, window.limit);
+                for PartWindow { part, offset, limit } in self.window_parts(sql, &by_offset)? {
+                    rows.extend(self.part_rows(
+                        sql,
+                        part,
+                        &LibraryPageWindow::at(offset, limit),
+                    )?);
+                }
+            }
+            Some((at, cursor)) => {
+                let parts = self.parts();
+                let cursor_window =
+                    LibraryPageWindow::from_cursor(window.offset, window.limit, cursor.clone());
+                rows = self.part_rows(sql, parts[at], &cursor_window)?;
+                match cursor {
+                    Cursor::After(_) => {
+                        for &part in &parts[at + 1..] {
+                            let wanted = window.limit.saturating_sub(rows.len() as u64);
+                            if wanted > 0 {
+                                rows.extend(self.part_rows(
+                                    sql,
+                                    part,
+                                    &LibraryPageWindow::at(0, wanted),
+                                )?);
+                            }
+                        }
+                    }
+                    Cursor::Before(_) => {
+                        for &part in parts[..at].iter().rev() {
+                            let wanted = window.limit.saturating_sub(rows.len() as u64);
+                            if wanted > 0 {
+                                let order = self.part_order(part);
+                                let end = order.everything_reversed();
+                                let mut tail =
+                                    self.window_of(sql, part, &order, &end, wanted, 0)?;
+                                tail.reverse();
+                                tail.append(&mut rows);
+                                rows = tail;
+                            }
+                        }
+                    }
                 }
             }
         }
-        Ok((items, found))
+        let first = rows.first().map(|(_, key)| key.clone());
+        let last = rows.last().map(|(_, key)| key.clone());
+        let keys = rows
+            .into_iter()
+            .map(|(columns, _)| ItemKey::of(columns))
+            .collect::<Result<_, DbError>>()?;
+        Ok(WindowItems { keys, first, last })
     }
 
     /// Add to the list's selection every release `window` covers, its
@@ -710,17 +749,15 @@ impl<'a> Items<'a> {
     /// at `first` in the list's order: `None` for a header and for an item in
     /// no group. A group's header leads its members, so a member's header is
     /// the last header of its group in the window before it, or, for the
-    /// members a window starts with, the one before the window: where
-    /// `headers` says it sits, else as many items before the window as the
-    /// window's first member has of its group before it. Every header the
-    /// window holds or finds goes into `headers`.
+    /// members a window starts with, the one before the window: as many
+    /// items before the window as the window's first member has of its group
+    /// before it.
     pub(super) fn header_positions(
         &self,
         sql: &impl coven::SqlRead,
         offset: u64,
         keys: &[ItemKey],
         first: Option<&OrderKey>,
-        headers: &mut HeaderPlaces,
     ) -> Result<Vec<Option<u64>>, DbError> {
         let mut leading: Option<(&[u8], &[u8], u64)> = None;
         let mut positions = Vec::with_capacity(keys.len());
@@ -730,18 +767,13 @@ impl<'a> Items<'a> {
                 continue;
             };
             let root = key.watched_folder_path.as_slice();
-            let group_key = (root.to_vec(), group.to_vec());
             if key.item == Item::Group {
                 leading = Some((root, group, offset + index));
-                headers.insert(group_key, offset + index);
                 positions.push(None);
                 continue;
             }
-            let header = match (leading, headers.get(&group_key)) {
-                (Some((at_root, name, position)), _) if at_root == root && name == group => {
-                    position
-                }
-                (_, Some(&position)) => position,
+            let header = match leading {
+                Some((at_root, name, position)) if at_root == root && name == group => position,
                 _ => {
                     // Only the members a window starts with have their header
                     // above it, and those follow it unbroken.
@@ -754,7 +786,6 @@ impl<'a> Items<'a> {
                     offset - self.unit_items_before(sql, first)?
                 }
             };
-            headers.insert(group_key, header);
             leading = Some((root, group, header));
             positions.push(Some(header));
         }

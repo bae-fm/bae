@@ -67,14 +67,11 @@ pub(super) struct Listed {
     pub(super) narrowed: Option<NarrowedCount>,
     /// What decides where its windows are read from.
     reads: Reads,
-    /// What its search counted, for a searching list.
-    pub(super) search_counts: Option<SearchCounts>,
 }
 
 /// What [`SEARCH_COUNTS`] counts for a searching list: how many releases its
 /// filters keep, and how many items it holds.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct SearchCounts {
+struct SearchCounts {
     kept: i64,
     items: i64,
 }
@@ -94,43 +91,27 @@ enum Reads {
 /// row read in order and tested.
 const FOUND_ROW_COST: u128 = 3;
 
-/// About how many of its tab's rows a read of a list's window passes for each
-/// row it notes on its way, so a later read starts within about this many of
-/// any window the first passed.
-const STEP_ROWS: u64 = 1_000;
-
 impl Listed {
-    /// What a read of the list's windows reaches them with: the items the list
-    /// holds, and a step of as many items as its filters keep of about
-    /// [`STEP_ROWS`] of its tab's rows.
-    pub(super) fn reach(&self) -> Reach {
-        let stride = match self.narrowed {
-            Some(narrowed) => {
-                STEP_ROWS * u64::from(narrowed.shown) / u64::from(narrowed.total).max(1)
-            }
-            None => STEP_ROWS,
-        };
-        Reach { total: self.total, stride: stride.max(1) }
-    }
-
     /// The rows a window of the list is read from. A search's window is read
     /// from the rows the search finds, sorted, when reading them costs less
     /// than passing the tab's rows its order would pass to reach the window
-    /// from the nearest place it can start from (`known`, or the list's top
-    /// or end): about the items it passes times the tab's releases over the
-    /// releases the search keeps. Otherwise, and for every other list, it is
+    /// from the list's top or end: about the items it passes times the tab's
+    /// releases over the releases the search keeps. A window with a cursor
+    /// passes none. Otherwise, and for every other list, it is
     /// read from the tab's rows in order, each tested.
-    pub(super) fn shown(
-        &self,
-        window: &bae_store::LibraryPageWindow,
-        known: &Places,
-    ) -> Shown<'static> {
+    pub(super) fn shown(&self, window: &bae_store::LibraryPageWindow) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
         };
         let kept = u128::from(narrowed.shown);
-        let passed = u128::from(self.reach().rows_passed(window, known));
+        let passed = match window.cursor {
+            Some(_) => 0,
+            None => {
+                let end = window.offset.saturating_add(window.limit);
+                u128::from(window.offset.min(self.total.saturating_sub(end)))
+            }
+        };
         match FOUND_ROW_COST * kept * kept < passed * u128::from(narrowed.total) {
             true => Shown::Found,
             false => Shown::View,
@@ -158,13 +139,11 @@ pub(super) const SEARCH_COUNTS: &str = "WITH kept AS MATERIALIZED ( \
 /// How many items the list holds — its releases its filters keep outside the
 /// groups it folds shut, and the header of each group holding one — and how
 /// many releases its filters keep. Without a search these are the kept
-/// counts; a search counts the rows it finds, unless `known` holds what it
-/// counted while the list stood as it stands now.
+/// counts; a search counts the rows it finds.
 pub(super) fn listed(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
     counts: &Counts,
-    known: Option<SearchCounts>,
 ) -> Result<Listed, DbError> {
     let narrowed = |shown: i64| -> Result<NarrowedCount, DbError> {
         Ok(NarrowedCount {
@@ -174,17 +153,13 @@ pub(super) fn listed(
     };
     let total = |count: i64| to_u64(count, "a list's item count");
     if list.filters_text {
-        let found = match known {
-            Some(known) => known,
-            None => sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
-                Ok(SearchCounts { kept: row.get(0)?, items: row.get(1)? })
-            })?,
-        };
+        let found = sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
+            Ok(SearchCounts { kept: row.get(0)?, items: row.get(1)? })
+        })?;
         return Ok(Listed {
             total: total(found.items)?,
             narrowed: Some(narrowed(found.kept)?),
             reads: Reads::Search,
-            search_counts: Some(found),
         });
     }
     let items = match list.keeps_all {
@@ -233,7 +208,7 @@ pub(super) fn listed(
         )?)?),
         false => None,
     };
-    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order, search_counts: None })
+    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
 }
 
 /// Where the candidate at `key` sits in `list` once revealed: `None` for a

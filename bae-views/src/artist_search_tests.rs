@@ -28,7 +28,7 @@ async fn seeded() -> (Store, tempfile::TempDir) {
 }
 
 fn window(offset: u64, limit: u64) -> LibraryPageWindow {
-    LibraryPageWindow { offset, limit }
+    LibraryPageWindow::at(offset, limit)
 }
 
 fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {

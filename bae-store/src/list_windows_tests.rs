@@ -65,215 +65,98 @@ fn read(
     rows
 }
 
-/// Every window of five rows, read from the row before it and from the row
-/// after it, holds the rows reading it by its offset holds, in every order.
+/// Every window of five rows, read from a cursor at the row before it and at
+/// the row after it, holds the rows reading it by its offset holds, in every
+/// order, and reports the keys of its first and last rows.
 #[test]
-fn a_window_read_from_either_neighbour_holds_its_offsets_rows() {
+fn a_window_read_from_a_cursor_holds_its_offsets_rows() {
     let conn = rows();
     for order in orders() {
         let everything = read(&conn, &order, &order.everything(), 1_000, 0).unwrap();
         assert_eq!(everything.len(), 200);
         for offset in 0..200_u64 {
-            let window = LibraryPageWindow { offset, limit: 5 };
             let expected = everything
                 .iter()
                 .skip(offset as usize)
                 .take(5)
                 .map(|(id, _)| id.clone())
                 .collect::<Vec<_>>();
-            let mut neighbours = Vec::new();
+            let mut cursors = vec![LibraryPageWindow::at(offset, 5)];
             if offset > 0 {
-                neighbours
-                    .push(Places::from([(offset - 1, everything[offset as usize - 1].1.clone())]));
+                let before = everything[offset as usize - 1].1.clone();
+                cursors.push(LibraryPageWindow::from_cursor(offset, 5, Cursor::After(before)));
             }
             if let Some((_, key)) = everything.get(offset as usize + 5) {
-                neighbours.push(Places::from([(offset + 5, key.clone())]));
+                cursors.push(LibraryPageWindow::from_cursor(
+                    offset,
+                    5,
+                    Cursor::Before(key.clone()),
+                ));
             }
-            for known in neighbours {
-                let WindowsRead { windows, .. } = read_windows(
+            for window in cursors {
+                let read = read_windows(
                     &order,
                     &LibraryPageWindows::from([window.clone()]),
-                    known.clone(),
                     |seek, limit, offset| read(&conn, &order, seek, limit, offset),
                 )
                 .unwrap();
-                assert_eq!(windows[0].1, expected, "{order:?} at {offset} from {known:?}");
+                assert_eq!(read[0].rows, expected, "{order:?} at {offset} from {window:?}");
+                let at = offset as usize;
+                assert_eq!(read[0].first.as_ref(), Some(&everything[at].1));
+                assert_eq!(read[0].last.as_ref(), Some(&everything[(at + 4).min(199)].1));
             }
         }
     }
 }
 
-/// Windows read together start each from the one before it, and the read
-/// gives back where each window's first and last rows sit.
+/// A window with a cursor never reads by offset: every statement it runs is a
+/// seek past the cursor's row.
 #[test]
-fn adjacent_windows_read_together_chain_and_report_their_ends() {
+fn a_window_from_a_cursor_reads_only_past_its_row() {
     let conn = rows();
     let order = orders().pop().unwrap();
     let everything = read(&conn, &order, &order.everything(), 1_000, 0).unwrap();
-    let windows = LibraryPageWindows::from([
-        LibraryPageWindow { offset: 50, limit: 10 },
-        LibraryPageWindow { offset: 60, limit: 10 },
-        LibraryPageWindow { offset: 195, limit: 10 },
-    ]);
+    let windows = LibraryPageWindows::from([LibraryPageWindow::from_cursor(
+        60,
+        10,
+        Cursor::After(everything[59].1.clone()),
+    )]);
     let mut offsets_read = Vec::new();
-    let WindowsRead { windows: answered, found: places } =
-        read_windows(&order, &windows, Places::new(), |seek, limit, offset| {
-            if seek.reads_everything() {
-                offsets_read.push(offset);
-            }
-            read(&conn, &order, seek, limit, offset)
-        })
-        .unwrap();
-    assert_eq!(offsets_read, vec![50, 195]);
-    for (window, ids) in &answered {
-        let expected = everything
-            .iter()
-            .skip(window.offset as usize)
-            .take(window.limit as usize)
-            .map(|(id, _)| id.clone())
-            .collect::<Vec<_>>();
-        assert_eq!(ids, &expected, "{window:?}");
-    }
-    assert_eq!(places.keys().copied().collect::<Vec<_>>(), vec![50, 59, 60, 69, 195, 199]);
-    for (place, key) in &places {
-        assert_eq!(key, &everything[*place as usize].1);
-    }
-}
-
-/// Places a read kept are handed to the next read only while the list stands
-/// as it stood for that read.
-#[test]
-fn places_kept_under_one_standing_are_none_under_another() {
-    let known = KnownPlaces::new();
-    let places = Places::from([(3, OrderKey(vec![Value::Integer(1)]))]);
-    known.keep(vec![1_i64, 2], places.clone());
-    assert_eq!(known.under(&vec![1, 2]), places);
-    assert!(known.under(&vec![1, 3]).is_empty());
-}
-
-fn window(offset: u64, limit: u64) -> LibraryPageWindow {
-    LibraryPageWindow { offset, limit }
-}
-
-fn delivery(offset: u64, rows: &[u32]) -> LibraryBrowseWindow<u32> {
-    LibraryBrowseWindow { window: window(offset, 2), rows: rows.to_vec() }
-}
-
-#[test]
-fn a_window_is_told_only_when_its_rows_differ() {
-    let told = WindowsTold::new([window(0, 2), window(2, 2)].into());
-
-    let first = told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 4])]);
-    assert_eq!(first.len(), 2, "nothing was told yet");
-
-    let moved = told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 5])]);
-    assert_eq!(moved, vec![delivery(2, &[3, 5])], "only the window whose rows moved");
-
-    assert!(told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 5])]).is_empty());
-}
-
-#[test]
-fn a_window_asked_for_again_is_told_whatever_it_held_before() {
-    let told = WindowsTold::new([window(0, 2)].into());
-    told.changed(vec![delivery(0, &[1, 2])]);
-
-    // Dropped and asked for again before any delivery saw it gone.
-    told.request(&[].into());
-    told.request(&[window(0, 2)].into());
-    assert_eq!(told.changed(vec![delivery(0, &[1, 2])]), vec![delivery(0, &[1, 2])]);
-
-    // A window still asked for through a new request stays told.
-    told.request(&[window(0, 2), window(2, 2)].into());
-    assert_eq!(
-        told.changed(vec![delivery(0, &[1, 2]), delivery(2, &[3, 4])]),
-        vec![delivery(2, &[3, 4])]
-    );
-}
-
-#[test]
-fn a_window_nobody_asks_for_is_not_told() {
-    let told = WindowsTold::new([window(0, 2)].into());
-    assert!(told.changed(vec![delivery(2, &[3, 4])]).is_empty());
-}
-
-/// How many of `seek`'s rows of `t` there are, up to `cap`.
-fn count(conn: &Connection, order: &ListOrder, seek: &Seek, cap: u64) -> rusqlite::Result<u64> {
-    let statement = format!(
-        "SELECT count(*) FROM (SELECT 1 FROM t WHERE {condition} LIMIT :limit)",
-        condition = order.condition(seek),
-    );
-    seek.bound(cap, 0, |params| {
-        let params: Vec<_> = params.iter().filter(|(name, _)| *name != ":offset").collect();
-        let params: Vec<(&str, &dyn rusqlite::ToSql)> =
-            params.into_iter().map(|(name, value)| (*name, *value)).collect();
-        conn.query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
-            .map(|held| held as u64)
-    })
-}
-
-/// Every window, read from whichever of the list's top, its end and a known
-/// row far before or after it passes the fewest rows, with every stride,
-/// holds the rows reading it by its offset holds, in every order; and each
-/// row the read stepped to on its way sits where it says.
-#[test]
-fn a_window_reached_from_any_start_holds_its_offsets_rows() {
-    let conn = rows();
-    for order in orders() {
-        let everything = read(&conn, &order, &order.everything(), 1_000, 0).unwrap();
-        for stride in [1, 7, 50] {
-            for offset in (0..200_u64).step_by(9) {
-                let window = LibraryPageWindow { offset, limit: 6 };
-                let expected = everything
-                    .iter()
-                    .skip(offset as usize)
-                    .take(6)
-                    .map(|(id, _)| id.clone())
-                    .collect::<Vec<_>>();
-                let mut starts = vec![Places::new()];
-                for place in [offset.saturating_sub(40), (offset + 46).min(199)] {
-                    starts.push(Places::from([(place, everything[place as usize].1.clone())]));
-                }
-                for known in starts {
-                    let WindowsRead { windows, found } = read_windows_reaching(
-                        &order,
-                        &LibraryPageWindows::from([window.clone()]),
-                        known.clone(),
-                        Reach { total: 200, stride },
-                        |seek, limit, offset| read(&conn, &order, seek, limit, offset),
-                        |seek, cap| count(&conn, &order, seek, cap),
-                    )
-                    .unwrap();
-                    assert_eq!(
-                        windows[0].1, expected,
-                        "{order:?} stride {stride} at {offset} from {known:?}"
-                    );
-                    for (place, key) in &found {
-                        assert_eq!(key, &everything[*place as usize].1, "{order:?} at {place}");
-                    }
-                }
-            }
+    read_windows(&order, &windows, |seek, limit, offset| {
+        if seek.reads_everything() {
+            offsets_read.push(offset);
         }
-    }
+        read(&conn, &order, seek, limit, offset)
+    })
+    .unwrap();
+    assert!(offsets_read.is_empty());
 }
 
-/// A window that starts past the list's end, as a search that shrank the list
-/// leaves the one the app last asked for, passes no rows and holds none.
+/// A window past the list's end, or of no rows, holds none.
 #[test]
 fn a_window_past_the_lists_end_holds_no_rows() {
     let conn = rows();
     let order = orders().into_iter().next().unwrap();
-    let reach = Reach { total: 3, stride: 7 };
-    let window = LibraryPageWindow { offset: 150, limit: 6 };
-    assert_eq!(reach.rows_passed(&window, &Places::new()), 0);
-    let WindowsRead { windows, found } = read_windows_reaching(
-        &order,
-        &LibraryPageWindows::from([window]),
-        Places::new(),
-        reach,
-        |seek, limit, offset| read(&conn, &order, seek, limit, offset),
-        |seek, cap| count(&conn, &order, seek, cap),
-    )
+    let windows =
+        LibraryPageWindows::from([LibraryPageWindow::at(500, 6), LibraryPageWindow::at(0, 0)]);
+    let read = read_windows(&order, &windows, |seek, limit, offset| {
+        read(&conn, &order, seek, limit, offset)
+    })
     .unwrap();
-    assert!(windows[0].1.is_empty());
-    assert!(found.is_empty());
+    assert!(read.iter().all(|window| window.rows.is_empty() && window.first.is_none()));
+}
+
+/// Keys of a window set compare by their values, so a window moved to another
+/// cursor is another window.
+#[test]
+fn windows_with_different_cursors_are_different_windows() {
+    let key = |value| OrderKey::new(vec![SortValue::Integer(value), SortValue::Real(1.5)]);
+    let windows = LibraryPageWindows::from([
+        LibraryPageWindow::from_cursor(5, 5, Cursor::After(key(1))),
+        LibraryPageWindow::from_cursor(5, 5, Cursor::After(key(2))),
+        LibraryPageWindow::from_cursor(5, 5, Cursor::Before(key(1))),
+        LibraryPageWindow::at(5, 5),
+        LibraryPageWindow::from_cursor(5, 5, Cursor::After(key(1))),
+    ]);
+    assert_eq!(windows.len(), 4);
 }

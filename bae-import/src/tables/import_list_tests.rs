@@ -345,7 +345,7 @@ impl Library {
 
     /// One read of `list` through one window over every item.
     pub(crate) async fn read(&self, list: ImportListId) -> ImportListProjection {
-        self.read_through(list, LibraryPageWindow { offset: 0, limit: u64::MAX }).await
+        self.read_through(list, LibraryPageWindow::at(0, u64::MAX)).await
     }
 
     /// One read of a list opened on `view`.
@@ -584,7 +584,7 @@ pub(crate) struct ListRead {
 pub(crate) async fn request(tab: TriageTab) -> ListRead {
     ListRead {
         view: ImportListView { tab, ..ImportListView::default() },
-        windows: std::iter::once(bae_store::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        windows: std::iter::once(bae_store::LibraryPageWindow::at(0, 50)).collect(),
         selected: Vec::new(),
     }
 }
@@ -621,13 +621,12 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
-                let everything = bae_store::LibraryPageWindow { offset: 0, limit: u64::MAX };
-                let reach = summary::listed(&sql, &row, &summary::counts(&sql)?, None)?.reach();
+                let everything = bae_store::LibraryPageWindow::at(0, u64::MAX);
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)
-                        .window(&sql, &everything, &Places::new(), reach)?
-                        .0
+                        .window(&sql, &everything)?
+                        .keys
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
                         .collect())
@@ -709,7 +708,7 @@ pub(crate) fn through(
         list,
         windows: windows
             .into_iter()
-            .map(|(offset, limit)| bae_store::LibraryPageWindow { offset, limit })
+            .map(|(offset, limit)| bae_store::LibraryPageWindow::at(offset, limit))
             .collect(),
     }
 }

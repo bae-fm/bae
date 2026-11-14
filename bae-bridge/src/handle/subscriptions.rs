@@ -22,6 +22,19 @@ impl AppHandle {
         )
     }
 
+    /// The artist sections of the album grid grouped by artist under
+    /// `sort_criteria`.
+    pub fn subscribe_album_sections(
+        &self,
+        sort_criteria: Vec<BridgeSortCriterion>,
+    ) -> Arc<crate::AlbumSectionsSubscription> {
+        let sort: Vec<_> = sort_criteria.into_iter().map(BridgeSortCriterion::into_core).collect();
+        crate::screens::album_sections(
+            self.services.subscribe_album_sections(&sort),
+            self.runtime.clone(),
+        )
+    }
+
     /// The artist list under `sort_criteria`, reading no windows until
     /// `set_windows`.
     pub fn subscribe_artist_browse(

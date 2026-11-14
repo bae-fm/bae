@@ -353,10 +353,9 @@ where
         crate::release_queue::ReleaseQueueWindows<Extra>,
         bae_store::DbError,
     > {
-        let places = bae_store::list_windows::KnownPlaces::new();
         self.store
             .subscribe_reconfigurable(initial, move |windows, sql| {
-                tables::release_queue_windows_on::<Extra>(&sql, windows, &places)
+                tables::release_queue_windows_on::<Extra>(&sql, windows)
             })
             .process(Ok)
     }

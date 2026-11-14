@@ -1,29 +1,18 @@
 //! A paged list's windows, each read from where the list's order puts it.
 //!
-//! A window beside a row whose place in the list is known is read from that
-//! row's sort key through the order's index: the window after the row starts
-//! just past it, the window before the row ends just short of it, and the read
-//! seeks to the row rather than stepping over the rows before it. Every other
-//! window is read by its offset, which steps over every row before it; or,
-//! for a list whose length the read knows (`read_windows_reaching`), from
-//! whichever of the list's top, its end and its nearest known row steps over
-//! the fewest, noting rows on the way for later reads to start from.
-//!
-//! A row's place is known when an earlier window of the same read held it, or
-//! when the list's last read held it and no row of the list has moved since.
-//! Each table a list's order reads keeps a version, in the versions table of
-//! the domain whose list reads it (`library_list_versions`,
-//! `release_queue_versions`, `import_list_versions`), that any write
-//! inserting, deleting or reordering one of its rows advances, in that write
-//! (Appendix A of the spec). A read carries the places its windows' first and
-//! last rows sat at, with the versions it read them at, and the next read
-//! starts from them only while those versions still stand.
+//! A window carries a cursor when the screen holds a row beside it: the sort
+//! values of the row at the screen's edge, which the screen read from a window
+//! it was delivered. The window after the row starts just past it, the window
+//! before the row ends just short of it, and the read seeks to the row through
+//! the order's index rather than stepping over the rows before it. A window
+//! with no cursor, a jump to a position, is read by its offset, which steps
+//! over every row before it. Nothing about where rows sit is kept between
+//! reads.
 
-use coven::SqlReadContext;
 use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Mutex;
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,10 +21,39 @@ pub enum SortDirection {
     Descending,
 }
 
+/// One sort value of a row: what an order term evaluates to for it.
+pub use rusqlite::types::Value as SortValue;
+
+/// A window of a list: where the screen counts it from, how many rows it
+/// holds, and, when the screen holds the row beside it, the cursor the read
+/// starts from.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LibraryPageWindow {
     pub offset: u64,
     pub limit: u64,
+    pub cursor: Option<Cursor>,
+}
+
+impl LibraryPageWindow {
+    /// The window of `limit` rows from `offset`, read by its offset.
+    pub fn at(offset: u64, limit: u64) -> Self {
+        Self { offset, limit, cursor: None }
+    }
+
+    /// The window read from `cursor`, labelled `offset`.
+    pub fn from_cursor(offset: u64, limit: u64, cursor: Cursor) -> Self {
+        Self { offset, limit, cursor: Some(cursor) }
+    }
+}
+
+/// The row beside a window, by its sort values, and which side the window
+/// lies on.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Cursor {
+    /// The window holds the rows after the row at the key.
+    After(OrderKey),
+    /// The window holds the rows before the row at the key.
+    Before(OrderKey),
 }
 
 pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
@@ -44,58 +62,54 @@ pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
 pub struct LibraryBrowseWindow<Row> {
     pub window: LibraryPageWindow,
     pub rows: Vec<Row>,
+    /// The sort values of the window's first row and of its last, which the
+    /// screen sends back as the cursor of the window beside it. Both `None`
+    /// for a list that pages by offset alone.
+    pub first: Option<OrderKey>,
+    pub last: Option<OrderKey>,
 }
 
-/// What a surface has been told of a list's windows, so a delivery names only
-/// the windows whose rows differ from what it holds.
-///
-/// A window the surface has just asked for is never skipped, whatever rows an
-/// earlier delivery held under the same offset and limit: [`request`](Self::request)
-/// forgets every window that was not in the request before it or is not in
-/// the request now, and [`changed`](Self::changed) keeps nothing for a window
-/// outside the request standing.
-#[derive(Debug)]
-pub struct WindowsTold<Row> {
-    state: Mutex<ToldState<Row>>,
-}
-
-#[derive(Debug)]
-struct ToldState<Row> {
-    requested: LibraryPageWindows,
-    told: BTreeMap<LibraryPageWindow, Vec<Row>>,
-}
-
-impl<Row: Clone + PartialEq> WindowsTold<Row> {
-    pub fn new(requested: LibraryPageWindows) -> Self {
-        Self { state: Mutex::new(ToldState { requested, told: BTreeMap::new() }) }
+impl<Row> LibraryBrowseWindow<Row> {
+    /// The window with each row made into another by `convert`.
+    pub fn map_rows<Other>(self, convert: impl FnMut(Row) -> Other) -> LibraryBrowseWindow<Other> {
+        LibraryBrowseWindow {
+            window: self.window,
+            rows: self.rows.into_iter().map(convert).collect(),
+            first: self.first,
+            last: self.last,
+        }
     }
 
-    /// The surface now asks for `requested`.
-    pub fn request(&self, requested: &LibraryPageWindows) {
-        let mut state = self.state.lock().expect("windows told mutex poisoned");
-        let before = std::mem::replace(&mut state.requested, requested.clone());
-        state.told.retain(|window, _| before.contains(window) && requested.contains(window));
+    /// The window with its rows made into others all at once by `convert`.
+    pub fn try_convert_rows<Other, E>(
+        self,
+        convert: impl FnOnce(Vec<Row>) -> Result<Vec<Other>, E>,
+    ) -> Result<LibraryBrowseWindow<Other>, E> {
+        Ok(LibraryBrowseWindow {
+            window: self.window,
+            rows: convert(self.rows)?,
+            first: self.first,
+            last: self.last,
+        })
     }
 
-    /// `windows` less those the surface already holds with these rows. A
-    /// window outside the request standing is dropped: nothing there is
-    /// listening.
-    pub fn changed(&self, windows: Vec<LibraryBrowseWindow<Row>>) -> Vec<LibraryBrowseWindow<Row>> {
-        let mut guard = self.state.lock().expect("windows told mutex poisoned");
-        let ToldState { requested, told } = &mut *guard;
-        windows
-            .into_iter()
-            .filter(|window| {
-                if !requested.contains(&window.window) {
-                    return false;
-                }
-                if told.get(&window.window) == Some(&window.rows) {
-                    return false;
-                }
-                told.insert(window.window.clone(), window.rows.clone());
-                true
-            })
-            .collect()
+    /// The window with each row made into another by `convert`, or the first
+    /// error it gives.
+    pub fn try_map_rows<Other, E>(
+        self,
+        convert: impl FnMut(Row) -> Result<Other, E>,
+    ) -> Result<LibraryBrowseWindow<Other>, E> {
+        Ok(LibraryBrowseWindow {
+            window: self.window,
+            rows: self.rows.into_iter().map(convert).collect::<Result<_, E>>()?,
+            first: self.first,
+            last: self.last,
+        })
+    }
+
+    /// A window of a list that pages by offset alone.
+    pub fn unkeyed(window: LibraryPageWindow, rows: Vec<Row>) -> Self {
+        Self { window, rows, first: None, last: None }
     }
 }
 
@@ -160,8 +174,77 @@ impl ListOrder {
 }
 
 /// The values a row has for its list's order terms, which say where it sits.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct OrderKey(Vec<Value>);
+
+impl OrderKey {
+    pub fn new(values: Vec<SortValue>) -> Self {
+        Self(values)
+    }
+
+    pub fn values(&self) -> &[SortValue] {
+        &self.0
+    }
+
+    /// How many terms the key holds values of.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+/// A value's rank among SQLite's storage classes, which sort NULL, numbers,
+/// text, then blobs.
+fn rank(value: &Value) -> u8 {
+    match value {
+        Value::Null => 0,
+        Value::Integer(_) | Value::Real(_) => 1,
+        Value::Text(_) => 2,
+        Value::Blob(_) => 3,
+    }
+}
+
+fn compare_values(left: &Value, right: &Value) -> Ordering {
+    match (left, right) {
+        (Value::Integer(left), Value::Integer(right)) => left.cmp(right),
+        (Value::Integer(left), Value::Real(right)) => (*left as f64).total_cmp(right),
+        (Value::Real(left), Value::Integer(right)) => left.total_cmp(&(*right as f64)),
+        (Value::Real(left), Value::Real(right)) => left.total_cmp(right),
+        (Value::Text(left), Value::Text(right)) => left.cmp(right),
+        (Value::Blob(left), Value::Blob(right)) => left.cmp(right),
+        (left, right) => rank(left).cmp(&rank(right)),
+    }
+}
+
+/// Keys compare value by value, which only a request set needs, to hold two
+/// windows apart.
+impl Ord for OrderKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0
+            .iter()
+            .zip(&other.0)
+            .map(|(left, right)| compare_values(left, right))
+            .find(|ordering| ordering.is_ne())
+            .unwrap_or_else(|| self.0.len().cmp(&other.0.len()))
+    }
+}
+
+impl PartialOrd for OrderKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for OrderKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other).is_eq()
+    }
+}
+
+impl Eq for OrderKey {}
 
 /// A list's row with its key.
 pub type Keyed<R> = (R, OrderKey);
@@ -258,6 +341,11 @@ impl ListOrder {
         Self { terms }
     }
 
+    /// How many terms the order has, and so how many values its keys hold.
+    pub fn term_count(&self) -> usize {
+        self.terms.len()
+    }
+
     /// The order as an ORDER BY clause.
     pub fn clause(&self) -> String {
         Self::ordered(&self.terms, false)
@@ -293,6 +381,12 @@ impl ListOrder {
     /// offset runs.
     pub fn everything(&self) -> Seek {
         Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new() }
+    }
+
+    /// Every row of the list, from its last to its first: the seek a read of
+    /// the list's end runs.
+    pub fn everything_reversed(&self) -> Seek {
+        Seek { reversed: true, ..self.everything() }
     }
 
     /// The condition `seek` holds this order's rows to. A term held to its
@@ -427,293 +521,71 @@ impl ListOrder {
     }
 }
 
-/// Where rows of a list sit: each one's key by its place.
-pub type Places = BTreeMap<u64, OrderKey>;
-
-/// Where some of a list's rows sat when one live query last read it, and what
-/// placed them then: the versions of the tables the list's order reads, and
-/// anything else that orders or narrows the list, such as a sort or a filter.
-/// `Kept` is what a read keeps of where its rows sat: their places, and
-/// whatever else a list keeps of them.
-pub struct KnownPlaces<Standing, Kept = Places> {
-    last: Mutex<Option<(Standing, Kept)>>,
+/// One window's rows as one read found them, with the sort values of its
+/// first row and of its last.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WindowRead<R> {
+    pub window: LibraryPageWindow,
+    pub rows: Vec<R>,
+    pub first: Option<OrderKey>,
+    pub last: Option<OrderKey>,
 }
 
-impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
-    pub fn new() -> Self {
-        Self { last: Mutex::new(None) }
-    }
-
-    /// What the last read kept, if the list stands where it stood for that
-    /// read; nothing otherwise.
-    pub fn under(&self, standing: &Standing) -> Kept {
-        match &*self.last.lock().expect("known places lock poisoned") {
-            Some((kept_under, kept)) if kept_under == standing => kept.clone(),
-            _ => Kept::default(),
+impl<R> WindowRead<R> {
+    /// The window as a delivery carries it.
+    pub fn into_browse(self) -> LibraryBrowseWindow<R> {
+        LibraryBrowseWindow {
+            window: self.window,
+            rows: self.rows,
+            first: self.first,
+            last: self.last,
         }
     }
+}
 
-    /// Keep what a read found, under what placed its rows.
-    pub fn keep(&self, standing: Standing, kept: Kept) {
-        *self.last.lock().expect("known places lock poisoned") = Some((standing, kept));
+/// Up to `window.limit` rows of `window`, each with its key: from its cursor
+/// through the order's index when it has one, by its offset otherwise. `read`
+/// runs the list's statement under a seek, for at most `limit` rows from
+/// `offset`, and gives each row with its key.
+pub fn read_window<R, E>(
+    order: &ListOrder,
+    window: &LibraryPageWindow,
+    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
+) -> Result<Vec<Keyed<R>>, E> {
+    if window.limit == 0 {
+        return Ok(Vec::new());
+    }
+    match &window.cursor {
+        None => read(&order.everything(), window.limit, window.offset),
+        Some(Cursor::After(key)) => from_seeks(order.seeks(key, Side::After), window.limit, read),
+        Some(Cursor::Before(key)) => {
+            let mut rows = from_seeks(order.seeks(key, Side::Before), window.limit, read)?;
+            rows.reverse();
+            Ok(rows)
+        }
     }
 }
 
-/// The versions of the tables `sources` names, as the versions table
-/// `versions` holds them in this read.
-pub fn list_versions_on(
-    sql: &SqlReadContext<'_>,
-    versions: &str,
-    sources: &[&str],
-) -> rusqlite::Result<Vec<i64>> {
-    let statement = format!("SELECT version FROM {versions} WHERE source = ?");
-    sources.iter().map(|source| sql.query_row(&statement, [source], |row| row.get(0))).collect()
-}
-
-/// Where one window's read starts.
-enum Start<'k> {
-    Offset(u64),
-    After(&'k OrderKey),
-    Before(&'k OrderKey),
-}
-
-/// What one read of a list's windows found: each window's rows, and where
-/// each window's first and last rows sit, which a later read may start from.
-pub struct WindowsRead<R> {
-    pub windows: Vec<(LibraryPageWindow, Vec<R>)>,
-    pub found: Places,
-}
-
-/// The known rows beside `window`: the one just before it and the one just
-/// after it.
-fn known_beside<'k>(
-    window: &LibraryPageWindow,
-    known: &'k Places,
-) -> (Option<&'k OrderKey>, Option<&'k OrderKey>) {
-    (
-        window.offset.checked_sub(1).and_then(|before| known.get(&before)),
-        window.offset.checked_add(window.limit).and_then(|after| known.get(&after)),
-    )
-}
-
-/// Read each of `windows`, in offset order, from the known row beside it
-/// when there is one and by its offset otherwise. `read` runs the list's
-/// statement under a seek, for at most `limit` rows from `offset`, and gives
-/// each row with its key.
+/// Read each of `windows`, in order, with [`read_window`].
 pub fn read_windows<R, E>(
     order: &ListOrder,
     windows: &LibraryPageWindows,
-    mut known: Places,
     mut read: impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-) -> Result<WindowsRead<R>, E> {
-    let mut found = Places::new();
-    let mut read_windows = Vec::with_capacity(windows.len());
-    for window in windows {
-        let start = match known_beside(window, &known) {
-            _ if window.limit == 0 => {
-                read_windows.push((window.clone(), Vec::new()));
-                continue;
-            }
-            (Some(before), _) => Start::After(before),
-            (None, Some(after)) => Start::Before(after),
-            (None, None) => Start::Offset(window.offset),
-        };
-        let rows = match start {
-            Start::Offset(offset) => read(&order.everything(), window.limit, offset)?,
-            Start::After(key) => {
-                from_seeks(order.seeks(key, Side::After), window.limit, &mut read)?
-            }
-            Start::Before(key) => {
-                let mut rows = from_seeks(order.seeks(key, Side::Before), window.limit, &mut read)?;
-                rows.reverse();
-                rows
-            }
-        };
-        if let (Some((_, first)), Some((_, last))) = (rows.first(), rows.last()) {
-            let end = window.offset + rows.len() as u64 - 1;
-            for (place, key) in [(window.offset, first), (end, last)] {
-                known.insert(place, key.clone());
-                found.insert(place, key.clone());
-            }
-        }
-        read_windows.push((window.clone(), rows.into_iter().map(|(row, _)| row).collect()));
-    }
-    Ok(WindowsRead { windows: read_windows, found })
-}
-
-/// What a list whose length is known reads a window by offset with: its
-/// length, so a window nearer its end is read backwards from there, and how
-/// many rows apart the read notes the rows it passes on the way, so a later
-/// read of a window anywhere it passed starts within that many rows of it.
-#[derive(Debug, Clone, Copy)]
-pub struct Reach {
-    pub total: u64,
-    pub stride: u64,
-}
-
-/// Where a window's read starts: before the list's first row, after its
-/// last, or at a known row, by its place.
-#[derive(Clone, Copy)]
-enum From<'k> {
-    Top,
-    End,
-    After(u64, &'k OrderKey),
-    Before(u64, &'k OrderKey),
-}
-
-impl Reach {
-    /// The window `window` covers, clamped to the list's rows: its first
-    /// row's place and how many rows it holds. A window past the list's end,
-    /// as a list shrunk under it leaves, holds none, at the end.
-    fn clamped(&self, window: &LibraryPageWindow) -> (u64, u64) {
-        let offset = window.offset.min(self.total);
-        (offset, window.limit.min(self.total - offset))
-    }
-
-    /// The start of the read of `window` that passes the fewest rows before
-    /// reaching it, and how many it passes: the list's top or end, or the
-    /// nearest row `known` places before or after it.
-    fn nearest<'k>(&self, window: &LibraryPageWindow, known: &'k Places) -> (From<'k>, u64) {
-        let (offset, limit) = self.clamped(window);
-        let end = offset + limit;
-        let mut starts = vec![(From::Top, offset), (From::End, self.total - end)];
-        if let Some((&place, key)) = known.range(end..).next() {
-            starts.push((From::Before(place, key), place - end));
-        }
-        if let Some((&place, key)) = known.range(..offset).next_back() {
-            starts.push((From::After(place, key), offset - place - 1));
-        }
-        // The first of the nearest: a row beside the window before the
-        // list's ends, and a row before it before one after it.
-        starts.into_iter().rev().min_by_key(|(_, passed)| *passed).expect("a list has a top")
-    }
-
-    /// How many rows the read of `window` passes before reaching it.
-    pub fn rows_passed(&self, window: &LibraryPageWindow, known: &Places) -> u64 {
-        self.nearest(window, known).1
-    }
-}
-
-/// Read each of `windows`, in offset order, from whichever start passes the
-/// fewest rows before it: the list's top, its end (reading backwards), or the
-/// nearest row whose place `known` holds, with the rows between skipped. A
-/// read passing more than `reach.stride` rows steps that many at a time from
-/// its start, noting each row it steps to, which `found` returns with each
-/// window's first and last rows. `read` runs the list's statement under a
-/// seek for at most `limit` rows from `offset`, each with its key, and
-/// `count` counts the rows a seek reads, up to `cap`.
-pub fn read_windows_reaching<R, E>(
-    order: &ListOrder,
-    windows: &LibraryPageWindows,
-    mut known: Places,
-    reach: Reach,
-    mut read: impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-    mut count: impl FnMut(&Seek, u64) -> Result<u64, E>,
-) -> Result<WindowsRead<R>, E> {
-    let stride = reach.stride.max(1);
-    let mut found = Places::new();
-    let mut read_windows = Vec::with_capacity(windows.len());
-    for window in windows {
-        let (offset, limit) = reach.clamped(window);
-        if limit == 0 {
-            read_windows.push((window.clone(), Vec::new()));
-            continue;
-        }
-        let (start, mut passed) = reach.nearest(window, &known);
-        let mut noted = Vec::new();
-        let rows = match start {
-            From::Top | From::After(..) => {
-                let mut at = match start {
-                    From::After(place, key) => Some((place, key.clone())),
-                    From::Top | From::End | From::Before(..) => None,
-                };
-                while passed >= stride {
-                    let from = at.as_ref().map(|(_, key)| key);
-                    let Some((_, key)) =
-                        stepped(order, from, Side::After, stride - 1, 1, &mut read, &mut count)?
-                            .pop()
-                    else {
-                        break;
-                    };
-                    let place = at.as_ref().map_or(stride - 1, |(place, _)| place + stride);
-                    noted.push((place, key.clone()));
-                    at = Some((place, key));
-                    passed -= stride;
-                }
-                let from = at.as_ref().map(|(_, key)| key);
-                stepped(order, from, Side::After, passed, limit, &mut read, &mut count)?
-            }
-            From::End | From::Before(..) => {
-                let mut at = match start {
-                    From::Before(place, key) => Some((place, key.clone())),
-                    From::Top | From::End | From::After(..) => None,
-                };
-                while passed >= stride {
-                    let from = at.as_ref().map(|(_, key)| key);
-                    let Some((_, key)) =
-                        stepped(order, from, Side::Before, stride - 1, 1, &mut read, &mut count)?
-                            .pop()
-                    else {
-                        break;
-                    };
-                    let place = at.as_ref().map_or(reach.total, |(place, _)| *place) - stride;
-                    noted.push((place, key.clone()));
-                    at = Some((place, key));
-                    passed -= stride;
-                }
-                let from = at.as_ref().map(|(_, key)| key);
-                let mut rows =
-                    stepped(order, from, Side::Before, passed, limit, &mut read, &mut count)?;
-                rows.reverse();
-                rows
-            }
-        };
-        if let (Some((_, first)), Some((_, last))) = (rows.first(), rows.last()) {
-            noted.push((offset, first.clone()));
-            noted.push((offset + rows.len() as u64 - 1, last.clone()));
-        }
-        for (place, key) in noted {
-            known.insert(place, key.clone());
-            found.insert(place, key);
-        }
-        read_windows.push((window.clone(), rows.into_iter().map(|(row, _)| row).collect()));
-    }
-    Ok(WindowsRead { windows: read_windows, found })
-}
-
-/// Up to `limit` rows on `side` of the row at `from` (from the list's top or
-/// end, for `None`), nearest first, past the `skip` nearest: each seek on that
-/// side counted, up to the rows still to skip, until one holds the rows wanted.
-fn stepped<R, E>(
-    order: &ListOrder,
-    from: Option<&OrderKey>,
-    side: Side,
-    mut skip: u64,
-    limit: u64,
-    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
-    count: &mut impl FnMut(&Seek, u64) -> Result<u64, E>,
-) -> Result<Vec<Keyed<R>>, E> {
-    let Some(key) = from else {
-        let everything = Seek { reversed: side == Side::Before, ..order.everything() };
-        return read(&everything, limit, skip);
-    };
-    let mut rows = Vec::new();
-    for seek in order.seeks(key, side) {
-        let wanted = limit - rows.len() as u64;
-        if wanted == 0 {
-            break;
-        }
-        if skip > 0 {
-            let held = count(&seek, skip + 1)?;
-            if held <= skip {
-                skip -= held;
-                continue;
-            }
-        }
-        rows.extend(read(&seek, wanted, skip)?);
-        skip = 0;
-    }
-    Ok(rows)
+) -> Result<Vec<WindowRead<R>>, E> {
+    windows
+        .iter()
+        .map(|window| {
+            let rows = read_window(order, window, &mut read)?;
+            let first = rows.first().map(|(_, key)| key.clone());
+            let last = rows.last().map(|(_, key)| key.clone());
+            Ok(WindowRead {
+                window: window.clone(),
+                rows: rows.into_iter().map(|(row, _)| row).collect(),
+                first,
+                last,
+            })
+        })
+        .collect()
 }
 
 /// Up to `limit` rows from `seeks`, run in turn until they hold that many.

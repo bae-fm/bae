@@ -337,7 +337,7 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
         .unwrap();
     let request = |offset| ImportListRequest {
         list,
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 10 }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(offset, 10)]),
     };
     let mut query = tables.subscribe_import_list(request(0));
     query.next().await.unwrap().result.unwrap();
@@ -391,7 +391,7 @@ async fn a_scrolled_filtered_import_list_holds_what_a_jump_reads() {
         .unwrap();
     let request = |offset| ImportListRequest {
         list,
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 10 }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(offset, 10)]),
     };
     let total = tables.load_import_list(request(0)).await.unwrap().total_count;
     assert!(total > 100, "the filter keeps enough rows to scroll through, kept {total}");
@@ -440,7 +440,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
         .unwrap();
     let request = ImportListRequest {
         list,
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset: 0, limit: 10 }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(0, 10)]),
     };
     let mut query = tables.subscribe_import_list(request.clone());
     let counts =
@@ -471,9 +471,8 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
 }
 
 impl ImportTables {
-    /// Where the header of each item of `list`'s window at `window` sits,
-    /// read as a read with no earlier read's places reads it, and each
-    /// statement that read of the header positions ran, with its plan.
+    /// Where the header of each item of `list`'s window at `window` sits, and
+    /// each statement that read of the header positions ran, with its plan.
     async fn import_list_header_positions(
         &self,
         list: ImportListId,
@@ -482,17 +481,12 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
-                let listed = summary::listed(&sql, &row, &summary::counts(&sql)?, None)?;
-                let items = row.items(listed.shown(&window, &Places::new()));
-                let (keys, read) = items.window(&sql, &window, &Places::new(), listed.reach())?;
+                let listed = summary::listed(&sql, &row, &summary::counts(&sql)?)?;
+                let items = row.items(listed.shown(&window));
+                let order::WindowItems { keys, first, .. } = items.window(&sql, &window)?;
                 items.take_ran();
-                let positions = items.header_positions(
-                    &sql,
-                    window.offset,
-                    &keys,
-                    read.get(&window.offset),
-                    &mut HeaderPlaces::new(),
-                )?;
+                let positions =
+                    items.header_positions(&sql, window.offset, &keys, first.as_ref())?;
                 let ran = items
                     .take_ran()
                     .into_iter()
@@ -581,7 +575,7 @@ async fn a_list_counts_a_members_group_to_its_header() {
             lib.run(write).await;
             let items = sequence(&lib.read(list).await);
             let offset = items.iter().position(|item| item == first_member).unwrap();
-            let window = LibraryPageWindow { offset: offset as u64, limit: 3 };
+            let window = LibraryPageWindow::at(offset as u64, 3);
             let (positions, ran) = tables.import_list_header_positions(list, window).await;
             assert_eq!(positions, headers_in(&items)[offset..offset + 3], "{items:?}");
             assert!(!ran.is_empty(), "the header above the window is found by a read");

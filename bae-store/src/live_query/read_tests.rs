@@ -88,7 +88,7 @@ async fn a_read_for_a_replaced_id_is_passed_over() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_read_for_replaced_windows_is_delivered() {
     let windows = |offset| -> LibraryPageWindows {
-        [LibraryPageWindow { offset, limit: 10 }].into_iter().collect()
+        [LibraryPageWindow::at(offset, 10)].into_iter().collect()
     };
     let delivered =
         replaced_while_reading(LibraryPageWindows::new(), windows(0), windows(10)).await;

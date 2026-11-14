@@ -5,9 +5,7 @@
 //! folds and its selection are rows too, so changing any of them is a write,
 //! and the live query, which reads them with the placement, reruns on it. The
 //! windows a surface has loaded are the query's request, the one thing held
-//! here, with the rows each window last delivered: a value names only the
-//! windows whose rows differ, so a write that moves a count or a row off
-//! every window sends no rows. A write answers with the revision the read that reflects it carries,
+//! here, and every value carries each of them, read fresh. A write answers with the revision the read that reflects it carries,
 //! so a surface can wait for that read.
 //!
 //! Where the folder scans stand is not here: a scan moves its found count
@@ -15,15 +13,15 @@
 //! their own subscription and never resend the list.
 
 use super::{
-    ImportCandidateListLocation, ImportListId, ImportListItem, ImportListProjection,
-    ImportListRequest, ImportListSnapshot, ImportListView,
+    ImportCandidateListLocation, ImportListId, ImportListProjection, ImportListRequest,
+    ImportListSnapshot, ImportListView,
 };
 use crate::selection::{SelectedRows, SelectionChange};
 use crate::tables::{ImportListError, ImportTables, SelectionWrite};
 use crate::FolderReleaseDecisionKey;
 use bae_store::live_query::CancellableLiveQuery;
 use bae_store::DbError;
-use bae_store::{LibraryPageWindows, WindowsTold};
+use bae_store::LibraryPageWindows;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
@@ -64,7 +62,6 @@ pub struct LiveImportList {
     list: ImportListId,
     tables: ImportTables,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection, ImportListError>,
-    told: WindowsTold<ImportListItem>,
 }
 
 impl LiveImportList {
@@ -79,13 +76,12 @@ impl LiveImportList {
         windows: LibraryPageWindows,
     ) -> Result<Self, DbError> {
         let list = tables.open_import_list(view).await?;
-        let told = WindowsTold::new(windows.clone());
         let query = CancellableLiveQuery::new(
             tables.subscribe_import_list(ImportListRequest { list, windows }),
             closing,
             bugs,
         );
-        Ok(Self { list, tables, query, told })
+        Ok(Self { list, tables, query })
     }
 
     /// Show a different tab, filter or order. The windows are kept: the query
@@ -95,7 +91,6 @@ impl LiveImportList {
     }
 
     pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveImportListError> {
-        self.told.request(&windows);
         self.query.set(ImportListRequest { list: self.list, windows })?;
         Ok(())
     }
@@ -183,7 +178,7 @@ impl LiveImportList {
             selection_revision,
         } = projection;
         Ok(ImportListSnapshot {
-            windows: self.told.changed(windows),
+            windows,
             total_count,
             summary,
             pending_filter_entries,

@@ -41,27 +41,24 @@ async fn artists(db: &Store) -> Vec<(String, i64)> {
         .collect()
 }
 
-/// The grid's artist sections under `sort`, as its first delivery carries
-/// them.
+/// The grid's artist sections under `sort`, as their live query first
+/// delivers them.
 async fn sections_under(
     db: &Store,
     sort: &[AlbumSortCriterion],
 ) -> Vec<crate::LibraryBrowseSection> {
-    let mut live =
-        crate::LibraryViews::new(db.clone()).subscribe_album_browse(sort, true, BTreeSet::new());
-    live.next()
+    crate::LibraryViews::new(db.clone())
+        .subscribe_album_sections(sort)
+        .next()
         .await
         .expect("the query stays open")
-        .result
         .unwrap()
-        .sections
-        .expect("the first delivery carries the sections")
 }
 
 /// The grid grouped by artist: each section's artist, its first row and its
 /// length, and the album ids of the rows in order.
 async fn grouped(db: &Store) -> (Vec<(String, u64, u64)>, Vec<String>) {
-    let windows = [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect::<BTreeSet<_>>();
+    let windows = [LibraryPageWindow::at(0, 50)].into_iter().collect::<BTreeSet<_>>();
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, windows);
     let shown = live.next().await.expect("the query stays open").result.unwrap();
     (
@@ -227,45 +224,33 @@ async fn grouped_library() -> (Store, tempfile::TempDir) {
 }
 
 /// The grid grouped by artist and sorted by title: the albums' titles in
-/// order, and the version of the album-artist links the order reads.
-async fn grouped_by_title(db: &Store) -> (Vec<String>, Vec<i64>) {
+/// order.
+async fn grouped_by_title(db: &Store) -> Vec<String> {
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
     let shown = LibraryViews::new(db.clone())
-        .subscribe_album_browse(&sort, true, [LibraryPageWindow { offset: 0, limit: 20 }].into())
+        .subscribe_album_browse(&sort, true, [LibraryPageWindow::at(0, 20)].into())
         .next()
         .await
         .expect("the query stays open")
         .result
         .unwrap();
-    let version = db
-        .read(|sql| {
-            Ok(bae_store::list_windows::list_versions_on(
-                &sql,
-                crate::versions::TABLE,
-                &["album_artist_link"],
-            )?)
-        })
-        .await
-        .unwrap();
-    (shown.windows[0].rows.iter().map(|row| row.album.title.clone()).collect(), version)
+    shown.windows[0].rows.iter().map(|row| row.album.title.clone()).collect()
 }
 
 /// Renaming an album moves it among its artist's albums in the grid grouped
-/// by artist, and moves the version of the links that order reads, so no
-/// later read starts a window from where a row sat before the rename.
+/// by artist.
 #[tokio::test]
 async fn a_renamed_album_moves_among_its_artists_albums() {
     let (db, _dir) = grouped_library().await;
-    let (titles, version) = grouped_by_title(&db).await;
+    let titles = grouped_by_title(&db).await;
     // The third artist sorts first, then B and A, which share a sort name,
     // by id.
     assert_eq!(titles, ["Album E", "Album B", "Album D", "Album A", "Album C"]);
 
     test_records(&db).rename_album_for_test(&grouped_album(0), "Album Z").await.unwrap();
-    let (renamed, renamed_version) = grouped_by_title(&db).await;
+    let renamed = grouped_by_title(&db).await;
     assert_eq!(renamed, ["Album E", "Album B", "Album D", "Album C", "Album Z"]);
-    assert_ne!(renamed_version, version);
 }
 
 #[tokio::test]
@@ -282,7 +267,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
             &sort,
             true,
-            [LibraryPageWindow { offset: 2, limit: 1 }].into(),
+            [LibraryPageWindow::at(2, 1)].into(),
         );
         let value = browse.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(value.windows[0].rows.len(), 1);
@@ -313,41 +298,34 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
     }
 }
 
-/// Moving the grid to other windows delivers its rows and no sections, and
-/// runs the sections query zero times; a write that changes an artist
-/// delivers the new sections with the rows they fit, in one value.
+/// Moving the grid to other windows delivers its rows; a write that changes
+/// an artist delivers the new sections from their own query, and the grid's
+/// rows with their counts from its own.
 #[tokio::test]
-async fn moving_the_grids_windows_runs_the_artist_sections_query_zero_times() {
+async fn the_artist_sections_are_their_own_live_query() {
     let (db, _dir) = grouped_library().await;
-    let mut browse =
-        LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
+    let views = LibraryViews::new(db.clone());
+    let mut browse = views.subscribe_album_browse(&[], true, BTreeSet::new());
+    let mut sections = views.subscribe_album_sections(&[]);
     let requests = browse.requests();
-    let first = browse.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(first.sections.expect("the first delivery carries them").len(), 3);
+    browse.next().await.expect("the query stays open").result.unwrap();
+    let first = sections.next().await.expect("the query stays open").unwrap();
+    assert_eq!(first.len(), 3);
 
     for offset in [2, 0, 4] {
-        requests.set([LibraryPageWindow { offset, limit: 1 }].into()).unwrap();
+        requests.set([LibraryPageWindow::at(offset, 1)].into()).unwrap();
         let moved = browse.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(moved.windows[0].window.offset, offset);
-        assert_eq!(moved.sections, None, "a window change delivers no artist");
     }
 
     delete_release(&test_records(&db), &grouped_release(4)).await;
-    let changed = tokio::time::timeout(HANG_GUARD, browse.next())
+    let changed = tokio::time::timeout(HANG_GUARD, sections.next())
         .await
-        .expect("deleting an artist's last release wakes the grid")
+        .expect("deleting an artist's last release wakes the sections")
         .expect("the query stays open")
-        .result
         .unwrap();
-    let sections = changed.sections.expect("the sections changed, so this delivery carries them");
-    assert_eq!(sections.len(), 2);
-    assert_eq!(changed.total_count, 4);
-    assert_eq!(changed.row_count, 4);
-    assert_eq!(
-        sections.iter().map(|section| section.window.limit).sum::<u64>(),
-        changed.row_count,
-        "the sections fit the rows delivered with them"
-    );
+    assert_eq!(changed.len(), 2);
+    assert_eq!(changed.iter().map(|section| section.window.limit).sum::<u64>(), 4);
 }
 
 /// The MusicBrainz artist whose library artist is the renames test's third.
@@ -366,10 +344,9 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
             field: AlbumSortField::Artist,
             direction: SortDirection::Ascending,
         }];
-        let mut browse =
-            LibraryViews::new(db.clone()).subscribe_album_browse(&sort, true, BTreeSet::new());
-        let initial = browse.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(initial.sections.expect("the first delivery carries them")[0].id, third);
+        let mut sections = LibraryViews::new(db.clone()).subscribe_album_sections(&sort);
+        let initial = sections.next().await.expect("the query stays open").unwrap();
+        assert_eq!(initial[0].id, third);
 
         meet_musicbrainz_artist(
             &test_records(devices.b()),
@@ -380,30 +357,20 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
         .await;
         devices.resume().await;
         let renamed = loop {
-            let shown = tokio::time::timeout(HANG_GUARD, browse.next())
+            let shown = tokio::time::timeout(HANG_GUARD, sections.next())
                 .await
                 .expect("the other device's name reaches the sections")
                 .expect("the query stays open")
-                .result
                 .unwrap();
-            if let Some(sections) = shown.sections {
-                if sections.iter().any(|section| section.title == "Renamed Artist") {
-                    break sections;
-                }
+            if shown.iter().any(|section| section.title == "Renamed Artist") {
+                break shown;
             }
         };
         assert_eq!(renamed[2].title, "Renamed Artist");
         assert_eq!(renamed[2].window.offset, 4);
 
         delete_release(&test_records(db), &grouped_release(4)).await;
-        let removed = browse
-            .next()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap()
-            .sections
-            .expect("removing an artist's last album delivers the sections");
+        let removed = sections.next().await.expect("the query stays open").unwrap();
         assert_eq!(removed.len(), 2);
         assert!(!removed.iter().any(|section| section.id == third));
     });
@@ -421,7 +388,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
         &sort,
         true,
-        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+        [LibraryPageWindow::at(0, 20)].into(),
     );
     let value = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(value.total_count, 5);
@@ -446,7 +413,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let mut flat = LibraryViews::new(db.clone()).subscribe_album_browse(
         &sort,
         false,
-        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+        [LibraryPageWindow::at(0, 20)].into(),
     );
     let flat = flat.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(flat.row_count, 5);
@@ -476,7 +443,7 @@ fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
             &[],
             true,
-            [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+            [LibraryPageWindow::at(0, 20)].into(),
         );
         let initial = browse.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(initial.row_count, 6);
@@ -550,7 +517,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         .credit_album_for_test(&grouped_album(0), &[ARTIST_A, ARTIST_B])
         .await
         .unwrap();
-    let windows = [LibraryPageWindow { offset: 0, limit: 20 }];
+    let windows = [LibraryPageWindow::at(0, 20)];
     let grouped = LibraryViews::new(db.clone())
         .subscribe_album_browse(&[], true, windows.clone().into())
         .next()
@@ -600,10 +567,8 @@ async fn a_grouped_row_names_the_albums_other_credits() {
 async fn an_artist_section_carries_the_artists_picture() {
     let (db, _dir) = grouped_library().await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let mut browse =
-        LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
-    let initial = browse.next().await.expect("the query stays open").result.unwrap();
-    let initial = initial.sections.expect("the first delivery carries them");
+    let mut sections = LibraryViews::new(db.clone()).subscribe_album_sections(&[]);
+    let initial = sections.next().await.expect("the query stays open").unwrap();
     assert!(initial.iter().all(|section| section.image.is_none()));
     let version = bae_records::test_fixtures::live_query::write_artist_image(
         &records,
@@ -611,14 +576,7 @@ async fn an_artist_section_carries_the_artists_picture() {
         "artist image bytes",
     )
     .await;
-    let pictured = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap()
-        .sections
-        .expect("a new picture delivers the sections");
+    let pictured = sections.next().await.expect("the query stays open").unwrap();
     let images = pictured
         .iter()
         .map(|section| {
@@ -728,7 +686,7 @@ async fn read_albums(
 #[tokio::test]
 async fn a_scrolled_album_list_holds_its_offsets_rows_across_a_write() {
     let (db, _tmp) = library().await;
-    let window = |offset| LibraryPageWindow { offset, limit: 50 };
+    let window = |offset| LibraryPageWindow::at(offset, 50);
     let mut query = crate::LibraryViews::new(db.clone()).subscribe_album_browse(
         &[],
         false,

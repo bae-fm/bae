@@ -68,7 +68,7 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_records::DbArti
             .to_lowercase()
     };
     let query = bae_views::LibrarySearchQuery::parse("rtist").expect("not blank");
-    let window = bae_store::LibraryPageWindow { offset: 0, limit: 100 };
+    let window = bae_store::LibraryPageWindow::at(0, 100);
     bae_views::LibraryViews::new(f.library.store().clone())
         .search_artists(&query, window)
         .await

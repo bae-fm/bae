@@ -159,7 +159,7 @@ impl DecisionFixture {
                 })
                 .await
                 .unwrap(),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
         });
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {

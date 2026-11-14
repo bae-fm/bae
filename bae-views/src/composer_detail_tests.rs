@@ -166,7 +166,7 @@ async fn each_part_of_the_page_opens_its_heading() {
     write_page(&db).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
-        [bae_store::LibraryPageWindow { offset: 0, limit: 100 }].into_iter().collect(),
+        [bae_store::LibraryPageWindow::at(0, 100)].into_iter().collect(),
     );
     let event = live.next().await.expect("the query stays open");
     let snapshot = crate::composer_detail::resolve_composer_detail_rows(
@@ -267,7 +267,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
     write_page(&db).await;
     let mut live = LibraryViews::new(db.clone()).subscribe_composer_detail_rows(
         COMPOSER,
-        [bae_store::LibraryPageWindow { offset: 8, limit: 4 }].into_iter().collect(),
+        [bae_store::LibraryPageWindow::at(8, 4)].into_iter().collect(),
     );
     let first = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.total_count, 12);

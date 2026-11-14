@@ -31,8 +31,7 @@ impl LibraryViews {
     }
 
     /// Follow the artist list under `sort` in the windows its request
-    /// names, each read from the row beside it when one is known
-    /// (`list_windows`).
+    /// names, each read from its cursor when it has one (`list_windows`).
     pub fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
@@ -43,20 +42,13 @@ impl LibraryViews {
         bae_store::DbError,
     > {
         let order = artist_order(sort);
-        let places = KnownPlaces::new();
         self.store.subscribe_reconfigurable(initial_windows, move |requested, sql| {
-            let versions = list_versions_on(&sql, crate::versions::TABLE, &["artist_listing"])?;
             let total_count = artist_count_on(&sql)?;
-            let WindowsRead { windows, found } =
-                read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
-                    artist_rows_on(&sql, &order, seek, limit, offset)
-                })?;
-            places.keep(versions, found);
+            let windows = read_windows(&order, requested, |seek, limit, offset| {
+                artist_rows_on(&sql, &order, seek, limit, offset)
+            })?;
             Ok(ArtistBrowseProjection {
-                windows: windows
-                    .into_iter()
-                    .map(|(window, rows)| bae_store::LibraryBrowseWindow { window, rows })
-                    .collect(),
+                windows: windows.into_iter().map(WindowRead::into_browse).collect(),
                 total_count,
             })
         })
@@ -116,14 +108,7 @@ pub fn resolve_artist_browse(
     cause: coven::LiveQueryCause,
 ) -> crate::LibraryBrowseSnapshot<DbArtistSummary> {
     crate::LibraryBrowseSnapshot {
-        windows: projection
-            .windows
-            .into_iter()
-            .map(|window| bae_store::LibraryBrowseWindow {
-                window: window.window,
-                rows: window.rows,
-            })
-            .collect(),
+        windows: projection.windows,
         total_count: projection.total_count,
         request_revision,
         cause,

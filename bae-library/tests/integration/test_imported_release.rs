@@ -474,7 +474,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
     let mut search = bae_views::LibraryViews::new(fixture.library.store().clone())
         .subscribe_artist_search(bae_views::ArtistSearchView {
             query: bae_views::LibrarySearchQuery::parse("Track Artist"),
-            windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+            windows: [bae_store::LibraryPageWindow::at(0, 50)].into(),
         });
     let found = search.next().await.expect("the artist search stays open").result.unwrap();
     let result = bae_views::artist_search::resolve_artist_search(found, 0)

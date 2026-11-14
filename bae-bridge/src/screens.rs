@@ -56,11 +56,6 @@ live_query_read!(
     over [Request: Send + Sync + 'static, Value: Send + 'static]
 );
 
-live_query_read!(
-    bae_views::LiveLibraryBrowse<Snapshot> => Snapshot,
-    over [Snapshot: bae_views::WindowedSnapshot]
-);
-
 #[cfg(desktop)]
 live_query_read!(
     bae_app::live_reads::LiveImportCandidate
@@ -163,6 +158,12 @@ macro_rules! browse_window {
         pub struct $window {
             pub window: crate::types::BridgeLibraryPageWindow,
             pub rows: Vec<$bridge_row>,
+            /// The sort values of the window's first row and of its last,
+            /// which the screen sends back as the cursor of the window
+            /// beside it; none for a window of no rows or a list that pages
+            /// by offset alone.
+            pub first: Option<Vec<crate::types::BridgeSortValue>>,
+            pub last: Option<Vec<crate::types::BridgeSortValue>>,
         }
 
         impl $window {
@@ -170,6 +171,8 @@ macro_rules! browse_window {
                 Self {
                     window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
                     rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
+                    first: window.first.as_ref().map(crate::types::BridgeSortValue::of_key),
+                    last: window.last.as_ref().map(crate::types::BridgeSortValue::of_key),
                 }
             }
         }
@@ -411,6 +414,20 @@ pulled_read! {
         profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
     },
     built by profiles
+}
+
+pulled_read! {
+    /// The artist sections of the album grid grouped by artist: each artist's
+    /// heading and where its albums start in the grid's rows.
+    AlbumSectionsSubscription:
+        LiveValues<Vec<bae_views::LibraryBrowseSection>> => Vec<crate::types::BridgeLibraryBrowseSection>,
+    converted by |sections: Vec<bae_views::LibraryBrowseSection>| {
+        sections
+            .into_iter()
+            .map(crate::types::BridgeLibraryBrowseSection::from_core)
+            .collect::<Vec<_>>()
+    },
+    built by album_sections
 }
 
 pulled_read! {

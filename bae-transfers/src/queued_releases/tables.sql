@@ -1,16 +1,3 @@
--- How many times each transfer queue's rows have moved: an entry added,
--- removed or moved to another place. Triggers on each queue advance its
--- version in the write that moves its entries. A read of a queue starts a
--- window from an entry an earlier read found only while its version stands
--- where it stood for that read (§9.2).
-CREATE TABLE IF NOT EXISTS release_queue_versions (
-    source  TEXT PRIMARY KEY CHECK (source IN ('download_queue', 'output_queue')),
-    version INTEGER NOT NULL
-) STRICT;
-
-INSERT OR IGNORE INTO release_queue_versions (source, version) VALUES
-    ('download_queue', 0), ('output_queue', 0);
-
 -- The queues this device works through one release at a time: downloads to
 -- keep releases offline or to make them local, and exports and saves. Whether each is paused. Never
 -- synced. The download queue and its pause are kept across restarts; the
@@ -42,16 +29,6 @@ CREATE TABLE IF NOT EXISTS download_queue (
 ) STRICT;
 CREATE UNIQUE INDEX IF NOT EXISTS download_queue_active
     ON download_queue (state) WHERE state = 'active';
-
-CREATE TRIGGER IF NOT EXISTS download_queue_order_added AFTER INSERT ON download_queue
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';
-END;
-
-CREATE TRIGGER IF NOT EXISTS download_queue_order_removed AFTER DELETE ON download_queue
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'download_queue';
-END;
 
 -- The releases the download queue has held of each kind since that kind last
 -- had none waiting or downloading: what the Activity panel's Pinning and
@@ -142,12 +119,3 @@ CREATE TABLE IF NOT EXISTS output_queue (
 CREATE UNIQUE INDEX IF NOT EXISTS output_queue_active
     ON output_queue (state) WHERE state = 'active';
 
-CREATE TRIGGER IF NOT EXISTS output_queue_order_added AFTER INSERT ON output_queue
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'output_queue';
-END;
-
-CREATE TRIGGER IF NOT EXISTS output_queue_order_removed AFTER DELETE ON output_queue
-BEGIN
-    UPDATE release_queue_versions SET version = version + 1 WHERE source = 'output_queue';
-END;

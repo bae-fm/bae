@@ -117,7 +117,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let mut browse = views(manager).subscribe_album_browse(
         &[],
         false,
-        [bae_store::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_store::LibraryPageWindow::at(0, 10)].into(),
     );
     let listed = |browse: &bae_views::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()

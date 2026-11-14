@@ -282,6 +282,16 @@ impl AppServices {
         })
     }
 
+    /// The artist sections of the album grid grouped by artist under `sort`:
+    /// every artist's heading and where its albums start, the first value at
+    /// once and another each time what they read changes.
+    pub fn subscribe_album_sections(
+        &self,
+        sort: &[bae_views::AlbumSortCriterion],
+    ) -> bae_store::live_query::LiveValues<Vec<bae_views::LibraryBrowseSection>> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_album_sections(sort))
+    }
+
     /// Which of the albums the grid has selected are gone from the library,
     /// as one live query whose ids move in place as the selection changes; it
     /// starts with none.

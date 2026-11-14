@@ -66,6 +66,9 @@ async fn next_album_page_is_only_a_rename(
         .unwrap();
     let mut expected = shown;
     expected.windows[0].rows[0].album.title = title.to_string();
+    // The title is a term of the order, so the row's sort values moved with it.
+    expected.windows[0].first = renamed.windows[0].first.clone();
+    expected.windows[0].last = renamed.windows[0].last.clone();
     assert_eq!(renamed, expected, "the page carries more than the rename");
     renamed
 }
@@ -150,8 +153,8 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(inserted.total_count, 2);
     assert!(inserted.windows.is_empty());
 
-    let first_window = LibraryPageWindow { offset: 0, limit: 1 };
-    let second_window = LibraryPageWindow { offset: 1, limit: 1 };
+    let first_window = LibraryPageWindow::at(0, 1);
+    let second_window = LibraryPageWindow::at(1, 1);
     let requested =
         [first_window.clone(), second_window.clone()].into_iter().collect::<BTreeSet<_>>();
     let pages_revision = requests.set(requested.clone()).unwrap();
@@ -211,8 +214,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
             .await;
 
     records.set_release_name_for_test(OTHER_RELEASE_ID, "Unread Release Name").await.unwrap();
-    let second_and_beyond =
-        [LibraryPageWindow { offset: 1, limit: 2 }].into_iter().collect::<BTreeSet<_>>();
+    let second_and_beyond = [LibraryPageWindow::at(1, 2)].into_iter().collect::<BTreeSet<_>>();
     let shown_again =
         next_run_is_only_the_request(&mut live, second_and_beyond).await.result.unwrap();
     assert_eq!(shown_again.windows[0].rows, shown.windows[0].rows);
@@ -224,8 +226,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     // Only the requested rows' covers are read, so a cover on the album
     // outside the window changes nothing the browse delivers.
     next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
-    let other_album_page =
-        [LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect::<BTreeSet<_>>();
+    let other_album_page = [LibraryPageWindow::at(0, 1)].into_iter().collect::<BTreeSet<_>>();
     requests.set(other_album_page).unwrap();
     let covered = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(covered.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
@@ -251,9 +252,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         Some(replaced_other_cover.as_str())
     );
 
-    requests
-        .set([LibraryPageWindow { offset: 1, limit: 1 }].into_iter().collect::<BTreeSet<_>>())
-        .unwrap();
+    requests.set([LibraryPageWindow::at(1, 1)].into_iter().collect::<BTreeSet<_>>()).unwrap();
     live.next().await.expect("the query stays open").result.unwrap();
     delete_release(&records, OTHER_RELEASE_ID).await;
     let deleted = live.next().await.expect("the query stays open").result.unwrap();
@@ -309,7 +308,7 @@ async fn album_browse_ignores_an_unread_table() {
         .await
         .unwrap();
 
-    let window = LibraryPageWindow { offset: 0, limit: 49 };
+    let window = LibraryPageWindow::at(0, 49);
     let moved = next_run_is_only_the_request(&mut live, [window].into_iter().collect())
         .await
         .result

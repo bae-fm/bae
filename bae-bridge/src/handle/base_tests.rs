@@ -34,7 +34,11 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     );
     let subscription = handle.handle().subscribe_album_browse(Vec::new(), false);
     subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 10 }])
+        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
+            offset: 0,
+            limit: 10,
+            cursor: None,
+        }])
         .expect("request the grid's window");
     let titles = |rows: &[crate::types::BridgeAlbumAppearance]| -> Vec<String> {
         rows.iter().map(|row| row.album.title.clone()).collect()

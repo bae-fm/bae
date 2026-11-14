@@ -566,7 +566,7 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_printed_name() {
         },
         filter: StorageFilter::All,
         search: "album 1".to_string(),
-        windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 5 }]),
+        windows: LibraryPageWindows::from([LibraryPageWindow::at(offset, 5)]),
         selected: Default::default(),
     };
     let fresh = |offset| {

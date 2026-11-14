@@ -17,7 +17,7 @@ fn artist_search_answers_each_view_on_one_subscription() {
     assert_eq!(idle.total_count, 0);
     assert!(idle.windows.is_empty());
 
-    let window = crate::types::BridgeLibraryPageWindow { offset: 0, limit: 50 };
+    let window = crate::types::BridgeLibraryPageWindow { offset: 0, limit: 50, cursor: None };
     let revision = subscription
         .set_view("  Placeholder Query  ".to_string(), vec![window.clone()])
         .expect("set the search view");

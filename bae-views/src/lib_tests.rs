@@ -259,6 +259,45 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
     assert_eq!(rows[1].album.artist_line.plain_text(), "Artist Name First, Artist Name Second");
 }
 
+/// An artist window read from a cursor holds the rows after the cursor's row,
+/// the rows reading it by offset holds, and each statement a cursor window
+/// can run searches the order's index and sorts nothing.
+#[tokio::test]
+async fn an_artist_window_from_a_cursor_holds_the_rows_after_it_through_the_index() {
+    let (db, _tmp) = library().await;
+    let sort = Vec::new();
+    let order = crate::artist::artist_order(&sort);
+    let views = LibraryViews::new(db.clone());
+    let mut live = views.subscribe_artist_browse(&sort, [LibraryPageWindow::at(100, 50)].into());
+    let held = live.next().await.expect("the query stays open").result.unwrap();
+    let last = held.windows[0].last.clone().expect("a window of rows has a last row");
+    live.requests()
+        .set(
+            [LibraryPageWindow::from_cursor(
+                150,
+                50,
+                bae_store::list_windows::Cursor::After(last.clone()),
+            )]
+            .into(),
+        )
+        .unwrap();
+    let next = live.next().await.expect("the query stays open").result.unwrap();
+    let by_offset = views.get_artist_page(&sort, 150, 50).await.unwrap();
+    let ids =
+        |rows: &[DbArtistSummary]| rows.iter().map(|row| row.artist.id.clone()).collect::<Vec<_>>();
+    assert_eq!(next.windows[0].rows.len(), 50);
+    assert_eq!(ids(&next.windows[0].rows), ids(&by_offset));
+    assert_seeks_search(
+        &db,
+        "artists after a cursor",
+        &order,
+        last,
+        |seek| crate::listing_window_query(crate::artist::artist_listing_query, &order, seek),
+        Vec::new(),
+    )
+    .await;
+}
+
 #[tokio::test]
 async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
     let (db, _tmp) = library().await;

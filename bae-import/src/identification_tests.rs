@@ -800,7 +800,7 @@ pub(crate) async fn list_subscription(
 }
 
 pub(crate) fn page_window(offset: u64, limit: u64) -> bae_store::LibraryPageWindows {
-    std::iter::once(bae_store::LibraryPageWindow { offset, limit }).collect()
+    std::iter::once(bae_store::LibraryPageWindow::at(offset, limit)).collect()
 }
 
 /// The list's next snapshot.

@@ -40,10 +40,7 @@ pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, 
 /// rows show them.
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
-    let all = bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow {
-        offset: 0,
-        limit: u64::MAX,
-    }]);
+    let all = bae_store::LibraryPageWindows::from([bae_store::LibraryPageWindow::at(0, u64::MAX)]);
     let read = store.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
     Ok(read.windows.into_iter().flat_map(|window| window.rows).collect())
 }
@@ -238,7 +235,7 @@ fn queue_upcoming_on(
                     ],
                 )?,
             };
-            Ok(bae_store::LibraryBrowseWindow { window: window.clone(), rows: items })
+            Ok(bae_store::LibraryBrowseWindow::unkeyed(window.clone(), items))
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {

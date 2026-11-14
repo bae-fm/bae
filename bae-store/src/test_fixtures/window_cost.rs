@@ -1,9 +1,10 @@
 //! How what one window of a paged list costs to read is measured: at each
 //! size, the window at the top, the middle and the end, reached by a jump,
-//! which reads it by its offset, and by scrolling, which reads it from the
-//! row beside it (`list_windows`), each read the median of several runs.
+//! which reads it by its offset, and by scrolling, which reads it from a
+//! cursor at the row beside it (`list_windows`), each read the median of
+//! several runs.
 
-use crate::list_windows::{read_windows, Keyed, ListOrder, Places, Seek};
+use crate::list_windows::{read_windows, Cursor, Keyed, ListOrder, Seek};
 use crate::{DbError, SortDirection, Store};
 use coven::SqlReadContext;
 use std::time::{Duration, Instant};
@@ -93,8 +94,6 @@ pub async fn measure<R: Send + 'static>(
 ) {
     let order = std::sync::Arc::new(order);
     for (at, offset) in offsets(n) {
-        let window =
-            crate::LibraryPageWindows::from([crate::LibraryPageWindow { offset, limit: LIMIT }]);
         // The row beside the window: after it at the top, before it below.
         let beside = if offset == 0 { offset + LIMIT } else { offset - 1 };
         let key = {
@@ -108,15 +107,18 @@ pub async fn measure<R: Send + 'static>(
             .await
             .unwrap()
         };
-        for (reach, known) in
-            [("jump", Places::new()), ("scroll", Places::from([(beside, key.clone())]))]
-        {
-            let (order, window, rows) = (order.clone(), window.clone(), rows.clone());
+        let cursor = if offset == 0 { Cursor::Before(key) } else { Cursor::After(key) };
+        for (reach, window) in [
+            ("jump", crate::LibraryPageWindow::at(offset, LIMIT)),
+            ("scroll", crate::LibraryPageWindow::from_cursor(offset, LIMIT, cursor)),
+        ] {
+            let (order, rows) = (order.clone(), rows.clone());
+            let windows = crate::LibraryPageWindows::from([window]);
             let timing = median(db, move |sql| {
-                let read = read_windows(&order, &window, known.clone(), |seek, limit, at| {
+                let read = read_windows(&order, &windows, |seek, limit, at| {
                     rows(sql, &order, seek, limit, at)
                 })?;
-                Ok(read.windows[0].1.len())
+                Ok(read[0].rows.len())
             })
             .await;
             report(list, name, reach, at, offset, n, timing);

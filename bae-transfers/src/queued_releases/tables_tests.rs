@@ -405,8 +405,8 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
     let mut live =
         crate::Downloads::new(db.clone()).subscribe_windows(bae_store::LibraryPageWindows::from([
-            bae_store::LibraryPageWindow { offset: 1, limit: 2 },
-            bae_store::LibraryPageWindow { offset: 9, limit: 2 },
+            bae_store::LibraryPageWindow::at(1, 2),
+            bae_store::LibraryPageWindow::at(9, 2),
         ]));
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.total_count, 5);

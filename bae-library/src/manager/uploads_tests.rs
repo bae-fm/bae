@@ -224,7 +224,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         },
         filter: bae_views::StorageFilter::All,
         search: String::new(),
-        windows: [bae_store::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_store::LibraryPageWindow::at(0, 50)].into_iter().collect(),
         selected: Default::default(),
     });
     let (started, created) = tokio::sync::oneshot::channel();
