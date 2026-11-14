@@ -258,12 +258,9 @@ async fn a_settled_ledger_with_a_lookup_under_way_is_a_bug() {
     assert!(bug.contains("a lookup under way"), "{bug}");
 }
 
-/// A cell's list is laid out with the ledger's write: the MusicBrainz and the
-/// Discogs release a lookup found that print one barcode are one row under
-/// one card, the MusicBrainz record leading, the card names its title and
-/// label once, and the row lists what its records state.
-#[tokio::test]
-async fn ledger_cell_cards_are_stored_with_the_ledger() {
+/// A found verdict whose barcode lookup found a MusicBrainz and a Discogs
+/// release that print one barcode, and one that prints another.
+fn paired_cell_verdict() -> TerminalVerdict {
     use bae_identify::{
         BarcodeStepView, CatalogStepView, IsrcStepView, ProviderCell, SearchStepView,
         SignalValueRow,
@@ -283,7 +280,7 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
     };
     let found =
         LookupView::answered(&vec![discogs.clone(), elsewhere.clone(), musicbrainz.clone()]);
-    let verdict = TerminalVerdict::Found {
+    TerminalVerdict::Found {
         findings: Findings {
             matches: vec![musicbrainz.clone(), discogs.clone()],
             pressings: vec![0, 0],
@@ -305,9 +302,16 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
             isrc: IsrcStepView::Absent,
             search: SearchStepView::NoTitle,
         }),
-    };
+    }
+}
 
-    let (db, hash, _tmp) = stored_verdict(&verdict).await;
+/// A cell's list is laid out with the ledger's write: the MusicBrainz and the
+/// Discogs release a lookup found that print one barcode are one row under
+/// one card, the MusicBrainz record leading, the card names its title and
+/// label once, and the row lists what its records state.
+#[tokio::test]
+async fn ledger_cell_cards_are_stored_with_the_ledger() {
+    let (db, hash, _tmp) = stored_verdict(&paired_cell_verdict()).await;
     let (placed, text, statements): (Vec<String>, Vec<String>, Vec<String>) = db
         .read(move |sql| {
             let query = |statement: &str| {
@@ -348,4 +352,24 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
             && statements.contains(&"0 catalog_number 0 1 CAT 2 [\"discogs\"]".to_string()),
         "{statements:?}"
     );
+}
+
+/// A cell reads back the cards the rules made of what it found: one statement
+/// over the stored layout answers the cards, their rows and each row's
+/// records, and it is the cell the run recorded.
+#[tokio::test]
+async fn ledger_cell_cards_read_back_as_the_rules_made_them() {
+    let verdict = paired_cell_verdict();
+
+    let (read, _listings) = stored_and_read(&verdict).await;
+
+    assert_eq!(read, verdict);
+    let BarcodeStepView::Rows { rows, .. } = &read.ledger().expect("a ledger").barcode else {
+        panic!("the barcode step read rows");
+    };
+    let LookupView::Found { count, groups } = &rows[0].cells[0].lookup else {
+        panic!("the lookup found releases");
+    };
+    assert_eq!(*count, 2, "the paired releases are one row and the other release is one");
+    assert_eq!(groups.len(), 2);
 }

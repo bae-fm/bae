@@ -13,6 +13,7 @@
 
 pub(super) const SQL: &str = include_str!("ledger_rows.sql");
 
+use super::cards_read::{cell_cards_sql, groups_from, StoredCard};
 use super::layout::{store_list_text, ListLayout, ListOwner};
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::Owner;
@@ -360,8 +361,11 @@ fn column(index: usize) -> Result<i64, DbError> {
 /// the step columns, and the ledger's lists riding on them as JSON arrays —
 /// the providers, the ISRCs and the offered catalog numbers in order, and
 /// the rows in order, each with its lookups in cell order and each lookup
-/// with the match positions of the releases it found in its order.
-pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_step, \
+/// with the match positions of the releases it found in its order, how many
+/// pressings they are and the cards they make.
+pub(super) fn ledger_columns() -> String {
+    format!(
+    "verdict.disc_id_step AS ledger_disc_id_step, \
      verdict.barcode_step AS ledger_barcode_step, \
      verdict.catalog_step AS ledger_catalog_step, verdict.isrc_step AS ledger_isrc_step, \
      verdict.search_step AS ledger_search_step, verdict.search_album AS ledger_search_album, \
@@ -388,7 +392,14 @@ pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_
                                 WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
                                   AND found.step = lookup.step \
                                   AND found.position = lookup.position \
-                                  AND found.cell = lookup.cell))) \
+                                  AND found.cell = lookup.cell)), \
+              'count', (SELECT COUNT(DISTINCT found.pressing) \
+                        FROM import_candidate_lookup_release AS found \
+                        WHERE found.content_hash IS lookup.content_hash AND found.identify_run IS lookup.identify_run \
+                          AND found.step = lookup.step \
+                          AND found.position = lookup.position \
+                          AND found.cell = lookup.cell), \
+              'cards', json({cards})) \
               ORDER BY lookup.cell) \
               FROM import_candidate_lookup AS lookup \
               WHERE lookup.content_hash IS ledger_row.content_hash AND lookup.identify_run IS ledger_row.identify_run \
@@ -396,9 +407,12 @@ pub(super) const LEDGER_COLUMNS: &str = "verdict.disc_id_step AS ledger_disc_id_
                 AND lookup.position = ledger_row.position))) \
           ORDER BY ledger_row.step, ledger_row.position) \
       FROM import_candidate_lookup_value AS ledger_row \
-      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run) AS ledger_rows";
+      WHERE ledger_row.content_hash IS verdict.content_hash AND ledger_row.identify_run IS verdict.identify_run) AS ledger_rows",
+    cards = cell_cards_sql("lookup"),
+    )
+}
 
-/// One verdict's [`LEDGER_COLUMNS`] as SQLite hands them over, its lists
+/// One verdict's [`ledger_columns`] as SQLite hands them over, its lists
 /// still JSON.
 pub(super) struct StoredLedger {
     disc_id: Option<String>,
@@ -430,7 +444,7 @@ pub(super) fn read_ledger(row: &Row<'_>) -> rusqlite::Result<StoredLedger> {
     })
 }
 
-/// One ledger row as [`LEDGER_COLUMNS`] holds it.
+/// One ledger row as [`ledger_columns`] holds it.
 #[derive(serde::Deserialize)]
 struct StoredRow {
     step: String,
@@ -439,7 +453,7 @@ struct StoredRow {
     cells: Vec<StoredLookup>,
 }
 
-/// One lookup as [`LEDGER_COLUMNS`] holds it.
+/// One lookup as [`ledger_columns`] holds it.
 #[derive(serde::Deserialize)]
 struct StoredLookup {
     catalog: Option<String>,
@@ -448,6 +462,9 @@ struct StoredLookup {
     failure: Option<String>,
     status: Option<i64>,
     releases: Vec<i64>,
+    /// How many pressing rows the releases are.
+    count: u32,
+    cards: Vec<StoredCard>,
 }
 
 impl StoredLedger {
@@ -726,7 +743,8 @@ fn lookup_of(
     stored: StoredLookup,
     matches: &HashMap<i64, &MetadataResult>,
 ) -> Result<LookupView, DbError> {
-    let StoredLookup { catalog: _, answer, reason, failure, status, releases } = stored;
+    let StoredLookup { catalog: _, answer, reason, failure, status, releases, count, cards } =
+        stored;
     if answer != "answered" && !releases.is_empty() {
         return Err(DbError::unreadable(
             format!("the releases a {answer} lookup of {content_hash} found"),
@@ -768,7 +786,11 @@ fn lookup_of(
                     })
                 })
                 .collect::<Result<Vec<_>, DbError>>()?;
-            Ok(LookupView::answered(&found))
+            if found.is_empty() {
+                return Ok(LookupView::NoMatch);
+            }
+            let list: Vec<&MetadataResult> = found.iter().collect();
+            Ok(LookupView::Found { count, groups: groups_from(cards, &list)? })
         }
         other => Err(DbError::unreadable("a stored lookup answer", other)),
     }

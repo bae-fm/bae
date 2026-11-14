@@ -14,8 +14,8 @@
 pub(super) const SQL: &str = include_str!("verdict_rows.sql");
 
 use super::ledger_rows::{
-    delete_ledger, read_ledger, step_columns, store_ledger, MatchPositions, StoredLedger,
-    LEDGER_COLUMNS,
+    delete_ledger, ledger_columns, read_ledger, step_columns, store_ledger, MatchPositions,
+    StoredLedger,
 };
 use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
@@ -355,7 +355,8 @@ pub(super) fn verdict_columns() -> String {
          verdict.failures_json AS verdict_failures_json, \
          verdict.error_detail AS verdict_error_detail, \
          verdict.medium_conflict AS verdict_medium_conflict, \
-         verdict.kept_own_draft AS verdict_kept_own_draft, {LEDGER_COLUMNS}"
+         verdict.kept_own_draft AS verdict_kept_own_draft, {ledger}",
+        ledger = ledger_columns(),
     )
 }
 

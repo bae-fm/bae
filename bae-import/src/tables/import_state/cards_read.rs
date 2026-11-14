@@ -157,6 +157,40 @@ pub(super) fn search_cards_sql(search_run: &str) -> String {
     )
 }
 
+/// The SQL of a scalar subquery reading the cards of the ledger cell the
+/// lookup row `lookup` names, a column of a read over the ledger's lookups.
+pub(super) fn cell_cards_sql(lookup: &str) -> String {
+    let owner = format!(
+        "{{table}}.content_hash IS {lookup}.content_hash \
+         AND {{table}}.identify_run IS {lookup}.identify_run \
+         AND {{table}}.step = {lookup}.step AND {{table}}.position = {lookup}.position \
+         AND {{table}}.cell = {lookup}.cell"
+    );
+    cards_sql(
+        &format!(
+            "SELECT found.ordinal AS ord, found.match_position AS position, found.card, \
+                    found.pressing, found.record_order, 'answered' AS kind, matched.source, \
+                    matched.release_id, matched.title, matched.year, matched.source_group_id, \
+                    matched.album_links, matched.cover_url, matched.cover_standing, \
+                    (SELECT json_group_array(json_object('catalog', link.catalog, \
+                                                         'key', link.key) \
+                                             ORDER BY link.ordinal) \
+                     FROM import_candidate_match_album_link AS link \
+                     WHERE link.content_hash IS matched.content_hash \
+                       AND link.identify_run IS matched.identify_run \
+                       AND link.position = matched.position) AS links \
+             FROM import_candidate_lookup_release AS found \
+             JOIN import_candidate_match AS matched \
+               ON matched.content_hash IS found.content_hash \
+              AND matched.identify_run IS found.identify_run \
+              AND matched.position = found.match_position \
+             WHERE {found}",
+            found = owner.replace("{table}", "found")
+        ),
+        &owner.replace("{table}", "t"),
+    )
+}
+
 /// One card as [`cards_sql`] answers it.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredCard {
