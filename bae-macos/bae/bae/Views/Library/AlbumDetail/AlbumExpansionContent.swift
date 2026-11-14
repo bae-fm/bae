@@ -35,6 +35,7 @@ struct AlbumExpansionContent: View {
     let onDeleteAlbum: () -> Void
     let onExportTrack: (String) -> Void
     /// Rate the album with these stars, or clear its rating with none.
+    let onOpenWork: (String) -> Void
     let onRateAlbum: (BridgeStars?) -> Void
     /// Rate a track with these stars, or clear its rating with none.
     let onRateTrack: (String, BridgeStars?) -> Void
@@ -120,6 +121,12 @@ struct AlbumExpansionContent: View {
                     if !selectedRelease.credits.isEmpty {
                         AlbumCreditsView(credits: selectedRelease.credits)
                             .padding(.top, ThemeSpace.edge)
+                    }
+                    if selectedRelease.performsWorks {
+                        AlbumWorksSection(
+                            tracks: selectedRelease.tracks,
+                            onOpenWork: onOpenWork
+                        )
                     }
                 }
             }

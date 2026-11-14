@@ -132,6 +132,9 @@ struct AlbumDetailView: View {
                     onExportTrack: { trackId in
                         exportTrack(trackId: trackId)
                     },
+                    onOpenWork: { workId in
+                        uiStore.navigateToWork(workId)
+                    },
                     onRateAlbum: { stars in
                         rate(.album(id: albumId), stars)
                     },

@@ -74,6 +74,7 @@ extension PreviewData {
             onDeleteRelease: {},
             onDeleteAlbum: {},
             onExportTrack: { _ in },
+            onOpenWork: { _ in },
             onRateAlbum: { _ in },
             onRateTrack: { _, _ in },
         )

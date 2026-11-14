@@ -25,7 +25,7 @@ struct ShotScene {
         + adminChangeScenes + menuScenes + playlistScenes + castingScenes
         + addDeviceScenes + peopleScenes + albumCoverScenes
         + pickedTracksScenes
-        + albumRatingScenes
+        + albumRatingScenes + albumCreditsScenes
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows
