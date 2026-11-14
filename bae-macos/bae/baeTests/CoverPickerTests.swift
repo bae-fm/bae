@@ -29,9 +29,6 @@ struct CoverPickerTests {
     func persistedArtworkUsesLibraryIdentity() async throws {
         let release = persistedRelease()
         let recorder = CoverRecorder()
-        let library = Library(releaseDetail: {
-            .fixed(answers: UnansweredCount()) { _ in release }
-        })
         let png = try imageBytes()
         let images = ImageStore(fetchReleaseImageBytes: { releaseId, source in
             await recorder.read(releaseId, source)
@@ -42,12 +39,14 @@ struct CoverPickerTests {
             CoverSheetView(
                 releaseId: release.id,
                 lightboxLoad: LightboxImageLoad(),
-                fetchRemoteCovers: { .unlinked },
+                refreshCovers: {},
                 onSelect: { await recorder.select($0) },
                 onDone: {}
             )
-            .environment(library)
             .environment(images)
+            .environment(
+                Library(coverGallery: { .fixed(gallery(of: release)) })
+            )
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
@@ -67,6 +66,34 @@ struct CoverPickerTests {
                     == .releaseImage(fileId: "library-image-id")
             )
         }
+    }
+
+    /// The covers core reads for `release`: its image files that can be a
+    /// cover, saved from the library by their file ids.
+    private func gallery(of release: BridgeRelease) -> BridgeCoverGallery {
+        let files = release.coverFiles.map {
+            BridgeGalleryCover(
+                selection: .releaseImage(fileId: $0.id),
+                image: .releaseImage(
+                    releaseId: release.id,
+                    source: .releaseFile(fileId: $0.id)
+                ),
+                label: .file(name: $0.originalFilename)
+            )
+        }
+        return BridgeCoverGallery(
+            current: nil,
+            fetch: .unlinked,
+            sections: [
+                BridgeCoverSection(source: .remote, items: [], count: 0),
+                BridgeCoverSection(
+                    source: .releaseFiles,
+                    items: files,
+                    count: UInt32(files.count)
+                ),
+            ],
+            total: UInt32(files.count)
+        )
     }
 
     private func persistedRelease() -> BridgeRelease {
@@ -153,9 +180,9 @@ struct CoverPickerTests {
     @MainActor
     @Test("Import cover picker labels external sources and release files")
     func sourceSections() throws {
-        let browser = ArtworkBrowserState(layout: .grid)
-        #expect(browser.showsRemoteSources)
-        #expect(browser.showsReleaseFiles)
+        let content = CoverGalleryContent(remote: [], files: [], filter: .all)
+        #expect(content.remote != nil)
+        #expect(content.files != nil)
 
         let remote = try #require(
             RemoteCoverItems(.linked(covers: PreviewData.remoteCovers))

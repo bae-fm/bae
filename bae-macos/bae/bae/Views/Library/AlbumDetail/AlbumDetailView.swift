@@ -287,15 +287,14 @@ extension AlbumDetailView {
             CoverSheetView(
                 releaseId: selectedReleaseId,
                 lightboxLoad: lightboxLoad,
-                initialRelease: release,
                 initialLayout: .lightbox,
                 onFindRelease: {
                     uiStore.dismissModal()
                     presentReleaseEditor(release: release)
                 },
-                fetchRemoteCovers: {
-                    try await releaseEditor.fetchRemoteCovers(
-                        .release(releaseId: selectedReleaseId)
+                refreshCovers: {
+                    try await releaseEditor.refreshReleaseCovers(
+                        selectedReleaseId
                     )
                 },
                 onSelect: { selection in

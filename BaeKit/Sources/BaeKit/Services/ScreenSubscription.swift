@@ -203,6 +203,7 @@ extension QueueUpcomingSubscription: PulledSubscription {}
     extension ImportCandidateSubscription: PulledSubscription {}
     extension InvalidCandidateSubscription: PulledSubscription {}
     extension ReleaseFilesSubscription: PulledSubscription {}
+    extension CoverGallerySubscription: PulledSubscription {}
 
     extension ImportSummarySubscription: PulledSubscription {}
     extension ImportFilterEntriesSubscription: PulledSubscription {}

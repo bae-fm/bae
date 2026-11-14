@@ -1,38 +1,31 @@
 import BaeKit
 import SwiftUI
 
-/// Persisted artwork is read by library file identity, including cloud-only
-/// files. Scanned candidate paths never enter this picker.
+/// A library release's cover picker: the covers core reads for it under the
+/// source chosen, with a lookup of the catalogs' covers that core stores.
+/// Scanned candidate paths never enter this picker.
 struct CoverSheetView: View {
     let releaseId: String
     /// The lightbox's image as it loads, owned by whoever shows the sheet.
     let lightboxLoad: LightboxImageLoad
     let initialLayout: ArtworkBrowserState.Layout
     let onFindRelease: (() -> Void)?
-    let fetchRemoteCovers: () async throws -> BridgeRemoteCoverGallery
     let onSelect: (BridgeCoverSelection) async throws -> Void
     let onDone: () -> Void
 
-    @Environment(Library.self)
-    private var library
     @State
     private var state = CoverPickerState()
     @State
-    private var release: ReleaseDetail?
-    @State
-    private var releaseError: DisplayError?
-    /// The sheet's one release read, moved as `releaseId` changes.
-    @State
-    private var releaseReader: DetailReader<BridgeRelease>?
+    private var covers: LibraryCoverState
+    @Environment(Library.self)
+    private var library
 
     init(
         releaseId: String,
         lightboxLoad: LightboxImageLoad,
-        initialRelease: ReleaseDetail? = nil,
         initialLayout: ArtworkBrowserState.Layout = .grid,
         onFindRelease: (() -> Void)? = nil,
-        fetchRemoteCovers:
-            @escaping () async throws -> BridgeRemoteCoverGallery,
+        refreshCovers: @escaping () async throws -> Void,
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
         onDone: @escaping () -> Void
     ) {
@@ -40,29 +33,26 @@ struct CoverSheetView: View {
         self.lightboxLoad = lightboxLoad
         self.initialLayout = initialLayout
         self.onFindRelease = onFindRelease
-        self.fetchRemoteCovers = fetchRemoteCovers
         self.onSelect = onSelect
         self.onDone = onDone
-        _release = State(initialValue: initialRelease)
+        _covers = State(
+            initialValue: LibraryCoverState(refresh: refreshCovers)
+        )
     }
 
     var body: some View {
+        @Bindable
+        var covers = covers
         CoverGalleryView(
-            remoteItems: state.remoteItems,
-            releaseItems: release?.coverFiles
-                .map {
-                    CoverItem(releaseId: releaseId, file: $0)
-                } ?? [],
+            content: covers.content,
+            remoteItems: covers.lookup,
+            filter: $covers.filter,
             selectedCover: nil,
             lightboxLoad: lightboxLoad,
-            currentCover: release?.summary.cover
-                .map {
-                    CoverItem(releaseId: releaseId, cover: $0)
-                },
             initialLayout: initialLayout,
             isSaving: state.isSaving,
-            error: state.error ?? releaseError,
-            onRefresh: { state.refresh(fetchRemoteCovers) },
+            error: state.error ?? covers.readFailure,
+            onRefresh: { covers.startRefresh() },
             onFindRelease: onFindRelease,
             onSelect: { item in
                 guard let selection = item.selection else {
@@ -77,37 +67,15 @@ struct CoverSheetView: View {
             },
             onDone: onDone
         )
-        .task(id: releaseId) { await state.load(fetchRemoteCovers) }
-        .onAppear { showRelease(releaseId) }
-        .onChange(of: releaseId) { _, newId in showRelease(newId) }
+        .task(id: releaseId) {
+            await covers.open(
+                releaseId: releaseId,
+                query: library.coverGallery()
+            )
+        }
         .onDisappear {
             state.cancel()
-            releaseReader?.close()
+            covers.cancel()
         }
-    }
-
-    private func showRelease(_ releaseId: String) {
-        let reader =
-            releaseReader
-            ?? DetailReader(
-                open: library.releaseDetail,
-                onValue: { _, release in
-                    guard let release else {
-                        self.release = nil
-                        releaseError = DisplayError(
-                            line: String(
-                                localized:
-                                    "This release is no longer in the library."
-                            )
-                        )
-                        return
-                    }
-                    self.release = ReleaseDetail(bridge: release)
-                    releaseError = nil
-                },
-                onError: { _, error in releaseError = DisplayError(error) }
-            )
-        releaseReader = reader
-        reader.show(releaseId)
     }
 }

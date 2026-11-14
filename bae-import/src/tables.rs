@@ -5,6 +5,7 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod cover_gallery;
 mod cover_labels;
 mod downscaled_copies;
 mod folder_scans;
@@ -27,8 +28,13 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     source_releases::SCHEMA,
     import_origin::SCHEMA,
     import_list::SCHEMA,
+    cover_gallery::SCHEMA,
 ];
 
+pub use cover_gallery::{
+    CoverFetch, CoverFilter, CoverGallery, CoverGalleryRequest, CoverGallerySnapshot, CoverSection,
+    CoverSectionSource, GalleryCover, GalleryLabel,
+};
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
 pub use folder_scans::{FinishedScan, FolderRereadRefusal, ScanEntryMoved, ScanItemWrite};
 pub(crate) use folder_scans::{

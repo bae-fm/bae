@@ -21,20 +21,13 @@ struct CoverItem: LightboxImage {
     var selection: BridgeCoverSelection? {
         switch content {
         case .candidate(let choice): choice.selection
-        case .releaseFile(_, let file): .releaseImage(fileId: file.id)
-        case .currentCover: nil
+        case .library(let cover): cover.selection
         }
     }
     var image: ImageContent {
         switch content {
         case .candidate(let choice): choice.imageContent
-        case .releaseFile(let releaseId, let file):
-            .releaseImage(
-                releaseId: releaseId,
-                source: .releaseFile(fileId: file.id)
-            )
-        case .currentCover(let releaseId, let image):
-            .releaseImage(releaseId: releaseId, source: .cover(image: image))
+        case .library(let cover): ImageContent(bridge: cover.image)
         }
     }
 
@@ -51,8 +44,7 @@ struct CoverItem: LightboxImage {
 
     enum Content {
         case candidate(BridgeCoverChoice)
-        case releaseFile(releaseId: String, file: BridgeFile)
-        case currentCover(releaseId: String, image: BridgeImageRef)
+        case library(BridgeGalleryCover)
     }
 
     let content: Content
@@ -66,14 +58,16 @@ struct CoverItem: LightboxImage {
         self.label = label
     }
 
-    init(releaseId: String, file: BridgeFile) {
-        content = .releaseFile(releaseId: releaseId, file: file)
-        label = file.originalFilename
-    }
-
-    init(releaseId: String, cover: BridgeImageRef) {
-        content = .currentCover(releaseId: releaseId, image: cover)
-        label = String(localized: "Current cover")
+    /// A cover of a library release's picker, worded from core's label.
+    init(gallery cover: BridgeGalleryCover) {
+        content = .library(cover)
+        label =
+            switch cover.label {
+            case .current: String(localized: "Current cover")
+            case .file(let name): name
+            case .remote(let sourceName, let label):
+                coverLabelText(sourceName: sourceName, label: label)
+            }
     }
 }
 

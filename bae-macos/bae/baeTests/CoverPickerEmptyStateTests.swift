@@ -33,8 +33,13 @@ struct CoverPickerEmptyStateTests {
         let size = NSSize(width: 960, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
+                content: CoverGalleryContent(
+                    remote: remoteItems.items,
+                    files: [],
+                    filter: .all
+                ),
                 remoteItems: remoteItems,
-                releaseItems: [],
+                filter: .constant(.all),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 onRefresh: {},
@@ -69,14 +74,11 @@ struct CoverPickerEmptyStateTests {
             }
         }
         try #require(!files.isEmpty && files.count == images.count)
-        var browser = ArtworkBrowserState(layout: .grid)
-        browser.update(
-            currentCover: nil,
-            remoteItems: RemoteCoverItems.unlinked.items,
-            releaseItems: files,
-            selectedCover: nil
+        let content = CoverGalleryContent(
+            remote: RemoteCoverItems.unlinked.items,
+            files: files,
+            filter: .all
         )
-        #expect(browser.showsReleaseFiles)
-        #expect(browser.releaseItems == files)
+        #expect(content.files?.items == files)
     }
 }

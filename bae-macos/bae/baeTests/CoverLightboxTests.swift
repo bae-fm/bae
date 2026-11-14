@@ -38,8 +38,13 @@ struct CoverLightboxTests {
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
+                content: CoverGalleryContent(
+                    remote: [front, booklet],
+                    files: [file],
+                    filter: .all
+                ),
                 remoteItems: .linked([front, booklet]),
-                releaseItems: [file],
+                filter: .constant(.all),
                 selectedCover: front.selection,
                 lightboxLoad: lightbox,
                 onSelect: { selected = $0 },
@@ -96,8 +101,13 @@ struct CoverLightboxTests {
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
+                content: CoverGalleryContent(
+                    remote: [front, booklet],
+                    files: [],
+                    filter: .all
+                ),
                 remoteItems: .linked([front, booklet]),
-                releaseItems: [],
+                filter: .constant(.all),
                 selectedCover: front.selection,
                 lightboxLoad: LightboxImageLoad(),
                 onSelect: { selected = $0 },

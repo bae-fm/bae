@@ -14,6 +14,8 @@ struct CoverPickerView: View {
     private var state: CoverPickerState
     @State
     private var lightboxLoad = LightboxImageLoad()
+    @State
+    private var filter = ArtworkBrowserState.Filter.all
 
     init(
         remoteCoverArts: [BridgeRemoteCover],
@@ -38,15 +40,20 @@ struct CoverPickerView: View {
 
     var body: some View {
         CoverGalleryView(
+            content: CoverGalleryContent(
+                remote: state.remoteItems.items,
+                files: localArtwork.map { file in
+                    guard let choice = file.coverChoice else {
+                        preconditionFailure(
+                            "The artwork picker received a file without a cover choice"
+                        )
+                    }
+                    return CoverItem(coverChoice: choice, label: file.file.name)
+                },
+                filter: filter
+            ),
             remoteItems: state.remoteItems,
-            releaseItems: localArtwork.map { file in
-                guard let choice = file.coverChoice else {
-                    preconditionFailure(
-                        "The artwork picker received a file without a cover choice"
-                    )
-                }
-                return CoverItem(coverChoice: choice, label: file.file.name)
-            },
+            filter: $filter,
             selectedCover: selectedCover?.selection,
             lightboxLoad: lightboxLoad,
             isSaving: state.isSaving,

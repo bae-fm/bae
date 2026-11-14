@@ -1,16 +1,12 @@
 //! The covers the picker offers a candidate or a library release, and the
-//! provider images it draws them from.
+//! provider images it draws them from. A candidate's gallery is fetched and
+//! returned; a library release's is fetched into the release's cover tables,
+//! which `ImportTables::subscribe_cover_gallery` follows.
 
 use super::*;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::remote_image::RemoteCover;
-
-/// The persisted owner whose external identities supply a cover gallery.
-pub enum CoverTarget {
-    Release(String),
-    Candidate(crate::CandidateKey),
-}
 
 /// Whether an owner names an external release, and the artwork it offers.
 /// An empty linked gallery is not an unidentified release.
@@ -59,17 +55,37 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Fetch complete artwork galleries when the picker opens. Dispatch on
-    /// the owner: library identities and candidate release links are different
-    /// records, never interchangeable string identifiers.
-    pub async fn fetch_remote_covers(
+    /// Fetch the artwork the candidate's links offer, when its picker opens.
+    pub async fn fetch_candidate_covers(
         &self,
-        target: CoverTarget,
+        key: &crate::CandidateKey,
     ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        match target {
-            CoverTarget::Release(id) => self.release_covers(&id).await,
-            CoverTarget::Candidate(key) => self.candidate_covers(&key).await,
-        }
+        self.candidate_covers(key).await
+    }
+
+    /// Fetch what the catalogs offer the library release's picker and store
+    /// it in place of the last fetch's. A fetch that fails stores nothing, so
+    /// the picker keeps showing the covers it had.
+    pub async fn refresh_release_covers(&self, release_id: &str) -> Result<(), crate::ImportError> {
+        let covers = match self.release_covers(release_id).await? {
+            RemoteCoverGallery::Unlinked => None,
+            RemoteCoverGallery::Linked(covers) => Some(covers),
+        };
+        self.services.tables.replace_release_covers(release_id, covers).await?;
+        Ok(())
+    }
+
+    /// The live read of the covers a library release's picker shows; see
+    /// `ImportTables::subscribe_cover_gallery`.
+    pub fn subscribe_cover_gallery(
+        &self,
+        initial: Option<crate::CoverGalleryRequest>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::CoverGalleryRequest>,
+        Option<crate::CoverGallery>,
+        bae_store::DbError,
+    > {
+        self.services.tables.subscribe_cover_gallery(initial)
     }
 
     async fn candidate_covers(

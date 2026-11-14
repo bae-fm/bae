@@ -32,9 +32,14 @@ final class ReleaseEditor: Observable {
     let readReleaseDocument:
         @Sendable (_ releaseId: String, _ fileId: String) async throws ->
             String
-    let fetchRemoteCovers:
-        @Sendable (_ target: BridgeCoverTarget) async throws ->
+    /// The artwork the candidate's links offer.
+    let fetchCandidateCovers:
+        @Sendable (_ candidateKey: Data) async throws ->
             BridgeRemoteCoverGallery
+    /// Look up what the catalogs offer the release's cover picker, which core
+    /// stores for the open picker's live read.
+    let refreshReleaseCovers:
+        @Sendable (_ releaseId: String) async throws -> Void
     /// A new apply of a catalog release and its steps, for the editor to
     /// name what it waits on; `nil` where no bridge is behind the editor.
     let catalogApply: @Sendable () -> CatalogApplySteps?
@@ -71,11 +76,13 @@ final class ReleaseEditor: Observable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        fetchRemoteCovers:
-            @escaping @Sendable (BridgeCoverTarget) async throws ->
+        fetchCandidateCovers:
+            @escaping @Sendable (Data) async throws ->
             BridgeRemoteCoverGallery = {
                 _ in throw StubError.notImplemented
             },
+        refreshReleaseCovers:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         catalogApply: @escaping @Sendable () -> CatalogApplySteps? = { nil }
     ) {
         self.changeCover = changeCover
@@ -86,7 +93,8 @@ final class ReleaseEditor: Observable {
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
         self.readReleaseDocument = readReleaseDocument
-        self.fetchRemoteCovers = fetchRemoteCovers
+        self.fetchCandidateCovers = fetchCandidateCovers
+        self.refreshReleaseCovers = refreshReleaseCovers
         self.catalogApply = catalogApply
     }
 
@@ -112,41 +120,44 @@ final class ReleaseEditor: Observable {
             setPrimaryRelease: {
                 try await handle.setPrimaryRelease(albumId: $0, releaseId: $1)
             },
-            openReleaseEdit: {
-                let session = try await handle.openReleaseEdit(releaseId: $0)
-                return OpenedReleaseEdit(
-                    draft: try await session.draft(),
-                    session: ReleaseEditSessionCommands(
-                        draft: { try await session.draft() },
-                        setField: {
-                            try await session.setField(field: $0, value: $1)
-                        },
-                        setLabels: { try await session.setLabels(labels: $0) },
-                        setBarcodes: {
-                            try await session.setBarcodes(barcodes: $0)
-                        },
-                        setPressingFact: {
-                            try await session.setPressingFact(fact: $0)
-                        },
-                        setAlbumArtists: {
-                            try await session.setAlbumArtists(assignments: $0)
-                        },
-                        setTrack: { try await session.setTrack(track: $0) },
-                        apply: {
-                            try await session.applyCatalog(link: $0, apply: $1)
-                        },
-                        setAlbum: { try await session.setAlbum(albumId: $0) },
-                        save: { try await session.save() }
-                    )
-                )
-            },
+            openReleaseEdit: { try await Self.openEdit(handle, releaseId: $0) },
             readReleaseDocument: {
                 try await handle.readReleaseDocument(releaseId: $0, fileId: $1)
             },
-            fetchRemoteCovers: {
-                try await handle.fetchRemoteCovers(target: $0)
+            fetchCandidateCovers: {
+                try await handle.fetchCandidateCovers(candidateKey: $0)
+            },
+            refreshReleaseCovers: {
+                try await handle.refreshReleaseCovers(releaseId: $0)
             },
             catalogApply: { CatalogApplySteps(host: host) }
+        )
+    }
+
+    /// An edit session of `handle`'s on the release, and the commands it takes.
+    private static func openEdit(
+        _ handle: any AppHandleProtocol,
+        releaseId: String
+    ) async throws -> OpenedReleaseEdit {
+        let session = try await handle.openReleaseEdit(releaseId: releaseId)
+        return OpenedReleaseEdit(
+            draft: try await session.draft(),
+            session: ReleaseEditSessionCommands(
+                draft: { try await session.draft() },
+                setField: { try await session.setField(field: $0, value: $1) },
+                setLabels: { try await session.setLabels(labels: $0) },
+                setBarcodes: { try await session.setBarcodes(barcodes: $0) },
+                setPressingFact: {
+                    try await session.setPressingFact(fact: $0)
+                },
+                setAlbumArtists: {
+                    try await session.setAlbumArtists(assignments: $0)
+                },
+                setTrack: { try await session.setTrack(track: $0) },
+                apply: { try await session.applyCatalog(link: $0, apply: $1) },
+                setAlbum: { try await session.setAlbum(albumId: $0) },
+                save: { try await session.save() }
+            )
         )
     }
 

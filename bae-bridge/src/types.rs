@@ -4,6 +4,7 @@ mod configuration;
 mod conversion;
 #[cfg(desktop)]
 mod cover;
+mod cover_image;
 mod cover_label;
 mod credit_line;
 mod credit_role;
@@ -33,6 +34,7 @@ pub use admin_change::*;
 pub use configuration::*;
 #[cfg(desktop)]
 pub use cover::*;
+pub use cover_image::*;
 pub use cover_label::*;
 pub use credit_line::*;
 pub use credit_role::*;

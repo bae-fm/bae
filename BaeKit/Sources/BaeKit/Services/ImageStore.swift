@@ -55,6 +55,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
         switch bridge {
         case .library(let image):
             self = .libraryImage(image)
+        case .releaseImage(let releaseId, let source):
+            self = .releaseImage(releaseId: releaseId, source: source)
         case .local(let file):
             self = .localFile(file)
         case .remote(let image):

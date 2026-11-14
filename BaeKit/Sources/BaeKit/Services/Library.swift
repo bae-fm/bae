@@ -78,6 +78,9 @@ public final class Library: Sendable, Observable {
     /// Open the Storage sheet's live read of a release's files, in the order
     /// its file table sorts by, read in core.
     public let releaseFiles: @Sendable () -> ReleaseFilesQuery
+    /// Open the live read of a library release's cover picker, which shows
+    /// nothing until a request names a release.
+    public let coverGallery: @Sendable () -> CoverGalleryQuery
     public let resolveToTrackIds:
         @Sendable (_ ids: [String]) async throws -> [String]
     /// Whether the library page spans the window's full width instead of
@@ -182,6 +185,9 @@ public final class Library: Sendable, Observable {
         releaseFiles: @escaping @Sendable () -> ReleaseFilesQuery = {
             fatalError("Library release files are not installed")
         },
+        coverGallery: @escaping @Sendable () -> CoverGalleryQuery = {
+            fatalError("Library cover gallery is not installed")
+        },
         resolveToTrackIds:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
@@ -219,6 +225,7 @@ public final class Library: Sendable, Observable {
         self.storageQueues = storageQueues
         self.storageInspector = storageInspector
         self.releaseFiles = releaseFiles
+        self.coverGallery = coverGallery
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
         self.createPlaylist = createPlaylist
@@ -278,6 +285,9 @@ extension Library {
                 },
                 releaseFiles: {
                     ReleaseFilesQuery(handle.subscribeReleaseFiles())
+                },
+                coverGallery: {
+                    CoverGalleryQuery(handle.subscribeCoverGallery())
                 },
                 resolveToTrackIds: {
                     try await handle.resolveToTrackIds(ids: $0)

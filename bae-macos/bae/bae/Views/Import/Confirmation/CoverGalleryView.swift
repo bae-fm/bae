@@ -2,13 +2,17 @@ import BaeKit
 import SwiftUI
 
 /// Shared cover browser. Preview focus is separate from the saved selection.
+/// It draws the content it is given under the filter it is given, and counts
+/// nothing: whoever owns the filter reads the content for it.
 struct CoverGalleryView: View {
+    let content: CoverGalleryContent
+    /// Where the catalog lookup stands; its items are not drawn from here.
     let remoteItems: RemoteCoverItems
-    let releaseItems: [CoverItem]
+    @Binding
+    var filter: ArtworkBrowserState.Filter
     let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the gallery.
     let lightboxLoad: LightboxImageLoad
-    var currentCover: CoverItem?
     var initialLayout: ArtworkBrowserState.Layout = .grid
     var isSaving = false
     var error: DisplayError?
@@ -45,10 +49,7 @@ struct CoverGalleryView: View {
                         LabeledContent("Source") {
                             MacPopUpButton(
                                 "Source",
-                                selection: Binding(
-                                    get: { browser.filter },
-                                    set: { browser.setFilter($0) }
-                                )
+                                selection: $filter
                             ) {
                                 for filter in ArtworkBrowserState.Filter
                                     .allCases
@@ -60,30 +61,33 @@ struct CoverGalleryView: View {
                                 }
                             }
                         }
-                        if let cover = browser.currentCover {
+                        if let cover = content.current {
                             section(
                                 "Current cover",
                                 icon: "photo",
-                                items: [cover]
+                                items: [cover],
+                                count: 1
                             )
                         }
-                        if browser.showsRemoteSources {
+                        if let remote = content.remote {
                             // Unlinked, there is nothing to count or list:
                             // the block that says so stands in the section.
                             if remoteItems != .unlinked {
                                 section(
                                     "Remote sources",
                                     icon: "globe",
-                                    items: browser.remoteItems
+                                    items: remote.items,
+                                    count: remote.count
                                 )
                             }
                             remoteStatus
                         }
-                        if browser.showsReleaseFiles {
+                        if let files = content.files {
                             section(
                                 "Release files",
                                 icon: "folder",
-                                items: browser.releaseItems
+                                items: files.items,
+                                count: files.count
                             )
                         }
                     }
@@ -147,9 +151,8 @@ struct CoverGalleryView: View {
             browser.layout = initialLayout
             rebuild()
         }
-        .onChange(of: remoteItems) { _, _ in rebuild() }
-        .onChange(of: releaseItems) { _, _ in rebuild() }
-        .onChange(of: currentCover?.image) { _, _ in rebuild() }
+        .onChange(of: content) { _, _ in rebuild() }
+        .onChange(of: content.current?.image) { _, _ in rebuild() }
         // The grid's preview takes the keys whenever it comes on screen: when
         // the sheet opens on the grid, its covers arrive, or the lightbox
         // closes back to it. It never gives them up by hand: the lightbox
@@ -225,12 +228,7 @@ struct CoverGalleryView: View {
     }
 
     private func rebuild() {
-        browser.update(
-            currentCover: currentCover,
-            remoteItems: remoteItems.items,
-            releaseItems: releaseItems,
-            selectedCover: selectedCover
-        )
+        browser.update(content: content, selectedCover: selectedCover)
     }
 
     private func showGrid() {
@@ -262,7 +260,8 @@ extension CoverGalleryView {
     private func section(
         _ title: LocalizedStringKey,
         icon: String,
-        items: [CoverItem]
+        items: [CoverItem],
+        count: Int
     ) -> some View {
         VStack(
             alignment: .leading,
@@ -271,7 +270,7 @@ extension CoverGalleryView {
             HStack(spacing: ThemeSpace.compact) {
                 Label(title, systemImage: icon)
                     .themeText(.heading)
-                Text(items.count, format: .number)
+                Text(count, format: .number)
                     .themeText(.heading)
                     .fontWeight(.regular)
                     .monospacedDigit()
@@ -410,7 +409,7 @@ extension CoverGalleryView {
                         Image(systemName: "chevron.backward")
                     }
                     .accessibilityLabel(Text("Previous image"))
-                    Text("\(cursor.index + 1) of \(cursor.items.count)")
+                    Text("\(cursor.index + 1) of \(content.total)")
                         .monospacedDigit().foregroundStyle(.secondary)
                     Button {
                         browser.cursor?.goToNext()

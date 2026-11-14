@@ -185,10 +185,8 @@ struct ReleaseEditorView: View {
                 showingCoverPicker = false
                 openSearch(.search)
             },
-            fetchRemoteCovers: {
-                try await releaseEditor.fetchRemoteCovers(
-                    .release(releaseId: session.releaseId)
-                )
+            refreshCovers: {
+                try await releaseEditor.refreshReleaseCovers(session.releaseId)
             },
             onSelect: { selection in
                 try await releaseEditor.changeCover(

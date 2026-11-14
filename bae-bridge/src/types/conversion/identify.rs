@@ -66,23 +66,25 @@ impl BridgeRemoteCover {
 impl BridgeCoverChoice {
     pub(crate) fn from_core(choice: bae_import::CoverChoice) -> Self {
         Self {
-            selection: match choice.selection() {
-                bae_import::CoverSelection::Local(file_id) => {
-                    BridgeCoverSelection::ReleaseImage { file_id }
-                }
-                bae_import::CoverSelection::Remote(image, source) => {
-                    BridgeCoverSelection::RemoteCover {
-                        selection: BridgeRemoteCoverSelection {
-                            image: BridgeRemoteImageSet::from_core(image),
-                            source: BridgeCatalog::from_core(source),
-                        },
-                    }
-                }
-                bae_import::CoverSelection::Embedded(source_file_id) => {
-                    BridgeCoverSelection::EmbeddedCover { source_file_id }
-                }
-            },
+            selection: BridgeCoverSelection::from_core(choice.selection()),
             image: BridgeCoverImageSource::from_core(choice.into_image()),
+        }
+    }
+}
+
+impl BridgeCoverSelection {
+    pub(crate) fn from_core(selection: bae_import::CoverSelection) -> Self {
+        match selection {
+            bae_import::CoverSelection::Local(file_id) => Self::ReleaseImage { file_id },
+            bae_import::CoverSelection::Remote(image, source) => Self::RemoteCover {
+                selection: BridgeRemoteCoverSelection {
+                    image: BridgeRemoteImageSet::from_core(image),
+                    source: BridgeCatalog::from_core(source),
+                },
+            },
+            bae_import::CoverSelection::Embedded(source_file_id) => {
+                Self::EmbeddedCover { source_file_id }
+            }
         }
     }
 }
@@ -92,6 +94,9 @@ impl BridgeCoverImageSource {
         match source {
             bae_import::CoverImageSource::Library { image } => {
                 Self::Library { image: crate::types::BridgeImageRef::from_core(image) }
+            }
+            bae_import::CoverImageSource::ReleaseImage { release_id, source } => {
+                Self::ReleaseImage { release_id, source: BridgeGallerySource::from_core(source) }
             }
             bae_import::CoverImageSource::Remote { image } => {
                 Self::Remote { image: BridgeRemoteImageSet::from_core(image) }

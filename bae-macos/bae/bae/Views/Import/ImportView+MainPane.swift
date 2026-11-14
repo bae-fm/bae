@@ -238,9 +238,7 @@ extension ImportView {
                     localArtwork: candidate.files.coverFiles,
                     selectedCover: candidate.cover,
                     fetchRemoteCovers: {
-                        try await releaseEditor.fetchRemoteCovers(
-                            .candidate(candidateKey: key)
-                        )
+                        try await releaseEditor.fetchCandidateCovers(key)
                     },
                     onFindRelease: {
                         uiStore.dismissModal()

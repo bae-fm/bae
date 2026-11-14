@@ -154,6 +154,8 @@ macro_rules! pulled_read_calls {
 mod applying;
 mod browse;
 mod closing;
+#[cfg(desktop)]
+mod cover_gallery;
 mod detail;
 #[cfg(desktop)]
 mod files;
@@ -170,6 +172,8 @@ mod streams;
 pub use applying::*;
 pub use browse::*;
 pub use closing::*;
+#[cfg(desktop)]
+pub use cover_gallery::*;
 pub use detail::*;
 #[cfg(desktop)]
 pub use files::*;

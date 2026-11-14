@@ -18,6 +18,13 @@ pub enum CoverImageSource {
     Library {
         image: bae_records::ImageRef,
     },
+    /// A slot of a library release's own image strip: its saved cover or one
+    /// of its image files, which core reads from wherever the release keeps
+    /// them.
+    ReleaseImage {
+        release_id: String,
+        source: bae_records::GallerySource,
+    },
     Remote {
         image: RemoteImageSet,
     },

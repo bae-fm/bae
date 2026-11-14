@@ -694,15 +694,25 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        fn fetch_remote_covers(
-            target: crate::types::BridgeCoverTarget,
+        /// The artwork the candidate's links offer.
+        fn fetch_candidate_covers(
+            candidate_key: Vec<u8>,
         ) -> crate::types::BridgeRemoteCoverGallery {
             let covers = this
                 .services
-                .import_fetch_remote_covers(target.into_core())
+                .import_fetch_candidate_covers(&candidate_key.into())
                 .await
                 .map_err(BridgeError::from)?;
             Ok(crate::types::BridgeRemoteCoverGallery::from_core(covers))
+        }
+
+        /// Fetch what the catalogs offer the library release's cover picker
+        /// and store it in place of the last fetch's. `cover_gallery` reads it.
+        fn refresh_release_covers(release_id: String) -> () {
+            this.services
+                .import_refresh_release_covers(&release_id)
+                .await
+                .map_err(BridgeError::from)
         }
 
         /// Bytes of provider art — art from Cover Art Archive or Discogs that

@@ -256,7 +256,7 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    CandidateStanding, CoverTarget, DocumentRefusal, GroupedSearchResults, ImportCandidateSnapshot,
+    CandidateStanding, DocumentRefusal, GroupedSearchResults, ImportCandidateSnapshot,
     ImportServiceHandle, ImportStart, RemoteCoverGallery,
 };
 #[cfg(desktop)]
@@ -296,6 +296,11 @@ pub use session::{
 };
 #[cfg(desktop)]
 pub use tables::SCHEMA_PARTS;
+#[cfg(desktop)]
+pub use tables::{
+    CoverFetch, CoverFilter, CoverGallery, CoverGalleryRequest, CoverGallerySnapshot, CoverSection,
+    CoverSectionSource, GalleryCover, GalleryLabel,
+};
 
 /// The schema this crate's tests open their stores on: records' and release
 /// storage's parts, preferences' and import's.

@@ -18,16 +18,18 @@ struct LibraryArtworkBrowserTests {
         var dismissed = false
         try await withLibraryBrowser(
             layout: .lightbox,
-            fetch: {
-                lookups += 1
-                Wait.happened()
-                return .linked(covers: [art])
-            },
-            onSelect: { saved = $0 },
-            onDone: {
-                dismissed = true
-                Wait.happened()
-            },
+            gallery: gallery(remote: [art]),
+            calls: SheetCalls(
+                lookup: {
+                    lookups += 1
+                    Wait.happened()
+                },
+                onSelect: { saved = $0 },
+                onDone: {
+                    dismissed = true
+                    Wait.happened()
+                }
+            ),
             body: { window, host, lightbox in
                 // The release's cover, which the lightbox opens on.
                 try await Wait.until { lightbox.ended() }
@@ -55,16 +57,18 @@ struct LibraryArtworkBrowserTests {
         var dismissed = false
         try await withLibraryBrowser(
             layout: .grid,
-            fetch: {
-                lookups += 1
-                Wait.happened()
-                return .linked(covers: [art])
-            },
-            onSelect: { saved = $0 },
-            onDone: {
-                dismissed = true
-                Wait.happened()
-            },
+            gallery: gallery(remote: [art]),
+            calls: SheetCalls(
+                lookup: {
+                    lookups += 1
+                    Wait.happened()
+                },
+                onSelect: { saved = $0 },
+                onDone: {
+                    dismissed = true
+                    Wait.happened()
+                }
+            ),
             body: { window, host, lightbox in
                 try await Wait.until { lookups > 0 }
                 try await SnapshotTestSupport.settle(host)
@@ -89,79 +93,66 @@ struct LibraryArtworkBrowserTests {
     /// longer tested.
     @Test("Browsing all images from the lightbox keeps the image shown")
     func browsingAllKeepsTheCursor() {
-        let cover = CoverItem(
-            releaseId: "release",
-            cover: BridgeImageRef(
-                id: "release",
-                version: "v1",
-                imageType: .cover
-            )
-        )
+        let cover = savedCover()
         let booklet = CoverItem(
-            coverChoice: remote("Booklet", source: .discogs).coverChoice,
-            label: "Booklet"
+            gallery: galleryCover(remote("Booklet", source: .discogs))
         )
         var browser = ArtworkBrowserState(layout: .lightbox)
         browser.update(
-            currentCover: cover,
-            remoteItems: [booklet],
-            releaseItems: [],
+            content: CoverGalleryContent(
+                gallery(remote: [remote("Booklet", source: .discogs)])
+            ),
             selectedCover: nil
         )
         browser.cursor?.select(id: booklet.id)
         browser.layout = .grid
         #expect(browser.cursor?.current.id == booklet.id)
-        #expect(browser.currentCover == cover)
+        #expect(browser.cursor?.items.first == cover)
     }
 
-    @Test(
-        "Arriving artwork preserves selection; source filters share the lightbox cursor"
-    )
+    /// Core reads the gallery again for each source, so the content the
+    /// browser is handed changes under its cursor: the cursor stays on the
+    /// cover it was on while the new content holds it, else goes to the
+    /// first.
+    @Test("Arriving artwork preserves selection across the sources")
     func arrivalsAndFilters() throws {
-        let cover = CoverItem(
-            releaseId: "release",
-            cover: BridgeImageRef(
-                id: "release",
-                version: "v1",
-                imageType: .cover
-            )
-        )
-        let discogs = CoverItem(
-            coverChoice: remote("Booklet", source: .discogs).coverChoice,
-            label: "Booklet"
-        )
-        let archive = CoverItem(
-            coverChoice: remote("Back", source: .musicBrainz).coverChoice,
-            label: "Back"
-        )
+        let discogs = remote("Booklet", source: .discogs)
+        let archive = remote("Back", source: .musicBrainz)
+        let cover = savedCover()
         var browser = ArtworkBrowserState(layout: .lightbox)
         browser.update(
-            currentCover: cover,
-            remoteItems: [],
-            releaseItems: [],
+            content: CoverGalleryContent(gallery(remote: [])),
             selectedCover: nil
         )
         #expect(browser.cursor?.current.id == cover.id)
         browser.update(
-            currentCover: cover,
-            remoteItems: [discogs, archive],
-            releaseItems: [],
+            content: CoverGalleryContent(gallery(remote: [discogs, archive])),
             selectedCover: nil
         )
         #expect(browser.cursor?.current.id == cover.id)
-        browser.cursor?.select(id: archive.id)
+        let archiveItem = CoverItem(gallery: galleryCover(archive))
+        browser.cursor?.select(id: archiveItem.id)
         browser.layout = .grid
-        browser.setFilter(.musicBrainz)
-        #expect(browser.cursor?.items == [archive])
-        #expect(browser.remoteItems == [archive])
-        #expect(browser.currentCover == nil)
+        browser.update(
+            content: CoverGalleryContent(
+                gallery(remote: [archive], current: nil, filter: .musicBrainz)
+            ),
+            selectedCover: nil
+        )
+        #expect(browser.cursor?.items == [archiveItem])
         browser.layout = .lightbox
-        browser.setFilter(.all)
-        #expect(browser.cursor?.current.id == archive.id)
-        browser.setFilter(.releaseFiles)
+        browser.update(
+            content: CoverGalleryContent(gallery(remote: [discogs, archive])),
+            selectedCover: nil
+        )
+        #expect(browser.cursor?.current.id == archiveItem.id)
+        browser.update(
+            content: CoverGalleryContent(
+                gallery(remote: [], current: nil, filter: .releaseFiles)
+            ),
+            selectedCover: nil
+        )
         #expect(browser.cursor == nil)
-        browser.setFilter(.discogs)
-        #expect(browser.cursor?.current.id == discogs.id)
         #expect(cover.selection == nil)
     }
 
@@ -174,8 +165,9 @@ struct LibraryArtworkBrowserTests {
         let size = NSSize(width: 800, height: 520)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
+                content: .empty,
                 remoteItems: .unlinked,
-                releaseItems: [],
+                filter: .constant(.all),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
@@ -211,14 +203,7 @@ struct LibraryArtworkBrowserTests {
         let size = NSSize(width: 800, height: 600)
         let lightbox = LightboxImageLoad()
         func view(_ version: String) throws -> some View {
-            let cover = CoverItem(
-                releaseId: "release",
-                cover: BridgeImageRef(
-                    id: "release",
-                    version: version,
-                    imageType: .cover
-                )
-            )
+            let cover = savedCover(version: version)
             let cursor = try #require(Cursor(items: [cover]))
             return LightboxView(
                 cursor: cursor,
@@ -245,36 +230,28 @@ extension LibraryArtworkBrowserTests {
     )
     func releaseFileFilter() {
         let file = CoverItem(
-            releaseId: "release",
-            file: BridgeFile(
-                id: "booklet-file",
-                originalFilename: "booklet.png",
-                name: "booklet.png",
-                folder: nil,
-                kind: .image(format: "PNG"),
-                fileSize: 100,
-                contentType: "image/png",
-                isImage: true,
-                audioFormat: nil
+            gallery: BridgeGalleryCover(
+                selection: .releaseImage(fileId: "booklet-file"),
+                image: .releaseImage(
+                    releaseId: "release",
+                    source: .releaseFile(fileId: "booklet-file")
+                ),
+                label: .file(name: "booklet.png")
             )
         )
         let remote = CoverItem(
             coverChoice: remote("Back", source: .discogs).coverChoice,
             label: "Back"
         )
-        var browser = ArtworkBrowserState(layout: .grid)
-        browser.update(
-            currentCover: nil,
-            remoteItems: [remote],
-            releaseItems: [file],
-            selectedCover: nil
+        let content = CoverGalleryContent(
+            remote: [remote],
+            files: [file],
+            filter: .releaseFiles
         )
-        browser.setFilter(.releaseFiles)
-        #expect(browser.cursor?.items == [file])
-        #expect(browser.releaseItems == [file])
-        #expect(browser.remoteItems.isEmpty)
-        #expect(!browser.showsRemoteSources)
-        #expect(browser.showsReleaseFiles)
+        #expect(content.items == [file])
+        #expect(content.files?.items == [file])
+        #expect(content.remote == nil)
+        #expect(content.total == 1)
     }
 
     /// What the lightbox says of each state is the `artwork-lightbox-fetching`,
@@ -303,8 +280,9 @@ extension LibraryArtworkBrowserTests {
         let size = NSSize(width: 800, height: 520)
         return try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
+                content: .empty,
                 remoteItems: remoteItems,
-                releaseItems: [],
+                filter: .constant(.all),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
@@ -326,24 +304,14 @@ extension LibraryArtworkBrowserTests {
 extension LibraryArtworkBrowserTests {
     private func withLibraryBrowser<Value>(
         layout: ArtworkBrowserState.Layout,
-        fetch: @escaping () async throws -> BridgeRemoteCoverGallery,
-        onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
-        onDone: @escaping () -> Void,
+        gallery: BridgeCoverGallery,
+        calls: SheetCalls,
         body:
             (NSWindow, NSHostingView<AnyView>, LightboxImageLoad) async throws
             -> Value
     ) async throws -> Value {
         let size = NSSize(width: 960, height: 700)
-        let album = try #require(PreviewData.albumDetails["a-01"])
-        var bridge = try #require(
-            album.releases.first { $0.id == album.album.primaryReleaseId }
-        )
-        bridge.cover = BridgeImageRef(
-            id: bridge.id,
-            version: "cover-version",
-            imageType: .cover
-        )
-        let release = ReleaseDetail(bridge: bridge)
+        let releaseId = "release"
         let bytes = try Data(
             contentsOf: URL(
                 fileURLWithPath: PreviewData.previewArtPath("Booklet")
@@ -354,32 +322,32 @@ extension LibraryArtworkBrowserTests {
             fetchRemoteImage: { _, _ in bytes }
         )
         let lightbox = LightboxImageLoad()
-        // A read that never answers: the sheet shows the release it was
-        // opened with.
-        let library = Library(releaseDetail: {
-            DetailQuery(
-                setId: { _ in },
-                values: PulledValues(read: { try await Task.neverAnswers() })
-            )
-        })
         return try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 CoverSheetView(
-                    releaseId: release.id,
+                    releaseId: releaseId,
                     lightboxLoad: lightbox,
-                    initialRelease: release,
                     initialLayout: layout,
-                    fetchRemoteCovers: fetch,
-                    onSelect: onSelect,
-                    onDone: onDone
+                    refreshCovers: calls.lookup,
+                    onSelect: calls.onSelect,
+                    onDone: calls.onDone
                 )
-                .environment(library).environment(images)
+                .environment(images)
+                .environment(Library(coverGallery: { .fixed(gallery) }))
                 .frame(width: size.width, height: size.height)
             ),
             size: size
         ) {
             try await body($0, $1, lightbox)
         }
+    }
+
+    /// What the sheet calls: the lookup of the catalogs' covers, saving the
+    /// cover picked, and leaving.
+    struct SheetCalls {
+        var lookup: () async throws -> Void
+        var onSelect: (BridgeCoverSelection) async throws -> Void
+        var onDone: () -> Void
     }
 
     private actor CoverReads {
@@ -410,5 +378,104 @@ extension LibraryArtworkBrowserTests {
             sourceName: source == .discogs ? "Discogs" : "Cover Art Archive",
             label: .lead(releaseGroup: false)
         )
+    }
+}
+
+extension LibraryArtworkBrowserTests {
+    /// The release's saved cover, at `version`.
+    private func savedCover(version: String = "v1") -> CoverItem {
+        CoverItem(gallery: savedGalleryCover(version: version))
+    }
+
+    private func savedGalleryCover(version: String = "v1")
+        -> BridgeGalleryCover
+    {
+        BridgeGalleryCover(
+            selection: nil,
+            image: .releaseImage(
+                releaseId: "release",
+                source: .cover(
+                    image: BridgeImageRef(
+                        id: "release",
+                        version: version,
+                        imageType: .cover
+                    )
+                )
+            ),
+            label: .current
+        )
+    }
+
+    private func galleryCover(_ cover: BridgeRemoteCover) -> BridgeGalleryCover
+    {
+        BridgeGalleryCover(
+            selection: cover.coverChoice.selection,
+            image: cover.coverChoice.image,
+            label: .remote(sourceName: cover.sourceName, label: cover.label)
+        )
+    }
+
+    /// What core reads for the release under `filter`: its saved cover (under
+    /// all sources only) and the remote covers given.
+    private func gallery(
+        remote covers: [BridgeRemoteCover],
+        current: BridgeGalleryCover? = nil,
+        filter: ArtworkBrowserState.Filter = .all
+    ) -> BridgeCoverGallery {
+        let saved = current ?? (filter == .all ? savedGalleryCover() : nil)
+        return BridgeCoverGallery(
+            current: saved,
+            fetch: .linked,
+            sections: [
+                BridgeCoverSection(
+                    source: .remote,
+                    items: covers.map(galleryCover),
+                    count: UInt32(covers.count)
+                )
+            ],
+            total: UInt32(covers.count + (saved == nil ? 0 : 1))
+        )
+    }
+}
+
+/// A picker's live read that answers each request with `gallery`.
+extension CoverGalleryQuery {
+    static func fixed(_ gallery: BridgeCoverGallery) -> CoverGalleryQuery {
+        let (stream, continuation) = AsyncStream<BridgeCoverGallerySnapshot>
+            .makeStream()
+        let pulls = FixedPulls(stream.makeAsyncIterator())
+        return CoverGalleryQuery(
+            setRequest: { releaseId, filter in
+                continuation.yield(
+                    BridgeCoverGallerySnapshot(
+                        request: BridgeCoverGalleryRequest(
+                            releaseId: releaseId,
+                            filter: filter
+                        ),
+                        gallery: gallery
+                    )
+                )
+            },
+            values: PulledValues(
+                read: { try await pulls.next() },
+                cancel: { continuation.finish() }
+            )
+        )
+    }
+}
+
+/// The one reader of a stream, which waits for each request's value in turn.
+private final class FixedPulls: @unchecked Sendable {
+    private var iterator: AsyncStream<BridgeCoverGallerySnapshot>.AsyncIterator
+
+    init(_ iterator: AsyncStream<BridgeCoverGallerySnapshot>.AsyncIterator) {
+        self.iterator = iterator
+    }
+
+    func next() async throws -> BridgeCoverGallerySnapshot {
+        guard let snapshot = await iterator.next() else {
+            throw CancellationError()
+        }
+        return snapshot
     }
 }

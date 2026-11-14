@@ -242,6 +242,12 @@ impl AppHandle {
         )
     }
 
+    /// The covers a library release's picker shows, showing nothing until
+    /// `set_request` names a release.
+    pub fn subscribe_cover_gallery(&self) -> Arc<crate::CoverGallerySubscription> {
+        crate::screens::cover_gallery(self.services.subscribe_cover_gallery(), self.runtime.clone())
+    }
+
     /// A release's files in the Storage sheet's order, showing nothing until
     /// `set_request` names a release.
     pub fn subscribe_release_files(&self) -> Arc<crate::ReleaseFilesSubscription> {

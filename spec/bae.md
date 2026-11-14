@@ -1932,6 +1932,19 @@ drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels
 on a side and stored as JPEG.
 
+A library release's picker follows one live query under the source the
+person chose (all, the release's files, or one catalog): the release's saved
+cover, shown under all, the covers its catalogs offered when this device last
+fetched them, and the release's images a cover can be made from, each source
+with its count and the whole with its total, so "N of M" and the section
+counts come from that read. Opening the picker, and its Refresh, fetch the
+catalogs' covers and store them, replacing what the last fetch stored on this
+device (§A.8); that write, a change to the release's files or saved cover
+from this or another device, and the person's choice of another source each
+reach the open picker as a new value. A fetch that fails stores nothing, so
+the covers stored stay on screen, and a release that names no catalog release
+stores that it offers none.
+
 **Where it goes.** Each import lands on this device or goes to storage, as
 the person last chose (§4.2): This Mac or Cloud, one choice. Either import stages its files with
 coven in the same transaction as its rows: on this device only for a local
@@ -6180,6 +6193,8 @@ write commits, so the release and the row naming it land in either order.
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
 | `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, its catalog was not asked (switched off, or Discogs had no key), or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
+| `release_cover_fetch` | the library release a picker fetched covers for, and whether it names a catalog release; a release's deletion takes its rows |
+| `release_cover_entry` | the covers a fetch found for a release, in the order offered, each as a stored cover with its catalog beside it for the picker's source filter |
 
 ### A.9 Transfer queues
 

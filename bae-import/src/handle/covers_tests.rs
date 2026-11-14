@@ -122,7 +122,7 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
     let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
-    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
     shut_down(handle).await;
     assert_eq!(gallery, RemoteCoverGallery::Unlinked);
 }
@@ -130,7 +130,7 @@ async fn unlinked_cover_gallery_for_candidate_without_metadata() {
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_file_tags() {
     let (handle, _tmp, key, _) = pane_fixture().await;
-    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
     shut_down(handle).await;
     assert_eq!(gallery, RemoteCoverGallery::Unlinked);
 }
@@ -142,9 +142,21 @@ async fn unlinked_cover_gallery_for_library_release() {
     bae_records::test_fixtures::test_records(&records).insert_artist(&artist).await.unwrap();
     let (_album, release) = insert_library_release(&records, &artist.id, "Album Title").await;
     let handle = parts.start().await.unwrap();
-    let gallery = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await.unwrap();
+    handle.refresh_release_covers(&release.id).await.unwrap();
+    let asked = crate::CoverGalleryRequest {
+        release_id: release.id.clone(),
+        filter: crate::CoverFilter::All,
+    };
+    let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
+    let gallery = loop {
+        let event = live.next().await.expect("the read runs");
+        if event.request.as_ref() == Some(&asked) {
+            break event.result.unwrap().expect("a request is answered");
+        }
+    };
     shut_down(handle).await;
-    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery.fetch, crate::CoverFetch::Unlinked);
+    assert_eq!(gallery.total, 0);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -167,12 +179,25 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
         .await
         .unwrap();
     let handle = parts.start().await.unwrap();
-    let result = handle.fetch_remote_covers(CoverTarget::Release(release.id)).await;
+    let result = handle.refresh_release_covers(&release.id).await;
+    let asked = crate::CoverGalleryRequest {
+        release_id: release.id.clone(),
+        filter: crate::CoverFilter::All,
+    };
+    let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
+    let gallery = loop {
+        let event = live.next().await.expect("the read runs");
+        if event.request.as_ref() == Some(&asked) {
+            break event.result.unwrap().expect("a request is answered");
+        }
+    };
     shut_down(handle).await;
     assert!(matches!(
         result,
         Err(crate::ImportError::Catalog(bae_catalogs::CatalogError::DiscogsNotConfigured))
     ));
+    // The failed fetch stored no answer.
+    assert_eq!(gallery.fetch, crate::CoverFetch::NotFetched);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -202,7 +227,7 @@ async fn linked_cover_gallery_can_be_empty() {
         )
         .await
         .unwrap();
-    let gallery = handle.fetch_remote_covers(CoverTarget::Candidate(key)).await.unwrap();
+    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
     shut_down(handle).await;
     assert_eq!(gallery, RemoteCoverGallery::Linked(vec![]));
 }

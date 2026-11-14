@@ -308,6 +308,7 @@ task_types = [
     "CastReceiversSubscription",
     "ComposerDetailSubscription",
     "ConfigSubscription",
+    "CoverGallerySubscription",
     "DeviceStorageSubscription",
     "DownloadCountsSubscription",
     "FolderScansSubscription",
@@ -1526,6 +1527,15 @@ tables = [
     "source_release_work_credit",
     "source_release_unfetched",
 ]
+
+[[database.domains]]
+name = "release cover gallery"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/cover_gallery.rs",
+    "bae-import/src/tables/cover_gallery.sql",
+]
+tables = ["release_cover_fetch", "release_cover_entry"]
 
 [[database.domains]]
 name = "import origin"

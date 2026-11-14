@@ -51,7 +51,7 @@ pub struct ImageRef {
 /// [`ImageRef`], or one of the release's image files, read by its file id.
 /// The library reads a slot's bytes by it, so a surface never picks a
 /// source itself.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GallerySource {
     Cover(ImageRef),
     ReleaseFile { file_id: String },
