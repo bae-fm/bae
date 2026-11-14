@@ -74,6 +74,67 @@ class OperationTests(unittest.TestCase):
             with self.subTest(operation):
                 self.assertIn(operation, operations(KOTLIN, source))
 
+    def test_audited_swift_lines_are_found(self) -> None:
+        # Each line is quoted from the 2026-11-14 audit of the read rule.
+        cases = {
+            "first(where:": "return answer?.selected.first(where: { $0.id == releaseId })",
+            "contains(where:": "answer.selected.contains(where: { $0.id == clickedId })",
+            "allSatisfy": "return !removingEntryIds.allSatisfy(holdsEntry)",
+            "isSubset(of:": "return Set(releaseIds).isSubset(of: storageManagerStore.heldIds)",
+            "position(of:": "return upcoming?.position(of: entryId) != nil",
+            "Set(.map": "return Set(answer?.selected.map(\\.id) ?? [])",
+            "firstIndex(where:": "let i = run.rows.firstIndex(where: { $0.id == id })",
+            "filter": "removingEntryIds = removingEntryIds.filter(holdsEntry)",
+        }
+        for operation, source in cases.items():
+            with self.subTest(operation):
+                self.assertEqual(operations(SWIFT, source).count(operation), 1)
+
+    def test_swift_neighbors_of_the_new_operations_are_left_alone(self) -> None:
+        for source in (
+            "if let first = rows.first { draw(first) }",
+            "let a = rows.first",
+            "let a = names.contains(name)",
+            "let a = Set(names)",
+            "let a = Set([1, 2])",
+            "let a = rows.firstIndex(of: row)",
+            "let a = Swift.position(x)",
+        ):
+            with self.subTest(source):
+                self.assertEqual(operations(SWIFT, source), [])
+
+    def test_audited_kotlin_lines_are_found(self) -> None:
+        cases = {
+            "firstOrNull": "val read = upcoming.entries.firstOrNull { it.value.entryId == entryId }",
+            "any": "if (details.any { it != null }) note()",
+            "all": "val ok = rows.all { it.ok }",
+            "none": "val gone = people.none { it.membership.id == requested.memberId }",
+            "find": "val a = rows.find { it.id == id }",
+            "first": "val a = rows.first { it.id == id }",
+            "indexOfFirst": "val from = manual.indexOfFirst { it.entryId == fromKey }",
+        }
+        for operation, source in cases.items():
+            with self.subTest(operation):
+                self.assertEqual(operations(KOTLIN, source), [operation])
+
+    def test_kotlin_neighbors_of_the_new_operations_are_left_alone(self) -> None:
+        for source in (
+            "val a = rows.first()",
+            "val a = rows.firstOrNull()",
+            "val a = rows.any()",
+            "val a = names.contains(name)",
+        ):
+            with self.subTest(source):
+                self.assertEqual(operations(KOTLIN, source), [])
+
+    def test_a_live_subscription_taken_once_is_found_only_with_the_flow_import(self) -> None:
+        # LiveBrowseProjection.kt: `readOnce` opens a live subscription and takes
+        # its first value.
+        flow = "import kotlinx.coroutines.flow.first\n\nval a = when (val event = read.first()) { else -> 1 }"
+        self.assertEqual(operations(KOTLIN, flow), ["first()"])
+        self.assertEqual(operations(KOTLIN, "val a = rows.first()"), [])
+        self.assertEqual(operations(KOTLIN, "import kotlinx.coroutines.flow.first\nval a = flow.first { it > 0 }"), ["first"])
+
     def test_safe_call_chains_are_found(self) -> None:
         self.assertEqual(operations(KOTLIN, "val a = rows?.filter { it.ok }"), ["filter"])
         self.assertEqual(operations(SWIFT, "let a = rows?.filter { $0.ok }"), ["filter"])

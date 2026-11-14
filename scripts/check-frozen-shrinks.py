@@ -17,10 +17,23 @@ import sys
 import tomllib
 from pathlib import Path
 
-# Each file and the fields that key one of its frozen rows.
+# Each file, the location of its frozen rows, the fields that key a row, the
+# field naming the kind of shape or operation a row is about, and the file
+# that decides which shapes the check finds (the pinned checker's revision, or
+# the apps' pass).
 LISTS = {
-    "owner-construction-check.toml": (("read_shapes", "frozen"), ("path", "item", "shape")),
-    "scripts/ui-row-work.toml": (("frozen",), ("path", "operation")),
+    "owner-construction-check.toml": (
+        ("read_shapes", "frozen"),
+        ("path", "item", "shape"),
+        "shape",
+        "scripts/owner-construction-check.sh",
+    ),
+    "scripts/ui-row-work.toml": (
+        ("frozen",),
+        ("path", "operation"),
+        "operation",
+        "scripts/ui_row_work.py",
+    ),
 }
 
 REMEDY = (
@@ -50,9 +63,16 @@ def head_text(root: Path, name: str) -> str | None:
     return shown.stdout if shown.returncode == 0 else None
 
 
+def path_text_changed(root: Path, name: str) -> bool:
+    """Whether a file's text differs from HEAD's."""
+    before = head_text(root, name)
+    path = root / name
+    return before is not None and path.exists() and path.read_text() != before
+
+
 def violations(root: Path) -> list[str]:
     found: list[str] = []
-    for name, (location, fields) in LISTS.items():
+    for name, (location, fields, kind, teacher) in LISTS.items():
         path = root / name
         before_text = head_text(root, name)
         if before_text is None or not path.exists():
@@ -62,8 +82,14 @@ def violations(root: Path) -> list[str]:
         if before_rows is None or after_rows is None:
             continue
         before = counts(before_rows, fields)
+        # A shape the lists had no row for, found by a checker this change
+        # taught it, starts with its own findings: they freeze once.
+        known = {row[kind] for row in before_rows}
+        taught = path_text_changed(root, teacher)
         for key, count in counts(after_rows, fields).items():
             label = ", ".join(f"{field} {value}" for field, value in zip(fields, key))
+            if key not in before and taught and key[fields.index(kind)] not in known:
+                continue
             if key not in before:
                 found.append(f"{name}: new frozen row ({label}) with count {count}. {REMEDY}")
             elif count > before[key]:

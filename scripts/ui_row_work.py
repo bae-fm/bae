@@ -12,6 +12,14 @@ finds the operations that do a query's work in the app:
 - `join`: Swift `Dictionary(uniqueKeysWithValues:`; Kotlin `associateBy`, ...
 - `aggregate`: Swift `reduce`, `count(where:`, `max`, `min`; Kotlin `sumOf`, ...
 - `dedup`: Swift `uniqued`; Kotlin `distinct`, `distinctBy`
+- `pick`: Swift `first(where:`, `last(where:`, `firstIndex(where:`,
+  `position(of:`; Kotlin `firstOrNull {`, `find {`, `indexOfFirst {`, ...
+- `test`: Swift `contains(where:`, `allSatisfy`, `isSubset(of:`; Kotlin
+  `any {`, `all {`, `none {`
+- `set-of-rows`: Swift `Set(rows.map ...)`, the set a membership test reads
+- `first()`: Kotlin `.first()` on a flow, in a file that imports
+  `kotlinx.coroutines.flow.first`: a live subscription read once, where a
+  one-off read is a plain read
 - `shown-count`: a `.count` / `.size` inside a string interpolation, or as an
   argument of `pluralStringResource` / `String(localized:`
 
@@ -83,6 +91,38 @@ KOTLIN_MEMBERS = {
     "distinct": "dedups",
     "distinctBy": "dedups",
 }
+# Swift members that only count with a first argument label (`first(where:`):
+# `first { }` is also an `if` body, and `contains(x)` tests a value.
+SWIFT_LABELED = {
+    ("first", "where"): "picks from",
+    ("last", "where"): "picks from",
+    ("firstIndex", "where"): "picks from",
+    ("lastIndex", "where"): "picks from",
+    ("contains", "where"): "tests",
+    ("isSubset", "of"): "tests a set against",
+    ("isSuperset", "of"): "tests a set against",
+    ("position", "of"): "finds a place in",
+}
+SWIFT_CLOSURE_TESTS = {"allSatisfy": "tests"}
+# Kotlin members that take a lambda: `rows.first()` is no search, so only the
+# brace form counts.
+KOTLIN_LAMBDA_MEMBERS = {
+    "first": "picks from",
+    "last": "picks from",
+    "firstOrNull": "picks from",
+    "lastOrNull": "picks from",
+    "find": "picks from",
+    "findLast": "picks from",
+    "singleOrNull": "picks from",
+    "indexOfFirst": "picks from",
+    "indexOfLast": "picks from",
+    "any": "tests",
+    "all": "tests",
+    "none": "tests",
+}
+SET_OF_ROWS = "Set(.map"
+FLOW_FIRST = "first()"
+FLOW_FIRST_IMPORT = "import kotlinx.coroutines.flow.first"
 SWIFT_INITIALIZERS = {
     "grouping": ("Dictionary(grouping:", "groups"),
     "uniqueKeysWithValues": ("Dictionary(uniqueKeysWithValues:", "joins"),
@@ -98,6 +138,11 @@ OPERATIONS = {
     SWIFT_COUNT_WHERE,
     KOTLIN_COUNT_BLOCK,
     SHOWN_COUNT,
+    SET_OF_ROWS,
+    FLOW_FIRST,
+    *(f"{name}(" + label + ":" for name, label in SWIFT_LABELED),
+    *SWIFT_CLOSURE_TESTS,
+    *KOTLIN_LAMBDA_MEMBERS,
 }
 VERBS = {
     **SWIFT_MEMBERS,
@@ -106,6 +151,11 @@ VERBS = {
     SWIFT_COUNT_WHERE: "aggregates",
     KOTLIN_COUNT_BLOCK: "aggregates",
     SHOWN_COUNT: "shows a count of",
+    SET_OF_ROWS: "builds a set from",
+    FLOW_FIRST: "takes one value of a live subscription of",
+    **{f"{name}({label}:": verb for (name, label), verb in SWIFT_LABELED.items()},
+    **SWIFT_CLOSURE_TESTS,
+    **KOTLIN_LAMBDA_MEMBERS,
 }
 SHOWN_COUNT_ARGUMENT_CALLS = ("pluralStringResource",)
 
@@ -190,8 +240,20 @@ def count_marker(tokens: list[Token], index: int, language: str) -> bool:
     )
 
 
+def maps_inside(tokens: list[Token], start: int, end: int) -> bool:
+    """Whether a `.map` member call sits between two token indexes."""
+    return any(
+        tokens[cursor].text == "map" and is_member(tokens, cursor)
+        for cursor in range(start, end)
+    )
+
+
 def member_findings(
-    path: str, tokens: list[Token], language: str
+    path: str,
+    tokens: list[Token],
+    language: str,
+    source: str,
+    pairs: dict[int, int],
 ) -> list[tuple[int, str]]:
     members = SWIFT_MEMBERS if language == "swift" else KOTLIN_MEMBERS
     found: list[tuple[int, str]] = []
@@ -204,6 +266,31 @@ def member_findings(
             if following in ("(", "{"):
                 found.append((index, token.text))
             continue
+        if is_member(tokens, index):
+            if language == "swift":
+                if token.text in SWIFT_CLOSURE_TESTS and following in ("(", "{"):
+                    found.append((index, token.text))
+                    continue
+                if (
+                    following == "("
+                    and after + 2 < len(tokens)
+                    and tokens[after + 2].text == ":"
+                    and (token.text, tokens[after + 1].text) in SWIFT_LABELED
+                ):
+                    found.append((index, f"{token.text}({tokens[after + 1].text}:"))
+                    continue
+            elif token.text in KOTLIN_LAMBDA_MEMBERS and following == "{":
+                found.append((index, token.text))
+                continue
+            elif (
+                token.text in ("first", "firstOrNull")
+                and following == "("
+                and after + 1 < len(tokens)
+                and tokens[after + 1].text == ")"
+                and FLOW_FIRST_IMPORT in source
+            ):
+                found.append((index, FLOW_FIRST))
+                continue
         if is_member(tokens, index) and token.text == "count":
             if language == "swift" and following == "(":
                 if after + 2 < len(tokens) and (
@@ -213,6 +300,10 @@ def member_findings(
             elif language == "kotlin" and following == "{":
                 found.append((index, KOTLIN_COUNT_BLOCK))
             continue
+        if language == "swift" and token.text == "Set" and not is_member(tokens, index):
+            if following == "(" and after in pairs and maps_inside(tokens, after, pairs[after]):
+                found.append((index, SET_OF_ROWS))
+                continue
         if language == "swift" and token.text == "Dictionary" and not is_member(tokens, index):
             if (
                 following == "("
@@ -264,7 +355,7 @@ def findings(files: dict[str, str]) -> list[Finding]:
         language = language_of(path)
         tokens = tokenize(files[path], language)
         pairs = bracket_pairs(tokens)
-        for index, operation in member_findings(path, tokens, language):
+        for index, operation in member_findings(path, tokens, language, files[path], pairs):
             found.append(Finding(path, tokens[index].line, operation))
         for index in shown_counts(path, tokens, pairs, language):
             found.append(Finding(path, tokens[index].line, SHOWN_COUNT))
