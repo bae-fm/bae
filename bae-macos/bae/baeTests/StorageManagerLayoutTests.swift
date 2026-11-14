@@ -167,10 +167,7 @@ final class StorageManagerLayoutTests: XCTestCase {
                 descendants.compactMap { $0 as? NSSegmentedControl }
                     .contains { $0.segmentCount == 2 }
             )
-            let fileList = try XCTUnwrap(
-                descendants.compactMap { $0 as? NSScrollView }
-                    .last { $0.documentView is NSTableView }
-            )
+            let fileList = try XCTUnwrap(inspectorFileList(in: host))
             let frame = fileList.convert(fileList.bounds, to: host)
             XCTAssertGreaterThan(frame.minX, 400)
             XCTAssertEqual(frame.minY, host.bounds.minY, accuracy: 2)
@@ -221,16 +218,14 @@ final class StorageManagerLayoutTests: XCTestCase {
             try await settleFirstPage(of: scene, in: host)
 
             let descendants = SnapshotTestSupport.descendants(of: host)
-            let fileList = try XCTUnwrap(
-                descendants.compactMap { $0 as? NSScrollView }
-                    .last { $0.documentView is NSTableView }
-            )
-            let files = try XCTUnwrap(fileList.documentView as? NSTableView)
-            // The release's audio file and its cover.
-            XCTAssertEqual(files.numberOfRows, 2)
-            for row in 0..<files.numberOfRows {
-                XCTAssertLessThan(files.rect(ofRow: row).height, 40)
-            }
+            let fileList = try XCTUnwrap(inspectorFileList(in: host))
+            // The release's audio file and its cover, one line each: the
+            // rows are SwiftUI views no AppKit tree counts, so the list's
+            // content stands for them, over one line's height and under two
+            // lines' for each.
+            let content = try XCTUnwrap(fileList.documentView).frame.height
+            XCTAssertGreaterThan(content, 40, "\(content)")
+            XCTAssertLessThan(content, 80, "\(content)")
             XCTAssertFalse(
                 descendants.compactMap { $0 as? NSSegmentedControl }
                     .contains { $0.segmentCount == 2 }
@@ -290,6 +285,17 @@ final class StorageManagerLayoutTests: XCTestCase {
 }
 
 extension StorageManagerLayoutTests {
+    /// The inspector's file list: a SwiftUI scroll view to the right of the
+    /// release table, which is the one scroll view of the tree holding a table.
+    private func inspectorFileList(in host: NSView) -> NSScrollView? {
+        SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSScrollView }
+            .last {
+                !($0.documentView is NSTableView)
+                    && $0.convert($0.bounds, to: host).minX > 400
+            }
+    }
+
     func testInspectorOpensWithoutSelection() async throws {
         let size = NSSize(width: 940, height: 600)
         let scene = StorageManagerPreviewScene(inspectorPresented: true)
