@@ -14,7 +14,7 @@ extension ShotScene {
         ) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
             let images = ImageStore(
                 fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
                 fetchReleaseImageBytes: { _, source in

@@ -12,12 +12,14 @@ extension ShotScene {
             overLibrary(
                 "mac.album.delete-album",
                 DeleteAlbumConfirmation.alert {},
-                height: 1_000
+                height: 1_000,
+                openAlbum: true
             ),
             overLibrary(
                 "mac.album.delete-release",
                 DeleteReleaseConfirmation.alert {},
-                height: 1_000
+                height: 1_000,
+                openAlbum: true
             ),
             overLibrary(
                 "mac.album.storage.unpin",
@@ -28,7 +30,8 @@ extension ShotScene {
                     ),
                     dontShowAgain: .constant(false)
                 ) { _ in },
-                height: 1_000
+                height: 1_000,
+                openAlbum: true
             ),
             unpinSeveral(),
             overLibrary(
@@ -256,12 +259,16 @@ extension ShotScene {
     private static func overLibrary(
         _ id: String,
         _ alert: (MacAlertWords, [MacAlertButton]),
-        height: CGFloat
+        height: CGFloat,
+        openAlbum: Bool = false
     ) -> ShotScene {
         let size = CGSize(width: 1_200, height: height)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                openAlbum: openAlbum
+            )
             return ShotStage(
                 OverWindow.alert(
                     alert,

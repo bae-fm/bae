@@ -247,6 +247,60 @@
             )
         }
 
+        /// The album the boards open in the library window: "Low Tide Hours"
+        /// by Mara Quill, one CD of ten tracks under a "Disc 1" heading, as
+        /// the boards list them with their lengths.
+        static func boardAlbumDetail() -> BridgeAlbumDetail {
+            let tracks: [(String, UInt64)] = [
+                ("Harbor Lights", 272), ("The Long Way Home", 312),
+                ("Second Floor", 225), ("Low Tide Hours", 303),
+                ("Tin Roof", 341), ("Margins", 295),
+                ("Weather Report Card", 276), ("Old Dog", 177),
+                ("Night Ferry", 276), ("Slow Morning", 622),
+            ]
+            var detail = makeDetail(
+                album: AlbumFixture(
+                    id: "board-0",
+                    title: "Low Tide Hours",
+                    artist: "Mara Quill",
+                    year: 1992
+                ),
+                primary: ReleaseFixture(
+                    media: [BridgeMediaCount(medium: .cd, count: 1)],
+                    tracks: .flat(tracks.map(\.0)),
+                    identifiers: ReleaseIdentifiers(
+                        labels: [
+                            BridgeLabelLine(
+                                names: ["Harbor Records"],
+                                catalogNumbers: []
+                            )
+                        ],
+                        area: .country(code: "US")
+                    )
+                )
+            )
+            var release = detail.releases[0]
+            release.tracks = zip(release.tracks, tracks)
+                .map { track, entry in
+                    var track = track
+                    track.durationMs = entry.1 * 1000
+                    track.durationClock = bridgeLengthClock(ms: entry.1 * 1000)
+                    return track
+                }
+            release.trackGroups = [
+                BridgeTrackGroup(
+                    side: .disc(disc: 1),
+                    headerKey: "core.track.disc",
+                    tracks: release.tracks,
+                    totalDuration: groupDuration(release.tracks),
+                    showsTime: false
+                )
+            ]
+            release.totalDuration = groupDuration(release.tracks)
+            detail.releases = [release]
+            return detail
+        }
+
         private static func makeDetail(
             album: AlbumFixture,
             tracks: [String],

@@ -32,13 +32,16 @@ extension ShotScene {
         )
     }
 
-    /// A browse session over `boardAlbums`.
+    /// A browse session over `boardAlbums`, with the first album open when
+    /// `openAlbum` is set, as the album boards draw it.
     @MainActor
     static func boardLibraryBacking(
         uiStore: UiStore,
+        openAlbum: Bool = false,
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:]
     ) -> (library: Library, session: LibraryBrowseSession) {
+        let detail = PreviewData.boardAlbumDetail()
         let library = Library(
             albumList: { _, _ in
                 .fixed(boardAlbums, answers: UnansweredCount())
@@ -46,6 +49,16 @@ extension ShotScene {
             getAlbumIndex: { _, albumId, _ in
                 boardAlbums.firstIndex { $0.id == albumId }
                     .map(UInt64.init)
+            },
+            albumDetail: {
+                .fixed(answers: UnansweredCount()) {
+                    $0 == detail.album.id ? detail : nil
+                }
+            },
+            releaseDetail: {
+                .fixed(answers: UnansweredCount()) { id in
+                    detail.releases.first { $0.id == id }
+                }
             },
             playlists: {
                 .fixed(
@@ -59,10 +72,19 @@ extension ShotScene {
             },
             playlistDetail: {
                 .fixed(answers: UnansweredCount()) { playlistDetails[$0] }
+            },
+            releaseFiles: {
+                .fixed(
+                    PreviewData.previewReleaseFiles,
+                    answers: UnansweredCount()
+                )
             }
         )
         let session = LibraryBrowseSession(library: library, uiStore: uiStore)
         session.start()
+        if openAlbum {
+            uiStore.selectAlbum(detail.album.id)
+        }
         return (library, session)
     }
 
