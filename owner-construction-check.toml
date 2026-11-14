@@ -1804,7 +1804,6 @@ frozen = [
     { path = "bae-records/src/records/catalog_match.rs", item = "identify_new_rows", shape = "pick", count = 1, finding = "`identify_new_rows` picks with `find` (found by the check)" },
     { path = "bae-records/src/records/catalog_match.rs", item = "ids_agree", shape = "pick", count = 1, finding = "`ids_agree` picks with `all` (found by the check)" },
     { path = "bae-records/src/records/files.rs", item = "release_files_kept_on", shape = "group", count = 1, finding = "`release_files_kept_on` returns a `BTreeMap` (found by the check)" },
-    { path = "bae-records/src/records/label_resolution.rs", item = "Decided::fold", shape = "filter", count = 1, finding = "`Decided::fold` filters with `retain` (found by the check)" },
     { path = "bae-records/src/records/queued_uploads.rs", item = "original_in_row", shape = "filter", count = 1, finding = "`original_in_row` filters with `filter_map` (found by the check)" },
     { path = "bae-records/src/records/queued_uploads.rs", item = "original_in_row", shape = "pick", count = 1, finding = "`original_in_row` picks with `find` (found by the check)" },
     { path = "bae-records/src/records/queued_uploads.rs", item = "release_rows_on", shape = "group", count = 1, finding = "`release_rows_on` returns a `HashMap` (found by the check)" },
