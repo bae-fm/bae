@@ -261,35 +261,37 @@ private fun FramedNotice(
 ) {
     val hasButtons = hasDetails || action != null
     NoticeFrame(tone = tone, modifier = modifier, look = look) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-                Text(
-                    text = title,
-                    style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
-                    color = LocalContentColor.current,
-                )
-                advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
-                if (hasButtons && buttons == NoticeButtons.BELOW) {
-                    // The buttons' own padding overhangs: a label starts on the words' edge.
-                    NoticeButtonRow(
-                        hasDetails,
-                        onDetails,
-                        action,
-                        Modifier.offset(x = -ThemeSpace.related).pulledUpBy(ThemeSpace.related),
+        // Words, then the × and the buttons that sit on their line; buttons below the words come after the ×.
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
+                    Text(
+                        text = title,
+                        style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
+                        color = LocalContentColor.current,
                     )
+                    advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
                 }
-            }
-            if (hasButtons && buttons == NoticeButtons.INLINE) {
-                // The buttons' own padding overhangs: a label's right edge is the notice's.
-                FirstLineBox {
-                    NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
+                if (hasButtons && buttons == NoticeButtons.INLINE) {
+                    // The buttons' own padding overhangs: a label's right edge is the notice's.
+                    FirstLineBox {
+                        NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
+                    }
                 }
+                onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }
             }
-            onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }
+            if (hasButtons && buttons == NoticeButtons.BELOW) {
+                // The buttons' own padding overhangs: a label starts on the words' edge.
+                NoticeButtonRow(
+                    hasDetails,
+                    onDetails,
+                    action,
+                    Modifier.offset(x = -ThemeSpace.related).pulledUpBy(ThemeSpace.related),
+                )
+            }
         }
     }
 }
