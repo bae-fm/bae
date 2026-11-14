@@ -27,7 +27,12 @@ mod album;
 pub use album::PrimaryReleaseError;
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
-// Only the desktop's import offers a cover, so only it states one in SQL.
+// Only the desktop's import offers a cover or states its track table, so
+// only it states them in SQL.
+#[cfg(desktop)]
+mod layout_text;
+#[cfg(desktop)]
+pub(crate) use layout_text::{LENGTHS_DISAGREE, MEDIUM_IS_SIDED, SIDE_LETTERS, TRIM};
 #[cfg(desktop)]
 mod release_group_cover;
 #[cfg(desktop)]
@@ -151,7 +156,14 @@ pub const SCHEMA: bae_store::SchemaPart =
 
 /// The SQL functions `records.sql` names.
 #[cfg(desktop)]
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&CATALOG_RANK, &RELEASE_GROUP_COVER];
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
+    &CATALOG_RANK,
+    &RELEASE_GROUP_COVER,
+    &SIDE_LETTERS,
+    &MEDIUM_IS_SIDED,
+    &LENGTHS_DISAGREE,
+    &TRIM,
+];
 #[cfg(not(desktop))]
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&CATALOG_RANK];
 

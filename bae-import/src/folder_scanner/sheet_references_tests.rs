@@ -330,8 +330,8 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
 /// Every FILE entry uses the same path resolution rule. A ripper commonly
 /// writes a CUE before its WAV files are encoded, leaving the sheet's stems
 /// intact while the audio extension changes.
-#[test]
-fn multi_file_cue_resolves_each_reference_by_unique_stem() {
+#[tokio::test]
+async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     let (tmp, album) = album_dir();
     for name in ["01 First.flac", "02 Second.flac", "03 Third.flac"] {
         std::fs::write(album.join(name), bytes_for(FileKind::Flac)).unwrap();
@@ -393,15 +393,7 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
         ],
     );
 
-    let durations = crate::probe::source_durations(files)
-        .expect("every resolved CUE entry should have a source duration");
-    assert!(units.iter().all(|unit| durations.duration_of(unit).is_some()));
-    let table = crate::mapping::mapping_table(
-        files,
-        &durations,
-        &crate::pane::blank_candidate_draft(files),
-    )
-    .expect("a blank draft is drawn over its own folder");
+    let table = crate::mapping::tests::blank_table(files).await;
     let Some(crate::MappingTrackRun::Sheet { sheet, entries }) = table.track_sides[0].runs.first()
     else {
         panic!("the resolved CUE should group its track rows");

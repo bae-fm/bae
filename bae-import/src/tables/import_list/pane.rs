@@ -47,6 +47,7 @@ enum StageRows {
 #[derive(Clone, PartialEq)]
 struct DraftRows {
     pane_rows: DbCandidatePaneRows,
+    mapping: super::mapping_rows::MappingRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<bae_records::ResolvedCredit>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -137,6 +138,12 @@ fn draft_rows_on(
 ) -> Result<DraftRows, DbError> {
     let release_link = current.and_then(|state| state.release_link.clone());
     let pane_rows = load_pane_rows_on(sql, content_hash)?;
+    let mapping = super::mapping_rows::load_mapping_rows_on(
+        sql,
+        &candidate.watched_folder_path,
+        &candidate.key(),
+        content_hash,
+    )?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
     let artist_resolutions = bae_records::records::artist_resolution::resolve_credits_with(
@@ -176,6 +183,7 @@ fn draft_rows_on(
         .transpose()?;
     Ok(DraftRows {
         pane_rows,
+        mapping,
         cover_options,
         artist_resolutions,
         records,
@@ -239,6 +247,7 @@ impl CandidateDetailRows {
             StageRows::Drafting(draft) => {
                 let DraftRows {
                     pane_rows,
+                    mapping,
                     cover_options,
                     artist_resolutions,
                     records,
@@ -246,8 +255,7 @@ impl CandidateDetailRows {
                     album,
                     cover,
                 } = *draft;
-                let durations = crate::probe::source_durations(&candidate.files)?;
-                let pane = crate::pane::draft_pane(&candidate.files, &durations, &pane_rows.draft)?;
+                let mapping = mapping.table(&pane_rows.draft)?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()
@@ -259,11 +267,11 @@ impl CandidateDetailRows {
                     records,
                     picked_library_status,
                     album,
-                    metadata_draft: pane.edit,
+                    metadata_draft: pane_rows.draft.release_edit(),
                     draft_blank: pane_rows.draft_blank,
                     draft_valid: pane_rows.draft_valid,
                     artist_resolutions,
-                    mapping: pane.mapping,
+                    mapping,
                     cover,
                     remote_covers: cover_options,
                     lookup_choices,

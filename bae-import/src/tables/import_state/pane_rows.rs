@@ -864,6 +864,26 @@ impl ImportTables {
         .await;
     }
 
+    /// Replace the stored draft of `content_hash` with `draft`, as a person's
+    /// save does, though `draft` need not be drawn over the folder's audio.
+    pub(crate) async fn replace_draft_for_test(&self, content_hash: &str, draft: &CandidateDraft) {
+        let (content_hash, draft) = (content_hash.to_string(), draft.clone());
+        self.store
+            .write(move |sql| {
+                let stored = load_drafts_on(&sql, CandidateRows::One(&content_hash))?
+                    .remove(&content_hash)
+                    .expect("the state holds the draft the scan seeded");
+                super::draft_store::store_draft(
+                    &sql,
+                    &content_hash,
+                    (&stored, MetadataAuthor::Nobody),
+                    (&draft, MetadataAuthor::Nobody),
+                )
+            })
+            .await
+            .expect("the draft is stored");
+    }
+
     /// Plant damage for a test: every draft in the library under `directory`
     /// is not its state's, though that state stays and its release was never
     /// imported here. Every scan and the deletion of an imported release seed

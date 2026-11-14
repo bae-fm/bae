@@ -1758,7 +1758,9 @@ the pane has no reset and no undo: to start over, the person applies a source
 again (a catalog release, or the files' tags) or clears the metadata, and the
 file decisions stay as they are.
 
-The mapping table pairs each unit with its draft track. Each row shows the
+The mapping table pairs each unit with its draft track. bae lays the folder's
+audio out once, when it stores the files, and the pane reads that layout in one
+statement. Each row shows the
 length its audio measures; where the track's source lists a length more than
 three seconds apart, that listed length follows it in the warning colour, so
 the row says what disagrees. A CUE image's track names its image once, in its

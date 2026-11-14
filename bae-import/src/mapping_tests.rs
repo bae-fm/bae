@@ -4,7 +4,9 @@ use crate::folder_scanner::{
     SheetBindingOption, SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::pane::blank_candidate_draft;
-use crate::probe::{source_durations, SourceDurations};
+use crate::tables::watched_path::host_root;
+use crate::types::{AudioFile, CandidateDraft};
+use crate::ImportError;
 use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use bae_types::pressing::{made_of, Medium};
 use std::fs;
@@ -87,9 +89,55 @@ fn track_file(mapping: &TrackMapping) -> &MappingFile {
     }
 }
 
+/// A folder's files stored the way a scan stores them, with a draft over
+/// them, in a library of its own.
+struct StoredFolder {
+    _db: bae_store::Store,
+    _tmp: tempfile::TempDir,
+    tables: crate::tables::ImportTables,
+    watched_folder_path: std::path::PathBuf,
+    key: crate::CandidateKey,
+    hash: String,
+}
+
+impl StoredFolder {
+    async fn of(files: &CategorizedFiles) -> Self {
+        let (db, tmp) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+        let folder = host_root("/music/Album");
+        let hash =
+            crate::tables::import_state::tests::store_candidate_state(&db, files, &folder).await;
+        Self {
+            tables: crate::tables::ImportTables::new(db.clone()),
+            _db: db,
+            _tmp: tmp,
+            watched_folder_path: folder.parent().expect("a watched root").to_path_buf(),
+            key: crate::CandidateKey::folder(&folder),
+            hash,
+        }
+    }
+
+    /// The table the pane draws over `draft`, which replaces the blank draft
+    /// the scan stored.
+    async fn table(&self, draft: &CandidateDraft) -> Result<MappingTable, ImportError> {
+        self.tables.replace_draft_for_test(&self.hash, draft).await;
+        self.tables
+            .load_mapping_table_for_test(&self.watched_folder_path, &self.key, &self.hash)
+            .await
+    }
+}
+
+/// The table the pane draws for `files` stored and `draft` over them.
+async fn mapping_table(
+    files: &CategorizedFiles,
+    draft: &CandidateDraft,
+) -> Result<MappingTable, ImportError> {
+    StoredFolder::of(files).await.table(draft).await
+}
+
 /// The table the folder's blank draft renders.
-fn blank_table(files: &CategorizedFiles, durations: &SourceDurations) -> MappingTable {
-    mapping_table(files, durations, &blank_candidate_draft(files))
+pub(crate) async fn blank_table(files: &CategorizedFiles) -> MappingTable {
+    mapping_table(files, &blank_candidate_draft(files))
+        .await
         .expect("a blank draft is drawn over its own folder")
 }
 
@@ -126,8 +174,8 @@ fn positions(side: &MappingTrackSide) -> Vec<&str> {
 
 /// Every audio row is one of the draft's tracks, and a rip log and an image
 /// are carried beside them, because a role is a fact about the folder.
-#[test]
-fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
+#[tokio::test]
+async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     write_flac(&tmp.path().join("02.flac"));
@@ -135,7 +183,7 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     fs::write(tmp.path().join("rip.log"), b"log").expect("write log");
 
     let files = scan(tmp.path());
-    let table = blank_table(&files, &SourceDurations::default());
+    let table = blank_table(&files).await;
     let mappings = mappings(&table);
 
     assert_eq!(table.images.len(), 1);
@@ -165,39 +213,45 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
         [("cover.jpg", MappingRole::Image), ("rip.log", MappingRole::Document)],
         "the image is carried in the scan's order beside the other files"
     );
-    // A row nothing has measured has no probed length to show.
-    assert_eq!(track_file(mappings[0]).duration_ms, None);
+    // The scan stored the length of each unit with the files.
+    assert_eq!(track_file(mappings[0]).duration_ms, Some(1_000));
     assert_eq!(track_file(mappings[0]).role, MappingRole::Audio);
 }
 
 /// The table counts the track rows nobody has named: a blank title, or one
 /// of only spaces, which committing replaces with the file's name.
-#[test]
-fn the_table_counts_the_rows_nobody_has_named() {
+#[tokio::test]
+async fn mapping_statement_counts_untitled_tracks_as_str_trim_does() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for name in ["01.flac", "02.flac", "03.flac"] {
         write_flac(&tmp.path().join(name));
     }
     let files = scan(tmp.path());
-    assert_eq!(blank_table(&files, &SourceDurations::default()).untitled_track_count, 3);
+    assert_eq!(blank_table(&files).await.untitled_track_count, 3);
     let mut draft = blank_candidate_draft(&files);
     draft.tracks[0].edit.title = "Intro".into();
     draft.tracks[1].edit.title = "   ".into();
-    let table = mapping_table(&files, &SourceDurations::default(), &draft)
-        .expect("the draft is drawn over its own folder");
+    let table =
+        mapping_table(&files, &draft).await.expect("the draft is drawn over its own folder");
+    assert_eq!(table.untitled_track_count, 2);
+
+    // Every character `str::trim` removes counts as blank, and a zero-width
+    // space, which it keeps, names the track.
+    draft.tracks[0].edit.title = "\u{3000}\u{a0}\t".into();
+    draft.tracks[1].edit.title = "\u{200b}".into();
+    let table = mapping_table(&files, &draft).await.unwrap();
     assert_eq!(table.untitled_track_count, 2);
 }
 
 /// With no release applied, a row shows its stored probe and nothing
 /// disagrees with it.
-#[test]
-fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
+#[tokio::test]
+async fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
 
-    let table = blank_table(&files, &durations);
+    let table = blank_table(&files).await;
 
     let mapping = mappings(&table)[0];
     assert_eq!(mapping.duration_ms, Some(1_000));
@@ -206,28 +260,69 @@ fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
 
 /// A row whose track holds the length its source lists shows that length
 /// and says when it is far from its file's; a row with none shows its file's.
-#[test]
-fn a_row_read_from_the_release_shows_the_release_s_length() {
+#[tokio::test]
+async fn mapping_statement_warns_where_lengths_differ_by_more_than_three_seconds() {
     let tmp = tempfile::TempDir::new().unwrap();
     for number in 1..=2 {
         write_flac(&tmp.path().join(format!("{number:02}.flac")));
     }
     let files = scan(tmp.path());
-    let durations = source_durations(&files).unwrap();
     let mut draft = blank_candidate_draft(&files);
     draft.tracks[0].stated_length_ms = Some(200_000);
-    let table = mapping_table(&files, &durations, &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
     let rows = mappings(&table);
     assert_eq!(rows[0].duration_ms, Some(200_000));
     assert!(rows[0].lengths_disagree);
     assert_eq!(track_file(rows[0]).duration_ms, Some(1_000));
     assert_eq!(rows[1].duration_ms, Some(1_000));
     assert!(!rows[1].lengths_disagree);
+
+    // Exactly the limit is not a disagreement; a millisecond past it is.
+    draft.tracks[0].stated_length_ms = Some(1_000 + LENGTH_DISAGREEMENT_MS);
+    draft.tracks[1].stated_length_ms = Some(1_000 + LENGTH_DISAGREEMENT_MS + 1);
+    let table = mapping_table(&files, &draft).await.unwrap();
+    let rows = mappings(&table);
+    assert!(!rows[0].lengths_disagree);
+    assert!(rows[1].lengths_disagree);
+}
+
+/// Sides past Z are lettered AA, AB, … as `side_letters` writes them.
+#[tokio::test]
+async fn mapping_statement_letters_sides_past_z() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    for number in 1..=28 {
+        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+    }
+    let files = scan(tmp.path());
+    let places: Vec<(u16, u8, u32)> = (1..=28).map(|side| (1, side, 1)).collect();
+    let draft = numbered_draft(
+        &files,
+        vec![bae_types::mediums::ReleaseMedium {
+            carrier: Some(Medium::Vinyl),
+            sides: std::num::NonZeroU8::new(28).unwrap(),
+        }],
+        &places,
+    );
+    let table = mapping_table(&files, &draft).await.unwrap();
+    let letters: Vec<String> = table
+        .track_sides
+        .iter()
+        .map(|side| match &side.side {
+            bae_types::mediums::TrackSide::Sided { side_letter } => side_letter.clone(),
+            other => panic!("a record's side, got {other:?}"),
+        })
+        .collect();
+    let expected: Vec<String> = (1..=28).map(bae_types::mediums::side_letters).collect();
+    assert_eq!(letters, expected);
+    assert_eq!(
+        (letters[25].as_str(), letters[26].as_str(), letters[27].as_str()),
+        ("Z", "AA", "AB")
+    );
 }
 
 /// The folder's images are one gallery beside the table rows.
-#[test]
-fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
+#[tokio::test]
+async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
@@ -237,7 +332,7 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         fs::write(tmp.path().join("scans").join(name), fake_jpeg()).expect("write scan");
     }
 
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
 
     assert_eq!(table.images.len(), 5);
     assert_eq!(
@@ -258,20 +353,19 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
 /// A bound sheet is one group row over its entries: the entries carry the
 /// sheet's own titles and timings on the left, and on the right each is the
 /// draft's track on that slice.
-#[test]
-fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
+#[tokio::test]
+async fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
     fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
         .expect("write cue");
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let mut draft = blank_candidate_draft(&files);
     for (index, track) in draft.tracks.iter_mut().enumerate() {
         track.edit.title = format!("Track Title {}", index + 1);
     }
-    let table = mapping_table(&files, &durations, &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
 
     let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
         panic!("the sheet is the folder's only run, got {:?}", table.track_sides);
@@ -319,8 +413,8 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     }
 }
 
-#[test]
-fn standalone_tracks_are_sectioned_by_release_side() {
+#[tokio::test]
+async fn standalone_tracks_are_sectioned_by_release_side() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for number in 1..=4 {
         write_flac(&tmp.path().join(format!("{number:02}.flac")));
@@ -328,7 +422,7 @@ fn standalone_tracks_are_sectioned_by_release_side() {
 
     let files = scan(tmp.path());
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
     assert_eq!(
@@ -343,8 +437,8 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     assert_eq!(positions(&table.track_sides[1]), ["B1", "B2"]);
 }
 
-#[test]
-fn each_cue_is_one_section_on_its_assigned_disc() {
+#[tokio::test]
+async fn each_cue_is_one_section_on_its_assigned_disc() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for stem in ["alpha", "beta"] {
         write_flac(&tmp.path().join(format!("{stem}.flac")));
@@ -365,7 +459,7 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
         ],
         &[(1, 1, 1), (1, 1, 2), (2, 1, 1), (2, 1, 2)],
     );
-    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
     for (side, (disc, sheet_id)) in
@@ -383,15 +477,15 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
 
 /// A release that lays one sheet's entries across two sides of a record heads
 /// each side's run of them with the sheet.
-#[test]
-fn a_sheet_the_release_splits_across_sides_heads_each_side() {
+#[tokio::test]
+async fn mapping_statement_names_a_split_sheet_again_on_the_next_side() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("LP.flac"));
     fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 4)).expect("write cue");
 
     let files = scan(tmp.path());
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
     for (side, letter) in table.track_sides.iter().zip(["A", "B"]) {
@@ -411,8 +505,8 @@ fn a_sheet_the_release_splits_across_sides_heads_each_side() {
 /// with a run for the loose rows and a run for the sheet; the sheet's entries
 /// that the release places on the next side start that side under the sheet
 /// again.
-#[test]
-fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
+#[tokio::test]
+async fn mapping_statement_heads_each_side_once_however_many_runs() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for name in ["01.flac", "02.flac", "LP.flac"] {
         write_flac(&tmp.path().join(name));
@@ -421,7 +515,7 @@ fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
 
     let files = scan(tmp.path());
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)]);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
 
     let [side_a, side_b] = table.track_sides.as_slice() else {
         panic!("one side per side letter, got {:?}", table.track_sides);
@@ -449,8 +543,8 @@ fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
 
 /// The tracks the commit writes are the table's own rows, in the order the
 /// table lays them out, each addressable on its own.
-#[test]
-fn the_commit_tracks_are_the_table_s_rows_in_order() {
+#[tokio::test]
+async fn the_commit_tracks_are_the_table_s_rows_in_order() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
     fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
@@ -459,7 +553,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let table = blank_table(&files, &SourceDurations::default());
+    let table = blank_table(&files).await;
 
     let tracks = mapping_tracks(&table);
     assert_eq!(
@@ -490,37 +584,33 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
 /// A draft that does not play the folder's audio units in order is a stored
 /// state that contradicts the folder, and drawing it is refused rather than
 /// pairing rows with the wrong audio.
-#[test]
-fn a_draft_not_drawn_over_the_folder_s_audio_is_refused() {
+#[tokio::test]
+async fn mapping_statement_refuses_a_draft_track_whose_unit_differs() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for number in 1..=2 {
         write_flac(&tmp.path().join(format!("{number:02}.flac")));
     }
     let files = scan(tmp.path());
-    let durations = SourceDurations::default();
 
     let mut swapped = blank_candidate_draft(&files);
     swapped.tracks.swap(0, 1);
-    assert!(matches!(
-        mapping_table(&files, &durations, &swapped),
-        Err(ImportError::Internal { .. })
-    ));
+    assert!(matches!(mapping_table(&files, &swapped).await, Err(ImportError::Internal { .. })));
 
     let mut short = blank_candidate_draft(&files);
     short.tracks.pop();
-    assert!(matches!(mapping_table(&files, &durations, &short), Err(ImportError::Internal { .. })));
+    assert!(matches!(mapping_table(&files, &short).await, Err(ImportError::Internal { .. })));
 
     let mut long = blank_candidate_draft(&files);
     long.tracks.push(long.tracks[0].clone());
-    assert!(matches!(mapping_table(&files, &durations, &long), Err(ImportError::Internal { .. })));
+    assert!(matches!(mapping_table(&files, &long).await, Err(ImportError::Internal { .. })));
 }
 
 /// A sheet whose `FILE` directive names audio that is not in the folder
 /// describes nothing — and says what it was looking for, so the header can
 /// state it while it offers the folder's own audio instead. It also carries
 /// its own path, which is what opens it in the document viewer.
-#[test]
-fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
+#[tokio::test]
+async fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     // Two audio files beside a one-file sheet: nothing for it to take as a
     // last resort, so it describes nothing.
@@ -528,7 +618,7 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     write_flac(&tmp.path().join("02.flac"));
     fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.wav", 3)).expect("write cue");
 
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
     // The sheet is named where it sits on disk, after the loose audio that
     // sorts before it — a sheet that carves nothing occupies no run.
     let Some(MappingFileRow::Sheet(sheet)) =
@@ -542,8 +632,8 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
 /// The projection keeps the two meanings of a sheet separate: one that carves
 /// audio heads those track rows, while one that carves nothing remains a file
 /// the user can resolve from the files section.
-#[test]
-fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
+#[tokio::test]
+async fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("disc.flac"));
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2))
@@ -551,7 +641,7 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     fs::write(tmp.path().join("unresolved.cue"), cue_sheet_text("absent.wav", 2))
         .expect("write unassociated cue");
 
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
 
     assert!(matches!(
         runs(&table).as_slice(),
@@ -565,11 +655,11 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
 }
 
 /// Projecting the table reads no audio at all. The lengths come from the
-/// measurements identification stored, so re-opening a candidate costs
+/// layout the scan stored with the files, so re-opening a candidate costs
 /// nothing on disk however often it happens — which is what lets the pane
 /// draw itself from a query.
-#[test]
-fn projecting_the_table_opens_no_audio() {
+#[tokio::test]
+async fn projecting_the_table_opens_no_audio() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
     fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
@@ -577,14 +667,15 @@ fn projecting_the_table_opens_no_audio() {
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
+    let stored = StoredFolder::of(&files).await;
     let opens_after_probing: Vec<u64> = ["CDImage.flac", "bonus.flac"]
         .iter()
         .map(|name| bae_audio::test_reads::probes(&tmp.path().join(name)))
         .collect();
 
-    let first = blank_table(&files, &durations);
-    let second = blank_table(&files, &durations);
+    let draft = blank_candidate_draft(&files);
+    let first = stored.table(&draft).await.unwrap();
+    let second = stored.table(&draft).await.unwrap();
 
     for (index, name) in ["CDImage.flac", "bonus.flac"].iter().enumerate() {
         assert_eq!(
@@ -601,12 +692,12 @@ fn fake_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]
 }
 
-#[test]
-fn invalid_cue_times_are_not_reported_as_missing_audio() {
+#[tokio::test]
+async fn invalid_cue_times_are_not_reported_as_missing_audio() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("disc.flac"));
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 7)).unwrap();
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("the refused CUE remains listed");
     };
@@ -624,28 +715,28 @@ fn invalid_cue_times_are_not_reported_as_missing_audio() {
     );
 }
 
-#[test]
-fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
+#[tokio::test]
+async fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("disc.flac"));
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2)).unwrap();
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("disc.cue", 2)]);
-    let table = blank_table(&files, &SourceDurations::default());
+    let table = blank_table(&files).await;
     let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
         panic!("the selected CUE groups its tracks");
     };
     assert!(sheet.disc_options.contains(&2));
 }
 
-#[test]
-fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
+#[tokio::test]
+async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("first.flac"));
     fs::write(tmp.path().join("album.cue"),
         "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"absent.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n"
     ).unwrap();
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("partial CUE remains listed");
     };
@@ -670,8 +761,8 @@ fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
     );
 }
 
-#[test]
-fn codec_refusal_does_not_invent_a_current_assignment() {
+#[tokio::test]
+async fn codec_refusal_does_not_invent_a_current_assignment() {
     let tmp = tempfile::TempDir::new().unwrap();
     fs::copy(
         bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
@@ -679,7 +770,7 @@ fn codec_refusal_does_not_invent_a_current_assignment() {
     )
     .unwrap();
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.mp3", 1)).unwrap();
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("refused CUE remains listed");
     };
@@ -697,14 +788,14 @@ fn codec_refusal_does_not_invent_a_current_assignment() {
     );
 }
 
-#[test]
-fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
+#[tokio::test]
+async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("disc.flac"));
     for name in ["first.cue", "second.cue"] {
         fs::write(tmp.path().join(name), cue_sheet_text("disc.flac", 2)).unwrap();
     }
-    let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
+    let table = blank_table(&scan(tmp.path())).await;
     assert!(matches!(
         runs(&table).as_slice(),
         [MappingTrackRun::Sheet { sheet, entries }]
@@ -727,15 +818,15 @@ fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
 /// A CUE's slices on a draft whose medium states no carrier read as one flat
 /// run: the folder's sheets do not make up sides the draft never named, even
 /// where the pressing says it is a record.
-#[test]
-fn source_disc_assignments_do_not_invent_sides() {
+#[tokio::test]
+async fn source_disc_assignments_do_not_invent_sides() {
     let tmp = tempfile::TempDir::new().unwrap();
     write_flac(&tmp.path().join("disc.flac"));
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 3)).unwrap();
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
-    let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
+    let table = mapping_table(&files, &draft).await.unwrap();
     assert!(
         table
             .track_sides
@@ -750,8 +841,8 @@ fn source_disc_assignments_do_not_invent_sides() {
 /// A sheet naming two audio files heads its entries as one group, and once
 /// ignored stays a listed file still describing both — all without opening
 /// either file again.
-#[test]
-fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
+#[tokio::test]
+async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     let tmp = tempfile::TempDir::new().unwrap();
     for name in ["first.flac", "second.flac"] {
         write_flac(&tmp.path().join(name));
@@ -760,7 +851,6 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\n TRACK 02 AUDIO\n INDEX 01 00:00:15\nFILE \"second.wav\" WAVE\n TRACK 03 AUDIO\n INDEX 01 00:00:00\n"
     ).unwrap();
     let mut files = scan(tmp.path());
-    let durations = source_durations(&files).unwrap();
     let opens = ["first.flac", "second.flac"]
         .map(|name| bae_audio::test_reads::probes(&tmp.path().join(name)));
     let expected = vec![
@@ -781,7 +871,7 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
             }],
         },
     ];
-    let table = blank_table(&files, &durations);
+    let table = blank_table(&files).await;
     let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
         panic!("the CUE heads its entries");
     };
@@ -794,7 +884,7 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     files
         .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
         .unwrap();
-    let table = blank_table(&files, &durations);
+    let table = blank_table(&files).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("ignored CUE remains a file");
     };
@@ -804,19 +894,4 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
         assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);
     }
-}
-
-/// The row decides one way for both surfaces. A rip that differs by a
-/// pregap and a rounded second reads as agreement; one that differs by a
-/// whole different take does not; and a length nobody could read is not a
-/// disagreement, because there is nothing to compare.
-#[test]
-fn a_length_nobody_can_read_is_not_a_disagreement() {
-    assert!(!lengths_disagree(Some(180_000), Some(180_000)));
-    assert!(!lengths_disagree(Some(180_000), Some(180_000 + LENGTH_DISAGREEMENT_MS)));
-    assert!(lengths_disagree(Some(180_000), Some(180_001 + LENGTH_DISAGREEMENT_MS)));
-    assert!(lengths_disagree(Some(180_000), Some(120_000)));
-    assert!(!lengths_disagree(None, Some(180_000)));
-    assert!(!lengths_disagree(Some(180_000), None));
-    assert!(!lengths_disagree(None, None));
 }

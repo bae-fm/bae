@@ -29,6 +29,7 @@ mod follows_library;
 mod follows_scans;
 mod groups;
 mod listed;
+mod mapping_rows;
 mod order;
 mod pane;
 mod placement;

@@ -6,8 +6,6 @@
 //! does not replay edits over a provider tracklist.
 
 use crate::folder_scanner::CategorizedFiles;
-use crate::mapping::{mapping_table, MappingTable};
-use crate::probe::SourceDurations;
 use crate::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
 use crate::ImportError;
 use bae_catalogs::release_values::ReleaseValues;
@@ -56,12 +54,6 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft 
         release_roles: Vec::new(),
         works: Default::default(),
     }
-}
-
-/// The editable metadata and audio rows a pane presents.
-pub struct PanePick {
-    pub edit: RawReleaseEdit,
-    pub mapping: MappingTable,
 }
 
 /// Lay a reading's tracks over the draft's audio: track `i` becomes what the
@@ -204,18 +196,6 @@ pub(crate) fn keep_row_identities(
         track.edit.id.clone_from(&existing.edit.id);
     }
     Ok(())
-}
-
-/// Project the stored draft onto the candidate's physical units. The draft
-/// holds every value; the mapping shows each track's stated length beside its
-/// audio's own.
-pub(crate) fn draft_pane(
-    files: &CategorizedFiles,
-    durations: &SourceDurations,
-    draft: &CandidateDraft,
-) -> Result<PanePick, ImportError> {
-    let mapping = mapping_table(files, durations, draft)?;
-    Ok(PanePick { edit: draft.release_edit(), mapping })
 }
 
 /// The draft over the folder's new audio units: a unit the draft already
