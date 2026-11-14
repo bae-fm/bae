@@ -120,3 +120,72 @@ fn no_batch_has_no_bar() {
     count.read(ActivityBytes { uploads: None, pins: None, moving_to_this_device: None });
     assert_eq!(pins_bar(&count), None);
 }
+
+/// A file whose upload finished keeps its last bytes in the bar until a read
+/// that no longer lists it as sending arrives: coven ends the file's progress
+/// after the commit that stores it, but the read can deliver that commit
+/// later, and the bar must not drop in between.
+#[test]
+fn a_finished_upload_keeps_its_bytes_until_the_read_that_stores_it() {
+    let (a, b) = (file(1), file(2));
+    let uploads = |bytes_done: u64, sending: &[(coven::FileId, u64)]| ActivityBytes {
+        uploads: Some(UploadBytes {
+            bytes_total: 300,
+            bytes_done,
+            sending: sending
+                .iter()
+                .map(|(file, size)| SendingFile { file: *file, size: *size })
+                .collect(),
+        }),
+        pins: None,
+        moving_to_this_device: None,
+    };
+    let moved =
+        |bytes_transferred, bytes_total| coven::TransferProgress { bytes_transferred, bytes_total };
+    let mut count = BarsCount::default();
+    count.read(uploads(0, &[(a, 200), (b, 100)]));
+    count.uploads_heard(vec![coven::TransferChange::Reset(
+        [(a, moved(110, 110)), (b, moved(0, 110))].into(),
+    )]);
+    assert_eq!(count.bars().unwrap().uploads, bar(200, 300));
+
+    count.uploads_heard(vec![coven::TransferChange::Removed {
+        file: a,
+        end: coven::TransferEnd::Finished,
+    }]);
+    assert_eq!(
+        count.bars().unwrap().uploads,
+        bar(200, 300),
+        "the read that stores the file has not arrived"
+    );
+
+    count.read(uploads(200, &[(b, 100)]));
+    assert_eq!(count.bars().unwrap().uploads, bar(200, 300));
+    count.uploads_heard(vec![coven::TransferChange::Updated { file: b, progress: moved(55, 110) }]);
+    assert_eq!(count.bars().unwrap().uploads, bar(250, 300));
+}
+
+/// A file whose upload failed or was held keeps nothing: it is still sending
+/// and starts from its next progress.
+#[test]
+fn an_upload_that_did_not_finish_keeps_no_bytes() {
+    let a = file(1);
+    let moved =
+        |bytes_transferred, bytes_total| coven::TransferProgress { bytes_transferred, bytes_total };
+    let mut count = BarsCount::default();
+    count.read(ActivityBytes {
+        uploads: Some(UploadBytes {
+            bytes_total: 200,
+            bytes_done: 0,
+            sending: vec![SendingFile { file: a, size: 200 }],
+        }),
+        pins: None,
+        moving_to_this_device: None,
+    });
+    count.uploads_heard(vec![coven::TransferChange::Updated { file: a, progress: moved(50, 100) }]);
+    count.uploads_heard(vec![coven::TransferChange::Removed {
+        file: a,
+        end: coven::TransferEnd::Failed,
+    }]);
+    assert_eq!(count.bars().unwrap().uploads, bar(0, 200));
+}

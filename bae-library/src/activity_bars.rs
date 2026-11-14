@@ -47,6 +47,11 @@ struct BarsCount {
     /// How far each file being sent has got, as the upload watch last told
     /// it.
     sent: BTreeMap<coven::FileId, coven::TransferProgress>,
+    /// Each file whose upload finished, with how far it had got, until the
+    /// read that stores it arrives. Coven ends a file's progress after the
+    /// commit that stores it, but the read can deliver that commit later, and
+    /// the bar must not drop in between.
+    finished: BTreeMap<coven::FileId, coven::TransferProgress>,
     /// How far each release downloading has got, as the download queue
     /// last told it.
     downloading: BTreeMap<String, DownloadTransfer>,
@@ -54,10 +59,35 @@ struct BarsCount {
 
 impl BarsCount {
     fn read(&mut self, bytes: ActivityBytes) {
+        // A file the read no longer lists as sending is stored in it.
+        if let Some(uploads) = &bytes.uploads {
+            self.finished
+                .retain(|file, _| uploads.sending.iter().any(|sending| sending.file == *file));
+        } else {
+            self.finished.clear();
+        }
         self.read = Some(bytes);
     }
 
     fn uploads_heard(&mut self, changes: Vec<coven::TransferChange>) {
+        for change in &changes {
+            match change {
+                coven::TransferChange::Removed { file, end: coven::TransferEnd::Finished } => {
+                    let stored =
+                        self.read.as_ref().and_then(|read| read.uploads.as_ref()).is_some_and(
+                            |uploads| uploads.sending.iter().all(|sending| sending.file != *file),
+                        );
+                    if let (false, Some(progress)) = (stored, self.sent.get(file)) {
+                        self.finished.insert(*file, *progress);
+                    }
+                }
+                coven::TransferChange::Updated { file, .. } => {
+                    self.finished.remove(file);
+                }
+                coven::TransferChange::Reset(_) => self.finished.clear(),
+                coven::TransferChange::Removed { .. } => {}
+            }
+        }
         crate::file_transfers::apply(&mut self.sent, changes);
     }
 
@@ -71,7 +101,10 @@ impl BarsCount {
         let read = self.read.as_ref()?;
         let downloading = &self.downloading;
         Some(ActivityBars {
-            uploads: read.uploads.as_ref().map(|uploads| upload_bar(uploads, &self.sent)),
+            uploads: read
+                .uploads
+                .as_ref()
+                .map(|uploads| upload_bar(uploads, &self.sent, &self.finished)),
             pins: read.pins.as_ref().map(|pins| download_bar(pins, downloading, pin_share)),
             moving_to_this_device: read
                 .moving_to_this_device
@@ -82,18 +115,22 @@ impl BarsCount {
 }
 
 /// An upload batch's bar: the bytes of its stored files and, of each file
-/// being sent, the share of its size its object has moved. A file the watch
-/// hasn't named yet has moved nothing.
+/// being sent, the share of its size its object has moved, which for a file
+/// that finished is its last share until a read lists it stored. A file the
+/// watch hasn't named yet has moved nothing.
 fn upload_bar(
     uploads: &UploadBytes,
     sent: &BTreeMap<coven::FileId, coven::TransferProgress>,
+    finished: &BTreeMap<coven::FileId, coven::TransferProgress>,
 ) -> BatchBar {
     let in_flight: u64 = uploads
         .sending
         .iter()
         .map(|file| {
-            let share =
-                sent.get(&file.file).map_or(0.0, |moved| crate::file_transfers::fraction(*moved));
+            let share = sent
+                .get(&file.file)
+                .or_else(|| finished.get(&file.file))
+                .map_or(0.0, |moved| crate::file_transfers::fraction(*moved));
             (file.size as f64 * share) as u64
         })
         .sum();

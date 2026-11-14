@@ -3772,7 +3772,10 @@ shares on the way, the pin or move-to-this-device downloading its share. The
 tables give the bytes done and the files and releases still on the move; the
 bar adds each one's size times its latest share and is worked out again when
 the tables or a transfer change, with no value held from an earlier one. coven
-ends a file's upload progress only after the commit that records it stored. A
+ends a file's upload progress only after the commit that records it stored, but the
+read can deliver that commit after the progress ends, so the bar keeps a file's last upload share
+until a read arrives that no longer lists the file as sending; a file whose upload failed or was
+held keeps none. A
 release removed from the library counts none of its bytes. A bar moves while a release's files transfer
 and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts
