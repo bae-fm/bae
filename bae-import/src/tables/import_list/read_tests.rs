@@ -501,7 +501,10 @@ async fn a_fold_reruns_the_windows_holding_the_group() {
 }
 
 /// A selection write reruns the windows holding the rows it changed and the
-/// selection summary, and no other window.
+/// selection summary, and every other window of the list too, for the reason
+/// a scan item does (`a_scan_item_reruns_the_windows_and_the_count`): the
+/// statements read the placement through a correlated subquery coven cannot
+/// bound by a range.
 #[tokio::test]
 async fn a_selection_write_reruns_the_windows_holding_its_rows() {
     let (lib, list) = scanned_list(&["A", "B", "C", "D", "E", "F"]).await;
@@ -517,7 +520,7 @@ async fn a_selection_write_reruns_the_windows_holding_its_rows() {
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("E")] }).await;
     assert!(below.is_marked_for_rerun(), "the window holding E reruns");
     assert!(selection.is_marked_for_rerun(), "the selection summary reruns");
-    assert!(!above.is_marked_for_rerun(), "the window above holds no changed row");
+    assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     let selected = below.next().await.expect("the query stays open").result.unwrap();
     assert!(window_rows(&selected).iter().any(|row| row.selected && row.display_path == "E"));
     assert_eq!(selection.next().await.expect("the query stays open").unwrap().count, 1);
