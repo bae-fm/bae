@@ -220,6 +220,61 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
     assert_eq!(candidate_names(&grown.read.rows), ["A", "A0", "B", "C"]);
 }
 
+/// A searching list's folders, scanned, and the list showing the ones whose
+/// name holds "wanted".
+async fn searching_list(names: &[&str]) -> (Library, ImportListId) {
+    let lib = Library::new().await;
+    lib.run(scanned_with_states(&lib, names)).await;
+    let list = lib
+        .open(crate::ImportListView {
+            filter_text: "wanted".to_string(),
+            ..ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)
+        })
+        .await;
+    (lib, list)
+}
+
+/// A search's window is a live query of its own: it delivers the matching
+/// rows with no count subscribed, and the count, read after, holds the same
+/// rows.
+#[tokio::test]
+async fn a_search_window_delivers_without_its_count() {
+    let (lib, list) =
+        searching_list(&["A wanted", "B other", "C wanted", "D other", "E wanted"]).await;
+    let tables = lib.tables();
+    let mut window = tables.subscribe_import_window(list, first(50));
+    let delivered = window.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(candidate_names(&delivered.read.rows), ["A wanted", "C wanted", "E wanted"]);
+    let count = tables.subscribe_import_count(list).next().await.unwrap().unwrap();
+    assert_eq!(count.rows, 3);
+}
+
+/// A scan item that matches a search reruns the count and the window whose
+/// range holds it, and the other windows too, as for a list with no search
+/// (`a_scan_item_reruns_the_windows_and_the_count`).
+#[tokio::test]
+async fn a_scan_item_reruns_the_search_window_holding_it_and_the_count() {
+    let (lib, list) =
+        searching_list(&["A wanted", "B wanted", "C wanted", "D wanted", "E wanted", "F wanted"])
+            .await;
+    let tables = lib.tables();
+    let middle = tables.import_key_at(list, 3).await.unwrap().unwrap();
+    let mut above = tables.subscribe_import_window(list, until(&middle));
+    let mut below = tables.subscribe_import_window(list, from(&middle, 50));
+    let mut count = tables.subscribe_import_count(list);
+    settled(&mut above).await;
+    settled(&mut below).await;
+    count.next().await.expect("the query stays open").unwrap();
+
+    lib.run(lib.scan("Z wanted")).await;
+    assert!(below.is_marked_for_rerun(), "Z wanted lands in the lower window's range");
+    assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
+    assert!(count.is_marked_for_rerun());
+    let grown = below.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(candidate_names(&grown.read.rows).last().map(String::as_str), Some("Z wanted"));
+    assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 7);
+}
+
 /// A commit that touches a table the windows do not read does not read them
 /// again: the tab does not re-render for a write it cannot show.
 #[tokio::test]

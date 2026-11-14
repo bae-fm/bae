@@ -342,8 +342,10 @@ private struct ImportCoverWarmer: View {
 }
 
 /// The list's table, or the empty tab, or a narrowed list with no matches. A
-/// plain surface stands in until the list and the summary have landed, and
-/// while the rows are another view's: a list not read yet is not an empty one.
+/// plain surface stands in until the list and the summary have landed, while
+/// the rows are another view's, and while the count is out with no row to
+/// show: a list not read yet is not an empty one, and the count says whether
+/// a search narrows it.
 /// A view of its own so that the list's count and the summary are read here
 /// and not by the list's chrome.
 private struct ImportCandidateListSwitch<Table: View>: View {
@@ -357,7 +359,7 @@ private struct ImportCandidateListSwitch<Table: View>: View {
             if list.totalCount > 0 {
                 table()
             }
-            else if listSlot.answersView {
+            else if listSlot.answersView, list.countExtra != nil {
                 ContentUnavailableView {
                     Text(
                         list.isNarrowed ? "No matches" : "Nothing here yet"

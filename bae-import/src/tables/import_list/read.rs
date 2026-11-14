@@ -161,9 +161,7 @@ impl ImportTables {
                 let Some(row) = list_row(&sql, list)? else {
                     return Ok(None);
                 };
-                let tabs = summary::tab_counts_on(&sql)?;
-                let listed = summary::listed(&sql, &row, &tabs)?;
-                Ok(Some(row.items(listed.shown(position)).key_at(&sql, position)?))
+                Ok(Some(row.items(Shown::View).key_at(&sql, position)?))
             })
             .await?
             .ok_or(ImportListError::Closed(list))

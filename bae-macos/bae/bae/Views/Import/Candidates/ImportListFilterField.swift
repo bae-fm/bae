@@ -9,6 +9,8 @@ struct ImportListFilterField: View {
     var focused: FocusState<Bool>.Binding
     /// The count for the filter the field holds now; `nil` while nothing
     /// narrows the list, and while core has not counted under this filter.
+    /// Typed text narrows the list, so text with no count is a count still
+    /// being read, drawn as "… of …".
     let narrowed: BridgeNarrowedCount?
 
     var body: some View {
@@ -21,13 +23,13 @@ struct ImportListFilterField: View {
                 .themeText(.body)
                 .focused(focused)
             if let narrowed {
-                Text(
-                    "\(narrowed.shown.formatted()) of \(narrowed.total.formatted())"
+                narrowedText(
+                    shown: narrowed.shown.formatted(),
+                    total: narrowed.total.formatted()
                 )
-                .themeText(.detail)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .fixedSize()
+            }
+            else if !text.isEmpty {
+                narrowedText(shown: "…", total: "…")
             }
             if !text.isEmpty {
                 Button {
@@ -41,5 +43,13 @@ struct ImportListFilterField: View {
                 .buttonStyle(.accentPlain)
             }
         }
+    }
+
+    private func narrowedText(shown: String, total: String) -> some View {
+        Text("\(shown) of \(total)")
+            .themeText(.detail)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .fixedSize()
     }
 }

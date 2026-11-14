@@ -284,9 +284,6 @@ pub(super) enum Shown<'a> {
     /// What the list shows under its view, its tab's rows read in order and
     /// each tested; Found's in runs that pass no folded group's members.
     View,
-    /// What a searching list shows, read from the rows its search finds and
-    /// sorted: the same items as `View`.
-    Found,
     /// What `tab` shows with the filters cleared and the group `opened`
     /// folded open: the view a release is revealed in, its other folds kept.
     Revealing { opened: Option<&'a FolderReleaseDecisionKey> },
@@ -361,10 +358,6 @@ impl<'a> Items<'a> {
                 "import_list_item AS i",
                 "i.list_id = :list AND i.tab = :tab",
             ),
-            Shown::Found => (
-                "import_list_found_item AS i",
-                "i.list_id = :list AND i.tab = :tab",
-            ),
             Shown::Revealing { .. } => (
                 "import_list_placement AS i",
                 "i.tab = :tab \
@@ -381,8 +374,7 @@ impl<'a> Items<'a> {
     /// Found's rows read in runs, each member in its header's place, by the
     /// rows and the members under their headers each run reads: a header's
     /// members only while the list does not fold it, or while it is the
-    /// group being opened. `None` for a search's rows, which are sorted, and
-    /// for Done and Skipped, which hold no group.
+    /// group being opened. `None` for Done and Skipped, which hold no group.
     fn run_sources(&self) -> Option<(&'static str, &'static str)> {
         if self.tab != TriageTab::Pending {
             return None;
@@ -409,7 +401,6 @@ impl<'a> Items<'a> {
                                          AND c.watched_folder_path = h.watched_folder_path \
                                          AND c.group_folder = h.key))",
             )),
-            Shown::Found => None,
         }
     }
 
@@ -478,7 +469,7 @@ impl<'a> Items<'a> {
                 Some(coven::path_bytes(&opened.watched_folder_path)),
                 Some(opened.relative_folder.as_bytes().to_vec()),
             ),
-            Shown::Revealing { opened: None } | Shown::View | Shown::Found => (None, None),
+            Shown::Revealing { opened: None } | Shown::View => (None, None),
         };
         let tab = tab_column(self.tab);
         let mut named: Vec<(&str, &dyn ToSql)> = vec![

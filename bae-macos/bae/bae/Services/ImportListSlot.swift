@@ -181,8 +181,8 @@ final class ImportListSlot {
 
     /// How many of the tab's rows the list shows, when the list's count was
     /// read for `narrowing` — the filter the field holds now — and nothing
-    /// while it was read for another: a count stands only beside the filter
-    /// it is for.
+    /// while it was read for another or has not arrived: a count stands only
+    /// beside the filter it is for.
     func narrowedCount(
         under narrowing: BridgeImportListNarrowing
     ) -> BridgeNarrowedCount? {

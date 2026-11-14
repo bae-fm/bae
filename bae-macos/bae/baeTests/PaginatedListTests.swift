@@ -22,6 +22,7 @@ private final class ProbeList: @unchecked Sendable {
     private var open: [Window] = []
     private let counts = Feed<BridgeListCount>()
     private var keyReads: [UInt64] = []
+    private var countHeld = false
 
     init(_ ids: [String]) {
         albums = ids.map { makeBridgeAlbum(id: $0) }
@@ -34,6 +35,19 @@ private final class ProbeList: @unchecked Sendable {
     var requests: [BridgeListWindow] { windows.map(\.request) }
 
     var keyAtReads: [UInt64] { lock.withLock { keyReads } }
+
+    /// Answer no count until `releaseCount`: the windows answer, and the
+    /// count is still being read.
+    func holdCount() { lock.withLock { countHeld = true } }
+
+    /// Answer the count a held read waits for.
+    func releaseCount() {
+        let count = lock.withLock {
+            countHeld = false
+            return albums.count
+        }
+        counts.emit(BridgeListCount(rows: UInt64(count), extra: .none))
+    }
 
     /// Replace the list's rows and deliver the change to every window and the
     /// count.
@@ -106,12 +120,12 @@ private final class ProbeList: @unchecked Sendable {
                 )
             },
             count: { [self] in
-                counts.emit(
-                    BridgeListCount(
-                        rows: UInt64(lock.withLock { albums.count }),
-                        extra: .none
+                let (held, rows) = lock.withLock { (countHeld, albums.count) }
+                if !held {
+                    counts.emit(
+                        BridgeListCount(rows: UInt64(rows), extra: .none)
                     )
-                )
+                }
                 return PulledValues(read: { try await self.counts.next() })
             },
             position: { [self] key in
@@ -208,6 +222,47 @@ struct PaginatedListTests {
         #expect(list.totalCount == 30)
         #expect(idsAt(list, 0...29) == ids(0...29).map(Optional.init))
         #expect(idsAt(list, 30...30) == [nil])
+    }
+
+    @MainActor
+    @Test(
+        "a list shows its first window before its count arrives",
+        .timeLimit(.minutes(1))
+    )
+    func windowBeforeCount() async throws {
+        let probe = ProbeList(ids(0...199))
+        probe.holdCount()
+        let list = PaginatedList(
+            queries: probe.queries,
+            onError: { Issue.record("List failed: \($0)") }
+        )
+        await list.loadInitial()
+
+        #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
+        #expect(
+            list.totalCount == 50,
+            "the rows read so far stand for the count"
+        )
+        #expect(list.countExtra == nil)
+
+        probe.releaseCount()
+        try await Wait.until { list.countExtra != nil }
+        #expect(list.totalCount == 200)
+        list.cancel()
+    }
+
+    @MainActor
+    @Test("reopening a list drops the count it held until the new one arrives")
+    func reopenDropsCount() async {
+        let probe = ProbeList(ids(0...199))
+        let list = await open(probe)
+        #expect(list.totalCount == 200)
+
+        probe.holdCount()
+        await list.reopen(at: nil, position: 0)
+        #expect(list.totalCount == 50)
+        #expect(list.countExtra == nil)
+        list.cancel()
     }
 
     @MainActor

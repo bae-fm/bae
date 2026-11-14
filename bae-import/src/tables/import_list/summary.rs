@@ -97,8 +97,6 @@ pub(super) fn closed(list: ImportListId) -> DbError {
 pub(super) struct Listed {
     pub(super) total: u64,
     pub(super) narrowed: Option<NarrowedCount>,
-    /// What decides where its windows are read from.
-    reads: Reads,
 }
 
 /// What [`SEARCH_COUNTS`] counts for a searching list: how many releases its
@@ -106,45 +104,6 @@ pub(super) struct Listed {
 struct SearchCounts {
     kept: i64,
     items: i64,
-}
-
-/// What a list's windows are read by, as its counts say.
-#[derive(Clone, Copy)]
-enum Reads {
-    /// Its search narrows it.
-    Search,
-    /// Its tab's order.
-    Order,
-}
-
-/// What a row read from a search's matches costs against a row the tab's
-/// order passes: it is reached through the search index, its item worked out
-/// by its number, and sorted with the rest, about three times as much as a
-/// row read in order and tested.
-const FOUND_ROW_COST: u128 = 3;
-
-impl Listed {
-    /// The rows the item at `position` is read from by its offset. A
-    /// search's item is read from the rows the search finds, sorted, when
-    /// reading them costs less than passing the tab's rows its order would
-    /// pass to reach the item from the list's top or end: about the items it
-    /// passes times the tab's releases over the releases the search keeps.
-    /// Otherwise, and for every other list, it is read from the tab's rows
-    /// in order, each tested. A window of the list always has a key to start
-    /// from, so it never passes a row.
-    pub(super) fn shown(&self, position: u64) -> Shown<'static> {
-        let narrowed = match (self.reads, self.narrowed) {
-            (Reads::Search, Some(narrowed)) => narrowed,
-            (Reads::Search, None) | (Reads::Order, _) => return Shown::View,
-        };
-        let kept = u128::from(narrowed.shown);
-        let end = position.saturating_add(1);
-        let passed = u128::from(position.min(self.total.saturating_sub(end)));
-        match FOUND_ROW_COST * kept * kept < passed * u128::from(narrowed.total) {
-            true => Shown::Found,
-            false => Shown::View,
-        }
-    }
 }
 
 /// How many releases a searching list's filters keep, and how many items it
@@ -184,11 +143,7 @@ pub(super) fn listed(
         let found = sql.query_row(SEARCH_COUNTS, named_params! { ":list": list.id.0 }, |row| {
             Ok(SearchCounts { kept: row.get(0)?, items: row.get(1)? })
         })?;
-        return Ok(Listed {
-            total: total(found.items)?,
-            narrowed: Some(narrowed(found.kept)?),
-            reads: Reads::Search,
-        });
+        return Ok(Listed { total: total(found.items)?, narrowed: Some(narrowed(found.kept)?) });
     }
     let items = match list.keeps_all {
         true => sql.query_row(
@@ -236,7 +191,7 @@ pub(super) fn listed(
         )?)?),
         false => None,
     };
-    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
+    Ok(Listed { total: total(items)?, narrowed })
 }
 
 /// Where the candidate at `key` sits in `list` once revealed: `None` for a

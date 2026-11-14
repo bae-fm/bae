@@ -316,9 +316,8 @@ impl Library {
         self.tables().open_import_list(view).await.unwrap()
     }
 
-    /// One read of `list` through one window over every item. A searching
-    /// or folded list's items read from its tab's rows and by its other read
-    /// must agree, since its windows are read by either.
+    /// One read of `list` through one window over every item. Found's items
+    /// read in runs and read sorted must agree.
     pub(crate) async fn read(&self, list: ImportListId) -> ImportListRead {
         let tables = self.tables();
         let read = tables.read_import_list_for_test(list).await.unwrap();
@@ -624,10 +623,10 @@ impl ImportTables {
     }
 
     /// Every item a list shows, read from its tab's rows in order — Found's
-    /// in runs — and another way: from the rows its search finds, or, on
-    /// Found, its items sorted with each member in its header's place. The
-    /// two reads, which a test holds to agree. `None` for a list on Done or
-    /// Skipped that does not search, whose rows are only read in order.
+    /// in runs — and another way: on Found, its items sorted with each member
+    /// in its header's place. The two reads, which a test holds to agree.
+    /// `None` for a list on Done or Skipped, whose rows are only read in
+    /// order.
     pub(crate) async fn import_list_read_both_ways(
         &self,
         list: ImportListId,
@@ -646,9 +645,8 @@ impl ImportTables {
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
                         .collect())
                 };
-                let other = match (row.filters_text, row.view.tab) {
-                    (true, _) => keys(Shown::Found)?,
-                    (false, crate::TriageTab::Pending) => sql
+                let other = match row.view.tab {
+                    crate::TriageTab::Pending => sql
                         .query(
                             &format!(
                                 "SELECT i.item, i.key FROM import_list_item AS i {join} \
@@ -664,7 +662,7 @@ impl ImportTables {
                             Ok(format!("{:?} {}", order::Item::of(&item)?, hex::encode(key)))
                         })
                         .collect::<Result<_, DbError>>()?,
-                    (false, _) => return Ok(None),
+                    crate::TriageTab::Done | crate::TriageTab::Skipped => return Ok(None),
                 };
                 Ok(Some((keys(Shown::View)?, other)))
             })

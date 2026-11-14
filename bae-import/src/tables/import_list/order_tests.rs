@@ -480,24 +480,16 @@ impl ImportTables {
             .await
     }
 
-    /// The plans a searching list's counts and its windows read from the
-    /// rows its search finds are read by, one line per step, the counts
-    /// first: what a test holds them to the search index with.
-    async fn import_list_search_plans(
-        &self,
-        list: ImportListId,
-    ) -> Result<Vec<Vec<String>>, DbError> {
+    /// The plan a searching list's counts are read by, one line per step:
+    /// what a test holds them to the search index with.
+    async fn import_list_search_plan(&self, list: ImportListId) -> Result<Vec<String>, DbError> {
         self.store
             .read(move |sql| {
-                let row = list_row(&sql, list)?.expect("the test's list is open");
-                let counts = sql.query(
+                Ok(sql.query(
                     &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
                     named_params! { ":list": list.0 },
                     |row| row.get::<_, String>(3),
-                )?;
-                let mut plans = vec![counts];
-                plans.extend(row.items(Shown::Found).window_plans(&sql)?.concat());
-                Ok(plans)
+                )?)
             })
             .await
     }
@@ -551,9 +543,9 @@ async fn every_order_reads_its_windows_off_its_index() {
     }
 }
 
-/// A search's counts and its windows read from the rows it finds reach them
-/// through the search index, each row by its number: none reads the tab's
-/// rows to test them.
+/// A search's counts read from the rows it finds reach them through the
+/// search index, each row by its number: they read none of the tab's rows to
+/// test them.
 #[tokio::test]
 async fn a_search_reads_the_rows_its_index_finds() {
     let lib = Library::new().await;
@@ -562,16 +554,15 @@ async fn a_search_reads_the_rows_its_index_finds() {
     for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
         let list =
             lib.open(ImportListView { filter_text: "wanted".to_string(), ..view(tab) }).await;
-        for plan in tables.import_list_search_plans(list).await.unwrap() {
-            assert!(
-                plan.iter().any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
-                "{tab:?}: {plan:?}"
-            );
-            assert!(
-                !plan.iter().any(|step| step.contains("(tab=?)")),
-                "{tab:?} reads its tab: {plan:?}"
-            );
-        }
+        let plan = tables.import_list_search_plan(list).await.unwrap();
+        assert!(
+            plan.iter().any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
+            "{tab:?}: {plan:?}"
+        );
+        assert!(
+            !plan.iter().any(|step| step.contains("(tab=?)")),
+            "{tab:?} reads its tab: {plan:?}"
+        );
     }
 }
 

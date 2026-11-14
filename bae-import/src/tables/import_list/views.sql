@@ -77,8 +77,8 @@ FROM import_list_view AS v
 JOIN import_list_placement AS p ON +p.tab = v.tab;
 
 -- Each searching list's rows whose shown text matches its search's pattern,
--- every tab's, as the search index finds them: what a search's counts and
--- windows read instead of testing every row of the tab.
+-- every tab's, as the search index finds them: what a search's counts read
+-- instead of testing every row of the tab.
 CREATE VIEW IF NOT EXISTS import_list_found AS
 SELECT l.id AS list_id, s.rowid AS entry
 FROM import_list AS l
@@ -100,25 +100,6 @@ WHERE j.keeps_all
                           AND m.watched_folder_path = j.watched_folder_path
                           AND m.group_folder = j.key)
            ELSE j.kept AND NOT j.folded END;
-
--- Each searching list's items, read from its search's matches rather than
--- from every row of its tab: the matched releases among its items, and the
--- headers among them of the groups holding a release its filters keep. The
--- same items `import_list_item` holds for the list. Each row is reached
--- from its match (`CROSS JOIN` keeps that order), never the tab scanned for
--- its matches.
-CREATE VIEW IF NOT EXISTS import_list_found_item AS
-SELECT i.* FROM import_list_found AS f
-CROSS JOIN import_list_item AS i ON i.list_id = f.list_id AND i.entry = f.entry
-UNION ALL
-SELECT h.*
-FROM (SELECT DISTINCT m.list_id, m.watched_folder_path, m.group_folder
-      FROM import_list_found AS f
-      CROSS JOIN import_list_matching AS m ON m.list_id = f.list_id AND m.entry = f.entry
-      WHERE m.group_folder IS NOT NULL) AS g
-CROSS JOIN import_list_item AS h
-    ON h.list_id = g.list_id AND h.watched_folder_path = g.watched_folder_path
-   AND h.item = 'group' AND h.key = g.group_folder;
 
 -- Each list's releases it shows.
 CREATE VIEW IF NOT EXISTS import_list_shown AS

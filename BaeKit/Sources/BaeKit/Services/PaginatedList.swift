@@ -21,7 +21,9 @@ private let logger = Logger.bae("PaginatedList")
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
 where Row.ID: Sendable {
-    /// How many rows the list has, from its count's last value.
+    /// How many rows the list has, from its count's last value. While a
+    /// reopened list's count is out, the end of the rows its windows hold, so
+    /// the rows draw as they arrive and the count when it does.
     public private(set) var totalCount: Int = 0
 
     /// What the list's count carries beside its rows, as its last value gave
@@ -116,20 +118,24 @@ where Row.ID: Sendable {
 
     // MARK: - Loading
 
-    /// Read the top of the list and its count, and wait for both. Called when
-    /// the list is first mounted, and again to retry a failed first read.
+    /// Read the top of the list and its count, and wait for the first window;
+    /// the count is drawn when it arrives. Called when the list is first
+    /// mounted, and again to retry a failed first read.
     public func loadInitial() async {
         await reopen(at: nil, position: 0)
     }
 
     /// Read the list again from `key` (its top when nil), standing `position`
     /// in for the count of rows before it until that count answers, and wait
-    /// for the first window and the count. The windows, the count and the
+    /// for the first window, not the count. The windows, the count and the
     /// headings read before are dropped for new ones, so every value that
     /// answers was read after whatever write made the reopen necessary.
     public func reopen(at key: [BridgeSortValue]?, position: Int) async {
         initialLoadError = nil
-        countAnswered = false
+        // The count read before is not this read's: the list holds none until
+        // the new one answers.
+        (countAnswered, totalCount, countExtra) = (false, 0, nil)
+        contentRevision += 1
         jump?.cancel()
         jump = nil
         jumpId = UUID()
@@ -137,7 +143,7 @@ where Row.ID: Sendable {
         openSections()
         startChain(at: key, position: position)
         await firstAnswerWaiting.wait(
-            unless: (firstAnswered && countAnswered) || initialLoadError != nil
+            unless: firstAnswered || initialLoadError != nil
         )
     }
 
@@ -247,6 +253,10 @@ where Row.ID: Sendable {
     private func take(_ next: [Placed<Row>]) {
         guard next != placed else { return }
         placed = next
+        if !countAnswered {
+            // The rows read so far stand for the count until it answers.
+            totalCount = next.last.map { $0.start + $0.rows.count } ?? 0
+        }
         contentRevision += 1
     }
 
@@ -348,7 +358,7 @@ where Row.ID: Sendable {
     /// Something landed: let go of everything it answers.
     private func settled() {
         rowWaiting.release(where: isSatisfied)
-        if (firstAnswered && countAnswered) || initialLoadError != nil {
+        if firstAnswered || initialLoadError != nil {
             firstAnswerWaiting.releaseAll()
         }
     }

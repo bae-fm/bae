@@ -1176,9 +1176,10 @@ queued uploads are the first part, its other rows the second, every other tab
 one), so a range may start in one part and end in another. A jump to a
 position reads the key of the item there by offset from the top of the tab,
 once, and starts a chain of windows from it. A search reads each
-row the list's order passes and tests it; a jump of a search that finds few
-rows reads the key from the rows it finds instead, sorted, when that reads fewer
-rows than the order would pass from the top or end of the list.
+row the list's order passes and tests it, at every size: its windows and its
+jumps read one way, and its count is a live query of its own, so the screen
+draws a search's rows as its first window arrives and its "N of M" and length
+when the count arrives, showing the placeholder in their place meanwhile.
 A member of a group names its header by the header's stable key, and a window
 that starts inside a group delivers that header beside its rows (the leading
 header), so the pinned header has it whichever windows are loaded and no read
