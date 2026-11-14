@@ -101,6 +101,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
                             Self.placedTrackRow(row, in: proxy)
                         } action: { placed in
                             viewport.placeRevealedRow(placed)
+                            albumGridLogger.debug(
+                                "placed row changed: \(String(describing: placed))"
+                            )
                             if let placed,
                                 viewport.revealedRow(
                                     seq: placed.seq,
@@ -128,6 +131,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 )
             } action: { _, scroll in
                 viewport.setScroll(scroll)
+                if let reveal = uiStore.pendingAlbumReveal {
+                    albumGridLogger.debug(
+                        "reveal \(reveal.seq): scroll \(String(describing: scroll))"
+                    )
+                }
                 if let seq = viewport.revealArrivedInPlace() {
                     revealArrived(seq: seq)
                 }
@@ -152,6 +160,11 @@ struct AlbumGridView<ExpansionContent: View>: View {
             // reveal still on its way: what it would scroll to is no longer
             // what they look at.
             .onScrollPhaseChange { _, phase in
+                if let reveal = uiStore.pendingAlbumReveal {
+                    albumGridLogger.debug(
+                        "reveal \(reveal.seq): scroll phase \(String(describing: phase))"
+                    )
+                }
                 if let seq = viewport.setPhase(phase) {
                     revealArrived(seq: seq)
                 }
@@ -171,6 +184,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
             .onChange(of: uiStore.selectedAlbumId) { _, albumId in
                 viewport.release()
                 if uiStore.pendingAlbumReveal?.albumId != albumId {
+                    albumGridLogger.debug(
+                        "selected album changed to \(String(describing: albumId)); ending the reveal"
+                    )
                     endReveal()
                 }
             }
@@ -249,7 +265,15 @@ extension AlbumGridView {
             preconditionFailure("The album grid must be inside its scroll view")
         }
         let frame = proxy[row.bounds]
-        guard frame.maxY <= proxy.size.height + 0.5 else { return nil }
+        guard frame.maxY <= proxy.size.height + 0.5 else {
+            albumGridLogger.debug(
+                "reveal \(row.seq): row \(row.trackId) laid out below the content: row \(String(describing: frame)), content height \(proxy.size.height), scroll view \(String(describing: bounds)); not placed"
+            )
+            return nil
+        }
+        albumGridLogger.debug(
+            "reveal \(row.seq): row \(row.trackId) placed: row \(String(describing: frame)), content height \(proxy.size.height), scroll view \(String(describing: bounds))"
+        )
         return PlacedTrackRow(
             trackId: row.trackId,
             seq: row.seq,
@@ -410,8 +434,14 @@ extension AlbumGridView {
     /// task: the rows on screen hold their own pages, and without the hold
     /// the far page the scroll goes to could be dropped before it gets there.
     private func show(_ reveal: PendingAlbumReveal) async {
+        albumGridLogger.debug(
+            "reveal \(reveal.seq): album \(reveal.albumId), track \(String(describing: reveal.trackId)); started"
+        )
         // The album's detail may already be laid out with the row in it.
         if let row = viewport.revealedRow(seq: reveal.seq) {
+            albumGridLogger.debug(
+                "reveal \(reveal.seq): the row is already laid out"
+            )
             showRevealedRow(row)
             return
         }
@@ -455,9 +485,15 @@ extension AlbumGridView {
                 return
             }
             if let row = viewport.revealedRow(seq: reveal.seq) {
+                albumGridLogger.debug(
+                    "reveal \(reveal.seq): the row is laid out once the page is held"
+                )
                 showRevealedRow(row)
                 return
             }
+            albumGridLogger.debug(
+                "reveal \(reveal.seq): scrolling to the album at \(index)"
+            )
             scrollToAlbum(of: reveal, at: index)
             await Task.untilCancelled()
         }
@@ -511,7 +547,15 @@ extension AlbumGridView {
             return
         }
         if let row = viewport.revealedRow(seq: seq, arrived: true) {
+            albumGridLogger.debug(
+                "reveal \(seq): arrived at the album; the row is laid out"
+            )
             showRevealedRow(row)
+        }
+        else {
+            albumGridLogger.debug(
+                "reveal \(seq): arrived at the album; waiting for the row"
+            )
         }
     }
 
@@ -527,10 +571,16 @@ extension AlbumGridView {
             return
         }
         guard let offset = row.scrollOffset else {
+            albumGridLogger.debug(
+                "reveal \(row.seq): row \(row.trackId) needs no scroll (\(String(describing: row))); flashing it"
+            )
             uiStore.consumeAlbumReveal(seq: row.seq)
             uiStore.flashTrack(row.trackId, seq: row.seq)
             return
         }
+        albumGridLogger.debug(
+            "reveal \(row.seq): scrolling to y \(offset) for row \(row.trackId)"
+        )
         viewport.revealScrollsToRow(seq: row.seq)
         viewport.release()
         scrollPosition.scrollTo(y: offset)
@@ -539,6 +589,7 @@ extension AlbumGridView {
     /// Gives up the pending reveal: the person moved on before it was shown.
     private func endReveal() {
         if let reveal = uiStore.pendingAlbumReveal {
+            albumGridLogger.debug("reveal \(reveal.seq): given up")
             uiStore.consumeAlbumReveal(seq: reveal.seq)
         }
     }
