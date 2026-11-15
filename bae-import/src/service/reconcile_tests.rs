@@ -59,3 +59,84 @@ fn existing_album_does_not_retain_its_transient_album_artist() {
         "an existing album discards the parsed album and its artist credits"
     );
 }
+
+/// The rows of one MusicBrainz pressing of the release group `mb-group`, and
+/// the record that names that group.
+fn pressing_of_group() -> (bae_records::ReleaseRows, Vec<bae_catalogs::records::ReleaseRecord>) {
+    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+    let response = bae_catalogs::test_releases::mb_release("mb-release", "mb-group", "Album Title");
+    let rows = crate::reading_draft::committed_rows(
+        bae_catalogs::test_releases::mb_release_values(&response),
+    );
+    let records = vec![ReleaseRecord::new(
+        &MetadataRef::new(Catalog::MusicBrainz, "mb-release".to_string()),
+        Some("mb-group".to_string()),
+    )];
+    (rows, records)
+}
+
+/// Put an album of one release and one track in the library under `album_id`.
+async fn seed_album_with_id(test: &crate::service::tests::TestService, album_id: &str) {
+    let records = bae_records::test_fixtures::test_records(&test.db);
+    let artist = crate::handle::tests::make_artist("Seeded Artist", None, None);
+    records.insert_artist(&artist).await.unwrap();
+    let mut album = bae_records::DbAlbum::new_test("Seeded Album", &coven::UuidIds);
+    album.id = album_id.to_string();
+    let release = bae_records::DbRelease::new_test(
+        &album.id,
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+    );
+    records
+        .insert_album_with_release_and_tracks(
+            &album,
+            &[bae_records::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &release,
+            &[bae_records::DbReleaseMedium::new_test(&release.id)],
+            &[bae_records::DbTrack::new_test(
+                &release.id,
+                &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+                "Track 1",
+                1,
+            )],
+            &[],
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn a_new_album_pick_beside_the_groups_album_keeps_its_own_id() {
+    let test = crate::service::tests::setup_import_service().await;
+    let (rows, records) = pressing_of_group();
+    let own_id = rows.album.id.clone();
+    let group_id = bae_records::identity::album_id_for_records(&records).expect("a named group");
+    assert_ne!(own_id, group_id);
+    seed_album_with_id(&test, &group_id).await;
+
+    let prepared = test
+        .service
+        .reconcile_prepared_release(rows, records, crate::AlbumPick::New, Default::default())
+        .await
+        .unwrap();
+
+    assert_eq!(prepared.db_album.id, own_id);
+    assert_eq!(prepared.db_release.album_id, own_id);
+    assert_eq!(prepared.existing_album_id, None);
+}
+
+#[tokio::test]
+async fn a_new_album_pick_with_no_album_in_the_library_takes_the_groups_id() {
+    let test = crate::service::tests::setup_import_service().await;
+    let (rows, records) = pressing_of_group();
+    let group_id = bae_records::identity::album_id_for_records(&records).expect("a named group");
+
+    let prepared = test
+        .service
+        .reconcile_prepared_release(rows, records, crate::AlbumPick::New, Default::default())
+        .await
+        .unwrap();
+
+    assert_eq!(prepared.db_album.id, group_id);
+    assert_eq!(prepared.db_release.album_id, group_id);
+}
