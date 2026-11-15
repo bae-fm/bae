@@ -6539,7 +6539,9 @@ of every menu and pop-up bae draws: a raised face with a hairline edge, the
 chosen item of a pop-up checked, its round chevron button in the control fill.
 Those menus open over or under what opened them, or at the click for a context
 menu; the arrows, Return, Escape and typed letters move through them, a click
-outside closes them, and VoiceOver reads them as menus. The Mac's popovers (the
+outside closes them, and VoiceOver reads them as menus. VoiceOver reads each
+control that opens one of them as a pop-up that opens a menu, and pressing it
+opens the menu. The Mac's popovers (the
 cast picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
 colour with a hairline edge and macOS's arrow. On the Mac a symbol
 that a control or the words beside it already name (the ⓘ, a close or remove

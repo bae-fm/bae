@@ -75,7 +75,7 @@ enum HostedMenus {
 
     /// Close the open menu with Escape, which the menu reads from the
     /// application's events as a person's key press arrives.
-    private static func close() {
+    static func close() {
         guard
             let panel = NSApp.windows.first(where: {
                 $0.contentView?.accessibilityRole() == .menu

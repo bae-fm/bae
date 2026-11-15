@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 
 @testable import BaeKit
@@ -54,5 +55,49 @@ struct MacMenuAccessibilityTests {
                 "\(line.accessibilityLabel() ?? "") is what a point on it finds"
             )
         }
+    }
+
+    @Test(
+        "a menu button is a pop-up to VoiceOver, and pressing it opens the menu"
+    )
+    func aMenuButtonIsAPopUpThatPressOpens() async throws {
+        let size = NSSize(width: 120, height: 44)
+        try await SnapshotTestSupport.withHostedWindow(
+            MacMenuButton {
+                MacMenuItem(verbatim: "First") {}
+            } label: {
+                Text(verbatim: "Choose")
+            },
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let control = try #require(
+                Self.popUps(in: host).first,
+                "the tree holds no pop-up"
+            )
+            #expect(control.accessibilityLabel() == "Choose")
+            #expect(control.accessibilityPerformPress())
+            let menu = NSApp.windows.compactMap(\.contentView)
+                .first { $0.accessibilityRole() == .menu }
+            #expect(menu != nil, "pressing the pop-up opens no menu")
+            HostedMenus.close()
+        }
+    }
+
+    /// Every element of the accessibility tree under `view` that VoiceOver
+    /// reads as a pop-up or a pull-down.
+    private static func popUps(in view: NSView) -> [NSAccessibilityProtocol] {
+        func walk(_ element: Any) -> [NSAccessibilityProtocol] {
+            guard let element = element as? NSAccessibilityProtocol else {
+                return []
+            }
+            let own: [NSAccessibilityProtocol] =
+                [.popUpButton, .menuButton]
+                    .contains(element.accessibilityRole())
+                ? [element] : []
+            let children = element.accessibilityChildren() as? [Any] ?? []
+            return own + children.flatMap(walk)
+        }
+        return walk(view)
     }
 }

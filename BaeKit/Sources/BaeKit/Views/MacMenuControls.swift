@@ -195,10 +195,14 @@
             .buttonStyle(.accentPlain)
             .background(MacMenuAnchorView(anchor: anchor))
             .tracksMenuAppearance($appearance)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(label)
-            .accessibilityValue(Text(verbatim: chosenTitle))
-            .accessibilityAddTraits(.isButton)
+            .accessibilityRepresentation {
+                Menu {
+                } label: {
+                    label
+                }
+                .accessibilityValue(Text(verbatim: chosenTitle))
+                .accessibilityAction(.default, open)
+            }
         }
 
         private func open() {

@@ -24,6 +24,13 @@ struct CardMenuButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .accessibilityRepresentation {
+            Menu {
+            } label: {
+                Text("More")
+            }
+            .accessibilityAction(.default, presentMenu)
+        }
     }
 
     private func presentMenu() {
