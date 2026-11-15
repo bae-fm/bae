@@ -300,8 +300,9 @@ extension MacIdentifierBand {
     }
 }
 
-/// The artist and title fields the run searches by; leaving a changed field
-/// commits both.
+/// The words the run searches by, drawn as one chip, "Title search", with the
+/// artist and the title after it. Pressing the words opens an artist field and
+/// a title field; leaving a changed field commits both.
 private struct TitleSearchChip<Trailing: View>: View {
     let album: String
     let artist: String
@@ -316,6 +317,10 @@ private struct TitleSearchChip<Trailing: View>: View {
     private var artistText: String
     @FocusState
     private var focused: Field?
+    /// Whether the words are open as fields. A search with no words has
+    /// nothing to draw as text, so it is always open.
+    @State
+    private var isEditing = false
 
     private enum Field {
         case album
@@ -338,19 +343,47 @@ private struct TitleSearchChip<Trailing: View>: View {
         _artistText = State(initialValue: artist)
     }
 
+    private var showsFields: Bool {
+        isEditing || (albumText.isEmpty && artistText.isEmpty)
+    }
+
     var body: some View {
-        IdentifierChip(label: String(localized: "Artist")) {
-            field("Artist", text: $artistText, field: .artist)
-            IdentifierLabel(text: String(localized: "Title"))
-            field("Title", text: $albumText, field: .album)
-            trailing
+        Group {
+            if showsFields {
+                IdentifierChip(label: String(localized: "Artist")) {
+                    field("Artist", text: $artistText, field: .artist)
+                    IdentifierLabel(text: String(localized: "Title"))
+                    field("Title", text: $albumText, field: .album)
+                    trailing
+                }
+            }
+            else {
+                IdentifierChip(label: String(localized: "Title search")) {
+                    Button {
+                        isEditing = true
+                        focused = .artist
+                    } label: {
+                        Text(
+                            verbatim: FactList.joined([artistText, albumText])
+                        )
+                        .themeText(.mono)
+                        .foregroundStyle(.secondary)
+                        .cutLine(.prose)
+                    }
+                    .buttonStyle(.accentPlain)
+                    .disabled(isWaiting)
+                    trailing
+                }
+            }
         }
         // A new run's words replace what was typed.
         .onChange(of: album) { _, now in albumText = now }
         .onChange(of: artist) { _, now in artistText = now }
-        // Leaving a field searches, including moving to the other one.
+        // Leaving a field searches, including moving to the other one; leaving
+        // both closes the fields.
         .onChange(of: focused) { was, now in
             if was != nil, was != now { commit() }
+            if now == nil { isEditing = false }
         }
     }
 
