@@ -2,6 +2,8 @@ package fm.bae.app.ui.library
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -37,6 +39,14 @@ class PlaylistScreenTest {
     private class PlayingHandle : FakeAppHandle() {
         val played = mutableListOf<Played>()
         val removed = mutableListOf<String>()
+        val reordered = mutableListOf<List<String>>()
+
+        override suspend fun reorderPlaylist(
+            playlist: String,
+            order: List<String>,
+        ) {
+            reordered += order
+        }
 
         override suspend fun removePlaylistEntry(
             playlist: String,
@@ -112,5 +122,30 @@ class PlaylistScreenTest {
         compose.waitUntil(HANG_GUARD_MS) { handle.removed.isNotEmpty() }
 
         assertEquals(listOf("playlist-1/position-2"), handle.removed)
+    }
+
+    private fun moveActions(row: Int): List<String> =
+        compose
+            .onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))[row]
+            .fetchSemanticsNode()
+            .config[SemanticsActions.CustomActions]
+            .map { it.label }
+
+    @Test
+    fun aScreenReaderMovesAnEntryDownAndUp() {
+        showPage()
+        assertEquals(listOf("Move down"), moveActions(0))
+        assertEquals(listOf("Move up"), moveActions(1))
+
+        val down =
+            compose
+                .onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))[0]
+                .fetchSemanticsNode()
+                .config[SemanticsActions.CustomActions]
+                .single()
+        compose.runOnUiThread { down.action() }
+        compose.waitUntil(HANG_GUARD_MS) { handle.reordered.isNotEmpty() }
+
+        assertEquals(listOf(listOf("position-2", "position-1")), handle.reordered)
     }
 }

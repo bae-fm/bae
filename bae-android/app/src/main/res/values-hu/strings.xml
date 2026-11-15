@@ -107,6 +107,8 @@
     <string name="playlist_sharing_private_note">Ezt a lejátszási listát csak te látod.</string>
     <string name="playlist_sharing_household_note">A könyvtárban mindenki látja ezt a lejátszási listát, és le is játszhatja. Csak te módosíthatod.</string>
     <string name="playlist_create">Létrehozás</string>
+    <string name="playlist_move_up">Mozgatás felfelé</string>
+    <string name="playlist_move_down">Mozgatás lefelé</string>
     <string name="playlist_remove_entry">Eltávolítás a lejátszási listáról</string>
     <string name="playlist_add_entry">Hozzáadás lejátszási listához…</string>
     <string name="playlist_add_title">Hozzáadás lejátszási listához</string>

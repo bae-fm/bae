@@ -103,6 +103,8 @@
     <string name="playlist_sharing_private_note">أنت وحدك ترى قائمة التشغيل هذه.</string>
     <string name="playlist_sharing_household_note">يرى الجميع في المكتبة قائمة التشغيل هذه ويمكنهم تشغيلها. أنت وحدك من يمكنه تغييرها.</string>
     <string name="playlist_create">إنشاء</string>
+    <string name="playlist_move_up">نقل لأعلى</string>
+    <string name="playlist_move_down">نقل لأسفل</string>
     <string name="playlist_remove_entry">إزالة من قائمة التشغيل</string>
     <string name="playlist_add_entry">إضافة إلى قائمة تشغيل…</string>
     <string name="playlist_add_title">إضافة إلى قائمة تشغيل</string>

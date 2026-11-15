@@ -107,6 +107,8 @@
     <string name="playlist_sharing_private_note">Só você vê esta lista de reprodução.</string>
     <string name="playlist_sharing_household_note">Todos na biblioteca veem esta lista de reprodução e podem reproduzi-la. Só você pode alterá-la.</string>
     <string name="playlist_create">Criar</string>
+    <string name="playlist_move_up">Mover para cima</string>
+    <string name="playlist_move_down">Mover para baixo</string>
     <string name="playlist_remove_entry">Remover da lista de reprodução</string>
     <string name="playlist_add_entry">Adicionar a lista de reprodução…</string>
     <string name="playlist_add_title">Adicionar a lista de reprodução</string>

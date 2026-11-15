@@ -103,6 +103,8 @@
     <string name="playlist_sharing_private_note">Само вие виждате този плейлист.</string>
     <string name="playlist_sharing_household_note">Всички в библиотеката виждат този плейлист и могат да го пускат. Само вие можете да го променяте.</string>
     <string name="playlist_create">Създай</string>
+    <string name="playlist_move_up">Преместване нагоре</string>
+    <string name="playlist_move_down">Преместване надолу</string>
     <string name="playlist_remove_entry">Премахване от плейлиста</string>
     <string name="playlist_add_entry">Добавяне към плейлист…</string>
     <string name="playlist_add_title">Добавяне към плейлист</string>

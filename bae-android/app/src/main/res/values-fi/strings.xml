@@ -107,6 +107,8 @@
     <string name="playlist_sharing_private_note">Vain sinä näet tämän soittolistan.</string>
     <string name="playlist_sharing_household_note">Kaikki kirjastossa näkevät tämän soittolistan ja voivat toistaa sen. Vain sinä voit muuttaa sitä.</string>
     <string name="playlist_create">Luo</string>
+    <string name="playlist_move_up">Siirrä ylös</string>
+    <string name="playlist_move_down">Siirrä alas</string>
     <string name="playlist_remove_entry">Poista soittolistasta</string>
     <string name="playlist_add_entry">Lisää soittolistaan…</string>
     <string name="playlist_add_title">Lisää soittolistaan</string>

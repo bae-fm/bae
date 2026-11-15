@@ -103,6 +103,8 @@
     <string name="playlist_sharing_private_note">Bu çalma listesini yalnızca siz görürsünüz.</string>
     <string name="playlist_sharing_household_note">Kitaplıktaki herkes bu çalma listesini görebilir ve çalabilir. Yalnızca siz değiştirebilirsiniz.</string>
     <string name="playlist_create">Oluştur</string>
+    <string name="playlist_move_up">Yukarı taşı</string>
+    <string name="playlist_move_down">Aşağı taşı</string>
     <string name="playlist_remove_entry">Çalma listesinden kaldır</string>
     <string name="playlist_add_entry">Çalma listesine ekle…</string>
     <string name="playlist_add_title">Çalma listesine ekle</string>

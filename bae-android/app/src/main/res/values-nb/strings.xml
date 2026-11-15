@@ -107,6 +107,8 @@
     <string name="playlist_sharing_private_note">Bare du ser denne spillelisten.</string>
     <string name="playlist_sharing_household_note">Alle i biblioteket ser denne spillelisten og kan spille den av. Bare du kan endre den.</string>
     <string name="playlist_create">Opprett</string>
+    <string name="playlist_move_up">Flytt opp</string>
+    <string name="playlist_move_down">Flytt ned</string>
     <string name="playlist_remove_entry">Fjern fra spilleliste</string>
     <string name="playlist_add_entry">Legg til i spilleliste…</string>
     <string name="playlist_add_title">Legg til i spilleliste</string>

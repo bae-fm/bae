@@ -103,6 +103,8 @@
     <string name="playlist_sharing_private_note">Nur du siehst diese Wiedergabeliste.</string>
     <string name="playlist_sharing_household_note">Alle in der Bibliothek sehen diese Wiedergabeliste und können sie abspielen. Nur du kannst sie ändern.</string>
     <string name="playlist_create">Erstellen</string>
+    <string name="playlist_move_up">Nach oben verschieben</string>
+    <string name="playlist_move_down">Nach unten verschieben</string>
     <string name="playlist_remove_entry">Aus Wiedergabeliste entfernen</string>
     <string name="playlist_add_entry">Zu Wiedergabeliste hinzufügen…</string>
     <string name="playlist_add_title">Zu Wiedergabeliste hinzufügen</string>

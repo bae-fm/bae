@@ -26,8 +26,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
@@ -102,6 +107,28 @@ internal class PlaylistReorder(
 
     fun isDragged(positionId: String): Boolean = positionId == draggedId
 
+    /** Whether the entry [positionId] names has a place [by] away (-1 above it, 1 below it) to move to. */
+    fun canMove(
+        positionId: String,
+        by: Int,
+    ): Boolean {
+        val to = ordered.indexOfFirst { it.positionId == positionId } + by
+        return ordered.any { it.positionId == positionId } && to in ordered.indices
+    }
+
+    /** Move the entry [positionId] names [by] places and write the order, as a screen reader's moves do. */
+    fun move(
+        positionId: String,
+        by: Int,
+    ) {
+        if (!canMove(positionId, by)) return
+        val order = ordered.map { it.positionId }.toMutableList()
+        val from = order.indexOf(positionId)
+        order.add(from + by, order.removeAt(from))
+        held.value = order
+        write(order) { held.value = null }
+    }
+
     fun start(positionId: String) {
         draggedId = positionId
         startIndex = ordered.indexOfFirst { it.positionId == positionId }
@@ -174,6 +201,8 @@ private fun LazyItemScope.PlaylistEntry(
 ) {
     val lifted = reorder.isDragged(entry.positionId)
     val latestReorder by rememberUpdatedState(reorder)
+    val moveUp = stringResource(R.string.playlist_move_up)
+    val moveDown = stringResource(R.string.playlist_move_down)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
@@ -192,21 +221,7 @@ private fun LazyItemScope.PlaylistEntry(
                         Modifier
                     },
                 ).then(
-                    if (yours) {
-                        Modifier.pointerInput(entry.positionId) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { latestReorder.start(entry.positionId) },
-                                onDrag = { change, amount ->
-                                    change.consume()
-                                    latestReorder.drag(amount.y)
-                                },
-                                onDragEnd = { latestReorder.finish() },
-                                onDragCancel = { latestReorder.cancel() },
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
+                    if (yours) Modifier.ownerReorder(latestReorder, entry.positionId, moveUp, moveDown) else Modifier,
                 ).padding(end = ENTRY_MENU_END_PADDING),
     ) {
         Box(modifier = Modifier.weight(1f)) {
@@ -226,6 +241,50 @@ private fun LazyItemScope.PlaylistEntry(
         )
     }
 }
+
+/**
+ * What the owner does to an entry's row to move it: hold and drag it, or ask a screen reader to move it
+ * up ([moveUp] names that action) or down ([moveDown]).
+ */
+private fun Modifier.ownerReorder(
+    reorder: PlaylistReorder,
+    positionId: String,
+    moveUp: String,
+    moveDown: String,
+): Modifier =
+    semantics {
+        customActions =
+            listOfNotNull(
+                entryMoveAction(reorder, positionId, -1, moveUp),
+                entryMoveAction(reorder, positionId, 1, moveDown),
+            )
+    }.pointerInput(positionId) {
+        detectDragGesturesAfterLongPress(
+            onDragStart = { reorder.start(positionId) },
+            onDrag = { change, amount ->
+                change.consume()
+                reorder.drag(amount.y)
+            },
+            onDragEnd = { reorder.finish() },
+            onDragCancel = { reorder.cancel() },
+        )
+    }
+
+/** The screen reader action that moves an entry [by] places, when there is a place to move it to. */
+private fun entryMoveAction(
+    reorder: PlaylistReorder,
+    positionId: String,
+    by: Int,
+    label: String,
+): CustomAccessibilityAction? =
+    if (reorder.canMove(positionId, by)) {
+        CustomAccessibilityAction(label) {
+            reorder.move(positionId, by)
+            true
+        }
+    } else {
+        null
+    }
 
 private val LIFT_SHADOW = 6.dp
 private val ENTRY_MENU_END_PADDING = 4.dp

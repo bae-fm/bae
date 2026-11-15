@@ -109,6 +109,8 @@
     <string name="playlist_sharing_private_note">Tento zoznam skladieb vidíte len vy.</string>
     <string name="playlist_sharing_household_note">Všetci v knižnici tento zoznam skladieb vidia a môžu ho prehrať. Meniť ho môžete len vy.</string>
     <string name="playlist_create">Vytvoriť</string>
+    <string name="playlist_move_up">Presunúť nahor</string>
+    <string name="playlist_move_down">Presunúť nadol</string>
     <string name="playlist_remove_entry">Odstrániť zo zoznamu skladieb</string>
     <string name="playlist_add_entry">Pridať do zoznamu skladieb…</string>
     <string name="playlist_add_title">Pridať do zoznamu skladieb</string>
