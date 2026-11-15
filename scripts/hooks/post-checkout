@@ -34,9 +34,10 @@ cd "$worktree_root"
 ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md
 
 # Project rules (.claude/ is gitignored): Claude Code reads path-scoped rules
-# from .claude/rules/, and agent-instructions' install.sh links them only into
-# the main checkout. Link every rule here too, and drop links to rules since
-# removed from projects/bae-rules.
+# from .claude/rules/, and agent-instructions' install.sh links them into the
+# checkouts that exist when it runs. Link every rule into a new worktree too,
+# and drop links to rules since removed from projects/bae-rules. The rules sit
+# in one folder per review group; each is linked without its folder.
 rules_src="$HOME/dev/agent-instructions/projects/bae-rules"
 mkdir -p .claude/rules
 for link in .claude/rules/*.md; do
@@ -44,7 +45,7 @@ for link in .claude/rules/*.md; do
         case "$(readlink "$link")" in "$rules_src"/*) rm "$link" ;; esac
     fi
 done
-for rule in "$rules_src"/*.md; do
+find "$rules_src" -name '*.md' -type f | while IFS= read -r rule; do
     ln -sf "$rule" ".claude/rules/$(basename "$rule")"
 done
 
