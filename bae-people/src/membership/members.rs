@@ -17,13 +17,22 @@ impl Membership {
     }
 }
 
+/// Whether the member using this device is an admin, as SQL.
+macro_rules! self_is_admin {
+    () => {
+        "EXISTS(SELECT 1 FROM coven_members AS s \
+         WHERE s.is_self AND NOT s.removed AND s.role = 'admin')"
+    };
+}
+
 /// The columns [`member_row`] reads of the `coven_members` row `m`: the
 /// member, with their active devices and their removed or replaced ones as
 /// JSON arrays in device-id order, and whether the member using this device is
 /// an admin. A device id is its eight bytes as hex.
 macro_rules! member_columns {
     () => {
-        "m.member, m.role, m.is_self, m.signing, m.sealing, m.account, m.access_key_id, \
+        concat!(
+            "m.member, m.role, m.is_self, m.signing, m.sealing, m.account, m.access_key_id, \
          (SELECT json_group_array(json_array(hex(d.device), d.name, \
                      json(CASE WHEN d.is_self THEN 'true' ELSE 'false' END)) \
                      ORDER BY d.device) \
@@ -31,11 +40,13 @@ macro_rules! member_columns {
          (SELECT json_group_array(json_array(hex(d.device), d.name, d.state) \
                      ORDER BY d.device) \
           FROM coven_devices AS d WHERE d.member = m.member AND d.state <> 'active'), \
-         EXISTS(SELECT 1 FROM coven_members AS s \
-                WHERE s.is_self AND NOT s.removed AND s.role = 'admin')"
+         ",
+            $crate::membership::self_is_admin!()
+        )
     };
 }
 pub(crate) use member_columns;
+pub(crate) use self_is_admin;
 
 /// The current members in member-id order.
 const MEMBERS: &str = concat!(
@@ -45,12 +56,13 @@ const MEMBERS: &str = concat!(
 );
 
 fn membership_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<Members> {
-    let rows =
-        sql.query(MEMBERS, [], |row| Ok((member_row(row, 0)?, self_is_admin_column(row, 0)?)))?;
-    // Every row holds the same flag; no rows means no admin.
-    let self_is_admin = rows.first().is_some_and(|(_, self_is_admin)| *self_is_admin);
-    Ok(Members { members: rows.into_iter().map(|(member, _)| member).collect(), self_is_admin })
+    let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
+    let members = sql.query(MEMBERS, [], |row| member_row(row, 0))?;
+    Ok(Members { members, self_is_admin })
 }
+
+/// The list's own read of whether the member using this device is an admin.
+const SELF_IS_ADMIN: &str = concat!("SELECT ", self_is_admin!());
 
 /// Whether the member using this device is an admin, as the row whose
 /// [`member_columns`] start at column `first` holds it.
