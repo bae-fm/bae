@@ -17,13 +17,10 @@ impl Membership {
     }
 }
 
-/// Whether the member using this device is an admin.
-pub(crate) const SELF_IS_ADMIN: &str = "SELECT EXISTS(SELECT 1 FROM coven_members \
-     WHERE is_self AND NOT removed AND role = 'admin')";
-
 /// The columns [`member_row`] reads of the `coven_members` row `m`: the
 /// member, with their active devices and their removed or replaced ones as
-/// JSON arrays in device-id order. A device id is its eight bytes as hex.
+/// JSON arrays in device-id order, and whether the member using this device is
+/// an admin. A device id is its eight bytes as hex.
 macro_rules! member_columns {
     () => {
         "m.member, m.role, m.is_self, m.signing, m.sealing, m.account, m.access_key_id, \
@@ -33,7 +30,9 @@ macro_rules! member_columns {
           FROM coven_devices AS d WHERE d.member = m.member AND d.state = 'active'), \
          (SELECT json_group_array(json_array(hex(d.device), d.name, d.state) \
                      ORDER BY d.device) \
-          FROM coven_devices AS d WHERE d.member = m.member AND d.state <> 'active')"
+          FROM coven_devices AS d WHERE d.member = m.member AND d.state <> 'active'), \
+         EXISTS(SELECT 1 FROM coven_members AS s \
+                WHERE s.is_self AND NOT s.removed AND s.role = 'admin')"
     };
 }
 pub(crate) use member_columns;
@@ -46,17 +45,22 @@ const MEMBERS: &str = concat!(
 );
 
 fn membership_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<Members> {
-    let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
-    let members = sql.query(MEMBERS, [], |row| member_row(row, 0, self_is_admin))?;
-    Ok(Members { members, self_is_admin })
+    let rows =
+        sql.query(MEMBERS, [], |row| Ok((member_row(row, 0)?, self_is_admin_column(row, 0)?)))?;
+    // Every row holds the same flag; no rows means no admin.
+    let self_is_admin = rows.first().is_some_and(|(_, self_is_admin)| *self_is_admin);
+    Ok(Members { members: rows.into_iter().map(|(member, _)| member).collect(), self_is_admin })
+}
+
+/// Whether the member using this device is an admin, as the row whose
+/// [`member_columns`] start at column `first` holds it.
+fn self_is_admin_column(row: &Row<'_>, first: usize) -> rusqlite::Result<bool> {
+    row.get(first + 9)
 }
 
 /// The member whose [`member_columns`] start at column `first`.
-pub(crate) fn member_row(
-    row: &Row<'_>,
-    first: usize,
-    self_is_admin: bool,
-) -> rusqlite::Result<MembershipMember> {
+pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<MembershipMember> {
+    let self_is_admin = self_is_admin_column(row, first)?;
     let is_self: bool = row.get(first + 2)?;
     let role = match row.get::<_, String>(first + 1)?.as_str() {
         "admin" => coven::MemberRole::Admin,

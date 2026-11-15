@@ -3,7 +3,7 @@ use super::profile_request::{
     ProfileRequestState,
 };
 use super::*;
-use crate::membership::{member_columns, member_row, SELF_IS_ADMIN};
+use crate::membership::{member_columns, member_row};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
 use bae_store::read::SortLanguageRead;
 use bae_util::name_key::SortLanguage;
@@ -598,14 +598,13 @@ fn people_on(
     statement: &str,
     params: impl Params,
 ) -> rusqlite::Result<Vec<Person>> {
-    let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
     sql.query(statement, params, |row| {
         Ok(Person {
             profile: match row.get::<_, Option<String>>(0)? {
                 Some(_) => Some(profile_row(row)?),
                 None => None,
             },
-            membership: member_row(row, PROFILE_COLUMN_COUNT, self_is_admin)?,
+            membership: member_row(row, PROFILE_COLUMN_COUNT)?,
         })
     })
 }

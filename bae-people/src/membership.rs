@@ -9,7 +9,7 @@ use rusqlite::{params, Row};
 mod admin_operations;
 pub use admin_operations::{InviteError, RefusedInviteDismissError};
 mod members;
-pub(crate) use members::{member_columns, member_row, SELF_IS_ADMIN};
+pub(crate) use members::{member_columns, member_row};
 
 /// Membership's part of the schema: `membership.sql`.
 pub const SCHEMA: bae_store::SchemaPart =
