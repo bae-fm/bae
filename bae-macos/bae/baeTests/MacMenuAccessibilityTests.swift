@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import SwiftUI
 import Testing
 
@@ -69,14 +70,17 @@ struct MacMenuAccessibilityTests {
                 Text(verbatim: "Choose")
             },
             size: size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
             let control = try #require(
-                Self.popUps(in: host).first,
+                Self.popUps(in: window).first,
                 "the tree holds no pop-up"
             )
-            #expect(control.accessibilityLabel() == "Choose")
-            #expect(control.accessibilityPerformPress())
+            #expect(Self.text(control, kAXDescriptionAttribute) == "Choose")
+            #expect(
+                AXUIElementPerformAction(control, kAXPressAction as CFString)
+                    == .success
+            )
             let menu = NSApp.windows.compactMap(\.contentView)
                 .first { $0.accessibilityRole() == .menu }
             #expect(menu != nil, "pressing the pop-up opens no menu")
@@ -84,20 +88,48 @@ struct MacMenuAccessibilityTests {
         }
     }
 
-    /// Every element of the accessibility tree under `view` that VoiceOver
-    /// reads as a pop-up or a pull-down.
-    private static func popUps(in view: NSView) -> [NSAccessibilityProtocol] {
-        func walk(_ element: Any) -> [NSAccessibilityProtocol] {
-            guard let element = element as? NSAccessibilityProtocol else {
-                return []
-            }
-            let own: [NSAccessibilityProtocol] =
-                [.popUpButton, .menuButton]
-                    .contains(element.accessibilityRole())
+    /// Every element of `window`'s accessibility tree, read through the
+    /// accessibility API as VoiceOver reads it, that is a pop-up or a
+    /// pull-down.
+    private static func popUps(in window: NSWindow) -> [AXUIElement] {
+        let frame = window.frame
+        let top = (NSScreen.screens.first?.frame.maxY ?? 0) - frame.maxY
+        let application = AXUIElementCreateApplication(getpid())
+        func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+            var value: CFTypeRef?
+            AXUIElementCopyAttributeValue(element, name as CFString, &value)
+            return value
+        }
+        func walk(_ element: AXUIElement) -> [AXUIElement] {
+            let role = text(element, kAXRoleAttribute)
+            let own =
+                [kAXPopUpButtonRole, kAXMenuButtonRole].contains(role ?? "")
                 ? [element] : []
-            let children = element.accessibilityChildren() as? [Any] ?? []
+            let children =
+                attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
             return own + children.flatMap(walk)
         }
-        return walk(view)
+        let windows =
+            attribute(application, kAXWindowsAttribute) as? [AXUIElement] ?? []
+        return
+            windows.filter { element in
+                var point = CGPoint.zero
+                guard let value = attribute(element, kAXPositionAttribute),
+                    AXValueGetValue(
+                        unsafeDowncast(value, to: AXValue.self),
+                        .cgPoint,
+                        &point
+                    )
+                else { return false }
+                return abs(point.x - frame.minX) <= 1 && abs(point.y - top) <= 1
+            }
+            .flatMap(walk)
+    }
+
+    private static func text(_ element: AXUIElement, _ name: String) -> String?
+    {
+        var value: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, name as CFString, &value)
+        return value as? String
     }
 }
