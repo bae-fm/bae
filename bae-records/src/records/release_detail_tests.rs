@@ -152,8 +152,8 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     assert_eq!(sides, expected_sides);
 }
 
-/// What `store` reads of where each of `releases`' audio is: the device
-/// [`release_details_on`] names, `None` for a release that plays here.
+/// Returns the other device that the release detail `store` reads names for
+/// `release`, or `None` when the release plays here.
 async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option<OtherDevice> {
     store
         .read(move |sql| {
@@ -167,8 +167,8 @@ async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option
         .unwrap()
 }
 
-/// One file of `release` named `name`, of `content_type`, imported on
-/// `store`'s device from an original under `dir`.
+/// Imports one file named `name` of `content_type` into `release` on
+/// `store`'s device, from an original that the function writes under `dir`.
 async fn import_file(
     store: &bae_store::Store,
     dir: &std::path::Path,
@@ -189,8 +189,8 @@ async fn import_file(
     crate::test_fixtures::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
 }
 
-/// A release is on another device when any of its audio files is held there
-/// only, and then it names that device. Audio this device holds the original
+/// A release is on another device when that device alone holds one of its
+/// audio files, and then the release detail names that device. Audio this device holds the original
 /// of, and files that are not audio, never put a release elsewhere.
 #[test]
 fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {

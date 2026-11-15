@@ -20,8 +20,8 @@ pub enum ReleasePlayability {
 }
 
 impl ReleasePlayability {
-    /// The playability of a release whose audio is on `elsewhere`, the other
-    /// device of its first audio file held on another device only, if any.
+    /// Returns `OnOtherDevice` when `elsewhere` names a device and `Playable`
+    /// when it is `None`.
     pub(crate) fn of(elsewhere: Option<OtherDevice>) -> Self {
         elsewhere.map_or(Self::Playable, Self::OnOtherDevice)
     }
