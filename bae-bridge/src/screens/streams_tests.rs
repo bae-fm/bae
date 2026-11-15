@@ -92,7 +92,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         pins,
         vec![
             ReleaseTransferChange::Reset([("pinning".to_string(), pin_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
         ]
     );
 
@@ -100,7 +100,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         vec![
             reset(),
             moved("pinning", &pin),
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
         ],
         move_to_this_device_progress,
     );
@@ -109,8 +109,8 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         locals,
         vec![
             ReleaseTransferChange::Reset([("local".to_string(), local_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "pinning".to_string() },
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
+            ReleaseTransferChange::Removed { release_id: "pinning".to_string(), end: None },
+            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
         ]
     );
 }
@@ -155,6 +155,7 @@ fn one_batch_of_outbox_transfers_writes_both_streams() {
         vec![
             OutboxTransferChange::Release(ReleaseTransferChange::Removed {
                 release_id: "release-1".to_string(),
+                end: None,
             }),
             OutboxTransferChange::Total(UploadTransfer { bar: None, throughput_bps: 0 }),
         ],

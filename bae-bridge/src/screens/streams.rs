@@ -72,7 +72,9 @@ fn write_release_changes<Progress>(
             ReleaseTransferChange::Updated { release_id, progress } => {
                 writer.set(release_id, value(progress))
             }
-            ReleaseTransferChange::Removed { release_id } => writer.remove(release_id.as_bytes()),
+            ReleaseTransferChange::Removed { release_id, .. } => {
+                writer.remove(release_id.as_bytes())
+            }
             ReleaseTransferChange::Reset(all) => writer.reset(
                 all.into_iter()
                     .map(|(release_id, progress)| (release_id.into_bytes(), value(progress)))
@@ -270,10 +272,10 @@ fn download_changes<Progress>(
         .map(|change| match change {
             ReleaseTransferChange::Updated { release_id, progress } => match kind(progress) {
                 Some(progress) => ReleaseTransferChange::Updated { release_id, progress },
-                None => ReleaseTransferChange::Removed { release_id },
+                None => ReleaseTransferChange::Removed { release_id, end: None },
             },
-            ReleaseTransferChange::Removed { release_id } => {
-                ReleaseTransferChange::Removed { release_id }
+            ReleaseTransferChange::Removed { release_id, end } => {
+                ReleaseTransferChange::Removed { release_id, end }
             }
             ReleaseTransferChange::Reset(all) => ReleaseTransferChange::Reset(
                 all.into_iter()

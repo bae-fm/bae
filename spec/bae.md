@@ -3977,7 +3977,10 @@ the tables or a transfer change, with no value held from an earlier one. coven
 ends a file's upload progress only after the commit that records it stored, but the
 read can deliver that commit after the progress ends, so the bar keeps a file's last upload share
 until a read arrives that no longer lists the file as sending; a file whose upload failed or was
-held keeps none. A
+held keeps none. A download's transfer ends the same way: the download queue says how each
+transfer ended (finished, failed, held by a pause, or dropped by a cancel), a finished release keeps
+its last download share until a read arrives that no longer lists it as waiting, and a release whose
+download failed, was held or was dropped keeps none. A
 release removed from the library counts none of its bytes. A bar moves while a release's files transfer
 and its count waits. A batch is everything the
 queue has held since it was last empty, so a count only grows, and it starts

@@ -55,6 +55,9 @@ struct BarsCount {
     /// How far each release downloading has got, as the download queue
     /// last told it.
     downloading: BTreeMap<String, DownloadTransfer>,
+    /// Each release whose download finished, with how far it had got, until
+    /// the read that stores it arrives, for the same reason as `finished`.
+    downloaded: BTreeMap<String, DownloadTransfer>,
 }
 
 impl BarsCount {
@@ -66,6 +69,13 @@ impl BarsCount {
         } else {
             self.finished.clear();
         }
+        // A release the read no longer lists as waiting is stored in it.
+        self.downloaded.retain(|release_id, _| {
+            [&bytes.pins, &bytes.moving_to_this_device]
+                .into_iter()
+                .flatten()
+                .any(|batch| batch.waiting.iter().any(|waiting| waiting.release_id == *release_id))
+        });
         self.read = Some(bytes);
     }
 
@@ -92,6 +102,29 @@ impl BarsCount {
     }
 
     fn downloads_heard(&mut self, changes: Vec<ReleaseTransferChange<DownloadTransfer>>) {
+        for change in &changes {
+            match change {
+                ReleaseTransferChange::Removed {
+                    release_id,
+                    end: Some(coven::TransferEnd::Finished),
+                } => {
+                    let stored = self.read.as_ref().is_some_and(|read| {
+                        [&read.pins, &read.moving_to_this_device]
+                            .into_iter()
+                            .flatten()
+                            .all(|batch| batch.waiting.iter().all(|w| w.release_id != *release_id))
+                    });
+                    if let (false, Some(transfer)) = (stored, self.downloading.get(release_id)) {
+                        self.downloaded.insert(release_id.clone(), transfer.clone());
+                    }
+                }
+                ReleaseTransferChange::Updated { release_id, .. } => {
+                    self.downloaded.remove(release_id);
+                }
+                ReleaseTransferChange::Reset(_) => self.downloaded.clear(),
+                ReleaseTransferChange::Removed { .. } => {}
+            }
+        }
         bae_transfers::apply_release_changes(&mut self.downloading, changes);
     }
 
@@ -99,17 +132,18 @@ impl BarsCount {
     /// the first read.
     fn bars(&self) -> Option<ActivityBars> {
         let read = self.read.as_ref()?;
-        let downloading = &self.downloading;
         Some(ActivityBars {
             uploads: read
                 .uploads
                 .as_ref()
                 .map(|uploads| upload_bar(uploads, &self.sent, &self.finished)),
-            pins: read.pins.as_ref().map(|pins| download_bar(pins, downloading, pin_share)),
-            moving_to_this_device: read
-                .moving_to_this_device
+            pins: read
+                .pins
                 .as_ref()
-                .map(|moves| download_bar(moves, downloading, move_to_this_device_share)),
+                .map(|pins| download_bar(pins, &self.downloading, &self.downloaded, pin_share)),
+            moving_to_this_device: read.moving_to_this_device.as_ref().map(|moves| {
+                download_bar(moves, &self.downloading, &self.downloaded, move_to_this_device_share)
+            }),
         })
     }
 }
@@ -139,17 +173,22 @@ fn upload_bar(
 
 /// A download batch's bar: the sizes of its done releases and, of each
 /// release not done, its size times `share` of the transfer running for it,
-/// if one runs.
+/// if one runs, which for a release that finished is its last transfer until
+/// a read lists it done.
 fn download_bar(
     batch: &DownloadBytes,
     downloading: &BTreeMap<String, DownloadTransfer>,
+    downloaded: &BTreeMap<String, DownloadTransfer>,
     share: fn(&DownloadTransfer) -> Option<f64>,
 ) -> BatchBar {
     let in_flight: u64 = batch
         .waiting
         .iter()
         .filter_map(|release| {
-            let share = downloading.get(&release.release_id).and_then(share)?;
+            let share = downloading
+                .get(&release.release_id)
+                .or_else(|| downloaded.get(&release.release_id))
+                .and_then(share)?;
             Some((release.bytes_total as f64 * share) as u64)
         })
         .sum();

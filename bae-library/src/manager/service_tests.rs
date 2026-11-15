@@ -561,7 +561,9 @@ fn apply_transfer_changes(
             }) => {
                 held.as_mut().expect("a reset comes first").releases.insert(release_id, progress);
             }
-            OutboxTransferChange::Release(ReleaseTransferChange::Removed { release_id }) => {
+            OutboxTransferChange::Release(ReleaseTransferChange::Removed {
+                release_id, ..
+            }) => {
                 held.as_mut().expect("a reset comes first").releases.remove(&release_id);
             }
             OutboxTransferChange::Total(total) => {

@@ -44,9 +44,9 @@ fn pinning(
     }]
 }
 
-/// `release`'s transfer is no longer under way.
-fn ended(release: &str) -> Vec<ReleaseTransferChange<DownloadTransfer>> {
-    vec![ReleaseTransferChange::Removed { release_id: release.to_string() }]
+/// `release`'s transfer is no longer under way, ended as `end` says.
+fn ended(release: &str, end: coven::TransferEnd) -> Vec<ReleaseTransferChange<DownloadTransfer>> {
+    vec![ReleaseTransferChange::Removed { release_id: release.to_string(), end: Some(end) }]
 }
 
 fn pins_bar(count: &BarsCount) -> Option<BatchBar> {
@@ -76,7 +76,7 @@ fn a_done_release_counts_its_size_once() {
     count.downloads_heard(pinning("second", 39, 40));
     count.read(pin_batch(400, 400, &[]));
     assert_eq!(pins_bar(&count), bar(400, 400));
-    count.downloads_heard(ended("second"));
+    count.downloads_heard(ended("second", coven::TransferEnd::Finished));
     assert_eq!(pins_bar(&count), bar(400, 400));
 }
 
@@ -188,4 +188,37 @@ fn an_upload_that_did_not_finish_keeps_no_bytes() {
         end: coven::TransferEnd::Failed,
     }]);
     assert_eq!(count.bars().unwrap().uploads, bar(0, 200));
+}
+
+/// A release whose download finished keeps its last bytes in the bar until a
+/// read that no longer lists it as waiting arrives: the transfer ends after
+/// the commit that stores the release, but the read can deliver that commit
+/// later, and the bar must not drop in between.
+#[test]
+fn a_finished_download_keeps_its_bytes_until_the_read_that_stores_it() {
+    let mut count = BarsCount::default();
+    count.read(pin_batch(400, 100, &[("second", 300)]));
+    count.downloads_heard(pinning("second", 40, 40));
+    assert_eq!(pins_bar(&count), bar(400, 400));
+
+    count.downloads_heard(ended("second", coven::TransferEnd::Finished));
+    assert_eq!(pins_bar(&count), bar(400, 400), "the read that stores the release has not arrived");
+
+    count.read(pin_batch(400, 400, &[]));
+    assert_eq!(pins_bar(&count), bar(400, 400));
+    count.downloads_heard(pinning("second", 10, 40));
+    assert_eq!(pins_bar(&count), bar(400, 400));
+}
+
+/// A download that failed, was held or was dropped keeps nothing: its release
+/// is still waiting and starts from its next progress.
+#[test]
+fn a_download_that_did_not_finish_keeps_no_bytes() {
+    for end in [coven::TransferEnd::Failed, coven::TransferEnd::Held, coven::TransferEnd::Dropped] {
+        let mut count = BarsCount::default();
+        count.read(pin_batch(400, 100, &[("second", 300)]));
+        count.downloads_heard(pinning("second", 20, 40));
+        count.downloads_heard(ended("second", end));
+        assert_eq!(pins_bar(&count), bar(100, 400), "{end:?}");
+    }
 }

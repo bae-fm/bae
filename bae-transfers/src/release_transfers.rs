@@ -14,9 +14,12 @@ pub enum ReleaseTransferChange<Progress> {
         release_id: String,
         progress: Progress,
     },
-    /// The release's entry is no longer active.
+    /// The release's entry is no longer active. `end` is how its transfer
+    /// ended, named where it ended; `None` when the reader works the removal
+    /// out from two reads of a table, which say a release left and not why.
     Removed {
         release_id: String,
+        end: Option<coven::TransferEnd>,
     },
     /// Every active release's progress, as a reader first reads it.
     Reset(BTreeMap<String, Progress>),
@@ -25,7 +28,16 @@ pub enum ReleaseTransferChange<Progress> {
 /// The progress of each release whose transfer of one kind is under way,
 /// keyed by release.
 pub struct ReleaseTransfers<Progress> {
-    transfers: watch::Sender<BTreeMap<String, Progress>>,
+    transfers: watch::Sender<TransferState<Progress>>,
+}
+
+/// The releases under way with their progress, and how the transfer of each
+/// release that left last ended, so a reader that hears the release leave
+/// hears why.
+#[derive(Clone)]
+struct TransferState<Progress> {
+    active: BTreeMap<String, Progress>,
+    ended: BTreeMap<String, coven::TransferEnd>,
 }
 
 impl<Progress> Clone for ReleaseTransfers<Progress> {
@@ -37,7 +49,12 @@ impl<Progress> Clone for ReleaseTransfers<Progress> {
 impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
     /// No transfer under way.
     pub fn new() -> Self {
-        Self { transfers: watch::Sender::new(BTreeMap::new()) }
+        Self {
+            transfers: watch::Sender::new(TransferState {
+                active: BTreeMap::new(),
+                ended: BTreeMap::new(),
+            }),
+        }
     }
 
     /// Hear every release's progress, then each change to it.
@@ -48,10 +65,11 @@ impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
     /// `release_id`'s transfer is under way and has reached `progress`.
     pub fn set(&self, release_id: &str, progress: Progress) {
         self.transfers.send_if_modified(|transfers| {
-            if transfers.get(release_id) == Some(&progress) {
+            if transfers.active.get(release_id) == Some(&progress) {
                 return false;
             }
-            transfers.insert(release_id.to_string(), progress);
+            transfers.ended.remove(release_id);
+            transfers.active.insert(release_id.to_string(), progress);
             true
         });
     }
@@ -59,7 +77,7 @@ impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
     /// `release_id`'s transfer has reached `progress`, if it is listed as
     /// under way; a release not listed stays unlisted.
     pub fn advance(&self, release_id: &str, progress: Progress) {
-        self.transfers.send_if_modified(|transfers| match transfers.get_mut(release_id) {
+        self.transfers.send_if_modified(|transfers| match transfers.active.get_mut(release_id) {
             Some(listed) if *listed != progress => {
                 *listed = progress;
                 true
@@ -68,9 +86,15 @@ impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
         });
     }
 
-    /// `release_id`'s transfer is no longer under way.
-    pub fn remove(&self, release_id: &str) {
-        self.transfers.send_if_modified(|transfers| transfers.remove(release_id).is_some());
+    /// `release_id`'s transfer is no longer under way, ended as `end` says.
+    pub fn remove(&self, release_id: &str, end: coven::TransferEnd) {
+        self.transfers.send_if_modified(|transfers| {
+            let listed = transfers.active.remove(release_id).is_some();
+            if listed {
+                transfers.ended.insert(release_id.to_string(), end);
+            }
+            listed
+        });
     }
 
     /// List `release_id`'s progress through the returned report until it
@@ -81,7 +105,7 @@ impl<Progress: Clone + PartialEq> ReleaseTransfers<Progress> {
 }
 
 /// One release's progress while its transfer runs. Dropping it removes the
-/// release.
+/// release as dropped.
 pub struct ReleaseTransferReport<Progress: Clone + PartialEq> {
     transfers: ReleaseTransfers<Progress>,
     release_id: String,
@@ -96,14 +120,14 @@ impl<Progress: Clone + PartialEq> ReleaseTransferReport<Progress> {
 
 impl<Progress: Clone + PartialEq> Drop for ReleaseTransferReport<Progress> {
     fn drop(&mut self) {
-        self.transfers.remove(&self.release_id);
+        self.transfers.remove(&self.release_id, coven::TransferEnd::Dropped);
     }
 }
 
 /// Hears the progress of every release in one [`ReleaseTransfers`], keyed by
 /// release.
 pub struct ReleaseTransfersWatch<Progress> {
-    transfers: watch::Receiver<BTreeMap<String, Progress>>,
+    transfers: watch::Receiver<TransferState<Progress>>,
     /// What the reader was last told; `None` before the first read.
     told: Option<BTreeMap<String, Progress>>,
 }
@@ -114,15 +138,15 @@ impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
     /// changed for. `None` once the transfers are gone.
     pub async fn next(&mut self) -> Option<Vec<ReleaseTransferChange<Progress>>> {
         let Some(told) = &mut self.told else {
-            let current = self.transfers.borrow_and_update().clone();
+            let current = self.transfers.borrow_and_update().active.clone();
             self.told = Some(current.clone());
             return Some(vec![ReleaseTransferChange::Reset(current)]);
         };
         loop {
             self.transfers.changed().await.ok()?;
             let next = self.transfers.borrow_and_update().clone();
-            let changes = release_changes(told, &next);
-            *told = next;
+            let changes = release_changes(told, &next.active, &next.ended);
+            *told = next.active;
             if !changes.is_empty() {
                 return Some(changes);
             }
@@ -147,15 +171,20 @@ impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
 }
 
 /// What a reader told each release's progress in `told` must hear to hold
-/// `next`: each release that left, then each that came or moved.
+/// `next`: each release that left, with how its transfer ended if `ended`
+/// says, then each that came or moved.
 pub fn release_changes<Progress: Clone + PartialEq>(
     told: &BTreeMap<String, Progress>,
     next: &BTreeMap<String, Progress>,
+    ended: &BTreeMap<String, coven::TransferEnd>,
 ) -> Vec<ReleaseTransferChange<Progress>> {
     let mut changes: Vec<ReleaseTransferChange<Progress>> = told
         .keys()
         .filter(|release_id| !next.contains_key(*release_id))
-        .map(|release_id| ReleaseTransferChange::Removed { release_id: release_id.clone() })
+        .map(|release_id| ReleaseTransferChange::Removed {
+            release_id: release_id.clone(),
+            end: ended.get(release_id).copied(),
+        })
         .collect();
     changes.extend(
         next.iter().filter(|(release_id, progress)| told.get(*release_id) != Some(*progress)).map(
@@ -181,7 +210,7 @@ pub fn apply_release_changes<Progress>(
             ReleaseTransferChange::Updated { release_id, progress } => {
                 held.insert(release_id, progress);
             }
-            ReleaseTransferChange::Removed { release_id } => {
+            ReleaseTransferChange::Removed { release_id, .. } => {
                 held.remove(&release_id);
             }
         }

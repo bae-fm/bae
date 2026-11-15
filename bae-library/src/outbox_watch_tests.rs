@@ -49,7 +49,8 @@ fn a_reader_hears_each_release_that_moved_and_each_that_left() {
 
     assert_eq!(changes.len(), 3, "{changes:?}");
     assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Removed {
-        release_id: second
+        release_id: second,
+        end: None,
     })));
     assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Updated {
         release_id: first,
