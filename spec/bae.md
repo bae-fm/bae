@@ -591,7 +591,8 @@ the catalog's order, then each track's by track, then by the credit's order. A
 release with no credit has no row. On macOS the Credits are listed above the
 Works, which list each work a track performs in the track order, as the
 track's number, the work and its composers, and a click on a work opens its
-page; on Android the Credits follow the tracks, each row a role at the start and
+page; on Android a line under each track names the works it performs, a tap on it
+opens the work, and the Credits follow the tracks, each row a role at the start and
 its artists at the end, without the tracks each covers.
 
 **The composer list** shows every artist credited on a work in a writing role

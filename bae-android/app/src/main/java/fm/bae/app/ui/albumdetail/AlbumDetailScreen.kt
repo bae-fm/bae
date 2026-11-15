@@ -84,6 +84,7 @@ internal data class AlbumDetailCallbacks(
     val onPlayTrackNext: (String) -> Unit,
     val onAddTrackToQueue: (String) -> Unit,
     val onRateAlbum: (BridgeStars?) -> Unit,
+    val onSelectWork: (String) -> Unit,
 )
 
 /**
@@ -97,6 +98,7 @@ fun AlbumDetailScreen(
     initialReleaseId: String? = null,
     onBack: () -> Unit,
     backLabel: String,
+    onOpenWork: (String) -> Unit,
 ) {
     val query by session.libraryQueries.album.state
         .collectAsState()
@@ -153,7 +155,7 @@ fun AlbumDetailScreen(
                         selectedRelease = release,
                         cover = release.cover,
                         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                        callbacks = buildAlbumDetailCallbacks(session, release) { selectedReleaseId = it },
+                        callbacks = buildAlbumDetailCallbacks(session, release, onOpenWork) { selectedReleaseId = it },
                         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
                     )
                 }
@@ -240,6 +242,7 @@ private fun BoxScope.MissingMainReleaseNotice(detail: BridgeAlbumDetail) {
 private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
     release: BridgeRelease,
+    onSelectWork: (String) -> Unit,
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks {
     fun runPlayReleaseCommand(
@@ -274,6 +277,7 @@ private fun buildAlbumDetailCallbacks(
 
     return AlbumDetailCallbacks(
         onSelectRelease = onSelectRelease,
+        onSelectWork = onSelectWork,
         onTogglePlayPause = { session.playback.togglePlayPause() },
         onPlayTrack = { trackId ->
             runPlayReleaseCommand(

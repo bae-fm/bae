@@ -1,12 +1,16 @@
 package fm.bae.app.ui.albumdetail
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import fm.bae.app.coreString
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
@@ -16,6 +20,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeTrackWork
 
 /**
  * The release's tracks by side: each side's header, its rows touching, and its play time when there are
@@ -37,30 +42,35 @@ internal fun LazyListScope.albumTrackGroups(
         }
         items(group.tracks, key = { it.id }) { track ->
             val isCurrent = track.id == playback.currentTrackId
-            AndroidTrackRow(
-                data =
-                    TrackRowData(
-                        positionLabel = track.positionText,
-                        title = track.title,
-                        artistNames = track.displayArtist?.let(context::creditLineText),
-                        durationLabel = context.durationClockLabel(track.durationClock),
-                        isCurrent = isCurrent,
-                        isPlaying = playback.isPlaying,
-                    ),
-                callbacks =
-                    TrackRowCallbacks(
-                        onClick = {
-                            if (isCurrent) {
-                                callbacks.onTogglePlayPause()
-                            } else {
-                                callbacks.onPlayTrack(track.id)
-                            }
-                        },
-                        onPlayNext = { callbacks.onPlayTrackNext(track.id) },
-                        onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
-                    ),
-                positionColumnWidth = positionColumnWidth,
-            )
+            Column {
+                AndroidTrackRow(
+                    data =
+                        TrackRowData(
+                            positionLabel = track.positionText,
+                            title = track.title,
+                            artistNames = track.displayArtist?.let(context::creditLineText),
+                            durationLabel = context.durationClockLabel(track.durationClock),
+                            isCurrent = isCurrent,
+                            isPlaying = playback.isPlaying,
+                        ),
+                    callbacks =
+                        TrackRowCallbacks(
+                            onClick = {
+                                if (isCurrent) {
+                                    callbacks.onTogglePlayPause()
+                                } else {
+                                    callbacks.onPlayTrack(track.id)
+                                }
+                            },
+                            onPlayNext = { callbacks.onPlayTrackNext(track.id) },
+                            onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
+                        ),
+                    positionColumnWidth = positionColumnWidth,
+                )
+                track.works.forEach { work ->
+                    TrackWorkLine(work, positionColumnWidth, callbacks.onSelectWork, context)
+                }
+            }
         }
         // The header shows the total, so only a release core says shows its
         // sides' time lists each side's play time.
@@ -76,4 +86,29 @@ internal fun LazyListScope.albumTrackGroups(
             }
         }
     }
+}
+
+/**
+ * A work the track performs, under the track's row at the title's x: the work in the accent, then its
+ * composers. A tap opens the work.
+ */
+@Composable
+private fun TrackWorkLine(
+    work: BridgeTrackWork,
+    positionColumnWidth: Dp,
+    onSelectWork: (String) -> Unit,
+    context: android.content.Context,
+) {
+    val text =
+        listOfNotNull(work.title, work.composerNames)
+            .joinToString(context.coreString("core.audio.list_separator"))
+    Text(
+        text = text,
+        style = ThemeText.fine.style,
+        color = MaterialTheme.colorScheme.primary,
+        modifier =
+            Modifier
+                .clickable { onSelectWork(work.workId) }
+                .padding(start = positionColumnWidth, bottom = ThemeSpace.compact),
+    )
 }

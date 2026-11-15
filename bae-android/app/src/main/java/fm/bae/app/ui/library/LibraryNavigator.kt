@@ -124,6 +124,7 @@ internal fun LibraryDestinationScreen(
                 initialReleaseId = target.initialReleaseId,
                 onBack = onBack,
                 backLabel = backLabel,
+                onOpenWork = pushWork,
             )
         }
 

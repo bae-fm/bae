@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
@@ -12,8 +13,12 @@ import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeCreditRole
+import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeStars
+import uniffi.bae_bridge.BridgeTermLabel
+import uniffi.bae_bridge.BridgeTrackWork
 
 /** The shots of the album page's boards: the page with its rating, its works and credits, its catalog links and files. */
 class AlbumBoardShots : BoardShot() {
@@ -30,6 +35,29 @@ class AlbumBoardShots : BoardShot() {
                         ),
                 ),
             )
+        }
+
+    @Test
+    fun androidAlbumCredits() =
+        shot("android.album.credits") {
+            val detail = boardAlbum()
+            val release = detail.releases[0]
+            val work = BridgeTrackWork("work-ebb", "Low Tide Suite: I. Ebb", "Ada Lindqvist")
+            val groups =
+                release.trackGroups.map { group ->
+                    group.copy(tracks = group.tracks.map { if (it.id == "trk-4") it.copy(works = listOf(work)) else it })
+                }
+            val credits =
+                listOf("Producer" to "Ines Varga", "Engineer" to "Pell Marsh", "Arranger" to "Ada Lindqvist").map { (role, name) ->
+                    BridgeCreditRow(
+                        role = BridgeCreditRole(BridgeTermLabel.Verbatim(role), emptyList()),
+                        artists = creditLineNamed(name),
+                        tracks = emptyList(),
+                    )
+                }
+            val credited =
+                release.copy(trackGroups = groups, tracks = groups.flatMap { it.tracks }, credits = credits)
+            AlbumPage(detail.copy(releases = listOf(credited)))
         }
 }
 
@@ -67,6 +95,7 @@ internal fun AlbumPage(detail: BridgeAlbumDetail) {
                             onPlayTrackNext = {},
                             onAddTrackToQueue = {},
                             onRateAlbum = {},
+                            onSelectWork = {},
                         ),
                     releaseDownloadControl = {},
                 )
