@@ -6,25 +6,8 @@ import SwiftUI
 struct SearchManuallyButton: View {
     let action: () -> Void
 
-    @State
-    private var isHovered = false
-
     var body: some View {
-        Button(action: action) {
-            Text("Search manually")
-                .themeText(.strong)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, ThemeSpace.group)
-                .frame(height: ThemeSize.hitTarget)
-                .background(
-                    isHovered ? Theme.pressed : Theme.hover,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
-                .contentShape(
-                    RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
-        }
-        .buttonStyle(.accentPlain)
-        .onHover { isHovered = $0 }
+        Button("Search manually", action: action)
+            .buttonStyle(.accentBordered)
     }
 }
