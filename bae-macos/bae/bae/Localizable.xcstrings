@@ -27597,175 +27597,175 @@
         }
       }
     },
-    "Choose album…" : {
-      "comment" : "Import pane: button opening the picker of a library album for the import to join",
+    "Choose another album…" : {
+      "comment" : "Release editor and import pane: the album pop-up's item that opens a search of the library's albums to file the release under",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "اختيار ألبوم…"
+            "value" : "اختيار ألبوم آخر…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Избор на албум…"
+            "value" : "Избор на друг албум…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vybrat album…"
+            "value" : "Vybrat jiné album…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vælg album…"
+            "value" : "Vælg et andet album…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose album…"
+            "value" : "Choose another album…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album auswählen…"
+            "value" : "Anderes Album auswählen…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επιλογή άλμπουμ…"
+            "value" : "Επιλογή άλλου άλμπουμ…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elegir álbum…"
+            "value" : "Elegir otro álbum…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valitse albumi…"
+            "value" : "Valitse toinen albumi…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choisir un album…"
+            "value" : "Choisir un autre album…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בחירת אלבום…"
+            "value" : "בחירת אלבום אחר…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odaberi album…"
+            "value" : "Odaberi drugi album…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album kiválasztása…"
+            "value" : "Másik album kiválasztása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli album…"
+            "value" : "Scegli un altro album…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アルバムを選択…"
+            "value" : "別のアルバムを選択…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "앨범 선택…"
+            "value" : "다른 앨범 선택…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg album…"
+            "value" : "Velg et annet album…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album kiezen…"
+            "value" : "Ander album kiezen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wybierz album…"
+            "value" : "Wybierz inny album…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escolher álbum…"
+            "value" : "Escolher outro álbum…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escolher álbum…"
+            "value" : "Escolher outro álbum…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alege albumul…"
+            "value" : "Alege alt album…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vybrať album…"
+            "value" : "Vybrať iný album…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Välj album…"
+            "value" : "Välj ett annat album…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Albüm seç…"
+            "value" : "Başka bir albüm seç…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вибрати альбом…"
+            "value" : "Вибрати інший альбом…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择专辑…"
+            "value" : "选择其他专辑…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選擇專輯…"
+            "value" : "選擇其他專輯…"
           }
         }
       }

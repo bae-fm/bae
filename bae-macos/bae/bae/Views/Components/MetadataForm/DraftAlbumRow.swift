@@ -31,51 +31,98 @@ struct DraftAlbumRow: View {
     @State
     private var searchError: DisplayError?
 
+    /// What the pop-up chooses between: the album the draft files under as
+    /// it stands, the release's own album again after a pick, or a search of
+    /// the library's albums.
+    private enum Choice: Hashable {
+        case standing
+        case releasesAlbum
+        case showInLibrary
+        case searchLibrary
+    }
+
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
             Text("Album")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
-            value
-            Spacer(minLength: 0)
             if canEdit {
-                Button(String(localized: "Choose album…")) {
-                    isPresented = true
-                }
-                .controlSize(.small)
-                .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
-                    picker
-                        .frame(width: 320)
-                        .padding(ThemeSpace.group)
-                }
+                albumPopUp
             }
+            else {
+                Text(verbatim: standingTitle)
+                    .lineLimit(1)
+                    .foregroundStyle(
+                        album == .new ? .tertiary : .primary
+                    )
+            }
+            Spacer(minLength: 0)
         }
     }
 
-    @ViewBuilder
-    private var value: some View {
+    private var standingTitle: String {
         switch album {
-        case .new:
-            Text("New album").foregroundStyle(.tertiary)
-        case .named(let albumId, let title), .picked(let albumId, let title):
-            Button {
-                actions.viewInLibrary(albumId)
-            } label: {
-                Text(verbatim: title).lineLimit(1)
+        case .new: String(localized: "New album")
+        case .named(_, let title), .picked(_, let title): title
+        }
+    }
+
+    private var standingAlbumId: String? {
+        switch album {
+        case .new: nil
+        case .named(let albumId, _), .picked(let albumId, _): albumId
+        }
+    }
+
+    /// Choosing the search opens the picker and leaves the choice as it was.
+    private var albumPopUp: some View {
+        MacPopUpButton(
+            "Album",
+            selection: Binding(
+                get: { Choice.standing },
+                set: { choice in
+                    switch choice {
+                    case .standing: break
+                    case .releasesAlbum:
+                        actions.pick(nil)
+                    case .showInLibrary:
+                        if let albumId = standingAlbumId {
+                            actions.viewInLibrary(albumId)
+                        }
+                    case .searchLibrary:
+                        isPresented = true
+                    }
+                }
+            )
+        ) {
+            MacPopUpOption(
+                verbatim: standingTitle,
+                value: Choice.standing
+            )
+            if case .picked = album {
+                MacPopUpOption(
+                    "Use the release’s album",
+                    value: Choice.releasesAlbum
+                )
             }
-            .buttonStyle(.accentBorderless)
+            if standingAlbumId != nil {
+                MacPopUpOption("Show in library", value: Choice.showInLibrary)
+            }
+            MacMenuDivider()
+            MacPopUpOption(
+                "Choose another album…",
+                value: Choice.searchLibrary
+            )
+        }
+        .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
+            picker
+                .frame(width: 320)
+                .padding(ThemeSpace.group)
         }
     }
 
     private var picker: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            if case .picked = album {
-                Button(String(localized: "Use the release’s album")) {
-                    actions.pick(nil)
-                    isPresented = false
-                }
-                .buttonStyle(.accentBorderless)
-            }
             TextField("Search", text: $query)
                 .boxedTextField()
             if let searchError {

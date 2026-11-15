@@ -1931,8 +1931,10 @@ Ana clicks Import. bae:
    asked. Where one record names several, its group's own album wins if the
    library holds it, else the oldest. With neither, the album is new and
    takes its id from its group (§2.6). The pane shows which: "New album", the
-   album the records name, or the one picked, and its album picker lists any
-   library album to pick instead; a picked album deleted meanwhile (§2.1)
+   album the records name, or the one picked, as a pop-up under the identity
+   whose Choose another album… opens a search of the library's albums to pick
+   instead (a picked album's pop-up also offers the release's own album again);
+   a picked album deleted meanwhile (§2.1)
    is no longer picked, and the import files under the album the records name
    or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
