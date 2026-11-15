@@ -101,7 +101,13 @@
             }
             .background(MacMenuAnchorView(anchor: anchor))
             .tracksMenuAppearance($appearance)
-            .accessibilityAddTraits(.isButton)
+            .accessibilityRepresentation {
+                Menu {
+                } label: {
+                    label
+                }
+                .accessibilityAction(.default, open)
+            }
         }
 
         private func open() {
