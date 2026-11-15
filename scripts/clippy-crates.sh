@@ -56,18 +56,11 @@ while IFS= read -r feature; do
     [ -n "$feature" ] && args+=(--features "$feature")
 done <<< "$features"
 # A crate scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to
-# cargo, which would then never lint it. Its records name the unit's folder in
-# .fingerprint; dating that folder's files to 1970 makes cargo see every input
-# of the unit as newer than its last build, so it rebuilds, and lints, each unit
-# of a crate named here.
-for crate in "${crates[@]+"${crates[@]}"}"; do
-    for record in target/*/clippy-unlinted/"$crate"__*; do
-        [ -f "$record" ] || continue
-        fingerprint=$(cat "$record")
-        if [ -d "$fingerprint" ]; then
-            find "$fingerprint" -type f -exec touch -t 197001020000 {} +
-        fi
-        rm -f "$record"
-    done
-done
+# cargo, which would then never lint it; scripts/clippy-stale-units.sh makes
+# each crate named here stale. It runs before cargo on whichever machine runs
+# cargo (`builds cargo` sends clippy to the host with the most room), through
+# BUILDS_CARGO_BEFORE.
+if [ "${#crates[@]}" -gt 0 ]; then
+    export BUILDS_CARGO_BEFORE="scripts/clippy-stale-units.sh ${crates[*]}"
+fi
 RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" exec scripts/cargo.sh "${args[@]}" -- -D warnings
