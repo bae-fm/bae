@@ -230,10 +230,9 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
         context_head(&db).await,
         (Some("release".to_string()), Some(RELEASE_A.to_string()), Some(false), Some(1))
     );
-    assert_eq!(
-        queue_value(&db).await.unwrap().context.unwrap().source,
-        crate::ContextSource::Release(RELEASE_A.to_string())
-    );
+    let context = queue_value(&db).await.unwrap().context.unwrap();
+    assert_eq!(context.source, crate::ContextSource::Release(RELEASE_A.to_string()));
+    assert_eq!(context.source_title.as_deref(), Some("Album Title A"));
 }
 
 /// Deleting every track of the lane in one write takes what it played from
