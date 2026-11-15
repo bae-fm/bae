@@ -9,7 +9,10 @@ result bundle and counts, for each filter, the tests under it that ran; a
 filter with none fails the check. With no filters, the run as a whole must
 have run a test.
 
-Usage: xcresult-tests-ran.py <tests.json> [<Type>[/<test>] ...]
+With `--bundle <name>` first after the file, the filters are under that test
+bundle (`baeShots`) instead of baeTests.
+
+Usage: xcresult-tests-ran.py <tests.json> [--bundle <name>] [<Type>[/<test>] ...]
 """
 
 from __future__ import annotations
@@ -18,21 +21,22 @@ import json
 import sys
 from pathlib import Path
 
-BUNDLE_PREFIX = "test://com.apple.xcode/bae/baeTests/"
+BUNDLE_PREFIX = "test://com.apple.xcode/bae/{}/"
 
 
-def ran_tests(nodes: list[dict]) -> list[str]:
-    """The identifiers, relative to baeTests, of every test case that ran."""
+def ran_tests(nodes: list[dict], bundle: str = "baeTests") -> list[str]:
+    """The identifiers, relative to <bundle>, of every test case that ran."""
+    prefix = BUNDLE_PREFIX.format(bundle)
     identifiers = []
     for node in nodes:
         url = node.get("nodeIdentifierURL", "")
         if (
             node.get("nodeType") == "Test Case"
             and node.get("result") != "Skipped"
-            and url.startswith(BUNDLE_PREFIX)
+            and url.startswith(prefix)
         ):
-            identifiers.append(url[len(BUNDLE_PREFIX):])
-        identifiers.extend(ran_tests(node.get("children", [])))
+            identifiers.append(url[len(prefix):])
+        identifiers.extend(ran_tests(node.get("children", []), bundle))
     return identifiers
 
 
@@ -45,8 +49,15 @@ def main(argv: list[str]) -> int:
         print(__doc__.strip().splitlines()[-1], file=sys.stderr)
         return 2
     tests = json.loads(Path(argv[1]).read_text())
-    ran = ran_tests(tests.get("testNodes", []))
-    filters = argv[2:]
+    rest = argv[2:]
+    bundle = "baeTests"
+    if rest[:1] == ["--bundle"]:
+        if len(rest) < 2:
+            print("--bundle needs a name", file=sys.stderr)
+            return 2
+        bundle, rest = rest[1], rest[2:]
+    ran = ran_tests(tests.get("testNodes", []), bundle)
+    filters = rest
     if not filters:
         if not ran:
             print("the run ran no tests", file=sys.stderr)

@@ -19,7 +19,12 @@
 # is. A test that legitimately needs longer sets `executionTimeAllowance` itself
 # (the UI tests would, in `setUp`).
 #
-# Usage: bae-macos/test.sh [--build-only | --run-only] [<Type>[/<test>] ...]
+# `--bundle baeShots` (after the action flag) names the tests of the shot
+# scenes' bundle instead: `builds app-build --test <Class>` runs a class
+# declared under bae-macos/bae/baeShots through it (`.app-build`'s
+# `test mac:shots` line), since the baeTests scheme never runs that bundle.
+#
+# Usage: bae-macos/test.sh [--build-only | --run-only] [--bundle baeTests|baeShots] [<Type>[/<test>] ...]
 set -euo pipefail
 
 ACTION=test
@@ -33,6 +38,20 @@ if [[ "${1:-}" == "--build-only" ]]; then
 elif [[ "${1:-}" == "--run-only" ]]; then
     ACTION=test-without-building
     shift
+fi
+
+BUNDLE_NAME=baeTests
+SCHEME=bae
+if [[ "${1:-}" == "--bundle" ]]; then
+    case "${2:-}" in
+    baeTests) ;;
+    baeShots) BUNDLE_NAME=baeShots SCHEME=baeShots ;;
+    *)
+        echo "--bundle takes baeTests or baeShots" >&2
+        exit 2
+        ;;
+    esac
+    shift 2
 fi
 
 cd "$(dirname "$0")/.."
@@ -50,7 +69,7 @@ export BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,cast
 
 ONLY_TESTING=()
 for name in "$@"; do
-    ONLY_TESTING+=("-only-testing:baeTests/$name")
+    ONLY_TESTING+=("-only-testing:$BUNDLE_NAME/$name")
 done
 
 # The `macos-tests-run` step runs the unit-test target only; the UI tests run in
@@ -61,7 +80,7 @@ fi
 
 RESULTS="$(mktemp -d)"
 trap 'rm -rf "$RESULTS"' EXIT
-BUNDLE="$RESULTS/baeTests.xcresult"
+BUNDLE="$RESULTS/$BUNDLE_NAME.xcresult"
 
 # Each scheme's pre-action would build the bridge again (cargo's checks of four
 # builds, the generators, the staticlib copy), so build it once here and tell
@@ -118,8 +137,10 @@ if [[ "$ACTION" != build-for-testing ]]; then
     # baeShots from the app leaves one bundle to pick; the next build of it
     # (bae-shots' own xcodebuild, or the next build-for-testing here) copies it
     # back.
-    rm -rf "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/bae.app/Contents/PlugIns/baeShots.xctest"
-    xcodebuild_tests bae -resultBundlePath "$BUNDLE" \
+    if [[ "$BUNDLE_NAME" == baeTests ]]; then
+        rm -rf "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/bae.app/Contents/PlugIns/baeShots.xctest"
+    fi
+    xcodebuild_tests "$SCHEME" -resultBundlePath "$BUNDLE" \
         -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
         ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
 fi
@@ -127,6 +148,6 @@ fi
 # A build that failed before testing leaves no bundle; its own status says so.
 if [[ "$ACTION" != build-for-testing && -d "$BUNDLE" ]]; then
     xcrun xcresulttool get test-results tests --path "$BUNDLE" > "$RESULTS/tests.json"
-    python3 scripts/xcresult-tests-ran.py "$RESULTS/tests.json" "$@" || status=1
+    python3 scripts/xcresult-tests-ran.py "$RESULTS/tests.json" --bundle "$BUNDLE_NAME" "$@" || status=1
 fi
 exit "$status"

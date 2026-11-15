@@ -19,6 +19,8 @@ needs mac macos-tests
 needs android android-bridge android
 # Where each lane's test classes are declared, to find a class's lane.
 sources mac bae-macos BaeKit
+# The shot scenes' own test bundle: the baeTests line never runs it.
+sources mac:shots bae-macos/bae/baeShots
 sources android bae-android
 
 step mac macos ./bae-macos/run.sh --no-open
@@ -41,4 +43,5 @@ limit mac-window-shots 20m
 limit android-shots 20m
 
 test mac ./bae-macos/test.sh --run-only {class}
+test mac:shots ./bae-macos/test.sh --run-only --bundle baeShots {class}
 test android ./bae-android/test-class.sh {class}
