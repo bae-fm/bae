@@ -553,4 +553,5 @@
     <string name="file_kind_pdf">مستند PDF</string>
     <string name="album_files">الملفات</string>
     <string name="file_kind_other">ملف</string>
+    <string name="set_primary_release">تعيين كإصدار رئيسي</string>
 </resources>

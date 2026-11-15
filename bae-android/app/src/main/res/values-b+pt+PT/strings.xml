@@ -517,4 +517,5 @@
     <string name="file_kind_pdf">Documento PDF</string>
     <string name="album_files">Ficheiros</string>
     <string name="file_kind_other">Ficheiro</string>
+    <string name="set_primary_release">Definir como edição principal</string>
 </resources>

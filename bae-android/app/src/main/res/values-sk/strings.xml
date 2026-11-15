@@ -533,4 +533,5 @@
     <string name="file_kind_pdf">Dokument PDF</string>
     <string name="album_files">Súbory</string>
     <string name="file_kind_other">Súbor</string>
+    <string name="set_primary_release">Nastaviť ako hlavné vydanie</string>
 </resources>

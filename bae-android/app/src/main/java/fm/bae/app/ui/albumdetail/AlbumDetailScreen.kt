@@ -127,11 +127,7 @@ fun AlbumDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        actions = {
-            if (detail != null) {
-                AlbumOptionsMenu(onDelete = deletion::ask)
-            }
-        },
+        actions = { if (detail != null) AlbumBarActions(session, detail, selectedReleaseId, deletion) },
     ) {
         AlbumDeletionShown(deletion)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -170,7 +166,7 @@ fun AlbumDetailScreen(
  * The release chosen, else the main one. Derived rather than stored, so a release list that arrives later needs
  * no correction.
  */
-private fun BridgeAlbumDetail.chosenOrMainRelease(chosenId: String?): BridgeRelease? =
+internal fun BridgeAlbumDetail.chosenOrMainRelease(chosenId: String?): BridgeRelease? =
     releases.firstOrNull { it.id == chosenId } ?: releases.firstOrNull()
 
 /** What the album page shows while it has no album to draw. */

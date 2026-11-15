@@ -598,6 +598,9 @@ On Android a row of chips under the release picker has one chip for each
 catalog that describes the release, which opens the catalog's page, and the
 Files after the Credits name each file no track plays from with what kind of
 file it is.
+On Android the album's menu offers *Set as primary release* above *Delete
+album…* when the album holds more than one release and the release in view is
+not the primary one.
 
 **The composer list** shows every artist credited on a work in a writing role
 (Appendix H), and every artist holding a catalog role credit in a writing role

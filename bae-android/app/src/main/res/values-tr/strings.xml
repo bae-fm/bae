@@ -517,4 +517,5 @@
     <string name="file_kind_pdf">PDF belgesi</string>
     <string name="album_files">Dosyalar</string>
     <string name="file_kind_other">Dosya</string>
+    <string name="set_primary_release">Birincil yayın olarak ayarla</string>
 </resources>

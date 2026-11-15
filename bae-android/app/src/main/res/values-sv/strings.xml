@@ -515,4 +515,5 @@
     <string name="file_kind_pdf">PDF-dokument</string>
     <string name="album_files">Filer</string>
     <string name="file_kind_other">Fil</string>
+    <string name="set_primary_release">Ange som primär utgåva</string>
 </resources>

@@ -508,4 +508,5 @@
     <string name="file_kind_pdf">PDF 文稿</string>
     <string name="album_files">文件</string>
     <string name="file_kind_other">文件</string>
+    <string name="set_primary_release">设为主版本</string>
 </resources>

@@ -535,4 +535,5 @@
     <string name="file_kind_pdf">Dokument PDF</string>
     <string name="album_files">Soubory</string>
     <string name="file_kind_other">Soubor</string>
+    <string name="set_primary_release">Nastavit jako primární vydání</string>
 </resources>

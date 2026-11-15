@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
@@ -92,15 +94,31 @@ internal fun rememberAlbumDeletion(
     }
 }
 
-/** The album's own actions, at the end of the page's bar. */
+/**
+ * The album's own actions, at the end of the page's bar: [onSetPrimaryRelease] makes the release in view
+ * the album's primary one, and is `null` when it already is or the album holds one release.
+ */
 @Composable
-internal fun AlbumOptionsMenu(onDelete: () -> Unit) {
+internal fun AlbumOptionsMenu(
+    onSetPrimaryRelease: (() -> Unit)?,
+    onDelete: () -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.album_options))
         }
-        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }, minWidth = 240.dp) {
+            if (onSetPrimaryRelease != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.set_primary_release)) },
+                    onClick = {
+                        expanded = false
+                        onSetPrimaryRelease()
+                    },
+                )
+                HorizontalDivider()
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.delete_album), color = MaterialTheme.colorScheme.error) },
                 onClick = {
