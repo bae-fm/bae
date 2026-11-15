@@ -1,7 +1,7 @@
 //! A release as its detail reads it: its tracks by side with their credits
 //! and works, its credits by role, its files with the lists among them, its
-//! records, the other device its audio is on, and whether it
-//! is pinned, stored, or queued to upload.
+//! records, the other device its audio is on, and whether it is pinned,
+//! stored, or queued to upload.
 
 use super::files::cover_version_sql;
 use super::query::*;
@@ -57,9 +57,10 @@ pub fn release_detail_rows_on<X>(
 /// The rows of the detail of each release of `set`, in one statement: each
 /// release a row whose columns hold its tracks in groups (each with the stars
 /// `my_stars` gives it, an SQL expression over the track `track`, or
-/// [`NO_STARS`]), its credits, its files, records and the other
-/// device its audio is on, and whether it is pinned, stored, or queued to upload. Beside each,
-/// `extra_columns`, further columns of the release `rel` that `extra` reads.
+/// [`NO_STARS`]), its credits, its files, records and the other device its
+/// audio is on, and whether it is pinned, stored, or queued to upload. Beside
+/// each, `extra_columns`, further columns of the release `rel` that `extra`
+/// reads.
 pub fn release_details_on<X>(
     sql: &impl coven::SqlRead,
     set: ReleaseSet<'_>,
@@ -256,8 +257,8 @@ const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(e.device_name, e
      ORDER BY e.file_id LIMIT 1), 'null')";
 
 /// The other device a release's audio is on, from `column` of a row that
-/// holds [`ELSEWHERE_OF_RELEASE`]. It returns `None` when no other device
-/// alone holds an audio file of the release.
+/// holds [`ELSEWHERE_OF_RELEASE`]. `elsewhere_in_row` returns `None` when no
+/// other device alone holds an audio file of the release.
 fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<OtherDevice>> {
     let Some((name, state, member_removed)) =
         bae_store::read::json_column::<Option<(String, String, i64)>, _>(row, column)?
@@ -292,8 +293,8 @@ pub enum OtherDeviceError {
 
 impl Records {
     /// The other device that alone holds the audio file `file_id`, as the
-    /// view `release_audio_elsewhere` reads it from coven's tables. The read fails naming the
-    /// file when no other device alone holds it.
+    /// view `release_audio_elsewhere` reads it from coven's tables. The read
+    /// fails naming the file when no other device alone holds it.
     pub async fn release_file_other_device(
         &self,
         file_id: &str,
