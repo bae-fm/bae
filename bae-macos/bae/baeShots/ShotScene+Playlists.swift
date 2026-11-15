@@ -52,7 +52,7 @@ extension ShotScene {
                             },
                             highlighted: 0
                         )
-                        .padding(.top, 150)
+                        .padding(.top, 282)
                         .padding(.trailing, 24)
                     }
                 )
