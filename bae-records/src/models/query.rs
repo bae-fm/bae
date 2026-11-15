@@ -19,6 +19,8 @@ pub struct DbReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
+    /// Whether any catalog describes this release.
+    pub has_records: bool,
     /// What the library records this device holding for each audio file whose
     /// row names no stored file.
     pub unstored_audio: Vec<DbUnstoredAudio>,

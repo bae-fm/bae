@@ -74,6 +74,7 @@ func makeBridgeRelease(
         moveToThisDevice: nil,
         downloadStatus: nil,
         records: [],
+        hasRecords: false,
         totalDuration: totalDuration,
         fileCount: fileCount,
         totalSize: totalSize,

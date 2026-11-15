@@ -132,6 +132,7 @@ impl BridgeRelease {
             download_status,
             move_to_this_device,
             records,
+            has_records,
         } = rel;
         // Single-source the summary-derived fields through BridgeReleaseSummary,
         // then exhaustively destructure it into BridgeRelease's flat fields so the
@@ -186,6 +187,7 @@ impl BridgeRelease {
                 .map(crate::types::BridgeMoveToThisDeviceStatus::from_core),
             download_status: download_status
                 .map(crate::types::BridgeReleaseDownloadStatus::from_core),
+            has_records,
             records: records
                 .into_iter()
                 .map(crate::types::BridgeReleaseRecord::from_core)

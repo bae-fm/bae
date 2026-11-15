@@ -75,6 +75,8 @@ pub fn release_details_on<X>(
                 {performs_works} AS performs_works, \
                 {files} AS files, \
                 {records} AS records, \
+                EXISTS (SELECT 1 FROM release_records rr WHERE rr.release_id = rel.id) \
+                    AS has_records, \
                 {unstored_audio} AS unstored_audio, \
                 COALESCE({RELEASE_STORAGE_PINNED}, 0) AS pinned, \
                 COALESCE(storage.stored = 1, 0) AS remote, \
@@ -110,6 +112,7 @@ pub fn release_details_on<X>(
             performs_works: row.get("performs_works")?,
             files: release_files_column(row, "files")?,
             records: records_column(row, "records")?,
+            has_records: row.get("has_records")?,
             unstored_audio: unstored_audio_column(row, "unstored_audio")?,
             pinned: row.get("pinned")?,
             remote: row.get("remote")?,
@@ -130,6 +133,7 @@ pub struct DbReleaseDetailRows {
     performs_works: bool,
     files: DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
+    has_records: bool,
     unstored_audio: Vec<DbUnstoredAudio>,
     pinned: bool,
     remote: bool,
@@ -153,6 +157,7 @@ impl DbReleaseDetailRows {
             performs_works: self.performs_works,
             files: self.files,
             records: self.records,
+            has_records: self.has_records,
             unstored_audio: self.unstored_audio,
             pinned: self.pinned,
             remote: self.remote,

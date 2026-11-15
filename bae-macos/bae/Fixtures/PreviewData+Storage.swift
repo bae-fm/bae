@@ -705,6 +705,7 @@ extension PreviewData {
             moveToThisDevice: nil,
             downloadStatus: nil,
             records: [],
+            hasRecords: false,
             totalDuration: nil,
             fileCount: Int64(files.count),
             totalSize: files.reduce(UInt64(0)) { $0 + $1.fileSize },

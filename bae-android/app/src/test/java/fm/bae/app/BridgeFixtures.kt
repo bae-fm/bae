@@ -130,6 +130,7 @@ object BridgeFixtures {
             moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),
+            hasRecords = false,
             totalDuration = null,
             fileCount = 0,
             totalSize = 0UL,

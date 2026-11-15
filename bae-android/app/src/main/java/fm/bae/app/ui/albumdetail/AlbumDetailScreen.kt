@@ -381,7 +381,7 @@ internal fun AlbumDetailContent(
             }
         }
 
-        if (selectedRelease.records.isNotEmpty()) {
+        if (selectedRelease.hasRecords) {
             block { AlbumRecordLinks(selectedRelease.records, catalogName) }
         }
 

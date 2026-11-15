@@ -79,7 +79,7 @@ class AlbumBoardShots : BoardShot() {
                     "Low Tide Hours.log" to BridgeFileKind.RipLog,
                     "booklet.pdf" to BridgeFileKind.Pdf,
                 ).map { (name, kind) -> boardFile(name, kind) }
-            val release = detail.releases[0].copy(records = records, otherFiles = files, hasOtherFiles = true)
+            val release = detail.releases[0].copy(records = records, hasRecords = true, otherFiles = files, hasOtherFiles = true)
             AlbumPage(detail.copy(releases = listOf(release))) {
                 when (it) {
                     BridgeCatalog.MUSIC_BRAINZ -> "MusicBrainz"

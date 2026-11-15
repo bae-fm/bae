@@ -148,6 +148,7 @@ struct CoverPickerTests {
             moveToThisDevice: nil,
             downloadStatus: nil,
             records: [],
+            hasRecords: false,
             totalDuration: nil,
             fileCount: 2,
             totalSize: 220,

@@ -184,6 +184,7 @@ object PreviewData {
             moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),
+            hasRecords = false,
             totalDuration = null,
             fileCount = trackGroups.sumOf { it.tracks.size }.toLong(),
             totalSize = 300_000_000UL,

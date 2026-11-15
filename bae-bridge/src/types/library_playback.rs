@@ -473,6 +473,8 @@ pub struct BridgeRelease {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<BridgeReleaseRecord>,
+    /// Whether any catalog describes this release.
+    pub has_records: bool,
     /// Total playing time across all tracks, as the words it reads in, or `None`
     /// when no track reports a length. The raw sum does not cross: with the
     /// milliseconds in hand a UI could name the total its own way, which is how

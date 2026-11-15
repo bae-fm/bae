@@ -887,6 +887,41 @@ async fn a_release_whose_tracks_perform_no_work_says_so() {
     assert!(!detail.performs_works);
 }
 
+/// A release says whether a catalog describes it: not before one does, and
+/// so once a record is written.
+#[tokio::test]
+async fn a_release_says_whether_a_catalog_describes_it() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = test_records(&db);
+    RecordsFixture::new()
+        .artist(ARTIST_ALBUM, "Album Artist A")
+        .album(ALBUM_A, "Album Title A", None, &[ARTIST_ALBUM])
+        .release(ALBUM_A, RELEASE_A)
+        .tracks(RELEASE_A, &[(TRACK_A, "Track A")])
+        .write(&records)
+        .await;
+    let views = crate::LibraryViews::new(db.clone());
+
+    let before = views.find_release_detail(RELEASE_A).await.unwrap().unwrap();
+    records
+        .insert_release_records(
+            RELEASE_A,
+            &[bae_catalogs::records::ReleaseRecord::album(
+                &bae_catalogs::records::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    "group-a",
+                ),
+            )],
+        )
+        .await
+        .unwrap();
+    let after = views.find_release_detail(RELEASE_A).await.unwrap().unwrap();
+
+    assert!(!before.has_records);
+    assert!(after.has_records);
+    assert_eq!(after.records.len(), 1);
+}
+
 /// A person with no profile cannot rate: the album's page reads that, no one
 /// who rated it, and no stars on its tracks.
 #[tokio::test]

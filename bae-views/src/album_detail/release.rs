@@ -160,6 +160,8 @@ pub struct ReleaseDetail {
     /// Every catalog's description of this release, in the order surfaces list
     /// catalogs. Empty when no catalog describes it.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
+    /// Whether any catalog describes this release.
+    pub has_records: bool,
 }
 
 impl ReleaseDetail {
@@ -283,6 +285,7 @@ impl ReleaseDetail {
             gallery_items: gallery,
             playability,
             records: raw.records,
+            has_records: raw.has_records,
         }
     }
 }

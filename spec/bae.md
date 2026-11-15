@@ -577,8 +577,8 @@ release's. Each track carries its own credits (or the album's), the works it
 performs and the stars the person gave it. The release says whether any of its
 tracks performs a work. Its files come with the lists the page shows beside
 them (the images, the images a cover can be made from, the files no track plays
-from), their count and their total size, and whether any file is one no track
-plays from.
+from), their count and their total size, whether any file is one no track
+plays from, and whether any catalog describes the release.
 
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track

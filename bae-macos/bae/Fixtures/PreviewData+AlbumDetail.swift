@@ -251,6 +251,7 @@ extension PreviewData {
             // what a release a MusicBrainz pick linked all the way out
             // reads like.
             records: PreviewData.releaseRecordsEveryCatalog,
+            hasRecords: true,
             totalDuration: .minutesOnly(minutes: 39),
             fileCount: Int64(files.count),
             totalSize: files.reduce(UInt64(0)) { $0 + $1.fileSize },
