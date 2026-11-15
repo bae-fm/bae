@@ -88,7 +88,8 @@ struct ArtistAssignmentsFieldTests {
                 editingCommands: EditingCommitCommands(),
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
                 cover: { Color.clear },
-                audioFacts: { EmptyView() }
+                audioFacts: { EmptyView() },
+                albumRow: { EmptyView() }
             )
             .padding(24)
             .frame(width: size.width, height: size.height)

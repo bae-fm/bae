@@ -113,7 +113,8 @@ struct InlineFieldHeightTests {
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
                 cover: { EmptyView() },
-                audioFacts: { EmptyView() }
+                audioFacts: { EmptyView() },
+                albumRow: { EmptyView() }
             )
             .environment(UiStore())
             .preferredColorScheme(.light)

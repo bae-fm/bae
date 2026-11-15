@@ -71,7 +71,8 @@ struct ReleaseEditorTests {
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
                 cover: { EmptyView() },
-                audioFacts: { EmptyView() }
+                audioFacts: { EmptyView() },
+                albumRow: { EmptyView() }
             )
             .environment(UiStore())
             .frame(width: size.width, height: size.height),
