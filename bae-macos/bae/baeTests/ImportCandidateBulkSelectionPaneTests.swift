@@ -102,6 +102,27 @@ struct ImportCandidateBulkSelectionPaneTests {
         }
     }
 
+    /// Every row draws a count chip, Combine's too: the whole selection when it
+    /// can run, none when a folder holds it back.
+    @Test("every row draws a count chip")
+    func everyRowDrawsACountChip() {
+        let card = Self.card()
+
+        let rows = card.rows(in: .importing)
+        #expect(rows.first?.chipCount == 1)
+        let combine = rows.first { $0.action == .combine }
+        #expect(combine?.chipCount == (combine?.enabled == true ? 2 : 0))
+        #expect(
+            ImportCandidateActionOffer(
+                action: .combine,
+                applicable: 2,
+                enabled: false,
+                rowKey: nil
+            )
+            .chipCount == 0
+        )
+    }
+
     /// A group with no row is not drawn.
     @Test("a selection that offers nothing draws no group")
     func anEmptyGroupIsNotDrawn() {
