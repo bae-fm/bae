@@ -241,7 +241,7 @@ final class ReleaseMetadataEditSession {
         operationTask = Task { @MainActor in
             do {
                 try await serially { [self] in
-                    draft = try await core.setAlbum(pick: pick)
+                    draft = try await core.setAlbum(pick)
                 }
             }
             catch is CancellationError {}
