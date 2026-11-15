@@ -2055,12 +2055,13 @@ reported and stops for the session, as it does when the library closes.
   can be identified again from its own files; its Disc IDs come from the rip
   logs and CUE sheets this device holds of it, each sheet bound to its audio
   and given its disc by the rules a folder's scan applies, so it hashes the
-  discs its folder did. A binding the person made in the import pane between a
-  sheet's `FILE` line and an audio file, or their clearing of one, is kept with
-  the release (`release_sheet_bindings`, A.5), so a sheet they bound is read
-  bound to the file they chose and one they cleared is read unbound. The disc
-  they gave a sheet stays with the candidate, so a sheet takes its disc by the
-  scan's rules. Its track
+  discs its folder did. What the person decided in the import pane about a
+  sheet is kept with the release (`release_sheet_bindings` and
+  `release_sheet_discs`, A.5): the audio they bound a `FILE` line to, or their
+  clearing of it, and the disc they said the sheet is, or that it is ignored.
+  A sheet they bound is read bound to the file they chose, one they cleared is
+  read unbound, and a sheet they numbered or ignored is read so; a sheet they
+  decided nothing about is read by the scan's rules. Its track
   lengths come from its stored tracks. The person searches from the release editor (§3.8) and picks
   its pressing, which is applied to the release's edit session at once, with
   no confirm step, and the editor shows what it gave. A pressing whose tracks
@@ -6354,6 +6355,7 @@ Beside them, keyed by the release an import made:
 | Table | One row per |
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
+| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Written and read as `release_sheet_bindings` is; deleting the sheet deletes it. It syncs (Appendix B) |
 | `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); identifying the release again reads them. Deleting either file deletes the row. It syncs (Appendix B) |
 
 ### A.6 Identification
@@ -6438,13 +6440,13 @@ Never synced (§6.4).
 
 ## Appendix B. Synced tables
 
-From each schema part's synced tables: records' (`bae_records::synced`), people's (`bae_people::synced`) and the import's one, `release_sheet_bindings`. *Shared key* rows take an id computed
+From each schema part's synced tables: records' (`bae_records::synced`), people's (`bae_people::synced`) and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, whether the reference is trailing or
-bound (§6.3), and the namespace its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings`,
+bound (§6.3), and the namespace its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
 `import_candidate_standing`, `import_identification_batch` and
 `import_identify_run` among them, and
 the transfer queues (A.9) are not declared, so they never sync.
@@ -6477,6 +6479,7 @@ the transfer queues (A.9) are not declared, so they never sync.
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |
 | `release_sheet_bindings` | shared key: the sheet's file and the `FILE` line | store | | |
+| `release_sheet_discs` | shared key: the sheet's file | store | | |
 | `covers` | shared key: the release | store | | `file`, bound, in `covers`: bae's own; read on first use |
 | `artist_images` | shared key: the artist | store | | `file`, bound, in `artist_images`: bae's own; read on first use; shared by two merged artists |
 | `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, bound, in `avatars`: bae's own; read on first use |

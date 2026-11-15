@@ -198,16 +198,15 @@ async fn test_resolve_release_identity_local() {
 /// file the scan found, each with its scanned audio facts and its original at
 /// the file's path.
 async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, Vec<String>) {
-    folder_and_library_disc_ids_with_bindings(folder, &[]).await
+    folder_and_library_disc_ids_with_decisions(folder, Default::default()).await
 }
 
-/// [`folder_and_library_disc_ids`] with `bindings` stored for the release:
-/// each a sheet's name, the `FILE` reference of it, and the audio file's name
-/// the person bound it to (none: they cleared it). The folder's own scan
-/// reads no bindings.
-async fn folder_and_library_disc_ids_with_bindings(
+/// [`folder_and_library_disc_ids`] with the person's `decided` sheet decisions
+/// stored for the release, naming files by their names in the folder. The
+/// folder's own scan reads none.
+async fn folder_and_library_disc_ids_with_decisions(
     folder: &std::path::Path,
-    bindings: &[(&str, &str, Option<&str>)],
+    decided: crate::folder_scanner::CandidateFileEdits,
 ) -> (Vec<String>, Vec<String>) {
     use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
@@ -271,20 +270,7 @@ async fn folder_and_library_disc_ids_with_bindings(
         records.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }
     let tables = crate::tables::ImportTables::new(db.clone());
-    let mut decided = crate::folder_scanner::SheetBindingEdits::default();
-    for (sheet, reference, audio) in bindings {
-        decided.set_reference(
-            sheet.to_string(),
-            reference.to_string(),
-            match audio {
-                Some(audio) => crate::folder_scanner::UserSheetBinding::Describes {
-                    file_id: audio.to_string(),
-                },
-                None => crate::folder_scanner::UserSheetBinding::Cleared,
-            },
-        );
-    }
-    tables.store_release_sheet_bindings_for_test(decided, file_ids).await;
+    tables.store_release_sheet_decisions_for_test(decided, file_ids).await;
     let identity = resolve_release_identity(
         &tables,
         &records,
@@ -387,11 +373,13 @@ async fn a_library_sheet_the_person_unbound_hashes_no_disc() {
     assert_eq!(scanned.len(), 1, "the scan binds the sheet to the image it names");
     assert_eq!(bound_by_scan, scanned);
 
-    let (_, unbound) = folder_and_library_disc_ids_with_bindings(
-        folder.path(),
-        &[("Test Album.cue", "Test Album.flac", None)],
-    )
-    .await;
+    let mut decided = crate::folder_scanner::CandidateFileEdits::default();
+    decided.sheet_bindings.set_reference(
+        "Test Album.cue".to_string(),
+        "Test Album.flac".to_string(),
+        crate::folder_scanner::UserSheetBinding::Cleared,
+    );
+    let (_, unbound) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
     assert!(unbound.is_empty(), "the person's cleared binding is read: {unbound:?}");
 }
 
@@ -414,10 +402,41 @@ async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
     assert!(scanned.is_empty(), "two images and a sheet naming neither: the scan binds none");
     assert!(unbound_by_scan.is_empty());
 
-    let (_, bound) = folder_and_library_disc_ids_with_bindings(
-        folder.path(),
-        &[("Album.cue", "CDImage.wav", Some("b.flac"))],
-    )
-    .await;
+    let mut decided = crate::folder_scanner::CandidateFileEdits::default();
+    decided.sheet_bindings.set_reference(
+        "Album.cue".to_string(),
+        "CDImage.wav".to_string(),
+        crate::folder_scanner::UserSheetBinding::Describes { file_id: "b.flac".to_string() },
+    );
+    let (_, bound) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
     assert_eq!(bound.len(), 1, "the person's binding is read: {bound:?}");
+}
+
+/// A sheet the person ignored in the import pane stays ignored when the
+/// release is identified again: two sheets lay out two images, the scan hashes
+/// two discs, and the stored decision leaves the library one.
+#[tokio::test]
+async fn a_library_sheet_the_person_ignored_hashes_no_disc() {
+    let folder = tempfile::TempDir::new().unwrap();
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac")).unwrap();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Second.flac")).unwrap();
+    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue")).unwrap();
+    std::fs::write(folder.path().join("Test Album.cue"), &sheet).unwrap();
+    std::fs::write(
+        folder.path().join("Second.cue"),
+        sheet
+            .replace("Test Album.flac", "Second.flac")
+            .replace("INDEX 01 00:20:00", "INDEX 01 00:15:00"),
+    )
+    .unwrap();
+
+    let (scanned, both) = folder_and_library_disc_ids(folder.path()).await;
+    assert_eq!(scanned.len(), 2, "each sheet lays out a disc");
+    assert_eq!(both, scanned);
+
+    let mut decided = crate::folder_scanner::CandidateFileEdits::default();
+    decided.sheet_discs.set("Second.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored);
+    let (_, ignored) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
+    assert_eq!(ignored.len(), 1, "the person's ignored sheet is read: {ignored:?}");
 }

@@ -369,16 +369,15 @@ fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
 /// reads its rip files: audio by the facts its import stored, every track
 /// sheet the import stored parsed and bound to that audio and given its disc
 /// by the scan's own rules, and the documents beside them, in name order.
-/// Each file is read as the role its import stored. The bindings the person
-/// made between sheets and audio in the import pane (`sheet_bindings`, kept
-/// with the release) apply over the scan's proposals; the discs they gave the
-/// sheets are kept with the candidate only, so the sheets take their discs as
-/// the scan assigns them. Holds only what a rip
+/// Each file is read as the role its import stored. The person's decisions
+/// about the sheets in the import pane (`sheet_decisions`, kept with the
+/// release: the audio of each `FILE` line and the disc of each sheet) apply
+/// over the scan's proposals. Holds only what a rip
 /// reading reads: artwork and other files are left out. Each sheet opens in a
 /// place of `lease`, one after the other, so call this off the async workers.
 pub(crate) fn categorize_library_files(
     files: impl IntoIterator<Item = (ScannedFile, ReleaseFileRole)>,
-    sheet_bindings: SheetBindingEdits,
+    sheet_decisions: CandidateFileEdits,
     lease: &coven::FileLease,
 ) -> CategorizedFiles {
     let mut files: Vec<CandidateFile> = files
@@ -411,10 +410,7 @@ pub(crate) fn categorize_library_files(
     });
     let mut categorized = CategorizedFiles { files, parts: Vec::new() };
     categorized
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            sheet_bindings,
-            ..CandidateFileEdits::default()
-        })
+        .apply_candidate_file_edits(&sheet_decisions)
         .expect("every audio file holds the facts its import stored");
     categorized
 }

@@ -14,3 +14,14 @@ CREATE TABLE IF NOT EXISTS release_sheet_bindings (
 
 CREATE INDEX IF NOT EXISTS idx_release_sheet_bindings_audio
     ON release_sheet_bindings (audio_file_id) WHERE audio_file_id IS NOT NULL;
+
+-- Which disc of the release the person said each CUE sheet is, or that the
+-- release ignores it, kept with the release as the bindings are. Only a sheet
+-- the person decided has a row: any other takes its disc by the scan's rules.
+CREATE TABLE IF NOT EXISTS release_sheet_discs (
+    sheet_file_id TEXT NOT NULL PRIMARY KEY,
+    disc          TEXT NOT NULL CHECK (disc IN ('disc', 'ignored')),
+    disc_number   INTEGER CHECK (disc_number IS NULL OR disc_number >= 1),
+    FOREIGN KEY (sheet_file_id) REFERENCES release_files (id) ON DELETE CASCADE,
+    CHECK ((disc = 'disc') = (disc_number IS NOT NULL))
+) STRICT;

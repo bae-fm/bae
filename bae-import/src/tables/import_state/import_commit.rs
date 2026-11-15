@@ -466,9 +466,9 @@ impl ImportTables {
                         insert_release_file_row(tx, row, file).map_err(commit_error)?;
                     }
 
-                    // The bindings the person made between the folder's CUE
-                    // sheets and its audio stay with the release, so identifying
-                    // it again binds them so. The candidate's decisions are
+                    // What the person decided about the folder's CUE sheets
+                    // (the audio of each `FILE` line, the disc of each sheet)
+                    // stays with the release, so identifying it again reads them. The candidate's decisions are
                     // still stored here (`delete_what_the_import_spent_on`
                     // keeps them), at the revision the guard checked.
                     let decided = super::file_decision_rows::load_candidate_file_edits_on(
@@ -479,11 +479,7 @@ impl ImportTables {
                         .iter()
                         .map(|row| (row.original_filename.as_str(), row.id.as_str()))
                         .collect();
-                    crate::tables::release_sheet_bindings::store_on(
-                        tx,
-                        &decided.sheet_bindings,
-                        &file_ids,
-                    )?;
+                    crate::tables::release_sheet_decisions::store_on(tx, &decided, &file_ids)?;
 
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af)?;

@@ -87,13 +87,13 @@ pub async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
-    let sheet_bindings = tables.load_release_sheet_bindings(release_id).await?;
+    let sheet_decisions = tables.load_release_sheet_decisions(release_id).await?;
     let lease = records.lease_one().await;
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
                 files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
-                sheet_bindings,
+                sheet_decisions,
                 &lease,
             );
             let formats: Vec<bae_types::audio_format::AudioFormat> = categorized

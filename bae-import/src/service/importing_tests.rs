@@ -747,11 +747,11 @@ async fn an_imported_release_keeps_each_documents_kind() {
     assert_eq!(stored_as("booklet.pdf"), (ReleaseFileRole::Other, ContentType::Pdf));
 }
 
-/// A release keeps the bindings the person made between its CUE sheet and its
-/// audio in the import pane, naming the release's own files, so identifying
-/// it again reads them.
+/// A release keeps what the person decided about its CUE sheet in the import
+/// pane (the audio of each `FILE` line, the disc of the sheet), naming the
+/// release's own files, so identifying it again reads them.
 #[tokio::test]
-async fn an_imported_release_keeps_the_sheet_bindings_the_person_made() {
+async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
     let test = setup_import_service().await;
     let folder = test.temp.path().join("Album");
     std::fs::create_dir_all(&folder).unwrap();
@@ -760,24 +760,18 @@ async fn an_imported_release_keeps_the_sheet_bindings_the_person_made() {
     std::fs::copy(fixture.join("Test Album.cue"), folder.join("Test Album.cue")).unwrap();
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
     let content_hash = stored.candidate.content_hash.clone();
-    let mut decided = crate::folder_scanner::SheetBindingEdits::default();
-    decided.set_reference(
+    let mut decided = crate::folder_scanner::CandidateFileEdits::default();
+    decided.sheet_bindings.set_reference(
         "Test Album.cue".to_string(),
         "Test Album.flac".to_string(),
         crate::folder_scanner::UserSheetBinding::Describes {
             file_id: "Test Album.flac".to_string(),
         },
     );
-    test.service
-        .tables
-        .store_file_edits_for_test(
-            &content_hash,
-            crate::folder_scanner::CandidateFileEdits {
-                sheet_bindings: decided,
-                ..Default::default()
-            },
-        )
-        .await;
+    decided
+        .sheet_discs
+        .set("Test Album.cue".to_string(), crate::folder_scanner::SheetDisc::Disc { number: 1 });
+    test.service.tables.store_file_edits_for_test(&content_hash, decided.clone()).await;
 
     test.service.queue_import_for_test(&candidate_key, "import-1").await;
     test.service
@@ -802,11 +796,6 @@ async fn an_imported_release_keeps_the_sheet_bindings_the_person_made() {
         .await
         .unwrap()
         .expect("the import records the release of its files");
-    let bindings = test.service.tables.load_release_sheet_bindings(&release).await.unwrap();
-    assert_eq!(
-        bindings.get("Test Album.cue").and_then(|references| references.get("Test Album.flac")),
-        Some(&crate::folder_scanner::UserSheetBinding::Describes {
-            file_id: "Test Album.flac".to_string()
-        })
-    );
+    let kept = test.service.tables.load_release_sheet_decisions(&release).await.unwrap();
+    assert_eq!(kept, decided);
 }
