@@ -158,6 +158,7 @@ impl ImportService {
             services.event_tx.clone(),
             runtime.clone(),
             services.store.clone(),
+            services.tables.clone(),
             services.records.clone(),
             services.diagnostics.clone(),
         );

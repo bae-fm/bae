@@ -96,6 +96,9 @@ struct ExtractionServiceInner {
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
     /// The library a `Release` re-identify reads the release's files from.
     store: bae_store::Store,
+    /// The library tables a `Release` re-identify reads the release's sheet
+    /// bindings from.
+    tables: crate::tables::ImportTables,
     /// The library a `Release` re-identify reads the release's rows from.
     records: bae_records::Records,
     /// Where a panic in a pass is reported as the bug it is.
@@ -158,6 +161,7 @@ impl ExtractionService {
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
         store: bae_store::Store,
+        tables: crate::tables::ImportTables,
         records: bae_records::Records,
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionService {
@@ -166,6 +170,7 @@ impl ExtractionService {
             event_tx,
             analyzer: Mutex::new(None),
             store,
+            tables,
             records,
             diagnostics,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
@@ -334,24 +339,28 @@ async fn extract(
         // A library release has no folder text; its rip files and artwork come
         // from the library.
         ExtractionSource::Release { release_id } => {
-            let (origin, audio, disc_id) =
-                match resolve_release_identity(&inner.records, &inner.diagnostics, &release_id)
-                    .await
-                {
-                    Ok(identity) => {
-                        (identity.rip.origin, identity.audio, identity.rip.disc_id.into_signal())
-                    }
-                    Err(error) => (
-                        AudioOrigin::default(),
-                        AudioFacts::default(),
-                        DiscIdSignal::Failed {
-                            failure: InternalFailure::logged(
-                                &format!("resolving release {release_id}"),
-                                error,
-                            ),
-                        },
-                    ),
-                };
+            let (origin, audio, disc_id) = match resolve_release_identity(
+                &inner.tables,
+                &inner.records,
+                &inner.diagnostics,
+                &release_id,
+            )
+            .await
+            {
+                Ok(identity) => {
+                    (identity.rip.origin, identity.audio, identity.rip.disc_id.into_signal())
+                }
+                Err(error) => (
+                    AudioOrigin::default(),
+                    AudioFacts::default(),
+                    DiscIdSignal::Failed {
+                        failure: InternalFailure::logged(
+                            &format!("resolving release {release_id}"),
+                            error,
+                        ),
+                    },
+                ),
+            };
             if token.is_cancelled() {
                 return;
             }

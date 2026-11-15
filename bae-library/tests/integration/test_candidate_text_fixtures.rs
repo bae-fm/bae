@@ -187,6 +187,7 @@ async fn drive_fixture(
         tx,
         candidates,
         db.clone(),
+        bae_import::tables::ImportTables::new(db.clone()),
         bae_records::test_fixtures::test_records(&db),
         bae_diagnostics::Diagnostics::noop(),
     );

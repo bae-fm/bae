@@ -1574,6 +1574,15 @@ homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import
 tables = ["local_release_origin"]
 
 [[database.domains]]
+name = "release sheet bindings"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/release_sheet_bindings.rs",
+    "bae-import/src/tables/release_sheet_bindings.sql",
+]
+tables = ["release_sheet_bindings"]
+
+[[database.domains]]
 name = "import list"
 owner = "ImportTables"
 homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_list/"]

@@ -174,10 +174,14 @@ async fn test_resolve_release_identity_local() {
         records.insert_track(&track).await.unwrap();
     }
 
-    let identity =
-        resolve_release_identity(&records, &bae_diagnostics::Diagnostics::noop(), &release_id)
-            .await
-            .unwrap();
+    let identity = resolve_release_identity(
+        &crate::tables::ImportTables::new(db.clone()),
+        &records,
+        &bae_diagnostics::Diagnostics::noop(),
+        &release_id,
+    )
+    .await
+    .unwrap();
     let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
     assert!(rip.disc_id.computed().len() == 1, "LOG file in local folder must produce a Disc ID");
@@ -194,6 +198,17 @@ async fn test_resolve_release_identity_local() {
 /// file the scan found, each with its scanned audio facts and its original at
 /// the file's path.
 async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, Vec<String>) {
+    folder_and_library_disc_ids_with_bindings(folder, &[]).await
+}
+
+/// [`folder_and_library_disc_ids`] with `bindings` stored for the release:
+/// each a sheet's name, the `FILE` reference of it, and the audio file's name
+/// the person bound it to (none: they cleared it). The folder's own scan
+/// reads no bindings.
+async fn folder_and_library_disc_ids_with_bindings(
+    folder: &std::path::Path,
+    bindings: &[(&str, &str, Option<&str>)],
+) -> (Vec<String>, Vec<String>) {
     use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
     use chrono::Utc;
@@ -215,10 +230,13 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
     let library = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(library.path()).await;
     let records = bae_records::test_fixtures::test_records(&db);
+    let mut file_ids = std::collections::HashMap::new();
     for entry in &categorized.files {
         let file = &entry.file;
+        let id = coven::IdSource::new_id(&coven::UuidIds).to_string();
+        file_ids.insert(file.relative_path.clone(), id.clone());
         let row = NewReleaseFile {
-            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
+            id,
             release_id: release_id.clone(),
             original_filename: file.relative_path.clone(),
             content_type: file
@@ -252,10 +270,29 @@ async fn folder_and_library_disc_ids(folder: &std::path::Path) -> (Vec<String>, 
         };
         records.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }
-    let identity =
-        resolve_release_identity(&records, &bae_diagnostics::Diagnostics::noop(), &release_id)
-            .await
-            .unwrap();
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let mut decided = crate::folder_scanner::SheetBindingEdits::default();
+    for (sheet, reference, audio) in bindings {
+        decided.set_reference(
+            sheet.to_string(),
+            reference.to_string(),
+            match audio {
+                Some(audio) => crate::folder_scanner::UserSheetBinding::Describes {
+                    file_id: audio.to_string(),
+                },
+                None => crate::folder_scanner::UserSheetBinding::Cleared,
+            },
+        );
+    }
+    tables.store_release_sheet_bindings_for_test(decided, file_ids).await;
+    let identity = resolve_release_identity(
+        &tables,
+        &records,
+        &bae_diagnostics::Diagnostics::noop(),
+        &release_id,
+    )
+    .await
+    .unwrap();
     (scanned, disc_ids(identity.rip))
 }
 
@@ -332,4 +369,55 @@ async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
 
     assert!(scanned.is_empty(), "the scan binds no sheet over lossy audio");
     assert_eq!(library, scanned);
+}
+
+/// A sheet the person unbound from its audio in the import pane stays unbound
+/// when the release is identified again: a second copy of the image sits
+/// beside it, the scan binds the sheet to the image it names and hashes one
+/// disc, and the stored cleared binding leaves the library's sheet with none.
+#[tokio::test]
+async fn a_library_sheet_the_person_unbound_hashes_no_disc() {
+    let folder = tempfile::TempDir::new().unwrap();
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac")).unwrap();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Copy.flac")).unwrap();
+    std::fs::copy(fixture.join("Test Album.cue"), folder.path().join("Test Album.cue")).unwrap();
+
+    let (scanned, bound_by_scan) = folder_and_library_disc_ids(folder.path()).await;
+    assert_eq!(scanned.len(), 1, "the scan binds the sheet to the image it names");
+    assert_eq!(bound_by_scan, scanned);
+
+    let (_, unbound) = folder_and_library_disc_ids_with_bindings(
+        folder.path(),
+        &[("Test Album.cue", "Test Album.flac", None)],
+    )
+    .await;
+    assert!(unbound.is_empty(), "the person's cleared binding is read: {unbound:?}");
+}
+
+/// A sheet the person bound to another file than the one it names reads that
+/// file when the release is identified again: the sheet names a WAV beside
+/// two FLAC copies, which the scan cannot choose between, and the stored
+/// binding picks one.
+#[tokio::test]
+async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
+    let folder = tempfile::TempDir::new().unwrap();
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("a.flac")).unwrap();
+    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("b.flac")).unwrap();
+    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue"))
+        .unwrap()
+        .replace("Test Album.flac", "CDImage.wav");
+    std::fs::write(folder.path().join("Album.cue"), sheet).unwrap();
+
+    let (scanned, unbound_by_scan) = folder_and_library_disc_ids(folder.path()).await;
+    assert!(scanned.is_empty(), "two images and a sheet naming neither: the scan binds none");
+    assert!(unbound_by_scan.is_empty());
+
+    let (_, bound) = folder_and_library_disc_ids_with_bindings(
+        folder.path(),
+        &[("Album.cue", "CDImage.wav", Some("b.flac"))],
+    )
+    .await;
+    assert_eq!(bound.len(), 1, "the person's binding is read: {bound:?}");
 }

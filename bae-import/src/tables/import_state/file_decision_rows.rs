@@ -337,5 +337,19 @@ pub(crate) fn load_candidate_file_edits_on(
 }
 
 #[cfg(test)]
+impl ImportTables {
+    /// Store `edits` as the decisions of the candidate `content_hash`, whose
+    /// state row is stored.
+    pub(crate) async fn store_file_edits_for_test(
+        &self,
+        content_hash: &str,
+        edits: CandidateFileEdits,
+    ) {
+        let content_hash = content_hash.to_string();
+        self.store.write(move |sql| store_file_edits(&sql, &content_hash, &edits)).await.unwrap();
+    }
+}
+
+#[cfg(test)]
 #[path = "file_decision_rows_tests.rs"]
 mod tests;

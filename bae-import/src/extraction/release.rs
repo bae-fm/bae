@@ -64,7 +64,7 @@ impl ReleaseIdentity {
 
 /// Read the release's local files the way a folder's scan reads its rip files
 /// (`folder_scanner::categorize_library_files`), so a sheet is
-/// bound to the audio the scan would bind it to and the release hashes the
+/// bound to the audio the person bound it to, else the scan would, and the release hashes the
 /// discs its folder did. The track count and lengths come from the release's
 /// track rows, not the files — those rows are the user's truth. A panic
 /// reading the files is reported to `diagnostics`.
@@ -73,6 +73,7 @@ impl ReleaseIdentity {
 /// reading proves nothing and computes no disc ID. A file that is there and
 /// cannot be read fails the reading.
 pub async fn resolve_release_identity(
+    tables: &crate::tables::ImportTables,
     records: &Records,
     diagnostics: &Diagnostics,
     release_id: &str,
@@ -86,11 +87,13 @@ pub async fn resolve_release_identity(
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
+    let sheet_bindings = tables.load_release_sheet_bindings(release_id).await?;
     let lease = records.lease_one().await;
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
                 files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
+                sheet_bindings,
                 &lease,
             );
             let formats: Vec<bae_types::audio_format::AudioFormat> = categorized

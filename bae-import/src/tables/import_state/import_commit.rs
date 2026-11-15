@@ -338,6 +338,8 @@ impl ImportTables {
             .map(|prepared| (prepared.row, (prepared.original, prepared.place)))
             .unzip();
         let records = rows.records.to_vec();
+        let ImportCommitGuard::Candidate { expectation, .. } = &guard;
+        let content_hash = expectation.candidate.content_hash.clone();
         let now_dt = self.store.now_utc();
         let now = now_dt.to_rfc3339();
         let pressing = bae_records::PressingParts::new(ids, now_dt, &release.pressing);
@@ -463,6 +465,25 @@ impl ImportTables {
                     for (row, file) in rows_to_insert.iter().zip(original_file_ids) {
                         insert_release_file_row(tx, row, file).map_err(commit_error)?;
                     }
+
+                    // The bindings the person made between the folder's CUE
+                    // sheets and its audio stay with the release, so identifying
+                    // it again binds them so. The candidate's decisions are
+                    // still stored here (`delete_what_the_import_spent_on`
+                    // keeps them), at the revision the guard checked.
+                    let decided = super::file_decision_rows::load_candidate_file_edits_on(
+                        tx,
+                        &content_hash,
+                    )?()?;
+                    let file_ids: HashMap<&str, &str> = rows_to_insert
+                        .iter()
+                        .map(|row| (row.original_filename.as_str(), row.id.as_str()))
+                        .collect();
+                    crate::tables::release_sheet_bindings::store_on(
+                        tx,
+                        &decided.sheet_bindings,
+                        &file_ids,
+                    )?;
 
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af)?;

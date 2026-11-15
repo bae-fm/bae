@@ -13,6 +13,7 @@ mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
 mod release_groupings;
+mod release_sheet_bindings;
 mod skipped_candidates;
 mod source_releases;
 mod stored_credits;
@@ -25,6 +26,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     folder_scans::SCHEMA,
     release_groupings::SCHEMA,
     import_origin::SCHEMA,
+    release_sheet_bindings::SCHEMA,
     import_state::SCHEMA,
     source_releases::SCHEMA,
     import_list::SCHEMA,
