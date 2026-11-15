@@ -54,30 +54,23 @@ fn queue_items_on(sql: &SqlReadContext<'_>, rows: &str) -> Result<Vec<QueueItem>
 /// The `playback_queue` row as the queue screens read it.
 struct QueueHead {
     shuffled: bool,
-    context: Option<QueueContext>,
-}
-
-/// What the queue plays from, beside the title of the source release's album
-/// (`None` when the source is not a release, or the release is gone).
-struct QueueContext {
-    source: ContextSource,
-    source_title: Option<String>,
+    context: Option<crate::ResolvedContext>,
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (bool, Option<String>, Option<String>, Option<i64>, Option<String>);
-    let (shuffled, source_kind, source_release_id, cursor, source_title): Head = sql.query_row(
-        "SELECT q.shuffled, q.source_kind, q.source_release_id, \
-                CASE q.shuffled WHEN 1 THEN q.shuffled_cursor ELSE q.ordered_cursor END, \
-                a.title \
+    type Head = (bool, Option<String>, Option<String>, Option<String>);
+    let (shuffled, source_kind, source_release_id, source_title): Head = sql.query_row(
+        "SELECT q.shuffled, q.source_kind, q.source_release_id, a.title \
          FROM playback_queue q \
          LEFT JOIN releases r ON r.id = q.source_release_id \
          LEFT JOIN albums a ON a.id = r.album_id",
         [],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
-    let context = match (source_kind, cursor) {
-        (Some(source_kind), Some(_cursor)) => Some(QueueContext {
+    // The table's CHECK keeps `source_kind` NULL exactly when the queue has
+    // no cursor, so a queue with a source kind has a context.
+    let context = match source_kind {
+        Some(source_kind) => Some(crate::ResolvedContext {
             source: ContextSource::from_columns(&source_kind, source_release_id.clone()).map_err(
                 |_unwritten| {
                     DbError::unreadable(
@@ -88,8 +81,7 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
             )?,
             source_title,
         }),
-        // The table's CHECK keeps the two NULL together.
-        _ => None,
+        None => None,
     };
     Ok(QueueHead { shuffled, context })
 }
@@ -120,12 +112,9 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
         [],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
-    let context = head.context.map(|QueueContext { source, source_title }| {
-        crate::ResolvedContext { source, source_title }
-    });
     Ok(crate::ResolvedQueueSnapshot {
         manual,
-        context,
+        context: head.context,
         shuffled: head.shuffled,
         has_next,
         has_previous,

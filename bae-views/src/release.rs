@@ -113,15 +113,12 @@ pub(crate) fn find_release_detail_context_on(
 }
 
 /// The columns of [`find_release_detail_context_on`]'s statement beside the
-/// release's rows: its standing and its album's compilation flag and year.
+/// release's rows: its entry in the download queue, the storage actions it
+/// offers, and its album's compilation flag and year.
 fn release_context_columns(
     row: &Row<'_>,
 ) -> rusqlite::Result<(ReleaseStanding, bool, Option<i32>)> {
-    Ok((
-        release_standing(row)?,
-        row.get::<_, Option<bool>>("album_is_compilation")?.unwrap_or(false),
-        row.get("album_year")?,
-    ))
+    Ok((release_standing(row)?, row.get("album_is_compilation")?, row.get("album_year")?))
 }
 
 #[derive(Clone, PartialEq)]
