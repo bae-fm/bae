@@ -316,6 +316,7 @@ private struct PaneAnswerAction: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Button(title, action: action)
+                .buttonStyle(.accentBordered)
                 .controlSize(.small)
             Text(subtitle)
                 .themeText(.detail)

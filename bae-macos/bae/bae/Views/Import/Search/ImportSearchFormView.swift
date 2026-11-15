@@ -122,6 +122,7 @@ struct ImportSearchFormView: View {
                 fields
 
                 Button("Search", action: submitSearch)
+                    .buttonStyle(.accentBordered)
                     .controlSize(.small)
                     .disabled(isSearchDisabled)
             }
