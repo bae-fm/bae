@@ -700,10 +700,10 @@ internal open class FakeAppHandle(
 
     override fun holdInviteScreenSync(): BridgeInviteScreenHold = unfaked("holdInviteScreenSync")
 
-    /** The library's people, which a test delivers to. */
-    val people = FakePeopleSubscription()
+    /** The people reads the app opened, newest last, which a test delivers to. */
+    val peopleReads = mutableListOf<FakePeopleSubscription>()
 
-    override fun subscribePeople(): PeopleSubscription = people
+    override fun subscribePeople(): PeopleSubscription = FakePeopleSubscription().also { peopleReads += it }
 
     /** The pages of one person each `subscribePerson` opened, which a test delivers to. */
     val persons = mutableListOf<Pair<String, FakePersonSubscription>>()

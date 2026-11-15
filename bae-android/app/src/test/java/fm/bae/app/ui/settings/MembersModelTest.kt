@@ -53,16 +53,22 @@ class MembersModelTest {
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
         model.watchPeople()
-        handle.people.pulls.fail(offline())
+        handle.peopleReads
+            .last()
+            .pulls
+            .fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(PeopleRead.Failed(DisplayError("couldn't reach the cloud")), model.people)
 
         model.retry()
         assertEquals(PeopleRead.Loading, model.people)
-        handle.people.pulls.deliver(twoPeople())
+        handle.peopleReads
+            .last()
+            .pulls
+            .deliver(twoPeople)
         shadowOf(Looper.getMainLooper()).idle()
         val loaded = model.people as PeopleRead.Loaded
-        assertEquals(twoPeople(), loaded.people)
+        assertEquals(twoPeople, loaded.people)
     }
 
     @Test
@@ -71,11 +77,17 @@ class MembersModelTest {
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         model.watchPeople()
-        handle.people.pulls.deliver(twoPeople())
+        handle.peopleReads
+            .last()
+            .pulls
+            .deliver(twoPeople)
         shadowOf(Looper.getMainLooper()).idle()
         val loaded = model.people as PeopleRead.Loaded
 
-        handle.people.pulls.fail(BridgeException.Cancelled())
+        handle.peopleReads
+            .last()
+            .pulls
+            .fail(BridgeException.Cancelled())
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(loaded, model.people)
@@ -89,12 +101,18 @@ class MembersModelTest {
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
 
-        handle.people.pulls.deliver(twoPeople())
+        handle.peopleReads
+            .last()
+            .pulls
+            .deliver(twoPeople)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PeopleRead.Loaded(twoPeople()), model.people)
+        assertEquals(PeopleRead.Loaded(twoPeople), model.people)
 
-        val alone = BridgePeople(own = PreviewData.person(), others = emptyList(), people = 1uL, devices = 1uL)
-        handle.people.pulls.deliver(alone)
+        val alone = BridgePeople(own = ana, others = emptyList(), people = 1uL, devices = 1uL)
+        handle.peopleReads
+            .last()
+            .pulls
+            .deliver(alone)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(PeopleRead.Loaded(alone), model.people)
         stop()
@@ -114,7 +132,7 @@ class MembersModelTest {
             .second.pulls
             .deliver(PreviewData.person())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PersonRead.Loaded("member-2", PreviewData.person()), model.person)
+        assertEquals(PersonRead.Loaded("member-2", ana), model.person)
 
         handle.persons
             .last()
@@ -127,7 +145,8 @@ class MembersModelTest {
         assertEquals(PersonRead.Loading, model.person)
     }
 
-    private fun twoPeople() = BridgePeople(own = PreviewData.person(), others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
+    private val ana = PreviewData.person()
+    private val twoPeople = BridgePeople(own = ana, others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
 
     /** Each list of open invites the model pulls replaces the one it shows. */
     @Test

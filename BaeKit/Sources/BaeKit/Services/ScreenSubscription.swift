@@ -170,7 +170,8 @@ extension MembersSubscription: PulledSubscription {}
 extension InvitesSubscription: PulledSubscription {}
 extension AdminChangesSubscription: PulledSubscription {}
 extension AddDeviceStatusSubscription: PulledSubscription {}
-extension ProfilesSubscription: PulledSubscription {}
+extension PeopleSubscription: PulledSubscription {}
+extension PersonSubscription: PulledSubscription {}
 extension PlaylistsSubscription: PulledSubscription {}
 extension PlaylistDetailSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
