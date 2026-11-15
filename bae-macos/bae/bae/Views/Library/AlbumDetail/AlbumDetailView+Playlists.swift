@@ -21,7 +21,7 @@ extension AlbumDetailView {
         inReleaseOrder(trackIds) { ordered in
             Task {
                 do {
-                    try await library.appendPlaylistEntries(
+                    try await library.playlistWrites.append(
                         playlistId,
                         ordered
                     )

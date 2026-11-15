@@ -20,43 +20,10 @@ struct NewPlaylistSheet: View {
     let onCancel: () -> Void
     let onCreate: (NewPlaylistSheetState) -> Void
 
-    private static let choices: [BridgeSharing] = [.private, .household]
-
     var body: some View {
         MacSheet("New playlist", width: 420) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                FieldColumn {
-                    MacTextField("Name") {
-                        TextField("Name", text: $state.name)
-                            .labelsHidden()
-                            .boxedTextField()
-                    }
-                    GridRow(alignment: .firstTextBaseline) {
-                        Text("Who sees it")
-                            .gridColumnAlignment(.trailing)
-                        VStack(
-                            alignment: .leading,
-                            spacing: ThemeSpace.inline
-                        ) {
-                            MacSegmentedControl(
-                                selectedIndex: Binding(
-                                    get: {
-                                        Self.choices.firstIndex(
-                                            of: state.sharing
-                                        ) ?? 0
-                                    },
-                                    set: { state.sharing = Self.choices[$0] }
-                                ),
-                                segments: Self.choices.map {
-                                    .init(label: $0.label, systemImage: nil)
-                                }
-                            )
-                            Text(state.sharing.note)
-                                .fieldNote()
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+                PlaylistFields(name: $state.name, sharing: $state.sharing)
                 if let error = state.error {
                     Notice(error: error)
                 }

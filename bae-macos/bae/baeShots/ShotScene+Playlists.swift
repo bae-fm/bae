@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Playlists view with the first playlist open, as the board draws
-    /// it.
+    /// The Playlists view with the first playlist open, as the boards draw
+    /// it, and the menus, sheets and alert its page opens.
     static let playlistScenes: [ShotScene] = [
         ShotScene(
             id: "mac.playlists.list",
@@ -31,6 +31,62 @@ extension ShotScene {
                             onCancel: {},
                             onCreate: { _ in }
                         ),
+                        over: window
+                    )
+                )
+            }
+        },
+        ShotScene(
+            id: "mac.playlists.options",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            playlistsWindow { window in
+                AnyView(
+                    ZStack(alignment: .topTrailing) {
+                        window
+                        MacMenuInPlace(
+                            {
+                                MacMenuItem("Edit playlist…") {}
+                                MacMenuDivider()
+                                MacMenuItem("Delete playlist…") {}
+                            },
+                            highlighted: 0
+                        )
+                        .padding(.top, 150)
+                        .padding(.trailing, 24)
+                    }
+                )
+            }
+        },
+        ShotScene(
+            id: "mac.playlists.edit",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            playlistsWindow { window in
+                AnyView(
+                    OverWindow.sheet(
+                        EditPlaylistSheet(
+                            state: .constant(
+                                EditPlaylistSheetState(boardPlaylistListing[0])
+                            ),
+                            onCancel: {},
+                            onSave: { _ in }
+                        ),
+                        over: window
+                    )
+                )
+            }
+        },
+        ShotScene(
+            id: "mac.playlists.delete",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            playlistsWindow { window in
+                AnyView(
+                    OverWindow.alert(
+                        DeletePlaylistConfirmation.alert(
+                            name: boardPlaylistListing[0].name
+                        ) {},
                         over: window
                     )
                 )
@@ -76,7 +132,8 @@ extension ShotScene {
         _ name: String,
         tracks: UInt32,
         sharing: BridgeSharing,
-        minutes: UInt64
+        minutes: UInt64,
+        cover: BridgePlaylistCover
     ) -> BridgePlaylistSummary {
         BridgePlaylistSummary(
             id: "playlist-"
@@ -90,20 +147,44 @@ extension ShotScene {
                 count: tracks
             ),
             totalDuration: .minutesOnly(minutes: minutes),
-            cover: .single(cover: nil)
+            cover: cover
         )
     }
 
+    /// A playlist on four different releases, none of which has a cover.
+    private static let fourReleases = BridgePlaylistCover.grid(
+        covers: [nil, nil, nil, nil]
+    )
+
     static let boardPlaylistListing: [BridgePlaylistSummary] = [
-        summary("Late night", tracks: 12, sharing: .household, minutes: 54),
+        summary(
+            "Late night",
+            tracks: 12,
+            sharing: .household,
+            minutes: 54,
+            cover: fourReleases
+        ),
         summary(
             "Kitchen radio",
             tracks: 40,
             sharing: .household,
-            minutes: 168
+            minutes: 168,
+            cover: fourReleases
         ),
-        summary("Running", tracks: 18, sharing: .private, minutes: 72),
-        summary("For Ana", tracks: 9, sharing: .private, minutes: 38),
+        summary(
+            "Running",
+            tracks: 18,
+            sharing: .private,
+            minutes: 72,
+            cover: .single(cover: nil)
+        ),
+        summary(
+            "For Ana",
+            tracks: 9,
+            sharing: .private,
+            minutes: 38,
+            cover: .single(cover: nil)
+        ),
     ]
 
     /// A track of the board's playlist: its title, artists, album and

@@ -95,17 +95,8 @@ public final class Library: Sendable, Observable {
     /// config subscription re-renders the page through `ConfigStore`.
     public let setLibraryFullWidth:
         @Sendable (_ enabled: Bool) async throws -> Void
-    /// Make a playlist of this device's person holding `trackIds` in order,
-    /// answering its id. A failed write leaves no playlist.
-    public let createPlaylist:
-        @Sendable (
-            _ name: String, _ sharing: BridgeSharing, _ trackIds: [String]
-        ) async throws -> String
-    /// Add tracks to the end of a playlist of this device's person, in the
-    /// order given. A failed write adds none.
-    public let appendPlaylistEntries:
-        @Sendable (_ playlistId: String, _ trackIds: [String]) async throws
-            -> Void
+    /// The writes that make a playlist and change one.
+    public let playlistWrites: PlaylistWrites
     /// The tracks of `trackIds` the library holds, each once, in the order
     /// their release lists them, which core reads.
     public let tracksInReleaseOrder:
@@ -216,14 +207,7 @@ public final class Library: Sendable, Observable {
         setLibraryFullWidth: @escaping @Sendable (Bool) async throws -> Void = {
             _ in throw StubError.notImplemented
         },
-        createPlaylist:
-            @escaping @Sendable (String, BridgeSharing, [String]) async throws
-            -> String = { _, _, _ in throw StubError.notImplemented },
-        appendPlaylistEntries:
-            @escaping @Sendable (String, [String]) async throws -> Void = {
-                _,
-                _ in throw StubError.notImplemented
-            },
+        playlistWrites: PlaylistWrites = PlaylistWrites(),
         tracksInReleaseOrder:
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
@@ -257,8 +241,7 @@ public final class Library: Sendable, Observable {
         self.coverGallery = coverGallery
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
-        self.createPlaylist = createPlaylist
-        self.appendPlaylistEntries = appendPlaylistEntries
+        self.playlistWrites = playlistWrites
         self.tracksInReleaseOrder = tracksInReleaseOrder
         self.setRating = setRating
     }
@@ -331,8 +314,7 @@ extension Library {
                 setLibraryFullWidth: {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 },
-                createPlaylist: Self.createPlaylist(handle),
-                appendPlaylistEntries: Self.appendPlaylistEntries(handle),
+                playlistWrites: .live(handle),
                 tracksInReleaseOrder: Self.tracksInReleaseOrder(handle),
                 setRating: { try await handle.setRating(target: $0, stars: $1) }
             )
@@ -398,34 +380,6 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable ([String]) async throws -> [String] {
             { try await handle.tracksInReleaseOrder(trackIds: $0) }
-        }
-
-        /// Add tracks to a playlist through `handle`.
-        private static func appendPlaylistEntries(
-            _ handle: any AppHandleProtocol
-        ) -> @Sendable (String, [String]) async throws -> Void {
-            {
-                try await handle.appendPlaylistEntries(
-                    playlist: $0,
-                    trackIds: $1
-                )
-            }
-        }
-
-        /// Make a playlist through `handle`.
-        private static func createPlaylist(
-            _ handle: any AppHandleProtocol
-        )
-            -> @Sendable (String, BridgeSharing, [String]) async throws
-            -> String
-        {
-            {
-                try await handle.createPlaylist(
-                    name: $0,
-                    sharing: $1,
-                    trackIds: $2
-                )
-            }
         }
 
         /// The album list read through `handle`, under each sort and grouping

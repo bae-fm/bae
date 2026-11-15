@@ -155,7 +155,7 @@ extension LibraryView {
         let uiStore = uiStore
         Task {
             do {
-                let playlistId = try await library.createPlaylist(
+                let playlistId = try await library.playlistWrites.create(
                     sheet.name,
                     sheet.sharing,
                     sheet.trackIds
