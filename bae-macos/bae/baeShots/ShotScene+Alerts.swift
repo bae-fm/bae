@@ -292,6 +292,7 @@ extension ShotScene {
                     over: ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
+                        syncActivity: SyncActivityStore(),
                         playbackStore: boardPlayback(),
                         size: size
                     )
