@@ -65,6 +65,15 @@ impl BridgeCatalog {
     }
 }
 
+/// The name of the catalog a description came from — "MusicBrainz",
+/// "Discogs", "Rate Your Music".
+///
+/// A brand name, so it is not translated and needs no catalog key.
+#[uniffi::export]
+pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
+    catalog.name().to_string()
+}
+
 mirror_enum! {
     BridgeCatalog = bae_catalogs::catalog::Catalog,
     from_core: pub fn,

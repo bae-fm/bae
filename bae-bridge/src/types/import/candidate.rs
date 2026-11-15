@@ -137,15 +137,6 @@ pub enum BridgeFileRole {
     Other,
 }
 
-/// The name of the catalog a description came from — "MusicBrainz",
-/// "Discogs", "Rate Your Music".
-///
-/// A brand name, so it is not translated and needs no catalog key.
-#[cfg_attr(desktop, uniffi::export)]
-pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
-    catalog.name().to_string()
-}
-
 /// The name of a catalog that answers questions — "MusicBrainz",
 /// "Discogs".
 ///
