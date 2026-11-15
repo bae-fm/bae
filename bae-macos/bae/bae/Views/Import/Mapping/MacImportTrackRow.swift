@@ -20,8 +20,8 @@ struct MacImportTrackRow: View {
             sourceCell
             ReleaseMetadataTrackRow(
                 track: mapping.track,
-                duration: mapping.displayedDuration,
-                durationDiverges: mapping.lengthsDisagree,
+                length: mapping.length,
+                listedLength: mapping.listedLength,
                 columns: columns,
                 editingCommands: editingCommands,
                 position: mapping.position,

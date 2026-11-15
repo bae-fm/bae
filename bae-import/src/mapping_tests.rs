@@ -214,7 +214,7 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
         "the image is carried in the scan's order beside the other files"
     );
     // The scan stored the length of each unit with the files.
-    assert_eq!(track_file(mappings[0]).duration_ms, Some(1_000));
+    assert_eq!(mappings[0].length_ms, 1_000);
     assert_eq!(track_file(mappings[0]).role, MappingRole::Audio);
 }
 
@@ -243,10 +243,28 @@ async fn mapping_statement_counts_untitled_tracks_as_str_trim_does() {
     assert_eq!(table.untitled_track_count, 2);
 }
 
-/// With no release applied, a row shows its stored probe and nothing
-/// disagrees with it.
+/// A row shows the length its audio measures, the one the import stores; the
+/// length its source lists is beside it only when more than three seconds
+/// away.
 #[tokio::test]
-async fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
+async fn a_row_shows_the_length_its_audio_measures() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    for number in 1..=2 {
+        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+    }
+    let files = scan(tmp.path());
+    let mut draft = blank_candidate_draft(&files);
+    draft.tracks[0].stated_length_ms = Some(2_500);
+    draft.tracks[1].stated_length_ms = Some(200_000);
+    let table = mapping_table(&files, &draft).await.unwrap();
+    let rows = mappings(&table);
+    assert_eq!((rows[0].length_ms, rows[0].listed_length_ms), (1_000, None));
+    assert_eq!((rows[1].length_ms, rows[1].listed_length_ms), (1_000, Some(200_000)));
+}
+
+/// A row with no listed length shows its audio's own and nothing beside it.
+#[tokio::test]
+async fn a_track_with_no_listed_length_shows_only_its_audio_s() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
@@ -254,36 +272,24 @@ async fn a_track_the_release_names_no_length_for_uses_its_stored_probe() {
     let table = blank_table(&files).await;
 
     let mapping = mappings(&table)[0];
-    assert_eq!(mapping.duration_ms, Some(1_000));
-    assert!(!mapping.lengths_disagree);
+    assert_eq!((mapping.length_ms, mapping.listed_length_ms), (1_000, None));
 }
 
-/// A row whose track holds the length its source lists shows that length
-/// and says when it is far from its file's; a row with none shows its file's.
+/// Exactly the limit is not a difference; a millisecond past it is.
 #[tokio::test]
-async fn mapping_statement_warns_where_lengths_differ_by_more_than_three_seconds() {
+async fn a_listed_length_shows_only_past_three_seconds() {
     let tmp = tempfile::TempDir::new().unwrap();
     for number in 1..=2 {
         write_flac(&tmp.path().join(format!("{number:02}.flac")));
     }
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
-    draft.tracks[0].stated_length_ms = Some(200_000);
-    let table = mapping_table(&files, &draft).await.unwrap();
-    let rows = mappings(&table);
-    assert_eq!(rows[0].duration_ms, Some(200_000));
-    assert!(rows[0].lengths_disagree);
-    assert_eq!(track_file(rows[0]).duration_ms, Some(1_000));
-    assert_eq!(rows[1].duration_ms, Some(1_000));
-    assert!(!rows[1].lengths_disagree);
-
-    // Exactly the limit is not a disagreement; a millisecond past it is.
     draft.tracks[0].stated_length_ms = Some(1_000 + LENGTH_DISAGREEMENT_MS);
     draft.tracks[1].stated_length_ms = Some(1_000 + LENGTH_DISAGREEMENT_MS + 1);
     let table = mapping_table(&files, &draft).await.unwrap();
     let rows = mappings(&table);
-    assert!(!rows[0].lengths_disagree);
-    assert!(rows[1].lengths_disagree);
+    assert_eq!(rows[0].listed_length_ms, None);
+    assert_eq!(rows[1].listed_length_ms, Some(1_000 + LENGTH_DISAGREEMENT_MS + 1));
 }
 
 /// Sides past Z are lettered AA, AB, … as `side_letters` writes them.
@@ -399,7 +405,7 @@ async fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         assert_eq!(source.container_id, "CDImage.flac");
         // The first entries end at the next sheet boundary; the final entry
         // ends at the container duration already stored by the scan.
-        assert_eq!(source.duration_ms, Some(if index < 2 { 200 } else { 600 }));
+        assert_eq!(entry.length_ms, if index < 2 { 200 } else { 600 });
         assert_eq!(
             entry.track.file,
             Some(AudioFile::SheetSlice {

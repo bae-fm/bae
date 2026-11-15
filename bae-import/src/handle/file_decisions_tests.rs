@@ -70,9 +70,9 @@ async fn a_file_decision_keeps_the_retained_tracks_values_and_gives_a_new_track_
     );
 }
 
-/// The pane shows each track's stated length beside its file's, from the
-/// draft: after a file decision the retained row still shows its own, and
-/// the gained row its file's (B3).
+/// The pane shows each track's stated length beside its audio's, from the
+/// draft: after a file decision the retained row still lists its own, and
+/// the gained row lists none.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
     let (fixture, _hash) = three_track_draft().await;
@@ -97,12 +97,8 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
         .flat_map(crate::MappingTrackSide::mappings)
         .collect();
     assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].duration_ms, Some(111_000));
-    let crate::MappingSource::File(file) = &rows[1].source else {
-        panic!("the gained row is a whole file");
-    };
-    assert_eq!(rows[1].duration_ms, file.duration_ms);
-    assert!(!rows[1].lengths_disagree);
+    assert_eq!(rows[0].listed_length_ms, Some(111_000));
+    assert_eq!(rows[1].listed_length_ms, None);
 }
 
 /// The disc a candidate's `Disc.cue` is read as, and the file decision

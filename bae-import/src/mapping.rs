@@ -96,12 +96,13 @@ pub struct TrackMapping {
     /// number and the release's format — `8`, `A1`, or `3` beneath a `Disc 2`
     /// heading.
     pub position: String,
-    /// The duration this row displays: the applied release's length for the
-    /// track where it lists one, otherwise the candidate's stored probe.
-    pub duration_ms: Option<u64>,
-    /// Whether the folder's length for this row and the applied release's
-    /// are far enough apart for the row to say so.
-    pub lengths_disagree: bool,
+    /// The length the row's audio measures: the length the import stores for
+    /// the track.
+    pub length_ms: u64,
+    /// The length the track's source lists, kept only when it is more than
+    /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from the
+    /// measured one.
+    pub listed_length_ms: Option<u64>,
 }
 
 /// The left half of a row: what the folder offers for it.
@@ -153,8 +154,6 @@ pub struct MappingFile {
     pub size: u64,
     /// The whole-file audition target when this file currently supplies audio.
     pub preview_target: Option<bae_track_audio::PreviewTarget>,
-    /// Playing time from the scan's stored facts. `None` for non-audio files.
-    pub duration_ms: Option<u64>,
     pub audio_format: Option<bae_types::audio_format::AudioFormat>,
     pub role: MappingRole,
 }
@@ -169,9 +168,6 @@ pub struct MappingEntry {
     /// The number the sheet prints for this entry.
     pub number: u32,
     pub title: Option<String>,
-    /// This slice's stored source duration: the next sheet boundary, or the
-    /// scanned container duration closing the final entry.
-    pub duration_ms: Option<u64>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
     pub container_name: String,
@@ -289,7 +285,6 @@ impl InvalidCandidateDetail {
                     size: scanned.version.size,
                     preview_target: (role == MappingRole::Audio)
                         .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.version.path)),
-                    duration_ms: None,
                     audio_format: None,
                     role,
                 }

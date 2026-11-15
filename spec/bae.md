@@ -294,6 +294,9 @@ A track may have two segments: its *pregap*, then its main body. A pregap is the
 audio before a track's index 01 on a CD, such as a count-in or applause. It can
 be stored audio in the same file or the file before, or silence a CUE `PREGAP`
 line asks bae to generate. §7.4 says how playback uses it.
+A track's length runs from its index 01 to where the next track's stream starts
+(that track's index 00 when it has a pregap in this file), or to the end of its
+file, so it leaves out the pregap of the track after it.
 
 A release holds its *mediums*: the discs, records or tapes its audio was read
 from, in order, each with its carrier where the source states one and its

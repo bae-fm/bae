@@ -23,10 +23,8 @@ extension PreviewData {
     }
 
     /// One of the folder's audio files, as the mapping table's left half
-    /// shows it. Track 4's file runs long against the release, which is
-    /// what the row's two lengths are there to show.
+    /// shows it.
     private static func mappingAudio(_ index: Int) -> BridgeMappingFile {
-        let drift: Int = index == 4 ? 21000 : 0
         return BridgeMappingFile(
             fileId: "Track \(index).flac",
             name: "Track \(index).flac",
@@ -37,7 +35,6 @@ extension PreviewData {
                 startSample: 0,
                 endSample: nil
             ),
-            durationMs: UInt64(180_000 + index * 15000 + drift),
             audioFormat: sourceAudioFormat,
             role: .audio
         )
@@ -58,7 +55,6 @@ extension PreviewData {
                     startSample: 0,
                     endSample: nil
                 ) : nil,
-            durationMs: nil,
             audioFormat: file.file.audioFormat,
             role: role
         )
@@ -72,9 +68,11 @@ extension PreviewData {
             source: .file(file: mappingAudio(index)),
             track: confirmEditValues.tracks[index - 1],
             position: "\(index)",
-            durationMs: UInt64(180_000 + index * 15000),
-            // Track 4's file runs long against the release.
-            lengthsDisagree: index == 4
+            length: bridgeLengthClock(ms: UInt64(180_000 + index * 15000)),
+            // Track 4's release lists a longer length than its audio measures.
+            listedLength: index == 4
+                ? bridgeLengthClock(ms: UInt64(180_000 + index * 15000 + 21000))
+                : nil
         )
     }
 
@@ -195,7 +193,6 @@ extension PreviewData {
                                         startSample: 0,
                                         endSample: nil
                                     ),
-                                    durationMs: 2_720_000,
                                     audioFormat: moreTracksAudio.file
                                         .audioFormat,
                                     role: .audio
@@ -203,8 +200,8 @@ extension PreviewData {
                             ),
                             track: moreTracksEditValues.tracks[0],
                             position: "1",
-                            durationMs: 2_720_000,
-                            lengthsDisagree: false
+                            length: bridgeLengthClock(ms: 2_720_000),
+                            listedLength: nil
                         )
                     ])
                 ]
@@ -224,7 +221,6 @@ extension PreviewData {
             index: UInt32(index),
             number: UInt32(index + 1),
             title: "Track Title \(index + 1)",
-            durationMs: durationMs,
             containerId: mappedAudioContainer.file.name,
             containerName: mappedAudioContainer.file.fileName,
             previewTarget: BridgePreviewTarget(
@@ -239,8 +235,8 @@ extension PreviewData {
             source: .sheetEntry(entry: entry),
             track: confirmEditValues.tracks[index],
             position: "\(index + 1)",
-            durationMs: durationMs,
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: durationMs),
+            listedLength: nil
         )
     }
 
@@ -316,7 +312,6 @@ extension PreviewData {
             name: name,
             size: size,
             previewTarget: nil,
-            durationMs: nil,
             audioFormat: nil,
             role: role
         )

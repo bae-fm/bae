@@ -5,8 +5,10 @@ import SwiftUI
 /// the source and actions.
 struct ReleaseMetadataTrackRow: View {
     let track: BridgeRawTrackEdit
-    let duration: String
-    let durationDiverges: Bool
+    /// The length the track's audio measures, and the length its source lists
+    /// when core found the two more than three seconds apart.
+    let length: BridgeDurationClock
+    let listedLength: BridgeDurationClock?
     let columns: ReleaseMetadataTrackColumns
     let editingCommands: EditingCommitCommands
     /// How the track's place reads ("A1", "3"): core's, and never edited.
@@ -38,20 +40,7 @@ struct ReleaseMetadataTrackRow: View {
             )
             .frame(width: columns.title)
             artistField
-            Text(duration)
-                .themeText(.body)
-                .monospacedDigit()
-                .accessibilityLabel(
-                    localizedCoreString("ui.import.slots.column.length")
-                )
-                .accessibilityValue(duration)
-                .foregroundStyle(
-                    durationDiverges
-                        ? AnyShapeStyle(Theme.warning) : AnyShapeStyle(.primary)
-                )
-                .help(
-                    durationDiverges ? String(localized: "Lengths differ") : ""
-                )
+            TrackLengthText(length: length, listedLength: listedLength)
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
                     alignment: .leading
@@ -103,7 +92,7 @@ struct ReleaseMetadataTrackColumns {
     let artist: CGFloat
 
     static let track: CGFloat = 52
-    static let length: CGFloat = 88
+    static let length: CGFloat = 124
     static let spacing = ThemeSpace.related
     static let rowPadding = ThemeSpace.line
 
@@ -151,16 +140,28 @@ struct ReleaseMetadataTrackColumns {
     }
 }
 
-func releaseDurationText(_ milliseconds: UInt64?) -> String {
-    guard let milliseconds else { return "\u{2014}" }
-    guard let signedMilliseconds = Int64(exactly: milliseconds) else {
-        preconditionFailure("Track duration exceeds Int64 milliseconds")
-    }
-    return releaseDurationText(signedMilliseconds)
-}
+/// A track's length: the one its audio measures, then the one its source lists
+/// in the warning colour when core found them more than three seconds apart.
+struct TrackLengthText: View {
+    let length: BridgeDurationClock
+    let listedLength: BridgeDurationClock?
 
-func releaseDurationText(_ milliseconds: Int64?) -> String {
-    guard let milliseconds else { return "\u{2014}" }
-    let label = DurationClock.text(milliseconds)
-    return label.isEmpty ? "\u{2014}" : label
+    var body: some View {
+        HStack(spacing: ThemeSpace.line) {
+            Text(DurationClock.label(length))
+                .accessibilityLabel(
+                    localizedCoreString("ui.import.slots.column.length")
+                )
+            if let listedLength {
+                Text(DurationClock.label(listedLength))
+                    .foregroundStyle(Theme.warning)
+                    .help(localizedCoreString("core.track.listed_length"))
+                    .accessibilityLabel(
+                        localizedCoreString("core.track.listed_length")
+                    )
+            }
+        }
+        .themeText(.body)
+        .monospacedDigit()
+    }
 }

@@ -596,3 +596,113 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         "the failure names the cover download, got: {error}"
     );
 }
+
+/// A gap-appended rip: each file holds one track's body from its INDEX 01 at
+/// the file's start, then the next track's pregap, whose INDEX 00 is at
+/// the file's tail.
+fn write_gap_appended_rip(album_dir: &Path, names: &[&str]) {
+    const SAMPLE_RATE: u32 = 44_100;
+    for (name, frequency) in names.iter().zip([220.0_f64, 440.0, 880.0]) {
+        let samples: Vec<i32> = (0..SAMPLE_RATE as usize * 3 * 2)
+            .map(|i| {
+                let t = (i / 2) as f64 / f64::from(SAMPLE_RATE);
+                let v = 0.1 * (2.0 * std::f64::consts::PI * frequency * t).sin();
+                ((v * f64::from(i16::MAX)) as i32) << 16
+            })
+            .collect();
+        let audio = bae_audio::encode_i32(
+            bae_audio::EncodeFormat::PcmWav { bits_per_sample: 16 },
+            &samples,
+            SAMPLE_RATE,
+            2,
+        )
+        .expect("encode a file");
+        fs::write(album_dir.join(name), audio).unwrap();
+    }
+    fs::write(
+        album_dir.join("Album Title.cue"),
+        format!(
+            "FILE \"{}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
+             TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 00 00:02:00\n\
+             FILE \"{}\" WAVE\n    INDEX 01 00:00:00\n  \
+             TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 00 00:02:00\n\
+             FILE \"{}\" WAVE\n    INDEX 01 00:00:00\n",
+            names[0], names[1], names[2]
+        ),
+    )
+    .unwrap();
+}
+
+/// A release listing each track as long as its file, which includes the next
+/// track's pregap, in a fixture holding the rip as `album`.
+fn seed_gap_appended_rip(f: &ImportFixture) -> (std::path::PathBuf, std::path::PathBuf, String) {
+    let names = ["01 Track One.wav", "02 Track Two.wav", "03 Track Three.wav"];
+    let collection = f.temp_path().join("collection");
+    let album_dir = collection.join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    write_gap_appended_rip(&album_dir, &names);
+    let tracks = (1..=3)
+        .map(|position| {
+            let mut track = bae_catalogs::test_releases::mb_track(
+                position,
+                &format!("Source Track {position}"),
+            );
+            track.length = Some(3_000);
+            track
+        })
+        .collect();
+    let mb_id = seed_mb_release_with_media(
+        f,
+        "mb-rel-gap",
+        "mb-group-gap",
+        vec![bae_catalogs::test_releases::mb_medium(tracks)],
+    );
+    (collection, album_dir, mb_id)
+}
+
+/// A gap-appended rip's found rows show the length the import stores, not the
+/// release's, which runs on into the next track's pregap: the row's length is
+/// the audio's own, and the release's stays off the row while it is within
+/// three seconds.
+#[tokio::test]
+async fn a_found_row_shows_the_length_the_import_stores() {
+    bae_util::test_logs::install();
+    bae_audio::init();
+    let found_in = ImportFixture::new().await;
+    let (collection, album_dir, mb_id) = seed_gap_appended_rip(&found_in);
+    let (_key, pane) = pick_release_for_folder(&found_in, &collection, &album_dir, &mb_id).await;
+    let found: Vec<(u64, Option<u64>)> = pane
+        .draft()
+        .unwrap()
+        .mapping
+        .track_sides
+        .iter()
+        .flat_map(bae_import::MappingTrackSide::mappings)
+        .map(|row| (row.length_ms, row.listed_length_ms))
+        .collect();
+
+    let imported_in = ImportFixture::new().await;
+    let (_collection, album_dir, mb_id) = seed_gap_appended_rip(&imported_in);
+    let (release_id, _album_id) = import_folder(
+        &imported_in,
+        &album_dir,
+        None,
+        ImportDestination::ThisDevice,
+        bae_import::test_imports::DraftSource::Pick(pressing_link(&mb_id)),
+    )
+    .await
+    .expect("import the rip");
+    let imported: Vec<u64> = imported_in
+        .library
+        .records()
+        .get_tracks_for_release(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .map(|track| track.duration_ms)
+        .collect();
+
+    assert_eq!(found.iter().map(|row| row.0).collect::<Vec<_>>(), imported);
+    assert!(found.iter().all(|row| row.1.is_none()), "{found:?}");
+    assert!(imported.contains(&2_000), "the rip's gaps shorten its tracks: {imported:?}");
+}

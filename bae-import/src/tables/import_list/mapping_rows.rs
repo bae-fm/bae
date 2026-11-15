@@ -60,10 +60,9 @@ rows AS (
            u.file_kind, u.sheet_id, u.slice_index, u.duration_ms AS unit_ms,
            u.start_sample, u.end_sample, a.json AS audio,
            ct.number AS cue_number, ct.title AS cue_title,
-           COALESCE(t.stated_length_ms, u.duration_ms) AS duration_ms,
            CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS NOT NULL
-                THEN bae_lengths_disagree(u.duration_ms, t.stated_length_ms) ELSE 0 END
-               AS disagree
+                     AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms)
+                THEN t.stated_length_ms END AS listed_ms
     FROM import_candidate_track AS t
     JOIN mediums AS m ON m.position = t.medium
     LEFT JOIN scan_candidate_unit AS u
@@ -179,7 +178,7 @@ runs AS (
                'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
                'rows', json_group_array(json_object(
                    'track', position, 'matches', unit_matches, 'position', position_text,
-                   'duration_ms', duration_ms, 'disagree', disagree,
+                   'listed_ms', listed_ms,
                    'kind', file_kind, 'audio', json(audio), 'unit_ms', unit_ms,
                    'sheet_id', sheet_id, 'index', slice_index, 'number', cue_number,
                    'title', cue_title, 'start', start_sample, 'end', end_sample)
@@ -257,9 +256,9 @@ struct RowJson {
     #[serde(deserialize_with = "flag")]
     matches: bool,
     position: String,
-    duration_ms: Option<u64>,
-    #[serde(deserialize_with = "flag")]
-    disagree: bool,
+    /// The length the track's source lists, kept only when it is far from
+    /// the audio's own.
+    listed_ms: Option<u64>,
     kind: Option<String>,
     audio: Option<AudioJson>,
     unit_ms: Option<u64>,
@@ -420,7 +419,6 @@ impl MappingRows {
                         name: file.name,
                         size: file.size,
                         preview_target: None,
-                        duration_ms: None,
                         audio_format: None,
                         role: carried_role(&file.role)?,
                     }),
@@ -561,13 +559,14 @@ fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, I
         )));
     }
     let audio = row.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
+    let length_ms =
+        row.unit_ms.ok_or_else(|| internal("an audio unit has no length".to_owned()))?;
     let source = match row.kind.as_deref() {
         Some("standalone") => MappingSource::File(MappingFile {
             file_id: audio.file_id.clone(),
             name: audio.file_id.clone(),
             size: audio.size,
             preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path.clone())),
-            duration_ms: row.unit_ms,
             audio_format: Some(audio.format()),
             role: MappingRole::Audio,
         }),
@@ -576,7 +575,6 @@ fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, I
             index: row.index.ok_or_else(|| internal("a slice has no index".to_owned()))?,
             number: row.number.ok_or_else(|| internal("a slice has no number".to_owned()))?,
             title: row.title,
-            duration_ms: row.unit_ms,
             container_id: audio.file_id.clone(),
             container_name: audio.name.clone(),
             preview_target: bae_track_audio::PreviewTarget::sample_range(
@@ -592,8 +590,8 @@ fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, I
         source,
         track: track.edit.as_edit(),
         position: row.position,
-        duration_ms: row.duration_ms,
-        lengths_disagree: row.disagree,
+        length_ms,
+        listed_length_ms: row.listed_ms,
     })
 }
 

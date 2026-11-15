@@ -302,9 +302,6 @@ pub struct BridgeMappingFile {
     pub size: u64,
     /// The whole-file target when this file currently supplies audio.
     pub preview_target: Option<BridgePreviewTarget>,
-    /// Playing time in milliseconds from the scan's stored facts. `None` for
-    /// non-audio files.
-    pub duration_ms: Option<u64>,
     pub audio_format: Option<BridgeAudioFormat>,
     pub role: BridgeMappingRole,
 }
@@ -321,9 +318,6 @@ pub struct BridgeMappingEntry {
     /// The number the sheet prints for this entry.
     pub number: u32,
     pub title: Option<String>,
-    /// This slice's stored source duration: the next sheet boundary, or the
-    /// scanned container duration closing the final entry, in milliseconds.
-    pub duration_ms: Option<u64>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
     pub container_name: String,
@@ -354,13 +348,13 @@ pub struct BridgeTrackMapping {
     /// side and number and the release's format — `8`, `A1`, or `3` beneath a
     /// `Disc 2` heading.
     pub position: String,
-    /// The duration to render: the applied release's length for the track
-    /// where it lists one, otherwise the candidate's stored probe.
-    pub duration_ms: Option<u64>,
-    /// Whether the folder's length for this row and the applied release's are
-    /// far enough apart for the row to say so — core's judgement, so every
-    /// surface marks the same rows. It marks a row; it disables nothing.
-    pub lengths_disagree: bool,
+    /// The length the row's audio measures, the one the import stores for
+    /// the track.
+    pub length: BridgeDurationClock,
+    /// The length the track's source lists, present only when more than three
+    /// seconds from the measured one — core's judgement, so every surface
+    /// marks the same rows. It marks a row; it disables nothing.
+    pub listed_length: Option<BridgeDurationClock>,
 }
 
 /// The audio a track sheet describes. Mirror of bae-library's `MappingContainer`.

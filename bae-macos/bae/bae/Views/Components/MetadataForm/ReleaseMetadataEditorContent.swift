@@ -203,8 +203,8 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             sourceCell(item, sourceIsInCaption: sourceIsInCaption)
             ReleaseMetadataTrackRow(
                 track: item.track,
-                duration: DurationClock.label(item.context.durationClock),
-                durationDiverges: false,
+                length: item.context.durationClock,
+                listedLength: nil,
                 columns: columns,
                 editingCommands: session.editingCommands,
                 position: item.context.positionText,

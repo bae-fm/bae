@@ -161,8 +161,8 @@ struct ImportMappingTracksLayoutTests {
     }
 
     @MainActor
-    @Test("probed duration renders when metadata names no duration")
-    func probedDurationRendersWithoutMetadataDuration() async throws {
+    @Test("a row with no listed length shows its measured length alone")
+    func rowWithNoListedLengthShowsItsMeasuredLength() async throws {
         let columns = ReleaseMetadataTrackColumns.resolved(
             tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
         )
@@ -170,8 +170,8 @@ struct ImportMappingTracksLayoutTests {
             source: pairedMapping.source,
             track: pairedMapping.track,
             position: "1",
-            durationMs: 180_000,
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: 180_000),
+            listedLength: nil
         )
         let size = NSSize(
             width: ReleaseMetadataTrackColumns.idealTableWidth,
@@ -192,21 +192,25 @@ struct ImportMappingTracksLayoutTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            #expect(mapping.displayedDuration == "3:00")
+            #expect(DurationClock.label(mapping.length) == "3:00")
+            #expect(mapping.listedLength == nil)
         }
     }
 
-    @Test("Length shows source and metadata when they disagree")
-    func lengthShowsSourceAndMetadataWhenTheyDisagree() {
+    @Test("A row shows its measured length and, apart, the listed one")
+    func rowShowsItsMeasuredLengthAndTheListedOne() throws {
         let mapping = BridgeTrackMapping(
             source: pairedMapping.source,
             track: pairedMapping.track,
             position: "1",
-            durationMs: 210_000,
-            lengthsDisagree: true
+            length: bridgeLengthClock(ms: 180_000),
+            listedLength: bridgeLengthClock(ms: 210_000)
         )
 
-        #expect(mapping.displayedDuration == "3:00 → 3:30")
+        #expect(DurationClock.label(mapping.length) == "3:00")
+        #expect(
+            DurationClock.label(try #require(mapping.listedLength)) == "3:30"
+        )
     }
 }
 
@@ -359,7 +363,6 @@ extension ImportMappingTracksLayoutTests {
                     name: "track.flac",
                     size: 24_000_000,
                     previewTarget: previewTarget,
-                    durationMs: 180_000,
                     audioFormat: MappingFixtures.audioFormat,
                     role: .audio
                 )
@@ -375,8 +378,8 @@ extension ImportMappingTracksLayoutTests {
                 file: .standalone(fileId: "track.flac")
             ),
             position: "1",
-            durationMs: 180_000,
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: 180_000),
+            listedLength: nil
         )
     }
 
@@ -422,7 +425,6 @@ extension ImportMappingTracksLayoutTests {
             index: number - 1,
             number: number,
             title: title,
-            durationMs: 180_000,
             containerId: longAudioName,
             containerName: longAudioName,
             previewTarget: BridgePreviewTarget(
@@ -450,8 +452,8 @@ extension ImportMappingTracksLayoutTests {
                 )
             ),
             position: String(number),
-            durationMs: entry.durationMs,
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: 180_000),
+            listedLength: nil
         )
     }
 

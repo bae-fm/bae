@@ -51,7 +51,6 @@ extension MappingFixtures {
                 startSample: 0,
                 endSample: nil
             ),
-            durationMs: UInt64(200_000 + index * 1000),
             audioFormat: audioFormat,
             role: .audio
         )
@@ -80,8 +79,8 @@ extension MappingFixtures {
                 file: .standalone(fileId: "\(index).flac")
             ),
             position: "\(index)",
-            durationMs: UInt64(200_000 + index * 1000),
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
+            listedLength: nil
         )
     }
 
@@ -114,8 +113,8 @@ extension MappingFixtures {
                                     file: .standalone(fileId: "13.flac")
                                 ),
                                 position: "13",
-                                durationMs: audioFile(13).durationMs,
-                                lengthsDisagree: false
+                                length: bridgeLengthClock(ms: UInt64(213_000)),
+                                listedLength: nil
                             )
                         ]
                 )
@@ -141,7 +140,6 @@ extension MappingFixtures {
             startSample: 0,
             endSample: nil
         ),
-        durationMs: 2_400_000,
         audioFormat: audioFormat,
         role: .audio
     )
@@ -193,8 +191,8 @@ extension MappingFixtures {
                             file: .standalone(fileId: containerId)
                         ),
                         position: "1",
-                        durationMs: containerFile.durationMs,
-                        lengthsDisagree: false
+                        length: bridgeLengthClock(ms: 2_400_000),
+                        listedLength: nil
                     )
                 ]
             )
@@ -245,7 +243,6 @@ extension MappingFixtures {
                     index: UInt32(index),
                     number: UInt32(index + 1),
                     title: "Sheet Track \(index + 1)",
-                    durationMs: UInt64(200_000 + index * 1000),
                     containerId: containerId,
                     containerName: containerId,
                     previewTarget: previewTarget,
@@ -262,8 +259,8 @@ extension MappingFixtures {
                 )
             ),
             position: "\(index + 1)",
-            durationMs: UInt64(200_000 + index * 1000),
-            lengthsDisagree: false
+            length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
+            listedLength: nil
         )
     }
 
@@ -310,8 +307,10 @@ extension MappingFixtures {
                                 file: .standalone(fileId: "\(index).flac")
                             ),
                             position: "\(index)",
-                            durationMs: audioFile(index).durationMs,
-                            lengthsDisagree: false
+                            length: bridgeLengthClock(
+                                ms: UInt64(200_000 + index * 1000)
+                            ),
+                            listedLength: nil
                         )
                     }
             )

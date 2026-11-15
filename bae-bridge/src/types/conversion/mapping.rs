@@ -119,22 +119,14 @@ mirror_enum! {
 
 impl BridgeMappingFile {
     pub(crate) fn from_core(file: bae_import::MappingFile) -> Self {
-        let bae_import::MappingFile {
-            file_id,
-            name,
-            size,
-            preview_target,
-            duration_ms,
-            audio_format,
-            role,
-        } = file;
+        let bae_import::MappingFile { file_id, name, size, preview_target, audio_format, role } =
+            file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
             preview_target: preview_target.map(BridgePreviewTarget::from_core),
             file_id,
             name,
             size,
-            duration_ms,
             audio_format: audio_format.map(BridgeAudioFormat::from_core),
         }
     }
@@ -147,7 +139,6 @@ impl BridgeMappingEntry {
             index,
             number,
             title,
-            duration_ms,
             container_id,
             container_name,
             preview_target,
@@ -158,7 +149,6 @@ impl BridgeMappingEntry {
             index,
             number,
             title,
-            duration_ms,
             container_id,
             container_name,
             preview_target: BridgePreviewTarget::from_core(preview_target),
@@ -176,16 +166,18 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeTrackMapping = bae_import::TrackMapping,
-    from_core: fn,
-    fields: {
-        source: (BridgeMappingSource),
-        track: (BridgeRawTrackEdit),
-        position,
-        duration_ms,
-        lengths_disagree,
-    },
+impl BridgeTrackMapping {
+    fn from_core(mapping: bae_import::TrackMapping) -> Self {
+        let bae_import::TrackMapping { source, track, position, length_ms, listed_length_ms } =
+            mapping;
+        BridgeTrackMapping {
+            source: BridgeMappingSource::from_core(source),
+            track: BridgeRawTrackEdit::from_core(track),
+            position,
+            length: BridgeDurationClock::of_length(length_ms),
+            listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
+        }
+    }
 }
 
 mirror_struct! {
