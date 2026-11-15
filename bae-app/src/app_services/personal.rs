@@ -19,8 +19,7 @@ impl AppServices {
     delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: Vec<String>) -> Result<uuid::Uuid, CollectionError>);
-    delegate_async!(people, rename_playlist => rename_playlist(id: uuid::Uuid, name: &str) -> Result<(), CollectionError>);
-    delegate_async!(people, set_playlist_sharing => set_playlist_sharing(id: uuid::Uuid, sharing: Sharing) -> Result<(), CollectionError>);
+    delegate_async!(people, edit_playlist => edit_playlist(id: uuid::Uuid, name: &str, sharing: Sharing) -> Result<(), CollectionError>);
     delegate_async!(people, delete_playlist => delete_playlist(id: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(manager, append_playlist_entries => append_playlist_entries(playlist: uuid::Uuid, tracks: Vec<String>) -> Result<(), CollectionError>);

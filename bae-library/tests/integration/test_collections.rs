@@ -72,8 +72,12 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let entries = people.playlist_entries(id).await.unwrap();
     assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);
     assert_eq!(entries[0].track_id, first);
-    people.set_playlist_sharing(id, Sharing::Household).await.unwrap();
-    people.rename_playlist(id, "Gathering").await.unwrap();
+    people.edit_playlist(id, "Gathering", Sharing::Household).await.unwrap();
+    let playlists = playlists_now(library.store()).await;
+    assert_eq!(playlists[0].sharing, Sharing::Household);
+    assert_eq!(playlists[0].name, "Gathering");
+    // An edit with a blank name is refused whole: who sees the playlist stays.
+    assert!(people.edit_playlist(id, "  ", Sharing::Private).await.is_err());
     let playlists = playlists_now(library.store()).await;
     assert_eq!(playlists[0].sharing, Sharing::Household);
     assert_eq!(playlists[0].name, "Gathering");
@@ -314,8 +318,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
         vec!["Second", "First"]
     );
 
-    people.set_playlist_sharing(id, Sharing::Household).await.unwrap();
-    people.rename_playlist(id, "Gathering").await.unwrap();
+    people.edit_playlist(id, "Gathering", Sharing::Household).await.unwrap();
     let renamed = value_matching(&mut listing, |listing| {
         listing.listed[0].name == "Gathering" && listing.listed[0].sharing == Sharing::Household
     })

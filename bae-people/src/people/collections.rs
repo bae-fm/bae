@@ -74,28 +74,21 @@ impl People {
         Ok(playlist)
     }
 
-    pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
-        let name = bae_store::EnteredName::parse(name)?.into_string();
-        self.change_playlist(id, move |sql| {
-            sql.execute(
-                "UPDATE playlists SET name = ? WHERE id = ?",
-                params![name, id.to_string()],
-            )?;
-            Ok(Ok(()))
-        })
-        .await
-    }
-
-    pub async fn set_playlist_sharing(
+    /// Sets a playlist's name and who sees it in one write, so it is never
+    /// seen, or left, with one changed and not the other. A blank name is
+    /// refused before anything is written.
+    pub async fn edit_playlist(
         &self,
         id: uuid::Uuid,
+        name: &str,
         sharing: Sharing,
     ) -> Result<(), CollectionError> {
+        let name = bae_store::EnteredName::parse(name)?.into_string();
         let audience = sharing.audience(self.own_profile().await?.private_circle);
         self.change_playlist(id, move |sql| {
             sql.execute(
-                "UPDATE playlists SET audience = ? WHERE id = ?",
-                params![audience, id.to_string()],
+                "UPDATE playlists SET name = ?, audience = ? WHERE id = ?",
+                params![name, audience, id.to_string()],
             )?;
             Ok(Ok(()))
         })

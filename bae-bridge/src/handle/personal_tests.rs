@@ -157,9 +157,8 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
             BridgePlayOutcome::StartMissing
         );
         app.clone().delete_playlist(held).await.unwrap();
-        app.clone().rename_playlist(playlist_id.clone(), "Gathering".into()).await.unwrap();
         app.clone()
-            .set_playlist_sharing(playlist_id.clone(), BridgeSharing::Household)
+            .edit_playlist(playlist_id.clone(), "Gathering".into(), BridgeSharing::Household)
             .await
             .unwrap();
         let playlists = playlists_now(&store).await;
