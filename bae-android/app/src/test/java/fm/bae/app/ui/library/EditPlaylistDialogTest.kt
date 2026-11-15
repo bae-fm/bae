@@ -23,7 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSharing
 
-/** Editing a playlist writes only what changed, and the dialog closes once it is written. */
+/** Editing a playlist writes its name and who sees it in one write, and the dialog closes once it is written. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class EditPlaylistDialogTest {
@@ -33,18 +33,12 @@ class EditPlaylistDialogTest {
     private class EditingHandle : FakeAppHandle() {
         val writes = mutableListOf<String>()
 
-        override suspend fun renamePlaylist(
+        override suspend fun editPlaylist(
             id: String,
             name: String,
-        ) {
-            writes += "rename $id $name"
-        }
-
-        override suspend fun setPlaylistSharing(
-            id: String,
             sharing: BridgeSharing,
         ) {
-            writes += "sharing $id $sharing"
+            writes += "edit $id $name $sharing"
         }
     }
 
@@ -82,33 +76,33 @@ class EditPlaylistDialogTest {
     }
 
     @Test
-    fun savingWithNothingChangedWritesNothing() {
+    fun savingWithNothingChangedWritesTheSameNameAndAudienceOnce() {
         showDialog()
         compose.onNodeWithText("Save").performClick()
         compose.waitUntil(HANG_GUARD_MS) { dismissed > 0 }
 
-        assertEquals(emptyList<String>(), handle.writes)
+        assertEquals(listOf("edit playlist-1 Late night HOUSEHOLD"), handle.writes)
     }
 
     @Test
-    fun aNewNameIsTheOnlyWrite() {
+    fun aNewNameIsWrittenWithTheUnchangedAudience() {
         showDialog()
         compose.onNodeWithText("Late night").performTextClearance()
         compose.onNodeWithText("Name").performTextInput("Kitchen radio")
         compose.onNodeWithText("Save").performClick()
         compose.waitUntil(HANG_GUARD_MS) { dismissed > 0 }
 
-        assertEquals(listOf("rename playlist-1 Kitchen radio"), handle.writes)
+        assertEquals(listOf("edit playlist-1 Kitchen radio HOUSEHOLD"), handle.writes)
     }
 
     @Test
-    fun choosingOnlyMeIsTheOnlyWrite() {
+    fun aNewAudienceIsWrittenWithTheUnchangedName() {
         showDialog()
         compose.onNodeWithText("Only me").performClick()
         compose.onNodeWithText("Save").performClick()
         compose.waitUntil(HANG_GUARD_MS) { dismissed > 0 }
 
-        assertEquals(listOf("sharing playlist-1 PRIVATE"), handle.writes)
+        assertEquals(listOf("edit playlist-1 Late night PRIVATE"), handle.writes)
     }
 
     @Test

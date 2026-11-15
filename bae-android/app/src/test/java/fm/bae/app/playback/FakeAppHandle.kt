@@ -767,6 +767,14 @@ internal open class FakeAppHandle(
         unfaked("createProfile")
     }
 
+    override suspend fun editPlaylist(
+        id: String,
+        name: String,
+        sharing: BridgeSharing,
+    ) {
+        unfaked("editPlaylist")
+    }
+
     override suspend fun deletePlaylist(id: String) {
         unfaked("deletePlaylist")
     }
@@ -786,13 +794,6 @@ internal open class FakeAppHandle(
         unfaked("removePlaylistEntry")
     }
 
-    override suspend fun renamePlaylist(
-        id: String,
-        name: String,
-    ) {
-        unfaked("renamePlaylist")
-    }
-
     override suspend fun renameProfile(name: String) {
         unfaked("renameProfile")
     }
@@ -810,13 +811,6 @@ internal open class FakeAppHandle(
 
     override suspend fun setHistorySharing(sharing: BridgeHistorySharing) {
         unfaked("setHistorySharing")
-    }
-
-    override suspend fun setPlaylistSharing(
-        id: String,
-        sharing: BridgeSharing,
-    ) {
-        unfaked("setPlaylistSharing")
     }
 
     override suspend fun setRating(

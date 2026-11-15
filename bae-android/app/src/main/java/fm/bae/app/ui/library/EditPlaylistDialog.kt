@@ -20,9 +20,8 @@ import uniffi.bae_bridge.enteredNameIsBlank
 private val logger = BaeLogger("bae.EditPlaylistDialog")
 
 /**
- * Change [playlist]'s name and who sees it. Saving writes only what changed and closes the dialog; a
- * failure shows in the dialog, which stays open, and saving again writes what is still different.
- * [nameIsBlank] is core's answer to whether a typed name is blank.
+ * Change [playlist]'s name and who sees it. Saving writes both in one write and closes the dialog; a
+ * failure shows in the dialog, which stays open. [nameIsBlank] is core's answer to whether a typed name is blank.
  */
 @Composable
 internal fun EditPlaylistDialog(
@@ -59,8 +58,7 @@ internal fun EditPlaylistDialog(
                             errors = session.errors,
                             showError = { error = it },
                         ) {
-                            if (name != playlist.name) session.appHandle.renamePlaylist(playlist.id, name)
-                            if (sharing != playlist.sharing) session.appHandle.setPlaylistSharing(playlist.id, sharing)
+                            session.appHandle.editPlaylist(playlist.id, name, sharing)
                             saved = true
                         }
                         saving = false
