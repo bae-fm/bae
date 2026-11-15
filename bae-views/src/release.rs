@@ -86,19 +86,42 @@ pub struct ReleaseDetailProjection {
     pub context: Option<ReleaseDetailContext>,
 }
 
-/// The release's detail rows and whether the album is a compilation; `None` when the
-/// release doesn't exist.
+/// The release's detail rows beside its album's compilation flag and year, in
+/// one statement; `None` when the release doesn't exist.
 pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseContextRows>, DbError> {
-    let Some(detail) = build_release_detail_on(sql, release_id)? else {
-        return Ok(None);
-    };
-    let album = find_album_by_id_on(sql, &detail.rows.release().album_id)?;
-    let is_compilation = album.as_ref().is_some_and(|album| album.is_compilation);
-    let album_year = album.and_then(|album| album.year);
-    Ok(Some(ReleaseContextRows { detail, is_compilation, album_year }))
+    Ok(release_detail_rows_on(
+        sql,
+        release_id,
+        &bae_people::people::own_track_stars_sql("track"),
+        &format!(
+            "{}, \
+             (SELECT a.is_compilation FROM albums a WHERE a.id = rel.album_id) \
+                 AS album_is_compilation, \
+             (SELECT a.year FROM albums a WHERE a.id = rel.album_id) AS album_year",
+            release_standing_columns()
+        ),
+        release_context_columns,
+    )?
+    .map(|(rows, ((download, actions), is_compilation, album_year))| ReleaseContextRows {
+        detail: ReleaseDetailRows { rows, download, actions },
+        is_compilation,
+        album_year,
+    }))
+}
+
+/// The columns of [`find_release_detail_context_on`]'s statement beside the
+/// release's rows: its standing and its album's compilation flag and year.
+fn release_context_columns(
+    row: &Row<'_>,
+) -> rusqlite::Result<(ReleaseStanding, bool, Option<i32>)> {
+    Ok((
+        release_standing(row)?,
+        row.get::<_, Option<bool>>("album_is_compilation")?.unwrap_or(false),
+        row.get("album_year")?,
+    ))
 }
 
 #[derive(Clone, PartialEq)]
@@ -145,14 +168,7 @@ pub(crate) fn build_release_detail_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseDetailRows>, DbError> {
-    Ok(release_detail_rows_on(
-        sql,
-        release_id,
-        &bae_people::people::own_track_stars_sql("track"),
-        &release_standing_columns(),
-        release_standing,
-    )?
-    .map(|(rows, (download, actions))| ReleaseDetailRows { rows, download, actions }))
+    Ok(find_release_detail_context_on(sql, release_id)?.map(|context| context.detail))
 }
 
 /// The detail rows of each release of the album `album_id`, in the album's
