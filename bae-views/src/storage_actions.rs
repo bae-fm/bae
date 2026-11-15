@@ -91,7 +91,8 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
     );
     let stored = "COALESCE(storage.stored = 1, 0)";
     let pinned = format!("COALESCE({RELEASE_STORAGE_PINNED}, 0)");
-    let elsewhere = bae_records::records::release_audio_elsewhere_sql(release);
+    let elsewhere =
+        format!("EXISTS (SELECT 1 FROM release_audio_elsewhere WHERE release_id = {release})");
     format!(
         "({offered} AND NOT {stored} AND NOT {elsewhere}) AS can_upload, \
          ({offered} AND {stored} AND NOT {pinned}) AS can_pin, \

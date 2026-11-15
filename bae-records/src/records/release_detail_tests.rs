@@ -35,7 +35,7 @@ async fn a_file_on_no_one_device_names_no_other_device() {
     let refused = records.release_file_other_device("gone").await;
 
     assert!(
-        matches!(&refused, Err(OtherDeviceError::NotOnOneDevice(file)) if file == "gone"),
+        matches!(&refused, Err(OtherDeviceError::NotOnAnotherDevice(file)) if file == "gone"),
         "{refused:?}"
     );
 }
@@ -150,4 +150,101 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     let sides: Vec<_> = places.iter().map(|place| place.on.clone()).collect();
     let expected_sides: Vec<_> = expected.iter().map(|(_, position)| position.side()).collect();
     assert_eq!(sides, expected_sides);
+}
+
+/// What `store` reads of where each of `releases`' audio is: the device
+/// [`release_details_on`] names, `None` for a release that plays here.
+async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option<OtherDevice> {
+    store
+        .read(move |sql| {
+            Ok(release_detail_rows_on(&sql, release, NO_STARS, "", |_| Ok(()))?
+                .expect("the release")
+                .0
+                .process()
+                .elsewhere)
+        })
+        .await
+        .unwrap()
+}
+
+/// One file of `release` named `name`, of `content_type`, imported on
+/// `store`'s device from an original under `dir`.
+async fn import_file(
+    store: &bae_store::Store,
+    dir: &std::path::Path,
+    release: &str,
+    name: &str,
+    content_type: bae_util::content_type::ContentType,
+) {
+    let original = dir.join(name);
+    std::fs::write(&original, name).unwrap();
+    let file = NewReleaseFile::new(
+        release,
+        name,
+        content_type,
+        crate::ReleaseFileRole::Other,
+        bae_util::test_ids::test_uuid(name),
+        chrono::Utc::now(),
+    );
+    crate::test_fixtures::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
+}
+
+/// A release is on another device when any of its audio files is held there
+/// only, and then it names that device. Audio this device holds the original
+/// of, and files that are not audio, never put a release elsewhere.
+#[test]
+fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
+    use crate::test_fixtures::*;
+    use bae_util::content_type::ContentType::{Flac, Jpeg};
+    const PLAYS_HERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e01";
+    const ONE_ELSEWHERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e02";
+    const ARTWORK_ELSEWHERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e03";
+    const TWO_ELSEWHERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e04";
+    bae_store::test_devices::run_two_store_test(TEST_SCHEMA, async |devices| {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, b) = (devices.a(), devices.b());
+        crate::test_fixtures::library::RecordsFixture::new()
+            .album(ALBUM_A, "Album Title", None, &[])
+            .release(ALBUM_A, PLAYS_HERE)
+            .release(ALBUM_A, ONE_ELSEWHERE)
+            .release(ALBUM_A, ARTWORK_ELSEWHERE)
+            .release(ALBUM_A, TWO_ELSEWHERE)
+            .write(&test_records(a))
+            .await;
+        devices.converge("SELECT id FROM releases").await;
+
+        import_file(b, dir.path(), PLAYS_HERE, "here.flac", Flac).await;
+        import_file(a, dir.path(), ONE_ELSEWHERE, "one.flac", Flac).await;
+        import_file(a, dir.path(), ONE_ELSEWHERE, "cover.jpg", Jpeg).await;
+        import_file(a, dir.path(), ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
+        import_file(a, dir.path(), TWO_ELSEWHERE, "b-second.flac", Flac).await;
+        import_file(a, dir.path(), TWO_ELSEWHERE, "a-first.flac", Flac).await;
+        devices.converge("SELECT id, release_id, file FROM release_files").await;
+        devices.converge("SELECT id, coordinates FROM coven_files").await;
+
+        let name_of_a: String = b
+            .read(|sql| {
+                Ok(sql.query_row(
+                    "SELECT name FROM coven_devices WHERE NOT is_self",
+                    [],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .unwrap();
+        let a_active = Some(OtherDevice::Active { name: name_of_a });
+        assert_eq!(
+            elsewhere_of(b, PLAYS_HERE).await,
+            None,
+            "audio the device holds the original of"
+        );
+        assert_eq!(elsewhere_of(a, ONE_ELSEWHERE).await, None, "the device that imported it");
+        assert_eq!(elsewhere_of(b, ONE_ELSEWHERE).await, a_active);
+        assert_eq!(elsewhere_of(b, ARTWORK_ELSEWHERE).await, None, "artwork is not audio");
+        assert_eq!(elsewhere_of(b, TWO_ELSEWHERE).await, a_active);
+        assert_eq!(
+            elsewhere_of(a, PLAYS_HERE).await,
+            Some(OtherDevice::Active { name: "Device B".into() })
+        );
+    });
 }

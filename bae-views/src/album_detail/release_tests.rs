@@ -21,7 +21,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         },
         records: Vec::new(),
         has_records: false,
-        unstored_audio: Vec::new(),
+        elsewhere: None,
         pinned: false,
         remote: false,
         upload: None,

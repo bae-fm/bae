@@ -1,7 +1,7 @@
 //! Whether this device can play a release now, decided from what the library
 //! records of where its files are.
 
-use bae_records::{DbUnstoredAudio, OtherDevice};
+use bae_records::OtherDevice;
 
 /// Whether this device can play a release now, and why not.
 ///
@@ -19,21 +19,29 @@ pub enum ReleasePlayability {
     OnOtherDevice(OtherDevice),
 }
 
-/// The playability of a release from what the library records this device
-/// holding for each of its audio files on one device only: the device the
-/// first file on another device is on, or playable.
-pub(crate) fn release_playability(unstored_audio: &[DbUnstoredAudio]) -> ReleasePlayability {
-    unstored_audio
-        .iter()
-        .find_map(|audio| match audio {
-            DbUnstoredAudio::Elsewhere(device) => {
-                Some(ReleasePlayability::OnOtherDevice(device.clone()))
-            }
-            DbUnstoredAudio::Original => None,
-        })
-        .unwrap_or(ReleasePlayability::Playable)
+impl ReleasePlayability {
+    /// The playability of a release whose audio is on `elsewhere`, the other
+    /// device of its first audio file held on another device only, if any.
+    pub(crate) fn of(elsewhere: Option<OtherDevice>) -> Self {
+        elsewhere.map_or(Self::Playable, Self::OnOtherDevice)
+    }
 }
 
 #[cfg(test)]
-#[path = "playability_tests.rs"]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_release_with_no_audio_elsewhere_plays_here() {
+        assert_eq!(ReleasePlayability::of(None), ReleasePlayability::Playable);
+    }
+
+    #[test]
+    fn a_release_with_audio_elsewhere_names_that_device() {
+        let device = OtherDevice::Active { name: "Device A".to_string() };
+        assert_eq!(
+            ReleasePlayability::of(Some(device.clone())),
+            ReleasePlayability::OnOtherDevice(device)
+        );
+    }
+}

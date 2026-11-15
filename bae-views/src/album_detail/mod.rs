@@ -51,7 +51,6 @@ pub use bae_people::collections::Stars;
 pub use composer::*;
 pub use credits::CreditRow;
 pub use file_kind::{FileKind, FilePlace};
-pub(crate) use playability::release_playability;
 pub use playability::ReleasePlayability;
 pub use release::*;
 pub use search::*;

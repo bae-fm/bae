@@ -2276,10 +2276,12 @@ never leave the device. Every device reads every release file through coven:
 - the file is on another device only: it isn't here. Another device has it,
   keeping it local or still moving it to storage.
 
-A release whose audio is on another device only names that device in the
-album and release views: "On Ana's Mac". The name is the device's
+A release with any audio file on another device only cannot play here, and
+names that device in the album and release views: "On Ana's Mac". The device
+is the one of the release's first such file by file id. Its name is the
 registration in coven's `coven_devices`, joined to coven's record of each file
-in the query that reads the release, so the line goes as soon as the switch
+in the view `release_audio_elsewhere`, which the query that reads the release
+and the storage actions both read, so the line goes as soon as the switch
 to storage arrives, and changes when the device is removed. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":

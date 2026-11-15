@@ -142,7 +142,7 @@ fn one_track(
         },
         records: Vec::new(),
         has_records: false,
-        unstored_audio: Vec::new(),
+        elsewhere: None,
         pinned: false,
         remote: false,
         upload: None,

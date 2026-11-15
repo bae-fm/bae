@@ -1,6 +1,6 @@
 //! A release as its detail reads it: its tracks by side with their credits
 //! and works, its credits by role, its files with the lists among them, its
-//! records, the audio this device holds on one device only, and whether it
+//! records, the other device its audio is on, and whether it
 //! is pinned, stored, or queued to upload.
 
 use super::files::cover_version_sql;
@@ -57,8 +57,8 @@ pub fn release_detail_rows_on<X>(
 /// The rows of the detail of each release of `set`, in one statement: each
 /// release a row whose columns hold its tracks in groups (each with the stars
 /// `my_stars` gives it, an SQL expression over the track `track`, or
-/// [`NO_STARS`]), its credits, its files, records and audio on one device
-/// only, and whether it is pinned, stored, or queued to upload. Beside each,
+/// [`NO_STARS`]), its credits, its files, records and the other
+/// device its audio is on, and whether it is pinned, stored, or queued to upload. Beside each,
 /// `extra_columns`, further columns of the release `rel` that `extra` reads.
 pub fn release_details_on<X>(
     sql: &impl coven::SqlRead,
@@ -77,7 +77,7 @@ pub fn release_details_on<X>(
                 {records} AS records, \
                 EXISTS (SELECT 1 FROM release_records rr WHERE rr.release_id = rel.id) \
                     AS has_records, \
-                {unstored_audio} AS unstored_audio, \
+                {elsewhere} AS elsewhere, \
                 COALESCE({RELEASE_STORAGE_PINNED}, 0) AS pinned, \
                 COALESCE(storage.stored = 1, 0) AS remote, \
                 {upload_columns}, \
@@ -95,7 +95,7 @@ pub fn release_details_on<X>(
         performs_works = performs_works_sql("rel.id"),
         files = release_files_json_sql("rel.id"),
         records = release_records_json_sql("rel.id"),
-        unstored_audio = unstored_audio_json_sql("rel.id"),
+        elsewhere = ELSEWHERE_OF_RELEASE,
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
         cover_version = cover_version_sql("rel.id"),
         extra_columns =
@@ -113,7 +113,7 @@ pub fn release_details_on<X>(
             files: release_files_column(row, "files")?,
             records: records_column(row, "records")?,
             has_records: row.get("has_records")?,
-            unstored_audio: unstored_audio_column(row, "unstored_audio")?,
+            elsewhere: elsewhere_in_row(row, "elsewhere")?,
             pinned: row.get("pinned")?,
             remote: row.get("remote")?,
             upload: super::queued_uploads::release_upload_in_row(row)?,
@@ -134,7 +134,7 @@ pub struct DbReleaseDetailRows {
     files: DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     has_records: bool,
-    unstored_audio: Vec<DbUnstoredAudio>,
+    elsewhere: Option<OtherDevice>,
     pinned: bool,
     remote: bool,
     upload: Option<DbReleaseUpload>,
@@ -158,7 +158,7 @@ impl DbReleaseDetailRows {
             files: self.files,
             records: self.records,
             has_records: self.has_records,
-            unstored_audio: self.unstored_audio,
+            elsewhere: self.elsewhere,
             pinned: self.pinned,
             remote: self.remote,
             upload: self.upload,
@@ -246,186 +246,82 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     })
 }
 
-/// The release files on one device only, the registrations of the devices
-/// they are on and the members those belong to, as [`unstored_audio_on`] and
-/// [`release_file_other_device`](Records::release_file_other_device) read
-/// them: `f`, `coven`, its device `d` and that device's member `m`. Coven
-/// applies a write only after it registers the write's device, never drops a
-/// registration, and registers each device under a member it never drops, so
-/// every file on one device has its device's registration and that device's
-/// member.
-const UNSTORED_FILES: &str = "FROM release_files f JOIN coven_files coven ON coven.id = f.file \
-     JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
-     JOIN coven_members m ON m.member = d.member";
+/// A JSON array of the name and state of the device that alone holds the
+/// audio file of the release `rel` with the lowest file id, and whether a
+/// member removed that device's person from the library. The column holds the
+/// JSON text `null` when no other device alone holds an audio file of the
+/// release.
+const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(e.device_name, e.device_state, \
+     e.member_removed) FROM release_audio_elsewhere e WHERE e.release_id = rel.id \
+     ORDER BY e.file_id LIMIT 1), 'null')";
 
-/// The columns of one release file on one device only, as an `UnstoredRow`
-/// reads them.
-const UNSTORED_COLUMNS: &str = "f.file, d.is_self, d.name, d.state, m.removed AS member_removed";
-
-/// What coven records this device holding for each audio file of the release
-/// `release_expr` (an SQL expression) that is on one device only, in file
-/// order, as a JSON array for [`unstored_audio_column`]: whether that device
-/// is this one, in which case this device keeps the file's original, and
-/// otherwise the device's registration in `coven_devices` and whether that
-/// device or its person was removed from the library. The query does not
-/// read the disk.
-pub fn unstored_audio_json_sql(release_expr: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-              'file', f.file, 'is_self', d.is_self, \
-              'name', d.name, 'state', d.state, 'member_removed', m.removed) ORDER BY f.id) \
-          {UNSTORED_FILES} \
-          WHERE f.release_id = {release_expr} AND f.content_type GLOB 'audio/*')"
-    )
+/// The other device a release's audio is on, from `column` of a row that
+/// holds [`ELSEWHERE_OF_RELEASE`]: `None` when the release has no audio on
+/// another device only.
+fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<OtherDevice>> {
+    let Some((name, state, member_removed)) =
+        bae_store::read::json_column::<Option<(String, String, i64)>, _>(row, column)?
+    else {
+        return Ok(None);
+    };
+    other_device(name, &state, member_removed != 0).map(Some).ok_or_else(|| {
+        bae_store::read::column_conversion_error(
+            row,
+            column,
+            format!("{state:?} is no state coven writes for a device"),
+        )
+    })
 }
 
-/// Whether an audio file of the release `release_expr` (an SQL expression)
-/// is on another device only: a device that is not this one holds it. The
-/// release cannot play here until that device moves the file to the cloud.
-pub fn release_audio_elsewhere_sql(release_expr: &str) -> String {
-    format!(
-        "EXISTS (SELECT 1 {UNSTORED_FILES} \
-                 WHERE f.release_id = {release_expr} AND f.content_type GLOB 'audio/*' \
-                     AND d.is_self = 0)"
-    )
-}
-
-/// The audio [`unstored_audio_json_sql`] reads into `column`; SQLite writes
-/// each flag in the JSON as 0 or 1.
-pub fn unstored_audio_column(
-    row: &Row<'_>,
-    column: &str,
-) -> rusqlite::Result<Vec<DbUnstoredAudio>> {
-    #[derive(serde::Deserialize)]
-    struct Stored {
-        file: String,
-        is_self: i64,
-        name: String,
-        state: String,
-        member_removed: i64,
-    }
-    let stored: Vec<Stored> = bae_store::read::json_column(row, column)?;
-    stored
-        .into_iter()
-        .map(|stored| {
-            UnstoredRow {
-                file: stored.file,
-                is_self: stored.is_self != 0,
-                name: stored.name,
-                state: stored.state,
-                member_removed: stored.member_removed != 0,
-            }
-            .into_unstored_audio()
-            .map_err(|error| {
-                bae_store::read::column_conversion_error(row, column, error.to_string())
-            })
-        })
-        .collect()
-}
-
-/// What coven records this device holding for each of a release's audio
-/// files on one device only (see [`unstored_audio_json_sql`]).
-pub fn unstored_audio_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    Ok(sql.query_row(
-        &format!("SELECT {} AS unstored_audio", unstored_audio_json_sql("?1")),
-        params![release_id],
-        |row| unstored_audio_column(row, "unstored_audio"),
-    )?)
-}
-
-/// The release file `file_id`, when it is on one device only, with what coven
-/// records of that device.
-fn unstored_row_of_file_on(
-    sql: &impl coven::SqlRead,
-    file_id: &str,
-) -> Result<Vec<UnstoredRow>, DbError> {
-    Ok(sql.query(
-        &format!("SELECT {UNSTORED_COLUMNS} {UNSTORED_FILES} WHERE f.id = ?1"),
-        params![file_id],
-        |row| {
-            Ok(UnstoredRow {
-                file: row.get("file")?,
-                is_self: row.get("is_self")?,
-                name: row.get("name")?,
-                state: row.get("state")?,
-                member_removed: row.get("member_removed")?,
-            })
-        },
-    )?)
-}
-
-/// Why the other device a release file is on could not be named, for a
-/// read of the file that found it on one device only, not this one.
+/// Why the other device a release file is on could not be named.
 #[derive(Debug, thiserror::Error)]
 pub enum OtherDeviceError {
-    /// Coven lists the file on no one device: it reached storage, or left
-    /// the library, after the read that found it on one.
-    #[error("release file {0} is on no one device")]
-    NotOnOneDevice(String),
-    /// Coven lists the file's original on this device.
-    #[error("release file {0} has its original on this device")]
-    OriginalHere(String),
+    /// No other device alone holds the audio file: it reached storage, this
+    /// device holds it, or it left the library, after the read that found it
+    /// on another device.
+    #[error("release file {0} is not an audio file on another device only")]
+    NotOnAnotherDevice(String),
+    /// The state `coven_devices` records for the device is none coven writes.
+    #[error("coven_devices.state of the device release file {file} is on: {state:?}")]
+    UnknownState { file: String, state: String },
     #[error(transparent)]
     Database(#[from] DbError),
 }
 
 impl Records {
-    /// The other device release file `file_id` is on, for a read of it that
-    /// found it on one device only, not this one. A file coven records here,
-    /// or on no one device, fails the read naming the file.
+    /// The other device that alone holds the audio file `file_id`, as the
+    /// view `release_audio_elsewhere` records it. The read fails naming the
+    /// file when no other device alone holds it.
     pub async fn release_file_other_device(
         &self,
         file_id: &str,
     ) -> Result<OtherDevice, OtherDeviceError> {
         let file = file_id.to_string();
-        let audio = self
+        let held = self
             .store
             .read(move |sql| {
-                let mut rows = unstored_row_of_file_on(&sql, &file)?;
-                match (rows.pop(), rows.pop()) {
-                    (Some(row), None) => Ok(Some(row.into_unstored_audio()?)),
-                    _ => Ok(None),
-                }
+                Ok(sql
+                    .query(
+                        "SELECT device_name, device_state, member_removed \
+                         FROM release_audio_elsewhere WHERE file_id = ?1",
+                        params![file],
+                        |row| {
+                            Ok((
+                                row.get::<_, String>("device_name")?,
+                                row.get::<_, String>("device_state")?,
+                                row.get::<_, bool>("member_removed")?,
+                            ))
+                        },
+                    )?
+                    .pop())
             })
             .await?;
-        match audio {
-            Some(DbUnstoredAudio::Elsewhere(device)) => Ok(device),
-            Some(DbUnstoredAudio::Original) => Err(OtherDeviceError::OriginalHere(file_id.into())),
-            None => Err(OtherDeviceError::NotOnOneDevice(file_id.into())),
-        }
-    }
-}
-
-/// One release file on one device only, as [`unstored_audio_on`] reads it.
-struct UnstoredRow {
-    file: String,
-    /// Whether the device the file is on is this one.
-    is_self: bool,
-    name: String,
-    state: String,
-    member_removed: bool,
-}
-
-impl UnstoredRow {
-    /// A file on this device is this device's original: coven keeps the
-    /// original of each of this device's files on it, and forgets it when a
-    /// switch puts the file on another device. A file on another device is
-    /// on the device coven's registration names.
-    fn into_unstored_audio(self) -> Result<DbUnstoredAudio, DbError> {
-        if self.is_self {
-            return Ok(DbUnstoredAudio::Original);
-        }
-        other_device(self.name, &self.state, self.member_removed)
-            .map(DbUnstoredAudio::Elsewhere)
-            .ok_or_else(|| {
-                DbError::unreadable(
-                    format!("coven_devices.state of the device release file {} is on", self.file),
-                    &self.state,
-                )
-            })
+        let (name, state, member_removed) =
+            held.ok_or_else(|| OtherDeviceError::NotOnAnotherDevice(file_id.into()))?;
+        other_device(name, &state, member_removed).ok_or_else(|| OtherDeviceError::UnknownState {
+            file: file_id.into(),
+            state,
+        })
     }
 }
 

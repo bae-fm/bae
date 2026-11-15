@@ -190,7 +190,7 @@ impl ReleaseDetail {
             track_groups.iter().flat_map(|group| group.tracks.iter().cloned()).collect();
 
         let remote = raw.remote;
-        let playability = release_playability(&raw.unstored_audio);
+        let playability = ReleasePlayability::of(raw.elsewhere);
         let files: Vec<FileDetail> =
             raw.files.files.into_iter().map(FileDetail::from_raw).collect();
         let image_files: Vec<FileDetail> =
