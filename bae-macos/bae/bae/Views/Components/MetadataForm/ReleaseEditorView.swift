@@ -23,8 +23,6 @@ struct ReleaseEditorView: View {
     /// The draft, or the catalog search opened on one of its sections.
     @State
     private var searchSection: BridgeFindOnlineSection?
-    @State
-    private var showingCoverPicker = false
     /// The cover picker's lightbox image as it loads.
     @State
     private var coverLightboxLoad = LightboxImageLoad()
@@ -65,7 +63,7 @@ struct ReleaseEditorView: View {
                 ReleaseMetadataEditorContent(
                     session: session,
                     lead: { lead },
-                    onEditCover: { showingCoverPicker = true },
+                    onEditCover: presentCoverPicker,
                     onViewAlbum: onViewAlbum,
                     onPlayTrack: onPlayTrack,
                     images: images,
@@ -74,7 +72,6 @@ struct ReleaseEditorView: View {
                 )
             }
         }
-        .sheet(isPresented: $showingCoverPicker) { coverPicker }
         .onDisappear { endSearch() }
     }
 
@@ -177,27 +174,37 @@ struct ReleaseEditorView: View {
         }
     }
 
-    private var coverPicker: some View {
-        CoverSheetView(
-            releaseId: session.releaseId,
-            lightboxLoad: coverLightboxLoad,
-            onFindRelease: {
-                showingCoverPicker = false
-                openSearch(.search)
-            },
-            refreshCovers: {
-                try await releaseEditor.refreshReleaseCovers(session.releaseId)
-            },
-            onSelect: { selection in
-                try await releaseEditor.changeCover(
-                    session.releaseId,
-                    selection
+    /// Open Change cover over the editor; a pick writes the cover at once.
+    private func presentCoverPicker() {
+        let releaseEditor = releaseEditor
+        let uiStore = uiStore
+        let session = session
+        let lightboxLoad = coverLightboxLoad
+        uiStore.presentNestedModal {
+            CoverPickerFrame {
+                CoverSheetView(
+                    releaseId: session.releaseId,
+                    lightboxLoad: lightboxLoad,
+                    onFindRelease: {
+                        uiStore.dismissNestedModal()
+                        openSearch(.search)
+                    },
+                    refreshCovers: {
+                        try await releaseEditor.refreshReleaseCovers(
+                            session.releaseId
+                        )
+                    },
+                    onSelect: { selection in
+                        try await releaseEditor.changeCover(
+                            session.releaseId,
+                            selection
+                        )
+                        try await session.refreshCover()
+                    },
+                    onDone: { uiStore.dismissNestedModal() }
                 )
-                try await session.refreshCover()
-            },
-            onDone: { showingCoverPicker = false }
-        )
-        .frame(width: 1_000, height: 740)
+            }
+        }
     }
 
     /// Open the release's document `fileId` in the viewer.

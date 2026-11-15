@@ -113,6 +113,13 @@ struct MacMainWindowContainer: View {
                 }
             }
 
+            // A modal opened from the modal, over it
+            if let builder = uiStore.nestedModalBuilder {
+                ModalOverlay(onDismiss: { uiStore.dismissNestedModal() }) {
+                    builder()
+                }
+            }
+
             // Document viewer, over the modal it may have been opened from
             if let document = uiStore.document {
                 ModalOverlay(onDismiss: { uiStore.dismissDocument() }) {

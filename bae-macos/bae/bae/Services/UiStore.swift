@@ -148,6 +148,9 @@ class UiStore: @unchecked Sendable {
 
     var lightbox: Cursor<LightboxItem>?
     private(set) var modalBuilder: (() -> AnyView)?
+    /// A modal opened from inside the modal, drawn over it with the first
+    /// left open beneath: the release editor's Change cover.
+    private(set) var nestedModalBuilder: (() -> AnyView)?
     /// The document open in the viewer. It has a layer of its own, over the
     /// modal: a document opened from the release editor's modal leaves the
     /// editor open beneath it.
@@ -367,6 +370,16 @@ class UiStore: @unchecked Sendable {
         modalBuilder = { AnyView(content()) }
     }
 
+    func presentNestedModal(
+        @ViewBuilder content: @escaping () -> some View
+    ) {
+        nestedModalBuilder = { AnyView(content()) }
+    }
+
+    func dismissNestedModal() {
+        nestedModalBuilder = nil
+    }
+
     func presentDocument(name: String, text: String) {
         document = OpenDocument(name: name, text: text)
     }
@@ -404,6 +417,7 @@ class UiStore: @unchecked Sendable {
     }
 
     func dismissModal() {
+        nestedModalBuilder = nil
         modalBuilder = nil
     }
 
