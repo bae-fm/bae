@@ -3432,7 +3432,10 @@ notice in the invite's place: the address it was to share with, "Could not
 invite:" and what went wrong and what to fix ("Dropbox has no account for it";
 "your Dropbox email is not verified. Verify it, then invite them again"), and
 **Dismiss**. The notice stays until she dismisses it, in its place among the
-rows by when the invite was made. **Dismiss** is one local write that
+rows by when the invite was made. One statement over coven's invites, pending
+records and operations reads the rows in that order, each open invite with the
+pending record that is a hold and the name its request shows, and each notice.
+**Dismiss** is one local write that
 acknowledges the operation, so the notice leaves the list in that write; it
 refuses an operation that is no refused invite's.
 

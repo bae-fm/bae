@@ -47,130 +47,80 @@ impl InviteEntry {
             Self::Refused(_) => None,
         }
     }
-
-    /// The operation the row stands for, which orders the rows.
-    fn operation(&self) -> coven::OperationId {
-        match self {
-            Self::Open(open) => open.invite.operation,
-            Self::Refused(refused) => refused.operation,
-        }
-    }
-
-    /// `open` and `refused` as rows, in the order their operations were made.
-    pub fn in_operation_order(open: Vec<OpenInvite>, refused: Vec<RefusedInvite>) -> Vec<Self> {
-        let mut entries: Vec<Self> = open
-            .into_iter()
-            .map(Self::Open)
-            .chain(refused.into_iter().map(Self::Refused))
-            .collect();
-        entries.sort_by_key(|entry| entry.operation().0);
-        entries
-    }
 }
 
-impl OpenInvite {
-    /// Each of `invites` with the record among `records` whose subject is its
-    /// operation, unless the record is the invite's own waiting.
-    pub fn held_by(invites: Vec<coven::Invite>, records: &[coven::PendingRecord]) -> Vec<Self> {
-        invites
-            .into_iter()
-            .map(|invite| {
-                let held = records
-                    .iter()
-                    .find(|record| {
-                        matches!(record.subject,
-                            coven::PendingSubject::Operation { id, .. } if id == invite.operation)
-                    })
-                    .filter(|record| !waits_for_its_person(&invite, record))
-                    .map(|record| bae_sync_status::PendingWait::of(record, None));
-                Self { invite, held, requester: None }
-            })
-            .collect()
-    }
-}
+/// Every row of People's invites in the order their operations were made:
+/// this device's open invites, each with the pending record of its operation
+/// unless that record is the invite's own waiting (the join request at its
+/// own path while no request has arrived, and the admin's decision once one
+/// has), and the name its request shows; and each invite whose operation
+/// ended with a sharing refusal nobody has dismissed. A request shows the
+/// name a new person typed, or for a member getting access again the name of
+/// their profile.
+const INVITE_ROWS: &str = "\
+    SELECT i.operation AS operation, 'open' AS kind, i.invite AS invite, \
+           i.request_member IS NOT NULL AS has_request, \
+           CASE WHEN i.request_member IS NULL THEN NULL \
+                ELSE COALESCE(i.joiner_name, person.name) END AS requester, \
+           pending.record AS record, pending.cause AS cause, NULL AS outcome \
+    FROM coven_invites AS i \
+    LEFT JOIN coven_pending AS pending \
+        ON pending.subject_kind = 'operation' AND pending.operation = i.operation \
+       AND NOT (i.stage = 'waiting' \
+                AND ((i.request_member IS NULL AND pending.reason_kind = 'missing') \
+                     OR (i.request_member IS NOT NULL AND pending.reason_kind = 'paused'))) \
+    LEFT JOIN people AS person ON person.id = i.request_member \
+    UNION ALL \
+    SELECT o.operation, 'refused', NULL, NULL, NULL, NULL, NULL, o.outcome \
+    FROM coven_operations AS o \
+    WHERE o.kind = 'Invite' AND o.outcome_kind = 'sharing_refused' \
+    ORDER BY operation";
 
-/// The name the request of `invite`, if one has arrived, shows. A recovery's
-/// request carries none: the member already has a profile, whose name stands.
-/// A member with no profile is a row no writer here makes.
-fn requester_name(
-    invite: &coven::Invite,
-    profiles: &std::collections::HashMap<coven::MemberId, String>,
-) -> Result<Option<String>, bae_store::DbError> {
-    let request = match &invite.stage {
-        coven::InviteStage::Waiting { request: Some(request), .. }
-        | coven::InviteStage::Approving { request, .. } => request,
-        coven::InviteStage::Waiting { request: None, .. } | coven::InviteStage::Granting => {
-            return Ok(None)
-        }
+/// One row of [`INVITE_ROWS`] as the statement holds it.
+fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
+    let operation = coven::OperationId(row.get("operation")?);
+    let conversion = |error: Box<dyn std::error::Error + Send + Sync>| {
+        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Blob, error)
     };
-    match &request.joiner {
-        coven::Joiner::NewPerson { name } => Ok(Some(name.clone())),
-        coven::Joiner::MemberKeys => match profiles.get(&request.member) {
-            Some(name) => Ok(Some(name.clone())),
-            None => Err(bae_store::DbError::unreadable(
-                "people.name of a recovering member",
-                request.member,
-            )),
+    match row.get::<_, String>("kind")?.as_str() {
+        "open" => {
+            let invite = coven::Invite::from_columns(&row.get::<_, Vec<u8>>("invite")?, operation)
+                .map_err(|error| conversion(Box::new(error)))?;
+            let held = row
+                .get::<_, Option<coven::PendingRecord>>("record")?
+                .map(|mut record| {
+                    record.cause = row.get("cause")?;
+                    Ok::<_, rusqlite::Error>(bae_sync_status::PendingWait::of(&record, None))
+                })
+                .transpose()?;
+            let requester = row.get::<_, Option<String>>("requester")?;
+            // A recovering member's request carries no name; a member with no
+            // profile is a row no writer here makes.
+            if row.get::<_, bool>("has_request")? && requester.is_none() {
+                return Err(conversion(
+                    format!("people.name of the member recovering with invite {operation:?}")
+                        .into(),
+                ));
+            }
+            Ok(InviteEntry::Open(OpenInvite { invite, held, requester }))
+        }
+        _ => match row.get::<_, coven::OperationOutcome>("outcome")? {
+            coven::OperationOutcome::SharingRefused { account, refusal } => {
+                Ok(InviteEntry::Refused(RefusedInvite { operation, address: account, refusal }))
+            }
+            other => Err(conversion(format!("the outcome of a refused invite: {other:?}").into())),
         },
     }
-}
-
-/// Whether `record` is `invite` waiting as it should once its code shows:
-/// for the join request at its own path, or, with the request read, for the
-/// admin's decision.
-fn waits_for_its_person(invite: &coven::Invite, record: &coven::PendingRecord) -> bool {
-    matches!(
-        (&invite.stage, &record.reason),
-        (coven::InviteStage::Waiting { request: None, .. }, coven::PendingReason::Missing { .. })
-            | (coven::InviteStage::Waiting { request: Some(_), .. }, coven::PendingReason::Paused)
-    )
 }
 
 impl LibraryViews {
     /// This device's open invites, each with the pending record of its
     /// operation when coven holds one that is a hold, and the invites a
     /// sharing refusal ended and nobody dismissed, live from coven's
-    /// `coven_invites`, `coven_pending` and `coven_operations` in one read.
+    /// `coven_invites`, `coven_pending` and `coven_operations` in one
+    /// statement, in the order they were made.
     pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<InviteEntry>, bae_store::DbError> {
-        self.store.subscribe(|sql| {
-            let records = sql.query("SELECT record, cause FROM coven_pending", [], |row| {
-                let mut record = row.get::<_, coven::PendingRecord>(0)?;
-                record.cause = row.get(1)?;
-                Ok(record)
-            })?;
-            let profiles: std::collections::HashMap<coven::MemberId, String> = sql
-                .query("SELECT id, name FROM people", [], |row| {
-                    Ok((row.get::<_, coven::MemberId>(0)?, row.get::<_, String>(1)?))
-                })?
-                .into_iter()
-                .collect();
-            // Only an invite's operation ends with a refused sharing.
-            let refused = sql
-                .query(
-                    "SELECT operation, outcome FROM coven_operations \
-                     WHERE kind = 'Invite' AND outcome IS NOT NULL ORDER BY operation",
-                    [],
-                    |row| {
-                        Ok((
-                            coven::OperationId(row.get(0)?),
-                            row.get::<_, coven::OperationOutcome>(1)?,
-                        ))
-                    },
-                )?
-                .into_iter()
-                .filter_map(|(operation, outcome)| match outcome {
-                    coven::OperationOutcome::SharingRefused { account, refusal } => {
-                        Some(RefusedInvite { operation, address: account, refusal })
-                    }
-                    _ => None,
-                })
-                .collect();
-            let mut open = OpenInvite::held_by(coven::Invite::list(sql)?, &records);
-            for invite in &mut open {
-                invite.requester = requester_name(&invite.invite, &profiles)?;
-            }
-            Ok(InviteEntry::in_operation_order(open, refused))
-        })
+        self.store.subscribe(|sql| Ok(sql.query(INVITE_ROWS, [], invite_entry)?))
     }
 }
 

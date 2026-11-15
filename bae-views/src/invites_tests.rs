@@ -1,15 +1,55 @@
 use super::*;
 
-fn invite(id: &str, operation: i64) -> coven::Invite {
-    coven::Invite {
-        id: coven::InviteId(id.parse().unwrap()),
-        member: coven::MemberId("00000000-0000-4000-8000-000000000009".parse().unwrap()),
-        admits: coven::InviteAdmits::NewPerson,
-        access: coven::MemberAccess::ProviderAccount("dan@example.com".into()),
-        expires_at: std::time::UNIX_EPOCH,
-        operation: coven::OperationId(operation),
-        stage: coven::InviteStage::Granting,
-    }
+/// Coven's views as `INVITE_ROWS` reads them, as tables holding the columns
+/// the views give, beside the library's own `people`.
+fn views() -> rusqlite::Connection {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::TEST_SCHEMA.open_bare_library(&conn);
+    conn.execute_batch(
+        "CREATE TABLE coven_invites(invite, operation, stage, request_member, joiner_name);
+         CREATE TABLE coven_pending(record, cause, operation, subject_kind, reason_kind);
+         CREATE TABLE coven_operations(operation, kind, outcome, outcome_kind, account);",
+    )
+    .unwrap();
+    conn
+}
+
+/// What a row of the statement says, without decoding the invite's or the
+/// record's bytes: its operation, kind, whether a request arrived, the name
+/// the request shows, and the record held for it.
+type Shown = (i64, String, Option<bool>, Option<String>, Option<Vec<u8>>);
+
+fn rows(conn: &rusqlite::Connection) -> Vec<Shown> {
+    conn.prepare(INVITE_ROWS)
+        .unwrap()
+        .query_map([], |row| {
+            Ok((
+                row.get("operation")?,
+                row.get("kind")?,
+                row.get("has_request")?,
+                row.get("requester")?,
+                row.get("record")?,
+            ))
+        })
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap()
+}
+
+fn invite(conn: &rusqlite::Connection, operation: i64, stage: &str) {
+    conn.execute(
+        "INSERT INTO coven_invites VALUES (x'00', ?1, ?2, NULL, NULL)",
+        rusqlite::params![operation, stage],
+    )
+    .unwrap();
+}
+
+fn record(conn: &rusqlite::Connection, operation: i64, reason: &str) {
+    conn.execute(
+        "INSERT INTO coven_pending VALUES (x'01', NULL, ?1, 'operation', ?2)",
+        rusqlite::params![operation, reason],
+    )
+    .unwrap();
 }
 
 /// Coven holds Dan's invite while it can't grant his access: the invite
@@ -17,89 +57,88 @@ fn invite(id: &str, operation: i64) -> coven::Invite {
 /// shows nothing.
 #[test]
 fn an_invite_shows_the_record_its_operation_holds() {
-    let record = coven::PendingRecord {
-        subject: coven::PendingSubject::Operation {
-            id: coven::OperationId(7),
-            kind: coven::OperationKind::Invite,
-        },
-        reason: coven::PendingReason::NoStorage,
-        cause: Some("offline".into()),
-    };
-    let open = OpenInvite::held_by(
-        vec![
-            invite("00000000-0000-4000-8000-000000000001", 6),
-            invite("00000000-0000-4000-8000-000000000002", 7),
-        ],
-        std::slice::from_ref(&record),
-    );
-    assert_eq!(open[0].held, None);
-    let held = open[1].held.as_ref().expect("the record names the second invite");
-    assert_eq!(held.reason, coven::PendingReason::NoStorage);
-    assert_eq!(held.cause.as_deref(), Some("offline"));
+    let conn = views();
+    invite(&conn, 6, "granting");
+    invite(&conn, 7, "granting");
+    record(&conn, 7, "no_storage");
+    let rows = rows(&conn);
+    assert_eq!(rows[0].4, None);
+    assert!(rows[1].4.is_some());
 }
 
 /// Once Dan's invite shows its code, coven's pass looks for his request and
 /// holds a record naming the request it hasn't found: that is the invite
-/// waiting for him, not a hold to show, so the invite shows nothing.
+/// waiting for him, not a hold to show. A record of a failure to read the
+/// request is one, whatever stage the invite is at.
 #[test]
 fn a_waiting_invite_shows_no_record_for_the_request_it_waits_on() {
-    let waiting = coven::Invite {
-        stage: coven::InviteStage::Waiting { code: "code".into(), request: None },
-        ..invite("00000000-0000-4000-8000-000000000001", 7)
-    };
-    let record = coven::PendingRecord {
-        subject: coven::PendingSubject::Operation {
-            id: waiting.operation,
-            kind: coven::OperationKind::Invite,
-        },
-        reason: coven::PendingReason::Missing {
-            path: coven::ObjectPath::join_request(
-                coven::StoreId("00000000-0000-4000-8000-0000000000a1".parse().unwrap()),
-                coven::DeviceId(1),
-                waiting.id,
-            ),
-        },
-        cause: None,
-    };
-    let open = OpenInvite::held_by(vec![waiting], std::slice::from_ref(&record));
-    assert_eq!(open[0].held, None);
-}
-
-/// A waiting invite's own waits are not holds, but a request that cannot be
-/// read is: coven's record of a storage failure or of no storage shows,
-/// whatever stage the invite is at.
-#[test]
-fn a_waiting_invite_shows_the_record_of_a_failure_to_read_its_request() {
-    let waiting = coven::Invite {
-        stage: coven::InviteStage::Waiting { code: "code".into(), request: None },
-        ..invite("00000000-0000-4000-8000-000000000001", 7)
-    };
-    let record = coven::PendingRecord {
-        subject: coven::PendingSubject::Operation {
-            id: waiting.operation,
-            kind: coven::OperationKind::Invite,
-        },
-        reason: coven::PendingReason::NoStorage,
-        cause: Some("offline".into()),
-    };
-    let open = OpenInvite::held_by(vec![waiting], std::slice::from_ref(&record));
-    let held = open[0].held.as_ref().expect("a failure to read the request is a hold");
-    assert_eq!(held.reason, coven::PendingReason::NoStorage);
+    let conn = views();
+    invite(&conn, 7, "waiting");
+    record(&conn, 7, "missing");
+    invite(&conn, 8, "waiting");
+    record(&conn, 8, "no_storage");
+    let rows = rows(&conn);
+    assert_eq!(rows[0].4, None);
+    assert!(rows[1].4.is_some());
 }
 
 /// A pause is the wait of an invite whose request awaits Ana's decision, not
 /// of one still being granted, which shows it.
 #[test]
 fn a_pause_before_the_code_shows_is_a_hold() {
-    let granting = invite("00000000-0000-4000-8000-000000000002", 8);
-    let paused = coven::PendingRecord {
-        subject: coven::PendingSubject::Operation {
-            id: granting.operation,
-            kind: coven::OperationKind::Invite,
-        },
-        reason: coven::PendingReason::Paused,
-        cause: None,
-    };
-    let open = OpenInvite::held_by(vec![granting], &[paused]);
-    assert!(open[0].held.is_some());
+    let conn = views();
+    conn.execute("INSERT INTO coven_invites VALUES (x'00', 8, 'waiting', x'0a', 'Dan')", [])
+        .unwrap();
+    record(&conn, 8, "paused");
+    invite(&conn, 9, "granting");
+    record(&conn, 9, "paused");
+    let rows = rows(&conn);
+    assert_eq!(rows[0].4, None);
+    assert!(rows[1].4.is_some());
+}
+
+/// A request shows the name a new person typed; an invite with no request
+/// shows none, and a recovering member's request, which carries no name,
+/// shows none unless the member's profile gives one: the read refuses a
+/// request that arrived with no name to show.
+#[test]
+fn a_request_shows_the_name_a_new_person_typed() {
+    let conn = views();
+    invite(&conn, 1, "waiting");
+    conn.execute("INSERT INTO coven_invites VALUES (x'00', 2, 'waiting', x'0a', 'Dan')", [])
+        .unwrap();
+    conn.execute("INSERT INTO coven_invites VALUES (x'00', 3, 'approving', x'0c', NULL)", [])
+        .unwrap();
+    let shown: Vec<(Option<bool>, Option<String>)> =
+        rows(&conn).into_iter().map(|row| (row.2, row.3)).collect();
+    assert_eq!(
+        shown,
+        [(Some(false), None), (Some(true), Some("Dan".to_string())), (Some(true), None),]
+    );
+}
+
+/// Open invites and the ones a sharing refusal ended are one list in the
+/// order their operations were made; an outcome that is not a refusal lists
+/// nothing.
+#[test]
+fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
+    let conn = views();
+    invite(&conn, 5, "granting");
+    for (operation, kind, outcome_kind) in [
+        (2, "Invite", "sharing_refused"),
+        (4, "Invite", "applied"),
+        (6, "Invite", "sharing_refused"),
+        (3, "Other", "sharing_refused"),
+    ] {
+        conn.execute(
+            "INSERT INTO coven_operations VALUES (?1, ?2, x'02', ?3, 'dan@example.com')",
+            rusqlite::params![operation, kind, outcome_kind],
+        )
+        .unwrap();
+    }
+    let listed: Vec<(i64, String)> = rows(&conn).into_iter().map(|row| (row.0, row.1)).collect();
+    assert_eq!(
+        listed,
+        [(2, "refused".to_string()), (5, "open".to_string()), (6, "refused".to_string())]
+    );
 }
