@@ -3023,9 +3023,8 @@ The page's options menu (the ⋯ button after Shuffle on macOS, the bar's menu o
 Android) offers *Edit playlist…*, which changes its name and who sees it, and
 *Delete playlist…*, which asks first ("It is deleted from every device. The
 tracks in it stay in the library.") and then deletes it on every device. Saving
-an edit writes the name and who sees it as two writes, each only when it
-changed; a failure leaves the dialog open with its error, and saving again
-writes what is still different. A track's menu on a playlist's page offers Play
+an edit writes the name and who sees it in one write, so a failure changes
+neither and leaves the dialog open with its error. A track's menu on a playlist's page offers Play
 next and Add to queue to everyone, and *Remove from playlist* to the owner. The
 owner reorders the entries by dragging a row: on macOS a line marks the gap the
 row lands in, and on Android a held row lifts and the rows between make room.
