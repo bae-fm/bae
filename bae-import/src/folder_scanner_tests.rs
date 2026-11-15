@@ -144,7 +144,17 @@ pub(super) fn album_dir() -> (tempfile::TempDir, PathBuf) {
 /// Only the valid `FolderCandidate`s for `root` — the shape most scanner
 /// tests assert against (counts, paths, categorized files).
 pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
-    scan_items(root)
+    valid_candidates(scan_items(root))
+}
+
+/// [`scan_valid`] for a test that already runs on a runtime, which cannot
+/// start the runtime `scan_valid` scans on.
+pub(super) async fn scan_valid_on_this_runtime(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
+    valid_candidates(stored_scan(root.into(), FolderReleaseDecisions::default()).await)
+}
+
+fn valid_candidates(items: Vec<ScanItem>) -> Vec<FolderCandidate> {
+    items
         .into_iter()
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),

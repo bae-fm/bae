@@ -350,7 +350,7 @@ async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     )
     .unwrap();
 
-    let candidates = scan_valid(tmp.path().to_path_buf());
+    let candidates = scan_valid_on_this_runtime(tmp.path().to_path_buf()).await;
     assert_eq!(candidates.len(), 1);
     let files = &candidates[0].files;
     assert_eq!(files.bound_sheets().len(), 1);
