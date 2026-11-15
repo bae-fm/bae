@@ -1,5 +1,6 @@
 //! A list's selection (`import_list_selection`): the rows a person points
-//! at, which are only ever rows the list shows. What it holds and offers,
+//! at, which are only ever rows the list shows, bar a Pending list's release
+//! whose import landed. What it holds and offers,
 //! read as a live query of its own; the selected rows a bulk action takes, in
 //! the list's order; and the writes that change it, which answer nothing: the
 //! rows they changed rerun the windows holding them.
@@ -175,6 +176,26 @@ impl ImportTables {
                 let Some(row) = list_row(sql, list)? else {
                     return Ok(None);
                 };
+                // A release whose import landed while the list was on
+                // Pending stays selected until the person selects again.
+                let kept_unshown: bool = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM import_list_selection AS s \
+                     WHERE s.list_id = ? AND NOT EXISTS ( \
+                         SELECT 1 FROM import_list_shown AS shown \
+                         WHERE shown.list_id = s.list_id AND shown.key = s.key))",
+                    [list.0],
+                    |row| row.get(0),
+                )?;
+                if kept_unshown {
+                    sql.execute(
+                        "DELETE FROM import_list_selection \
+                         WHERE list_id = ? AND NOT EXISTS ( \
+                             SELECT 1 FROM import_list_shown AS shown \
+                             WHERE shown.list_id = import_list_selection.list_id \
+                               AND shown.key = import_list_selection.key)",
+                        [list.0],
+                    )?;
+                }
                 match change {
                     SelectionChange::Replace { keys } => {
                         sql.execute(

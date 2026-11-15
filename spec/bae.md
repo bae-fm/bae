@@ -1100,13 +1100,18 @@ and it only ever holds rows the list shows: the write that stops showing a
 selected row — another tab, filter or search, a fold, or a change that moves
 the row out of the filter, such as one that starts importing under Identified
 — takes it out of the selection in that same write, and a row shown again
-comes back unselected. A write that stores a candidate's state, such as an
+comes back unselected. One row stays selected without being shown: a selected
+Pending row whose import lands moves to Done, but the list stays on Pending,
+the row stays selected and its pane stays open, showing the release as
+imported (Done's pane, above) with its way to open the release in the
+library, until the person selects another row or changes the tab, filter or
+search. A write that stores a candidate's state, such as an
 edit in its pane or a pick, changes only the rows whose values change, each in
 place, so no step of it shows the row as something it isn't, such as unlinked
 on the way to linked again: typing into the selected row's pane keeps the row
 selected and the pane open, under any view that still shows it. A release the scan reads again with changed files is
 the same row: it stays selected, under a group as folded as it was. The pane a selection opens reads only that selection,
-so with nothing shown selected it shows nothing selected. A bulk action runs
+so with nothing selected it shows nothing selected. A bulk action runs
 in core over the selected rows that offer it, in the order the list shows
 them, and answers with the rows it failed on; how many it has done moves
 with each row, so it reaches the app only in a `KeyedValueStream` (§10.2)
@@ -6351,7 +6356,7 @@ Beside them, keyed by the release an import made:
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
-| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out |
+| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out, bar a Pending row whose import landed, which stays until another row is selected or the view changes |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the

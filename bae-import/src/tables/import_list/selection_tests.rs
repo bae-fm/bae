@@ -53,6 +53,51 @@ async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
     );
 }
 
+/// A selected release whose import lands stays selected on Pending, shown as
+/// imported in its pane, until the person selects another row.
+#[tokio::test]
+async fn a_selected_release_whose_import_lands_stays_selected_until_another_is() {
+    let lib = five_rows().await;
+    let list = lib.open(view(TriageTab::Pending)).await;
+    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
+    imported_release(&lib.db, &lib.candidate("A")).await;
+
+    let read = lib.read(list).await;
+    assert_eq!(read.selection.count, 1);
+    assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("A") }));
+    assert!(
+        !lib.items(view(TriageTab::Pending)).await.iter().any(|name| name == "A"),
+        "the list no longer shows the row"
+    );
+    let pane = lib.tables().load_import_candidate(&lib.key("A")).await.unwrap().unwrap();
+    assert!(pane.draft().is_none(), "the pane holds the imported release");
+
+    lib.run(lib.linked("B")).await;
+    assert_eq!(lib.read(list).await.selection.count, 1, "a change to another row keeps it");
+
+    lib.select(list, SelectionChange::Toggle { add: vec![lib.key("B")], remove: vec![] }).await;
+    let read = lib.read(list).await;
+    assert_eq!(read.selection.count, 1, "selecting another row drops the imported one");
+    assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("B") }));
+}
+
+/// A selected release whose import lands leaves the selection when the person
+/// changes the list's tab.
+#[tokio::test]
+async fn a_release_kept_after_its_import_leaves_with_the_view() {
+    let lib = five_rows().await;
+    let list = lib.open(view(TriageTab::Pending)).await;
+    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
+    imported_release(&lib.db, &lib.candidate("A")).await;
+    lib.tables()
+        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+        .await
+        .unwrap();
+    assert_eq!(lib.read(list).await.selection.count, 1, "an order change keeps the view");
+    lib.tables().set_import_list_view(list, view(TriageTab::Skipped)).await.unwrap();
+    assert_eq!(lib.read(list).await.selection.count, 0);
+}
+
 /// The selected rows a bulk action takes are in the order the list shows
 /// them, whatever order they were selected in.
 #[tokio::test]

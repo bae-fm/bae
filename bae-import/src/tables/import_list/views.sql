@@ -106,7 +106,9 @@ CREATE VIEW IF NOT EXISTS import_list_shown AS
 SELECT * FROM import_list_item WHERE item <> 'group';
 
 -- A selected release a change moves out of what a list shows leaves its
--- selection.
+-- selection, except a release whose import landed while the list is on
+-- Pending: the pane keeps it, shown as imported, until the person selects
+-- another row or changes the view.
 CREATE TRIGGER IF NOT EXISTS import_list_selected_moved AFTER UPDATE ON import_list_placement
 WHEN NEW.item <> 'group'
  AND (OLD.tab, OLD.pending_state, OLD.filter_title, OLD.filter_artists, OLD.group_folder)
@@ -116,7 +118,10 @@ BEGIN
     WHERE key = NEW.key
       AND NOT EXISTS (SELECT 1 FROM import_list_shown AS shown
                       WHERE shown.list_id = import_list_selection.list_id
-                        AND shown.key = NEW.key);
+                        AND shown.key = NEW.key)
+      AND NOT (NEW.tab = 'done'
+               AND (SELECT l.tab FROM import_list AS l
+                    WHERE l.id = import_list_selection.list_id) = 'pending');
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_selected_removed AFTER DELETE ON import_list_placement
