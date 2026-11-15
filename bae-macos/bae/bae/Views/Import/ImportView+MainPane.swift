@@ -79,16 +79,10 @@ extension ImportView {
                 .id(release.releaseId)
             }
         case .importing(let step):
-            let mappingActions = mappingActions(for: candidate)
             ImportingCandidatePane(
                 candidate: candidate,
                 step: step,
-                coverContent: candidate.cover?.imageContent,
-                onOpenImages: mappingActions.openImages,
-                onOpenDocument: mappingActions.openDocument,
-                onPreview: mappingActions.preview,
-                onStopPreview: mappingActions.stopPreview,
-                previewingTarget: importStore.previewState.active?.target
+                coverContent: candidate.cover?.imageContent
             )
         case .error, nil:
             preparingMappingPane(for: candidate)

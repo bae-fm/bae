@@ -132,12 +132,7 @@ struct ImportStandingRowTests {
             ImportingCandidatePane(
                 candidate: PreviewData.folderCandidates[0],
                 step: step,
-                coverContent: nil,
-                onOpenImages: { _, _ in },
-                onOpenDocument: { _, _ in },
-                onPreview: { _ in },
-                onStopPreview: {},
-                previewingTarget: nil
+                coverContent: nil
             )
             .frame(height: 400),
             height: 400
