@@ -196,7 +196,7 @@ private struct SectionPills: View {
         } label: {
             Text(verbatim: title)
                 .themeText(.strong)
-                .foregroundStyle(active ? Color.primary : Color.secondary)
+                .foregroundStyle(active ? Theme.textPrimary : Color.secondary)
                 .padding(.horizontal, ThemeSpace.edge)
                 .padding(.vertical, ThemeSpace.compact)
                 .background(

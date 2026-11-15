@@ -153,7 +153,7 @@ struct SettingsSidebar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, ThemeSpace.fieldInset)
             .padding(.vertical, ThemeSpace.inline + ThemeSpace.hairline)
-            .foregroundStyle(chosen ? Theme.onFill : Color.primary)
+            .foregroundStyle(chosen ? Theme.onFill : Theme.textPrimary)
             .environment(\.chipsOnFill, chosen)
             .background(
                 chosen ? accent.buttonColor : Color.clear,

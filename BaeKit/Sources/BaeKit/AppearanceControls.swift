@@ -110,7 +110,10 @@ public struct MacAccentPicker: View {
                     if chosen {
                         // A gap of the surface, then the ring.
                         Circle()
-                            .stroke(Color.primary, lineWidth: Self.ringWidth)
+                            .stroke(
+                                Theme.textPrimary,
+                                lineWidth: Self.ringWidth
+                            )
                             .frame(
                                 width: Self.swatchSize + 2 * Self.ringOffset,
                                 height: Self.swatchSize + 2 * Self.ringOffset

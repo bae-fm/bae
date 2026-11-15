@@ -23,7 +23,7 @@ struct IconHoverButtonStyle: ButtonStyle {
                 .foregroundStyle(
                     isOn
                         ? Theme.accent
-                        : hovering ? Color.primary : Color.secondary
+                        : hovering ? Theme.textPrimary : Color.secondary
                 )
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.control)

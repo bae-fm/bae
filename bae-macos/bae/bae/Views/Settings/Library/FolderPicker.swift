@@ -158,7 +158,7 @@
                     .disabled(browser.isWorking)
                 }
             }
-            .foregroundStyle(chosen ? Theme.onFill : Color.primary)
+            .foregroundStyle(chosen ? Theme.onFill : Theme.textPrimary)
             .padding(ThemeSpace.fieldInset)
             .background(chosen ? accent.buttonColor : Color.clear)
             .padding(-ThemeSpace.fieldInset)

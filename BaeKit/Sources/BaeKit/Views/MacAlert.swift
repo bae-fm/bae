@@ -202,7 +202,7 @@
                     Button(action: run) {
                         label.foregroundStyle(
                             button.role == .destructive
-                                ? Theme.danger : Color.primary
+                                ? Theme.danger : Theme.textPrimary
                         )
                     }
                     .buttonStyle(SecondaryButtonStyle().accentFocus())

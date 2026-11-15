@@ -137,7 +137,7 @@ extension View {
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
                 )
                 .foregroundStyle(
-                    tone.hasNoticeFill ? Theme.onNotice : Color.primary
+                    tone.hasNoticeFill ? Theme.onNotice : Theme.textPrimary
                 )
         case .quiet:
             padding(.vertical, ThemeSpace.related + ThemeSpace.line)

@@ -54,7 +54,7 @@ struct CommittedTextField: View {
     var fillsWidth = false
     var font: NSFont = ThemeText.body.nsFont
     /// The typed value's color. The placeholder takes its own, by role.
-    var textColor: NSColor = .controlTextColor
+    var textColor = NSColor(Theme.textPrimary)
     var placeholderRole: PlaceholderRole = .hint
     /// The field holds something that cannot be kept: its edge turns red.
     var invalid = false

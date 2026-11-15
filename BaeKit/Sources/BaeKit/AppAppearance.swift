@@ -69,15 +69,31 @@ private struct HostedAppearanceStyle: ViewModifier {
 }
 
 extension View {
+    #if os(macOS)
+        fileprivate var textStyles: some View {
+            foregroundStyle(
+                Theme.textPrimary,
+                Color(nsColor: .secondaryLabelColor),
+                Color(nsColor: .tertiaryLabelColor)
+            )
+        }
+    #else
+        fileprivate var textStyles: some View {
+            foregroundStyle(Theme.textPrimary)
+        }
+    #endif
+
     fileprivate func toned(
         _ tone: SurfaceTone,
         accent: AccentChoice,
         accentColor: Color
     ) -> some View {
         // Text with no colour of its own, and `.primary`, draw in the design
-        // system's text-primary, not the system label colour (#DDDDDF in Dark).
-        // Secondary text keeps the system's secondary label colour.
-        foregroundStyle(Theme.textPrimary)
+        // system's text-primary, not the system label colour (#DDDDDF in
+        // Dark). `.secondary` and `.tertiary` stay the system's own label
+        // colours (the design system's mac-text-secondary), which the
+        // hierarchy would otherwise derive from text-primary.
+        textStyles
             .environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
             .accentColor(accentColor)

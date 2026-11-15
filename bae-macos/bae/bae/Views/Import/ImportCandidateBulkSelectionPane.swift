@@ -207,7 +207,7 @@ private struct BulkActionRow: View {
                 Text(verbatim: offer.action.label)
                     .themeText(isConstructive ? .strong : .body)
                     .foregroundStyle(
-                        isConstructive ? Color.primary : Color.secondary
+                        isConstructive ? Theme.textPrimary : Color.secondary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let importDestination {

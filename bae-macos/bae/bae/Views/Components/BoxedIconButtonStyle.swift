@@ -46,7 +46,7 @@ struct BoxedIconButtonStyle: ButtonStyle {
         var body: some View {
             let dark = scheme == .dark
             configuration.label
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(Theme.textPrimary)
                 .frame(width: size.side, height: size.side)
                 .background(
                     RoundedRectangle(cornerRadius: size.cornerRadius)
@@ -71,7 +71,7 @@ struct BoxedIconButtonStyle: ButtonStyle {
                             lineWidth: 0.5
                         )
                     RoundedRectangle(cornerRadius: size.cornerRadius)
-                        .fill(Color.primary.opacity(hovering ? 0.15 : 0))
+                        .fill(Theme.textPrimary.opacity(hovering ? 0.15 : 0))
                 }
                 .opacity(configuration.isPressed ? 0.6 : 1)
                 .contentShape(Rectangle())
