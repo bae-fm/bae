@@ -211,7 +211,7 @@ pub struct DbWorkReleaseSummary {
     pub release_name: Option<String>,
     pub year: Option<i32>,
     pub media: Vec<bae_types::pressing::MediaCount>,
-    pub release_index: i64,
+    pub release_number: i64,
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
 }
@@ -273,7 +273,6 @@ pub struct ReleaseDetailContext {
     pub download: Option<bae_transfers::DownloadEntry>,
     /// The storage actions the release offers, as SQL decided them.
     pub actions: crate::DbStorageActions,
-    pub release_index: usize,
     pub is_compilation: bool,
     /// The album's year, which the release's year is compared with.
     pub album_year: Option<i32>,

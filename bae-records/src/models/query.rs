@@ -36,6 +36,9 @@ pub struct DbReleaseDetail {
     pub upload: Option<DbReleaseUpload>,
     /// The version of the release's cover; `None` when it has none.
     pub cover_version: Option<String>,
+    /// The release's place among its album's releases, counted from 1 by
+    /// album order, then id.
+    pub release_number: i64,
 }
 
 /// A track as the release editor reads its audio: the track, how many audio

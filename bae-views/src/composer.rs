@@ -379,22 +379,12 @@ fn work_release_rows(
             r.release_name,
             r.year AS release_year,
             {media} AS release_media,
-            (
-                SELECT COUNT(*)
-                FROM releases indexed_release
-                WHERE indexed_release.album_id = r.album_id
-                  AND (
-                      indexed_release.album_order < r.album_order
-                      OR (
-                          indexed_release.album_order = r.album_order
-                          AND indexed_release.id <= r.id
-                      )
-                  )
-            ) AS release_index,
+            number.number AS release_number,
             {cover} AS cover_version
          FROM track_works tw
          JOIN tracks t ON t.id = tw.track_id
          JOIN releases r ON r.id = t.release_id
+         JOIN release_number_in_album number ON number.release_id = r.id
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
          ORDER BY {order}",
@@ -416,7 +406,7 @@ fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseS
         release_name: row.get("release_name")?,
         year: row.get("release_year")?,
         media: read_media(row, "release_media")?,
-        release_index: row.get("release_index")?,
+        release_number: row.get("release_number")?,
         cover_version: row.get("cover_version")?,
     })
 }

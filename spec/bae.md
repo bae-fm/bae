@@ -197,6 +197,11 @@ primary. "Set as primary release" moves a release before the album's others,
 and is refused for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
+A release with no stored name, year or media shows as "Release N", where N is
+its place among its album's releases in that order, counted from 1, ties broken
+by release id. The view `release_number_in_album` defines N, and the album page,
+the release page and the composer page's release rows all read it.
+
 Deleting a release deletes, in one write, its tracks and their places in the
 queue, its files and its cover (§4.2), and is refused for a release the library
 doesn't hold. Deleting an album deletes every release

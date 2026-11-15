@@ -82,7 +82,9 @@ pub fn release_details_on<X>(
                 COALESCE({RELEASE_STORAGE_PINNED}, 0) AS pinned, \
                 COALESCE(storage.stored = 1, 0) AS remote, \
                 {upload_columns}, \
-                {cover_version} AS cover_version{extra_columns} \
+                {cover_version} AS cover_version, \
+                (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
+                    AS release_number{extra_columns} \
          FROM releases rel \
          LEFT JOIN release_storage storage ON storage.release_id = rel.id \
          LEFT JOIN ({sending}) sending ON sending.release_id = rel.id \
@@ -119,6 +121,7 @@ pub fn release_details_on<X>(
             remote: row.get("remote")?,
             upload: super::queued_uploads::release_upload_in_row(row)?,
             cover_version: row.get("cover_version")?,
+            release_number: row.get("release_number")?,
         };
         Ok((detail, extra(row)?))
     })?)
@@ -140,6 +143,7 @@ pub struct DbReleaseDetailRows {
     remote: bool,
     upload: Option<DbReleaseUpload>,
     cover_version: Option<String>,
+    release_number: i64,
 }
 
 impl DbReleaseDetailRows {
@@ -164,6 +168,7 @@ impl DbReleaseDetailRows {
             remote: self.remote,
             upload: self.upload,
             cover_version: self.cover_version,
+            release_number: self.release_number,
         }
     }
 }

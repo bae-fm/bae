@@ -26,6 +26,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         remote: false,
         upload: None,
         cover_version: None,
+        release_number: 1,
     };
     let ctx = ReleaseResolveCtx { cover: None, is_compilation: false, album_year };
     let actions = crate::DbStorageActions {
@@ -36,7 +37,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         transitioning: false,
         cancel_only: false,
     };
-    ReleaseDetail::from_raw(raw, None, actions, 0, &ctx)
+    ReleaseDetail::from_raw(raw, None, actions, &ctx)
 }
 
 /// A line about the pressing names its year only when it differs from the

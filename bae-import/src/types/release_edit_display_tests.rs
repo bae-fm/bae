@@ -147,6 +147,7 @@ fn one_track(
         remote: false,
         upload: None,
         cover_version: None,
+        release_number: 1,
     };
     (raw, vec![bae_records::DbReleaseEditTrack { track, audio_format_count: 1, segments }])
 }

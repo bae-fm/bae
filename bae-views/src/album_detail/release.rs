@@ -175,7 +175,6 @@ impl ReleaseDetail {
         raw: DbReleaseDetail,
         download: Option<bae_transfers::DownloadEntry>,
         actions: crate::DbStorageActions,
-        release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
         let release = raw.release;
@@ -235,7 +234,7 @@ impl ReleaseDetail {
             release.release_name.as_deref(),
             release.pressing.year,
             &release.pressing.facts.media,
-            (release_index + 1) as i64,
+            raw.release_number,
         );
 
         // Route the slim row through `ReleaseSummary::from_raw` rather than build it

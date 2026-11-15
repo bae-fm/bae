@@ -85,7 +85,7 @@ async fn work_detail_release_rows_carry_album_release_display_fields() {
         release.media,
         bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media
     );
-    assert_eq!(release.release_index, 1);
+    assert_eq!(release.release_number, 1);
 }
 
 #[tokio::test]

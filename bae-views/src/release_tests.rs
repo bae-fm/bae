@@ -1,5 +1,5 @@
-//! The release detail: its track artists, its files and its index among its
-//! album's releases, in order.
+//! The release detail: its track artists, its files and its number among its
+//! album's releases.
 
 use crate::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
@@ -79,41 +79,50 @@ async fn release_detail_files_are_in_case_insensitive_natural_order() {
     );
 }
 
-/// A release's index among its album's releases is how many come before it
-/// in the album's order, by place and then id, counted on the album's
-/// releases index.
+/// A release's number is its place among its album's releases, counted from
+/// 1 by album order and then id, on the album page and on each release's
+/// page alike, and moving a release first renumbers them.
 #[tokio::test]
-async fn a_releases_index_counts_the_releases_before_it() {
+async fn a_releases_number_is_its_place_in_its_album() {
     let (db, _tmp) = aggregate_db(crate::TEST_SCHEMA).await;
+    let views = crate::LibraryViews::new(db.clone());
     // Places 0, 1, 1: the two at place 1 go by id.
-    for (release_id, index) in [
-        ("8aa66d48-65a0-42e4-8c1d-e7481e8c1861", 0),
-        ("0252dedb-ee39-4547-8803-438dbeb57a64", 1),
-        ("64e79a1f-404a-4c34-809a-a3cb44bf1942", 2),
-    ] {
-        let context = crate::LibraryViews::new(db.clone())
-            .find_release_detail_context(release_id)
-            .await
-            .unwrap()
-            .expect("the release exists");
-        assert_eq!(context.release_index, index, "{release_id}");
-    }
+    let expected = [
+        ("8aa66d48-65a0-42e4-8c1d-e7481e8c1861", 1),
+        ("0252dedb-ee39-4547-8803-438dbeb57a64", 2),
+        ("64e79a1f-404a-4c34-809a-a3cb44bf1942", 3),
+    ];
 
-    let plan = db
-        .read(|sql| {
-            sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", crate::release::RELEASE_INDEX_IN_ALBUM),
-                ["8aa66d48-65a0-42e4-8c1d-e7481e8c1861"],
-                |row| row.get::<_, String>(3),
-            )
-            .map_err(DbError::from)
-        })
-        .await
-        .unwrap();
-    assert!(
-        plan.iter().any(|step| step.contains("idx_releases_album_id")),
-        "the count reads the album's releases index: {plan:?}"
-    );
+    let numbers = |name: &crate::album_detail::ReleaseName| match name {
+        crate::album_detail::ReleaseName::Numbered(number) => *number,
+        other => panic!("a release with no name, year or media shows its number: {other:?}"),
+    };
+    let check = |expected: Vec<(&'static str, i64)>| {
+        let views = views.clone();
+        async move {
+            let album =
+                views.find_album_detail(ALBUM_A).await.unwrap().expect("the album has releases");
+            for (release_id, number) in &expected {
+                let on_album_page = album
+                    .releases
+                    .iter()
+                    .find(|release| release.summary.id == *release_id)
+                    .expect("the album page lists the release");
+                assert_eq!(numbers(&on_album_page.name), *number, "{release_id} on the album");
+                let on_release_page = views
+                    .find_release_detail(release_id)
+                    .await
+                    .unwrap()
+                    .expect("the release exists");
+                assert_eq!(numbers(&on_release_page.name), *number, "{release_id} on its page");
+            }
+        }
+    };
+    check(expected.to_vec()).await;
+
+    // The last release moves first: the others follow it.
+    test_records(&db).set_album_primary_release(ALBUM_A, expected[2].0).await.unwrap();
+    check(vec![(expected[2].0, 1), (expected[0].0, 2), (expected[1].0, 3)]).await;
 }
 
 const CREDIT_ALBUM: &str = "a7c1e5d2-3b4f-4c68-9d0e-1f2a3b4c5d01";

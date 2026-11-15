@@ -289,6 +289,19 @@ CREATE TABLE IF NOT EXISTS releases (
 
 CREATE INDEX IF NOT EXISTS idx_releases_album_id ON releases (album_id, album_order, id);
 
+-- One row for each release, with its place among its album's releases,
+-- counted from 1 by `album_order`, then id. A release with no stored name,
+-- year or media shows this number as its name. The count reads the album's
+-- releases on `idx_releases_album_id`, so reading one release's number, or
+-- an album's, reads no other album's releases.
+CREATE VIEW IF NOT EXISTS release_number_in_album AS
+SELECT r.id AS release_id,
+       (SELECT COUNT(*) FROM releases AS earlier
+        WHERE earlier.album_id = r.album_id
+          AND (earlier.album_order < r.album_order
+               OR (earlier.album_order = r.album_order AND earlier.id <= r.id))) AS number
+FROM releases AS r;
+
 -- Every record label the library knows. A label is found by a catalog id it
 -- carries first, then by `name_key`: `name` read by
 -- `text_match::label_name_key` (its words run together, without the trade
