@@ -35,7 +35,7 @@ public struct ProfileCreationRows: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
-            else if store.members != nil {
+            else if store.people != nil {
                 if let why = store.requestedProfile?.state.unmadeReason {
                     ErrorText("Your profile could not be made. \(why)")
                 }

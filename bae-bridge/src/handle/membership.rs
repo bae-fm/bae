@@ -169,6 +169,22 @@ impl AppHandle {
             guard: std::sync::Mutex::new(Some(self.services.hold_invite_screen_sync())),
         })
     }
+    /// The person using this device, the other people, and how many people
+    /// and devices the library has, now and after each change.
+    pub fn subscribe_people(&self) -> Arc<crate::PeopleSubscription> {
+        crate::screens::people(self.services.subscribe_people(), self.runtime.clone())
+    }
+    /// The person with member id `member`, now and after each change: none
+    /// once they have left the library.
+    pub fn subscribe_person(
+        &self,
+        member: String,
+    ) -> Result<Arc<crate::PersonSubscription>, BridgeError> {
+        Ok(crate::screens::person(
+            self.services.subscribe_person(crate::from_app::member(&member)?),
+            self.runtime.clone(),
+        ))
+    }
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     pub fn subscribe_admin_changes(&self) -> Arc<crate::AdminChangesSubscription> {
@@ -183,8 +199,6 @@ impl AppHandle {
 forward! {async this => {
     fn add_device()->BridgeAddDevice {Ok(BridgeAddDevice::from_core(this.services.add_device().await?))}
     fn get_members()->BridgeMembership {Ok(BridgeMembership::from_core(this.services.get_members().await?))}
-    fn people()->Vec<BridgePerson> {Ok(this.services.people().await?.into_iter().map(BridgePerson::from_core).collect())}
-    fn own_person()->Option<BridgePerson> {Ok(this.services.own_person().await?.map(BridgePerson::from_core))}
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&crate::from_app::member(&member)?).await?)}
     fn remove_device(device:u64)->BridgeDeviceRemoval {Ok(BridgeDeviceRemoval::from_core(this.services.remove_device(coven::DeviceId(device)).await?))}
     fn confirm_device_cut_off(device:u64)->BridgeDeviceCutOff {Ok(BridgeDeviceCutOff::from_core(this.services.confirm_device_cut_off(coven::DeviceId(device)).await?))}

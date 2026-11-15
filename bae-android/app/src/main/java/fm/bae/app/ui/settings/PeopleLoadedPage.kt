@@ -14,16 +14,17 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScreen
-import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgePeople
 
 // The pages of People and devices as the screen shows them once it has read the people.
 
-/** The page [page] names, over the [people] read. */
+/** The page [page] names, over the [people] read, and for a person's page the [person] read of them. */
 @Composable
 internal fun LoadedPeoplePage(
     session: OpenLibrary,
     model: MembersModel,
-    people: List<BridgePerson>,
+    people: BridgePeople,
+    person: PersonRead,
     callbacks: MemberCallbacks,
     dialogs: MembersDialogs,
     page: PeoplePage,
@@ -51,14 +52,14 @@ internal fun LoadedPeoplePage(
         }
 
         is PeoplePage.Person -> {
-            val person = people.firstOrNull { it.membership.id == page.memberId }
-            if (person == null) {
+            val shown = (person as? PersonRead.Loaded)?.takeIf { it.memberId == page.memberId }?.person
+            if (shown == null) {
                 PeopleFrame(title = stringResource(R.string.members_unnamed), error = model.error, onBack = onBack) {}
             } else {
                 AndroidSettingsPerson(
-                    member = person.membership,
+                    member = shown.membership,
                     selfIsAdmin = model.selfIsAdmin,
-                    name = person.profile?.name ?: stringResource(R.string.members_unnamed),
+                    name = shown.profile?.name ?: stringResource(R.string.members_unnamed),
                     adminChanges = model.adminChanges,
                     callbacks = callbacks,
                     error = model.error,
@@ -68,8 +69,8 @@ internal fun LoadedPeoplePage(
         }
 
         PeoplePage.Devices -> {
-            val person = people.firstOrNull { it.membership.isSelf }
-            if (person == null) {
+            val own = people.own
+            if (own == null) {
                 PeopleFrame(
                     title = stringResource(R.string.people_your_devices),
                     error = model.error,
@@ -77,7 +78,7 @@ internal fun LoadedPeoplePage(
                 ) {}
             } else {
                 AndroidSettingsDevices(
-                    member = person.membership,
+                    member = own.membership,
                     callbacks = callbacks,
                     error = model.error,
                     onBack = onBack,
@@ -109,7 +110,7 @@ internal fun PeopleFrame(
 @Composable
 internal fun pageTitle(
     page: PeoplePage,
-    read: PeopleRead,
+    person: PersonRead,
 ): String =
     when (page) {
         PeoplePage.People -> {
@@ -121,9 +122,9 @@ internal fun pageTitle(
         }
 
         is PeoplePage.Person -> {
-            (read as? PeopleRead.Loaded)
-                ?.people
-                ?.firstOrNull { it.membership.id == page.memberId }
+            (person as? PersonRead.Loaded)
+                ?.takeIf { it.memberId == page.memberId }
+                ?.person
                 ?.profile
                 ?.name ?: stringResource(R.string.members_unnamed)
         }

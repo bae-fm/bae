@@ -32,11 +32,6 @@ pub fn entered_name_is_blank(text: String) -> bool {
 
 #[uniffi::export]
 impl AppHandle {
-    /// Every person's profile, now and after each change.
-    pub fn subscribe_profiles(&self) -> std::sync::Arc<crate::ProfilesSubscription> {
-        crate::screens::profiles(self.services.subscribe_profiles(), self.runtime.clone())
-    }
-
     /// Every playlist this device holds, now and after each change.
     pub fn subscribe_playlists(&self) -> std::sync::Arc<crate::PlaylistsSubscription> {
         crate::screens::playlists(self.services.subscribe_playlists(), self.runtime.clone())

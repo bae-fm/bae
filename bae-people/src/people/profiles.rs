@@ -4,7 +4,7 @@ use super::profile_request::{
 };
 use super::*;
 use crate::membership::{member_columns, member_row, SELF_IS_ADMIN};
-use crate::people::{Avatar, HistorySharing, Person, PersonProfile, ProfileError};
+use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
 use bae_store::read::SortLanguageRead;
 use bae_util::name_key::SortLanguage;
 
@@ -34,13 +34,36 @@ impl People {
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile once they made one.
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql())?)).await?.pop())
+        Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql(), [])?)).await?.pop())
     }
 
-    /// Everyone in the library, in member-id order: each member, with
-    /// their profile once they made one.
-    pub async fn people(&self) -> Result<Vec<Person>, DbError> {
-        self.inner.store.read(|sql| Ok(people_on(&sql, &everyone_sql())?)).await
+    /// The person using this device, the other people, and how many people and
+    /// devices the library has, live: one read of coven's members and devices
+    /// and the profiles, so a screen draws its sections and its counts from
+    /// the same moment.
+    pub fn subscribe_people(&self) -> coven::LiveQuery<PeopleView, bae_store::DbError> {
+        self.inner.store.subscribe(|sql| {
+            let own = people_on(&sql, &own_person_sql(), [])?.pop();
+            let others = people_on(&sql, &others_sql(), [])?;
+            let (people, devices) = sql.query_row(PEOPLE_COUNTS, [], |row| {
+                Ok((
+                    bae_store::read::count_column(row, "people")?,
+                    bae_store::read::count_column(row, "devices")?,
+                ))
+            })?;
+            Ok(PeopleView { own, others, people, devices })
+        })
+    }
+
+    /// The person with member id `member`, live: none once they have left the
+    /// library, or before their registration has applied.
+    pub fn subscribe_person(
+        &self,
+        member: coven::MemberId,
+    ) -> coven::LiveQuery<Option<Person>, bae_store::DbError> {
+        self.inner
+            .store
+            .subscribe(move |sql| Ok(people_on(&sql, &person_sql(), params![member])?.pop()))
     }
 
     /// Follow every profile, ordered by name in the language `language`
@@ -183,7 +206,7 @@ impl People {
     /// The member using this device, once the library knows them: at once
     /// when their registration has applied, or when sync applies it.
     async fn known_member(&self) -> Result<coven::MemberId, DbError> {
-        let mut own = self.inner.store.subscribe(|sql| Ok(people_on(&sql, &own_person_sql())?));
+        let mut own = self.inner.store.subscribe(|sql| Ok(people_on(&sql, &own_person_sql(), [])?));
         while let Some(own) = own.next().await {
             if let Some(person) = own?.pop() {
                 return Ok(person.membership.id);
@@ -517,11 +540,6 @@ fn people_sql(narrowing: &str) -> String {
     )
 }
 
-/// Everyone in the library.
-fn everyone_sql() -> String {
-    people_sql("")
-}
-
 /// What names the member using this device, over `coven_members AS m`: the
 /// person using this device is the member coven marks as this device's own.
 pub(super) const IS_OWN_MEMBER: &str = "m.is_self";
@@ -531,10 +549,31 @@ fn own_person_sql() -> String {
     people_sql(&format!(" AND {IS_OWN_MEMBER}"))
 }
 
-/// The people `statement` reads, from [`people_sql`].
-fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<Person>> {
+/// The member bound to `?1`.
+fn person_sql() -> String {
+    people_sql(" AND m.member = ?1")
+}
+
+/// Everyone but the person using this device.
+fn others_sql() -> String {
+    people_sql(&format!(" AND NOT {IS_OWN_MEMBER}"))
+}
+
+/// How many people the library has and how many active devices they have.
+const PEOPLE_COUNTS: &str = "\
+    SELECT (SELECT COUNT(*) FROM coven_members AS m WHERE NOT m.removed) AS people, \
+           (SELECT COUNT(*) FROM coven_devices AS d \
+            JOIN coven_members AS m ON m.member = d.member \
+            WHERE NOT m.removed AND d.state = 'active') AS devices";
+
+/// The people `statement` reads with `params`, from [`people_sql`].
+fn people_on(
+    sql: &SqlReadContext<'_>,
+    statement: &str,
+    params: impl Params,
+) -> rusqlite::Result<Vec<Person>> {
     let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
-    sql.query(statement, [], |row| {
+    sql.query(statement, params, |row| {
         Ok(Person {
             profile: match row.get::<_, Option<String>>(0)? {
                 Some(_) => Some(profile_row(row)?),

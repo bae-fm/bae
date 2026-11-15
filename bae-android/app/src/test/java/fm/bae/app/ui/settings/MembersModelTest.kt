@@ -26,8 +26,7 @@ import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMembership
-import uniffi.bae_bridge.BridgePerson
-import uniffi.bae_bridge.BridgePersonProfile
+import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeRefusedInvite
@@ -37,59 +36,98 @@ import uniffi.bae_bridge.BridgeSharingRefusal
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
-import uniffi.bae_bridge.ProfilesSubscription
 
 /**
  * A failed read of the library's people ends the spinner with the failure, and
- * Retry reads again; a cancelled read shows nothing and leaves the list as it
- * was.
+ * Retry subscribes again; a cancelled read shows nothing and leaves the list
+ * as it was. The people and one person's page each follow their own
+ * subscription.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class MembersModelTest {
     @Test
-    fun aFailedFirstReadShowsTheFailureAndRetryReadsAgain() {
-        val handle = PeopleHandle(listOf(Result.failure(offline()), Result.success(listOf(PreviewData.person()))))
+    fun aFailedFirstReadShowsTheFailureAndRetrySubscribesAgain() {
+        val handle = SilentMembersHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
-        model.reload()
+        model.watchPeople()
+        handle.people.pulls.fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(PeopleRead.Failed(DisplayError("couldn't reach the cloud")), model.people)
 
         model.retry()
+        assertEquals(PeopleRead.Loading, model.people)
+        handle.people.pulls.deliver(twoPeople())
         shadowOf(Looper.getMainLooper()).idle()
         val loaded = model.people as PeopleRead.Loaded
-        assertEquals(listOf(PreviewData.person().membership.id), loaded.people.map { it.membership.id })
-        assertEquals(2, handle.reads)
+        assertEquals(twoPeople(), loaded.people)
     }
 
     @Test
     fun aCancelledReadLeavesTheListAsItWas() {
-        val handle =
-            PeopleHandle(
-                listOf(
-                    Result.failure(BridgeException.Cancelled()),
-                    Result.success(listOf(PreviewData.person())),
-                    Result.failure(BridgeException.Cancelled()),
-                ),
-            )
+        val handle = SilentMembersHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
-
-        model.reload()
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PeopleRead.Loading, model.people)
-
-        model.reload()
+        model.watchPeople()
+        handle.people.pulls.deliver(twoPeople())
         shadowOf(Looper.getMainLooper()).idle()
         val loaded = model.people as PeopleRead.Loaded
 
-        model.reload()
+        handle.people.pulls.fail(BridgeException.Cancelled())
         shadowOf(Looper.getMainLooper()).idle()
+
         assertEquals(loaded, model.people)
-        assertEquals(3, handle.reads)
     }
+
+    /** Each value the people subscription pulls replaces the one shown, with its counts. */
+    @Test
+    fun eachPulledValueOfThePeopleReplacesTheShownOne() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+
+        handle.people.pulls.deliver(twoPeople())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(PeopleRead.Loaded(twoPeople()), model.people)
+
+        val alone = BridgePeople(own = PreviewData.person(), others = emptyList(), people = 1uL, devices = 1uL)
+        handle.people.pulls.deliver(alone)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(PeopleRead.Loaded(alone), model.people)
+        stop()
+    }
+
+    /** A person's page follows the subscription keyed by their member id; a person who left arrives as none. */
+    @Test
+    fun aPersonsPageFollowsTheSubscriptionKeyedByTheirMemberId() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+
+        model.watchPerson("member-2")
+        assertEquals(listOf("member-2"), handle.persons.map { it.first })
+        handle.persons
+            .last()
+            .second.pulls
+            .deliver(PreviewData.person())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(PersonRead.Loaded("member-2", PreviewData.person()), model.person)
+
+        handle.persons
+            .last()
+            .second.pulls
+            .deliver(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(PersonRead.Loaded("member-2", null), model.person)
+
+        model.stopWatchingPerson()
+        assertEquals(PersonRead.Loading, model.person)
+    }
+
+    private fun twoPeople() = BridgePeople(own = PreviewData.person(), others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
 
     /** Each list of open invites the model pulls replaces the one it shows. */
     @Test
@@ -171,10 +209,10 @@ class MembersModelTest {
         stop()
     }
 
-    /** The request ends in the write that makes the person's profile, so each change of it reads the people again. */
+    /** The request ends in the write that makes the person's profile, which the people subscription shows. */
     @Test
-    fun eachRequestedProfileValueReadsThePeopleAgain() {
-        val handle = SilentMembersHandle(answers = listOf(Result.success(emptyList()), Result.success(emptyList())))
+    fun eachRequestedProfileValueIsShown() {
+        val handle = SilentMembersHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
@@ -183,12 +221,10 @@ class MembersModelTest {
         handle.requestedProfile.pulls.deliver(making)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(making, model.requestedProfile)
-        assertEquals(1, handle.reads)
 
         handle.requestedProfile.pulls.deliver(null)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(null, model.requestedProfile)
-        assertEquals(2, handle.reads)
         stop()
     }
 
@@ -206,15 +242,8 @@ class MembersModelTest {
 
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
-    /** A handle whose members and profiles never change: a pull waits until cancelled. */
-    private class SilentMembersHandle(
-        private val answers: List<Result<List<BridgePerson>>> = emptyList(),
-    ) : FakeAppHandle() {
-        var reads = 0
-            private set
-
-        override suspend fun people(): List<BridgePerson> = answers[reads++].getOrThrow()
-
+    /** A handle whose members never change: a pull waits until cancelled. */
+    private class SilentMembersHandle : FakeAppHandle() {
         override fun subscribeMembers(): MembersSubscription =
             object : MembersSubscription(NoHandle) {
                 private val values = Channel<BridgeMembership>()
@@ -227,27 +256,5 @@ class MembersModelTest {
 
                 override fun close() = Unit
             }
-
-        override fun subscribeProfiles(): ProfilesSubscription =
-            object : ProfilesSubscription(NoHandle) {
-                private val values = Channel<List<BridgePersonProfile>>()
-
-                override suspend fun next(): List<BridgePersonProfile> = values.receive()
-
-                override suspend fun cancel() {
-                    values.close(BridgeException.Cancelled())
-                }
-
-                override fun close() = Unit
-            }
-    }
-
-    private class PeopleHandle(
-        private val answers: List<Result<List<BridgePerson>>>,
-    ) : FakeAppHandle() {
-        var reads = 0
-            private set
-
-        override suspend fun people(): List<BridgePerson> = answers[reads++].getOrThrow()
     }
 }

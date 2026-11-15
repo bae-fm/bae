@@ -180,6 +180,19 @@ pub struct Person {
     pub membership: crate::membership::MembershipMember,
 }
 
+/// What the library's people screens show: the person using this device, the
+/// other people in member-id order, and how many people and devices the
+/// library has.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PeopleView {
+    pub own: Option<Person>,
+    pub others: Vec<Person>,
+    /// Everyone in the library, this device's person included.
+    pub people: u64,
+    /// The active devices of everyone in the library.
+    pub devices: u64,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ProfileError {
     #[error("set up storage before creating this person's profile")]

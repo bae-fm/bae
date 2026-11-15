@@ -21,24 +21,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePerson
 
 private val logger = BaeLogger("bae.SettingsLibraryModel")
-
-/** This device's person as Settings read them. */
-internal sealed interface SelfRead {
-    data object Loading : SelfRead
-
-    /** [person] is null when the library has no members yet. */
-    data class Loaded(
-        val person: BridgePerson?,
-    ) : SelfRead
-
-    /** Whether this person may rename and how they share their history is unknown; Retry reads again. */
-    data class Failed(
-        val error: DisplayError,
-    ) : SelfRead
-}
 
 /** The library's one name as its store holds it now. */
 internal sealed interface LibraryNameRead {
@@ -55,11 +39,9 @@ internal sealed interface LibraryNameRead {
 }
 
 /**
- * What Settings reads from the open library beyond its config: its storage,
- * its name, and this device's person — their profile and whether they are an
- * admin. A failed read is kept as such, so Settings shows it where the rows it
- * decides would be; a cancelled one shows nothing and leaves the read as it
- * was.
+ * What Settings reads from the open library beyond its config: its storage
+ * and its name. A failed read is kept as such, so Settings shows it where the rows it decides would be; a cancelled
+ * one shows nothing and leaves the read as it was.
  */
 internal class SettingsLibraryModel(
     private val appHandle: AppHandleInterface,
@@ -70,9 +52,6 @@ internal class SettingsLibraryModel(
     var storage by mutableStateOf<Storage>(Storage.Loading)
         private set
 
-    var self by mutableStateOf<SelfRead>(SelfRead.Loading)
-        private set
-
     var name by mutableStateOf<LibraryNameRead>(LibraryNameRead.Loading)
         private set
 
@@ -80,11 +59,6 @@ internal class SettingsLibraryModel(
 
     /** Which subscription a name callback belongs to; one from a replaced subscription is dropped. */
     private var nameGeneration = 0
-
-    suspend fun load() {
-        loadStorage()
-        loadSelf()
-    }
 
     /** Read the storage as Settings opens. A phone's library always has a cloud home; one without is a bug. */
     suspend fun loadStorage() {
@@ -101,17 +75,6 @@ internal class SettingsLibraryModel(
         } catch (e: BridgeException) {
             logger.error("reading the library's storage failed", e)
             errors.display(e)?.let { storage = Storage.Failed(it) }
-        }
-    }
-
-    suspend fun loadSelf() {
-        try {
-            self = SelfRead.Loaded(appHandle.ownPerson())
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: BridgeException) {
-            logger.error("reading the library's people failed", e)
-            errors.display(e)?.let { self = SelfRead.Failed(it) }
         }
     }
 
@@ -142,8 +105,7 @@ internal class SettingsLibraryModel(
 
 /**
  * A [SettingsLibraryModel] following the library's name while the caller shows, and reading its storage again whenever
- * a storage setup ends. Its first reads are the caller's: [SettingsLibraryModel.loadStorage] and
- * [SettingsLibraryModel.loadSelf] for what it shows.
+ * a storage setup ends. Its first read is the caller's: [SettingsLibraryModel.loadStorage].
  */
 @Composable
 internal fun rememberSettingsLibraryModel(session: OpenLibrary): SettingsLibraryModel {

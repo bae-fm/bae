@@ -50,7 +50,7 @@ internal fun LibrarySettingsScreen(
     val scope = rememberScreenScope()
     val model = rememberSettingsLibraryModel(session)
     val members = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
-    LaunchedEffect(model) { model.load() }
+    LaunchedEffect(model) { model.loadStorage() }
     DisposableEffect(members) { onDispose(members.subscribe()) }
     val line by session.syncStatusStore.line.collectAsState()
     val storage = model.storage
@@ -58,7 +58,12 @@ internal fun LibrarySettingsScreen(
     val name = (model.name as? LibraryNameRead.Named)?.name
     AndroidSettingsLibrary(
         name = name,
-        canRename = (model.self as? SelfRead.Loaded)?.person?.membership?.role == BridgeMemberRole.ADMIN,
+        canRename =
+            (members.people as? PeopleRead.Loaded)
+                ?.people
+                ?.own
+                ?.membership
+                ?.role == BridgeMemberRole.ADMIN,
         sync = syncRowSummary(line),
         peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
         hasStorage = storage is Storage.At,
@@ -72,7 +77,7 @@ internal fun LibrarySettingsScreen(
         onOpenPeople = { onPush(LibraryDestination.Members) },
     ) {
         if (storage is Storage.Missing) SomethingWentWrongNotice()
-        LibraryNameFailures(model = model)
+        LibraryNameFailures(model = model, members = members)
     }
     if (renaming && name != null) {
         RenameLibraryDialog(session = session, current = name, onDismiss = { renaming = false })
@@ -137,17 +142,18 @@ internal fun AndroidSettingsLibrary(
     }
 }
 
-/** Why the storage, the name or the person couldn't be read, each with Retry. */
+/** Why the storage, the name or the people couldn't be read, each with Retry. */
 @Composable
-private fun LibraryNameFailures(model: SettingsLibraryModel) {
+private fun LibraryNameFailures(
+    model: SettingsLibraryModel,
+    members: MembersModel,
+) {
     val scope = rememberScreenScope()
     (model.storage as? Storage.Failed)?.let {
         ReadFailure(error = it.error, onRetry = { scope.launch { model.loadStorage() } })
     }
     (model.name as? LibraryNameRead.Failed)?.let { ReadFailure(error = it.error, onRetry = model::watchName) }
-    (model.self as? SelfRead.Failed)?.let {
-        ReadFailure(error = it.error, onRetry = { scope.launch { model.loadSelf() } })
-    }
+    (members.people as? PeopleRead.Failed)?.let { ReadFailure(error = it.error, onRetry = members::retry) }
 }
 
 /** What the Sync row says under its title, and the tone it is in. */
@@ -167,8 +173,9 @@ internal fun syncRowSummary(line: SyncLine): SyncRowSummary {
 @Composable
 private fun peopleAndDevices(people: PeopleRead): String? {
     val loaded = (people as? PeopleRead.Loaded)?.people ?: return null
-    val devices = loaded.sumOf { it.membership.activeDevices.size }
-    val peopleText = pluralStringResource(R.plurals.people_count, loaded.size, loaded.size)
+    val peopleCount = loaded.people.toInt()
+    val devices = loaded.devices.toInt()
+    val peopleText = pluralStringResource(R.plurals.people_count, peopleCount, peopleCount)
     val devicesText = pluralStringResource(R.plurals.device_count, devices, devices)
     return "$peopleText${LocalContext.current.factSeparator()}$devicesText"
 }

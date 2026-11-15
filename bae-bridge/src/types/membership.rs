@@ -146,6 +146,28 @@ impl BridgePerson {
         }
     }
 }
+/// The person using this device, the other people, and how many people and
+/// devices the library has. Mirrors `PeopleView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePeople {
+    pub own: Option<BridgePerson>,
+    pub others: Vec<BridgePerson>,
+    /// Everyone in the library, this device's person included.
+    pub people: u64,
+    /// The active devices of everyone in the library.
+    pub devices: u64,
+}
+impl BridgePeople {
+    pub(crate) fn from_core(value: bae_people::people::PeopleView) -> Self {
+        let bae_people::people::PeopleView { own, others, people, devices } = value;
+        Self {
+            own: own.map(BridgePerson::from_core),
+            others: others.into_iter().map(BridgePerson::from_core).collect(),
+            people,
+            devices,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeProviderSignOut {
     RemoveAppAccess { provider: BridgeCloudProvider },

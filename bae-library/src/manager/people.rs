@@ -33,6 +33,23 @@ impl LibraryManager {
         self.people.subscribe_requested_profile()
     }
 
+    /// The person using this device, the other people, and how many people
+    /// and devices the library has, live.
+    pub fn subscribe_people(
+        &self,
+    ) -> coven::LiveQuery<bae_people::people::PeopleView, bae_store::DbError> {
+        self.people.subscribe_people()
+    }
+
+    /// The person with member id `member`, live: none once they have left the
+    /// library.
+    pub fn subscribe_person(
+        &self,
+        member: coven::MemberId,
+    ) -> coven::LiveQuery<Option<bae_people::people::Person>, bae_store::DbError> {
+        self.people.subscribe_person(member)
+    }
+
     pub fn subscribe_profiles(
         &self,
     ) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>, bae_store::DbError> {

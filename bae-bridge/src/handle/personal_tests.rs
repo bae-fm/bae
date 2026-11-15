@@ -173,7 +173,12 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert!(device.is_self);
         assert!(!device.can_remove);
         assert!(members.members[0].former_devices.is_empty());
-        assert_eq!(app.clone().people().await.unwrap()[0].membership.id, profile.id);
+        let people = app.clone().subscribe_people();
+        let read = people.clone().next().await.unwrap();
+        assert_eq!(read.own.unwrap().membership.id, profile.id);
+        assert!(read.others.is_empty());
+        assert_eq!((read.people, read.devices), (1, 1));
+        people.cancel().await.unwrap();
     });
     app.close_library(None).unwrap();
 }

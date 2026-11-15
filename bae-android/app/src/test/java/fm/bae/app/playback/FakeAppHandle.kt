@@ -40,7 +40,6 @@ import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgeOutboxFeeds
-import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeRatingTarget
@@ -82,11 +81,12 @@ import uniffi.bae_bridge.ListCountSubscription
 import uniffi.bae_bridge.ListPositionSubscription
 import uniffi.bae_bridge.ListWindowSubscription
 import uniffi.bae_bridge.MembersSubscription
+import uniffi.bae_bridge.PeopleSubscription
+import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.PlaylistDetailSubscription
 import uniffi.bae_bridge.PlaylistsSubscription
-import uniffi.bae_bridge.ProfilesSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
@@ -700,9 +700,15 @@ internal open class FakeAppHandle(
 
     override fun holdInviteScreenSync(): BridgeInviteScreenHold = unfaked("holdInviteScreenSync")
 
-    override suspend fun people(): List<BridgePerson> = unfaked("people")
+    /** The library's people, which a test delivers to. */
+    val people = FakePeopleSubscription()
 
-    override suspend fun ownPerson(): BridgePerson? = unfaked("ownPerson")
+    override fun subscribePeople(): PeopleSubscription = people
+
+    /** The pages of one person each `subscribePerson` opened, which a test delivers to. */
+    val persons = mutableListOf<Pair<String, FakePersonSubscription>>()
+
+    override fun subscribePerson(member: String): PersonSubscription = FakePersonSubscription().also { persons += member to it }
 
     override suspend fun removeDevice(device: ULong): BridgeDeviceRemoval = unfaked("removeDevice")
 
@@ -822,8 +828,6 @@ internal open class FakeAppHandle(
     override fun subscribePlaylistDetail(): PlaylistDetailSubscription = unfaked("subscribePlaylistDetail")
 
     override fun subscribePlaylists(): PlaylistsSubscription = unfaked("subscribePlaylists")
-
-    override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
 
     /** The profile this device's person asked for, which a test delivers to. */
     val requestedProfile = FakeRequestedProfileSubscription()

@@ -35,10 +35,12 @@ async fn a_profile_is_idempotent_once_asked_for() {
         library.people().create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
     ));
-    let listed = library.people().people().await.unwrap();
-    assert_eq!(listed.len(), 1);
-    assert_eq!(listed[0].profile.as_ref(), Some(&profile));
-    assert!(listed[0].membership.is_self);
+    let listed = value_matching(&mut people.subscribe_people(), |_| true).await;
+    assert!(listed.others.is_empty());
+    assert_eq!((listed.people, listed.devices), (1, 1));
+    let own = listed.own.expect("the profile's person is this device's");
+    assert_eq!(own.profile.as_ref(), Some(&profile));
+    assert!(own.membership.is_self);
     library.people().rename_profile("New Name").await.unwrap();
     library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
     let profile = people.profile(profile.id).await.unwrap().unwrap();

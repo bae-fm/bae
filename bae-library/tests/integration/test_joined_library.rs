@@ -136,6 +136,26 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
         assert!(profiles
             .iter()
             .any(|profile| profile.id == rowan.membership.id && profile.name == "Rowan"));
+        // The people screen reads Rowan as this device's person and the
+        // household's owner as the one other person, counted together, and a
+        // person's page reads the owner by member id.
+        let people = bae_library::followed::value_matching(
+            &mut library.manager().subscribe_people(),
+            |people| people.own.is_some() && people.others.len() == 1,
+        )
+        .await;
+        assert_eq!(people.own.as_ref().map(|own| own.membership.id), Some(rowan.membership.id));
+        assert_eq!(people.people, 2);
+        assert_eq!(people.devices, 2);
+        let owner = people.others[0].membership.id;
+        let page = bae_library::followed::value_matching(
+            &mut library.manager().subscribe_person(owner),
+            Option::is_some,
+        )
+        .await
+        .unwrap();
+        assert_eq!(page.membership.id, owner);
+        assert!(!page.membership.is_self);
         library.manager().close().await.unwrap();
         household.owner.close().await.unwrap();
     });

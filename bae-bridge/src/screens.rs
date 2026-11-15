@@ -321,6 +321,25 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// The person using this device, the other people, and how many people and
+    /// devices the library has.
+    PeopleSubscription:
+        LiveValues<bae_people::people::PeopleView> => crate::types::BridgePeople,
+    converted by crate::types::BridgePeople::from_core,
+    built by people
+}
+
+pulled_read! {
+    /// One person of the library, by member id: none once they have left.
+    PersonSubscription:
+        LiveValues<Option<bae_people::people::Person>> => Option<crate::types::BridgePerson>,
+    converted by |person: Option<bae_people::people::Person>| {
+        person.map(crate::types::BridgePerson::from_core)
+    },
+    built by person
+}
+
+pulled_read! {
     /// This device's open invites, each with what coven holds its work for,
     /// and the invites a sharing refusal ended, in the order they were made.
     InvitesSubscription:
@@ -354,16 +373,6 @@ pulled_read! {
     },
     when present,
     built by add_device_status
-}
-
-pulled_read! {
-    /// Every person's profile.
-    ProfilesSubscription:
-        LiveValues<Vec<bae_people::people::PersonProfile>> => Vec<crate::types::BridgePersonProfile>,
-    converted by |profiles: Vec<bae_people::people::PersonProfile>| {
-        profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
-    },
-    built by profiles
 }
 
 pulled_read! {

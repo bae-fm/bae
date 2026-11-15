@@ -34,9 +34,7 @@ import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
@@ -48,6 +46,7 @@ import uniffi.bae_bridge.BridgeInviteProgress
 import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRequestedProfile
@@ -56,12 +55,22 @@ import uniffi.bae_bridge.BridgeStorageLocation
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
+/** The read of one person for their page: running, or answered, with no person once they have left the library. */
+internal sealed interface PersonRead {
+    data object Loading : PersonRead
+
+    data class Loaded(
+        val memberId: String,
+        val person: BridgePerson?,
+    ) : PersonRead
+}
+
 /** The read of the library's people: running, answered, or failed with what to show. */
 internal sealed interface PeopleRead {
     data object Loading : PeopleRead
 
     data class Loaded(
-        val people: List<BridgePerson>,
+        val people: BridgePeople,
     ) : PeopleRead
 
     /** The read failed; the list is not known, so none is shown, and Retry reads it again. */
@@ -71,9 +80,9 @@ internal sealed interface PeopleRead {
 }
 
 /**
- * The library's people as core joins them: each member with their profile.
- * Membership and profiles each arrive live; either change reads the joined
- * list again.
+ * The library's people as core joins them: this device's person, the others and how many people and devices there
+ * are, one subscription that follows membership and profiles; and the page of one person, a subscription keyed by
+ * that person's member id.
  */
 internal class MembersModel(
     private val appHandle: AppHandleInterface,
@@ -106,30 +115,79 @@ internal class MembersModel(
     var adminChanges by mutableStateOf<List<BridgeAdminChange>>(emptyList())
         private set
     var error by mutableStateOf<DisplayError?>(null)
-    private var reloading: Job? = null
 
-    /** Read the joined list again; a newer read replaces one still running. */
-    fun reload() {
-        reloading?.cancel()
-        reloading =
-            scope.launch {
-                try {
-                    people = PeopleRead.Loaded(appHandle.people())
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: BridgeException) {
-                    logger.error("reading the library's people failed", e)
-                    // A cancelled read shows nothing: the list stays as it was.
-                    errors.display(e)?.let { people = PeopleRead.Failed(it) }
-                }
-            }
-    }
+    /** The person whose page is open, once it is read; Loading while no page of a person is open. */
+    var person by mutableStateOf<PersonRead>(PersonRead.Loading)
+        private set
 
-    /** Read the list again after a failed read, showing the spinner while it runs. */
-    fun retry() {
+    private var peopleSubscription: ScreenSubscription<BridgePeople>? = null
+    private var personSubscription: ScreenSubscription<BridgePerson?>? = null
+
+    /** Which subscription a people callback belongs to; one from a replaced subscription is dropped. */
+    private var peopleGeneration = 0
+    private var personGeneration = 0
+
+    /** Follow the library's people, replacing any subscription already running; a failed read shows Retry. */
+    fun watchPeople() {
+        stopWatchingPeople()
         people = PeopleRead.Loading
-        reload()
+        val generation = peopleGeneration
+        peopleSubscription =
+            ScreenSubscription(
+                appHandle.subscribePeople().let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> if (generation == peopleGeneration) people = PeopleRead.Loaded(value) },
+                onError = { error ->
+                    logger.error("reading the library's people failed", error)
+                    // A cancelled read shows nothing: the list stays as it was.
+                    val shown = errors.display(error)
+                    if (generation == peopleGeneration && shown != null) people = PeopleRead.Failed(shown)
+                },
+            )
     }
+
+    fun stopWatchingPeople() {
+        peopleGeneration++
+        peopleSubscription?.stop()
+        peopleSubscription = null
+    }
+
+    /** Follow the person with member id [memberId] for their page, replacing any subscription already running. */
+    fun watchPerson(memberId: String) {
+        stopWatchingPerson()
+        person = PersonRead.Loading
+        val generation = personGeneration
+        val read =
+            try {
+                appHandle.subscribePerson(memberId)
+            } catch (e: BridgeException) {
+                logger.error("reading a person failed", e)
+                error = errors.display(e)
+                return
+            }
+        personSubscription =
+            ScreenSubscription(
+                read.let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value ->
+                    if (generation == personGeneration) person = PersonRead.Loaded(memberId, value)
+                },
+                onError = { error ->
+                    logger.error("reading a person failed", error)
+                    if (generation == personGeneration) this@MembersModel.error = errors.display(error)
+                },
+            )
+    }
+
+    fun stopWatchingPerson() {
+        personGeneration++
+        personSubscription?.stop()
+        personSubscription = null
+        person = PersonRead.Loading
+    }
+
+    /** Subscribe to the people again after a failed read, showing the spinner while it runs. */
+    fun retry() = watchPeople()
 
     suspend fun loadStorage() {
         performBridgeAction(logger, "read the library's storage", errors, { error = it }) {
@@ -137,18 +195,12 @@ internal class MembersModel(
         }
     }
 
-    /**
-     * Follow the profile this person asked for. The request ends in the write that makes it, so each change reads the
-     * people again.
-     */
+    /** Follow the profile this person asked for. The request ends in the write that makes it, which the people show. */
     private fun subscribeRequestedProfile(): ScreenSubscription<BridgeRequestedProfile?> =
         ScreenSubscription(
             appHandle.subscribeRequestedProfile().let { pulled(it::next, it::cancel) },
             scope,
-            onValue = { value ->
-                requestedProfile = value
-                reload()
-            },
+            onValue = { value -> requestedProfile = value },
             onError = { error ->
                 logger.error("reading the requested profile failed", error)
                 this@MembersModel.error = errors.display(error)
@@ -160,25 +212,13 @@ internal class MembersModel(
             ScreenSubscription(
                 appHandle.subscribeMembers().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { value ->
-                    selfIsAdmin = value.selfIsAdmin
-                    reload()
-                },
+                onValue = { value -> selfIsAdmin = value.selfIsAdmin },
                 onError = { error ->
                     logger.error("reading the library's members failed", error)
                     this@MembersModel.error = errors.display(error)
                 },
             )
-        val profiles =
-            ScreenSubscription(
-                appHandle.subscribeProfiles().let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { reload() },
-                onError = { error ->
-                    logger.error("reading the library's profiles failed", error)
-                    this@MembersModel.error = errors.display(error)
-                },
-            )
+        watchPeople()
         val open =
             ScreenSubscription(
                 appHandle.subscribeInvites().let { pulled(it::next, it::cancel) },
@@ -202,7 +242,8 @@ internal class MembersModel(
             )
         return {
             members.stop()
-            profiles.stop()
+            stopWatchingPeople()
+            stopWatchingPerson()
             open.stop()
             requested.stop()
             changes.stop()
@@ -237,14 +278,16 @@ fun MembersScreen(
     LaunchedEffect(model) { model.loadStorage() }
     val dialogs = remember { MembersDialogs() }
     var pageKey by rememberSaveable { mutableStateOf(PeoplePage.People.key()) }
-    val read = model.people
+    val requested = peoplePage(pageKey)
+    val shownMember = (requested as? PeoplePage.Person)?.memberId
+    DisposableEffect(model, shownMember) {
+        if (shownMember != null) model.watchPerson(shownMember)
+        onDispose { model.stopWatchingPerson() }
+    }
     // A person's page whose person has left the library falls back to the first page.
-    val page =
-        peoplePage(pageKey).let { requested ->
-            val people = (read as? PeopleRead.Loaded)?.people.orEmpty()
-            val gone = requested is PeoplePage.Person && people.none { it.membership.id == requested.memberId }
-            if (gone) PeoplePage.People else requested
-        }
+    val shown = model.person as? PersonRead.Loaded
+    val left = shown != null && shown.memberId == shownMember && shown.person == null
+    val page = if (left) PeoplePage.People else requested
     val goBack = { if (page == PeoplePage.People) onBack() else pageKey = PeoplePage.People.key() }
     BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
 
@@ -275,6 +318,7 @@ private fun PeopleContent(
             session = session,
             model = model,
             people = read.people,
+            person = model.person,
             callbacks = memberCallbacks(session, model, dialogs),
             dialogs = dialogs,
             page = page,
@@ -283,7 +327,7 @@ private fun PeopleContent(
         )
         return
     }
-    PeopleFrame(title = pageTitle(page, read), error = model.error, onBack = onBack) {
+    PeopleFrame(title = pageTitle(page, model.person), error = model.error, onBack = onBack) {
         // Who is in the library is a local read; nothing shows until it lands.
         if (read is PeopleRead.Failed) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -189,6 +189,15 @@ struct PeopleAndDevicesPage: View {
             }
             .formStyle(.grouped)
         }
+        .onChange(of: subpage, initial: true) { _, page in
+            if case .person(let memberId) = page {
+                store.showPerson(memberId)
+            }
+            else {
+                store.hidePerson()
+            }
+        }
+        .onDisappear { store.hidePerson() }
         .sheet(isPresented: $renaming) {
             RenameProfileSheet(
                 name: store.selfProfile?.name ?? "",
@@ -286,7 +295,10 @@ struct PeopleAndDevicesPage: View {
     /// The page to show: a person's page whose person has left the library
     /// falls back to the first page.
     private var shown: Subpage {
-        if case .person(let memberId) = subpage, person(memberId) == nil {
+        if case .person(let memberId) = subpage,
+            let read = store.shownPerson, read.memberId == memberId,
+            read.person == nil
+        {
             return .people
         }
         return subpage
@@ -318,12 +330,15 @@ struct PeopleAndDevicesPage: View {
         }
     }
 
+    /// The person whose page is open, read by the member id the page holds.
     private func person(_ memberId: String) -> BridgePerson? {
-        store.members?.first { $0.membership.id == memberId }
+        guard let shown = store.shownPerson, shown.memberId == memberId
+        else { return nil }
+        return shown.person
     }
 
     private var selfPerson: BridgePerson? {
-        store.members?.first { $0.membership.isSelf }
+        store.people?.own
     }
 
     private func displayName(_ person: BridgePerson) -> String {
@@ -447,7 +462,7 @@ extension PeopleAndDevicesPage {
     }
 
     private var others: [BridgePerson] {
-        (store.members ?? []).filter { !$0.membership.isSelf }
+        store.people?.others ?? []
     }
 
     private func deviceCount(_ member: BridgeMember) -> String {

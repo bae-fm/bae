@@ -185,13 +185,10 @@ struct LibrarySettingsTab: View {
 
     /// "2 people · 3 devices", once the people have been read.
     private var peopleAndDevices: String? {
-        guard let members = membership.members else { return nil }
-        let devices = members.reduce(0) {
-            $0 + $1.membership.activeDevices.count
-        }
-        let people = String(localized: "\(members.count) people")
-        let deviceCount = String(localized: "\(devices) devices")
-        return "\(people) · \(deviceCount)"
+        guard let people = membership.people else { return nil }
+        let peopleText = String(localized: "\(Int(people.people)) people")
+        let deviceCount = String(localized: "\(Int(people.devices)) devices")
+        return "\(peopleText) · \(deviceCount)"
     }
 
     /// Read the library's location again as the pane opens: coven records

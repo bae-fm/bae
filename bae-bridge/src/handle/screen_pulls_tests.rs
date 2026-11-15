@@ -43,8 +43,18 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     let activity = handle.subscribe_sync_activity();
     let quiet = pull_until(&handle, || Box::pin(activity.clone().next()), |_| true);
     assert!(!quiet.moving && quiet.uploads.is_none(), "{quiet:?}");
-    let profiles = handle.subscribe_profiles();
-    pull_until(&handle, || Box::pin(profiles.clone().next()), |_| true);
+    let people = handle.subscribe_people();
+    let alone = pull_until(&handle, || Box::pin(people.clone().next()), |_| true);
+    // The creator is this device's person with no profile yet, and alone.
+    assert!(alone.own.as_ref().is_some_and(|own| own.profile.is_none()), "{alone:?}");
+    assert!(alone.others.is_empty() && alone.people == 1, "{alone:?}");
+    assert!(matches!(
+        handle.subscribe_person("not a member id".to_string()),
+        Err(crate::types::BridgeError::Diagnostic {
+            category: crate::types::BridgeErrorCategory::Config,
+            ..
+        })
+    ));
     let invites = handle.subscribe_invites();
     assert!(pull_until(&handle, || Box::pin(invites.clone().next()), |_| true).is_empty());
     let changes = handle.subscribe_admin_changes();
@@ -65,11 +75,21 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     // The profile is written once sync has made Ana's private circle, and
     // the request ends with it.
     handle.runtime.block_on(syncing.attach_and_start_sync()).unwrap();
-    pull_until(
+    let ana = pull_until(
         &handle,
-        || Box::pin(profiles.clone().next()),
-        |profiles: &Vec<crate::types::BridgePersonProfile>| profiles.len() == 1,
-    );
+        || Box::pin(people.clone().next()),
+        |people| people.own.as_ref().is_some_and(|own| own.profile.is_some()),
+    )
+    .own
+    .unwrap();
+    assert_eq!(ana.profile.as_ref().map(|profile| profile.name.as_str()), Some("Ana"));
+    // Ana's own page follows her by member id.
+    let page = handle.subscribe_person(ana.membership.id.clone()).unwrap();
+    let shown = pull_until(&handle, || Box::pin(page.clone().next()), Option::is_some).unwrap();
+    assert_eq!(shown.membership.id, ana.membership.id);
+    let nobody =
+        handle.subscribe_person("00000000-0000-4000-8000-000000000099".to_string()).unwrap();
+    assert!(pull_until(&handle, || Box::pin(nobody.clone().next()), |_| true).is_none());
     pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_none);
     // With a profile the person can make a playlist, and holds none yet.
     let playlists = handle.subscribe_playlists();

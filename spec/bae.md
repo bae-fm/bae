@@ -5924,7 +5924,13 @@ release's or track's id as UTF-8, or a candidate's key.
   in place, and a detail view showing nothing has no read, since a read is
   never pointed at nothing. The library's name, its people, this device's
   open invites, the requested profile and the admin changes are read while
-  the settings screen showing them does; Rename Library starts from the name
+  the settings screen showing them does. The people are one read of this
+  device's person, the other people in member-id order, and the counts of
+  people and of active devices that the Library row shows ("2 people · 3
+  devices"), drawn from the same moment; a person's page is its own read keyed
+  by that person's member id, which answers none once they have left the
+  library, and the page then closes to the first one, on both apps, so neither
+  searches the list for a person; Rename Library starts from the name
   as it stands when it opens. The macOS menu bar always shows Rename Library,
   enabled for an admin, so the Mac reads whether this device's person is one
   for as long as the library is open. Closing or

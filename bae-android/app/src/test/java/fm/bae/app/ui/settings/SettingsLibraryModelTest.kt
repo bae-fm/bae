@@ -7,7 +7,6 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
-import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +19,6 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -28,9 +26,8 @@ import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameSubscription
 
 /**
- * A failed read of this device's person or of the library's name stays a
- * failure Settings shows with Retry, rather than an absent person or name that
- * silently hides Rename, History sharing and the name row. A cancelled read
+ * A failed read of the library's name stays a failure Settings shows with
+ * Retry, rather than an absent name that silently hides the name row. A cancelled read
  * shows nothing and leaves the read as it was.
  */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -47,18 +44,6 @@ class SettingsLibraryModelTest {
     @After
     fun runWhatTheTestLeftOnTheMainLooper() {
         shadowOf(Looper.getMainLooper()).idle()
-    }
-
-    @Test
-    fun aFailedSelfReadIsAFailureAndRetryReadsAgain() {
-        val handle = SettingsHandle(ownPerson = listOf(Result.failure(offline()), Result.success(PreviewData.person())))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
-
-        runBlocking { model.loadSelf() }
-        assertEquals(SelfRead.Failed(DisplayError("couldn't reach the cloud")), model.self)
-
-        runBlocking { model.loadSelf() }
-        assertEquals(PreviewData.person().membership.id, (model.self as SelfRead.Loaded).person?.membership?.id)
     }
 
     @Test
@@ -96,19 +81,6 @@ class SettingsLibraryModelTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(LibraryNameRead.Loading, model.name)
-    }
-
-    @Test
-    fun aCancelledSelfReadLeavesTheReadAsItWas() {
-        val handle =
-            SettingsHandle(ownPerson = listOf(Result.failure(BridgeException.Cancelled()), Result.failure(offline())))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
-
-        runBlocking { model.loadSelf() }
-        assertEquals(SelfRead.Loading, model.self)
-
-        runBlocking { model.loadSelf() }
-        assertEquals(SelfRead.Failed(DisplayError("couldn't reach the cloud")), model.self)
     }
 
     @Test
@@ -171,17 +143,12 @@ class SettingsLibraryModelTest {
     }
 
     private class SettingsHandle(
-        private val ownPerson: List<Result<BridgePerson?>> = emptyList(),
         private val storage: List<Result<BridgeStorageLocation?>> = emptyList(),
     ) : FakeAppHandle() {
-        var reads = 0
-            private set
         private var storageReads = 0
         val names = mutableListOf<FakeLibraryNameSubscription>()
 
         override suspend fun storageLocation(): BridgeStorageLocation? = storage[storageReads++].getOrThrow()
-
-        override suspend fun ownPerson(): BridgePerson? = ownPerson[reads++].getOrThrow()
 
         override fun subscribeLibraryName(): LibraryNameSubscription = FakeLibraryNameSubscription().also(names::add)
     }

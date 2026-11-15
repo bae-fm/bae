@@ -5,11 +5,15 @@ import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.BridgeAddDeviceStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePeople
+import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.NoHandle
+import uniffi.bae_bridge.PeopleSubscription
+import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.UnmeteredOnlySubscription
@@ -58,6 +62,28 @@ internal class FakeRequestedProfileSubscription : RequestedProfileSubscription(N
     val pulls = PullChannel<BridgeRequestedProfile?>()
 
     override suspend fun next(): BridgeRequestedProfile? = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** The library's people a test hands the app. */
+internal class FakePeopleSubscription : PeopleSubscription(NoHandle) {
+    val pulls = PullChannel<BridgePeople>()
+
+    override suspend fun next(): BridgePeople = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** One person's page a test hands the app: the person, or null once they have left the library. */
+internal class FakePersonSubscription : PersonSubscription(NoHandle) {
+    val pulls = PullChannel<BridgePerson?>()
+
+    override suspend fun next(): BridgePerson? = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

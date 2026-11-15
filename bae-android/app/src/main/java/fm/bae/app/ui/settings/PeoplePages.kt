@@ -26,6 +26,7 @@ import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMember
+import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgeRequestedProfile
@@ -68,7 +69,7 @@ internal class YouActions(
 @Composable
 internal fun AndroidSettingsPeople(
     you: YouActions,
-    people: List<BridgePerson>,
+    people: BridgePeople,
     selfIsAdmin: Boolean,
     requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
@@ -103,7 +104,7 @@ internal fun AndroidSettingsPeople(
 @Composable
 internal fun PeopleHome(
     you: YouActions,
-    people: List<BridgePerson>,
+    people: BridgePeople,
     selfIsAdmin: Boolean,
     requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
@@ -113,7 +114,7 @@ internal fun PeopleHome(
     offline: Boolean,
     onOpen: (PeoplePage) -> Unit,
 ) {
-    val me = people.firstOrNull { it.membership.isSelf }
+    val me = people.own
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         // A section heading first on the page counts on a gap above it, so the page starts 8dp, not 16, from the bar.
@@ -150,7 +151,7 @@ internal fun PeopleHome(
 /** The other people, one row each, then the invites this device has open and, for an admin, the Invite row. */
 @Composable
 private fun PeopleCard(
-    people: List<BridgePerson>,
+    people: BridgePeople,
     selfIsAdmin: Boolean,
     invites: List<BridgeInviteEntry>,
     callbacks: MemberCallbacks,
@@ -159,7 +160,7 @@ private fun PeopleCard(
     onOpen: (PeoplePage) -> Unit,
 ) {
     AndroidCard {
-        people.filterNot { it.membership.isSelf }.forEach { person ->
+        people.others.forEach { person ->
             val member = person.membership
             AndroidRow(
                 title = person.profile?.name ?: stringResource(R.string.members_unnamed),

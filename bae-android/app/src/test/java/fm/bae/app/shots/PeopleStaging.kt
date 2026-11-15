@@ -23,6 +23,7 @@ import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRefusedInvite
 
@@ -42,7 +43,13 @@ internal fun PeoplePageScene(
     offline: Boolean = false,
 ) = AndroidSettingsPeople(
     you = YouActions(NothingFails, {}, {}, {}),
-    people = people,
+    people =
+        BridgePeople(
+            own = people.firstOrNull { it.membership.isSelf },
+            others = people.filterNot { it.membership.isSelf },
+            people = people.size.toULong(),
+            devices = people.sumOf { it.membership.activeDevices.size }.toULong(),
+        ),
     selfIsAdmin = selfIsAdmin,
     requested = null,
     invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },

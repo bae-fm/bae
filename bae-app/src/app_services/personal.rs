@@ -8,7 +8,6 @@ impl AppServices {
     delegate_async!(people, set_history_sharing => set_history_sharing(sharing: bae_people::people::HistorySharing) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
     delegate_async!(people, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_people::people::ProfileError>);
-    delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_people::people::PersonProfile>);
     /// Every playlist this device holds, now and after each change.
     pub fn subscribe_playlists(
         &self,
@@ -16,8 +15,8 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_playlists())
     }
     delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_people::people::RequestedProfile>);
-    delegate_lib!(people, people => people() -> Vec<bae_people::people::Person>);
-    delegate_lib!(people, own_person => own_person() -> Option<bae_people::people::Person>);
+    delegate_values!(subscribe_people => subscribe_people() -> bae_people::people::PeopleView);
+    delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: Vec<String>) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(people, rename_playlist => rename_playlist(id: uuid::Uuid, name: &str) -> Result<(), CollectionError>);
