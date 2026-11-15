@@ -180,13 +180,13 @@ struct ReleaseEditorView: View {
         let uiStore = uiStore
         let session = session
         let lightboxLoad = coverLightboxLoad
-        uiStore.presentNestedModal {
+        uiStore.presentModal {
             CoverPickerFrame {
                 CoverSheetView(
                     releaseId: session.releaseId,
                     lightboxLoad: lightboxLoad,
                     onFindRelease: {
-                        uiStore.dismissNestedModal()
+                        uiStore.dismissModal()
                         openSearch(.search)
                     },
                     refreshCovers: {
@@ -201,7 +201,7 @@ struct ReleaseEditorView: View {
                         )
                         try await session.refreshCover()
                     },
-                    onDone: { uiStore.dismissNestedModal() }
+                    onDone: { uiStore.dismissModal() }
                 )
             }
         }

@@ -107,15 +107,10 @@ struct MacMainWindowContainer: View {
             }
 
             // Modal overlay
-            if let builder = uiStore.modalBuilder {
+            ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
+                _,
+                builder in
                 ModalOverlay(onDismiss: { uiStore.dismissModal() }) {
-                    builder()
-                }
-            }
-
-            // A modal opened from the modal, over it
-            if let builder = uiStore.nestedModalBuilder {
-                ModalOverlay(onDismiss: { uiStore.dismissNestedModal() }) {
                     builder()
                 }
             }

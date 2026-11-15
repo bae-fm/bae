@@ -33,12 +33,27 @@ struct DocumentViewerTests {
         let store = UiStore()
         store.presentModal { Text(verbatim: "Edit release") }
         store.presentDocument(name: "rip.log", text: "Extraction log")
-        #expect(store.modalBuilder != nil)
+        #expect(!store.modalStack.isEmpty)
         #expect(
             store.document
                 == OpenDocument(name: "rip.log", text: "Extraction log")
         )
         store.dismissDocument()
-        #expect(store.modalBuilder != nil)
+        #expect(!store.modalStack.isEmpty)
+    }
+
+    /// Change cover opens over the release editor; closing it leaves the
+    /// editor, and closing the editor closes every modal.
+    @Test("A modal opened from a modal stacks over it")
+    func modalsStack() {
+        let store = UiStore()
+        store.presentModal { Text(verbatim: "Edit release") }
+        store.presentModal { Text(verbatim: "Change cover") }
+        #expect(store.modalStack.count == 2)
+        store.dismissModal()
+        #expect(store.modalStack.count == 1)
+        store.presentModal { Text(verbatim: "Change cover") }
+        store.dismissAllModals()
+        #expect(store.modalStack.isEmpty)
     }
 }

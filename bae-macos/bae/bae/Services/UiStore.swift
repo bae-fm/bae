@@ -147,10 +147,10 @@ class UiStore: @unchecked Sendable {
     // ── Overlays ────────────────────────────────────────────────────────
 
     var lightbox: Cursor<LightboxItem>?
-    private(set) var modalBuilder: (() -> AnyView)?
-    /// A modal opened from inside the modal, drawn over it with the first
-    /// left open beneath: the release editor's Change cover.
-    private(set) var nestedModalBuilder: (() -> AnyView)?
+    /// The open modals, the first presented at the bottom. Each is drawn over
+    /// the one before it, which stays open beneath: the release editor's
+    /// Change cover opens over the editor.
+    private(set) var modalStack: [() -> AnyView] = []
     /// The document open in the viewer. It has a layer of its own, over the
     /// modal: a document opened from the release editor's modal leaves the
     /// editor open beneath it.
@@ -366,18 +366,9 @@ class UiStore: @unchecked Sendable {
 
     // MARK: - Overlay methods
 
+    /// Open a modal over the ones already open.
     func presentModal(@ViewBuilder content: @escaping () -> some View) {
-        modalBuilder = { AnyView(content()) }
-    }
-
-    func presentNestedModal(
-        @ViewBuilder content: @escaping () -> some View
-    ) {
-        nestedModalBuilder = { AnyView(content()) }
-    }
-
-    func dismissNestedModal() {
-        nestedModalBuilder = nil
+        modalStack.append { AnyView(content()) }
     }
 
     func presentDocument(name: String, text: String) {
@@ -416,9 +407,14 @@ class UiStore: @unchecked Sendable {
         lightbox = Cursor(items: items, preferring: id)
     }
 
+    /// Close the modal on top; the ones beneath stay open.
     func dismissModal() {
-        nestedModalBuilder = nil
-        modalBuilder = nil
+        _ = modalStack.popLast()
+    }
+
+    /// Close every open modal.
+    func dismissAllModals() {
+        modalStack.removeAll()
     }
 
     func setImportFolderPickerPresented(_ presented: Bool) {

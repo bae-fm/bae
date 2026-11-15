@@ -34,7 +34,7 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            var content = CoverGalleryContent(boardCoverGallery)
+            var content = CoverGalleryContent(boardCoverGallery())
             if !linked {
                 content.remote = CoverGalleryContent.Section(
                     items: [],
@@ -80,7 +80,13 @@ extension ShotScene {
 
     /// What core reads for the board's release: its cover, two Discogs
     /// covers and the image files in its folder.
-    private static var boardCoverGallery: BridgeCoverGallery {
+    static func boardCoverGallery(
+        remotes remoteNames: [(String, UInt32, BridgeCoverImageType)] = [
+            ("front", 1, .front), ("back", 2, .back),
+        ],
+        files fileNames: [String] = ["cover.jpg", "back.jpg", "disc.jpg"],
+        releaseId: String = "rel-board-0"
+    ) -> BridgeCoverGallery {
         func remote(
             _ name: String,
             position: UInt32,
@@ -115,25 +121,24 @@ extension ShotScene {
             BridgeGalleryCover(
                 selection: .releaseImage(fileId: name),
                 image: .releaseImage(
-                    releaseId: "rel-board-0",
+                    releaseId: releaseId,
                     source: .releaseFile(fileId: name)
                 ),
                 label: .file(name: name)
             )
         }
-        let remotes = [
-            remote("front", position: 1, type: .front),
-            remote("back", position: 2, type: .back),
-        ]
-        let files = ["cover.jpg", "back.jpg", "disc.jpg"].map(file)
+        let remotes = remoteNames.map {
+            remote($0.0, position: $0.1, type: $0.2)
+        }
+        let files = fileNames.map(file)
         return BridgeCoverGallery(
             current: BridgeGalleryCover(
                 selection: nil,
                 image: .releaseImage(
-                    releaseId: "rel-board-0",
+                    releaseId: releaseId,
                     source: .cover(
                         image: BridgeImageRef(
-                            id: "rel-board-0",
+                            id: releaseId,
                             version: "1",
                             imageType: .cover
                         )

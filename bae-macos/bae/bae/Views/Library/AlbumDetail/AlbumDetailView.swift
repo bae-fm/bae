@@ -153,7 +153,7 @@ struct AlbumDetailView: View {
         .onChange(of: albumId) { _, newId in showAlbum(newId) }
         .onDisappear {
             detailReader?.close()
-            uiStore.dismissModal()
+            uiStore.dismissAllModals()
             exportTask?.cancel()
             storageTask?.cancel()
         }
@@ -338,7 +338,7 @@ extension AlbumDetailView {
                             searchAlbums: importer.searchAlbums
                         ),
                         onSaved: { albumId in
-                            uiStore.dismissModal()
+                            uiStore.dismissAllModals()
                             // A release the save moved is shown where it went.
                             if albumId != currentAlbumId {
                                 uiStore.navigateToAlbum(
@@ -348,10 +348,10 @@ extension AlbumDetailView {
                             }
                         },
                         onViewAlbum: { albumId in
-                            uiStore.dismissModal()
+                            uiStore.dismissAllModals()
                             uiStore.navigateToAlbum(albumId)
                         },
-                        onClose: { uiStore.dismissModal() }
+                        onClose: { uiStore.dismissAllModals() }
                     )
                 }
             }
