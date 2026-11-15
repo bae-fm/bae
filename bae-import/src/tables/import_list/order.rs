@@ -47,6 +47,7 @@ impl Item {
 /// its column holds — the watched folder's path, a release's `CandidateKey`
 /// or a header's `RelativeFolder`, and the group's `RelativeFolder` — which
 /// the window's reads look its rows up by.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct ItemKey {
     pub(super) watched_folder_path: Vec<u8>,
@@ -55,8 +56,10 @@ pub(super) struct ItemKey {
     pub(super) group_folder: Option<Vec<u8>>,
 }
 
+#[cfg(test)]
 type ItemKeyColumns = (Vec<u8>, String, Vec<u8>, Option<Vec<u8>>);
 
+#[cfg(test)]
 impl ItemKey {
     fn read(row: &Row<'_>) -> rusqlite::Result<ItemKeyColumns> {
         Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
@@ -64,11 +67,6 @@ impl ItemKey {
 
     fn of((watched_folder_path, item, key, group_folder): ItemKeyColumns) -> Result<Self, DbError> {
         Ok(Self { watched_folder_path, item: Item::of(&item)?, key, group_folder })
-    }
-
-    /// The key as text for the log.
-    pub(super) fn shown(&self) -> String {
-        crate::CandidateKey::from(self.key.clone()).to_string()
     }
 }
 
@@ -309,21 +307,53 @@ pub(super) struct Items<'a> {
     shown: Shown<'a>,
 }
 
-/// The items of one window, in order, with the key of the first and the key
-/// of the item beyond its far end: what the windows beside it start and end
-/// at.
-pub(super) struct WindowItems {
-    pub(super) keys: Vec<ItemKey>,
-    pub(super) first: Option<OrderKey>,
-    pub(super) beyond: Option<OrderKey>,
-}
-
 /// A statement over one part of a stream: what it starts with, its rows, and
 /// their order.
 struct PartSql {
     with: String,
     from: String,
     order: String,
+}
+
+/// The statement of one window's range: an arm for each seek the window
+/// reads, each holding its seek's values under parameter names of its own.
+pub(super) struct RangeStatement {
+    plan: Vec<(usize, Seek)>,
+    arms: Vec<String>,
+    /// The key columns the arms select after `part`, for a statement over
+    /// the range to pass on.
+    pub(super) columns: String,
+    /// How many items the window holds at most.
+    pub(super) limit: u64,
+    /// Whether the arms read the window from its far end back, so its items
+    /// come out in the reverse of the window's order.
+    pub(super) backward: bool,
+}
+
+impl RangeStatement {
+    /// `text` with each seek value it names under a name of arm `n`'s.
+    fn own(n: usize, text: &str) -> String {
+        text.replace(":order_key_", &format!(":arm{n}_order_key_"))
+    }
+
+    /// The arms joined into one compound statement of the items
+    /// `watched_folder_path, item, key, group_folder, part` and the key
+    /// columns; it ends at `:limit`, which a statement binds to one more
+    /// than the window's limit.
+    pub(super) fn sql(&self) -> String {
+        format!("{} LIMIT :limit", self.arms.join(" UNION ALL "))
+    }
+
+    /// The values the arms' seeks hold, by name.
+    pub(super) fn params(&self) -> Vec<(String, &dyn ToSql)> {
+        self.plan
+            .iter()
+            .enumerate()
+            .flat_map(|(n, (_, seek))| {
+                seek.params().into_iter().map(move |(name, value)| (Self::own(n, name), value))
+            })
+            .collect()
+    }
 }
 
 impl<'a> Items<'a> {
@@ -479,7 +509,7 @@ impl<'a> Items<'a> {
     }
 
     /// Run `statement` with each parameter it names.
-    fn query<T>(
+    pub(super) fn query<T>(
         &self,
         sql: &impl coven::SqlRead,
         statement: &str,
@@ -529,7 +559,7 @@ impl<'a> Items<'a> {
 
     /// The list key of the row of a compound statement whose arms select
     /// their part's number as `part` and their order's key columns.
-    fn led_key(&self, row: &Row<'_>) -> rusqlite::Result<OrderKey> {
+    pub(super) fn led_key(&self, row: &Row<'_>) -> rusqlite::Result<OrderKey> {
         let at = usize::try_from(row.get::<_, i64>("part")?)
             .expect("an arm names the number of its part");
         let order = self.part_order(self.parts()[at]);
@@ -677,60 +707,65 @@ impl<'a> Items<'a> {
         Ok(plan)
     }
 
-    /// The items of `window`, in the list's order, with the key of the first
-    /// and of the item beyond the window's far end: one item more than the
-    /// limit is read to find it. The list's windows are ranges of its order,
-    /// each read from the index of the part it is in and running on into the
-    /// next part, or back into the one before, when its part ends: one
-    /// statement of one arm per seek, which stops at the limit.
-    pub(super) fn range(
+    /// The statement of `window`'s range: the items of the window and the
+    /// item beyond its far end, in the list's order. The list's windows are
+    /// ranges of its order, each read from the index of the part it is in and
+    /// running on into the next part, or back into the one before, when its
+    /// part ends: one statement of one arm per seek, which stops at the
+    /// limit. `None` for a window no part of the list has a range for.
+    pub(super) fn range_statement(
         &self,
-        sql: &impl coven::SqlRead,
         window: &ListWindow,
-    ) -> Result<WindowItems, DbError> {
+    ) -> Result<Option<RangeStatement>, DbError> {
         let (limit, backward) = match window {
             ListWindow::Forward { limit, .. } => (*limit, false),
             ListWindow::Backward { limit, .. } => (*limit, true),
         };
         let plan = self.range_plan(window)?;
         if plan.is_empty() {
-            return Ok(WindowItems { keys: Vec::new(), first: None, beyond: None });
+            return Ok(None);
         }
         let width = self.key_width();
         let mut arms = Vec::new();
-        let mut params: Vec<(String, &dyn ToSql)> = Vec::new();
         for (n, (at, seek)) in plan.iter().enumerate() {
-            // Each arm holds its own seek's values under names of its own.
-            let own = |text: &str| text.replace(":order_key_", &format!(":arm{n}_order_key_"));
             let part = self.parts()[*at];
             let order = self.part_order(part);
             let rows = self.window_statement_with(part, seek, "LIMIT :limit");
-            arms.push(own(&format!(
-                "SELECT * FROM (SELECT w.watched_folder_path, w.item, w.key, w.group_folder, \
-                        {at} AS part, {keys} FROM ({rows}) AS w)",
-                keys = order.key_columns_padded("w", width),
-            )));
-            params.extend(seek.params().into_iter().map(|(name, value)| (own(name), value)));
+            arms.push(RangeStatement::own(
+                n,
+                &format!(
+                    "SELECT * FROM (SELECT w.watched_folder_path, w.item, w.key, w.group_folder, \
+                            {at} AS part, {keys} FROM ({rows}) AS w)",
+                    keys = order.key_columns_padded("w", width),
+                ),
+            ));
         }
-        let statement = format!("{} LIMIT :limit", arms.join(" UNION ALL "));
-        let wanted = bae_store::list_windows::sql_bound(limit.saturating_add(1));
+        let columns = (0..width).map(|at| format!("order_key_{at}")).collect::<Vec<_>>().join(", ");
+        Ok(Some(RangeStatement { plan, arms, columns, limit, backward }))
+    }
+
+    /// The items of `window`, in the list's order.
+    #[cfg(test)]
+    pub(super) fn range(
+        &self,
+        sql: &impl coven::SqlRead,
+        window: &ListWindow,
+    ) -> Result<Vec<ItemKey>, DbError> {
+        let Some(range) = self.range_statement(window)? else {
+            return Ok(Vec::new());
+        };
+        let statement = range.sql();
+        let wanted = bae_store::list_windows::sql_bound(range.limit.saturating_add(1));
+        let params = range.params();
         let mut named: Vec<(&str, &dyn ToSql)> =
             params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
         named.push((":limit", &wanted));
-        let mut rows: Vec<(ItemKeyColumns, OrderKey)> =
-            self.query(sql, &statement, &named, |row| {
-                Ok((ItemKey::read(row)?, self.led_key(row)?))
-            })?;
-        let beyond = if rows.len() as u64 > limit { rows.pop().map(|(_, key)| key) } else { None };
-        if backward {
+        let mut rows: Vec<ItemKeyColumns> = self.query(sql, &statement, &named, ItemKey::read)?;
+        rows.truncate(usize::try_from(range.limit).unwrap_or(usize::MAX));
+        if range.backward {
             rows.reverse();
         }
-        let first = rows.first().map(|(_, key)| key.clone());
-        let keys = rows
-            .into_iter()
-            .map(|(columns, _)| ItemKey::of(columns))
-            .collect::<Result<_, DbError>>()?;
-        Ok(WindowItems { keys, first, beyond })
+        rows.into_iter().map(ItemKey::of).collect()
     }
 
     /// The key of the item at `position`, read by offset, or of the last

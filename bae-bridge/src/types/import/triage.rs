@@ -370,12 +370,6 @@ pub enum BridgeBadgeTone {
     Failure,
 }
 
-/// The actions one selected candidate's live state offers.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSelectionMember {
-    pub actions: Vec<BridgeCandidateAction>,
-}
-
 /// One action a selection offers, how many members it applies to, and whether
 /// it can run now.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -440,24 +434,6 @@ pub struct BridgeSelectionActionFailure {
     pub candidate_key: Vec<u8>,
     pub name: String,
     pub error: BridgeError,
-}
-
-/// What a selection of candidates can be told to do, in display order.
-#[uniffi::export]
-pub fn bridge_candidate_selection_offers(
-    members: Vec<BridgeSelectionMember>,
-) -> Vec<BridgeSelectionOffer> {
-    let parts: Vec<bae_import::triage::SelectionPart> = members
-        .into_iter()
-        .map(|member| bae_import::triage::SelectionPart {
-            actions: member.actions.into_iter().map(BridgeCandidateAction::into_core).collect(),
-            count: 1,
-        })
-        .collect();
-    bae_import::triage::selection_offers(&parts)
-        .into_iter()
-        .map(BridgeSelectionOffer::from_core)
-        .collect()
 }
 
 mirror_struct! {

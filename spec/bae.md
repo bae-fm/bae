@@ -1184,13 +1184,16 @@ and what its commands are decided from are kept beside it as it changes
 (Appendix A.7), so the list reads the rows it shows and not the whole queue.
 A row reads none of its folder's files, so a folder on a slow or unreachable
 volume does not hold up the list, and a linked row reads only the records its
-stored releases name, not the releases whole. A window reads the records and
-the upload standing of its imported rows' releases in one statement each, the
-records of the stored releases its linked rows claim — each release's album,
-its own records and the albums kept for those — in one statement each, and
-the stored scan items of its skipped rows and of its candidates holding no
-draft row in one statement, and the file versions its folder-image and
-embedded covers name in one statement each, not one per row.
+stored releases name, not the releases whole. A window is read in one statement: its range of the
+order is the statement's first table, and every row of each item in it is
+joined to that table by the item's key, each group's header, each release's
+placement, scan, link and draft, the records and the upload standing of an
+imported release, the records of the stored releases a linked row claims (each
+release's album, its own records and the albums kept for those), the file
+versions its folder-image and embedded covers name, and the header of the group
+a window starts inside of, with the key of the item beyond the window. A
+one-row menu on the Mac reads its offers from the row's own list of commands;
+only a selection of several rows counts offers, in SQL.
 Its counts — each tab's, each filter entry's, how many items the list holds
 and how many releases its filters keep, and how many each group's header
 counts — are COUNT statements over the placement's own rows, each read off an

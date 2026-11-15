@@ -38,7 +38,9 @@ use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_ro
 
 mod claimed_records;
 mod offered_covers;
-pub(crate) use claimed_records::claimed_records_on;
+pub(crate) use claimed_records::{
+    claimed_records_of_json, claimed_records_on, claimed_records_sql,
+};
 pub(crate) use offered_covers::offered_covers_on;
 mod tracklist;
 
@@ -794,56 +796,6 @@ pub(crate) fn store_named_releases_on(
         }
     }
     Ok(())
-}
-
-/// Every record each of the stored `releases` names, its own first — what
-/// [`SourceRelease::records`] answers of it — read without the rest of the
-/// release: its tracklist, covers and credits stay unread. `None` for one
-/// nothing stored. Three statements whatever `releases` holds — their groups,
-/// their records, and the albums kept for theirs — and none for no release.
-pub(crate) fn load_releases_records_on<S: coven::SqlRead>(
-    sql: &S,
-    releases: &[&bae_catalogs::records::LookupRef],
-) -> Result<Vec<Option<Vec<ReleaseRecord>>>, DbError> {
-    if releases.is_empty() {
-        return Ok(Vec::new());
-    }
-    let mut groups: Vec<Option<Option<String>>> = vec![None; releases.len()];
-    for (at, source_group_id) in sql.query(
-        "SELECT w.key, s.source_group_id FROM json_each(?1) AS w \
-         JOIN source_release AS s ON s.catalog = w.value ->> 0 AND s.release_id = w.value ->> 1",
-        [releases_json(releases)],
-        |row| Ok((row.get::<_, usize>(0)?, row.get::<_, Option<String>>(1)?)),
-    )? {
-        groups[at] = Some(source_group_id);
-    }
-    let own = own_records_of_on(sql, releases)?;
-    let stored: Vec<(usize, &Option<String>, &Vec<ReleaseRecord>)> = groups
-        .iter()
-        .zip(&own)
-        .enumerate()
-        .filter_map(|(at, (group, own))| group.as_ref().map(|group| (at, group, own)))
-        .collect();
-    let joined = super::album_link_rows::joined_albums_of_on(
-        sql,
-        &stored
-            .iter()
-            .map(|(at, group, own)| super::album_link_rows::ReleaseAlbums {
-                catalog: releases[*at].catalog.catalog(),
-                source_group_id: group.as_deref(),
-                records: own,
-            })
-            .collect::<Vec<_>>(),
-    )?;
-    let mut records: Vec<Option<Vec<ReleaseRecord>>> = vec![None; releases.len()];
-    for ((at, group, own), joined) in stored.into_iter().zip(joined) {
-        records[at] = Some(bae_catalogs::source_release::release_records(
-            releases[at],
-            group.clone(),
-            with_joined_records(own.clone(), &joined),
-        ));
-    }
-    Ok(records)
 }
 
 impl ImportTables {

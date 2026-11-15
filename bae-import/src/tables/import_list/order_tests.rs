@@ -335,6 +335,31 @@ async fn positions_in_done_are_read_in_one_statement() {
     assert_eq!(log.take().len(), 2, "the list's row, then the count before the key");
 }
 
+/// A window is read in one statement beyond the list's own row, whatever its
+/// rows hold: the group header a window starts inside of, each release's rows
+/// and the item beyond the window come in the same statement as the window's
+/// keys.
+#[tokio::test]
+async fn a_window_is_read_in_one_statement() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("Group/One") + lib.scan("Group/Two") + lib.scan("Solo")).await;
+    let tables = lib.tables();
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let inside = tables.import_key_at(list, 1).await.unwrap().expect("the list has items");
+    let log = lib.db.record_statements_for_test().await.unwrap();
+    let window = tables
+        .read_import_window(
+            list,
+            bae_store::ListWindow::Forward { from: Some(inside), until: None, limit: 1 },
+        )
+        .await
+        .unwrap();
+    assert_eq!(log.take().len(), 2, "the list's row, then the window");
+    assert_eq!(items_sequence(&window.read.rows), ["candidate Group/One"]);
+    assert!(window.leading_header.is_some(), "the window starts inside the group");
+    assert!(window.read.beyond.is_some(), "Group/Two lies beyond the window");
+}
+
 /// A jump past the end starts at the last item, and a window from its key
 /// holds that item alone.
 #[tokio::test]

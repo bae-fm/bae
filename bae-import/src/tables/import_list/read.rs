@@ -6,36 +6,11 @@
 //! windows they land in, and nothing else. Beside them, the reads a surface
 //! makes once: the key at a position.
 
-use super::order::{Item, ItemKey, WindowItems};
 use super::summary::closed;
 use super::*;
-use crate::list::{ImportListCount, ImportListItem, ImportQueueSummary, ImportWindow};
+use crate::list::{ImportListCount, ImportQueueSummary, ImportWindow};
 use bae_store::list_windows::OrderKey;
-use bae_store::{ListWindow, WindowRead};
-
-/// One window of a list as one read found it, its rows not yet put together.
-#[derive(Clone, PartialEq)]
-struct WindowRows {
-    window: ListWindow,
-    rows: Vec<window::WindowItemRows>,
-    leading_header: Option<window::WindowItemRows>,
-    first: Option<OrderKey>,
-    beyond: Option<OrderKey>,
-}
-
-/// The header of the group the first of `keys` is a member of, as an item
-/// key, when the window starts inside the group: its header leads its
-/// members, so it is not in the window.
-fn leading_header(keys: &[ItemKey]) -> Option<ItemKey> {
-    let first = keys.first()?;
-    let group = first.group_folder.as_ref().filter(|_| first.item != Item::Group)?;
-    Some(ItemKey {
-        watched_folder_path: first.watched_folder_path.clone(),
-        item: Item::Group,
-        key: group.clone(),
-        group_folder: Some(group.clone()),
-    })
-}
+use bae_store::ListWindow;
 
 /// `window` of the list `list` shows: the items of its range, and the header
 /// of the group they start inside of.
@@ -43,30 +18,9 @@ fn window_on(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
     window: &ListWindow,
-) -> Result<WindowRows, DbError> {
+) -> Result<ImportWindow, DbError> {
     let row = list_row(sql, list)?.ok_or_else(|| closed(list))?;
-    let WindowItems { mut keys, first, beyond } = row.items(Shown::View).range(sql, window)?;
-    let leading = leading_header(&keys);
-    if let Some(header) = &leading {
-        keys.insert(0, header.clone());
-    }
-    let mut rows = window::materialise(sql, &row, &keys)?;
-    let leading_header = leading.map(|_| rows.remove(0));
-    Ok(WindowRows { window: window.clone(), rows, leading_header, first, beyond })
-}
-
-impl WindowRows {
-    fn process(self) -> Result<ImportWindow, DbError> {
-        let rows = self
-            .rows
-            .into_iter()
-            .map(window::WindowItemRows::process)
-            .collect::<Result<Vec<ImportListItem>, DbError>>()?;
-        Ok(ImportWindow {
-            read: WindowRead { window: self.window, rows, first: self.first, beyond: self.beyond },
-            leading_header: self.leading_header.map(window::WindowItemRows::process).transpose()?,
-        })
-    }
+    window::read_window(sql, &row, window)
 }
 
 /// How many items sit before the one at `key` in `list`.
@@ -91,7 +45,6 @@ impl ImportTables {
     ) -> coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError> {
         self.store
             .subscribe_reconfigurable(initial, move |window, sql| window_on(&sql, list, window))
-            .process(|rows| rows.process())
     }
 
     /// How many items `list` holds and how many its narrowing keeps, live.
@@ -142,10 +95,7 @@ impl ImportTables {
         list: ImportListId,
         window: ListWindow,
     ) -> Result<ImportWindow, DbError> {
-        self.store
-            .read(move |sql| window_on(&sql, list, &window))
-            .process(|rows| rows.process())
-            .await
+        self.store.read(move |sql| window_on(&sql, list, &window)).await
     }
 
     /// The key of the item at `position` in `list`, or of its last item when
@@ -197,13 +147,7 @@ impl ImportTables {
                 ))
             })
             .process(|(rows, count, summary, entries, selection)| {
-                Ok(crate::list::ImportListRead::of(
-                    rows.process()?.read,
-                    count,
-                    summary,
-                    entries,
-                    selection,
-                ))
+                Ok(crate::list::ImportListRead::of(rows.read, count, summary, entries, selection))
             })
             .await
     }

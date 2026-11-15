@@ -130,30 +130,6 @@ extension PreviewData {
         )
     }
 
-    /// A selection of `keys` as core would summarize it: what each
-    /// candidate in `store` offers now, joined into the selection's offers.
-    @MainActor
-    static func importSelection(
-        of keys: [Data],
-        in store: ImportStore
-    ) -> ImportSelection {
-        let members = keys.map { key in
-            BridgeSelectionMember(
-                actions: store.selectedCandidates[key]?.live?.actions ?? []
-            )
-        }
-        let selection = ImportSelection()
-        selection.apply(
-            BridgeSelectionSummary(
-                count: UInt64(keys.count),
-                single: keys.count == 1
-                    ? keys.first.map { .candidate(key: $0) } : nil,
-                offers: bridgeCandidateSelectionOffers(members: members)
-            )
-        )
-        return selection
-    }
-
     /// `bytes` as lowercase hex, the way core spells bytes in a list key.
     private static func hex(_ bytes: Data) -> String {
         bytes.map { String(format: "%02x", $0) }.joined()

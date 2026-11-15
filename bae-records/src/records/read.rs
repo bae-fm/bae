@@ -222,7 +222,7 @@ pub fn get_files_for_release_on(
 /// Every catalog's description of the release `release` (an SQL expression
 /// naming its id), in the order surfaces list catalogs, as a JSON array for
 /// [`records_column`] that is empty for a release no catalog describes.
-pub(super) fn release_records_json_sql(release: &str) -> String {
+pub fn release_records_json_sql(release: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
                  'catalog', ordered.catalog, 'key', ordered.key, 'kind', ordered.kind, \
@@ -235,7 +235,7 @@ pub(super) fn release_records_json_sql(release: &str) -> String {
 
 /// The release's records as [`release_records_json_sql`] read them into
 /// `column`.
-pub(super) fn records_column(
+pub fn records_column(
     row: &Row,
     column: &str,
 ) -> rusqlite::Result<Vec<bae_catalogs::records::ReleaseRecord>> {

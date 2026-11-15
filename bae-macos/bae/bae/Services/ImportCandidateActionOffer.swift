@@ -32,24 +32,22 @@ struct ImportCandidateActionOffer: Identifiable {
         }
     }
 
-    /// What the row at `key` offers on its own, from the actions its live state
-    /// lists, in the order every surface lists them.
+    /// What the row at `key` offers on its own: each action its live state
+    /// lists, in the order every surface lists them. Combining reads several
+    /// rows as one release, so a lone row's menu leaves it out.
     static func row(
         _ key: Data,
         actions: [BridgeCandidateAction]
     ) -> [ImportCandidateActionOffer] {
-        bridgeCandidateSelectionOffers(
-            members: [
-                BridgeSelectionMember(actions: actions)
-            ]
-        )
-        .map { offer in
-            ImportCandidateActionOffer(
-                action: offer.action,
-                applicable: Int(offer.count),
-                enabled: offer.enabled,
-                rowKey: key
-            )
+        actions.compactMap { action in
+            action == .combine
+                ? nil
+                : ImportCandidateActionOffer(
+                    action: action,
+                    applicable: 1,
+                    enabled: true,
+                    rowKey: key
+                )
         }
     }
 }

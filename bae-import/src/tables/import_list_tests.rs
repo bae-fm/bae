@@ -614,7 +614,6 @@ impl ImportTables {
                     Ok(row
                         .items(shown)
                         .range(&sql, &everything)?
-                        .keys
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
                         .collect())

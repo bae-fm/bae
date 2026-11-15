@@ -98,7 +98,7 @@ mod verdict_rows;
 pub(super) use album_pick_rows::load_album_pick_on;
 pub(super) use candidate_rows::CandidateRows;
 pub(super) use cards_read::load_verdict_cards_on;
-pub(super) use cover_rows::{cover_read_columns, read_cover};
+pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;
 use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_candidates};
@@ -108,13 +108,13 @@ pub(crate) use import_commit::{
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 pub(super) use pane_rows::load_pane_rows_on;
 pub use pane_rows::DbCandidatePaneRows;
-pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
+pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
 };
-pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
+pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 pub(super) use rows::load_states_on;
 pub use rows::DbImportCandidateState;
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};

@@ -1,5 +1,7 @@
-//! A window of the list, loaded whole: each item the window's keys name, read
-//! by key, so a window costs its own rows whatever the list holds.
+//! A window of the list, loaded whole in one statement: the range the window
+//! reads from the placement's order indexes, and every row of each item in
+//! it, joined to that range by the item's key, so a window costs its own
+//! rows whatever the list holds.
 //!
 //! A release's row comes from its placement — what it shows, its state and
 //! what its commands are decided from — and the keyed rows beside it: its
@@ -13,175 +15,189 @@
 
 use super::actions::action_columns;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
-use super::order::{Item, ItemKey};
+use super::order::Item;
 use super::*;
 use crate::candidate_detail::ListedRelease;
-use crate::list::ImportListItem;
-use crate::tables::folder_scans;
+use crate::list::{ImportListItem, ImportWindow};
+use crate::tables::folder_scans::{
+    self, cover_version_joins, CoverVersionColumns, COVER_VERSION_COLUMNS,
+};
 use crate::tables::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
-    PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS, RUNTIME_FACT_COLUMNS,
+    StoredCover, StoredProvenance, StoredReleaseLink, PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS,
+    RUNTIME_FACT_COLUMNS,
 };
 use crate::tables::release_groupings::block_of;
-use crate::tables::source_releases::load_releases_records_on;
+use crate::tables::source_releases::{claimed_records_of_json, claimed_records_sql};
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
 use crate::RelativeFolder;
-use crate::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
-use bae_catalogs::records::{LookupRef, ReleaseRecord};
-use bae_identify::PressingLink;
-use bae_records::records::files::cover_version_sql;
-use bae_records::records::queued_uploads::release_upload_progress_on;
-use bae_records::records::read::get_releases_records_on;
+use crate::{CandidateKey, FolderReleaseDecisionKey, ImportedRelease, ReleaseLink};
+use bae_catalogs::records::ReleaseRecord;
+use bae_records::records::queued_uploads::{
+    release_upload_progress_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COUNT_COLUMNS,
+};
+use bae_records::records::read::{records_column, release_records_json_sql};
 use bae_records::UploadProgress;
-use std::collections::HashMap;
+use bae_store::ListWindow;
+use rusqlite::ToSql;
 use std::path::PathBuf;
 
-/// The items `keys` name, in their order, loaded whole for the list `list`,
-/// each member of a group with the key of the header it is listed under. The
-/// headers and the releases are each read in the window's order, so each item
-/// is the next row of its kind.
-pub(super) fn materialise(
+/// `window` of the list `list` shows, loaded whole in one statement: the
+/// items of its range, the header of the group they start inside of, and the
+/// keys of the first item and of the item beyond the window's far end.
+///
+/// The range is the statement's first table. Its items are numbered in the
+/// order the arms return them; the one past the limit is the item beyond,
+/// and a window read backward numbers from its far end, so its items come
+/// out in the window's order. A member of a group at the window's start
+/// leads with a row for its header, which is not one of the window's items.
+pub(super) fn read_window(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
-    keys: &[ItemKey],
-) -> Result<Vec<WindowItemRows>, DbError> {
-    let mut headers = header_rows(sql, list, keys)?.into_iter().peekable();
-    let releases = release_rows(sql, list.id, keys)?;
-    let imported = ImportedReads::of(sql, &releases)?;
-    let linked = LinkedReads::of(sql, keys, &releases)?;
-    let mut covers = row_covers(sql, keys, &releases)?;
-    let mut releases = releases.into_iter().peekable();
-    keys.iter()
-        .enumerate()
-        .map(|(position, key)| {
-            let missing = || {
-                // The window's keys and rows are read in one snapshot.
-                DbError::unreadable(
-                    format!("the rows of the list's {:?} at {}", key.item, key.shown()),
-                    0,
-                )
-            };
-            if key.item == Item::Group {
-                let (_, header) = headers.next_if(|(at, _)| *at == position).ok_or_else(missing)?;
-                return Ok(WindowItemRows::Ready(header));
+    window: &ListWindow,
+) -> Result<ImportWindow, DbError> {
+    let items = list.items(Shown::View);
+    let Some(range) = items.range_statement(window)? else {
+        return Ok(ImportWindow {
+            read: bae_store::WindowRead {
+                window: window.clone(),
+                rows: Vec::new(),
+                first: None,
+                beyond: None,
+            },
+            leading_header: None,
+        });
+    };
+    let position = match range.backward {
+        true => "min(w.total, :shown) - w.n",
+        false => "w.n - 1",
+    };
+    let statement = format!(
+        "WITH keyed AS ( \
+             SELECT row_number() OVER () AS n, count(*) OVER () AS total, k.* \
+             FROM ({range}) AS k) \
+         {rows}",
+        range = range.sql(),
+        rows = rows_statement(position, &range.columns),
+    );
+    let shown = bae_store::list_windows::sql_bound(range.limit);
+    let wanted = bae_store::list_windows::sql_bound(range.limit.saturating_add(1));
+    let range_params = range.params();
+    let mut named: Vec<(&str, &dyn ToSql)> =
+        range_params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
+    named.push((":limit", &wanted));
+    named.push((":shown", &shown));
+    let rows = items.query(sql, &statement, &named, |row| {
+        let role: String = row.get("role")?;
+        let item: String = row.get("item")?;
+        let ordered = items.led_key(row)?;
+        let stored = match (role.as_str(), item.as_str()) {
+            ("beyond", _) => None,
+            (_, "group") => Some(StoredItem::Header(read_header(row)?)),
+            _ => Some(StoredItem::Release(Box::new(read_release(row)?))),
+        };
+        Ok((role, item, ordered, stored))
+    })?;
+    let mut read = Vec::new();
+    let (mut leading_header, mut first, mut beyond) = (None, None, None);
+    for (role, item, ordered, stored) in rows {
+        let shown = match stored {
+            Some(StoredItem::Header(header)) => Some(header_item(header)?),
+            Some(StoredItem::Release(release)) => Some(release_item(*release, Item::of(&item)?)?),
+            None => None,
+        };
+        match (role.as_str(), shown) {
+            ("leading", item) => leading_header = item,
+            ("beyond", _) => beyond = Some(ordered),
+            (_, Some(item)) => {
+                if read.is_empty() {
+                    first = Some(ordered);
+                }
+                read.push(item);
             }
-            let release =
-                releases.next_if(|release| release.position == position).ok_or_else(missing)?;
-            if key.item == Item::Invalid {
-                return invalid_item(release);
-            }
-            candidate_item(&imported, &linked, &mut covers, release)
-        })
-        .collect()
+            (_, None) => return Err(DbError::unreadable("a row of an import list's window", role)),
+        }
+    }
+    Ok(ImportWindow {
+        read: bae_store::WindowRead { window: window.clone(), rows: read, first, beyond },
+        leading_header,
+    })
 }
 
-/// One group header's columns, read for the window that holds it. How many
-/// of its releases the filters keep is the members the placement holds under it,
-/// counted, unless a text filter reads the rows; whether its folder is offered to be
-/// read as one release is its placement's (`import_list_recombine`).
-fn header_rows(
-    sql: &SqlReadContext<'_>,
-    list: &ListRow,
-    keys: &[ItemKey],
-) -> Result<Vec<(usize, ImportListItem)>, DbError> {
-    let heads: Vec<serde_json::Value> = keys
-        .iter()
-        .enumerate()
-        .filter(|(_, key)| key.item == Item::Group)
-        .map(|(position, key)| {
-            serde_json::json!([
-                position,
-                hex::encode(&key.watched_folder_path),
-                hex::encode(&key.key)
-            ])
-        })
-        .collect();
-    if heads.is_empty() {
-        return Ok(Vec::new());
-    }
-    let entry_count = match list.filters_text {
-        true => {
-            "(SELECT count(*) FROM import_list_matching AS m \
-              WHERE m.list_id = :list AND m.watched_folder_path = h.root \
-                AND m.group_folder = h.folder)"
-        }
-        false => {
-            "(SELECT COUNT(*) FROM import_list_view AS v \
-              JOIN import_list_placement AS m \
-                  ON m.watched_folder_path = h.root AND m.group_folder = h.folder \
-                 AND m.item <> 'group' \
-                 AND (v.pending_filter = 'all' OR m.pending_entry = v.pending_filter) \
-              WHERE v.id = :list)"
-        }
-    };
-    let rows = sql.query(
-        &format!(
-            "WITH heads (position, root, folder) AS ( \
-                 SELECT value ->> 0, unhex(value ->> 1), unhex(value ->> 2) \
-                 FROM json_each(:heads)) \
-             SELECT h.position, h.root, h.folder, p.group_name, \
-                    NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
-                                WHERE c.list_id = :list AND c.watched_folder_path = h.root \
-                                  AND c.group_folder = h.folder) AS expanded, \
-                    {entry_count} AS entry_count, p.combinable \
-             FROM heads AS h \
-             JOIN import_list_placement AS p \
-                 ON p.watched_folder_path = h.root AND p.item = 'group' AND p.key = h.folder \
-             ORDER BY h.position"
-        ),
-        named_params! {
-            ":heads": serde_json::Value::Array(heads).to_string(),
-            ":list": list.id.0,
-        },
-        |row| {
-            Ok((
-                row.get::<_, usize>(0)?,
-                path_column::get(row, 1)?,
-                row.get::<_, RelativeFolder>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, bool>(4)?,
-                row.get::<_, i64>(5)?,
-                row.get::<_, bool>(6)?,
-            ))
-        },
-    )?;
-    rows.into_iter()
-        .map(
-            |(position, root, folder, name, expanded, entry_count, combinable): (
-                usize,
-                PathBuf,
-                RelativeFolder,
-                String,
-                bool,
-                i64,
-                bool,
-            )| {
-                let header = ImportListItem::GroupHeader {
-                    group: TriageGroup {
-                        key: FolderReleaseDecisionKey {
-                            watched_folder_path: root.clone(),
-                            relative_folder: folder,
-                        },
-                        name,
-                        combinable,
-                    },
-                    watched_folder_path: root,
-                    expanded,
-                    entry_count: to_u32(entry_count, "a group's entry count")?,
-                };
-                Ok((position, header))
+/// What one row of the window's statement holds, by its kind.
+enum StoredItem {
+    Header(HeaderRow),
+    Release(Box<ReleaseRows>),
+}
+
+/// One group header's columns.
+struct HeaderRow {
+    root: PathBuf,
+    folder: RelativeFolder,
+    name: String,
+    expanded: bool,
+    entry_count: i64,
+    combinable: bool,
+}
+
+/// The header columns of a row of a group whose key is the expression `key`:
+/// how many of its releases the filters keep is the members the placement
+/// holds under it, counted, unless a text filter reads the rows; whether its
+/// folder is offered to be read as one release is its placement's
+/// (`import_list_recombine`).
+fn header_columns(key: &str) -> String {
+    format!(
+        "hp.group_name AS header_name, \
+         NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
+                     WHERE c.list_id = :list AND c.watched_folder_path = w.watched_folder_path \
+                       AND c.group_folder = {key}) AS header_expanded, \
+         CASE WHEN hp.key IS NULL THEN NULL \
+              WHEN (SELECT pattern IS NOT NULL FROM import_list_view WHERE id = :list) \
+              THEN (SELECT count(*) FROM import_list_matching AS m \
+                    WHERE m.list_id = :list AND m.watched_folder_path = w.watched_folder_path \
+                      AND m.group_folder = {key}) \
+              ELSE (SELECT COUNT(*) FROM import_list_view AS v \
+                    JOIN import_list_placement AS m \
+                        ON m.watched_folder_path = w.watched_folder_path \
+                       AND m.group_folder = {key} AND m.item <> 'group' \
+                       AND (v.pending_filter = 'all' OR m.pending_entry = v.pending_filter) \
+                    WHERE v.id = :list) END AS header_entries, \
+         hp.combinable AS header_combinable"
+    )
+}
+
+fn read_header(row: &Row<'_>) -> rusqlite::Result<HeaderRow> {
+    Ok(HeaderRow {
+        root: path_column::get(row, "header_root")?,
+        folder: row.get("header_folder")?,
+        name: row.get("header_name")?,
+        expanded: row.get("header_expanded")?,
+        entry_count: row.get("header_entries")?,
+        combinable: row.get("header_combinable")?,
+    })
+}
+
+fn header_item(header: HeaderRow) -> Result<ImportListItem, DbError> {
+    let HeaderRow { root, folder, name, expanded, entry_count, combinable } = header;
+    Ok(ImportListItem::GroupHeader {
+        group: TriageGroup {
+            key: FolderReleaseDecisionKey {
+                watched_folder_path: root.clone(),
+                relative_folder: folder,
             },
-        )
-        .collect()
+            name,
+            combinable,
+        },
+        watched_folder_path: root,
+        expanded,
+        entry_count: to_u32(entry_count, "a group's entry count")?,
+    })
 }
 
 /// One release's columns, read for the window that holds it.
-#[derive(Clone, PartialEq)]
 struct ReleaseRows {
-    /// Where in the window the release is.
-    position: usize,
     watched_folder_path: PathBuf,
     key: CandidateKey,
     display_path: String,
@@ -191,10 +207,8 @@ struct ReleaseRows {
     summary: Option<TriageMetadataSummary>,
     listed: ListedColumns,
     name: String,
-    content_hash: Option<String>,
     /// Whether the candidate's state describes its current files, which is
     /// when its draft, link, lookup and cover are its own.
-    current: bool,
     imported: Option<ImportedRelease>,
     /// The version of the imported release's library cover, if it has one.
     library_cover: Option<String>,
@@ -207,146 +221,170 @@ struct ReleaseRows {
     /// The header of the group the release is listed under, by its stable
     /// key.
     header_key: Option<String>,
+    /// How the imported release's upload stands.
+    upload: Option<UploadProgress>,
+    /// The catalogs the imported release's records name.
+    library_records: Vec<ReleaseRecord>,
+    /// The records of what the candidate's link names, merged.
+    link_records: Option<String>,
     /// The draft's source, the link and the cover, which are the
     /// candidate's own only while its state describes its current files.
-    metadata_provenance: Option<crate::MetadataProvenance>,
-    release_link: Option<ReleaseLink>,
-    cover: Option<CoverSelection>,
+    provenance: Option<StoredProvenance>,
+    link: Option<StoredReleaseLink>,
+    cover: Option<StoredCover>,
+    cover_versions: CoverVersionColumns,
 }
 
-/// The releases of the window `keys`, in its order.
-fn release_rows(
-    sql: &SqlReadContext<'_>,
-    list: ImportListId,
-    keys: &[ItemKey],
-) -> Result<Vec<ReleaseRows>, DbError> {
-    use crate::tables::import_state::failure_rows::{
-        failure_reason_from_row, FAILURE_REASON_COLUMNS,
-    };
-    let keys: Vec<serde_json::Value> = keys
-        .iter()
-        .enumerate()
-        .filter(|(_, key)| key.item != Item::Group)
-        .map(|(position, key)| serde_json::json!([position, hex::encode(&key.key)]))
-        .collect();
-    if keys.is_empty() {
-        return Ok(Vec::new());
-    }
+/// The statement's last part: each item of the range, a group's header or a
+/// release's rows, by its key, in the window's order. A group's header reads
+/// its placement; a release reads its placement and the keyed rows beside it.
+fn rows_statement(position: &str, columns: &str) -> String {
+    use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
-    let rows = sql.query(
-        &format!(
-            "SELECT p.watched_folder_path, p.key, p.display_path, \
-                    p.has_summary, p.shown_title, p.shown_credits, {LISTED_COLUMNS}, \
-                    c.name, c.content_hash, s.content_hash IS NOT NULL, \
-                    origin.release_id, released.album_id, \
-                    g.blocked, g.blocked_subject, g.blocked_holder, \
-                    failure.content_hash IS NOT NULL AS failed, {FAILURE_REASON_COLUMNS}, \
-                    {RUNTIME_FACT_COLUMNS}, \
-                    EXISTS (SELECT 1 FROM import_list_selection AS chosen \
-                            WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
-                    p.group_folder AS group_folder, \
-                    w.value ->> 0 AS window_position, {library_cover} AS library_cover, \
-                    {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions} \
-             FROM json_each(:keys) AS w \
-             JOIN import_list_placement AS p \
-                 ON p.key = unhex(w.value ->> 1) AND p.item <> 'group' \
-             JOIN scan_candidate AS c \
-                 ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
-             LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
-             LEFT JOIN import_candidate_state AS s \
-                 ON s.content_hash = c.content_hash AND s.edit_revision = c.file_edit_revision \
-             LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash \
-             LEFT JOIN releases AS released ON released.id = origin.release_id \
-             LEFT JOIN import_candidate_failure AS failure \
-                 ON failure.content_hash = c.content_hash \
-             LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-             LEFT JOIN import_candidate_draft_provenance AS provenance \
-                 ON provenance.content_hash = s.content_hash \
-             LEFT JOIN import_candidate_release_link AS link ON link.content_hash = s.content_hash \
-             LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
-             {invalid_join} \
-             ORDER BY window_position",
-            cover = cover_read_columns(),
-            library_cover = cover_version_sql("origin.release_id"),
-            invalid = invalid_columns.0,
-            invalid_join = invalid_columns.1,
-            actions = action_columns(),
-        ),
-        named_params! {
-            ":keys": serde_json::Value::from(keys).to_string(),
-            ":list": list.0,
+    let covers = cover_version_joins(
+        "(CASE WHEN origin.release_id IS NULL THEN cover.kind END)",
+        "cover.file_id",
+    );
+    let link_records = claimed_records_sql("link.content_hash");
+    // The statement's rows are each of the range's items once as a `row`, the
+    // first of them again as the `leading` header of its group when it is a
+    // member of one, and the item beyond the window as the `beyond` row.
+    let item = "CASE r.role WHEN 'leading' THEN 'group' ELSE w.item END";
+    let key = "CASE r.role WHEN 'leading' THEN w.group_folder ELSE w.key END";
+    let header_columns = header_columns(key);
+    format!(
+        "SELECT p.watched_folder_path, p.key, p.display_path, \
+                p.has_summary, p.shown_title, p.shown_credits, {LISTED_COLUMNS}, \
+                c.name, c.content_hash, s.content_hash IS NOT NULL, \
+                origin.release_id, released.album_id, \
+                g.blocked, g.blocked_subject, g.blocked_holder, \
+                failure.content_hash IS NOT NULL AS failed, {FAILURE_REASON_COLUMNS}, \
+                {RUNTIME_FACT_COLUMNS}, \
+                EXISTS (SELECT 1 FROM import_list_selection AS chosen \
+                        WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
+                p.group_folder AS group_folder, \
+                {library_cover} AS library_cover, \
+                {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
+                CASE r.role WHEN 'row' THEN {position} WHEN 'leading' THEN -1 \
+                     ELSE :shown END AS pos, \
+                r.role AS role, {item} AS item, w.part AS part, \
+                w.watched_folder_path AS header_root, {key} AS header_folder, {header_columns}, \
+                {RELEASE_UPLOAD_COUNT_COLUMNS}, \
+                CASE WHEN origin.release_id IS NOT NULL THEN {library_records} END \
+                    AS library_records, \
+                CASE WHEN link.content_hash IS NOT NULL AND origin.release_id IS NULL \
+                     THEN ({link_records}) END AS link_records, \
+                {COVER_VERSION_COLUMNS}, {columns} \
+         FROM keyed AS w \
+         JOIN (SELECT 'row' AS role UNION ALL SELECT 'leading' UNION ALL SELECT 'beyond') AS r \
+             ON CASE r.role WHEN 'row' THEN w.n <= :shown \
+                            WHEN 'beyond' THEN w.n > :shown \
+                            ELSE w.n <= :shown AND ({position}) = 0 AND w.item <> 'group' \
+                                 AND w.group_folder IS NOT NULL END \
+         LEFT JOIN import_list_placement AS hp \
+             ON r.role <> 'beyond' AND {item} = 'group' \
+            AND hp.watched_folder_path = w.watched_folder_path \
+            AND hp.item = 'group' AND hp.key = {key} \
+         LEFT JOIN import_list_placement AS p \
+             ON r.role <> 'beyond' AND {item} <> 'group' \
+            AND p.watched_folder_path = w.watched_folder_path \
+            AND p.key = {key} AND p.item <> 'group' \
+         LEFT JOIN scan_candidate AS c \
+             ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
+         LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
+         LEFT JOIN import_candidate_state AS s \
+             ON s.content_hash = c.content_hash AND s.edit_revision = c.file_edit_revision \
+         LEFT JOIN local_release_origin AS origin ON origin.content_hash = c.content_hash \
+         LEFT JOIN releases AS released ON released.id = origin.release_id \
+         LEFT JOIN import_candidate_failure AS failure \
+             ON failure.content_hash = c.content_hash \
+         LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
+         LEFT JOIN import_candidate_draft_provenance AS provenance \
+             ON provenance.content_hash = s.content_hash \
+         LEFT JOIN import_candidate_release_link AS link ON link.content_hash = s.content_hash \
+         LEFT JOIN import_candidate_cover AS cover ON cover.content_hash = s.content_hash \
+         LEFT JOIN release_storage AS storage \
+             ON storage.release_id = origin.release_id AND storage.queued_count > 0 \
+         LEFT JOIN ({RELEASES_SENDING}) AS sending ON sending.release_id = storage.release_id \
+         {covers} \
+         {invalid_join} \
+         ORDER BY pos",
+        cover = cover_read_columns(),
+        library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),
+        library_records = release_records_json_sql("origin.release_id"),
+        invalid = invalid_columns.0,
+        invalid_join = invalid_columns.1,
+        actions = action_columns(),
+    )
+}
+
+/// One release's columns of a row of [`rows_statement`].
+fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
+    use crate::tables::import_state::failure_rows::failure_reason_from_row;
+    let summary = match row.get::<_, Option<bool>>(3)? {
+        Some(true) => Some(TriageMetadataSummary {
+            album_title: row.get(4)?,
+            album_artists: crate::tables::stored_credits::line_column(row, "shown_credits")?
+                .unwrap_or_default(),
+        }),
+        Some(false) | None => None,
+    };
+    let failed: bool = row.get("failed")?;
+    Ok(ReleaseRows {
+        watched_folder_path: path_column::get(row, 0)?,
+        key: row.get(1)?,
+        display_path: row.get(2)?,
+        summary,
+        listed: ListedColumns::read(row, 6)?,
+        name: row.get(16)?,
+        imported: match row.get::<_, Option<String>>(19)? {
+            Some(release_id) => Some(ImportedRelease { release_id, album_id: row.get(20)? }),
+            None => None,
         },
-        |row| {
-            let summary = match row.get::<_, Option<bool>>(3)? {
-                Some(true) => Some(TriageMetadataSummary {
-                    album_title: row.get(4)?,
-                    album_artists: crate::tables::stored_credits::line_column(
-                        row,
-                        "shown_credits",
-                    )?
-                    .unwrap_or_default(),
-                }),
-                Some(false) | None => None,
-            };
-            let failed: bool = row.get("failed")?;
-            let release = ReleaseRows {
-                position: row.get("window_position")?,
-                watched_folder_path: path_column::get(row, 0)?,
-                key: row.get(1)?,
-                display_path: row.get(2)?,
-                summary,
-                listed: ListedColumns::read(row, 6)?,
-                name: row.get(16)?,
-                content_hash: row.get(17)?,
-                current: row.get(18)?,
-                imported: match row.get::<_, Option<String>>(19)? {
-                    Some(release_id) => {
-                        Some(ImportedRelease { release_id, album_id: row.get(20)? })
-                    }
-                    None => None,
-                },
-                library_cover: row.get("library_cover")?,
-                block: (row.get(21)?, row.get(22)?, row.get(23)?),
-                failure: match failed {
-                    true => Some(failure_reason_from_row(row)?),
-                    false => None,
-                },
-                facts: RuntimeFactColumns::read(row, 26)?,
-                selected: row.get("selected")?,
-                invalid: folder_scans::InvalidColumns::read(row)?,
-                header_key: row
-                    .get::<_, Option<RelativeFolder>>("group_folder")?
-                    .map(|folder| {
-                        Ok::<_, rusqlite::Error>(crate::list::group_stable_key(
-                            &FolderReleaseDecisionKey {
-                                watched_folder_path: path_column::get(row, 0)?,
-                                relative_folder: folder,
-                            },
-                        ))
-                    })
-                    .transpose()?,
-                metadata_provenance: None,
-                release_link: None,
-                cover: None,
-            };
-            Ok((release, read_provenance(row)?, read_release_link(row)?, read_cover(row)?))
+        library_cover: row.get("library_cover")?,
+        block: (row.get(21)?, row.get(22)?, row.get(23)?),
+        failure: match failed {
+            true => Some(failure_reason_from_row(row)?),
+            false => None,
         },
-    )?;
-    rows.into_iter()
-        .map(|(release, provenance, link, cover)| {
-            Ok(ReleaseRows {
-                metadata_provenance: provenance.map(|stored| stored.provenance()).transpose()?,
-                release_link: link.map(|stored| stored.link()).transpose()?,
-                cover: cover.map(|stored| stored.selection()).transpose()?,
-                ..release
+        facts: RuntimeFactColumns::read(row, 26)?,
+        selected: row.get("selected")?,
+        invalid: folder_scans::InvalidColumns::read(row)?,
+        header_key: row
+            .get::<_, Option<RelativeFolder>>("group_folder")?
+            .map(|folder| {
+                Ok::<_, rusqlite::Error>(crate::list::group_stable_key(&FolderReleaseDecisionKey {
+                    watched_folder_path: path_column::get(row, 0)?,
+                    relative_folder: folder,
+                }))
             })
-        })
-        .collect()
+            .transpose()?,
+        upload: release_upload_progress_in_row(row)?,
+        library_records: match row.get::<_, Option<String>>("library_records")? {
+            Some(_) => records_column(row, "library_records")?,
+            None => Vec::new(),
+        },
+        link_records: row.get("link_records")?,
+        provenance: read_provenance(row)?,
+        link: read_release_link(row)?,
+        cover: read_cover(row)?,
+        cover_versions: CoverVersionColumns::read(row)?,
+    })
+}
+
+/// A release's item: a folder that failed validation as its scan read it, or
+/// a candidate as its placement and the keyed rows beside it say.
+fn release_item(release: ReleaseRows, item: Item) -> Result<ImportListItem, DbError> {
+    match item {
+        Item::Invalid => invalid_item(release),
+        Item::Candidate => candidate_item(release),
+        Item::Group => Err(DbError::unreadable("the placement of a release's row", "group")),
+    }
 }
 
 /// A folder that failed validation, as its row shows it: what its scan read,
 /// which the row's own statement selected.
-fn invalid_item(release: ReleaseRows) -> Result<WindowItemRows, DbError> {
+fn invalid_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     let Some(invalid) = release.invalid else {
         return Err(DbError::unreadable(
             format!("the scan item of {}, listed as failing validation", release.key),
@@ -354,119 +392,92 @@ fn invalid_item(release: ReleaseRows) -> Result<WindowItemRows, DbError> {
         ));
     };
     let candidate = invalid.candidate(&release.key, release.name, release.watched_folder_path)?;
-    Ok(WindowItemRows::Ready(ImportListItem::Invalid { candidate, selected: release.selected }))
+    Ok(ImportListItem::Invalid { candidate, selected: release.selected })
 }
 
-/// What the window's rows with an imported release read of the library
-/// beside them: how each release's upload stands and the catalogs its records
-/// name, each read once for all the window's imported releases.
-struct ImportedReads {
-    uploads: HashMap<String, UploadProgress>,
-    records: HashMap<String, Vec<bae_catalogs::records::ReleaseRecord>>,
-}
-
-impl ImportedReads {
-    fn of(sql: &SqlReadContext<'_>, releases: &[ReleaseRows]) -> Result<Self, DbError> {
-        let release_ids: Vec<String> = releases
-            .iter()
-            .filter_map(|release| release.imported.as_ref())
-            .map(|imported| imported.release_id.clone())
-            .collect();
-        // A window of rows that have none reruns on none of the upload
-        // queue's changes.
-        if release_ids.is_empty() {
-            return Ok(Self { uploads: HashMap::new(), records: HashMap::new() });
-        }
-        Ok(Self {
-            uploads: release_upload_progress_on(sql, &release_ids)?,
-            records: release_ids
-                .iter()
-                .cloned()
-                .zip(get_releases_records_on(sql, &release_ids)?)
-                .collect(),
-        })
-    }
-}
-
-/// A release's row: its placement and the keyed rows beside it, listed under
-/// its group's header, if it has one.
-fn candidate_item(
-    imported_reads: &ImportedReads,
-    linked_reads: &LinkedReads,
-    covers: &mut HashMap<usize, crate::CoverImageSource>,
-    release: ReleaseRows,
-) -> Result<WindowItemRows, DbError> {
-    let ListedRelease { basis, actions, standing } = release.listed.clone().listed(&release.key)?;
-    let facts = release.facts.facts(&release.key)?;
-    let (blocked, subject, holder) = release.block.clone();
+/// A candidate's row: its placement and the keyed rows beside it, listed
+/// under its group's header, if it has one.
+fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
+    let ReleaseRows {
+        watched_folder_path,
+        key,
+        display_path,
+        summary,
+        listed,
+        name,
+        imported,
+        library_cover,
+        block,
+        failure,
+        facts,
+        selected,
+        header_key,
+        upload,
+        library_records,
+        link_records,
+        provenance,
+        link,
+        cover,
+        cover_versions,
+        ..
+    } = release;
+    let ListedRelease { basis, actions, standing } = listed.listed(&key)?;
+    let facts = facts.facts(&key)?;
+    let (blocked, subject, holder) = block;
     let block = block_of(blocked, subject, holder)?;
-    let import_status =
-        import_status_of(release.imported.as_ref(), block.as_ref(), release.failure.as_ref());
-    let upload = release
-        .imported
-        .as_ref()
-        .and_then(|imported| imported_reads.uploads.get(&imported.release_id))
-        .cloned();
-    let shown = match release.imported.as_ref() {
+    let import_status = import_status_of(imported.as_ref(), block.as_ref(), failure.as_ref());
+    let shown = match imported.as_ref() {
         // A release this device imported reads the library release: its
         // cover, and the catalogs its records name.
         Some(imported) => ShownRows {
             metadata_provenance: None,
             release_link: None,
-            reading: TriageReading::of_library(
-                imported_reads.records.get(&imported.release_id).cloned().unwrap_or_default(),
-            ),
-            picked: None,
-            cover: bae_records::cover_ref(&imported.release_id, release.library_cover.clone())
+            reading: TriageReading::of_library(library_records),
+            cover: bae_records::cover_ref(&imported.release_id, library_cover)
                 .map(|image| crate::CoverImageSource::Library { image }),
         },
         None => {
-            let release_link = release.release_link.clone();
-            // A pressing's releases' records are read in this snapshot and
-            // put together after it ends; an album names its records itself.
-            let picked = match release_link.as_ref() {
-                Some(ReleaseLink::Pressing(pressing)) => {
-                    Some(LinkedRows::Pressing(linked_reads.claimed_records(pressing)))
-                }
-                Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
-                None => None,
+            let release_link = link.map(StoredReleaseLink::link).transpose()?;
+            let records = match link_records {
+                Some(json) => claimed_records_of_json(&json)?,
+                None => Vec::new(),
             };
+            let cover = cover
+                .map(StoredCover::selection)
+                .transpose()?
+                .map(|selection| {
+                    cover_versions.choice(&key, &selection).map(crate::CoverChoice::into_image)
+                })
+                .transpose()?;
             ShownRows {
-                metadata_provenance: release.metadata_provenance.clone(),
-                reading: TriageReading::of(
-                    release.summary.as_ref(),
-                    release_link.as_ref(),
-                    Vec::new(),
-                ),
+                metadata_provenance: provenance.map(|stored| stored.provenance()).transpose()?,
+                reading: TriageReading::of(summary.as_ref(), release_link.as_ref(), records),
                 release_link,
-                picked,
-                cover: covers.remove(&release.position),
+                cover,
             }
         }
     };
     let row = TriageRow {
-        candidate_key: release.key.clone(),
-        folder_name: release.name.clone(),
-        watched_folder_path: release.watched_folder_path.clone(),
-        display_path: release.display_path.clone(),
+        candidate_key: key,
+        folder_name: name,
+        watched_folder_path,
+        display_path,
         actionable: basis.actionable,
         placement: basis.placement,
-        action_basis: basis.clone(),
+        action_basis: basis,
         reading: shown.reading,
-        metadata_summary: release.summary.clone(),
-        cover: None,
+        metadata_summary: summary,
+        cover: shown.cover,
         import_status,
-        upload,
+        upload: imported.and(upload),
         metadata_provenance: shown.metadata_provenance,
         release_link: shown.release_link,
-        selected: release.selected,
+        selected,
     };
-    Ok(WindowItemRows::Candidate {
+    Ok(ImportListItem::Candidate {
         row,
         live: crate::CandidateLiveState::of(actions, facts, standing),
-        picked: shown.picked,
-        cover: shown.cover,
-        header_key: release.header_key.clone(),
+        header_key,
     })
 }
 
@@ -477,158 +488,7 @@ struct ShownRows {
     metadata_provenance: Option<crate::MetadataProvenance>,
     release_link: Option<ReleaseLink>,
     reading: TriageReading,
-    picked: Option<LinkedRows>,
     cover: Option<crate::CoverImageSource>,
-}
-
-#[derive(Clone, PartialEq)]
-pub(super) enum WindowItemRows {
-    Ready(ImportListItem),
-    Candidate {
-        row: TriageRow,
-        live: crate::CandidateLiveState,
-        picked: Option<LinkedRows>,
-        /// The candidate's stored cover selection, as the row draws it, or
-        /// an imported release's library cover. Nothing stands in for an
-        /// empty one: the row shows what the candidate would commit with, or
-        /// what the library release has.
-        cover: Option<crate::CoverImageSource>,
-        header_key: Option<String>,
-    },
-}
-
-impl WindowItemRows {
-    pub(super) fn process(self) -> Result<ImportListItem, DbError> {
-        match self {
-            Self::Ready(item) => Ok(item),
-            Self::Candidate { mut row, live, picked, cover, header_key } => {
-                // The reading the row was placed with named no records;
-                // this is where the linked releases' records are put
-                // together.
-                if let Some(picked) = picked {
-                    row.reading = TriageReading::of(
-                        row.metadata_summary.as_ref(),
-                        row.release_link.as_ref(),
-                        picked.records(),
-                    );
-                }
-                row.cover = cover;
-                Ok(ImportListItem::Candidate { row, live, header_key })
-            }
-        }
-    }
-}
-
-/// What a linked row's link reads: the records of each release a pressing
-/// claims, the primary's first and then its partners', each release's own
-/// record first; or an album's records, which the link names itself.
-#[derive(Clone, PartialEq)]
-pub(super) enum LinkedRows {
-    Pressing(Vec<Vec<bae_catalogs::records::ReleaseRecord>>),
-    Album(Vec<bae_catalogs::records::ReleaseRecord>),
-}
-
-impl LinkedRows {
-    /// Every catalog that describes what the row is linked to.
-    fn records(self) -> Vec<bae_catalogs::records::ReleaseRecord> {
-        match self {
-            Self::Pressing(claimed) => bae_catalogs::source_release::claimed_records(&claimed),
-            Self::Album(records) => records,
-        }
-    }
-}
-
-/// The cover each row of a candidate this device did not import draws, by
-/// the row's position in the window: its stored selection. The versions of
-/// the files the selections name are read together.
-fn row_covers(
-    sql: &SqlReadContext<'_>,
-    keys: &[ItemKey],
-    releases: &[ReleaseRows],
-) -> Result<HashMap<usize, crate::CoverImageSource>, DbError> {
-    let mut selections: Vec<(&ReleaseRows, CoverSelection)> = Vec::new();
-    for release in releases {
-        if keys[release.position].item == Item::Invalid || release.imported.is_some() {
-            continue;
-        }
-        if let Some(selection) = release.cover.clone() {
-            selections.push((release, selection));
-        }
-    }
-    let wanted: Vec<_> = selections
-        .iter()
-        .map(|(release, selection)| {
-            (release.watched_folder_path.as_path(), &release.key, selection)
-        })
-        .collect();
-    let choices = folder_scans::stored_cover_choices(sql, &wanted)?;
-    Ok(selections
-        .iter()
-        .zip(choices)
-        .map(|((release, _), choice)| (release.position, choice.into_image()))
-        .collect())
-}
-
-/// What the window's rows linked to a pressing read of the stored releases
-/// their links claim: the records each release names, read once for every
-/// release the window's links claim.
-struct LinkedReads {
-    records: HashMap<LookupRef, Vec<ReleaseRecord>>,
-}
-
-impl LinkedReads {
-    fn of(
-        sql: &SqlReadContext<'_>,
-        keys: &[ItemKey],
-        releases: &[ReleaseRows],
-    ) -> Result<Self, DbError> {
-        let mut claimed: Vec<&LookupRef> = Vec::new();
-        for release in releases {
-            // A folder that failed validation shows its scan, and a release
-            // this device imported the library release, in its link's place.
-            if keys[release.position].item == Item::Invalid || release.imported.is_some() {
-                continue;
-            }
-            let Some(ReleaseLink::Pressing(pressing)) = &release.release_link else {
-                continue;
-            };
-            for release in pressing.claimed() {
-                if !claimed.contains(&release) {
-                    claimed.push(release);
-                }
-            }
-        }
-        let records = load_releases_records_on(sql, &claimed)?;
-        Ok(Self {
-            records: claimed
-                .into_iter()
-                .zip(records)
-                .map(|(release, records)| {
-                    let records = records.ok_or_else(|| {
-                        DbError::unreadable(
-                            format!(
-                                "the records of linked {} release {}",
-                                release.catalog.as_str(),
-                                release.key
-                            ),
-                            None::<String>,
-                        )
-                    })?;
-                    Ok((release.clone(), records))
-                })
-                .collect::<Result<_, DbError>>()?,
-        })
-    }
-
-    /// The records of every stored release `link` claims, the primary's
-    /// first.
-    fn claimed_records(&self, link: &PressingLink) -> Vec<Vec<ReleaseRecord>> {
-        link.claimed()
-            .map(|release| {
-                self.records.get(release).expect("every release a link claims was read").clone()
-            })
-            .collect()
-    }
 }
 
 #[cfg(test)]

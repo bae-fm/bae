@@ -37,7 +37,10 @@ use crate::CandidateKey;
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
-pub(super) use self::cover_choice::{cover_refusal, stored_cover_choice, stored_cover_choices};
+pub(super) use self::cover_choice::{
+    cover_refusal, cover_version_joins, stored_cover_choice, CoverVersionColumns,
+    COVER_VERSION_COLUMNS,
+};
 pub(super) use self::read::{
     invalid_columns_sql, load_item_by_key, require_current_candidate, InvalidColumns, RowSources,
     StoredScanItem,

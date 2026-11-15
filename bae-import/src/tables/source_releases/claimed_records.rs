@@ -87,12 +87,14 @@ joined (claim_pos, record_catalog, key) AS (
 pub(super) use claimed_tables;
 
 /// The merged records as a JSON array of `{catalog, kind, key, album}`
-/// objects, in the order surfaces list them, for the candidate bound to
-/// `:hash`. Usable as a column of a larger statement.
-pub(crate) const CLAIMED_RECORDS_SQL: &str = concat!(
-    "WITH ",
-    claimed_tables!(),
-    "
+/// objects, in the order surfaces list them, for the candidate whose
+/// content hash the expression `hash` names (`:hash` for a bound one, a
+/// column of a larger statement for each of its rows). Usable as a column.
+pub(crate) fn claimed_records_sql(hash: &str) -> String {
+    concat!(
+        "WITH ",
+        claimed_tables!(),
+        "
 records (claim_pos, own, record_catalog, kind, key, album_key) AS (
     SELECT claim_pos, record_catalog = catalog, record_catalog, kind, key, album_key
     FROM stated
@@ -115,7 +117,9 @@ SELECT json_group_array(json_object('catalog', record_catalog, 'kind', kind,
        ORDER BY record_catalog IS NOT (SELECT catalog FROM claimed WHERE claim_pos = 0),
                 bae_catalog_rank(record_catalog))
 FROM ranked WHERE nth = 1"
-);
+    )
+    .replace(":hash", hash)
+}
 
 #[derive(serde::Deserialize)]
 struct RecordColumns {
@@ -125,19 +129,10 @@ struct RecordColumns {
     album: Option<String>,
 }
 
-/// The records of the candidate `content_hash`'s link, merged; none for a
-/// candidate linked to nothing.
-pub(crate) fn claimed_records_on<S: coven::SqlRead>(
-    sql: &S,
-    content_hash: &str,
-) -> Result<Vec<ReleaseRecord>, DbError> {
-    let json: String = sql.query_row(
-        CLAIMED_RECORDS_SQL,
-        rusqlite::named_params! { ":hash": content_hash },
-        |row| row.get(0),
-    )?;
-    let rows: Vec<RecordColumns> = serde_json::from_str(&json)
-        .map_err(|error| DbError::unreadable("the claimed records statement", (&json, error)))?;
+/// The records a [`claimed_records_sql`] column holds.
+pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, DbError> {
+    let rows: Vec<RecordColumns> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable("the claimed records statement", (json, error)))?;
     rows.into_iter()
         .map(|row| {
             let reference = MetadataRef::new(catalog_column(&row.catalog)?, row.key);
@@ -148,6 +143,20 @@ pub(crate) fn claimed_records_on<S: coven::SqlRead>(
             }
         })
         .collect()
+}
+
+/// The records of the candidate `content_hash`'s link, merged; none for a
+/// candidate linked to nothing.
+pub(crate) fn claimed_records_on<S: coven::SqlRead>(
+    sql: &S,
+    content_hash: &str,
+) -> Result<Vec<ReleaseRecord>, DbError> {
+    let json: String = sql.query_row(
+        &claimed_records_sql(":hash"),
+        rusqlite::named_params! { ":hash": content_hash },
+        |row| row.get(0),
+    )?;
+    claimed_records_of_json(&json)
 }
 
 #[cfg(test)]
