@@ -73,6 +73,11 @@ final class SectionTabStripView: NSView {
         self.model = model
         pills = NSHostingView(rootView: AnyView(SectionPills(model: model)))
         super.init(frame: .zero)
+        // The strip's own intrinsic size and the four edge constraints below
+        // size the pills; the hosting view's minimum and maximum size
+        // constraints would fight them, each change of one asking the strip
+        // to measure again.
+        pills.sizingOptions = [.intrinsicContentSize]
         pills.translatesAutoresizingMaskIntoConstraints = false
         addSubview(pills)
         NSLayoutConstraint.activate([
