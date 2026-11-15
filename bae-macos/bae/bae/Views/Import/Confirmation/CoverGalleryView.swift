@@ -137,33 +137,33 @@ struct CoverGalleryView: View {
 
     var body: some View {
         gallery
-        .disabled(browser.layout == .lightbox)
-        .accessibilityHidden(browser.layout == .lightbox)
-        .overlay { lightboxOverlay }
-        .onAppear {
-            browser.layout = initialLayout
-            rebuild()
-        }
-        .onChange(of: content) { _, _ in rebuild() }
-        .onChange(of: content.current?.image) { _, _ in rebuild() }
-        // The grid's preview takes the keys whenever it comes on screen: when
-        // the sheet opens on the grid, its covers arrive, or the lightbox
-        // closes back to it. It never gives them up by hand: the lightbox
-        // takes them as it opens, and clearing the preview's focus in the
-        // same update would clear the lightbox's too.
-        .onChange(of: gridPreviewShown, initial: true) { _, shown in
-            if shown { previewFocused = true }
-        }
-        .onKeyPress(.leftArrow) {
-            guard browser.layout == .grid else { return .ignored }
-            browser.cursor?.goToPrevious()
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            guard browser.layout == .grid else { return .ignored }
-            browser.cursor?.goToNext()
-            return .handled
-        }
+            .disabled(browser.layout == .lightbox)
+            .accessibilityHidden(browser.layout == .lightbox)
+            .overlay { lightboxOverlay }
+            .onAppear {
+                browser.layout = initialLayout
+                rebuild()
+            }
+            .onChange(of: content) { _, _ in rebuild() }
+            .onChange(of: content.current?.image) { _, _ in rebuild() }
+            // The grid's preview takes the keys whenever it comes on screen: when
+            // the sheet opens on the grid, its covers arrive, or the lightbox
+            // closes back to it. It never gives them up by hand: the lightbox
+            // takes them as it opens, and clearing the preview's focus in the
+            // same update would clear the lightbox's too.
+            .onChange(of: gridPreviewShown, initial: true) { _, shown in
+                if shown { previewFocused = true }
+            }
+            .onKeyPress(.leftArrow) {
+                guard browser.layout == .grid else { return .ignored }
+                browser.cursor?.goToPrevious()
+                return .handled
+            }
+            .onKeyPress(.rightArrow) {
+                guard browser.layout == .grid else { return .ignored }
+                browser.cursor?.goToNext()
+                return .handled
+            }
     }
 
     @ViewBuilder
@@ -311,9 +311,6 @@ extension CoverGalleryView {
                 Text(verbatim: item.label)
                     .themeText(.rowTitle)
                     .lineLimit(1)
-                Text(verbatim: item.sourceLabel)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
         }

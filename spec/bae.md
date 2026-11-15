@@ -2003,7 +2003,7 @@ joined by the language's separator. A release's gallery names its cover Cover an
 an image file by its filename. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. On the Mac, an album's cover opens
-that picker as the Change cover sheet, on its grid; a tile there opens the lightbox. A draft read from the tags, typed in or cleared, or a
+that picker as the Change cover sheet, on its grid; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. A draft read from the tags, typed in or cleared, or a
 candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. A cover is a catalog's image, or
 one of the folder's images or the artwork its tags hold as the scan read

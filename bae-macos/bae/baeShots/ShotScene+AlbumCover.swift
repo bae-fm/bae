@@ -8,10 +8,17 @@ extension ShotScene {
     /// library window with the album open: the release's cover, two covers
     /// from Discogs and three image files of the release.
     static let albumCoverScenes: [ShotScene] = [
-        ShotScene(
-            id: "mac.album.change-cover",
-            size: CGSize(width: 1_200, height: 1_000)
-        ) {
+        albumCoverScene(id: "mac.album.change-cover", linked: true),
+        albumCoverScene(
+            id: "mac.album.change-cover.no-linked-release",
+            linked: false
+        ),
+    ]
+
+    /// `mac.album.change-cover.no-linked-release` draws the release with no
+    /// catalog release linked: no remote section and no Refresh.
+    private static func albumCoverScene(id: String, linked: Bool) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 1_200, height: 1_000)) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
@@ -27,12 +34,20 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            let content = CoverGalleryContent(boardCoverGallery)
+            var content = CoverGalleryContent(boardCoverGallery)
+            if !linked {
+                content.remote = CoverGalleryContent.Section(
+                    items: [],
+                    count: 0
+                )
+                content.total = content.items.count
+            }
             // The board's sheet: 1100 by 820, centred in the window with
             // no dimming behind it.
             let sheet = CoverGalleryView(
                 content: content,
-                remoteItems: .linked(content.remote?.items ?? []),
+                remoteItems: linked
+                    ? .linked(content.remote?.items ?? []) : .unlinked,
                 filter: .constant(.all),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
@@ -61,7 +76,7 @@ extension ShotScene {
                 (backing.session.albums.list?.totalCount ?? 0) > 0
             }
         }
-    ]
+    }
 
     /// What core reads for the board's release: its cover, two Discogs
     /// covers and the image files in its folder.
