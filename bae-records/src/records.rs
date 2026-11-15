@@ -25,6 +25,8 @@ macro_rules! release_file_columns {
 
 mod album;
 pub use album::PrimaryReleaseError;
+mod artist_sql;
+pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_NAME_KEY};
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
 // Only the desktop's import offers a cover or states its track table, so
@@ -165,10 +167,13 @@ pub const SCHEMA: bae_store::SchemaPart =
         .collations(SQL_COLLATIONS)
         .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
-/// The SQL functions `records.sql` names.
+/// The SQL functions `records.sql` names, and the artist functions reads of other
+/// crates use.
 #[cfg(desktop)]
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &CATALOG_RANK,
+    &ARTIST_NAME_KEY,
+    &ARTIST_IDENTITY,
     &CATALOG_GROUP_URL,
     &RELEASE_GROUP_COVER,
     &SIDE_LETTERS,
@@ -177,7 +182,8 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &TRIM,
 ];
 #[cfg(not(desktop))]
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&CATALOG_RANK];
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
+    &[&CATALOG_RANK, &ARTIST_NAME_KEY, &ARTIST_IDENTITY];
 
 /// The collations `records.sql` names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];

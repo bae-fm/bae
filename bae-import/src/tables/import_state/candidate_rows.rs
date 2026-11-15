@@ -38,15 +38,37 @@ enum CandidateBinds {
     #[cfg(any(test, feature = "test-utils"))]
     None,
     One(String),
+    /// One candidate's content hash and the key of the scanned release whose
+    /// file-edit revision the state must stand at.
+    OneAtScan(String, crate::CandidateKey),
 }
 
 impl CandidateFilter {
+    /// The state row of the candidate `content_hash` where it stands at the
+    /// file-edit revision the scan holds for the release `key`: a state from
+    /// another revision is no row. For a statement reading
+    /// `import_candidate_state AS state`.
+    pub(crate) fn current_at_scan(content_hash: &str, key: &crate::CandidateKey) -> Self {
+        Self {
+            clause:
+                "WHERE state.content_hash = :candidate \
+                     AND state.edit_revision = (SELECT scan.file_edit_revision \
+                                                FROM scan_candidate AS scan WHERE scan.path = :key)"
+                    .to_string(),
+            binds: CandidateBinds::OneAtScan(content_hash.to_string(), key.clone()),
+        }
+    }
+
     /// What the clause binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match &self.binds {
             #[cfg(any(test, feature = "test-utils"))]
             CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
+            CandidateBinds::OneAtScan(content_hash, key) => vec![
+                (":candidate", content_hash as &dyn rusqlite::ToSql),
+                (":key", key as &dyn rusqlite::ToSql),
+            ],
         }
     }
 }

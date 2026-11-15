@@ -3,6 +3,7 @@
 //! file decisions, signals, draft provenance, release link and lookup
 //! choices.
 
+use super::candidate_rows::CandidateFilter;
 use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::match_record::{match_record_sql, match_rows_of};
@@ -62,7 +63,26 @@ pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
-    let filter = only.filter("state.content_hash");
+    states_rows_where(sql, only.filter("state.content_hash"))
+}
+
+/// The state of the candidate `content_hash` where it stands at the file-edit
+/// revision the scan holds for the release `key`, in the same read; `None`
+/// for a state another revision wrote.
+pub(crate) fn load_current_state_on(
+    sql: &impl coven::SqlRead,
+    content_hash: &str,
+    key: &crate::CandidateKey,
+) -> Result<Option<DbImportCandidateState>, DbError> {
+    Ok(states_rows_where(sql, CandidateFilter::current_at_scan(content_hash, key))?()?
+        .remove(content_hash))
+}
+
+/// The states `filter` keeps, each with the rows that hang off it.
+fn states_rows_where(
+    sql: &impl coven::SqlRead,
+    filter: CandidateFilter,
+) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let rows = sql.query(
         &format!(
             "SELECT state.content_hash, state.candidate_key, state.metadata_revision, \

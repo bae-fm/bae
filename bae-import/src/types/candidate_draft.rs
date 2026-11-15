@@ -11,8 +11,6 @@
 use super::*;
 #[cfg(desktop)]
 use crate::cover_art::PreparedCover;
-#[cfg(desktop)]
-use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::credits::CreditedRole;
 use bae_catalogs::works::WorkGraph;
 use serde::{Deserialize, Serialize};
@@ -120,17 +118,6 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
             pressing: self.pressing.clone(),
             tracks: self.tracks.iter().map(|track| track.edit.as_edit()).collect(),
         }
-    }
-
-    /// Every artist credit the draft's album and track artists name, the
-    /// album's first, then each track's own; picked library artists are not
-    /// credits.
-    #[cfg(desktop)]
-    pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
-        self.album_artist_assignments
-            .iter()
-            .chain(self.tracks.iter().flat_map(|track| track.edit.artist_assignments.explicit()))
-            .filter_map(|credited| credited.artist.credit())
     }
 
     /// This draft with `tracks` in place of its own, and only the works those

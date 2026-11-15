@@ -11,7 +11,8 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::stored_cover_choice;
 use crate::tables::import_state::{
-    load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on, load_verdict_cards_on,
+    load_album_pick_on, load_current_state_on, load_pane_rows_on, load_standing_on,
+    load_verdict_cards_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{
@@ -102,11 +103,7 @@ pub(super) fn load_candidate_detail_on(
         )
         .optional()?;
 
-    let state =
-        load_states_on(sql, crate::tables::import_state::CandidateRows::One(&content_hash))?
-            .remove(&content_hash);
-    let current =
-        state.filter(|state| state.file_edits.is_at_revision(candidate.file_edit_revision));
+    let current = load_current_state_on(sql, &content_hash, key)?;
     let cards = match current.as_ref().and_then(|state| state.identify.as_ref()) {
         Some(identify) => load_verdict_cards_on(sql, &content_hash, &identify.verdict)?,
         None => bae_identify::VerdictCards::default(),
@@ -154,10 +151,7 @@ fn draft_rows_on(
     )?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = bae_records::records::artist_resolution::resolve_credits_with(
-        pane_rows.draft.credits(),
-        |credit| bae_records::records::artist_resolution::resolve_credit_on(sql, credit),
-    )?;
+    let artist_resolutions = super::credit_resolutions::credit_resolutions_on(sql, content_hash)?;
     // The linked pressing's stored primary release, which the library check
     // reads.
     let primary =

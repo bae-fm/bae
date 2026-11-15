@@ -23,6 +23,7 @@
 //! `follows_library`).
 
 mod actions;
+mod credit_resolutions;
 mod follows_candidates;
 mod follows_groupings;
 mod follows_library;
