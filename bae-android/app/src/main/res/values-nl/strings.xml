@@ -506,4 +506,15 @@
     <string name="stars_none">Niet beoordeeld</string>
     <string name="stars_of_five">%1$d van 5 sterren</string>
     <string name="stars_rate">Beoordeel met %1$d van 5 sterren</string>
+    <string name="file_kind_audio">%1$s-audio</string>
+    <string name="file_kind_image">%1$s-afbeelding</string>
+    <string name="file_kind_damaged_image">Beschadigde afbeelding</string>
+    <string name="file_kind_cue_sheet">Cuesheet</string>
+    <string name="file_kind_rip_log">Riplogboek</string>
+    <string name="file_kind_accuraterip_report">AccurateRip-rapport</string>
+    <string name="file_kind_playlist">Afspeellijst</string>
+    <string name="file_kind_text">Tekst</string>
+    <string name="file_kind_pdf">PDF-document</string>
+    <string name="album_files">Bestanden</string>
+    <string name="file_kind_other">Bestand</string>
 </resources>

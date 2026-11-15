@@ -63,10 +63,12 @@ import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeStars
+import uniffi.bae_bridge.bridgeCatalogName
 
 internal data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -328,6 +330,7 @@ internal fun AlbumDetailContent(
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
+    catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
 ) {
     val album = detail.album
     val context = LocalContext.current
@@ -382,10 +385,15 @@ internal fun AlbumDetailContent(
             }
         }
 
+        if (selectedRelease.records.isNotEmpty()) {
+            block { AlbumRecordLinks(selectedRelease.records, catalogName) }
+        }
+
         block { releaseDownloadControl(selectedRelease) }
         block { AlbumActionButtons(callbacks) }
         albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
         albumCredits(selectedRelease, context)
+        albumFiles(selectedRelease, context)
     }
 }
 

@@ -513,4 +513,15 @@
     <string name="stars_none">Neevaluat</string>
     <string name="stars_of_five">%1$d din 5 stele</string>
     <string name="stars_rate">Evaluează cu %1$d din 5 stele</string>
+    <string name="file_kind_audio">Audio %1$s</string>
+    <string name="file_kind_image">Imagine %1$s</string>
+    <string name="file_kind_damaged_image">Imagine deteriorată</string>
+    <string name="file_kind_cue_sheet">Fișier CUE</string>
+    <string name="file_kind_rip_log">Jurnal de extragere</string>
+    <string name="file_kind_accuraterip_report">Raport AccurateRip</string>
+    <string name="file_kind_playlist">Playlist</string>
+    <string name="file_kind_text">Text</string>
+    <string name="file_kind_pdf">Document PDF</string>
+    <string name="album_files">Fișiere</string>
+    <string name="file_kind_other">Fișier</string>
 </resources>

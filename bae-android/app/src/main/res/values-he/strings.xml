@@ -515,4 +515,15 @@
     <string name="stars_none">ללא דירוג</string>
     <string name="stars_of_five">%1$d מתוך 5 כוכבים</string>
     <string name="stars_rate">דירוג של %1$d מתוך 5 כוכבים</string>
+    <string name="file_kind_audio">שמע %1$s</string>
+    <string name="file_kind_image">תמונת %1$s</string>
+    <string name="file_kind_damaged_image">תמונה פגומה</string>
+    <string name="file_kind_cue_sheet">גיליון CUE</string>
+    <string name="file_kind_rip_log">יומן העתקה</string>
+    <string name="file_kind_accuraterip_report">דוח AccurateRip</string>
+    <string name="file_kind_playlist">פלייליסט</string>
+    <string name="file_kind_text">טקסט</string>
+    <string name="file_kind_pdf">מסמך PDF</string>
+    <string name="album_files">קבצים</string>
+    <string name="file_kind_other">קובץ</string>
 </resources>

@@ -524,4 +524,15 @@
     <string name="stars_none">Bez oceny</string>
     <string name="stars_of_five">%1$d z 5 gwiazdek</string>
     <string name="stars_rate">Oceń na %1$d z 5 gwiazdek</string>
+    <string name="file_kind_audio">Dźwięk %1$s</string>
+    <string name="file_kind_image">Obraz %1$s</string>
+    <string name="file_kind_damaged_image">Uszkodzony obraz</string>
+    <string name="file_kind_cue_sheet">Plik CUE</string>
+    <string name="file_kind_rip_log">Dziennik zgrywania</string>
+    <string name="file_kind_accuraterip_report">Raport AccurateRip</string>
+    <string name="file_kind_playlist">Playlista</string>
+    <string name="file_kind_text">Tekst</string>
+    <string name="file_kind_pdf">Dokument PDF</string>
+    <string name="album_files">Pliki</string>
+    <string name="file_kind_other">Plik</string>
 </resources>

@@ -506,4 +506,15 @@
     <string name="stars_none">Puanlanmadı</string>
     <string name="stars_of_five">5 yıldızdan %1$d</string>
     <string name="stars_rate">5 yıldızdan %1$d ver</string>
+    <string name="file_kind_audio">%1$s ses</string>
+    <string name="file_kind_image">%1$s görüntü</string>
+    <string name="file_kind_damaged_image">Hasarlı görsel</string>
+    <string name="file_kind_cue_sheet">CUE dosyası</string>
+    <string name="file_kind_rip_log">Kopyalama günlüğü</string>
+    <string name="file_kind_accuraterip_report">AccurateRip raporu</string>
+    <string name="file_kind_playlist">Çalma listesi</string>
+    <string name="file_kind_text">Metin</string>
+    <string name="file_kind_pdf">PDF belgesi</string>
+    <string name="album_files">Dosyalar</string>
+    <string name="file_kind_other">Dosya</string>
 </resources>

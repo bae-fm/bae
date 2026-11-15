@@ -515,4 +515,15 @@
     <string name="stars_none">Nije ocijenjeno</string>
     <string name="stars_of_five">%1$d od 5 zvjezdica</string>
     <string name="stars_rate">Ocijeni s %1$d od 5 zvjezdica</string>
+    <string name="file_kind_audio">%1$s zvuk</string>
+    <string name="file_kind_image">%1$s slika</string>
+    <string name="file_kind_damaged_image">Oštećena slika</string>
+    <string name="file_kind_cue_sheet">CUE datoteka</string>
+    <string name="file_kind_rip_log">Zapisnik kopiranja</string>
+    <string name="file_kind_accuraterip_report">AccurateRip izvješće</string>
+    <string name="file_kind_playlist">Popis za reprodukciju</string>
+    <string name="file_kind_text">Tekst</string>
+    <string name="file_kind_pdf">PDF dokument</string>
+    <string name="album_files">Datoteke</string>
+    <string name="file_kind_other">Datoteka</string>
 </resources>

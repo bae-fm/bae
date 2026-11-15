@@ -506,4 +506,15 @@
     <string name="stars_none">Без оценка</string>
     <string name="stars_of_five">%1$d от 5 звезди</string>
     <string name="stars_rate">Оценка %1$d от 5 звезди</string>
+    <string name="file_kind_audio">Аудио %1$s</string>
+    <string name="file_kind_image">Изображение %1$s</string>
+    <string name="file_kind_damaged_image">Повредено изображение</string>
+    <string name="file_kind_cue_sheet">CUE файл</string>
+    <string name="file_kind_rip_log">Дневник на рипването</string>
+    <string name="file_kind_accuraterip_report">Отчет от AccurateRip</string>
+    <string name="file_kind_playlist">Плейлист</string>
+    <string name="file_kind_text">Текст</string>
+    <string name="file_kind_pdf">PDF документ</string>
+    <string name="album_files">Файлове</string>
+    <string name="file_kind_other">Файл</string>
 </resources>

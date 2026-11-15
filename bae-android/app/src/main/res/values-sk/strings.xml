@@ -522,4 +522,15 @@
     <string name="stars_none">Bez hodnotenia</string>
     <string name="stars_of_five">%1$d z 5 hviezdičiek</string>
     <string name="stars_rate">Ohodnotiť %1$d z 5 hviezdičiek</string>
+    <string name="file_kind_audio">Zvuk %1$s</string>
+    <string name="file_kind_image">Obrázok %1$s</string>
+    <string name="file_kind_damaged_image">Poškodený obrázok</string>
+    <string name="file_kind_cue_sheet">Súbor CUE</string>
+    <string name="file_kind_rip_log">Protokol ripovania</string>
+    <string name="file_kind_accuraterip_report">Správa AccurateRip</string>
+    <string name="file_kind_playlist">Playlist</string>
+    <string name="file_kind_text">Text</string>
+    <string name="file_kind_pdf">Dokument PDF</string>
+    <string name="album_files">Súbory</string>
+    <string name="file_kind_other">Súbor</string>
 </resources>

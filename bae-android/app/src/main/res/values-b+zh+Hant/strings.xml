@@ -497,4 +497,15 @@
     <string name="stars_none">未評分</string>
     <string name="stars_of_five">5 星中的 %1$d 星</string>
     <string name="stars_rate">評為 5 星中的 %1$d 星</string>
+    <string name="file_kind_audio">%1$s 音訊</string>
+    <string name="file_kind_image">%1$s 影像</string>
+    <string name="file_kind_damaged_image">損毀的圖片</string>
+    <string name="file_kind_cue_sheet">CUE 表</string>
+    <string name="file_kind_rip_log">抓軌記錄</string>
+    <string name="file_kind_accuraterip_report">AccurateRip 報告</string>
+    <string name="file_kind_playlist">播放列表</string>
+    <string name="file_kind_text">文字</string>
+    <string name="file_kind_pdf">PDF 文件</string>
+    <string name="album_files">檔案</string>
+    <string name="file_kind_other">檔案</string>
 </resources>

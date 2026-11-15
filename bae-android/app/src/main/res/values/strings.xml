@@ -566,4 +566,15 @@
     <string name="stars_none">Not rated</string>
     <string name="stars_of_five">%1$d of 5 stars</string>
     <string name="stars_rate">Rate %1$d of 5 stars</string>
+    <string name="file_kind_audio">%1$s audio</string>
+    <string name="file_kind_image">%1$s image</string>
+    <string name="file_kind_damaged_image">Damaged image</string>
+    <string name="file_kind_cue_sheet">Cue sheet</string>
+    <string name="file_kind_rip_log">Rip log</string>
+    <string name="file_kind_accuraterip_report">AccurateRip report</string>
+    <string name="file_kind_playlist">Playlist</string>
+    <string name="file_kind_text">Text</string>
+    <string name="file_kind_pdf">PDF document</string>
+    <string name="album_files">Files</string>
+    <string name="file_kind_other">File</string>
 </resources>

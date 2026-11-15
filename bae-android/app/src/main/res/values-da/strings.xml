@@ -504,4 +504,15 @@
     <string name="stars_none">Ikke bedømt</string>
     <string name="stars_of_five">%1$d af 5 stjerner</string>
     <string name="stars_rate">Giv %1$d af 5 stjerner</string>
+    <string name="file_kind_audio">%1$s-lyd</string>
+    <string name="file_kind_image">%1$s-billede</string>
+    <string name="file_kind_damaged_image">Beskadiget billede</string>
+    <string name="file_kind_cue_sheet">Cue-ark</string>
+    <string name="file_kind_rip_log">Rip-log</string>
+    <string name="file_kind_accuraterip_report">AccurateRip-rapport</string>
+    <string name="file_kind_playlist">Playliste</string>
+    <string name="file_kind_text">Tekst</string>
+    <string name="file_kind_pdf">PDF-dokument</string>
+    <string name="album_files">Filer</string>
+    <string name="file_kind_other">Fil</string>
 </resources>

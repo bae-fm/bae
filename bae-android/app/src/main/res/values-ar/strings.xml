@@ -542,4 +542,15 @@
     <string name="stars_none">غير مقيّم</string>
     <string name="stars_of_five">%1$d من 5 نجوم</string>
     <string name="stars_rate">تقييم بـ %1$d من 5 نجوم</string>
+    <string name="file_kind_audio">صوت %1$s</string>
+    <string name="file_kind_image">صورة %1$s</string>
+    <string name="file_kind_damaged_image">صورة تالفة</string>
+    <string name="file_kind_cue_sheet">ملف CUE</string>
+    <string name="file_kind_rip_log">سجل النسخ</string>
+    <string name="file_kind_accuraterip_report">تقرير AccurateRip</string>
+    <string name="file_kind_playlist">قائمة تشغيل</string>
+    <string name="file_kind_text">نص</string>
+    <string name="file_kind_pdf">مستند PDF</string>
+    <string name="album_files">الملفات</string>
+    <string name="file_kind_other">ملف</string>
 </resources>

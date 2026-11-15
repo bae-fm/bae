@@ -524,4 +524,15 @@
     <string name="stars_none">Без оцінки</string>
     <string name="stars_of_five">%1$d з 5 зірок</string>
     <string name="stars_rate">Оцінити на %1$d з 5 зірок</string>
+    <string name="file_kind_audio">Аудіо %1$s</string>
+    <string name="file_kind_image">Зображення %1$s</string>
+    <string name="file_kind_damaged_image">Пошкоджене зображення</string>
+    <string name="file_kind_cue_sheet">Файл CUE</string>
+    <string name="file_kind_rip_log">Журнал ріпування</string>
+    <string name="file_kind_accuraterip_report">Звіт AccurateRip</string>
+    <string name="file_kind_playlist">Плейлист</string>
+    <string name="file_kind_text">Текст</string>
+    <string name="file_kind_pdf">Документ PDF</string>
+    <string name="album_files">Файли</string>
+    <string name="file_kind_other">Файл</string>
 </resources>

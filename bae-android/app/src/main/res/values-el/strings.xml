@@ -504,4 +504,15 @@
     <string name="stars_none">Χωρίς βαθμολογία</string>
     <string name="stars_of_five">%1$d από 5 αστέρια</string>
     <string name="stars_rate">Βαθμολόγηση με %1$d από 5 αστέρια</string>
+    <string name="file_kind_audio">Ήχος %1$s</string>
+    <string name="file_kind_image">Εικόνα %1$s</string>
+    <string name="file_kind_damaged_image">Κατεστραμμένη εικόνα</string>
+    <string name="file_kind_cue_sheet">Φύλλο CUE</string>
+    <string name="file_kind_rip_log">Αρχείο καταγραφής αντιγραφής</string>
+    <string name="file_kind_accuraterip_report">Αναφορά AccurateRip</string>
+    <string name="file_kind_playlist">Λίστα αναπαραγωγής</string>
+    <string name="file_kind_text">Κείμενο</string>
+    <string name="file_kind_pdf">Έγγραφο PDF</string>
+    <string name="album_files">Αρχεία</string>
+    <string name="file_kind_other">Αρχείο</string>
 </resources>

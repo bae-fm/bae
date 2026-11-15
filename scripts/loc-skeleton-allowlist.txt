@@ -245,3 +245,7 @@ nl	QR code
 de	qr_code
 fr	qr_code
 nl	qr_code
+fr	file_kind_pdf
+nl	file_kind_pdf
+ro	file_kind_pdf
+da	file_kind_rip_log

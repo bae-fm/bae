@@ -513,4 +513,15 @@
     <string name="stars_none">Non noté</string>
     <string name="stars_of_five">%1$d étoiles sur 5</string>
     <string name="stars_rate">Noter %1$d étoiles sur 5</string>
+    <string name="file_kind_audio">Audio %1$s</string>
+    <string name="file_kind_image">Image %1$s</string>
+    <string name="file_kind_damaged_image">Image endommagée</string>
+    <string name="file_kind_cue_sheet">Fichier CUE</string>
+    <string name="file_kind_rip_log">Journal d’extraction</string>
+    <string name="file_kind_accuraterip_report">Rapport AccurateRip</string>
+    <string name="file_kind_playlist">Liste de lecture</string>
+    <string name="file_kind_text">Texte</string>
+    <string name="file_kind_pdf">Document PDF</string>
+    <string name="album_files">Fichiers</string>
+    <string name="file_kind_other">Fichier</string>
 </resources>

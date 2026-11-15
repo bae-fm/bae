@@ -13,9 +13,13 @@ import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
+import uniffi.bae_bridge.BridgeFile
+import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeRater
+import uniffi.bae_bridge.BridgeReleaseRecord
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrackWork
@@ -59,7 +63,47 @@ class AlbumBoardShots : BoardShot() {
                 release.copy(trackGroups = groups, tracks = groups.flatMap { it.tracks }, credits = credits)
             AlbumPage(detail.copy(releases = listOf(credited)))
         }
+
+    @Test
+    fun androidAlbumLinksAndFiles() =
+        shot("android.album.links-and-files") {
+            val detail = boardAlbum()
+            val records =
+                listOf(BridgeCatalog.MUSIC_BRAINZ, BridgeCatalog.DISCOGS, BridgeCatalog.WIKIDATA).map {
+                    BridgeReleaseRecord(catalog = it, url = "https://records.example/${it.name}")
+                }
+            val files =
+                listOf(
+                    "Low Tide Hours.cue" to BridgeFileKind.CueSheet,
+                    "Low Tide Hours.log" to BridgeFileKind.RipLog,
+                    "booklet.pdf" to BridgeFileKind.Pdf,
+                ).map { (name, kind) -> boardFile(name, kind) }
+            val release = detail.releases[0].copy(records = records, otherFiles = files)
+            AlbumPage(detail.copy(releases = listOf(release))) {
+                when (it) {
+                    BridgeCatalog.MUSIC_BRAINZ -> "MusicBrainz"
+                    BridgeCatalog.DISCOGS -> "Discogs"
+                    else -> "Wikidata"
+                }
+            }
+        }
 }
+
+/** A file of the release's folder, without audio or image content. */
+private fun boardFile(
+    name: String,
+    kind: BridgeFileKind,
+) = BridgeFile(
+    id = name,
+    originalFilename = name,
+    name = name,
+    folder = null,
+    kind = kind,
+    fileSize = 1_000UL,
+    contentType = "application/octet-stream",
+    isImage = false,
+    audioFormat = null,
+)
 
 /** "Low Tide Hours" by Mara Quill with the six tracks the boards list, one disc, as rated by [rating]. */
 internal fun boardAlbum(
@@ -74,7 +118,10 @@ internal fun boardAlbum(
 
 /** The album page as the boards draw it: its detail screen, with nothing playing. */
 @Composable
-internal fun AlbumPage(detail: BridgeAlbumDetail) {
+internal fun AlbumPage(
+    detail: BridgeAlbumDetail,
+    catalogName: (BridgeCatalog) -> String = { it.name },
+) {
     ScreenScene {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             AndroidDetailScreen(onBack = {}, backLabel = "Library", nowPlayingBar = {}) {
@@ -98,6 +145,7 @@ internal fun AlbumPage(detail: BridgeAlbumDetail) {
                             onSelectWork = {},
                         ),
                     releaseDownloadControl = {},
+                    catalogName = catalogName,
                 )
             }
         }

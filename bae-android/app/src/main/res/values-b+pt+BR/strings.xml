@@ -513,4 +513,15 @@
     <string name="stars_none">Sem avaliação</string>
     <string name="stars_of_five">%1$d de 5 estrelas</string>
     <string name="stars_rate">Avaliar com %1$d de 5 estrelas</string>
+    <string name="file_kind_audio">Áudio %1$s</string>
+    <string name="file_kind_image">Imagem %1$s</string>
+    <string name="file_kind_damaged_image">Imagem danificada</string>
+    <string name="file_kind_cue_sheet">Arquivo CUE</string>
+    <string name="file_kind_rip_log">Registro de extração</string>
+    <string name="file_kind_accuraterip_report">Relatório do AccurateRip</string>
+    <string name="file_kind_playlist">Playlist</string>
+    <string name="file_kind_text">Texto</string>
+    <string name="file_kind_pdf">Documento PDF</string>
+    <string name="album_files">Arquivos</string>
+    <string name="file_kind_other">Arquivo</string>
 </resources>

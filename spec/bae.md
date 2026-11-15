@@ -594,6 +594,10 @@ track's number, the work and its composers, and a click on a work opens its
 page; on Android a line under each track names the works it performs, a tap on it
 opens the work, and the Credits follow the tracks, each row a role at the start and
 its artists at the end, without the tracks each covers.
+On Android a row of chips under the release picker has one chip for each
+catalog that describes the release, which opens the catalog's page, and the
+Files after the Credits name each file no track plays from with what kind of
+file it is.
 
 **The composer list** shows every artist credited on a work in a writing role
 (Appendix H), and every artist holding a catalog role credit in a writing role

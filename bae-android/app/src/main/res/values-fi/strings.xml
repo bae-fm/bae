@@ -504,4 +504,15 @@
     <string name="stars_none">Ei arvosteltu</string>
     <string name="stars_of_five">%1$d / 5 tähteä</string>
     <string name="stars_rate">Arvostele %1$d / 5 tähteä</string>
+    <string name="file_kind_audio">%1$s-ääni</string>
+    <string name="file_kind_image">%1$s-kuva</string>
+    <string name="file_kind_damaged_image">Vioittunut kuva</string>
+    <string name="file_kind_cue_sheet">CUE-tiedosto</string>
+    <string name="file_kind_rip_log">Kopiointiloki</string>
+    <string name="file_kind_accuraterip_report">AccurateRip-raportti</string>
+    <string name="file_kind_playlist">Soittolista</string>
+    <string name="file_kind_text">Teksti</string>
+    <string name="file_kind_pdf">PDF-dokumentti</string>
+    <string name="album_files">Tiedostot</string>
+    <string name="file_kind_other">Tiedosto</string>
 </resources>

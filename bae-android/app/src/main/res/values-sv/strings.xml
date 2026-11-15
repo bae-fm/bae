@@ -504,4 +504,15 @@
     <string name="stars_none">Inte betygsatt</string>
     <string name="stars_of_five">%1$d av 5 stjärnor</string>
     <string name="stars_rate">Betygsätt %1$d av 5 stjärnor</string>
+    <string name="file_kind_audio">%1$s-ljud</string>
+    <string name="file_kind_image">%1$s-bild</string>
+    <string name="file_kind_damaged_image">Skadad bild</string>
+    <string name="file_kind_cue_sheet">Cue-fil</string>
+    <string name="file_kind_rip_log">Rippningslogg</string>
+    <string name="file_kind_accuraterip_report">AccurateRip-rapport</string>
+    <string name="file_kind_playlist">Spellista</string>
+    <string name="file_kind_text">Text</string>
+    <string name="file_kind_pdf">PDF-dokument</string>
+    <string name="album_files">Filer</string>
+    <string name="file_kind_other">Fil</string>
 </resources>

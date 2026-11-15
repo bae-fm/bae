@@ -504,4 +504,15 @@
     <string name="stars_none">Nincs értékelve</string>
     <string name="stars_of_five">%1$d az 5 csillagból</string>
     <string name="stars_rate">Értékelés: 5 csillagból %1$d</string>
+    <string name="file_kind_audio">%1$s hang</string>
+    <string name="file_kind_image">%1$s kép</string>
+    <string name="file_kind_damaged_image">Sérült kép</string>
+    <string name="file_kind_cue_sheet">CUE-lap</string>
+    <string name="file_kind_rip_log">Rippelési napló</string>
+    <string name="file_kind_accuraterip_report">AccurateRip-jelentés</string>
+    <string name="file_kind_playlist">Lejátszási lista</string>
+    <string name="file_kind_text">Szöveg</string>
+    <string name="file_kind_pdf">PDF-dokumentum</string>
+    <string name="album_files">Fájlok</string>
+    <string name="file_kind_other">Fájl</string>
 </resources>

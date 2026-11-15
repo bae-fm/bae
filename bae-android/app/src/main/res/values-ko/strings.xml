@@ -497,4 +497,15 @@
     <string name="stars_none">평가 안 함</string>
     <string name="stars_of_five">별 5개 중 %1$d개</string>
     <string name="stars_rate">별 5개 중 %1$d개로 평가</string>
+    <string name="file_kind_audio">%1$s 오디오</string>
+    <string name="file_kind_image">%1$s 이미지</string>
+    <string name="file_kind_damaged_image">손상된 이미지</string>
+    <string name="file_kind_cue_sheet">CUE 시트</string>
+    <string name="file_kind_rip_log">리핑 로그</string>
+    <string name="file_kind_accuraterip_report">AccurateRip 보고서</string>
+    <string name="file_kind_playlist">재생 목록</string>
+    <string name="file_kind_text">텍스트</string>
+    <string name="file_kind_pdf">PDF 문서</string>
+    <string name="album_files">파일</string>
+    <string name="file_kind_other">파일</string>
 </resources>

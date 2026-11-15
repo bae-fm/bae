@@ -497,4 +497,15 @@
     <string name="stars_none">未評価</string>
     <string name="stars_of_five">5つ星中%1$d</string>
     <string name="stars_rate">5つ星中%1$dで評価</string>
+    <string name="file_kind_audio">%1$s オーディオ</string>
+    <string name="file_kind_image">%1$s イメージ</string>
+    <string name="file_kind_damaged_image">破損した画像</string>
+    <string name="file_kind_cue_sheet">CUEシート</string>
+    <string name="file_kind_rip_log">リッピングログ</string>
+    <string name="file_kind_accuraterip_report">AccurateRipレポート</string>
+    <string name="file_kind_playlist">プレイリスト</string>
+    <string name="file_kind_text">テキスト</string>
+    <string name="file_kind_pdf">PDF書類</string>
+    <string name="album_files">ファイル</string>
+    <string name="file_kind_other">ファイル</string>
 </resources>
