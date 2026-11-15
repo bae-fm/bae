@@ -3018,6 +3018,24 @@ playlists: a submenu of their own playlists by name, which adds the track to the
 end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
+A playlist's owner changes it from its page; no one else sees these controls.
+The page's options menu (the ⋯ button after Shuffle on macOS, the bar's menu on
+Android) offers *Edit playlist…*, which changes its name and who sees it, and
+*Delete playlist…*, which asks first ("It is deleted from every device. The
+tracks in it stay in the library.") and then deletes it on every device. Saving
+an edit writes the name and who sees it as two writes, each only when it
+changed; a failure leaves the dialog open with its error, and saving again
+writes what is still different. A track's menu on a playlist's page offers Play
+next and Add to queue to everyone, and *Remove from playlist* to the owner. The
+owner reorders the entries by dragging a row: on macOS a line marks the gap the
+row lands in, and on Android a held row lifts and the rows between make room.
+Letting go writes the new order.
+
+On Android a track's menu, on an album's page and on a playlist's, offers *Add
+to playlist…* when the person can make playlists: a sheet of their own playlists
+under *New playlist…*, which adds the track to the end of the one chosen or
+makes a new one holding it.
+
 Ben adds a track to his party playlist, which holds seven entries: the new
 entry takes position 7. He drags it to the top: the reorder names the entries
 in their new order and each takes its place in it, from 0. A reorder that
