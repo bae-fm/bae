@@ -92,6 +92,30 @@ extension ShotScene {
                 )
             }
         },
+        ShotScene(
+            id: "mac.playlists.track-menu",
+            size: CGSize(width: 1200, height: 760)
+        ) {
+            playlistsWindow { window in
+                AnyView(
+                    ZStack(alignment: .topLeading) {
+                        window
+                        MacMenuInPlace(
+                            {
+                                MacMenuItem("Play") {}
+                                MacMenuItem("Play next") {}
+                                MacMenuItem("Add to queue") {}
+                                MacMenuDivider()
+                                MacMenuItem("Remove from playlist") {}
+                            },
+                            highlighted: 4
+                        )
+                        .padding(.leading, 640)
+                        .padding(.top, 286)
+                    }
+                )
+            }
+        },
     ]
 
     /// The window in the Playlists view with the first playlist open,

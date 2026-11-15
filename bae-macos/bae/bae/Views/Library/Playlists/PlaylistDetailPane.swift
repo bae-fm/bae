@@ -10,6 +10,8 @@ struct PlaylistDetailPane: View {
     private var session
     @Environment(Playback.self)
     private var playback
+    @Environment(Queue.self)
+    private var queue
     @Environment(Library.self)
     private var library
     @Environment(UiStore.self)
@@ -38,7 +40,20 @@ struct PlaylistDetailPane: View {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
                     header(detail.summary)
-                    entries(detail)
+                    PlaylistEntryList(
+                        detail: detail,
+                        play: { entry in
+                            playback.playPlaylist(
+                                detail.summary.id,
+                                entry.positionId,
+                                false
+                            )
+                        },
+                        playNext: { queue.addNext([$0.trackId]) },
+                        addToQueue: { queue.addToQueue([$0.trackId]) },
+                        remove: { removeEntry($0, from: detail.summary) },
+                        reorder: { await reorder($0, in: detail.summary) }
+                    )
                 }
                 // A selected playlist's read is local: nothing shows until it
                 // lands.
@@ -161,48 +176,38 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    private func entries(_ detail: BridgePlaylistDetail) -> some View {
-        LazyVStack(spacing: 0) {
-            ForEach(
-                Array(detail.entries.enumerated()),
-                id: \.element.positionId
-            ) { index, entry in
-                PlaylistEntryRow(
-                    number: index + 1,
-                    entry: entry,
-                    play: {
-                        playback.playPlaylist(
-                            detail.summary.id,
-                            entry.positionId,
-                            false
-                        )
-                    }
+    private func removeEntry(
+        _ entry: BridgePlaylistEntryRow,
+        from playlist: BridgePlaylistSummary
+    ) {
+        let library = library
+        let uiStore = uiStore
+        Task {
+            do {
+                try await library.playlistWrites.removeEntry(
+                    playlist.id,
+                    entry.positionId
                 )
+            }
+            catch {
+                uiStore.showError(error)
             }
         }
     }
-}
 
-/// One entry of a playlist: double-clicking plays the playlist from it.
-private struct PlaylistEntryRow: View {
-    let number: Int
-    let entry: BridgePlaylistEntryRow
-    let play: () -> Void
-
-    @State
-    private var hovering = false
-
-    var body: some View {
-        MacListRow(
-            lead: String(number),
-            cover: entry.cover,
-            title: entry.title,
-            subtitle: FactList.joined([entry.artistLine.text, entry.albumTitle]
-            ),
-            duration: DurationClock.label(entry.durationClock),
-            hover: hovering
-        )
-        .onHover { hovering = $0 }
-        .onTapGesture(count: 2, perform: play)
+    /// Write `order` as `playlist`'s entries; says why and answers `false`
+    /// when it fails.
+    private func reorder(
+        _ order: [String],
+        in playlist: BridgePlaylistSummary
+    ) async -> Bool {
+        do {
+            try await library.playlistWrites.reorder(playlist.id, order)
+            return true
+        }
+        catch {
+            uiStore.showError(error)
+            return false
+        }
     }
 }
