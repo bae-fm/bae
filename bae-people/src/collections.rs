@@ -26,6 +26,9 @@ pub struct Rating {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlbumRatings {
     pub can_rate: bool,
+    /// Whether the album's page shows a rating row: this person can rate, or
+    /// someone rated the album.
+    pub shown: bool,
     pub mine: Option<Stars>,
     pub others: Vec<OtherRating>,
 }

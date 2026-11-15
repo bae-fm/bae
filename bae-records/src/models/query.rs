@@ -195,6 +195,8 @@ pub struct DbReleaseFiles {
     pub covers: Vec<DbFile>,
     /// The files no track plays from.
     pub others: Vec<DbFile>,
+    /// Whether any file is one no track plays from.
+    pub has_others: bool,
     pub count: i64,
     pub total_size: u64,
 }

@@ -195,6 +195,7 @@
                 performsWorks: false,
                 sourceAudio: nil,
                 otherFiles: [],
+                hasOtherFiles: false,
                 imageFiles: [],
                 coverFiles: [],
                 galleryItems: [],
@@ -242,6 +243,7 @@
                 showsReleaseChoices: releases.count > 1,
                 rating: BridgeAlbumRating(
                     canRate: false,
+                    shown: false,
                     mine: nil,
                     raters: []
                 ),

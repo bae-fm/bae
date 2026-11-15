@@ -577,7 +577,8 @@ release's. Each track carries its own credits (or the album's), the works it
 performs and the stars the person gave it. The release says whether any of its
 tracks performs a work. Its files come with the lists the page shows beside
 them (the images, the images a cover can be made from, the files no track plays
-from), their count and their total size.
+from), their count and their total size, and whether any file is one no track
+plays from.
 
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track
@@ -2894,7 +2895,8 @@ pressing (§2.7) are rated apart. An album's page shows the person's own stars
 for it and a line naming who rated it: *You* when they did, then each other
 person who did, with their stars, by name. A track's stars on the page are the
 person's own. Only a person with a profile rates (§5.4); the page's detail says
-whether this person can.
+whether this person can, and whether the page shows the rating at all, which it
+does when this person can rate or anyone rated the album.
 
 On macOS the album's stars sit above its tracks: clicking a star rates the album
 with that many stars, and clicking the star the person already gave clears the

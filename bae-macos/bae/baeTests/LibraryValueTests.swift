@@ -66,6 +66,7 @@ func makeBridgeRelease(
         performsWorks: false,
         sourceAudio: nil,
         otherFiles: [],
+        hasOtherFiles: false,
         imageFiles: [],
         coverFiles: [],
         galleryItems: [],
@@ -121,7 +122,12 @@ func makeBridgeAlbumDetail(
         ),
         releases: releases,
         showsReleaseChoices: releases.count > 1,
-        rating: BridgeAlbumRating(canRate: false, mine: nil, raters: []),
+        rating: BridgeAlbumRating(
+            canRate: false,
+            shown: false,
+            mine: nil,
+            raters: []
+        ),
     )
 }
 
@@ -267,6 +273,7 @@ struct ReleaseDetailTests {
     func albumDetailCarriesItsRating() {
         let rating = BridgeAlbumRating(
             canRate: true,
+            shown: true,
             mine: .four,
             raters: [.you, .person(name: "Rowan", stars: .two)]
         )

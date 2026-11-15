@@ -240,6 +240,7 @@ extension PreviewData {
                 )
             ),
             otherFiles: [],
+            hasOtherFiles: false,
             imageFiles: [previewReleaseCoverFile],
             coverFiles: [previewReleaseCoverFile],
             galleryItems: [],

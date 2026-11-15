@@ -122,6 +122,7 @@ object BridgeFixtures {
             performsWorks = false,
             sourceAudio = sourceAudio,
             otherFiles = emptyList(),
+            hasOtherFiles = false,
             imageFiles = emptyList(),
             coverFiles = emptyList(),
             galleryItems = galleryItems,
@@ -143,7 +144,7 @@ object BridgeFixtures {
             album = album,
             releases = releases,
             showsReleaseChoices = releases.size > 1,
-            rating = BridgeAlbumRating(canRate = false, mine = null, raters = emptyList()),
+            rating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
         )
 
     fun albumSearchResult(

@@ -123,6 +123,7 @@ impl BridgeRelease {
             // (`subscribe_release_files`), not the detail's.
             files: _,
             other_files,
+            has_other_files,
             source_audio,
             image_files,
             cover_files,
@@ -174,6 +175,7 @@ impl BridgeRelease {
             track_groups: track_groups.into_iter().map(BridgeTrackGroup::from_core).collect(),
             credits: credits.into_iter().map(crate::types::BridgeCreditRow::from_core).collect(),
             performs_works,
+            has_other_files,
             other_files: other_files.into_iter().map(BridgeFile::from_core).collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
             cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),

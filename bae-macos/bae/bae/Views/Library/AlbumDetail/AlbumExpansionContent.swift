@@ -96,7 +96,7 @@ struct AlbumExpansionContent: View {
                         albumMenu
                     }
                     .padding(.top, ThemeSpace.group)
-                    if detail.rating.canRate || !detail.rating.raters.isEmpty {
+                    if detail.rating.shown {
                         AlbumRatingRow(
                             rating: detail.rating,
                             onRate: onRateAlbum

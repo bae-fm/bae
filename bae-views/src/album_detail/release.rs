@@ -140,6 +140,8 @@ pub struct ReleaseDetail {
     /// The files no track plays from, in `files` order: the files the editor's
     /// Files section lists.
     pub other_files: Vec<FileDetail>,
+    /// Whether any file is one no track plays from.
+    pub has_other_files: bool,
     pub source_audio: Option<SourceAudioSummary>,
     pub image_files: Vec<FileDetail>,
     /// Image files eligible for cover normalization; previews use `image_files`.
@@ -193,6 +195,7 @@ impl ReleaseDetail {
             raw.files.images.into_iter().map(FileDetail::from_raw).collect();
         let cover_files: Vec<FileDetail> =
             raw.files.covers.into_iter().map(FileDetail::from_raw).collect();
+        let has_other_files = raw.files.has_others;
         let other_files: Vec<FileDetail> =
             raw.files.others.into_iter().map(FileDetail::from_raw).collect();
         let source_audio = SourceAudioSummary::from_files(
@@ -273,6 +276,7 @@ impl ReleaseDetail {
             performs_works: raw.performs_works,
             files,
             other_files,
+            has_other_files,
             source_audio,
             image_files,
             cover_files,

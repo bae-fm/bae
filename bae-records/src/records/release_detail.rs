@@ -191,6 +191,7 @@ fn release_files_json_sql(release: &str) -> String {
         "(SELECT json_object( \
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
+              'has_others', COALESCE(SUM(listed.source_audio_layout IS NULL), 0) > 0, \
               'count', COUNT(*), 'total_size', COALESCE(SUM(listed.size), 0)) \
           FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
                        coven.size AS size, {file_json} AS file_json \
@@ -214,6 +215,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         images: Vec<FileColumns>,
         covers: Vec<FileColumns>,
         others: Vec<FileColumns>,
+        has_others: i64,
         count: i64,
         total_size: u64,
     }
@@ -233,6 +235,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         images: files(stored.images)?,
         covers: files(stored.covers)?,
         others: files(stored.others)?,
+        has_others: stored.has_others != 0,
         count: stored.count,
         total_size: stored.total_size,
     })

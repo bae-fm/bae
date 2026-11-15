@@ -176,6 +176,7 @@ object PreviewData {
             performsWorks = false,
             sourceAudio = null,
             otherFiles = emptyList(),
+            hasOtherFiles = false,
             imageFiles = emptyList(),
             coverFiles = emptyList(),
             galleryItems = emptyList(),
@@ -197,7 +198,7 @@ object PreviewData {
             album = album,
             releases = releases,
             showsReleaseChoices = releases.size > 1,
-            rating = BridgeAlbumRating(canRate = false, mine = null, raters = emptyList()),
+            rating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
         )
 
     fun albumSearchResult(

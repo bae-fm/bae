@@ -39,6 +39,9 @@ pub struct AlbumDetail {
 pub struct AlbumRating {
     /// Whether this person can rate: only a person with a profile does.
     pub can_rate: bool,
+    /// Whether the page shows a rating row: this person can rate, or someone
+    /// rated the album.
+    pub shown: bool,
     /// The stars this person gave the album.
     pub mine: Option<Stars>,
     /// Who rated the album: this person first, when they did, then each other
@@ -69,7 +72,7 @@ impl AlbumRating {
                     .map(|other| Rater::Person { name: other.name, stars: other.stars }),
             )
             .collect();
-        Self { can_rate: raw.can_rate, mine: raw.mine, raters }
+        Self { can_rate: raw.can_rate, shown: raw.shown, mine: raw.mine, raters }
     }
 }
 

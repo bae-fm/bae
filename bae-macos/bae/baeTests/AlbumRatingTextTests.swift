@@ -6,6 +6,7 @@ struct AlbumRatingTextTests {
     func ratersLine() {
         let rating = BridgeAlbumRating(
             canRate: true,
+            shown: true,
             mine: .four,
             raters: [.you, .person(name: "Ana", stars: .five)]
         )
@@ -14,13 +15,23 @@ struct AlbumRatingTextTests {
 
     @Test("an album nobody rated has no line")
     func noRaters() {
-        let rating = BridgeAlbumRating(canRate: true, mine: nil, raters: [])
+        let rating = BridgeAlbumRating(
+            canRate: true,
+            shown: true,
+            mine: nil,
+            raters: []
+        )
         #expect(rating.ratersText.isEmpty)
     }
 
     @Test("tapping a star the person already gave clears the rating")
     func tappingTheGivenStarClears() {
-        let rating = BridgeAlbumRating(canRate: true, mine: .four, raters: [])
+        let rating = BridgeAlbumRating(
+            canRate: true,
+            shown: true,
+            mine: .four,
+            raters: []
+        )
         #expect(rating.stars(afterTapping: 2) == .two)
         #expect(rating.stars(afterTapping: 4) == nil)
     }

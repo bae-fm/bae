@@ -412,6 +412,7 @@ async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
         names(&detail.other_files),
         ["back.png", "cover.jpg", "disc.cue", "odd.flac", "rip.log", "scan.bmp"]
     );
+    assert!(detail.has_other_files);
     assert_eq!(detail.summary.file_count, 7);
     assert_eq!(detail.summary.total_size, 28_000);
 }

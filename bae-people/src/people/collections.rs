@@ -248,7 +248,8 @@ fn own_member_sql() -> String {
 }
 
 /// What the album `?1`'s page reads of its ratings, in one row: whether this
-/// device's person has a profile to rate with, their own stars, and every
+/// device's person has a profile to rate with, whether the page shows a rating
+/// row (they can rate, or someone rated the album), their own stars, and every
 /// other person's, by name then id, as a JSON array; `ratings_album` finds
 /// the album's ratings. A person with no registration yet is none of the
 /// ratings' people.
@@ -256,6 +257,8 @@ pub(super) fn album_ratings_sql() -> String {
     format!(
         "WITH album(id) AS (SELECT ?1) \
          SELECT COALESCE(own.has_profile, 0) AS can_rate, \
+                COALESCE(own.has_profile, 0) \
+                    OR EXISTS (SELECT 1 FROM ratings AS r WHERE r.album_id = album.id) AS shown, \
                 (SELECT r.stars FROM ratings AS r \
                  WHERE r.album_id = album.id AND r.person_id = own.member) AS mine, \
                 (SELECT json_group_array(json_object('name', p.name, 'stars', r.stars) \
@@ -292,6 +295,7 @@ pub fn album_ratings_on(
             .map_err(|error| bae_store::read::column_conversion_error(row, "others", error))?;
         Ok(AlbumRatings {
             can_rate: row.get("can_rate")?,
+            shown: row.get("shown")?,
             mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
             others: others
                 .iter()

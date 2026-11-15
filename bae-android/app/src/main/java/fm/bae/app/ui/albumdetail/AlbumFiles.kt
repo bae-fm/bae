@@ -27,7 +27,7 @@ internal fun LazyListScope.albumFiles(
     release: BridgeRelease,
     context: Context,
 ) {
-    if (release.otherFiles.isEmpty()) return
+    if (!release.hasOtherFiles) return
     item {
         AndroidEyebrow(
             text = context.getString(R.string.album_files),

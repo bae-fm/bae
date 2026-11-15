@@ -136,6 +136,7 @@ fn one_track(
             images: Vec::new(),
             covers: Vec::new(),
             others: Vec::new(),
+            has_others: false,
             count: 0,
             total_size: 0,
         },

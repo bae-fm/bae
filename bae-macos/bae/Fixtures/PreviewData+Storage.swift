@@ -697,6 +697,7 @@ extension PreviewData {
                 )
             ),
             otherFiles: [],
+            hasOtherFiles: false,
             imageFiles: [imageFile],
             coverFiles: [imageFile],
             galleryItems: [],

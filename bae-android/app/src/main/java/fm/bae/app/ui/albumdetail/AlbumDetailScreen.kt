@@ -357,7 +357,7 @@ internal fun AlbumDetailContent(
             )
         }
 
-        if (detail.rating.canRate || detail.rating.raters.isNotEmpty()) {
+        if (detail.rating.shown) {
             block { AlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
         }
 

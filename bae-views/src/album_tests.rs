@@ -904,6 +904,8 @@ async fn a_person_without_a_profile_reads_no_ratings() {
         crate::LibraryViews::new(db.clone()).find_album_detail(ALBUM_A).await.unwrap().unwrap();
 
     assert!(!detail.rating.can_rate);
+    assert!(!detail.rating.shown);
+    assert!(!detail.releases[0].has_other_files);
     assert_eq!(detail.rating.mine, None);
     assert!(detail.rating.raters.is_empty());
     assert_eq!(detail.releases[0].tracks[0].my_stars, None);
