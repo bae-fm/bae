@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Foundation
 import Testing
@@ -118,6 +119,39 @@ struct ShotElementListTests {
             "\(json)"
         )
         #expect(spinner.role == "progress", "\(json)")
+    }
+
+    /// macOS gives a radio button its checked state as a value of 1 or 0; the
+    /// list writes it as `selected` and leaves the value out, as the board
+    /// side does.
+    @Test
+    func listsARadiosCheckedStateAsSelected() {
+        func radio(_ value: Double) -> ShotElementList.Element {
+            ShotElementList.Element(
+                node: AccessibilityTree.Node(
+                    role: NSAccessibility.Role.radioButton.rawValue,
+                    subrole: nil,
+                    title: "Albums",
+                    description: nil,
+                    placeholder: nil,
+                    value: .number(value),
+                    x: 0,
+                    y: 0,
+                    width: 80,
+                    height: 24,
+                    enabled: true,
+                    selected: nil,
+                    focused: nil,
+                    style: nil,
+                    parent: nil
+                )
+            )
+        }
+        #expect(radio(1).role == "radio")
+        #expect(radio(1).selected == true)
+        #expect(radio(1).value == nil)
+        #expect(radio(0).selected == false)
+        #expect(radio(0).value == nil)
     }
 
     @Test

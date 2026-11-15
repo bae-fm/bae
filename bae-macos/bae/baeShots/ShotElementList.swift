@@ -125,7 +125,7 @@ extension ShotElementList.Element {
             native: node.role,
             label: role == "text"
                 ? Self.words(node.value) : node.description ?? node.title,
-            value: role == "text"
+            value: role == "text" || role == "radio"
                 ? nil : Self.valueText(node.value, role: role),
             placeholder: node.placeholder,
             bounds: ShotElementList.Bounds(
@@ -135,7 +135,8 @@ extension ShotElementList.Element {
                 height: node.height
             ),
             enabled: node.enabled,
-            selected: node.selected,
+            selected: role == "radio"
+                ? Self.radioChecked(node.value) : node.selected,
             focused: node.focused,
             text: role == "text" ? node.style.flatMap(Self.textStyle) : nil,
             parent: node.parent
@@ -145,6 +146,15 @@ extension ShotElementList.Element {
     private static func words(_ value: AccessibilityTree.Value?) -> String? {
         guard case .text(let text)? = value, !text.isEmpty else { return nil }
         return text
+    }
+
+    /// A radio's value is 1 while it is chosen and 0 otherwise. The list
+    /// writes that as `selected` and gives the radio no value, as the board
+    /// side does.
+    private static func radioChecked(_ value: AccessibilityTree.Value?) -> Bool?
+    {
+        guard case .number(let number)? = value else { return nil }
+        return number != 0
     }
 
     /// A toggle's value is `"on"` or `"off"`; any other number is written as
