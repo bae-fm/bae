@@ -21,9 +21,10 @@ pub struct DbReleaseDetail {
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
     /// Whether any catalog describes this release.
     pub has_records: bool,
-    /// The device of the release's first audio file, by file id, that is on
-    /// another device only; `None` when none is. The release cannot play
-    /// here while it is `Some`.
+    /// The device that alone holds the release's audio file with the lowest
+    /// file id among those held only on another device. The field is `None`
+    /// when no audio file is held only on another device. The release cannot
+    /// play here while the field is `Some`.
     pub elsewhere: Option<OtherDevice>,
     /// Whether this device keeps every file of the release pinned, as the
     /// release's storage row counts its pinned files.
@@ -90,17 +91,6 @@ pub struct DbSendingUploads {
     pub files: Vec<DbSendingFile>,
     pub releases: Vec<DbSendingRelease>,
     pub paused: bool,
-}
-
-/// What the library records this device holding for one release file on one
-/// device only.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DbUnstoredAudio {
-    /// No original here: the file is on another device, as coven's
-    /// registration of that device reads.
-    Elsewhere(OtherDevice),
-    /// This device's original, as coven records it.
-    Original,
 }
 
 /// The other device a file is on, as coven's registration of it reads.

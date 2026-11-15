@@ -503,9 +503,9 @@ CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
 -- name and state of that device in coven's `coven_devices` and whether a
 -- member removed the device's person from the library. Another device alone
 -- holds a file when coven registers a device other than this one as holding
--- it. A release with such a file
--- cannot play here until that device moves the file to the cloud, and bae
--- names the device of the file with the lowest `file_id`. The view reads
+-- it. A release with such a file cannot play here until that device moves the
+-- file to the cloud, and bae names the device of the file with the lowest
+-- `file_id`. The view reads
 -- only coven's records and does not check the files on disk.
 CREATE VIEW IF NOT EXISTS release_audio_elsewhere AS
 SELECT f.release_id, f.id AS file_id,

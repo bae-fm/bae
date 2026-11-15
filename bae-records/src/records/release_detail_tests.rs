@@ -152,8 +152,8 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     assert_eq!(sides, expected_sides);
 }
 
-/// Returns the other device that the release detail `store` reads names for
-/// `release`, or `None` when the release plays here.
+/// Reads `release`'s detail from `store` and returns the other device it
+/// names, or `None` when the release plays here.
 async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option<OtherDevice> {
     store
         .read(move |sql| {
@@ -190,8 +190,9 @@ async fn import_file(
 }
 
 /// A release is on another device when that device alone holds one of its
-/// audio files, and then the release detail names that device. Audio this device holds the original
-/// of, and files that are not audio, never put a release elsewhere.
+/// audio files, and then the release detail names that device. The detail
+/// names no other device for audio whose original this device holds, or for
+/// files that are not audio.
 #[test]
 fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
     use crate::test_fixtures::*;

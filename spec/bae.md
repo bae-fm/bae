@@ -2278,7 +2278,8 @@ never leave the device. Every device reads every release file through coven:
 
 A release with any audio file on another device only cannot play here, and
 names that device in the album and release views: "On Ana's Mac". bae names the
-device that holds the release's audio file with the lowest file id. Its name is the
+device that alone holds the audio file with the lowest file id among the
+release's audio files held only on another device. Its name is the
 registration in coven's `coven_devices`, joined to coven's record of each file
 in the view `release_audio_elsewhere`, which the query that reads the release
 and the storage actions both read, so the line goes as soon as the switch
