@@ -1647,7 +1647,7 @@ tables = [
 # finds today (frozen: they only shrink) and the ones that are not a read's
 # work (allowed).
 [read_shapes]
-rule = "projects/bae-rules/reactive-screens-read-plain-live-queries.md in agent-instructions"
+rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
 read_types = ["SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
 live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
 request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
@@ -1712,7 +1712,7 @@ frozen = [
     { path = "bae-import/src/triage/model.rs", item = "TriageReading::of_library", shape = "pick", count = 1, finding = "`TriageReading::of_library` picks with `any` (found by the check)" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "kept-state", count = 3, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::next", shape = "kept-state", count = 2, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
-    { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "groups `sending.files` by release in a `BTreeMap`" },
+    { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "starts `progress` as an empty `BTreeMap`: the per-file progress that `next` fills from the upload watch and keeps between deliveries" },
     { path = "bae-playback/src/tables/now.rs", item = "playback_now.failures", shape = "reset-counter", count = 1, finding = "`playback_now.failures` is counted up and reset, so a live query reads again (found by the audit: forced rerun)" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "filter", count = 1, finding = "`album_id_for_records` filters with `filter_map` (found by the check)" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "pick", count = 2, finding = "`album_id_for_records` picks with `find_map` (found by the check)" },
