@@ -1,7 +1,7 @@
 import BaeKit
 
 /// A track menu's Add to playlist submenu: the person's own playlists by
-/// name, then New playlist…, which starts one holding the track. Nothing
+/// name, then New playlist…, which starts one holding the track or tracks. Nothing
 /// shows until the playlists are read, or without a profile to make them
 /// under.
 struct AddToPlaylistMenu: MacMenuPart {
@@ -29,11 +29,11 @@ struct AddToPlaylistMenu: MacMenuPart {
 
 /// What a track's menu needs to offer Add to playlist: the playlists the
 /// person can add to, and what choosing one, or New playlist…, does with the
-/// track.
+/// tracks the menu acts on, given in no order.
 struct TrackPlaylistChoices {
     let listing: BridgePlaylistListing?
-    let onAdd: (_ trackId: String, _ playlistId: String) -> Void
-    let onNewPlaylist: (_ trackId: String) -> Void
+    let onAdd: (_ trackIds: [String], _ playlistId: String) -> Void
+    let onNewPlaylist: (_ trackIds: [String]) -> Void
 
     /// No playlists: the menu offers none.
     static var none: TrackPlaylistChoices {

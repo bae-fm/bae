@@ -132,7 +132,8 @@ struct AlbumDetailView: View {
                     onExportTrack: { trackId in
                         exportTrack(trackId: trackId)
                     },
-                    playlists: trackPlaylistChoices
+                    playlists: trackPlaylistChoices,
+                    picking: trackPicking
                 )
             }
             else {

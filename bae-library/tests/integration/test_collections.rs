@@ -132,6 +132,60 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
+/// Several tracks added together land after the playlist's last entry in the
+/// order given, or none of them land when one is not in the library.
+#[tokio::test]
+async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let first = test_uuid("several-first");
+    let second = test_uuid("several-second");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("several-album"), "Several"),
+        &test_uuid("several-release"),
+        &[(&first, "First"), (&second, "Second")],
+    )
+    .await;
+    let id = library
+        .manager()
+        .create_playlist("Evening", Sharing::Private, vec![first.clone()])
+        .await
+        .unwrap();
+    let tracks = || async {
+        people
+            .playlist_entries(id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|entry| entry.track_id)
+            .collect::<Vec<_>>()
+    };
+
+    library
+        .manager()
+        .append_playlist_entries(id, vec![second.clone(), first.clone()])
+        .await
+        .unwrap();
+    assert_eq!(tracks().await, vec![first.clone(), second.clone(), first.clone()]);
+
+    let refused = library
+        .manager()
+        .append_playlist_entries(id, vec![second, test_uuid("several-unknown")])
+        .await;
+    assert!(refused.is_err());
+    assert_eq!(tracks().await.len(), 3);
+    library.manager().close().await.unwrap();
+}
+
 /// A playlist's summary is counted in SQL from its entries: how many, their
 /// total time, a grid of the first four different releases when its entries
 /// are on that many, else its first entry's cover; and Add to playlist lists

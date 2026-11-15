@@ -230,6 +230,13 @@ forward! { async this => {
             .collect())
     }
 
+    /// The tracks of `track_ids` the library holds, each once, in the order
+    /// their release lists them: what an action on a picked set of tracks
+    /// acts on, whatever order they were picked in.
+    fn tracks_in_release_order(track_ids: Vec<String>) -> Vec<String> {
+        this.services.track_ids_in_release_order(track_ids).await.map_err(BridgeError::from)
+    }
+
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     fn resolve_to_track_ids(ids: Vec<String>) -> Vec<String> {

@@ -111,6 +111,29 @@ impl Records {
             .await
     }
 
+    /// The tracks of `track_ids` the library holds, each once, in the order
+    /// their release lists them: by release, then stored position, id. What
+    /// an action on a picked set of tracks acts on, whatever order they were
+    /// picked in; an id the library lacks is left out.
+    pub async fn track_ids_in_release_order(
+        &self,
+        track_ids: Vec<String>,
+    ) -> Result<Vec<String>, DbError> {
+        let track_ids = serde_json::to_string(&track_ids).expect("track ids serialize as JSON");
+        self.store
+            .read(move |sql| {
+                sql.query(
+                    "SELECT id FROM tracks \
+                     WHERE id IN (SELECT value FROM json_each(?1)) \
+                     ORDER BY release_id, position, id",
+                    params![track_ids],
+                    |row| row.get::<_, String>("id"),
+                )
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
     /// Every track id in the library, in a deterministic base order (the same
     /// order across calls, so a listing pages through a stable list): by
     /// release, then stored position, id — the order the playback queue's

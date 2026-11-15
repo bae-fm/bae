@@ -101,10 +101,15 @@ public final class Library: Sendable, Observable {
         @Sendable (
             _ name: String, _ sharing: BridgeSharing, _ trackIds: [String]
         ) async throws -> String
-    /// Add a track to the end of a playlist of this device's person.
-    public let appendPlaylistEntry:
-        @Sendable (_ playlistId: String, _ trackId: String) async throws
+    /// Add tracks to the end of a playlist of this device's person, in the
+    /// order given. A failed write adds none.
+    public let appendPlaylistEntries:
+        @Sendable (_ playlistId: String, _ trackIds: [String]) async throws
             -> Void
+    /// The tracks of `trackIds` the library holds, each once, in the order
+    /// their release lists them, which core reads.
+    public let tracksInReleaseOrder:
+        @Sendable (_ trackIds: [String]) async throws -> [String]
 
     public init(
         albumList:
@@ -209,9 +214,13 @@ public final class Library: Sendable, Observable {
         createPlaylist:
             @escaping @Sendable (String, BridgeSharing, [String]) async throws
             -> String = { _, _, _ in throw StubError.notImplemented },
-        appendPlaylistEntry:
-            @escaping @Sendable (String, String) async throws -> Void = {
+        appendPlaylistEntries:
+            @escaping @Sendable (String, [String]) async throws -> Void = {
                 _,
+                _ in throw StubError.notImplemented
+            },
+        tracksInReleaseOrder:
+            @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
             }
     ) {
@@ -241,7 +250,8 @@ public final class Library: Sendable, Observable {
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
         self.createPlaylist = createPlaylist
-        self.appendPlaylistEntry = appendPlaylistEntry
+        self.appendPlaylistEntries = appendPlaylistEntries
+        self.tracksInReleaseOrder = tracksInReleaseOrder
     }
 
     #if DEBUG
@@ -308,14 +318,13 @@ extension Library {
                 coverGallery: {
                     CoverGalleryQuery(handle.subscribeCoverGallery())
                 },
-                resolveToTrackIds: {
-                    try await handle.resolveToTrackIds(ids: $0)
-                },
+                resolveToTrackIds: Self.resolveToTrackIds(handle),
                 setLibraryFullWidth: {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 },
                 createPlaylist: Self.createPlaylist(handle),
-                appendPlaylistEntry: Self.appendPlaylistEntry(handle)
+                appendPlaylistEntries: Self.appendPlaylistEntries(handle),
+                tracksInReleaseOrder: Self.tracksInReleaseOrder(handle)
             )
         }
 
@@ -366,14 +375,28 @@ extension Library {
             { DetailQuery(handle.subscribePlaylistDetail()) }
         }
 
-        /// Add a track to a playlist through `handle`.
-        private static func appendPlaylistEntry(
+        /// Resolve albums and tracks to track ids through `handle`.
+        private static func resolveToTrackIds(
             _ handle: any AppHandleProtocol
-        ) -> @Sendable (String, String) async throws -> Void {
+        ) -> @Sendable ([String]) async throws -> [String] {
+            { try await handle.resolveToTrackIds(ids: $0) }
+        }
+
+        /// Order picked tracks as their release lists them through `handle`.
+        private static func tracksInReleaseOrder(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable ([String]) async throws -> [String] {
+            { try await handle.tracksInReleaseOrder(trackIds: $0) }
+        }
+
+        /// Add tracks to a playlist through `handle`.
+        private static func appendPlaylistEntries(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (String, [String]) async throws -> Void {
             {
-                _ = try await handle.appendPlaylistEntry(
+                try await handle.appendPlaylistEntries(
                     playlist: $0,
-                    track: $1
+                    trackIds: $1
                 )
             }
         }

@@ -93,6 +93,8 @@ class UiStore: @unchecked Sendable {
     /// The New playlist sheet's state while it is open.
     var newPlaylistSheet: NewPlaylistSheetState?
     var selectedAlbumId: String?
+    /// The tracks picked on the open album's page.
+    let pickedTracks = PickedTracks()
     private(set) var showQueue: Bool = false
 
     /// The pending grid-scroll command, or `nil` before any navigation or once

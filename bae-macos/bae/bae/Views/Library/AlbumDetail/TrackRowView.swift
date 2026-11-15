@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -15,6 +16,8 @@ struct MacTrackRow: View {
     let isPlaying: Bool
     /// Whether the pointer is over the row.
     var hover = false
+    /// Whether the row is among the tracks picked together.
+    var picked = false
     /// How much of the accent the jump's flash fills the row with.
     var highlight: Double = 0
     let onPlay: () -> Void
@@ -76,7 +79,11 @@ struct MacTrackRow: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
-                    .fill(hover ? Theme.hover : Color.clear)
+                    .fill(
+                        picked
+                            ? Theme.accentSoft
+                            : hover ? Theme.hover : Color.clear
+                    )
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(Theme.accent.opacity(highlight))
             }
@@ -105,6 +112,11 @@ struct TrackRowView: View {
     let onExportTrack: (String) -> Void
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
+    /// Picking several tracks, or `nil` where the list has none.
+    var picking: TrackPicking?
+    /// The ids of the page's rows in the order it lists them, read when a
+    /// shift-click extends the picks.
+    var rowOrder: () -> [String] = { [] }
 
     @State
     private var isHovered = false
@@ -121,6 +133,7 @@ struct TrackRowView: View {
             isCurrent: isCurrent,
             isPlaying: isPlaying,
             hover: isHovered,
+            picked: picking?.picked.contains(track.id) ?? false,
             highlight: highlightOpacity,
             onPlay: onPlay,
             onTogglePlayPause: onTogglePlayPause
@@ -143,6 +156,12 @@ struct TrackRowView: View {
         .onTapGesture(count: 2) {
             onPlay()
         }
+        .simultaneousGesture(
+            TapGesture().onEnded { handleTap() }
+        )
+        .accessibilityAddTraits(
+            picking?.picked.contains(track.id) == true ? .isSelected : []
+        )
         .contentShape(Rectangle())
         .onHover { hovering in
             hoverWorkItem?.cancel()
@@ -160,18 +179,54 @@ struct TrackRowView: View {
             }
         }
         .macContextMenu {
+            menu
+        }
+        .draggable(track.id)
+    }
+
+    /// Cmd picks or unpicks the row, shift picks the range from the last
+    /// pick, and a plain click clears the picks.
+    private func handleTap() {
+        guard let picked = picking?.picked else { return }
+        let modifiers = NSEvent.modifierFlags
+        if modifiers.contains(.command) {
+            picked.set(track.id, picked: !picked.contains(track.id))
+        }
+        else if modifiers.contains(.shift) {
+            picked.extend(to: track.id, in: rowOrder())
+        }
+        else {
+            picked.clear()
+        }
+    }
+
+    /// The row's menu, acting on every picked track when the row is among
+    /// several, else on the row alone.
+    @MacMenuBuilder
+    private var menu: [MacMenuEntry] {
+        let targets = picking?.picked.targets(for: track.id) ?? [track.id]
+        let playlistMenu = AddToPlaylistMenu(
+            listing: playlists.listing,
+            onAdd: { playlists.onAdd(targets, $0) },
+            onNewPlaylist: { playlists.onNewPlaylist(targets) }
+        )
+        if let picking, targets.count > 1 {
+            MacMenuItem("Play \(targets.count) tracks") {
+                picking.onPlay(targets)
+            }
+            MacMenuItem("Play next") { picking.onAddNext(targets) }
+            MacMenuItem("Add to queue") { picking.onAddToQueue(targets) }
+            MacMenuDivider()
+            playlistMenu
+        }
+        else {
             MacMenuItem("Play") { onPlay() }
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuDivider()
-            AddToPlaylistMenu(
-                listing: playlists.listing,
-                onAdd: { playlists.onAdd(track.id, $0) },
-                onNewPlaylist: { playlists.onNewPlaylist(track.id) }
-            )
+            playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }
-        .draggable(track.id)
     }
 }
 

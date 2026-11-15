@@ -26,4 +26,14 @@ impl LibraryManager {
         self.people.append_playlist_entry(playlist, position, track).await?;
         Ok(position)
     }
+
+    /// Adds `tracks` to the end of the playlist in that order, in one write.
+    pub async fn append_playlist_entries(
+        &self,
+        playlist: uuid::Uuid,
+        tracks: Vec<String>,
+    ) -> Result<(), CollectionError> {
+        let entries = tracks.into_iter().map(|track| (self.ids.new_id(), track)).collect();
+        self.people.append_playlist_entries(playlist, entries).await
+    }
 }

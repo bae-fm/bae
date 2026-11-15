@@ -35,6 +35,8 @@ struct AlbumExpansionContent: View {
     let onDeleteAlbum: () -> Void
     let onExportTrack: (String) -> Void
     var playlists = TrackPlaylistChoices.none
+    /// Picking several tracks of the list, or `nil` where the list has none.
+    var picking: TrackPicking?
 
     /// The album cover's side.
     private static let coverSize: CGFloat = 340
@@ -99,7 +101,8 @@ struct AlbumExpansionContent: View {
                         onAddNext: onAddNext,
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
-                        playlists: playlists
+                        playlists: playlists,
+                        picking: picking
                     )
                     .padding(.top, ThemeSpace.edge)
                     if !selectedRelease.credits.isEmpty {

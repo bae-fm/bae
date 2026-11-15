@@ -15,6 +15,7 @@ struct AlbumTrackListView: View {
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
     var playlists = TrackPlaylistChoices.none
+    var picking: TrackPicking?
 
     @ScaledMetric(relativeTo: .body)
     private var rowHeight: CGFloat = 40
@@ -64,6 +65,11 @@ struct AlbumTrackListView: View {
                 }
             }
         }
+        // A track the page no longer lists is no longer picked: another
+        // release shown, or the track deleted.
+        .onChange(of: release.tracks.map(\.id)) { _, rows in
+            picking?.picked.keep(Set(rows))
+        }
         .background {
             // Every position label laid out but not drawn: the stack is as
             // wide as the widest.
@@ -100,7 +106,9 @@ struct AlbumTrackListView: View {
                     onAddNext: onAddNext,
                     onAddToQueue: onAddToQueue,
                     onExportTrack: onExportTrack,
-                    playlists: playlists
+                    playlists: playlists,
+                    picking: picking,
+                    rowOrder: { release.tracks.map(\.id) }
                 )
                 .id(track.id)
                 .frame(height: height)

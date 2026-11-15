@@ -120,8 +120,20 @@ impl People {
         position: uuid::Uuid,
         track: String,
     ) -> Result<(), CollectionError> {
+        self.append_playlist_entries(playlist, vec![(position, track)]).await
+    }
+
+    /// Adds `entries`, each a fresh position id and its track, after the
+    /// playlist's last entry in that order, in one write.
+    pub async fn append_playlist_entries(
+        &self,
+        playlist: uuid::Uuid,
+        entries: Vec<(uuid::Uuid, String)>,
+    ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql| {
-            sql.execute("INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) SELECT ?1, ?2, ?3, COALESCE(MAX(position) + 1, 0) FROM playlist_entries WHERE playlist_id = ?1", params![playlist.to_string(), position.to_string(), track])?;
+            for (position, track) in &entries {
+                sql.execute("INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) SELECT ?1, ?2, ?3, COALESCE(MAX(position) + 1, 0) FROM playlist_entries WHERE playlist_id = ?1", params![playlist.to_string(), position.to_string(), track])?;
+            }
             Ok(Ok(()))
         }).await
     }

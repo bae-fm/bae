@@ -6,23 +6,29 @@ extension AlbumDetailView {
         TrackPlaylistChoices(
             listing: libraryProjections?.playlists.value,
             onAdd: addToPlaylist,
-            onNewPlaylist: { trackId in
-                uiStore.presentNewPlaylist(trackIds: [trackId])
+            onNewPlaylist: { trackIds in
+                inReleaseOrder(trackIds) { ordered in
+                    uiStore.presentNewPlaylist(trackIds: ordered)
+                }
             }
         )
     }
 
-    /// Add `trackId` to the end of the playlist `playlistId`; a failure says
-    /// why.
-    private func addToPlaylist(trackId: String, playlistId: String) {
+    /// Add `trackIds` to the end of the playlist `playlistId`, in their
+    /// release's order; a failure says why and adds none.
+    private func addToPlaylist(trackIds: [String], playlistId: String) {
         let library = library
-        let uiStore = uiStore
-        Task {
-            do {
-                try await library.appendPlaylistEntry(playlistId, trackId)
-            }
-            catch {
-                uiStore.showError(error)
+        inReleaseOrder(trackIds) { ordered in
+            Task {
+                do {
+                    try await library.appendPlaylistEntries(
+                        playlistId,
+                        ordered
+                    )
+                }
+                catch {
+                    uiStore.showError(error)
+                }
             }
         }
     }
