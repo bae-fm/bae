@@ -745,13 +745,13 @@ it (§3.1), its size and its modification time, sorted, so moving or renaming
 the folder doesn't change its hash. Each device records, for itself alone, the
 hash of the files each of its imports read (`local_release_origin`); the record
 never syncs, and the release carries no hash. It does one job: a folder whose
-hash it holds is Done in this device's import list (§3.2), wherever the folder
+hash it holds is on Imported in this device's import list (§3.2), wherever the folder
 sits now.
 
 One hash is one release on a device. An import of files this device already
 imported is refused when it is asked for, and nothing runs; the person is told
 this device already imported those files. An automatic import refused this way
-records no failed import: the folder is Done. Two imports of the same files asked
+records no failed import: the folder is on Imported. Two imports of the same files asked
 for before either lands both run, and the one that comes second finds the hash
 taken, as it reads what to import or as it writes: it fails with the same
 words and writes nothing. The release imported
@@ -766,7 +766,7 @@ file metadata reads its tags again.
 The hash reads no bytes, so it tells files apart by name, size and time alone.
 A copy to another disk usually changes the modification times, so the same rip
 copied elsewhere usually hashes differently and is a folder of its own to
-import, as Ana's backup is. A copy that keeps them hashes alike and is Done
+import, as Ana's backup is. A copy that keeps them hashes alike and is on Imported
 beside the folder it was copied from.
 
 A scan tells a file it has read by the same facts, with its path on disk in
@@ -1017,27 +1017,27 @@ The import list shows every candidate in one of three tabs:
 
 | Tab | Holds |
 |---|---|
-| Pending | this device imported no release from the folder's files, and not skipped; including a failed import |
-| Done | this device imported a release from the folder's files (§2.7); what is still uploading first |
+| Found | this device imported no release from the folder's files, and not skipped; including a failed import |
+| Imported | this device imported a release from the folder's files (§2.7); what is still uploading first |
 | Skipped | dismissed by the person, or broken |
 
 A tab reads *Nothing here yet* only once its list has been read and holds no
 rows (*No matches* when the filter narrows it to none); until then, and while
 its rows are still another tab's or filter's, the list is a plain surface.
 
-Done runs the releases coven still has files of in its upload queue first,
+Imported runs the releases coven still has files of in its upload queue first,
 the first queued first, and then the rest in the list's order. Only a
 release's own files count, as the Storage manager counts them (§4.2); the
 list reads the queue as coven's state view `coven_uploads`
 holds it, so it is never waiting on it and never out of step with it.
 
 Each tab sorts newest first, oldest first, or by path either way. A date order
-sorts by each row's date — its folder's for Pending and Skipped, its release's
-import for Done — with undated rows last; a path order sorts by watched folder
+sorts by each row's date — its folder's for Found and Skipped, its release's
+import for Imported — with undated rows last; a path order sorts by watched folder
 and then by path, in natural order ("Disc 2" before "Disc 10", case aside). A
 release combined from folders in several watched folders sorts by its first
 part: that part's watched folder and path.
-On Pending a release nested below a folder is listed under that folder's
+On Found a release nested below a folder is listed under that folder's
 group, and so is one at that folder while another is nested below it: the
 group sorts by its newest member's date and its folder, its header leads its
 members, and folding the group shut keeps the header, still counting its
@@ -1052,7 +1052,7 @@ pinned. Each member is read with where its group's header sits in the list,
 so the pinned header is its own group's however far above it the header is
 and whichever rows have loaded.
 
-Each Pending row is in exactly one state. The first that applies wins:
+Each Found row is in exactly one state. The first that applies wins:
 
 1. **Importing**: an import is queued or running.
 2. **Identifying**: a lookup is queued, running, or writing an answer that
@@ -1078,23 +1078,23 @@ Each Pending row is in exactly one state. The first that applies wins:
     set it aside.
 11. **Needs you**: the lookup left the answer to the person.
 
-A Pending row's title line reads from its draft. A row with no draft, from the
+A Found row's title line reads from its draft. A row with no draft, from the
 tags or anywhere else, names its folder. A row with one shows the draft's
 album title and credits, and, while the draft is linked to a catalog's
 pressing or album, an arrow after the title: its facts were read from a
 catalog record. On every other row the arrow is hidden, not removed, so the
 title line keeps its width whichever way the row reads.
 
-A filter narrows Pending to one group of these states: needs you, in progress,
-identified, unmatched, or not looked up. Each entry counts the Pending rows it
+A filter narrows Found to one group of these states: needs you, in progress,
+identified, unmatched, or not looked up. Each entry counts the Found rows it
 holds, whatever the list shows. Text typed into the search keeps the rows
 whose shown title or artists contain it, case folded as library search folds
 it (§2.3), and a group's header while any of its members is kept; the list
 says how many of the tab's rows it keeps of how many it has.
 
-**Done.** A folder is Done when this device imported a release from its files.
+**Imported.** A folder is on Imported when this device imported a release from its files.
 This device's record of the import is keyed by the folder's hash (§2.7), not
-its path, so a folder moved or renamed after its import stays Done. A Done row
+its path, so a folder moved or renamed after its import stays on Imported. An Imported row
 shows the library release imported from the folder's files as the library
 holds it now — its album's title and credits, each printed as the library
 prints it, its cover, and the arrow of a release a catalog's record describes
@@ -1119,7 +1119,7 @@ copies Ana's rip folder to his laptop, keeping the modification times. Ana's
 release syncs to him, but his scan finds the folder in Found, his to import or
 skip.
 
-Done offers no re-import. A second copy comes from importing another folder,
+Imported offers no re-import. A second copy comes from importing another folder,
 such as a copy whose modification times changed.
 
 **Skipped.** A broken folder's row looks like a Found row: the folder's own
@@ -1138,9 +1138,9 @@ selected row — another tab, filter or search, a fold, or a change that moves
 the row out of the filter, such as one that starts importing under Identified
 — takes it out of the selection in that same write, and a row shown again
 comes back unselected. One row stays selected without being shown: a selected
-Pending row whose import lands moves to Done, but the list stays on Pending,
+Found row whose import lands moves to Imported, but the list stays on Found,
 the row stays selected and its pane stays open, showing the release as
-imported (Done's pane, above) with its way to open the release in the
+imported (Imported's pane, above) with its way to open the release in the
 library, until the person selects another row or changes the tab, filter or
 search. A write that stores a candidate's state, such as an
 edit in its pane or a pick, changes only the rows whose values change, each in
@@ -1222,7 +1222,7 @@ rows holding it, and a shorter one reads every release's text from the
 index. A window is a range of the order: from the sort values of one row to
 those of another, each bound optional, read through the order's index and
 running on into the next part of the tab, or back into the one before it, when
-its part holds too few rows. A key leads with the number of its part (Done's
+its part holds too few rows. A key leads with the number of its part (Imported's
 queued uploads are the first part, its other rows the second, every other tab
 one), so a range may start in one part and end in another. A jump to a
 position reads the key of the item there by offset from the top of the tab,
@@ -1962,7 +1962,7 @@ Ana clicks Import. bae:
    found, what the person let the lookups use, where the pane was, the
    artist and label decisions it just resolved its credits and labels by,
    the album picked for it, and the draft with its source, its link and its
-   cover, since the Done row and the imported folder's pane read the
+   cover, since the Imported row and the imported folder's pane read the
    library release (§3.2). The clues stay, since the automation interface
    lists them for the folder with the file each was read off (no screen shows
    which file a clue came from), and so do the file decisions, which lay its
@@ -2424,7 +2424,7 @@ How many of a release's files
 wait in the upload queue, and the place of the first, are counts bae keeps
 the same way from
 coven's `coven_upload_queue`, in the transaction that queues or dequeues a
-file; the import list's Done tab reads them in queue order, and each Done row
+file; the import list's Imported tab reads them in queue order, and each Imported row
 its own release's (§3.2). Whether
 the download queue holds a release waiting or downloading, or failed, is a
 flag bae keeps the same way, in the transaction that changes the queue, and where the release
@@ -2438,7 +2438,7 @@ pinned.
 
 A release with files waiting to upload shows Uploading, filled as far as its
 bytes have come, in its row and in its album's storage band, or before then
-Queued in its row and Queued to upload in its band (its Done row in the import
+Queued in its row and Queued to upload in its band (its Imported row in the import
 list shows the phase that makes, §3.2); the
 Storage manager's inspector shows how many wait, are being sent and are
 stored, and how many bytes of its whole size are stored or sent. The counts
@@ -6296,7 +6296,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Done tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
 
 What the library lists, bae-views' part, kept by its triggers:
 
@@ -6442,11 +6442,11 @@ Beside them, keyed by the release an import made:
 
 | Table | Holds |
 |---|---|
-| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order, holding Done's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
+| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order, holding Imported's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
-| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out, bar a Pending row whose import landed, which stays until another row is selected or the view changes |
+| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out, bar a Found row whose import landed, which stays until another row is selected or the view changes |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the
