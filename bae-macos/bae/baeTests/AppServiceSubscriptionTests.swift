@@ -251,7 +251,7 @@ struct InvitesSubscriptionTests {
         store.show()
         #expect(
             Set(handle.subscribed.dropFirst())
-                == ["profiles", "requestedProfile", "adminChanges", "invites"]
+                == ["people", "requestedProfile", "adminChanges", "invites"]
         )
         handle.deliverInvites([invite(id: "11")])
         try await Wait.until { store.invites.map(\.id) == ["11"] }
@@ -650,9 +650,9 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         return SilentMembers()
     }
 
-    override func subscribeProfiles() -> ProfilesSubscription {
-        record("profiles")
-        return SilentProfiles()
+    override func subscribePeople() -> PeopleSubscription {
+        record("people")
+        return SilentPeople()
     }
 
     override func subscribeInvites() -> InvitesSubscription {
@@ -669,11 +669,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         record("adminChanges")
         return SilentAdminChanges()
     }
-
-    // A screen showing the people reads them once as it opens.
-    override func people() async throws -> [BridgePerson] { [] }
-
-    override func ownPerson() async throws -> BridgePerson? { nil }
 
     func deliverInvites(
         _ value: [BridgeInvite],

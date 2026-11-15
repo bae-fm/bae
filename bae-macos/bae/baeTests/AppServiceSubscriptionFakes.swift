@@ -307,19 +307,19 @@ final class SilentMembers: MembersSubscription, @unchecked Sendable {
     override func cancel() async throws { values.cancel() }
 }
 
-/// The profiles, which never change: a pull waits until it is cancelled.
-final class SilentProfiles: ProfilesSubscription, @unchecked Sendable {
-    private let values = PullQueue<[BridgePersonProfile]>()
+/// The people, who never change: a pull waits until it is cancelled.
+final class SilentPeople: PeopleSubscription, @unchecked Sendable {
+    private let values = PullQueue<BridgePeople>()
 
     init() {
-        super.init(noHandle: ProfilesSubscription.NoHandle())
+        super.init(noHandle: PeopleSubscription.NoHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {
         super.init(unsafeFromHandle: handle)
     }
 
-    override func next() async throws -> [BridgePersonProfile] {
+    override func next() async throws -> BridgePeople {
         try await values.next()
     }
 

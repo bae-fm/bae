@@ -130,7 +130,7 @@ class MembersModelTest {
         handle.persons
             .last()
             .second.pulls
-            .deliver(PreviewData.person())
+            .deliver(ana)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(PersonRead.Loaded("member-2", ana), model.person)
 
