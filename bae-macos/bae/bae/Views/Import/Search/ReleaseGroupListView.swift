@@ -116,7 +116,7 @@ struct ReleaseGroupSection: View {
     private static let ruleInset = ThemeSpace.edge
     private static let ruleWidth: CGFloat = 1
     /// The gap between the rule and the rows.
-    private static let ruleGap = ThemeSpace.compact
+    private static let ruleGap = ThemeSpace.related
     /// Where a pressing row's text starts, from the card's leading edge.
     static let rowTextInset =
         ruleInset + ruleWidth + ruleGap
