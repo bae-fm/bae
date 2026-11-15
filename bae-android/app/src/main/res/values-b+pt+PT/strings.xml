@@ -107,6 +107,13 @@
     <string name="playlist_sharing_private_note">Só você vê esta lista de reprodução.</string>
     <string name="playlist_sharing_household_note">Todos na biblioteca veem esta lista de reprodução e podem reproduzi-la. Só você pode alterá-la.</string>
     <string name="playlist_create">Criar</string>
+    <string name="playlist_edit_menu">Editar lista de reprodução…</string>
+    <string name="playlist_edit_title">Editar lista de reprodução</string>
+    <string name="playlist_delete_menu">Eliminar lista de reprodução…</string>
+    <string name="playlist_delete_title">Eliminar %1$s?</string>
+    <string name="playlist_delete_message">É eliminada de todos os dispositivos. As faixas que contém ficam na biblioteca.</string>
+    <string name="playlist_delete_confirm">Eliminar</string>
+    <string name="playlist_options">Opções da lista de reprodução</string>
     <plurals name="album_count">
         <item quantity="one">%1$d álbum</item>
         <item quantity="other">%1$d álbuns</item>

@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">Nur du siehst diese Wiedergabeliste.</string>
     <string name="playlist_sharing_household_note">Alle in der Bibliothek sehen diese Wiedergabeliste und können sie abspielen. Nur du kannst sie ändern.</string>
     <string name="playlist_create">Erstellen</string>
+    <string name="playlist_edit_menu">Wiedergabeliste bearbeiten…</string>
+    <string name="playlist_edit_title">Wiedergabeliste bearbeiten</string>
+    <string name="playlist_delete_menu">Wiedergabeliste löschen…</string>
+    <string name="playlist_delete_title">%1$s löschen?</string>
+    <string name="playlist_delete_message">Sie wird auf allen Geräten gelöscht. Die Titel darin bleiben in der Bibliothek.</string>
+    <string name="playlist_delete_confirm">Löschen</string>
+    <string name="playlist_options">Wiedergabelisten-Optionen</string>
     <plurals name="album_count">
         <item quantity="one">%1$d Album</item>
         <item quantity="other">%1$d Alben</item>

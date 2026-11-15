@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">Solo tu vedi questa playlist.</string>
     <string name="playlist_sharing_household_note">Tutti nella libreria vedono questa playlist e possono riprodurla. Solo tu puoi modificarla.</string>
     <string name="playlist_create">Crea</string>
+    <string name="playlist_edit_menu">Modifica playlist…</string>
+    <string name="playlist_edit_title">Modifica playlist</string>
+    <string name="playlist_delete_menu">Elimina playlist…</string>
+    <string name="playlist_delete_title">Eliminare %1$s?</string>
+    <string name="playlist_delete_message">Viene eliminata da ogni dispositivo. I brani al suo interno restano nella libreria.</string>
+    <string name="playlist_delete_confirm">Elimina</string>
+    <string name="playlist_options">Opzioni playlist</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="many">%1$d di album</item>

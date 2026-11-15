@@ -107,6 +107,13 @@
     <string name="playlist_sharing_private_note">Μόνο εσείς βλέπετε αυτή τη λίστα αναπαραγωγής.</string>
     <string name="playlist_sharing_household_note">Όλοι στη βιβλιοθήκη βλέπουν αυτή τη λίστα αναπαραγωγής και μπορούν να την αναπαράγουν. Μόνο εσείς μπορείτε να την αλλάξετε.</string>
     <string name="playlist_create">Δημιουργία</string>
+    <string name="playlist_edit_menu">Επεξεργασία λίστας αναπαραγωγής…</string>
+    <string name="playlist_edit_title">Επεξεργασία λίστας αναπαραγωγής</string>
+    <string name="playlist_delete_menu">Διαγραφή λίστας αναπαραγωγής…</string>
+    <string name="playlist_delete_title">Διαγραφή του «%1$s»;</string>
+    <string name="playlist_delete_message">Διαγράφεται από κάθε συσκευή. Τα κομμάτια της παραμένουν στη βιβλιοθήκη.</string>
+    <string name="playlist_delete_confirm">Διαγραφή</string>
+    <string name="playlist_options">Επιλογές λίστας αναπαραγωγής</string>
     <plurals name="album_count">
         <item quantity="one">%1$d άλμπουμ</item>
         <item quantity="other">%1$d άλμπουμ</item>

@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">このプレイリストはあなただけに表示されます。</string>
     <string name="playlist_sharing_household_note">ライブラリの全員がこのプレイリストを見て再生できます。変更できるのはあなただけです。</string>
     <string name="playlist_create">作成</string>
+    <string name="playlist_edit_menu">プレイリストを編集…</string>
+    <string name="playlist_edit_title">プレイリストを編集</string>
+    <string name="playlist_delete_menu">プレイリストを削除…</string>
+    <string name="playlist_delete_title">%1$sを削除しますか？</string>
+    <string name="playlist_delete_message">すべてのデバイスから削除されます。プレイリスト内のトラックはライブラリに残ります。</string>
+    <string name="playlist_delete_confirm">削除</string>
+    <string name="playlist_options">プレイリストオプション</string>
     <plurals name="album_count">
         <item quantity="other">%1$d枚のアルバム</item>
     </plurals>

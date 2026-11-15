@@ -107,6 +107,13 @@
     <string name="playlist_sharing_private_note">Bara du ser den här spellistan.</string>
     <string name="playlist_sharing_household_note">Alla i biblioteket ser den här spellistan och kan spela upp den. Bara du kan ändra den.</string>
     <string name="playlist_create">Skapa</string>
+    <string name="playlist_edit_menu">Redigera spellista…</string>
+    <string name="playlist_edit_title">Redigera spellista</string>
+    <string name="playlist_delete_menu">Radera spellista…</string>
+    <string name="playlist_delete_title">Radera %1$s?</string>
+    <string name="playlist_delete_message">Den raderas från alla enheter. Spåren i den finns kvar i biblioteket.</string>
+    <string name="playlist_delete_confirm">Radera</string>
+    <string name="playlist_options">Spellistealternativ</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d album</item>

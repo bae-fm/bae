@@ -16,6 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +42,7 @@ import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PlaylistPicture
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
+import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgePlaylistDetail
 
 private val HEADER_PICTURE_SIZE = 96.dp
@@ -60,11 +64,23 @@ internal fun PlaylistScreen(
         onDispose { session.libraryQueries.playlist.deactivate(playlistId) }
     }
     val loadError = query.error?.let(LocalContext.current::displayError)
+    val scope = rememberScreenScope()
+    val deletion = rememberPlaylistDeletion(session, playlistId, scope, onDeleted = onBack)
+    var editing by remember { mutableStateOf(false) }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
+        actions = {
+            if (detail?.summary?.yours == true) {
+                PlaylistOptionsMenu(onEdit = { editing = true }, onDelete = deletion::ask)
+            }
+        },
     ) {
+        PlaylistDeletionShown(deletion, name = detail?.summary?.name.orEmpty())
+        if (editing && detail != null) {
+            EditPlaylistDialog(session = session, playlist = detail.summary, onDismiss = { editing = false })
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 detail != null -> {

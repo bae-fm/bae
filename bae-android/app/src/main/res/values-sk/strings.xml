@@ -109,6 +109,13 @@
     <string name="playlist_sharing_private_note">Tento zoznam skladieb vidíte len vy.</string>
     <string name="playlist_sharing_household_note">Všetci v knižnici tento zoznam skladieb vidia a môžu ho prehrať. Meniť ho môžete len vy.</string>
     <string name="playlist_create">Vytvoriť</string>
+    <string name="playlist_edit_menu">Upraviť zoznam skladieb…</string>
+    <string name="playlist_edit_title">Upraviť zoznam skladieb</string>
+    <string name="playlist_delete_menu">Odstrániť zoznam skladieb…</string>
+    <string name="playlist_delete_title">Odstrániť %1$s?</string>
+    <string name="playlist_delete_message">Odstráni sa zo všetkých zariadení. Skladby v ňom zostanú v knižnici.</string>
+    <string name="playlist_delete_confirm">Odstrániť</string>
+    <string name="playlist_options">Možnosti zoznamu skladieb</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="few">%1$d albumy</item>

@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">Само вие виждате този плейлист.</string>
     <string name="playlist_sharing_household_note">Всички в библиотеката виждат този плейлист и могат да го пускат. Само вие можете да го променяте.</string>
     <string name="playlist_create">Създай</string>
+    <string name="playlist_edit_menu">Редактиране на плейлиста…</string>
+    <string name="playlist_edit_title">Редактиране на плейлиста</string>
+    <string name="playlist_delete_menu">Изтриване на плейлиста…</string>
+    <string name="playlist_delete_title">Изтриване на %1$s?</string>
+    <string name="playlist_delete_message">Изтрива се от всяко устройство. Песните в него остават в библиотеката.</string>
+    <string name="playlist_delete_confirm">Изтриване</string>
+    <string name="playlist_options">Опции за плейлиста</string>
     <plurals name="album_count">
         <item quantity="one">%1$d албум</item>
         <item quantity="other">%1$d албума</item>

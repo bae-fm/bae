@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">Solo tú ves esta lista de reproducción.</string>
     <string name="playlist_sharing_household_note">Todos en la biblioteca ven esta lista de reproducción y pueden reproducirla. Solo tú puedes cambiarla.</string>
     <string name="playlist_create">Crear</string>
+    <string name="playlist_edit_menu">Editar lista de reproducción…</string>
+    <string name="playlist_edit_title">Editar lista de reproducción</string>
+    <string name="playlist_delete_menu">Eliminar lista de reproducción…</string>
+    <string name="playlist_delete_title">¿Eliminar %1$s?</string>
+    <string name="playlist_delete_message">Se elimina de todos los dispositivos. Las pistas que contiene permanecen en la biblioteca.</string>
+    <string name="playlist_delete_confirm">Eliminar</string>
+    <string name="playlist_options">Opciones de la lista de reproducción</string>
     <plurals name="album_count">
         <item quantity="one">%1$d álbum</item>
         <item quantity="many">%1$d de álbumes</item>

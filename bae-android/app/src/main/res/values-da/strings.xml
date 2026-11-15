@@ -107,6 +107,13 @@
     <string name="playlist_sharing_private_note">Kun du kan se denne afspilningsliste.</string>
     <string name="playlist_sharing_household_note">Alle i biblioteket kan se denne afspilningsliste og afspille den. Kun du kan ændre den.</string>
     <string name="playlist_create">Opret</string>
+    <string name="playlist_edit_menu">Rediger afspilningsliste…</string>
+    <string name="playlist_edit_title">Rediger afspilningsliste</string>
+    <string name="playlist_delete_menu">Slet afspilningsliste…</string>
+    <string name="playlist_delete_title">Vil du slette %1$s?</string>
+    <string name="playlist_delete_message">Den slettes fra alle enheder. Numrene i den bliver i biblioteket.</string>
+    <string name="playlist_delete_confirm">Slet</string>
+    <string name="playlist_options">Indstillinger for afspilningsliste</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="other">%1$d album</item>

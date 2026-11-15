@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">أنت وحدك ترى قائمة التشغيل هذه.</string>
     <string name="playlist_sharing_household_note">يرى الجميع في المكتبة قائمة التشغيل هذه ويمكنهم تشغيلها. أنت وحدك من يمكنه تغييرها.</string>
     <string name="playlist_create">إنشاء</string>
+    <string name="playlist_edit_menu">تحرير قائمة التشغيل…</string>
+    <string name="playlist_edit_title">تحرير قائمة التشغيل</string>
+    <string name="playlist_delete_menu">حذف قائمة التشغيل…</string>
+    <string name="playlist_delete_title">حذف %1$s؟</string>
+    <string name="playlist_delete_message">تُحذف من كل جهاز. تبقى المقاطع التي فيها في المكتبة.</string>
+    <string name="playlist_delete_confirm">حذف</string>
+    <string name="playlist_options">خيارات قائمة التشغيل</string>
     <plurals name="album_count">
         <item quantity="zero">%1$d ألبوم</item>
         <item quantity="one">ألبوم واحد</item>

@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">只有你能看到這個播放列表。</string>
     <string name="playlist_sharing_household_note">資料庫中的所有人都能看到並播放這個播放列表，只有你能修改。</string>
     <string name="playlist_create">建立</string>
+    <string name="playlist_edit_menu">編輯播放列表…</string>
+    <string name="playlist_edit_title">編輯播放列表</string>
+    <string name="playlist_delete_menu">刪除播放列表…</string>
+    <string name="playlist_delete_title">要刪除%1$s嗎？</string>
+    <string name="playlist_delete_message">它會從所有裝置中刪除，其中的曲目仍保留在資料庫中。</string>
+    <string name="playlist_delete_confirm">刪除</string>
+    <string name="playlist_options">播放列表選項</string>
     <plurals name="album_count">
         <item quantity="other">%1$d 張專輯</item>
     </plurals>

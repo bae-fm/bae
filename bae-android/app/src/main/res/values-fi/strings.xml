@@ -107,6 +107,13 @@
     <string name="playlist_sharing_private_note">Vain sinä näet tämän soittolistan.</string>
     <string name="playlist_sharing_household_note">Kaikki kirjastossa näkevät tämän soittolistan ja voivat toistaa sen. Vain sinä voit muuttaa sitä.</string>
     <string name="playlist_create">Luo</string>
+    <string name="playlist_edit_menu">Muokkaa soittolistaa…</string>
+    <string name="playlist_edit_title">Muokkaa soittolistaa</string>
+    <string name="playlist_delete_menu">Poista soittolista…</string>
+    <string name="playlist_delete_title">Poistetaanko %1$s?</string>
+    <string name="playlist_delete_message">Se poistetaan jokaiselta laitteelta. Sen kappaleet säilyvät kirjastossa.</string>
+    <string name="playlist_delete_confirm">Poista</string>
+    <string name="playlist_options">Soittolistan valinnat</string>
     <plurals name="album_count">
         <item quantity="one">%1$d albumi</item>
         <item quantity="other">%1$d albumia</item>

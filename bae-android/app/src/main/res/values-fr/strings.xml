@@ -103,6 +103,13 @@
     <string name="playlist_sharing_private_note">Vous seul voyez cette liste de lecture.</string>
     <string name="playlist_sharing_household_note">Tout le monde dans la bibliothèque voit cette liste de lecture et peut la lire. Vous seul pouvez la modifier.</string>
     <string name="playlist_create">Créer</string>
+    <string name="playlist_edit_menu">Modifier la liste de lecture…</string>
+    <string name="playlist_edit_title">Modifier la liste de lecture</string>
+    <string name="playlist_delete_menu">Supprimer la liste de lecture…</string>
+    <string name="playlist_delete_title">Supprimer %1$s ?</string>
+    <string name="playlist_delete_message">Elle est supprimée de tous les appareils. Les titres qu’elle contient restent dans la bibliothèque.</string>
+    <string name="playlist_delete_confirm">Supprimer</string>
+    <string name="playlist_options">Options de la liste de lecture</string>
     <plurals name="album_count">
         <item quantity="one">%1$d album</item>
         <item quantity="many">%1$d d’albums</item>
