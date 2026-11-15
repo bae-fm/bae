@@ -55,9 +55,11 @@ enum ReleaseMetadataLayout {
 
 /// The shared editable release header: the caller's cover beside the album
 /// identity, then the release facts.
-struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
-    View
-{
+struct ReleaseMetadataHeader<
+    Cover: View,
+    AudioFacts: View,
+    AlbumRow: View
+>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -69,6 +71,10 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     /// empty where nothing has read the files.
     @ViewBuilder
     let audioFacts: () -> AudioFacts
+    /// The album the release files under, the identity column's last row;
+    /// empty where the surface draws it elsewhere.
+    @ViewBuilder
+    let albumRow: () -> AlbumRow
 
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
@@ -89,7 +95,8 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
                     writer: writer,
                     editingCommands: editingCommands,
                     artistSearch: artistSearch,
-                    audioFacts: audioFacts
+                    audioFacts: audioFacts,
+                    albumRow: albumRow
                 )
             }
             ReleasePressingFieldsGrid(
@@ -103,13 +110,15 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
 }
 
 /// The album identity drawn as a heading that is editable in place.
-struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
+struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     let artistSearch: ArtistSearchOpener
     @ViewBuilder
     let audioFacts: () -> AudioFacts
+    @ViewBuilder
+    let albumRow: () -> AlbumRow
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
@@ -143,6 +152,8 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
                 onCommit: { await writer.setField(.albumYear, $0) },
             )
             audioFacts()
+                .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
+            albumRow()
                 .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
         }
         .padding(.leading, -FieldChrome.inlineHorizontalPadding)

@@ -150,7 +150,8 @@ struct MacImportDraft: View {
                                 sourceAudio: sourceAudio
                             )
                         }
-                    }
+                    },
+                    albumRow: {}
                 )
                 .disabled(!actionable)
                 // The catalogs that describe the linked release end the card,

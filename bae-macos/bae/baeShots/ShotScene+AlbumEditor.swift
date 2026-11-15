@@ -74,45 +74,9 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            let library = PreviewReleaseLibrary(draft: editedRelease)
-            uiStore.presentModal {
-                ReleaseEditorSheet(
-                    releaseId: editedReleaseId,
-                    displayName: "Northbound",
-                    opened: library.opened(),
-                    commands: ReleaseEditCommands(
-                        open: { _ in library.opened() },
-                        searchAlbums: { _ in [] },
-                        catalogApply: { nil }
-                    ),
-                    onSaved: { _ in },
-                    onViewAlbum: { _ in },
-                    onClose: {}
-                )
-            }
+            presentEditor(on: uiStore, images: images)
             if stage == .coverSheet {
-                let content = CoverGalleryContent(
-                    boardCoverGallery(
-                        remotes: [("front", 1, .front)],
-                        files: ["cover.jpg", "back.jpg"],
-                        releaseId: editedReleaseId
-                    )
-                )
-                uiStore.presentModal {
-                    CoverPickerFrame {
-                        CoverGalleryView(
-                            content: content,
-                            remoteItems: .linked(content.remote?.items ?? []),
-                            filter: .constant(.all),
-                            selectedCover: nil,
-                            lightboxLoad: LightboxImageLoad(),
-                            onRefresh: {},
-                            onFindRelease: {},
-                            onSelect: { _ in },
-                            onDone: {}
-                        )
-                    }
-                }
+                presentCoverSheet(on: uiStore, images: images)
             }
             return ShotStage(
                 ZStack(alignment: .topLeading) {
@@ -123,22 +87,7 @@ extension ShotScene {
                         size: size
                     )
                     if stage == .albumMenu {
-                        MacMenuInPlace(
-                            {
-                                MacMenuItem(
-                                    verbatim: "Northbound · Mara Quill",
-                                    checked: true
-                                ) {}
-                                MacMenuItem("New album") {}
-                                MacMenuItem("Show in library") {}
-                                MacMenuDivider()
-                                MacMenuItem("Choose another album…") {}
-                            },
-                            highlighted: 0,
-                            isPopUp: true
-                        )
-                        .padding(.leading, 180)
-                        .padding(.top, 380)
+                        albumMenu
                     }
                 },
                 images: images
@@ -146,5 +95,74 @@ extension ShotScene {
                 (backing.session.albums.list?.totalCount ?? 0) > 0
             }
         }
+    }
+
+    @MainActor
+    private static func presentEditor(on uiStore: UiStore, images: ImageStore) {
+        let library = PreviewReleaseLibrary(draft: editedRelease)
+        uiStore.presentModal {
+            ReleaseEditorSheet(
+                releaseId: editedReleaseId,
+                displayName: "Northbound · CD · Harbor Records HR-1042 · 1992",
+                opened: library.opened(),
+                commands: ReleaseEditCommands(
+                    open: { _ in library.opened() },
+                    searchAlbums: { _ in [] },
+                    catalogApply: { nil }
+                ),
+                onSaved: { _ in },
+                onViewAlbum: { _ in },
+                onClose: {}
+            )
+            .environment(images)
+        }
+    }
+
+    @MainActor
+    private static func presentCoverSheet(
+        on uiStore: UiStore,
+        images: ImageStore
+    ) {
+        let content = CoverGalleryContent(
+            boardCoverGallery(
+                remotes: [("front", 1, .front)],
+                files: ["cover.jpg", "back.jpg"],
+                releaseId: editedReleaseId
+            )
+        )
+        uiStore.presentModal {
+            CoverPickerFrame {
+                CoverGalleryView(
+                    content: content,
+                    remoteItems: .linked(content.remote?.items ?? []),
+                    filter: .constant(.all),
+                    selectedCover: nil,
+                    lightboxLoad: LightboxImageLoad(),
+                    onRefresh: {},
+                    onFindRelease: {},
+                    onSelect: { _ in },
+                    onDone: {}
+                )
+            }
+            .environment(images)
+        }
+    }
+
+    /// The album pop-up open over its row, where the board draws it.
+    private static var albumMenu: some View {
+        MacMenuInPlace(
+            {
+                MacMenuItem(verbatim: "Northbound · Mara Quill", checked: true)
+                {}
+                MacMenuItem("New album") {}
+                MacMenuItem("Show in library") {}
+                MacMenuDivider()
+                MacMenuItem("Choose another album…") {}
+            },
+            highlighted: 0,
+            isPopUp: true
+        )
+        .padding(.leading, 258)
+        .padding(.top, 302)
     }
 }

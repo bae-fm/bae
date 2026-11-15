@@ -48,12 +48,16 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     editingCommands: session.editingCommands,
                     artistSearch: library.artistSearch,
                     cover: { cover },
-                    audioFacts: { sourceAudio }
-                )
-                DraftAlbumRow(
-                    album: session.draft.album,
-                    canEdit: true,
-                    actions: session.albumActions(viewInLibrary: onViewAlbum)
+                    audioFacts: { sourceAudio },
+                    albumRow: {
+                        DraftAlbumRow(
+                            album: session.draft.album,
+                            canEdit: true,
+                            actions: session.albumActions(
+                                viewInLibrary: onViewAlbum
+                            )
+                        )
+                    }
                 )
             }
             .padding(.vertical, ThemeSpace.edge)
