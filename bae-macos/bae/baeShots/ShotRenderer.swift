@@ -81,10 +81,13 @@ enum ShotRenderer {
         case .content:
             pixels = try png(of: host, size: host.bounds.size, scene: scene)
         case .window:
+            // The alerts are raised a few turns after the window is ordered
+            // in, so they are up before the key is settled on the top one.
+            let alerts = try await sheets(of: window, scene: scene)
             try await becomeKey(window, scene: scene)
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
-                sheets: try await sheets(of: window, scene: scene),
+                sheets: alerts,
                 sceneId: scene.id
             )
         }
@@ -139,17 +142,12 @@ enum ShotRenderer {
         do {
             try await Wait.until(notices: changes) {
                 // An alert over the window holds the key, and the window draws
-                // as active under it.
-                if NSApp.isActive,
-                    window.isKeyWindow
-                        || AlertWindows.shared.panels.contains(
-                            where: \.isKeyWindow
-                        )
-                {
-                    return true
-                }
+                // as active under it: the buttons of an alert whose panel is
+                // not key draw as inactive.
+                let keyed = AlertWindows.shared.panels.last ?? window
+                if NSApp.isActive, keyed.isKeyWindow { return true }
                 NSApp.activate(ignoringOtherApps: true)
-                window.makeKeyAndOrderFront(nil)
+                keyed.makeKeyAndOrderFront(nil)
                 return false
             }
         }

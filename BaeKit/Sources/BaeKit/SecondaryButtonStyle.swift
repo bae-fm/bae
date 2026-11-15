@@ -16,7 +16,12 @@ public struct SecondaryButtonStyle: ButtonStyle {
     /// fill is lighter than everything around it.
     private static let lightEdge = Color.black.opacity(0.12)
 
-    public init() {}
+    /// The corner radius to draw with in place of the control size's own.
+    private let cornerRadius: CGFloat?
+
+    public init(cornerRadius: CGFloat? = nil) {
+        self.cornerRadius = cornerRadius
+    }
 
     public func makeBody(configuration: Configuration) -> some View {
         Face(
@@ -37,7 +42,10 @@ public struct SecondaryButtonStyle: ButtonStyle {
     }
 
     private var shape: AnyShape {
-        switch controlSize {
+        if let cornerRadius {
+            return AnyShape(RoundedRectangle(cornerRadius: cornerRadius))
+        }
+        return switch controlSize {
         case .large, .extraLarge: AnyShape(Capsule())
         case .mini, .small: AnyShape(RoundedRectangle(cornerRadius: 4))
         default: AnyShape(RoundedRectangle(cornerRadius: 5))

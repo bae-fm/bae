@@ -184,6 +184,35 @@
         }
     }
 
+    /// The corner radius of an alert's buttons: a regular button's, not the
+    /// large button's capsule, as the board draws them at the alert's height.
+    private let alertButtonRadius: CGFloat = 5
+
+    /// An alert's default button: the accent's button fill under white text, 28
+    /// points high with the corners of a regular button, as the board draws it.
+    private struct MacAlertPrimaryButtonStyle: ButtonStyle {
+        @Environment(\.accentChoice)
+        private var accent
+        @Environment(\.isEnabled)
+        private var isEnabled
+
+        func makeBody(configuration: Configuration) -> some View {
+            let shape = RoundedRectangle(cornerRadius: alertButtonRadius)
+            configuration.label
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background(accent.buttonColor, in: shape)
+                .overlay {
+                    if configuration.isPressed {
+                        shape.fill(Theme.pressed)
+                    }
+                }
+                .contentShape(shape)
+                .opacity(isEnabled ? 1 : ThemeOpacity.off)
+        }
+    }
+
     /// A button filling its row at an alert's button height.
     private struct MacAlertButtonView: View {
         let button: MacAlertButton
@@ -196,7 +225,10 @@
             Group {
                 if isDefault && button.role == .regular {
                     Button(action: run) { label }
-                        .buttonStyle(PrimaryButtonStyle())
+                        .buttonStyle(
+                            MacAlertPrimaryButtonStyle()
+                                .accentFocus(cornerRadius: alertButtonRadius)
+                        )
                 }
                 else {
                     Button(action: run) {
@@ -205,7 +237,10 @@
                                 ? Theme.danger : Theme.textPrimary
                         )
                     }
-                    .buttonStyle(SecondaryButtonStyle().accentFocus())
+                    .buttonStyle(
+                        SecondaryButtonStyle(cornerRadius: alertButtonRadius)
+                            .accentFocus(cornerRadius: alertButtonRadius)
+                    )
                 }
             }
             .controlSize(.large)
