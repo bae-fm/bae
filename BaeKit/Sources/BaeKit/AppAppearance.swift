@@ -74,7 +74,11 @@ extension View {
         accent: AccentChoice,
         accentColor: Color
     ) -> some View {
-        environment(\.surfaceTone, tone)
+        // Text with no colour of its own, and `.primary`, draw in the design
+        // system's text-primary, not the system label colour (#DDDDDF in Dark).
+        // Secondary text keeps the system's secondary label colour.
+        foregroundStyle(Theme.textPrimary)
+            .environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)
             .accentColor(accentColor)
             #if os(macOS)
