@@ -30,6 +30,7 @@ import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogParts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
@@ -146,8 +147,17 @@ internal fun DeletePlaylistDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AndroidDialog(
-        onDismissRequest = onDismiss,
+    AndroidDialog(onDismissRequest = onDismiss, parts = deletePlaylistParts(name, onConfirm, onDismiss))
+}
+
+/** What the delete confirmation for the playlist named [name] says and offers. */
+@Composable
+internal fun deletePlaylistParts(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+): DialogParts =
+    DialogParts(
         title = stringResource(R.string.playlist_delete_title, name),
         message = stringResource(R.string.playlist_delete_message),
         confirmButton = {
@@ -161,4 +171,3 @@ internal fun DeletePlaylistDialog(
             }
         },
     )
-}
