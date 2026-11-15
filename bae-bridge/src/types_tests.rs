@@ -539,6 +539,7 @@ mod conversion_roundtrip {
                 album: bae_import::DraftAlbum::Named {
                     album_id: "album-id".to_string(),
                     title: "Album Title".to_string(),
+                    artist_line: bae_types::credits::CreditLine::of_name("Album Artist"),
                 },
                 artist_resolutions: Vec::new(),
                 changed: true,
@@ -552,6 +553,9 @@ mod conversion_roundtrip {
                 BridgeDraftAlbum::Named {
                     album_id: "album-id".to_string(),
                     title: "Album Title".to_string(),
+                    artist_line: BridgeCreditLine::from_core(
+                        bae_types::credits::CreditLine::of_name("Album Artist")
+                    ),
                 }
             );
             let side = &bridge.display.sides[0];

@@ -32,8 +32,8 @@ impl ImportService {
     /// the [`PreparedMetadata`] the worker runs the import from. Pure DB reads,
     /// no network.
     ///
-    /// A release joins the library album `picked_album` names, else the one its
-    /// records name; one with neither — read from its files or from nothing —
+    /// A release joins the library album `album_pick` names, else (with no
+    /// pick) the one its records name; one with neither — read from its files or from nothing —
     /// lands on a fresh album. `picked` are the artist rows that are library artists a
     /// person picked.
     ///
@@ -44,7 +44,7 @@ impl ImportService {
         &self,
         parsed: bae_records::ReleaseRows,
         records: Vec<bae_catalogs::records::ReleaseRecord>,
-        picked_album: Option<String>,
+        album_pick: crate::AlbumPick,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::ImportError> {
         let bae_records::ReleaseRows {
@@ -63,9 +63,10 @@ impl ImportService {
         let album_title = db_album.title.clone();
 
         // The album the person picked, else the one the records name.
-        let existing_album_id = match picked_album {
-            Some(album_id) => Some(album_id),
-            None => self.records.album_records_name(&records, &[]).await?,
+        let existing_album_id = match &album_pick {
+            crate::AlbumPick::Album { album_id } => Some(album_id.clone()),
+            crate::AlbumPick::New => None,
+            crate::AlbumPick::Records => self.records.album_records_name(&records, &[]).await?,
         };
         match &existing_album_id {
             Some(album_id) => {
@@ -77,8 +78,19 @@ impl ImportService {
             // A release group is one album: a new album for one takes the id
             // derived from the group.
             None => {
-                if let Some(group_album_id) = bae_records::identity::album_id_for_records(&records)
-                {
+                // A new album the person asked for beside an album the
+                // library already holds under the group's id keeps its own id.
+                let group_album_id = bae_records::identity::album_id_for_records(&records);
+                let group_album_id = match group_album_id {
+                    Some(group_album_id)
+                        if album_pick == crate::AlbumPick::New
+                            && self.records.album_exists(&group_album_id).await? =>
+                    {
+                        None
+                    }
+                    other => other,
+                };
+                if let Some(group_album_id) = group_album_id {
                     db_album.id = group_album_id;
                     db_release.album_id = db_album.id.clone();
                     for album_artist in &mut album_artists {

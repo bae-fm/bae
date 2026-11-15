@@ -20,6 +20,14 @@ pub fn find_album_by_id_on(
     .map_err(DbError::from)
 }
 
+/// The credit line the album `album_id` prints.
+pub fn album_credit_line_on(
+    sql: &impl coven::SqlRead,
+    album_id: &str,
+) -> Result<bae_types::credits::CreditLine, DbError> {
+    Ok(crate::credits::library_line(&get_artists_for_album_on(sql, album_id)?))
+}
+
 pub fn get_artists_for_album_on(
     sql: &impl coven::SqlRead,
     album_id: &str,

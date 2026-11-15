@@ -1932,9 +1932,10 @@ Ana clicks Import. bae:
    library holds it, else the oldest. With neither, the album is new and
    takes its id from its group (§2.6). The pane shows which: "New album", the
    album the records name, or the one picked, as a pop-up under the identity
-   whose Choose another album… opens a search of the library's albums to pick
-   instead (a picked album's pop-up also offers the release's own album again);
-   a picked album deleted meanwhile (§2.1)
+   (an album's line is its title and its artists), whose items are that album,
+   New album (a new album even where the records name one the library holds),
+   Choose another album…, which searches the library's albums, and after a
+   pick the release's own album again; a picked album deleted meanwhile (§2.1)
    is no longer picked, and the import files under the album the records name
    or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
@@ -2135,8 +2136,9 @@ in the album its records name (§3.7), or in a library album the person
 picked, which keeps its own title and artists. The editor names that album
 with the import pane's album picker: the album the release is in, the one an
 applied catalog's records name, or a new album where they name none the
-library holds, until the person picks one; a pick holds over a catalog
-applied after it. The cover is not part of the session: a cover picked in the
+library holds, until the person picks one (a library album, or a new album,
+which a save writes with the release's edited title and year and the credits
+of the album it left); a pick holds over a catalog applied after it. The cover is not part of the session: a cover picked in the
 editor is written at once, and the session keeps what was applied and picked.
 Cancelling discards the session; nothing is re-read, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing

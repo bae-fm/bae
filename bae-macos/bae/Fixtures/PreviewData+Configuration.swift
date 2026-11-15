@@ -135,7 +135,11 @@ extension PreviewData {
                 ],
                 files: libraryReleaseFiles
             ),
-            album: .named(albumId: "album-preview", title: edit.albumTitle),
+            album: .named(
+                albumId: "album-preview",
+                title: edit.albumTitle,
+                artistLine: .named("Preview Artist")
+            ),
             artistResolutions: [],
             changed: false,
             invalid: nil
@@ -324,7 +328,21 @@ actor PreviewReleaseLibrary {
                 }
             },
             apply: { _, _ in await session.change { _ in } },
-            setAlbum: { _ in await session.change { $0.album = .new } },
+            setAlbum: { pick in
+                await session.change {
+                    $0.album =
+                        switch pick {
+                        case .records: .new
+                        case .new: .pickedNew
+                        case .album(let albumId):
+                            .picked(
+                                albumId: albumId,
+                                title: "Picked album",
+                                artistLine: .named("Preview Artist")
+                            )
+                        }
+                }
+            },
             save: { await self.save(await session.draft) }
         )
     }

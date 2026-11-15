@@ -573,7 +573,7 @@ impl AppServices {
     #[cfg(desktop)]
     delegate_async!(manager, save_release_edit => save_release_edit(session: &bae_library::ReleaseEdit) -> Result<(), bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, album_id: Option<String>) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
+    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, pick: bae_import::AlbumPick) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, release_edit_draft => release_edit_draft(session: &bae_library::ReleaseEdit) -> Result<bae_import::ReleaseEditDraft, bae_library::LibraryError>);
     #[cfg(desktop)]

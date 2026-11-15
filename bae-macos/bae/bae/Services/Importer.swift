@@ -58,7 +58,8 @@ private struct ImportOperations: Sendable {
     let setCandidateLabels:
         @Sendable (Data, [BridgeRawLabelEdit]) async throws -> Void
     let setCandidateBarcodes: @Sendable (Data, [String]) async throws -> Void
-    let setCandidateAlbum: @Sendable (Data, String?) async throws -> Void
+    let setCandidateAlbum:
+        @Sendable (Data, BridgeAlbumPick) async throws -> Void
     let readCandidateDocument: @Sendable (Data, String) async throws -> String
     let searchAlbums: @Sendable (String) async throws -> [BridgeAlbumChoice]
     let setCandidatePressingFact:
@@ -224,7 +225,7 @@ extension ImportOperations {
             setCandidateAlbum: {
                 try await handle.setCandidateAlbum(
                     candidateKey: $0,
-                    albumId: $1
+                    pick: $1
                 )
             },
             readCandidateDocument: {
@@ -388,7 +389,7 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (Data, [String]) async throws
             -> Void = { _, _ in },
         setCandidateAlbum:
-            @escaping @Sendable (Data, String?) async throws
+            @escaping @Sendable (Data, BridgeAlbumPick) async throws
             -> Void = { _, _ in },
         readCandidateDocument:
             @escaping @Sendable (Data, String) async throws -> String = {
@@ -716,13 +717,13 @@ extension Importer {
         try await operations.setCandidateLabels(candidateKey, labels)
     }
 
-    /// Pick the library album this candidate joins, or (`nil`) leave it to
-    /// the album its release names.
+    /// Record what the person picked for the album this candidate files
+    /// under: a library album, a new album, or the album its release names.
     func setCandidateAlbum(
         _ candidateKey: Data,
-        _ albumId: String?
+        _ pick: BridgeAlbumPick
     ) async throws {
-        try await operations.setCandidateAlbum(candidateKey, albumId)
+        try await operations.setCandidateAlbum(candidateKey, pick)
     }
 
     /// The text of the candidate's document `fileId`, decoded by core.

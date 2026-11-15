@@ -98,15 +98,29 @@ pub struct TrackUserEdit {
 /// a library release's edit session's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DraftAlbum {
-    /// A new album: none is picked and the draft's records name none the
-    /// library holds.
+    /// A new album, because no album is picked and the draft's records name
+    /// none the library holds.
     New,
+    /// A new album the person picked, over what the records name.
+    PickedNew,
     /// The album the draft's records name (see
     /// [`bae_records::Records::album_records_name`]); for a library release
     /// with no catalog applied, the album it is in.
-    Named { album_id: String, title: String },
+    Named { album_id: String, title: String, artist_line: bae_types::credits::CreditLine },
     /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String },
+    Picked { album_id: String, title: String, artist_line: bae_types::credits::CreditLine },
+}
+
+/// What the person chose for the album a draft files under.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlbumPick {
+    /// Nothing: the album the draft's records name, else (for a library
+    /// release) the album it is in, else a new album.
+    Records,
+    /// A new album, even where the records name one the library holds.
+    New,
+    /// This library album, over what the records name.
+    Album { album_id: String },
 }
 
 /// A library release as an edit session opens on it: the raw form, the

@@ -155,7 +155,7 @@ final class ReleaseEditor: Observable {
                 },
                 setTrack: { try await session.setTrack(track: $0) },
                 apply: { try await session.applyCatalog(link: $0, apply: $1) },
-                setAlbum: { try await session.setAlbum(albumId: $0) },
+                setAlbum: { try await session.setAlbum(pick: $0) },
                 save: { try await session.save() }
             )
         )

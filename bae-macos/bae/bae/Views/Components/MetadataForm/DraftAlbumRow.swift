@@ -4,8 +4,9 @@ import SwiftUI
 /// What the album row does: pick a library album for the release to file
 /// under, or leave it to the album its records name, and find albums to pick.
 struct DraftAlbumActions {
-    /// Pick an album by id, or (`nil`) leave it to the release's album.
-    let pick: (String?) -> Void
+    /// Record what the person picked: a library album, a new album, or the
+    /// release's own album.
+    let pick: (BridgeAlbumPick) -> Void
     let search: @MainActor (String) async throws -> [BridgeAlbumChoice]
     let viewInLibrary: (String) -> Void
 }
@@ -36,6 +37,7 @@ struct DraftAlbumRow: View {
     /// the library's albums.
     private enum Choice: Hashable {
         case standing
+        case newAlbum
         case releasesAlbum
         case showInLibrary
         case searchLibrary
@@ -53,7 +55,7 @@ struct DraftAlbumRow: View {
                 Text(verbatim: standingTitle)
                     .lineLimit(1)
                     .foregroundStyle(
-                        album == .new ? .tertiary : .primary
+                        standingAlbumId == nil ? .tertiary : .primary
                     )
             }
             Spacer(minLength: 0)
@@ -62,15 +64,25 @@ struct DraftAlbumRow: View {
 
     private var standingTitle: String {
         switch album {
-        case .new: String(localized: "New album")
-        case .named(_, let title), .picked(_, let title): title
+        case .new, .pickedNew: String(localized: "New album")
+        case .named(_, let title, let artistLine),
+            .picked(_, let title, let artistLine):
+            artistLine.names.isEmpty
+                ? title : "\(title) · \(artistLine.text)"
         }
     }
 
     private var standingAlbumId: String? {
         switch album {
-        case .new: nil
-        case .named(let albumId, _), .picked(let albumId, _): albumId
+        case .new, .pickedNew: nil
+        case .named(let albumId, _, _), .picked(let albumId, _, _): albumId
+        }
+    }
+
+    private var isPicked: Bool {
+        switch album {
+        case .picked, .pickedNew: true
+        case .new, .named: false
         }
     }
 
@@ -83,8 +95,10 @@ struct DraftAlbumRow: View {
                 set: { choice in
                     switch choice {
                     case .standing: break
+                    case .newAlbum:
+                        actions.pick(.new)
                     case .releasesAlbum:
-                        actions.pick(nil)
+                        actions.pick(.records)
                     case .showInLibrary:
                         if let albumId = standingAlbumId {
                             actions.viewInLibrary(albumId)
@@ -99,7 +113,10 @@ struct DraftAlbumRow: View {
                 verbatim: standingTitle,
                 value: Choice.standing
             )
-            if case .picked = album {
+            if standingAlbumId != nil {
+                MacPopUpOption("New album", value: Choice.newAlbum)
+            }
+            if isPicked {
                 MacPopUpOption(
                     "Use the release’s album",
                     value: Choice.releasesAlbum
@@ -130,7 +147,7 @@ struct DraftAlbumRow: View {
             }
             ForEach(results, id: \.albumId) { result in
                 Button {
-                    actions.pick(result.albumId)
+                    actions.pick(.album(albumId: result.albumId))
                     isPresented = false
                     query = ""
                 } label: {

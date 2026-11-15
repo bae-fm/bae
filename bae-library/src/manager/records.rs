@@ -173,7 +173,10 @@ impl LibraryManager {
     /// `set_records` needs a brand-new album. `set_records` doesn't touch
     /// metadata, so the new album reflects what the release already had; the caller
     /// can reseed it.
-    async fn fresh_album_for_release(&self, seed_album_id: &str) -> Result<DbAlbum, LibraryError> {
+    pub(super) async fn fresh_album_for_release(
+        &self,
+        seed_album_id: &str,
+    ) -> Result<DbAlbum, LibraryError> {
         let source =
             self.records.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
                 LibraryError::AlbumMissing { album_id: seed_album_id.to_string() }

@@ -27,19 +27,54 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     let (album, _release) =
         insert_library_release(&handle.services.store, &artist.id, "Library Album").await;
 
-    handle.set_candidate_album(&key, Some(album.id.clone())).await.unwrap();
+    handle
+        .set_candidate_album(&key, crate::AlbumPick::Album { album_id: album.id.clone() })
+        .await
+        .unwrap();
     assert_eq!(
         pane(&handle, &key).await.draft().unwrap().album,
         crate::DraftAlbum::Picked {
             album_id: album.id.clone(),
             title: "Library Album".to_string(),
+            artist_line: bae_types::credits::CreditLine::of_name("Artist Name"),
         }
     );
 
-    handle.set_candidate_album(&key, None).await.unwrap();
+    handle.set_candidate_album(&key, crate::AlbumPick::Records).await.unwrap();
     let after = pane(&handle, &key).await.draft().unwrap().album.clone();
     shut_down(handle).await;
     assert_eq!(after, crate::DraftAlbum::New);
+}
+
+/// A new album can be picked over a library album, and the pick holds until
+/// another is made: the pane shows it as a picked new album, and a library
+/// album picked after it replaces it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_new_album_can_be_picked_and_replaced() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let artist = make_artist("Artist Name", None, None);
+    handle.services.records.insert_artist(&artist).await.unwrap();
+    let (album, _release) =
+        insert_library_release(&handle.services.store, &artist.id, "Library Album").await;
+
+    handle.set_candidate_album(&key, crate::AlbumPick::New).await.unwrap();
+    let new = pane(&handle, &key).await.draft().unwrap().album.clone();
+    handle
+        .set_candidate_album(&key, crate::AlbumPick::Album { album_id: album.id.clone() })
+        .await
+        .unwrap();
+    let library = pane(&handle, &key).await.draft().unwrap().album.clone();
+    handle.set_candidate_album(&key, crate::AlbumPick::New).await.unwrap();
+    handle.set_candidate_album(&key, crate::AlbumPick::Records).await.unwrap();
+    let records = pane(&handle, &key).await.draft().unwrap().album.clone();
+    shut_down(handle).await;
+    assert_eq!(new, crate::DraftAlbum::PickedNew);
+    assert!(matches!(library, crate::DraftAlbum::Picked { .. }));
+    assert_eq!(
+        records,
+        crate::DraftAlbum::New,
+        "leaving it to the records drops the new-album pick"
+    );
 }
 
 /// An album no longer in the library cannot be picked.
@@ -47,7 +82,12 @@ async fn a_picked_album_shows_over_what_the_records_name() {
 async fn an_album_not_in_the_library_cannot_be_picked() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let picked = handle
-        .set_candidate_album(&key, Some("0b7e1f1e-0000-4000-8000-000000000000".to_string()))
+        .set_candidate_album(
+            &key,
+            crate::AlbumPick::Album {
+                album_id: "0b7e1f1e-0000-4000-8000-000000000000".to_string(),
+            },
+        )
         .await;
     let after = pane(&handle, &key).await.draft().unwrap().album.clone();
     shut_down(handle).await;

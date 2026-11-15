@@ -213,9 +213,9 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
-        let picked_album = self.tables.candidate_album_pick(&categorized.content_hash()).await?;
+        let album_pick = self.tables.candidate_album_pick(&categorized.content_hash()).await?;
         let mut prepared = self
-            .reconcile_prepared_release(assembled.parsed, records, picked_album, assembled.picked)
+            .reconcile_prepared_release(assembled.parsed, records, album_pick, assembled.picked)
             .await?;
 
         prepared.db_release.source_folder_name = Some(source_name);

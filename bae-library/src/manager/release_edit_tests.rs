@@ -41,7 +41,12 @@ async fn reidentify(manager: &LibraryManager, release_id: &str, link: bae_identi
 
 /// Seed the MusicBrainz release `release_id` of group `group_id`, listing
 /// `tracks` tracks, where `prepare_release` reads it.
-fn seed_musicbrainz(manager: &TestManager, release_id: &str, group_id: &str, tracks: usize) {
+pub(super) fn seed_musicbrainz(
+    manager: &TestManager,
+    release_id: &str,
+    group_id: &str,
+    tracks: usize,
+) {
     let response = make_mb_release_for_re_identify(release_id, group_id, tracks);
     manager.fakes.seed_musicbrainz_release(release_id, serde_json::to_string(&response).unwrap());
     manager.fakes.seed_musicbrainz_release_group(
@@ -52,7 +57,7 @@ fn seed_musicbrainz(manager: &TestManager, release_id: &str, group_id: &str, tra
 
 /// [`insert_n_tracks`], each track playing a file of its own, as the editor
 /// reads a release's tracks.
-async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: usize) {
+pub(super) async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: usize) {
     insert_n_tracks(&manager.records, release_id, n).await;
     for (index, track) in
         manager.records.get_tracks_for_release(release_id).await.unwrap().iter().enumerate()
@@ -66,7 +71,7 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
     }
 }
 
-fn musicbrainz_link(release_id: &str) -> bae_identify::PressingLink {
+pub(super) fn musicbrainz_link(release_id: &str) -> bae_identify::PressingLink {
     bae_identify::PressingLink {
         record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id),
         partners: vec![],
@@ -391,10 +396,11 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     manager.records.insert_album(&picked).await.unwrap();
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
-        manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap().album,
+        manager.set_release_edit_album(&session, album_pick(&picked)).await.unwrap().album,
         bae_import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
             title: "Picked Album".to_string(),
+            artist_line: Default::default(),
         }
     );
     manager.save_release_edit(&session).await.unwrap();
@@ -406,85 +412,6 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         manager.records.find_album_by_id(&picked.id).await.unwrap().unwrap().title,
         "Picked Album",
         "a picked album keeps its own title"
-    );
-}
-
-/// The session says which album a save files the release under: the one it
-/// is in, the one an applied catalog's records name (new where the library
-/// holds none), or the one the person picked, which an apply keeps and a
-/// fresh open drops.
-#[tokio::test]
-async fn a_release_edit_session_names_the_album_its_save_files_under() {
-    use bae_import::DraftAlbum;
-    let (test, _temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let grouped = DbAlbum { title: "Grouped Album".to_string(), ..create_test_album() };
-    let sibling = create_test_release(&grouped.id);
-    manager.records.insert_album(&grouped).await.unwrap();
-    insert_release(manager, &sibling).await;
-    manager
-        .records
-        .insert_release_records(&sibling.id, &[mb_identity("named-group", "named-sibling")])
-        .await
-        .unwrap();
-    let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
-    let release = create_test_release(&own.id);
-    manager.records.insert_album(&own).await.unwrap();
-    insert_release(manager, &release).await;
-    insert_editable_tracks(manager, &release.id, 1).await;
-    let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
-    manager.records.insert_album(&picked).await.unwrap();
-    seed_musicbrainz(&test, "named-new", "named-group", 1);
-    seed_musicbrainz(&test, "unnamed-new", "unnamed-group", 1);
-    let named = |album: &DbAlbum| DraftAlbum::Named {
-        album_id: album.id.clone(),
-        title: album.title.clone(),
-    };
-    let picked_album =
-        DraftAlbum::Picked { album_id: picked.id.clone(), title: picked.title.clone() };
-
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(session.opened().album, named(&own));
-    let applied = manager
-        .apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("named-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(applied.album, named(&grouped));
-    let applied = manager
-        .apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("unnamed-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(applied.album, DraftAlbum::New);
-
-    assert_eq!(
-        manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap().album,
-        picked_album
-    );
-    assert!(
-        manager.set_release_edit_album(&session, Some("no-such-album".to_string())).await.is_err(),
-        "an album the library does not hold cannot be picked"
-    );
-    let applied = manager
-        .apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("named-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
-    assert_eq!(
-        manager.set_release_edit_album(&session, None).await.unwrap().album,
-        named(&grouped),
-        "left to its records, the session files it where they name"
     );
 }
 
@@ -515,12 +442,16 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
         )
         .await
         .unwrap();
-    manager.set_release_edit_album(&sheet, Some(picked.id.clone())).await.unwrap();
+    manager.set_release_edit_album(&sheet, album_pick(&picked)).await.unwrap();
     let third = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(
-        manager.set_release_edit_album(&pane, None).await.unwrap().album,
-        DraftAlbum::Named { album_id: own.id.clone(), title: own.title.clone() },
+        manager.set_release_edit_album(&pane, bae_import::AlbumPick::Records).await.unwrap().album,
+        DraftAlbum::Named {
+            album_id: own.id.clone(),
+            title: own.title.clone(),
+            artist_line: Default::default(),
+        },
         "the other editor's pick and apply are not this one's"
     );
     assert_eq!(third.opened(), pane.opened());
@@ -984,4 +915,9 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
         seed.display.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })
     ));
+}
+
+/// Picking `album` as the album a session files its release under.
+pub(super) fn album_pick(album: &DbAlbum) -> bae_import::AlbumPick {
+    bae_import::AlbumPick::Album { album_id: album.id.clone() }
 }

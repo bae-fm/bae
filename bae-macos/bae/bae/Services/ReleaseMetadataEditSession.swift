@@ -29,9 +29,10 @@ struct ReleaseEditSessionCommands: Sendable {
     let apply:
         @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws ->
             BridgeReleaseEditDraft
-    /// Pick the album a save files the release under (`nil`: the one its
-    /// records name).
-    let setAlbum: @Sendable (String?) async throws -> BridgeReleaseEditDraft
+    /// Record what the person picked for the album a save files the release
+    /// under.
+    let setAlbum:
+        @Sendable (BridgeAlbumPick) async throws -> BridgeReleaseEditDraft
     /// Save the session; returns the album the release is on after it.
     /// Refused, writing nothing, when the release changed after the session
     /// opened on it.
@@ -101,13 +102,13 @@ final class ReleaseMetadataEditSession {
         self.commands = commands
     }
 
-    /// What the album row does: pick a library album, or leave it to the
-    /// release's records, and find albums to pick.
+    /// What the album row does: pick a library album or a new album, or
+    /// leave it to the release's records, and find albums to pick.
     func albumActions(viewInLibrary: @escaping (String) -> Void)
         -> DraftAlbumActions
     {
         DraftAlbumActions(
-            pick: { [weak self] albumId in self?.pickAlbum(albumId) },
+            pick: { [weak self] pick in self?.pickAlbum(pick) },
             search: commands.searchAlbums,
             viewInLibrary: viewInLibrary
         )
@@ -232,15 +233,15 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Pick the album a save files the release under, or (`nil`) leave it to
-    /// its records.
-    func pickAlbum(_ albumId: String?) {
+    /// Record what the person picked for the album a save files the release
+    /// under.
+    func pickAlbum(_ pick: BridgeAlbumPick) {
         let serial = begin(.pickingAlbum)
         failure = nil
         operationTask = Task { @MainActor in
             do {
                 try await serially { [self] in
-                    draft = try await core.setAlbum(albumId)
+                    draft = try await core.setAlbum(pick: pick)
                 }
             }
             catch is CancellationError {}

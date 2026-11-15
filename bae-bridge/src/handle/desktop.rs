@@ -476,12 +476,12 @@ forward! {
             Ok(this.services.read_release_document(&release_id, &file_id).await?)
         }
 
-        /// Pick the library album a candidate joins, over the one its records
-        /// name, or (`None`) leave it to its records.
-        fn set_candidate_album(candidate_key: Vec<u8>, album_id: Option<String>) -> () {
+        /// Record what the person picked for the album a candidate files
+        /// under: a library album, a new one, or the album its records name.
+        fn set_candidate_album(candidate_key: Vec<u8>, pick: crate::types::BridgeAlbumPick) -> () {
             Ok(this
                 .services
-                .import_set_candidate_album(&candidate_key.into(), album_id)
+                .import_set_candidate_album(&candidate_key.into(), pick.into_core())
                 .await?)
         }
 

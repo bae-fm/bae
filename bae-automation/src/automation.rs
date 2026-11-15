@@ -262,7 +262,11 @@ impl Automation {
         album_id: Option<String>,
     ) -> Result<EmptyResponse, AutomationError> {
         let key = self.known_key(candidate_key).await?;
-        self.services.import_set_candidate_album(&key, album_id).await?;
+        let pick = match album_id {
+            Some(album_id) => bae_import::AlbumPick::Album { album_id },
+            None => bae_import::AlbumPick::Records,
+        };
+        self.services.import_set_candidate_album(&key, pick).await?;
         Ok(EmptyResponse {})
     }
 
@@ -446,8 +450,10 @@ impl Automation {
         self.services
             .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
             .await?;
-        if album_id.is_some() {
-            self.services.set_release_edit_album(&session, album_id).await?;
+        if let Some(album_id) = album_id {
+            self.services
+                .set_release_edit_album(&session, bae_import::AlbumPick::Album { album_id })
+                .await?;
         }
         self.services.save_release_edit(&session).await?;
         Ok(())
@@ -462,7 +468,9 @@ impl Automation {
         album_id: String,
     ) -> Result<(), AutomationError> {
         let session = self.services.open_release_edit(&release_id).await?;
-        self.services.set_release_edit_album(&session, Some(album_id)).await?;
+        self.services
+            .set_release_edit_album(&session, bae_import::AlbumPick::Album { album_id })
+            .await?;
         self.services.save_release_edit(&session).await?;
         Ok(())
     }

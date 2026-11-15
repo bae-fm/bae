@@ -268,7 +268,13 @@ async fn seed_spent_rows(
         .await
         .unwrap();
     let album = picked_album(test).await;
-    tables.set_candidate_album_pick(content_hash, Some(&album.id)).await.unwrap();
+    tables
+        .set_candidate_album_pick(
+            content_hash,
+            crate::AlbumPick::Album { album_id: album.id.clone() },
+        )
+        .await
+        .unwrap();
     let link = crate::ReleaseLink::Album(
         bae_identify::AlbumLink::new([bae_catalogs::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,

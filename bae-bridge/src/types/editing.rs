@@ -575,14 +575,16 @@ pub struct BridgeRawReleaseEdit {
 /// a library release's edit session's. Mirrors `bae_import::DraftAlbum`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDraftAlbum {
-    /// A new album: none is picked and the draft's records name none the
-    /// library holds.
+    /// A new album, because none is picked and the draft's records name none
+    /// the library holds.
     New,
+    /// A new album the person picked, over what the records name.
+    PickedNew,
     /// The album the draft's records name; for a library release with no
     /// catalog applied, the album it is in.
-    Named { album_id: String, title: String },
+    Named { album_id: String, title: String, artist_line: BridgeCreditLine },
     /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String },
+    Picked { album_id: String, title: String, artist_line: BridgeCreditLine },
 }
 
 mirror_enum! {
@@ -591,8 +593,33 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         New,
-        Named { album_id, title },
-        Picked { album_id, title },
+        PickedNew,
+        Named { album_id, title, artist_line: (BridgeCreditLine) },
+        Picked { album_id, title, artist_line: (BridgeCreditLine) },
+    },
+}
+
+/// What the person chose for the album a draft files under. Mirrors
+/// `bae_import::AlbumPick`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAlbumPick {
+    /// Nothing: the album the draft's records name, else the album the
+    /// release is in, else a new album.
+    Records,
+    /// A new album, even where the records name one the library holds.
+    New,
+    /// This library album, over what the records name.
+    Album { album_id: String },
+}
+
+mirror_enum! {
+    #[cfg(desktop)]
+    BridgeAlbumPick = bae_import::AlbumPick,
+    into_core: pub(crate) fn,
+    variants: {
+        Records,
+        New,
+        Album { album_id },
     },
 }
 

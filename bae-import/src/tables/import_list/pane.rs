@@ -21,6 +21,7 @@ use crate::tables::source_releases::{
 use crate::{DraftProjection, ProjectedStage};
 use crate::{ImportedRelease, ReleaseLink};
 use bae_identify::PressingLink;
+use bae_records::records::read::album_credit_line_on;
 use bae_records::records::release_records::{album_records_name_on, check_releases_in_library_on};
 
 #[derive(Clone, PartialEq)]
@@ -203,17 +204,27 @@ fn candidate_album_on(
     content_hash: &str,
     records: &[bae_catalogs::records::ReleaseRecord],
 ) -> Result<crate::DraftAlbum, DbError> {
-    use crate::DraftAlbum;
+    use crate::{AlbumPick, DraftAlbum};
     let title = |album_id: &str| -> Result<String, DbError> {
         sql.query_row("SELECT title FROM albums WHERE id = ?", params![album_id], |row| row.get(0))
             .map_err(DbError::from)
     };
-    if let Some(album_id) = load_album_pick_on(sql, content_hash)? {
-        return Ok(DraftAlbum::Picked { title: title(&album_id)?, album_id });
-    }
-    Ok(match album_records_name_on(sql, records, &[])? {
-        Some(album_id) => DraftAlbum::Named { title: title(&album_id)?, album_id },
-        None => DraftAlbum::New,
+    let artist_line = |album_id: &str| album_credit_line_on(sql, album_id);
+    Ok(match load_album_pick_on(sql, content_hash)? {
+        AlbumPick::Album { album_id } => DraftAlbum::Picked {
+            title: title(&album_id)?,
+            artist_line: artist_line(&album_id)?,
+            album_id,
+        },
+        AlbumPick::New => DraftAlbum::PickedNew,
+        AlbumPick::Records => match album_records_name_on(sql, records, &[])? {
+            Some(album_id) => DraftAlbum::Named {
+                title: title(&album_id)?,
+                artist_line: artist_line(&album_id)?,
+                album_id,
+            },
+            None => DraftAlbum::New,
+        },
     })
 }
 

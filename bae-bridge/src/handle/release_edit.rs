@@ -163,17 +163,18 @@ impl ReleaseEditSession {
             .await
     }
 
-    /// Pick the library album this session files the release under, over the
-    /// one its records name, or (`None`) leave it to its records. The draft
-    /// names the album the session now files it under.
+    /// Record what the person picked for the album this session files the
+    /// release under: a library album, a new one, or the album its records
+    /// name. The draft names the album the session now files it under.
     pub async fn set_album(
         self: std::sync::Arc<Self>,
-        album_id: Option<String>,
+        pick: crate::types::BridgeAlbumPick,
     ) -> Result<crate::types::BridgeReleaseEditDraft, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ReleaseEditSession.set_album", move || async move {
-                let draft = self.services.set_release_edit_album(&self.inner, album_id).await?;
+                let draft =
+                    self.services.set_release_edit_album(&self.inner, pick.into_core()).await?;
                 Ok(crate::types::BridgeReleaseEditDraft::from_core(draft))
             })
             .await

@@ -146,15 +146,15 @@ extension ImportView {
         )
     }
 
-    /// The album row's actions: pick a library album for this candidate, or
-    /// leave it to its release's album, and find albums to pick.
+    /// The album row's actions: pick a library album or a new album for this
+    /// candidate, or leave it to its release's album, and find albums to pick.
     private func albumActions(for candidate: Candidate) -> DraftAlbumActions {
         let key = candidate.key
         return DraftAlbumActions(
-            pick: { albumId in
+            pick: { pick in
                 Task {
                     await saveCandidateEdit {
-                        try await importer.setCandidateAlbum(key, albumId)
+                        try await importer.setCandidateAlbum(key, pick)
                     }
                 }
             },

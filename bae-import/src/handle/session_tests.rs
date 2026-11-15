@@ -220,7 +220,7 @@ async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
         .await;
     assert!(already_imported(&command, &release_id), "{command:?}");
 
-    let album = handle.set_candidate_album(&key, None).await;
+    let album = handle.set_candidate_album(&key, crate::AlbumPick::Records).await;
     assert!(already_imported(&album, &release_id), "{album:?}");
     let artists = handle
         .set_candidate_album_artists(

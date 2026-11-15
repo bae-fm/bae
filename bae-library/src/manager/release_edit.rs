@@ -52,14 +52,16 @@ struct SessionWork {
     /// The album a save files the release under.
     album: bae_import::DraftAlbum,
     applied: Option<AppliedCatalog>,
-    /// The library album the person picked, over the one the records name.
-    picked_album: Option<String>,
+    /// What the person picked for the album, over the one the records name.
+    album_pick: bae_import::AlbumPick,
 }
 
 impl SessionWork {
     /// Whether a save would write anything the session did not open on.
     fn changed(&self, opened: &bae_import::ReleaseEditSeed) -> bool {
-        self.form != opened.edit || self.applied.is_some() || self.picked_album.is_some()
+        self.form != opened.edit
+            || self.applied.is_some()
+            || self.album_pick != bae_import::AlbumPick::Records
     }
 }
 
@@ -95,7 +97,7 @@ impl LibraryManager {
             display: opened.display.clone(),
             album: opened.album.clone(),
             applied: None,
-            picked_album: None,
+            album_pick: bae_import::AlbumPick::Records,
         };
         Ok(ReleaseEdit {
             release_id: release_id.to_string(),
@@ -280,18 +282,18 @@ impl LibraryManager {
         self.draft_of(session, work).await
     }
 
-    /// Pick the library album `album_id` for `session` to file its release
-    /// under, over the one its records name, or (`None`) leave it to its
-    /// records. Returns the session's draft, naming the album it now files
-    /// the release under. An album the library does not hold cannot be
-    /// picked.
+    /// Record `pick` as the album `session` files its release under: a
+    /// library album or a new one over the one its records name, or (nothing)
+    /// the one its records name. Returns the session's draft, naming the
+    /// album it now files the release under. An album the library does not
+    /// hold cannot be picked.
     pub async fn set_release_edit_album(
         &self,
         session: &ReleaseEdit,
-        album_id: Option<String>,
+        pick: bae_import::AlbumPick,
     ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
-        if let Some(album_id) = &album_id {
+        if let bae_import::AlbumPick::Album { album_id } = &pick {
             self.records
                 .find_album_by_id(album_id)
                 .await?
@@ -300,7 +302,7 @@ impl LibraryManager {
         let work = {
             let mut work = session.work.lock().await;
             let mut picked = work.clone();
-            picked.picked_album = album_id;
+            picked.album_pick = pick;
             picked.album =
                 self.session_album(release_id, &picked, session.opened.album.clone()).await?;
             *work = picked;
@@ -319,17 +321,22 @@ impl LibraryManager {
         work: &SessionWork,
         current: bae_import::DraftAlbum,
     ) -> Result<bae_import::DraftAlbum, LibraryError> {
-        let title = |album_id: String| async move {
+        let titled = |album_id: String| async move {
             let album = self
                 .records
                 .find_album_by_id(&album_id)
                 .await?
                 .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
-            Ok::<_, LibraryError>((album_id, album.title))
+            let artist_line = self.records.album_credit_line(&album_id).await?;
+            Ok::<_, LibraryError>((album_id, album.title, artist_line))
         };
-        if let Some(picked) = &work.picked_album {
-            let (album_id, title) = title(picked.clone()).await?;
-            return Ok(bae_import::DraftAlbum::Picked { album_id, title });
+        match &work.album_pick {
+            bae_import::AlbumPick::Album { album_id } => {
+                let (album_id, title, artist_line) = titled(album_id.clone()).await?;
+                return Ok(bae_import::DraftAlbum::Picked { album_id, title, artist_line });
+            }
+            bae_import::AlbumPick::New => return Ok(bae_import::DraftAlbum::PickedNew),
+            bae_import::AlbumPick::Records => {}
         }
         let Some(applied) = &work.applied else {
             return Ok(current);
@@ -338,8 +345,8 @@ impl LibraryManager {
         Ok(match change.new_album {
             Some(_) => bae_import::DraftAlbum::New,
             None => {
-                let (album_id, title) = title(change.target_album_id).await?;
-                bae_import::DraftAlbum::Named { album_id, title }
+                let (album_id, title, artist_line) = titled(change.target_album_id).await?;
+                bae_import::DraftAlbum::Named { album_id, title, artist_line }
             }
         })
     }
@@ -358,7 +365,7 @@ impl LibraryManager {
     /// and the rows.
     pub async fn save_release_edit(&self, session: &ReleaseEdit) -> Result<(), LibraryError> {
         let release_id = session.release_id();
-        let SessionWork { form: edit, applied, picked_album: album, .. } =
+        let SessionWork { form: edit, applied, album_pick: pick, .. } =
             session.work.lock().await.clone();
         let shaped = edit.shape()?;
         shaped.validate()?;
@@ -368,25 +375,36 @@ impl LibraryManager {
             Some(applied) => applied.records.clone(),
             None => self.records.get_release_records(release_id).await?,
         };
-        let change = match (&album, &applied) {
-            (Some(picked), _) => Some(bae_records::RecordsChange {
+        let change = match (&pick, &applied) {
+            (bae_import::AlbumPick::Album { album_id }, _) => Some(bae_records::RecordsChange {
                 release_id: release_id.to_string(),
                 records: records.clone(),
                 current_album_id: current_album_id.clone(),
-                target_album_id: picked.clone(),
+                target_album_id: album_id.clone(),
                 new_album: None,
             }),
-            (None, Some(applied)) => {
+            (bae_import::AlbumPick::New, _) => {
+                let new_album = self.fresh_album_for_release(&current_album_id).await?;
+                Some(bae_records::RecordsChange {
+                    release_id: release_id.to_string(),
+                    records: records.clone(),
+                    current_album_id: current_album_id.clone(),
+                    target_album_id: new_album.id.clone(),
+                    new_album: Some(new_album),
+                })
+            }
+            (bae_import::AlbumPick::Records, Some(applied)) => {
                 Some(self.records_change(release_id, applied.records.clone()).await?)
             }
-            (None, None) => None,
+            (bae_import::AlbumPick::Records, None) => None,
         };
         let target_album_id = change
             .as_ref()
             .map_or(current_album_id.clone(), |change| change.target_album_id.clone());
         // A release the person moved into another album keeps that album's
         // own title and artists.
-        let album_fields = if album.as_ref().is_some_and(|picked| *picked != current_album_id) {
+        let album_fields = if matches!(&pick, bae_import::AlbumPick::Album { album_id } if *album_id != current_album_id)
+        {
             bae_records::AlbumFields::Kept
         } else {
             bae_records::AlbumFields::Written
@@ -427,6 +445,10 @@ impl LibraryManager {
             None => {
                 let album_row = if target_album_id == current_album_id {
                     current_album
+                } else if let Some(new_album) =
+                    change.as_ref().and_then(|change| change.new_album.clone())
+                {
+                    new_album
                 } else {
                     self.records.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
                         LibraryError::AlbumMissing { album_id: target_album_id.clone() }
@@ -533,6 +555,7 @@ fn release_edit_seed(
     let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
     let cover = bae_records::cover_ref(release_id, detail.cover_version.clone());
 
+    let artist_line = bae_records::credits::library_line(&album_artists);
     let album_artist_assignments: Vec<bae_import::Credited> =
         album_artists.into_iter().map(bae_import::Credited::of_library).collect();
 
@@ -575,7 +598,7 @@ fn release_edit_seed(
         edit,
         cover,
         display,
-        album: bae_import::DraftAlbum::Named { album_id, title },
+        album: bae_import::DraftAlbum::Named { album_id, title, artist_line },
     })
 }
 
@@ -613,3 +636,7 @@ fn raw_release_edit_with_persisted_track_ids<'a>(
 #[cfg(test)]
 #[path = "release_edit_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "release_edit_album_tests.rs"]
+mod album_tests;

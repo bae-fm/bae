@@ -85,7 +85,7 @@ impl ImportServiceHandle {
     pub async fn set_candidate_album(
         &self,
         candidate_key: &crate::CandidateKey,
-        album_id: Option<String>,
+        pick: crate::AlbumPick,
     ) -> Result<(), crate::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
@@ -100,7 +100,7 @@ impl ImportServiceHandle {
                     candidate.file_edit_revision,
                 )
                 .await?;
-            Ok(this.services.tables.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
+            Ok(this.services.tables.set_candidate_album_pick(&hash, pick).await?)
         })
         .await
     }
