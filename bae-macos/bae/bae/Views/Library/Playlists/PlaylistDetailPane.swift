@@ -125,30 +125,17 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Save the name and who sees `sheet`'s playlist, writing only what
-    /// changed; a failure stays in the sheet, which stays open, and saving
-    /// again writes what is still different.
+    /// Save the name and who sees `sheet`'s playlist in one write; a failure
+    /// stays in the sheet, which stays open.
     private func save(_ sheet: EditPlaylistSheetState) {
-        guard let current = detail?.summary, current.id == sheet.playlistId
-        else {
-            editing = nil
-            return
-        }
         let library = library
         Task {
             do {
-                if sheet.name != current.name {
-                    try await library.playlistWrites.rename(
-                        current.id,
-                        sheet.name
-                    )
-                }
-                if sheet.sharing != current.sharing {
-                    try await library.playlistWrites.setSharing(
-                        current.id,
-                        sheet.sharing
-                    )
-                }
+                try await library.playlistWrites.edit(
+                    sheet.playlistId,
+                    sheet.name,
+                    sheet.sharing
+                )
                 editing = nil
             }
             catch {

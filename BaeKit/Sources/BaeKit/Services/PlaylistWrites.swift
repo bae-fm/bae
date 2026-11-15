@@ -15,13 +15,11 @@ public struct PlaylistWrites: Sendable {
     public let append:
         @Sendable (_ playlistId: String, _ trackIds: [String]) async throws
             -> Void
-    /// Rename a playlist.
-    public let rename:
-        @Sendable (_ playlistId: String, _ name: String) async throws -> Void
-    /// Choose who sees a playlist.
-    public let setSharing:
-        @Sendable (_ playlistId: String, _ sharing: BridgeSharing) async throws
-            -> Void
+    /// Set a playlist's name and who sees it, in one write.
+    public let edit:
+        @Sendable (
+            _ playlistId: String, _ name: String, _ sharing: BridgeSharing
+        ) async throws -> Void
     /// Take one entry out of a playlist.
     public let removeEntry:
         @Sendable (_ playlistId: String, _ positionId: String) async throws
@@ -42,16 +40,9 @@ public struct PlaylistWrites: Sendable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        rename:
-            @escaping @Sendable (String, String) async throws -> Void = {
-                _,
-                _ in throw StubError.notImplemented
-            },
-        setSharing:
-            @escaping @Sendable (String, BridgeSharing) async throws -> Void = {
-                _,
-                _ in throw StubError.notImplemented
-            },
+        edit:
+            @escaping @Sendable (String, String, BridgeSharing) async throws
+            -> Void = { _, _, _ in throw StubError.notImplemented },
         removeEntry:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -68,8 +59,7 @@ public struct PlaylistWrites: Sendable {
     ) {
         self.create = create
         self.append = append
-        self.rename = rename
-        self.setSharing = setSharing
+        self.edit = edit
         self.removeEntry = removeEntry
         self.reorder = reorder
         self.delete = delete
@@ -94,9 +84,12 @@ public struct PlaylistWrites: Sendable {
                         trackIds: $1
                     )
                 },
-                rename: { try await handle.renamePlaylist(id: $0, name: $1) },
-                setSharing: {
-                    try await handle.setPlaylistSharing(id: $0, sharing: $1)
+                edit: {
+                    try await handle.editPlaylist(
+                        id: $0,
+                        name: $1,
+                        sharing: $2
+                    )
                 },
                 removeEntry: {
                     try await handle.removePlaylistEntry(
