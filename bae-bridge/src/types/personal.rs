@@ -333,6 +333,11 @@ impl From<bae_library::people::AvatarError> for BridgeError {
         Self::categorized(error.category(), error)
     }
 }
+impl From<bae_library::people::GiveUpImageError> for BridgeError {
+    fn from(error: bae_library::people::GiveUpImageError) -> Self {
+        Self::categorized(error.category(), error)
+    }
+}
 impl From<bae_people::collections::CollectionError> for BridgeError {
     fn from(error: bae_people::collections::CollectionError) -> Self {
         Self::categorized(error.category(), error)

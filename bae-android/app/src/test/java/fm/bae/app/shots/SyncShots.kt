@@ -66,6 +66,7 @@ class SyncShots : BoardShot() {
                 action = BridgePendingAction.Review,
                 actionKey = "core.pending.action.review",
                 sendsFiles = false,
+                heldImage = null,
             ),
             BridgePendingRecord(
                 subject = BridgeMessage(key = "core.pending.subject.local_changes", args = emptyList()),
@@ -78,6 +79,7 @@ class SyncShots : BoardShot() {
                 action = BridgePendingAction.RetryOperation(id = 7L),
                 actionKey = "core.pending.action.retry",
                 sendsFiles = false,
+                heldImage = null,
             ),
         )
 }

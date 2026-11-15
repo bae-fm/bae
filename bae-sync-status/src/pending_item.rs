@@ -67,6 +67,26 @@ impl PendingWait {
     }
 }
 
+/// The kind of image whose upload holds this device's writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeldImageKind {
+    Cover,
+    ArtistImage,
+    Avatar,
+}
+
+/// An image whose upload can't finish and so holds every later write of this
+/// device: coven sends a write that sets a cover, artist image or avatar only
+/// with its file stored (coven §17.4), and no write after it before then.
+/// The way out is a write that leaves the file with no reference, which ends
+/// the hold (coven §17.4, "Later writes"): giving up the image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeldImage {
+    /// The coven file the row of the image references.
+    pub file: coven::FileId,
+    pub kind: HeldImageKind,
+}
+
 /// One thing coven is waiting on, as the pending list shows it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PendingItem {
@@ -75,6 +95,9 @@ pub struct PendingItem {
     /// The subject of the coven record this is, for finding the item of a
     /// record.
     pub record_subject: coven::PendingSubject,
+    /// For the upload of a cover, artist image or avatar: the image holding
+    /// this device's writes until it is stored. `None` for every other record.
+    pub held_image: Option<HeldImage>,
 }
 
 impl PendingItem {
@@ -82,15 +105,19 @@ impl PendingItem {
     /// joining: every subject but a file names itself, and a file is named
     /// only by its row, which no library holds yet.
     pub fn before_open(record: coven::PendingRecord) -> Self {
-        Self::named(record, None)
+        Self::named(record, None, None)
     }
 
     /// A record as the library lists it: a file's named by its row.
     pub fn listed(row: PendingRow) -> Self {
-        Self::named(row.record, row.file_row)
+        Self::named(row.record, row.file_row, row.file)
     }
 
-    fn named(record: coven::PendingRecord, file_row: Option<FileRow>) -> Self {
+    fn named(
+        record: coven::PendingRecord,
+        file_row: Option<FileRow>,
+        file: Option<coven::FileId>,
+    ) -> Self {
         use coven::PendingSubject as S;
         let release_id = match &file_row {
             Some(FileRow::ReleaseFile { release_id, .. }) => Some(release_id.as_str()),
@@ -98,6 +125,12 @@ impl PendingItem {
         };
         let wait = PendingWait::of(&record, release_id);
         let record_subject = record.subject.clone();
+        let held_image = match (&record.subject, &file_row, file) {
+            (S::Upload { .. }, Some(row), Some(file)) => {
+                HeldImageKind::of(row).map(|kind| HeldImage { file, kind })
+            }
+            _ => None,
+        };
         let subject = match record.subject {
             S::Write(_) => PendingSubjectName::LocalChanges,
             S::Slot(_) => PendingSubjectName::LibraryChanges,
@@ -112,7 +145,20 @@ impl PendingItem {
             S::Audience(coven::Audience::Circle(_)) => PendingSubjectName::CircleData,
             S::Connection => PendingSubjectName::Connection,
         };
-        Self { subject, wait, record_subject }
+        Self { subject, wait, record_subject, held_image }
+    }
+}
+
+impl HeldImageKind {
+    /// The kind of image `row` is, when the column naming its file is bound
+    /// (`bae_records::synced`, `bae_people::synced`).
+    fn of(row: &FileRow) -> Option<Self> {
+        match row {
+            FileRow::Cover { .. } => Some(Self::Cover),
+            FileRow::ArtistImage => Some(Self::ArtistImage),
+            FileRow::Avatar => Some(Self::Avatar),
+            FileRow::ReleaseFile { .. } | FileRow::DeletedReleaseFile => None,
+        }
     }
 }
 

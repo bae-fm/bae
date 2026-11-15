@@ -261,6 +261,7 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
                     file_name: "Cover.jpg".into(),
                     album_title: "Album".into(),
                 }),
+                file: None,
             })],
             start_failure: None,
             retry_effect: coven::RetryEffect::Pass,

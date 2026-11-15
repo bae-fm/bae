@@ -97,7 +97,8 @@ public final class SyncActivityStore {
             ),
             action: .signIn(provider: .dropbox),
             actionKey: "core.pending.action.sign_in",
-            sendsFiles: false
+            sendsFiles: false,
+            heldImage: nil
         )
     }
 #endif

@@ -72,6 +72,14 @@ forward! { async this => {
             .cancel_failed_release_move(coven::MoveId(id))
             .await?)
     }
+    /// Give up the cover, artist image or avatar `held`, which a pending
+    /// record names (`BridgePendingRecord::held_image`): its upload can't
+    /// finish and holds every later write of this device. The row drops the
+    /// image, which ends the hold and sends the waiting writes. Fails as
+    /// changed meanwhile when no row references the image any more.
+    fn give_up_held_image(held: crate::types::BridgeHeldImage) -> () {
+        Ok(this.services.give_up_held_image(held.to_core()?).await?)
+    }
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure
     /// reaches the caller and is recorded as the sync-status error the failure

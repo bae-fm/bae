@@ -779,6 +779,15 @@ impl AppServices {
         self.inner.manager.cancel_failed_release_move(id).await
     }
 
+    /// Give up the cover, artist image or avatar whose upload holds this
+    /// device's writes, as its pending record offers.
+    pub async fn give_up_held_image(
+        &self,
+        held: bae_sync_status::HeldImage,
+    ) -> Result<(), bae_library::people::GiveUpImageError> {
+        self.inner.manager.give_up_held_image(held).await
+    }
+
     // Everything sync is doing, for the activity indicator: each value read
     // in one go.
     pub fn subscribe_sync_activity(

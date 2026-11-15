@@ -8,6 +8,10 @@ pub enum ImageWriteRefusal {
     /// its row names another file than the planner saw.
     #[error("the {image_type:?} image of {subject_id} changed after planning")]
     Superseded { image_type: LibraryImageType, subject_id: String },
+    /// No cover or artist image references the file any more: another write
+    /// replaced or deleted it after the file was named.
+    #[error("no cover or artist image references the file {file} any more")]
+    NoLongerReferenced { file: coven::FileId },
 }
 
 /// Why an image's replacement did not commit.
@@ -72,6 +76,33 @@ impl Records {
                     Ok(())
                 },
             )
+            .await
+    }
+
+    /// Give up the cover or artist image whose file `file` can't upload: its
+    /// row is deleted, which leaves the file with no reference, so coven
+    /// retires its upload and sends this device's held writes (coven §17.4).
+    /// Refused, with nothing written, when no image references `file`: the
+    /// image changed meanwhile.
+    pub async fn give_up_image_file(&self, file: coven::FileId) -> Result<(), ImageWriteError> {
+        self.store
+            .write(move |sql| {
+                let mut deleted = 0;
+                for image_type in [LibraryImageType::Cover, LibraryImageType::Artist] {
+                    deleted += sql
+                        .execute(
+                            &format!("DELETE FROM {} WHERE file = ?", image_table(&image_type)),
+                            params![file],
+                        )
+                        .map_err(DbError::from)?;
+                }
+                if deleted == 0 {
+                    return Err(WriteError::Refused(ImageWriteRefusal::NoLongerReferenced {
+                        file,
+                    }));
+                }
+                Ok(())
+            })
             .await
     }
 

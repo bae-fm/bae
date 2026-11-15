@@ -500,7 +500,8 @@ fn image_write_refusal_category(
     refusal: &bae_records::ImageWriteRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
     match refusal {
-        bae_records::ImageWriteRefusal::Superseded { .. } => {
+        bae_records::ImageWriteRefusal::Superseded { .. }
+        | bae_records::ImageWriteRefusal::NoLongerReferenced { .. } => {
             bae_diagnostics::UiErrorCategory::ChangedMeanwhile
         }
     }

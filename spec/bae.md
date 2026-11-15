@@ -4346,7 +4346,17 @@ its control says so in core's words for that transfer.
   waits and retries, and one only the person can clear, such as a full account
   or refused credentials, waits for them, its pending record showing it.
   Meanwhile the write naming the image, and every later write of this device,
-  waits to be sent.
+  waits to be sent. That image's pending record names the image as the file
+  holding sync, and core can give the image up: its row (the cover's, the
+  artist image's, or the profile's avatar reference) drops the file, which
+  leaves the file with no reference, so coven retires the upload and sends the
+  held writes and the one that gave the image up in one slot, and no other
+  device sees the file
+  ([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)).
+  Giving up asks for the file the record named: a row that references another
+  file by then, or none, is refused as changed meanwhile and nothing is
+  written. A release file's upload trails its row and holds no write, so its
+  record names no holding file.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that another installation replaced this one

@@ -17,6 +17,7 @@ class PhonePendingRecordsTest {
         action = action,
         actionKey = null,
         sendsFiles = sendsFiles,
+        heldImage = null,
     )
 
     /** A record of files a phone sends, or of a source file to restore, is a bug: left out, and reported once. */

@@ -19,7 +19,9 @@ pub(crate) fn read(
         SyncStatusRows {
             pending: records
                 .into_iter()
-                .map(|record| PendingItem::listed(PendingRow { record, file_row: None }))
+                .map(|record| {
+                    PendingItem::listed(PendingRow { record, file_row: None, file: None })
+                })
                 .collect(),
             start_failure: error,
             retry_effect,

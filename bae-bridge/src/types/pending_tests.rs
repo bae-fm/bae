@@ -45,3 +45,17 @@ fn a_record_sends_files_when_it_is_an_upload_or_a_move() {
     assert!(sends(coven::PendingSubject::Move { id: coven::MoveId(3) }));
     assert!(!sends(coven::PendingSubject::Connection));
 }
+
+/// A held image crosses with its file as text, and comes back as the same
+/// image; text that is no file id is refused.
+#[test]
+fn a_held_image_crosses_and_comes_back() {
+    let held = bae_sync_status::HeldImage {
+        file: coven::FileId("00000000-0000-0000-0000-000000000005".parse().unwrap()),
+        kind: bae_sync_status::HeldImageKind::ArtistImage,
+    };
+    let crossed = BridgeHeldImage::from_core(held);
+    assert_eq!(crossed.kind, BridgeHeldImageKind::ArtistImage);
+    assert_eq!(crossed.to_core().unwrap(), held);
+    assert!(BridgeHeldImage { file: "not a file".into(), ..crossed }.to_core().is_err());
+}

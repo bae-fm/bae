@@ -4,7 +4,7 @@
 //! failed, behind the `SyncStatus` owner.
 
 mod pending_item;
-pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
+pub use pending_item::{HeldImage, HeldImageKind, PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;
 pub use sync_status::{
     pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow, SetupDismissError,

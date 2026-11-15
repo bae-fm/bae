@@ -201,6 +201,10 @@ pub enum ProfileError {
     Missing,
     #[error("a person's name cannot be empty")]
     EmptyName,
+    /// No profile references the avatar file any more: another avatar
+    /// replaced it, or it was cleared, after the file was named.
+    #[error("no profile references the avatar file {0} any more")]
+    AvatarChanged(coven::FileId),
     #[error("this person already has a profile; rename it to change the name")]
     AlreadyExists,
     #[error("this person's private circle has other members or more than one matching circle")]
@@ -246,6 +250,7 @@ impl bae_util::task_failure::ReportedBug for ProfileError {
             | Self::Missing
             | Self::EmptyName
             | Self::AlreadyExists
+            | Self::AvatarChanged(_)
             | Self::InvalidPrivateCircle
             | Self::CirclePending(_)
             | Self::Sync(_) => None,
@@ -272,6 +277,7 @@ impl ProfileError {
             Self::NotRegistered | Self::Missing | Self::EmptyName | Self::AlreadyExists => {
                 C::Config
             }
+            Self::AvatarChanged(_) => C::ChangedMeanwhile,
             Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
             Self::Database(error) => bae_diagnostics::database_category(error),
         }
