@@ -1,7 +1,7 @@
 #[cfg(desktop)]
 use super::*;
 use super::{
-    BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgePackaging,
+    BridgeCreditLine, BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgePackaging,
     BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus,
     BridgeSourceAudioLayout, BridgeTrackSide,
 };
