@@ -130,6 +130,56 @@ extension PreviewData {
         )
     }
 
+    /// A selection of `keys` as core's selection statement answers it: each
+    /// action offered once per selected candidate whose live state lists it,
+    /// in the order the surfaces list them. Combining stands once two rows are
+    /// selected and runs only when every one lists it. This restates the
+    /// statement for fixtures, since the apps hold no copy of it.
+    @MainActor
+    static func importSelection(
+        of keys: [Data],
+        in store: ImportStore
+    ) -> ImportSelection {
+        let listed: [[BridgeCandidateAction]] = keys.map {
+            store.selectedCandidates[$0]?.live?.actions ?? []
+        }
+        let offers = selectionActionOrder.compactMap {
+            action -> BridgeSelectionOffer? in
+            if action == .combine {
+                return keys.count >= 2
+                    ? BridgeSelectionOffer(
+                        action: action,
+                        count: UInt64(keys.count),
+                        enabled: listed.allSatisfy { $0.contains(action) }
+                    ) : nil
+            }
+            let count = listed.filter { $0.contains(action) }.count
+            return count > 0
+                ? BridgeSelectionOffer(
+                    action: action,
+                    count: UInt64(count),
+                    enabled: true
+                ) : nil
+        }
+        let selection = ImportSelection()
+        selection.apply(
+            BridgeSelectionSummary(
+                count: UInt64(keys.count),
+                single: keys.count == 1
+                    ? keys.first.map { .candidate(key: $0) } : nil,
+                offers: offers
+            )
+        )
+        return selection
+    }
+
+    /// The order every surface lists an action in.
+    private static let selectionActionOrder: [BridgeCandidateAction] = [
+        .import, .cancelImport, .identify, .cancelIdentification,
+        .retryIdentification, .resetToFileMetadata, .clearMetadata, .combine,
+        .separate, .skip, .restore, .revealFolder,
+    ]
+
     /// `bytes` as lowercase hex, the way core spells bytes in a list key.
     private static func hex(_ bytes: Data) -> String {
         bytes.map { String(format: "%02x", $0) }.joined()
