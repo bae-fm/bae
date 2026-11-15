@@ -25,6 +25,7 @@ import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
+import uniffi.bae_bridge.BridgeHeldImage
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeImportDestination
@@ -870,6 +871,10 @@ internal open class FakeAppHandle(
 
     override suspend fun cancelFailedReleaseMove(id: Long) {
         unfaked("cancelFailedReleaseMove")
+    }
+
+    override suspend fun giveUpHeldImage(held: BridgeHeldImage) {
+        unfaked("giveUpHeldImage")
     }
 
     override suspend fun setUnmeteredOnly(unmeteredOnly: Boolean) {
