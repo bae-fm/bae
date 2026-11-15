@@ -3,6 +3,7 @@ package fm.bae.app.ui.library
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
@@ -35,6 +36,14 @@ class PlaylistScreenTest {
 
     private class PlayingHandle : FakeAppHandle() {
         val played = mutableListOf<Played>()
+        val removed = mutableListOf<String>()
+
+        override suspend fun removePlaylistEntry(
+            playlist: String,
+            position: String,
+        ) {
+            removed += "$playlist/$position"
+        }
 
         override suspend fun playPlaylist(
             playlistId: String,
@@ -93,5 +102,15 @@ class PlaylistScreenTest {
         compose.waitUntil(HANG_GUARD_MS) { handle.played.isNotEmpty() }
 
         assertEquals(listOf(Played("playlist-1", "position-2", false)), handle.played)
+    }
+
+    @Test
+    fun anEntrysMenuRemovesItFromThePlaylist() {
+        showPage()
+        compose.onAllNodesWithContentDescription("Track options")[1].performClick()
+        compose.onNodeWithText("Remove from playlist").performClick()
+        compose.waitUntil(HANG_GUARD_MS) { handle.removed.isNotEmpty() }
+
+        assertEquals(listOf("playlist-1/position-2"), handle.removed)
     }
 }

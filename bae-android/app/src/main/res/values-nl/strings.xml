@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">Alleen jij ziet deze afspeellijst.</string>
     <string name="playlist_sharing_household_note">Iedereen in de bibliotheek ziet deze afspeellijst en kan hem afspelen. Alleen jij kunt hem wijzigen.</string>
     <string name="playlist_create">Maak</string>
+    <string name="playlist_remove_entry">Uit afspeellijst verwijderen</string>
+    <string name="playlist_add_entry">Toevoegen aan afspeellijst…</string>
+    <string name="playlist_add_title">Toevoegen aan afspeellijst</string>
+    <string name="playlist_new_row">Nieuwe afspeellijst…</string>
     <string name="playlist_edit_menu">Afspeellijst bewerken…</string>
     <string name="playlist_edit_title">Afspeellijst bewerken</string>
     <string name="playlist_delete_menu">Afspeellijst verwijderen…</string>

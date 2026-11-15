@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">このプレイリストはあなただけに表示されます。</string>
     <string name="playlist_sharing_household_note">ライブラリの全員がこのプレイリストを見て再生できます。変更できるのはあなただけです。</string>
     <string name="playlist_create">作成</string>
+    <string name="playlist_remove_entry">プレイリストから削除</string>
+    <string name="playlist_add_entry">プレイリストに追加…</string>
+    <string name="playlist_add_title">プレイリストに追加</string>
+    <string name="playlist_new_row">新規プレイリスト…</string>
     <string name="playlist_edit_menu">プレイリストを編集…</string>
     <string name="playlist_edit_title">プレイリストを編集</string>
     <string name="playlist_delete_menu">プレイリストを削除…</string>

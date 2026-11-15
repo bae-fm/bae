@@ -108,6 +108,10 @@
     <string name="playlist_sharing_private_note">Doar tu vezi această listă de redare.</string>
     <string name="playlist_sharing_household_note">Toți cei din bibliotecă văd această listă de redare și o pot reda. Doar tu o poți modifica.</string>
     <string name="playlist_create">Creează</string>
+    <string name="playlist_remove_entry">Elimină din lista de redare</string>
+    <string name="playlist_add_entry">Adaugă la listă de redare…</string>
+    <string name="playlist_add_title">Adaugă la listă de redare</string>
+    <string name="playlist_new_row">Listă de redare nouă…</string>
     <string name="playlist_edit_menu">Editează lista de redare…</string>
     <string name="playlist_edit_title">Editează lista de redare</string>
     <string name="playlist_delete_menu">Șterge lista de redare…</string>

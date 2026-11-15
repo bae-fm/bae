@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">Ovaj popis za reprodukciju vidite samo vi.</string>
     <string name="playlist_sharing_household_note">Svi u fonoteci vide ovaj popis za reprodukciju i mogu ga reproducirati. Samo ga vi možete mijenjati.</string>
     <string name="playlist_create">Izradi</string>
+    <string name="playlist_remove_entry">Ukloni s popisa za reprodukciju</string>
+    <string name="playlist_add_entry">Dodaj na popis za reprodukciju…</string>
+    <string name="playlist_add_title">Dodaj na popis za reprodukciju</string>
+    <string name="playlist_new_row">Novi popis za reprodukciju…</string>
     <string name="playlist_edit_menu">Uredi popis za reprodukciju…</string>
     <string name="playlist_edit_title">Uredi popis za reprodukciju</string>
     <string name="playlist_delete_menu">Izbriši popis za reprodukciju…</string>

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,15 +26,12 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.creditLineText
 import fm.bae.app.displayError
-import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
-import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
@@ -43,6 +39,7 @@ import fm.bae.app.ui.components.PlaylistPicture
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaylistDetail
 
 private val HEADER_PICTURE_SIZE = 96.dp
@@ -119,27 +116,59 @@ internal fun PlaylistPage(
     detail: BridgePlaylistDetail,
 ) {
     val playlistId = detail.summary.id
+    val addToPlaylist = rememberTrackPlaylistAdd(session)
+    TrackPlaylistAddShown(session, addToPlaylist)
     PlaylistContent(
         detail = detail,
-        onPlay = { startPositionId, shuffle ->
-            session.messages.play("play playlist $playlistId") {
-                session.appHandle.playPlaylist(playlistId, startPositionId, shuffle)
-            }
-        },
+        actions =
+            PlaylistEntryActions(
+                onPlay = { startPositionId, shuffle ->
+                    session.messages.play("play playlist $playlistId") {
+                        session.appHandle.playPlaylist(playlistId, startPositionId, shuffle)
+                    }
+                },
+                onPlayNext = { trackId ->
+                    session.messages.perform("addNext $trackId") {
+                        session.playback.onTracksAdded(session.appHandle.addNext(listOf(trackId)).toInt())
+                    }
+                },
+                onAddToQueue = { trackId ->
+                    session.messages.perform("addToQueue $trackId") {
+                        session.playback.onTracksAdded(session.appHandle.addToQueue(listOf(trackId)).toInt())
+                    }
+                },
+                onAddToPlaylist = if (addToPlaylist.offered) addToPlaylist::ask else null,
+                onRemove = { positionId ->
+                    session.messages.perform("remove $positionId from playlist $playlistId") {
+                        session.appHandle.removePlaylistEntry(playlistId, positionId)
+                    }
+                },
+                onReorder = { order, onFailed ->
+                    session.messages.perform("reorder playlist $playlistId") {
+                        try {
+                            session.appHandle.reorderPlaylist(playlistId, order)
+                        } catch (e: BridgeException) {
+                            onFailed()
+                            throw e
+                        }
+                    }
+                },
+            ),
     )
 }
 
 /**
- * The playlist's header, Play and Shuffle, and its entries; [onPlay] gets the entry to start from, if
- * any, and whether to shuffle.
+ * The playlist's header, Play and Shuffle, and its entries, with what each entry's menu and the
+ * playlist's own buttons do as [actions] says.
  */
 @Composable
 internal fun PlaylistContent(
     detail: BridgePlaylistDetail,
-    onPlay: (startPositionId: String?, shuffle: Boolean) -> Unit,
+    actions: PlaylistEntryActions,
 ) {
     val context = LocalContext.current
     val summary = detail.summary
+    val reorder = rememberPlaylistReorder(detail, actions.onReorder)
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Row(
@@ -174,20 +203,12 @@ internal fun PlaylistContent(
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related),
                 horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             ) {
-                AndroidButton(onClick = { onPlay(null, false) }) { Text(stringResource(R.string.play)) }
-                AndroidButton(kind = ButtonKind.OUTLINED, onClick = { onPlay(null, true) }) {
+                AndroidButton(onClick = { actions.onPlay(null, false) }) { Text(stringResource(R.string.play)) }
+                AndroidButton(kind = ButtonKind.OUTLINED, onClick = { actions.onPlay(null, true) }) {
                     Text(stringResource(R.string.shuffle))
                 }
             }
         }
-        items(detail.entries, key = { it.positionId }) { entry ->
-            AndroidLibraryRow(
-                title = entry.title,
-                subtitle = context.factsLine(listOf(context.creditLineText(entry.artistLine), entry.albumTitle)),
-                trailing = context.durationClockLabel(entry.durationClock),
-                art = entry.cover,
-                onClick = { onPlay(entry.positionId, false) },
-            )
-        }
+        playlistEntries(detail, actions, reorder, context)
     }
 }

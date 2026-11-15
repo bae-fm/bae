@@ -59,6 +59,9 @@ import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
+import fm.bae.app.ui.library.TrackPlaylistAdd
+import fm.bae.app.ui.library.TrackPlaylistAddShown
+import fm.bae.app.ui.library.rememberTrackPlaylistAdd
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.yearText
@@ -87,6 +90,8 @@ internal data class AlbumDetailCallbacks(
     val onAddTrackToQueue: (String) -> Unit,
     val onRateAlbum: (BridgeStars?) -> Unit,
     val onSelectWork: (String) -> Unit,
+    /** Offered only when the person can make playlists. */
+    val onAddTrackToPlaylist: ((String) -> Unit)? = null,
 )
 
 /**
@@ -110,10 +115,8 @@ fun AlbumDetailScreen(
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
-    val appContext = LocalContext.current
-    val scope = rememberScreenScope()
-    val deletion = rememberAlbumDeletion(session, albumId, scope, onDeleted = onBack)
-
+    val deletion = rememberAlbumDeletion(session, albumId, rememberScreenScope(), onDeleted = onBack)
+    val adding = rememberTrackPlaylistAdd(session)
     DisposableEffect(albumId, session) {
         session.libraryQueries.album.activate(albumId)
         onDispose {
@@ -121,8 +124,7 @@ fun AlbumDetailScreen(
         }
     }
 
-    val loadError = query.error?.let(appContext::displayError)
-
+    val loadError = query.error?.let(LocalContext.current::displayError)
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
@@ -130,6 +132,7 @@ fun AlbumDetailScreen(
         actions = { if (detail != null) AlbumBarActions(session, detail, selectedReleaseId, deletion) },
     ) {
         AlbumDeletionShown(deletion)
+        TrackPlaylistAddShown(session, adding)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
             if (loaded == null) {
@@ -153,7 +156,8 @@ fun AlbumDetailScreen(
                         selectedRelease = release,
                         cover = release.cover,
                         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                        callbacks = buildAlbumDetailCallbacks(session, release, onOpenWork) { selectedReleaseId = it },
+                        callbacks =
+                            buildAlbumDetailCallbacks(session, release, adding, onOpenWork) { selectedReleaseId = it },
                         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
                     )
                 }
@@ -240,6 +244,7 @@ private fun BoxScope.MissingMainReleaseNotice(detail: BridgeAlbumDetail) {
 private fun buildAlbumDetailCallbacks(
     session: OpenLibrary,
     release: BridgeRelease,
+    addToPlaylist: TrackPlaylistAdd,
     onSelectWork: (String) -> Unit,
     onSelectRelease: (String) -> Unit,
 ): AlbumDetailCallbacks {
@@ -315,6 +320,7 @@ private fun buildAlbumDetailCallbacks(
                 session.appHandle.setRating(BridgeRatingTarget.Album(release.albumId), stars)
             }
         },
+        onAddTrackToPlaylist = if (addToPlaylist.offered) addToPlaylist::ask else null,
     )
 }
 

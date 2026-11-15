@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">Цей плейлист бачите лише ви.</string>
     <string name="playlist_sharing_household_note">Усі в бібліотеці бачать цей плейлист і можуть його відтворювати. Змінювати його можете лише ви.</string>
     <string name="playlist_create">Створити</string>
+    <string name="playlist_remove_entry">Вилучити з плейлиста</string>
+    <string name="playlist_add_entry">Додати до плейлиста…</string>
+    <string name="playlist_add_title">Додати до плейлиста</string>
+    <string name="playlist_new_row">Новий плейлист…</string>
     <string name="playlist_edit_menu">Редагувати плейлист…</string>
     <string name="playlist_edit_title">Редагувати плейлист</string>
     <string name="playlist_delete_menu">Видалити плейлист…</string>

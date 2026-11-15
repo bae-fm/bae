@@ -19,15 +19,16 @@ import uniffi.bae_bridge.enteredNameIsBlank
 private val logger = BaeLogger("bae.NewPlaylistDialog")
 
 /**
- * Make a playlist: its name and who sees it. Creating it closes the dialog and hands the new
- * playlist's id to [onCreated]; a failure shows in the dialog. [nameIsBlank] is core's answer to
- * whether a typed name is blank.
+ * Make a playlist holding [trackIds], none by default: its name and who sees it. Creating it closes
+ * the dialog and hands the new playlist's id to [onCreated]; a failure shows in the dialog.
+ * [nameIsBlank] is core's answer to whether a typed name is blank.
  */
 @Composable
 internal fun NewPlaylistDialog(
     session: OpenLibrary,
     onDismiss: () -> Unit,
     onCreated: (String) -> Unit,
+    trackIds: List<String> = emptyList(),
     nameIsBlank: (String) -> Boolean = ::enteredNameIsBlank,
 ) {
     val scope = rememberScreenScope()
@@ -58,7 +59,7 @@ internal fun NewPlaylistDialog(
                             errors = session.errors,
                             showError = { error = it },
                         ) {
-                            created = session.appHandle.createPlaylist(name, sharing, emptyList())
+                            created = session.appHandle.createPlaylist(name, sharing, trackIds)
                         }
                         saving = false
                         created?.let {

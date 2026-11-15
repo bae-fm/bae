@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">רשימת ההשמעה הזאת גלויה רק לך.</string>
     <string name="playlist_sharing_household_note">כל מי שבספרייה רואה את רשימת ההשמעה הזאת ויכול להשמיע אותה. רק לך יש אפשרות לשנות אותה.</string>
     <string name="playlist_create">יצירה</string>
+    <string name="playlist_remove_entry">הסר מרשימת ההשמעה</string>
+    <string name="playlist_add_entry">הוסף לרשימת השמעה…</string>
+    <string name="playlist_add_title">הוסף לרשימת השמעה</string>
+    <string name="playlist_new_row">רשימת השמעה חדשה…</string>
     <string name="playlist_edit_menu">עריכת רשימת השמעה…</string>
     <string name="playlist_edit_title">עריכת רשימת השמעה</string>
     <string name="playlist_delete_menu">מחיקת רשימת השמעה…</string>

@@ -64,6 +64,7 @@ internal fun LazyListScope.albumTrackGroups(
                             },
                             onPlayNext = { callbacks.onPlayTrackNext(track.id) },
                             onAddToQueue = { callbacks.onAddTrackToQueue(track.id) },
+                            onAddToPlaylist = callbacks.onAddTrackToPlaylist?.let { add -> { add(track.id) } },
                         ),
                     positionColumnWidth = positionColumnWidth,
                 )

@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">Solo tu vedi questa playlist.</string>
     <string name="playlist_sharing_household_note">Tutti nella libreria vedono questa playlist e possono riprodurla. Solo tu puoi modificarla.</string>
     <string name="playlist_create">Crea</string>
+    <string name="playlist_remove_entry">Rimuovi dalla playlist</string>
+    <string name="playlist_add_entry">Aggiungi a playlist…</string>
+    <string name="playlist_add_title">Aggiungi a playlist</string>
+    <string name="playlist_new_row">Nuova playlist…</string>
     <string name="playlist_edit_menu">Modifica playlist…</string>
     <string name="playlist_edit_title">Modifica playlist</string>
     <string name="playlist_delete_menu">Elimina playlist…</string>

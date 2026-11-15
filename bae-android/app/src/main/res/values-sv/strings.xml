@@ -107,6 +107,10 @@
     <string name="playlist_sharing_private_note">Bara du ser den här spellistan.</string>
     <string name="playlist_sharing_household_note">Alla i biblioteket ser den här spellistan och kan spela upp den. Bara du kan ändra den.</string>
     <string name="playlist_create">Skapa</string>
+    <string name="playlist_remove_entry">Ta bort från spellista</string>
+    <string name="playlist_add_entry">Lägg till i spellista…</string>
+    <string name="playlist_add_title">Lägg till i spellista</string>
+    <string name="playlist_new_row">Ny spellista…</string>
     <string name="playlist_edit_menu">Redigera spellista…</string>
     <string name="playlist_edit_title">Redigera spellista</string>
     <string name="playlist_delete_menu">Radera spellista…</string>

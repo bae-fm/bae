@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">Bu çalma listesini yalnızca siz görürsünüz.</string>
     <string name="playlist_sharing_household_note">Kitaplıktaki herkes bu çalma listesini görebilir ve çalabilir. Yalnızca siz değiştirebilirsiniz.</string>
     <string name="playlist_create">Oluştur</string>
+    <string name="playlist_remove_entry">Çalma listesinden kaldır</string>
+    <string name="playlist_add_entry">Çalma listesine ekle…</string>
+    <string name="playlist_add_title">Çalma listesine ekle</string>
+    <string name="playlist_new_row">Yeni çalma listesi…</string>
     <string name="playlist_edit_menu">Çalma listesini düzenle…</string>
     <string name="playlist_edit_title">Çalma listesini düzenle</string>
     <string name="playlist_delete_menu">Çalma listesini sil…</string>

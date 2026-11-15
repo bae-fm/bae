@@ -103,6 +103,10 @@
     <string name="playlist_sharing_private_note">只有你能看到這個播放列表。</string>
     <string name="playlist_sharing_household_note">資料庫中的所有人都能看到並播放這個播放列表，只有你能修改。</string>
     <string name="playlist_create">建立</string>
+    <string name="playlist_remove_entry">從播放列表移除</string>
+    <string name="playlist_add_entry">加入播放列表…</string>
+    <string name="playlist_add_title">加入播放列表</string>
+    <string name="playlist_new_row">新增播放列表…</string>
     <string name="playlist_edit_menu">編輯播放列表…</string>
     <string name="playlist_edit_title">編輯播放列表</string>
     <string name="playlist_delete_menu">刪除播放列表…</string>
