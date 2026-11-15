@@ -10,7 +10,8 @@
 # which `run.sh` alone misses because it never builds the test target.
 #
 # `--run-only` runs the tests a `--build-only` run already built, without
-# compiling anything: the `macos-tests-run` step of `.app-build` follows the
+# compiling anything (a baeShots run builds its scheme again to put back the
+# bundle a baeTests run deleted): the `macos-tests-run` step of `.app-build` follows the
 # `macos-tests` step with it.
 #
 # Every test has a minute to finish (`-test-timeouts-enabled`): a test that
@@ -139,6 +140,11 @@ if [[ "$ACTION" != build-for-testing ]]; then
     # back.
     if [[ "$BUNDLE_NAME" == baeTests ]]; then
         rm -rf "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/bae.app/Contents/PlugIns/baeShots.xctest"
+    elif [[ "$ACTION" == test-without-building ]]; then
+        # A baeTests run before this one deleted baeShots.xctest from the app.
+        # Building the scheme again copies the bundle back; with nothing
+        # changed since the `--build-only` run, it compiles nothing.
+        xcodebuild_tests baeShots build-for-testing
     fi
     xcodebuild_tests "$SCHEME" -resultBundlePath "$BUNDLE" \
         -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
