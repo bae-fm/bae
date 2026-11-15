@@ -464,6 +464,13 @@ internal open class FakeAppHandle(
         beforeEntryId: String?,
     ): Boolean = unfaked("reorderEntry")
 
+    override suspend fun tracksInReleaseOrder(trackIds: List<String>): List<String> = unfaked("tracksInReleaseOrder")
+
+    override suspend fun appendPlaylistEntries(
+        playlist: String,
+        trackIds: List<String>,
+    ): Unit = unfaked("appendPlaylistEntries")
+
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 
     override suspend fun retryDownload(releaseId: String) {
