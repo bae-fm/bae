@@ -250,9 +250,10 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
 /// they are on and the members those belong to, as [`unstored_audio_on`] and
 /// [`release_file_other_device`](Records::release_file_other_device) read
 /// them: `f`, `coven`, its device `d` and that device's member `m`. Coven
-/// applies a write only once its device is registered, keeps every
-/// registration, and registers each device under a member it keeps, so every
-/// file on one device has both.
+/// applies a write only after it registers the write's device, never drops a
+/// registration, and registers each device under a member it never drops, so
+/// every file on one device has its device's registration and that device's
+/// member.
 const UNSTORED_FILES: &str = "FROM release_files f JOIN coven_files coven ON coven.id = f.file \
      JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
      JOIN coven_members m ON m.member = d.member";
@@ -264,9 +265,10 @@ const UNSTORED_COLUMNS: &str = "f.file, d.is_self, d.name, d.state, m.removed AS
 /// What coven records this device holding for each audio file of the release
 /// `release_expr` (an SQL expression) that is on one device only, in file
 /// order, as a JSON array for [`unstored_audio_column`]: whether that device
-/// is this one, where coven keeps the file's original, and otherwise the
-/// device's registration in `coven_devices` and whether that device or its
-/// person was removed from the library. The disk is not asked.
+/// is this one, in which case this device keeps the file's original, and
+/// otherwise the device's registration in `coven_devices` and whether that
+/// device or its person was removed from the library. The query does not
+/// read the disk.
 pub fn unstored_audio_json_sql(release_expr: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
