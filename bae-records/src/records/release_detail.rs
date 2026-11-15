@@ -247,17 +247,17 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
 }
 
 /// A JSON array of the name and state of the device that alone holds the
-/// audio file of the release `rel` with the lowest file id, and whether a
-/// member removed that device's person from the library. The column holds the
-/// JSON text `null` when no other device alone holds an audio file of the
-/// release.
+/// audio file of the release `rel` with the lowest file id among the files
+/// another device alone holds, and whether a member removed that device's
+/// person from the library. The column holds the JSON text `null` when no
+/// other device alone holds an audio file of the release.
 const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(e.device_name, e.device_state, \
      e.member_removed) FROM release_audio_elsewhere e WHERE e.release_id = rel.id \
      ORDER BY e.file_id LIMIT 1), 'null')";
 
 /// The other device a release's audio is on, from `column` of a row that
-/// holds [`ELSEWHERE_OF_RELEASE`]: `None` when the release has no audio on
-/// another device only.
+/// holds [`ELSEWHERE_OF_RELEASE`]. It returns `None` when no other device
+/// alone holds an audio file of the release.
 fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<OtherDevice>> {
     let Some((name, state, member_removed)) =
         bae_store::read::json_column::<Option<(String, String, i64)>, _>(row, column)?
@@ -273,16 +273,18 @@ fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<Othe
     })
 }
 
-/// Why the other device a release file is on could not be named.
+/// Why bae could not name the other device that holds a release file.
 #[derive(Debug, thiserror::Error)]
 pub enum OtherDeviceError {
-    /// No other device alone holds the audio file: it reached storage, this
-    /// device holds it, or it left the library, after the read that found it
-    /// on another device.
+    /// No other device alone holds the audio file. The file reached storage,
+    /// this device holds it, or the file left the library, after the read that
+    /// found it on another device.
     #[error("release file {0} is not an audio file on another device only")]
     NotOnAnotherDevice(String),
-    /// The state `coven_devices` records for the device is none coven writes.
-    #[error("coven_devices.state of the device release file {file} is on: {state:?}")]
+    /// `coven_devices` records a state for the device that coven does not write.
+    #[error(
+        "the device that holds release file {file} has a state coven does not write: {state:?}"
+    )]
     UnknownState { file: String, state: String },
     #[error(transparent)]
     Database(#[from] DbError),
@@ -290,7 +292,7 @@ pub enum OtherDeviceError {
 
 impl Records {
     /// The other device that alone holds the audio file `file_id`, as the
-    /// view `release_audio_elsewhere` records it. The read fails naming the
+    /// view `release_audio_elsewhere` reads it from coven's tables. The read fails naming the
     /// file when no other device alone holds it.
     pub async fn release_file_other_device(
         &self,
@@ -318,10 +320,8 @@ impl Records {
             .await?;
         let (name, state, member_removed) =
             held.ok_or_else(|| OtherDeviceError::NotOnAnotherDevice(file_id.into()))?;
-        other_device(name, &state, member_removed).ok_or_else(|| OtherDeviceError::UnknownState {
-            file: file_id.into(),
-            state,
-        })
+        other_device(name, &state, member_removed)
+            .ok_or_else(|| OtherDeviceError::UnknownState { file: file_id.into(), state })
     }
 }
 

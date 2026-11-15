@@ -22,9 +22,9 @@ pub struct DbReleaseDetail {
     /// Whether any catalog describes this release.
     pub has_records: bool,
     /// The device that alone holds the release's audio file with the lowest
-    /// file id among those held only on another device. The field is `None`
-    /// when no audio file is held only on another device. The release cannot
-    /// play here while the field is `Some`.
+    /// file id among the files another device alone holds. The field is
+    /// `None` when no other device alone holds any of the release's audio
+    /// files. The release cannot play here while the field is `Some`.
     pub elsewhere: Option<OtherDevice>,
     /// Whether this device keeps every file of the release pinned, as the
     /// release's storage row counts its pinned files.
