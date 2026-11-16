@@ -17,8 +17,8 @@
 //! writes, and the placement's Found state already counts it: each row carries
 //! it as its [`CandidateLiveState`], and the selection's offers read it.
 
-use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
-use super::triage::{CandidateLiveState, TriageGroup, TriageRow};
+use super::folder_scanner::FolderReleaseDecisionKey;
+use super::triage::{CandidateLiveState, InvalidRow, TriageGroup, TriageRow};
 use bae_store::list_windows::OrderKey;
 use bae_store::WindowRead;
 
@@ -101,7 +101,7 @@ pub enum ImportListItem {
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.
-    Invalid { candidate: InvalidCandidate },
+    Invalid { row: InvalidRow },
 }
 
 /// The stable key of a group's header item.
@@ -128,8 +128,8 @@ impl ImportListItem {
         match self {
             Self::GroupHeader { group, .. } => group_stable_key(&group.key),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
-            Self::Invalid { candidate, .. } => {
-                format!("invalid:{}", hex::encode(coven::path_bytes(&candidate.path)))
+            Self::Invalid { row, .. } => {
+                format!("invalid:{}", hex::encode(coven::path_bytes(&row.folder)))
             }
         }
     }

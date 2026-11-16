@@ -85,8 +85,18 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
     -- The relative path of the image the folder's cover rules pick when no
     -- tag is read (`cover_art::folder_cover`), NULL when it holds none;
-    -- written with the files, which it is a fact of.
+    -- written with the files, which it is a fact of. A release that failed
+    -- validation leads with it in the Skipped tab.
     blank_cover_file               TEXT,
+    -- Why the scan read a release as one bae can't import, which the Skipped
+    -- tab shows (`InvalidReason`): a name two of its files show, else audio
+    -- bae can't play, else no audio bae plays. Written with the release's
+    -- files, which it is a fact of; NULL for a release of any other kind.
+    invalid_reason                 TEXT CHECK (invalid_reason IN ('same_name', 'damaged_audio', 'no_valid_audio')),
+    -- The name two of its files show, for 'same_name'.
+    invalid_shared_name            TEXT,
+    -- How many of its audio files bae can't play, for 'damaged_audio'.
+    invalid_damaged_audio          INTEGER CHECK (invalid_damaged_audio > 0),
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE,
     -- A release a grouping reads as one leaves the queue with its grouping.
@@ -95,6 +105,9 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     FOREIGN KEY (grouping_key) REFERENCES release_grouping (key)
         ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
     CHECK ((kind = 'invalid') = (content_hash IS NULL)),
+    CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
+    CHECK ((invalid_reason IS 'same_name') = (invalid_shared_name IS NOT NULL)),
+    CHECK ((invalid_reason IS 'damaged_audio') = (invalid_damaged_audio IS NOT NULL)),
     CHECK ((source_kind = 'grouping') <= (grouping_key IS NOT NULL))
 ) STRICT;
 

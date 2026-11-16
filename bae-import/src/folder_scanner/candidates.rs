@@ -177,27 +177,22 @@ pub struct InvalidCandidate {
 }
 
 impl InvalidCandidate {
-    /// Why it failed validation.
+    /// Why it failed validation, which the scan stores with its files.
     pub fn reason(&self) -> InvalidReason {
         InvalidReason::of(&self.files)
     }
 
-    /// The image it would lead with if it could be imported: the one the
-    /// folder image ranking picks among its images that decode.
-    pub fn cover(&self) -> Option<&SkippedFile> {
+    /// The image it would lead with if it could be imported: the relative
+    /// path of the one the folder's cover rules pick among its images that
+    /// decode, which the scan stores with its files.
+    pub(crate) fn cover_file(&self) -> Option<String> {
         let images: Vec<ScannedFile> = self
             .files
             .iter()
             .filter(|file| file.role == ProposedRole::Image)
             .map(SkippedFile::scanned)
             .collect();
-        let cover = crate::cover_art::default_local_cover_file(&images)?;
-        self.files.iter().find(|file| file.relative_path == cover.relative_path)
-    }
-
-    /// Where its row draws [`Self::cover`] from.
-    pub fn cover_image(&self) -> Option<crate::CoverImageSource> {
-        self.cover().map(|file| crate::CoverImageSource::Local { file: file.file.clone() })
+        crate::cover_art::blank_cover_file(&images)
     }
 }
 

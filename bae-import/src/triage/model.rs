@@ -185,6 +185,35 @@ pub struct TriageRow {
     pub reading: TriageReading,
 }
 
+/// A folder that failed validation, as its row under Skipped and the pane
+/// looking into it show it: what its scan row stores, read by the screen's
+/// statement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InvalidRow {
+    /// The key it is stored and addressed under: its folder's path, or its
+    /// grouping's key.
+    pub candidate_key: crate::CandidateKey,
+    /// Its folder; for a grouping, the folder the grouping reads as one
+    /// release.
+    pub folder: std::path::PathBuf,
+    /// The folder's name as `coven::path_text` shows it.
+    pub folder_name: String,
+    /// The watched folder it was scanned from (`WatchedFolder::path`).
+    pub watched_folder_path: std::path::PathBuf,
+    /// The folder below the watched folder, as `coven::path_text` shows it.
+    pub display_path: String,
+    /// Whether it is folders a grouping reads as one, which the row offers
+    /// to separate.
+    pub separable: bool,
+    /// Why it failed validation, as its scan stored it.
+    pub reason: crate::InvalidReason,
+    /// What its tags call the release, when they name an album.
+    pub tags: Option<crate::folder_scanner::SkippedTags>,
+    /// The image it leads with: the one the folder's cover rules pick among
+    /// its images that decode.
+    pub cover: Option<crate::CoverImageSource>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,

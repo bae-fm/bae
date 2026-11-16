@@ -77,29 +77,28 @@ impl crate::types::BridgeFolderCandidate {
 }
 
 impl crate::types::BridgeInvalidCandidate {
-    pub(crate) fn from_core(candidate: bae_import::InvalidCandidate) -> Self {
-        let candidate_key = candidate.key();
-        let reason = crate::types::BridgeInvalidReason::from_core(candidate.reason());
-        let cover = candidate.cover_image().map(crate::types::BridgeCoverImageSource::from_core);
-        let bae_import::InvalidCandidate {
-            path,
-            name,
+    pub(crate) fn from_core(row: bae_import::triage::InvalidRow) -> Self {
+        let bae_import::triage::InvalidRow {
+            candidate_key,
+            folder,
+            folder_name,
             watched_folder_path,
-            relative_folder,
-            grouping,
-            files: _,
+            display_path,
+            separable,
+            reason,
             tags,
-        } = candidate;
+            cover,
+        } = row;
         crate::types::BridgeInvalidCandidate {
             candidate_key: candidate_key.into(),
-            folder_path: coven::path_bytes(&path),
-            source_folder_name: name,
+            folder_path: coven::path_bytes(&folder),
+            source_folder_name: folder_name,
             watched_folder_path: coven::path_bytes(&watched_folder_path),
-            display_path: relative_folder.text(),
-            separable: grouping.is_some(),
-            reason,
+            display_path,
+            separable,
+            reason: crate::types::BridgeInvalidReason::from_core(reason),
             tags: tags.map(crate::types::BridgeSkippedTags::from_core),
-            cover,
+            cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
         }
     }
 }
@@ -479,9 +478,9 @@ impl crate::types::BridgeImportListItem {
                 row: crate::types::BridgeTriageRow::from_core(row, live),
                 header_key,
             },
-            bae_import::ImportListItem::Invalid { candidate } => Self::Invalid {
+            bae_import::ImportListItem::Invalid { row } => Self::Invalid {
                 stable_key,
-                invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(row),
             },
         }
     }

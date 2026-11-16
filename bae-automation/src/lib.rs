@@ -9,7 +9,7 @@ use bae_catalogs::search::MetadataResult;
 use bae_catalogs::SearchQuery;
 use bae_identify::release_group::ReleaseGroup;
 use bae_identify::PressingLink;
-use bae_import::folder_scanner::InvalidCandidate;
+use bae_import::triage::InvalidRow;
 use bae_import::{
     CandidateEditField, CandidateImportStatus, CandidateKey, CandidateRuntimeSnapshot,
     CoverSelection, GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight,

@@ -7,7 +7,9 @@
 use super::columns::*;
 use super::*;
 use crate::cue_sheet::CueSheet;
-use crate::folder_scanner::{CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ScanItem};
+use crate::folder_scanner::{
+    CandidateFile, FileRole, FolderCandidate, InvalidCandidate, InvalidReason, ScanItem,
+};
 use crate::CandidateKey;
 
 /// Remove the entry at `key`: its candidate leaves the scan, and its
@@ -68,7 +70,10 @@ const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE
      relative_folder = excluded.relative_folder, folder = excluded.folder, \
      file_root = excluded.file_root, scope = excluded.scope, \
      content_hash = excluded.content_hash, file_edit_revision = excluded.file_edit_revision, \
-     grouping_key = excluded.grouping_key, source_kind = excluded.source_kind";
+     grouping_key = excluded.grouping_key, source_kind = excluded.source_kind, \
+     blank_cover_file = excluded.blank_cover_file, invalid_reason = excluded.invalid_reason, \
+     invalid_shared_name = excluded.invalid_shared_name, \
+     invalid_damaged_audio = excluded.invalid_damaged_audio";
 
 /// Delete every scanned row, not a grouping's, stamped with another
 /// generation than `generation`, ending each candidate's identification, and
@@ -253,13 +258,20 @@ fn insert_invalid(
 ) -> Result<(), DbError> {
     let folder = coven::path_bytes(&candidate.path);
     let key = candidate.key();
+    let (reason, shared_name, damaged_audio) = match candidate.reason() {
+        InvalidReason::SameName { name } => ("same_name", Some(name), None),
+        InvalidReason::DamagedAudio { count } => ("damaged_audio", None, Some(count)),
+        InvalidReason::NoValidAudio => ("no_valid_audio", None, None),
+    };
     sql.execute(
         &format!(
             "INSERT INTO scan_candidate \
                  (watched_folder_path, path, generation, kind, name, relative_folder, folder, \
                   file_root, scope, content_hash, file_edit_revision, grouping_key, \
-                  source_kind) \
-             VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?) {OVER_STORED_ROW}"
+                  source_kind, blank_cover_file, invalid_reason, invalid_shared_name, \
+                  invalid_damaged_audio) \
+             VALUES (?, ?, ?, 'invalid', ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?, ?) \
+             {OVER_STORED_ROW}"
         ),
         params![
             coven::path_bytes(watched_folder_path),
@@ -276,6 +288,10 @@ fn insert_invalid(
             }),
             candidate.grouping,
             source_kind,
+            candidate.cover_file(),
+            reason,
+            shared_name,
+            damaged_audio,
         ],
     )?;
     for (position, file) in candidate.files.iter().enumerate() {

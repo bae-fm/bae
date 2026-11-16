@@ -147,19 +147,17 @@ fn shaped_edit(
 
 /// An unimportable folder. The import service records no runtime against one —
 /// nothing identifies or imports it — so the automation shape carries none.
-pub(crate) fn automation_candidate_from_invalid(
-    candidate: &InvalidCandidate,
-) -> AutomationCandidate {
+pub(crate) fn automation_candidate_from_invalid(row: &InvalidRow) -> AutomationCandidate {
     AutomationCandidate::Invalid {
         common: automation_candidate_common(
-            &candidate.key(),
-            vec![coven::path_text(&candidate.path)],
-            candidate.name.clone(),
-            &candidate.watched_folder_path,
+            &row.candidate_key,
+            vec![coven::path_text(&row.folder)],
+            row.folder_name.clone(),
+            &row.watched_folder_path,
             true,
             false,
         ),
-        invalid_reason: candidate.reason().to_string(),
+        invalid_reason: row.reason.to_string(),
     }
 }
 

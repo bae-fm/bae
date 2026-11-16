@@ -301,10 +301,8 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
     let expected = bae_import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
     wait_for_tab(&f, "the folder under Skipped", bae_import::TriageTab::Skipped, |snapshot| {
         snapshot.windows.iter().flat_map(|window| &window.rows).any(|item| match item {
-            bae_import::ImportListItem::Invalid { candidate, .. } => {
-                candidate.path == album
-                    && candidate.reason() == expected
-                    && candidate.files.len() == 2
+            bae_import::ImportListItem::Invalid { row, .. } => {
+                row.folder == album && row.reason == expected
             }
             _ => false,
         })

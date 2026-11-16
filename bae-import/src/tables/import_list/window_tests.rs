@@ -704,24 +704,20 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
         tags: None,
     };
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables
-        .save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
-        .await
-        .unwrap();
+    tables.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid)).await.unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
 
     let list = tables.load_import_list_read(request(TriageTab::Skipped).await).await.unwrap();
-    let listed: Vec<&InvalidCandidate> = list
+    let reasons: Vec<&InvalidReason> = list
         .windows
         .iter()
         .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
-            ImportListItem::Invalid { candidate, .. } => Some(candidate),
+            ImportListItem::Invalid { row, .. } => Some(&row.reason),
             _ => None,
         })
         .collect();
-    assert_eq!(listed, [&invalid]);
-    assert_eq!(listed[0].reason(), InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() });
+    assert_eq!(reasons, [&InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() }]);
 }
 
 /// A Done row reads the library release imported from the folder's files —

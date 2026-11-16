@@ -413,7 +413,7 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
             artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
         })
     );
-    assert_eq!(invalid.cover().map(|file| file.relative_path.as_str()), Some("front.jpg"));
+    assert_eq!(invalid.cover_file().as_deref(), Some("front.jpg"));
 }
 
 /// A skipped folder's tags name the release as a draft read from them would:

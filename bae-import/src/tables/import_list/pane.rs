@@ -392,20 +392,14 @@ impl ImportTables {
         self.store.subscribe_reconfigurable(initial, |key, sql| match key {
             None => Ok(None),
             Some(key) => {
-                let invalid: bool = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM scan_candidate \
-                                        WHERE path = ? AND kind = 'invalid')",
-                    [key],
-                    |row| row.get(0),
-                )?;
-                if !invalid {
+                let Some(row) = folder_scans::load_invalid_row(&sql, key)? else {
                     return Ok(None);
-                }
+                };
                 let stored =
                     folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)?;
                 Ok(match stored.map(|(_, stored)| stored.item) {
                     Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
-                        Some(crate::InvalidCandidateDetail::of(candidate))
+                        Some(crate::InvalidCandidateDetail::of(row, &candidate.files))
                     }
                     _ => None,
                 })

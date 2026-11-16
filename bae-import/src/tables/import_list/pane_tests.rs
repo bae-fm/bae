@@ -494,10 +494,11 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     assert!(live.next_inline().await.expect("the query stays open").result.unwrap().is_none());
 }
 
-/// The list shows a folder that failed validation under Skipped as what the
-/// scan read of it: its files, what its tags call it and its cover image.
-/// The list selects it like any row, and the pane reads it whole. A scan that
-/// finds it again finds it unchanged.
+/// A folder that failed validation is listed under Skipped as what its scan
+/// stored of it: why it failed, what its tags call it and the image it leads
+/// with. The list selects it like any row, and the pane that looks into it
+/// reads the same row with its files. A scan that finds it again finds it
+/// unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     use crate::folder_scanner::{
@@ -554,16 +555,26 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .iter()
         .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
-            ImportListItem::Invalid { candidate } => Some(candidate.clone()),
+            ImportListItem::Invalid { row } => Some(row.clone()),
             _ => None,
         })
         .collect();
-    assert_eq!(listed, std::slice::from_ref(&invalid));
+    let row = crate::triage::InvalidRow {
+        candidate_key: key.clone(),
+        folder: folder.clone(),
+        folder_name: "Half Copied".to_string(),
+        watched_folder_path: root.clone(),
+        display_path: "Half Copied".to_string(),
+        separable: false,
+        reason: crate::InvalidReason::DamagedAudio { count: 1 },
+        tags: Some(SkippedTags {
+            album_title: "Album Title".to_string(),
+            artist: Some(bae_types::credits::CreditLine::of_name("Artist Name")),
+        }),
+        cover: Some(crate::CoverImageSource::Local { file: version("front.jpg", 4) }),
+    };
+    assert_eq!(listed, [row.clone()]);
     assert_eq!(list.selection.count, 1, "the folder is selected like any row");
-    assert_eq!(
-        invalid.cover_image(),
-        Some(crate::CoverImageSource::Local { file: version("front.jpg", 4) })
-    );
 
     let mut detail = tables.subscribe_invalid_candidate(Some(key.clone()));
     let read = detail
@@ -573,7 +584,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .result
         .unwrap()
         .expect("the key names a folder that failed validation");
-    assert_eq!(read.candidate, invalid);
+    assert_eq!(read.candidate, row);
     assert_eq!(
         read.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
         ["front.jpg"]

@@ -412,8 +412,8 @@ fn invalid_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
             release.name,
         ));
     };
-    let candidate = invalid.candidate(&release.key, release.name, release.watched_folder_path)?;
-    Ok(ImportListItem::Invalid { candidate })
+    let row = invalid.row(release.key, release.name, release.watched_folder_path)?;
+    Ok(ImportListItem::Invalid { row })
 }
 
 /// A candidate's row: its placement and the keyed rows beside it, listed

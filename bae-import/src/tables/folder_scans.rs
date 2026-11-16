@@ -26,6 +26,7 @@ mod cover_choice;
 mod dates;
 mod file_decisions;
 mod file_reads;
+mod invalid;
 mod progress;
 pub(super) mod read;
 mod reading;
@@ -45,9 +46,9 @@ pub(super) use self::cover_choice::{
     candidate_cover_choice_on, cover_refusal, cover_version_joins, CoverVersionColumns,
     COVER_VERSION_COLUMNS,
 };
+pub(super) use self::invalid::{invalid_columns_sql, load_invalid_row, InvalidColumns};
 pub(super) use self::read::{
-    invalid_columns_sql, load_item_by_key, require_current_candidate, InvalidColumns, RowSources,
-    StoredScanItem,
+    load_item_by_key, require_current_candidate, RowSources, StoredScanItem,
 };
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
@@ -483,6 +484,16 @@ impl ImportTables {
                     .transpose()
             })
             .await
+    }
+
+    /// The folder that failed validation stored at `key`, as its row shows
+    /// it; `None` when no such folder is stored there.
+    pub async fn load_invalid_row(
+        &self,
+        key: &CandidateKey,
+    ) -> Result<Option<crate::triage::InvalidRow>, DbError> {
+        let key = key.clone();
+        self.store.read(move |sql| invalid::load_invalid_row(&sql, &key)).await
     }
 }
 

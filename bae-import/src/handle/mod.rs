@@ -1,6 +1,4 @@
-use crate::folder_scanner::{
-    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
-};
+use crate::folder_scanner::{FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey};
 use crate::types::{ImportCommand, ImportProgress};
 use crate::watched_folder::WatchedFolder;
 use bae_util::worker_thread::WorkerThread;

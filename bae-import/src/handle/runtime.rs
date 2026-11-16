@@ -91,8 +91,13 @@ impl ImportServiceHandle {
             Some(crate::folder_scanner::ScanItem::Discovered(candidate)) => {
                 Some((candidate, false))
             }
-            Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
-                return Ok(Some(ImportCandidateSnapshot::Invalid(candidate)))
+            Some(crate::folder_scanner::ScanItem::Invalid(_)) => {
+                return Ok(self
+                    .services
+                    .tables
+                    .load_invalid_row(key)
+                    .await?
+                    .map(ImportCandidateSnapshot::Invalid));
             }
             None => None,
         };
@@ -124,7 +129,7 @@ pub enum ImportCandidateSnapshot {
         skipped: bool,
         is_added: bool,
     },
-    Invalid(InvalidCandidate),
+    Invalid(crate::triage::InvalidRow),
     /// A key with runtime but no scanned folder — a library release being
     /// re-identified.
     Runtime {

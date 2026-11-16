@@ -6,7 +6,7 @@
 //! joining separate lists.
 
 use crate::folder_scanner::{
-    AudioDamage, InvalidCandidate, ProposedRole, SheetDisc, SheetReferenceOptions,
+    AudioDamage, ProposedRole, SheetDisc, SheetReferenceOptions, SkippedFile,
 };
 use crate::types::RawTrackEdit;
 
@@ -245,7 +245,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 /// A folder that failed validation, as the pane looking into it reads it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InvalidCandidateDetail {
-    pub candidate: InvalidCandidate,
+    pub candidate: crate::triage::InvalidRow,
     /// The images that decode, in name order, as the gallery shows them.
     pub images: Vec<MappingImage>,
     /// Every other file, in name order, each with what it is — the damaged
@@ -254,10 +254,10 @@ pub struct InvalidCandidateDetail {
 }
 
 impl InvalidCandidateDetail {
-    pub fn of(candidate: InvalidCandidate) -> Self {
+    pub(crate) fn of(candidate: crate::triage::InvalidRow, skipped_files: &[SkippedFile]) -> Self {
         let mut images = Vec::new();
         let mut files = Vec::new();
-        for skipped in &candidate.files {
+        for skipped in skipped_files {
             let entry = |role| {
                 let scanned = skipped.scanned();
                 MappingFile {

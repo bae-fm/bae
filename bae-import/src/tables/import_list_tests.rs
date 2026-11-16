@@ -374,9 +374,7 @@ pub(crate) fn items_sequence(items: &[ImportListItem]) -> Vec<String> {
         .map(|item| match item {
             ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
             ImportListItem::Candidate { row, .. } => format!("candidate {}", row.display_path),
-            ImportListItem::Invalid { candidate, .. } => {
-                format!("invalid {}", candidate.relative_folder.text())
-            }
+            ImportListItem::Invalid { row, .. } => format!("invalid {}", row.display_path),
         })
         .collect()
 }

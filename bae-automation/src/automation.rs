@@ -113,8 +113,8 @@ impl Automation {
             for item in items {
                 let candidate_key = match item {
                     ImportListItem::Candidate { row, .. } => row.candidate_key,
-                    ImportListItem::Invalid { candidate, .. } => {
-                        candidates.push(automation_candidate_from_invalid(&candidate));
+                    ImportListItem::Invalid { row, .. } => {
+                        candidates.push(automation_candidate_from_invalid(&row));
                         continue;
                     }
                     ImportListItem::GroupHeader { .. } => continue,
@@ -156,10 +156,10 @@ impl Automation {
             return automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
                 .await;
         }
-        if let Some(bae_import::ImportCandidateSnapshot::Invalid(candidate)) =
+        if let Some(bae_import::ImportCandidateSnapshot::Invalid(row)) =
             self.services.import_get_candidate(&key).await.map_err(AutomationError::from)?
         {
-            return Ok(automation_candidate_from_invalid(&candidate));
+            return Ok(automation_candidate_from_invalid(&row));
         }
         Err(AutomationError::not_found(format!("candidate '{candidate_key}' not found")))
     }

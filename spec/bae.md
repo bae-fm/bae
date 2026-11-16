@@ -992,7 +992,9 @@ different things about one file fails the scan.
   The scan reads every file before judging it, so it stores each file of the
   folder with what it made of it — each damaged track with why: it is empty,
   or holds no audio bae can read — and the album title and artist its
-  playable tracks' tags agree on, read as a draft's are.
+  playable tracks' tags agree on, read as a draft's are. It stores with
+  them why the folder can't be imported and the image it leads with, which
+  its row and pane read back as stored.
 - **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
   `Café.flac` from an old rip), is read and imported like any other. Its name
   in the release, which the library syncs and every surface shows, is its
@@ -6616,7 +6618,7 @@ reads it again once.
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
 | `folder_scan_held`, `folder_scan_alert_shown` | what the folder scan coordinator holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why it can't be imported (also written with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
