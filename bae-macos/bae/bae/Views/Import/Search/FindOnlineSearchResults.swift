@@ -7,7 +7,6 @@ import SwiftUI
 struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
     let isImporting: Bool
-    let libraryStatuses: [String: BridgeLibraryStatus]
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onRetry: () -> Void
@@ -44,7 +43,6 @@ struct FindOnlineSearchResults: View {
         ReleaseGroupListView(
             groups: groups,
             isImporting: isImporting,
-            libraryStatuses: libraryStatuses,
             loadingPick: loadingPick,
             releaseSelectionFailure: releaseSelectionFailure,
             onSelect: onSelect,

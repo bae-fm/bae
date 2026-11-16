@@ -188,6 +188,9 @@ pub struct BridgePressing {
     /// Whether the row holds the release that identification picked on its
     /// own, which bae reads in full before it links the candidate to it.
     pub pick_being_read: bool,
+    /// Whether the library holds the lead record's release as a pressing, as
+    /// the statement that read the row found: the row shows it dimmed.
+    pub in_library: bool,
 }
 
 /// A label line of a pressing with each catalog number as the records state

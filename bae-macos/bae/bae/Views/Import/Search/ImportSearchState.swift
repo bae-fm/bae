@@ -17,7 +17,6 @@ struct ImportSearchState {
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let isImporting: Bool
-    let libraryStatuses: [String: BridgeLibraryStatus]
     let signals: Signals?
     /// Why the folder waits on the person, while it does: the page opens with
     /// the sentence saying so. `nil` otherwise, and for a library release

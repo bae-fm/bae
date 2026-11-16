@@ -245,15 +245,6 @@ impl AppHandle {
             self.runtime.clone(),
         )
     }
-
-    /// Whether the releases an import pane offers are already in the
-    /// library, for as long as the pane is open; it starts with no checks.
-    pub fn subscribe_library_statuses(&self) -> Arc<crate::LibraryStatusSubscription> {
-        crate::screens::library_statuses(
-            self.services.subscribe_library_statuses(),
-            self.runtime.clone(),
-        )
-    }
 }
 
 // Gated on the target, as the export queue the inspector's transfers include

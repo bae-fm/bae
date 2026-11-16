@@ -643,3 +643,37 @@ pub(crate) async fn assert_cards_are_the_rules_cards(
         )
     );
 }
+
+/// A row says the library holds it when the library holds its lead release
+/// as a pressing, and stops once the library deletes that release.
+#[tokio::test]
+async fn a_row_says_whether_the_library_holds_its_release() {
+    let (tables, key, _tmp) = scanned().await;
+    let records = bae_records::test_fixtures::test_records(&tables.store);
+    let release = bae_util::test_ids::test_uuid("release");
+    let album = bae_util::test_ids::test_uuid("album");
+    bae_records::test_fixtures::album_with_releases(&records, &album, "Album", &[&release]).await;
+    let held = MetadataRef::new(Catalog::MusicBrainz, "mb-1");
+    let record = bae_catalogs::records::ReleaseRecord::new(&held, None);
+    records.insert_release_records(&release, &[record]).await.unwrap();
+    let run = started_search(&tables, &key).await;
+    let found = ["mb-1", "mb-2"].map(|id| search_result(LookupCatalog::MusicBrainz, id));
+    assert!(land(&tables, run, LookupCatalog::MusicBrainz, Ok(found.to_vec())).await);
+    let rows = |search: CandidateSearch| {
+        let pressings = search.groups.iter().flat_map(|group| group.pressings().cloned());
+        let mut rows: Vec<_> =
+            pressings.map(|row| (row.lead().release_id.clone(), row.in_library())).collect();
+        rows.sort();
+        rows
+    };
+    let mark = |id: &str, held| (id.to_string(), held);
+    assert_eq!(
+        rows(search_of(&tables, &key).await.unwrap()),
+        [mark("mb-1", true), mark("mb-2", false)]
+    );
+    bae_records::test_fixtures::delete_release(&records, &release).await;
+    assert_eq!(
+        rows(search_of(&tables, &key).await.unwrap()),
+        [mark("mb-1", false), mark("mb-2", false)]
+    );
+}

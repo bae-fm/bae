@@ -201,10 +201,7 @@ class ImportStore {
         key: Data,
         detail: BridgeImportCandidateDetail
     ) {
-        var incoming = Candidate(detail: detail)
-        if let existing = selectedCandidates[key] {
-            incoming = incoming.withSessionState(from: existing)
-        }
+        let incoming = Candidate(detail: detail)
         if let pick = picks[key],
             pick.audioIdentity != incoming.files.fileMetadataIdentity
         {
@@ -409,59 +406,6 @@ extension ImportStore {
                 )
                 await writer.reportFailure(error)
             }
-        }
-    }
-
-    /// Watch exactly the releases `desired` names for library membership,
-    /// through the candidate's one library-status read, opened on first use.
-    /// The caller owns which releases those are — a search run's, as its
-    /// providers land.
-    @MainActor
-    func refreshLibraryStatusSubscriptions(
-        importer: Importer,
-        key: Data,
-        desired: Set<BridgeLibraryCheck>
-    ) {
-        guard let candidate = candidate(forKey: key) else { return }
-        let observation: LibraryStatusObservation
-        if let existing = candidate.libraryStatusObservation {
-            observation = existing
-        }
-        else {
-            observation = LibraryStatusObservation(
-                subscription: importer.subscribeLibraryStatuses()
-            )
-            mutateCandidate(forKey: key) {
-                $0.libraryStatusObservation = observation
-            }
-            observation.start(
-                onValue: { [weak self, weak observation] statuses in
-                    guard let observation,
-                        self?.candidate(forKey: key)?
-                            .libraryStatusObservation === observation
-                    else { return }
-                    self?
-                        .mutateCandidate(forKey: key) {
-                            $0.libraryStatuses = statuses
-                        }
-                },
-                onError: { [weak self, weak observation] error in
-                    guard let observation,
-                        self?.candidate(forKey: key)?
-                            .libraryStatusObservation === observation
-                    else { return }
-                    self?.reportFailure(error)
-                }
-            )
-        }
-        do {
-            try observation.setChecks(desired)
-        }
-        catch {
-            importStoreLogger.error(
-                "library status checks for \(bridgeCandidateKeyText(candidateKey: key)) were not requested: \(String(describing: error))"
-            )
-            reportFailure(error)
         }
     }
 }

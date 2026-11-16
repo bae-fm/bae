@@ -23,7 +23,6 @@ struct FindOnlineSearchingTests {
             FindOnlineSearchResults(
                 search: search,
                 isImporting: false,
-                libraryStatuses: [:],
                 loadingPick: nil,
                 onRetry: {},
                 onSelect: { _ in }

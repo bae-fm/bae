@@ -22,7 +22,6 @@ struct PickStepLineTests {
             ImportSearchResultRow(
                 pressing: pressing,
                 isImporting: false,
-                libraryStatus: nil,
                 isSelected: false,
                 loading: .followed(
                     FixedCatalogApply(

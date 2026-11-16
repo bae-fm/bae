@@ -4,21 +4,6 @@ import Testing
 
 @testable import bae
 
-private func makeStatus(albumId: String) -> BridgeLibraryStatus {
-    BridgeLibraryStatus(
-        releaseId: "unused",
-        releaseInLibrary: true,
-        albumInLibrary: true,
-        albums: [
-            BridgeLibraryAlbumMatch(
-                albumId: albumId,
-                albumTitle: "Album Title",
-                holdsRelease: true
-            )
-        ]
-    )
-}
-
 // MARK: - Bridge snapshot builders
 
 /// Hand-built bridge records for the snapshot reducers.
@@ -190,17 +175,16 @@ struct ImportStoreCandidateDetailTests {
     }
 
     @MainActor
-    @Test("a re-read keeps the editor state on its key")
-    func keepsEditorState() throws {
+    @Test("a re-read replaces the candidate with what the read says")
+    func reReadReplacesCandidate() throws {
         let store = ImportStore()
-        var existing = Candidate(
+        let existing = Candidate(
             detail: detail(
                 folderPath: Data("/w1/a".utf8),
                 watchedFolderPath: Data("/w1".utf8),
                 name: "A"
             )
         )
-        existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.selectedCandidates[Data("/w1/a".utf8)] = existing
 
         // Same key, renamed and skipped, and the pane's stored session moved on.
@@ -216,8 +200,6 @@ struct ImportStoreCandidateDetailTests {
         )
 
         let merged = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
-        // The pane's in-memory work survives the re-read.
-        #expect(merged.libraryStatuses["rel-1"] != nil)
         // The pane's session is the candidate's, so it comes with the read.
         #expect(merged.metadataPresentation == .findOnline)
         // Scan fields come from the incoming read.

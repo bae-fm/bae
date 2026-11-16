@@ -40,6 +40,9 @@ struct Pressing: Equatable, Identifiable {
     /// Whether the row holds the release that identification picked on its
     /// own, which core reads in full before it links the candidate to it.
     let pickBeingRead: Bool
+    /// Whether the library holds the lead release, as core's statement read
+    /// it: the row shows dimmed.
+    let inLibrary: Bool
 
     /// Where it was released and what it is made of, as one line of text:
     /// "2×CD · Japan".
@@ -73,5 +76,6 @@ struct Pressing: Equatable, Identifiable {
         detailsText = PressingText.line(bridge.details)
         chosen = bridge.chosen
         pickBeingRead = bridge.pickBeingRead
+        inLibrary = bridge.inLibrary
     }
 }

@@ -223,7 +223,6 @@ extension ReleaseSelectionFailureTests {
         ImportSearchResultRow(
             pressing: pressing,
             isImporting: false,
-            libraryStatus: nil,
             isSelected: false,
             failure: failure,
             onRetryUnread: onRetryUnread,

@@ -324,6 +324,7 @@ impl BridgePressing {
             pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
             sources: pressing.sources().into_iter().map(BridgeLookupCatalog::from_core).collect(),
             details: crate::types::bridge_pressing_details(facts),
+            in_library: pressing.in_library(),
             releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),
             chosen: choice.chosen,
             pick_being_read: choice.pick_being_read,

@@ -322,22 +322,6 @@ impl AppServices {
         })
     }
 
-    /// The library membership of the releases an import pane offers, as one
-    /// live query whose checks move in place as the pane's offers change; it
-    /// starts with none.
-    pub fn subscribe_library_statuses(&self) -> bae_library::LiveLibraryStatus {
-        let manager = &self.inner.manager;
-        bae_library::LiveLibraryStatus::new(
-            manager.until_closed(manager.subscribe_library_statuses(Default::default())),
-            |read, statuses| {
-                Some(bae_library::LibraryStatusSnapshot {
-                    statuses,
-                    request_revision: read.revision,
-                })
-            },
-        )
-    }
-
     pub fn subscribe_playback_progress(&self) -> bae_playback::PlaybackProgressFeed {
         self.inner.playback.subscribe_progress()
     }

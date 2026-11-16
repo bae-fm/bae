@@ -43,7 +43,8 @@ extension BridgePressing {
         documentFailure: BridgeLookupFailure? = nil,
         pick: BridgePressingLink,
         chosen: Bool = false,
-        pickBeingRead: Bool = false
+        pickBeingRead: Bool = false,
+        inLibrary: Bool = false
     ) {
         let lead = releases.first
         let facts = lead?.facts ?? PreviewData.pressingFacts()
@@ -84,7 +85,8 @@ extension BridgePressing {
                 ? [] : [BridgeTermsStatement(terms: media, catalogs: [])],
             details: bridgePressingDetails(facts: facts),
             chosen: chosen,
-            pickBeingRead: pickBeingRead
+            pickBeingRead: pickBeingRead,
+            inLibrary: inLibrary
         )
     }
 }

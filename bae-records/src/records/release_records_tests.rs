@@ -7,9 +7,8 @@ use crate::{identity, DbAlbumArtist};
 use crate::{DbAlbum, DbArtist, DbRelease, DbTrack, Records};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
+use bae_store::test_fixtures::exec_batch;
 use bae_store::test_fixtures::temp_db;
-use bae_store::test_fixtures::{exec, exec_batch};
-use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use tempfile::TempDir;
 
@@ -563,84 +562,6 @@ async fn a_record_takes_its_id_from_its_fact() {
     assert_eq!(
         ids(&db, "SELECT id FROM release_records").await,
         vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],
-    );
-}
-
-/// The statuses of every offered release come from one subscription: its
-/// checks move in place as the offers change, and a record write wakes the
-/// one read that answers them all.
-#[tokio::test]
-async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
-    let (db, _temp) = live_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let records = crate::test_fixtures::test_records(&db);
-    let offered = LibraryCheck {
-        release_id: "source-release-1".to_string(),
-        source: Catalog::MusicBrainz,
-        source_group_id: Some("source-group-1".to_string()),
-    };
-    let other = LibraryCheck {
-        release_id: "source-release-2".to_string(),
-        source: Catalog::MusicBrainz,
-        source_group_id: None,
-    };
-    let mut live = records.subscribe_library_statuses(LibraryChecks::default());
-    let requests = live.requests();
-    assert!(
-        live.next_inline().await.expect("the query stays open").result.unwrap().is_empty(),
-        "no offers check nothing"
-    );
-
-    requests.set([offered.clone(), other.clone()].into_iter().collect()).unwrap();
-    let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.len(), 2);
-    assert!(initial.iter().all(|status| !status.album_in_library()));
-
-    exec(
-        &db,
-        "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1')",
-        &[IDENTITY_ID, RELEASE_ID],
-    )
-    .await;
-    let updated = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("identity write wakes the library statuses")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let status = |statuses: &[LibraryStatus], release_id: &str| {
-        statuses
-            .iter()
-            .find(|status| status.release_id == release_id)
-            .cloned()
-            .expect("a status per check")
-    };
-    let held = status(&updated, "source-release-1");
-    assert!(held.release_in_library());
-    assert!(held.album_in_library());
-    assert_eq!(held.albums[0].album_id, ALBUM_ID);
-    assert!(!status(&updated, "source-release-2").album_in_library());
-
-    exec(&db,
-        "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL WHERE id = ?1",
-        &[IDENTITY_ID],
-    ).await;
-    let album_only = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("identity kind change wakes the library statuses")
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    let held = status(&album_only, "source-release-1");
-    assert!(!held.release_in_library());
-    assert!(held.album_in_library());
-
-    requests.set([other].into_iter().collect()).unwrap();
-    let narrowed = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(
-        narrowed.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
-        vec!["source-release-2"],
-        "a release no longer offered is no longer checked"
     );
 }
 

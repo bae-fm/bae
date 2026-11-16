@@ -77,31 +77,11 @@ extension PreviewData {
         trackCount: 10
     )
 
-    private static let importTabAlreadyInLibraryStatus =
-        BridgeLibraryStatus(
-            releaseId: releaseDetailBridge.releaseId,
-            releaseInLibrary: true,
-            albumInLibrary: true,
-            albums: [
-                BridgeLibraryAlbumMatch(
-                    albumId: "album-in-library",
-                    albumTitle: releaseDetailBridge.title,
-                    holdsRelease: true
-                )
-            ]
-        )
-
-    static let importTabAlreadyInLibraryCandidate: Candidate = {
-        var candidate = importTabFolder(
-            path: "Album Title Eight - Reissue",
-            name: "Album Title Eight - Reissue",
-            trackCount: 14
-        )
-        candidate.libraryStatuses = [
-            releaseDetailBridge.releaseId: importTabAlreadyInLibraryStatus
-        ]
-        return candidate
-    }()
+    static let importTabAlreadyInLibraryCandidate = importTabFolder(
+        path: "Album Title Eight - Reissue",
+        name: "Album Title Eight - Reissue",
+        trackCount: 14
+    )
 
     static let importTabNoMatchCandidate = importTabFolder(
         path: "Unmatched Folder",

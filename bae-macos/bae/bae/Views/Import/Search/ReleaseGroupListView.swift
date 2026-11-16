@@ -6,7 +6,6 @@ import SwiftUI
 struct ReleaseGroupListView<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
-    let libraryStatuses: [String: BridgeLibraryStatus]
     /// What the candidate's own text agrees with about each release, keyed by
     /// release id; empty for typed-search results.
     var agreements: [String: BridgeAgreements] = [:]
@@ -22,7 +21,6 @@ struct ReleaseGroupListView<Trailing: View>: View {
             ReleaseGroupListContent(
                 groups: groups,
                 isImporting: isImporting,
-                libraryStatuses: libraryStatuses,
                 agreements: agreements,
                 loadingPick: loadingPick,
                 releaseSelectionFailure: releaseSelectionFailure,
@@ -40,7 +38,6 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     /// Whether the rows a run's agreement set aside show on their cards.
     var showsNarrowedOut = false
     let isImporting: Bool
-    let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
@@ -58,7 +55,6 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     group: group,
                     showsNarrowedOut: showsNarrowedOut,
                     isImporting: isImporting,
-                    libraryStatuses: libraryStatuses,
                     agreements: agreements,
                     loadingPick: loadingPick,
                     releaseSelectionFailure: releaseSelectionFailure,
@@ -122,7 +118,6 @@ struct ReleaseGroupSection: View {
     /// ones.
     var showsNarrowedOut = false
     let isImporting: Bool
-    let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
     /// The pick the person made that core is reading right now, if any.
     var loadingPick: LoadingPick?
@@ -176,7 +171,6 @@ struct ReleaseGroupSection: View {
                         ImportSearchResultRow(
                             pressing: pressing,
                             isImporting: isImporting,
-                            libraryStatus: libraryStatuses[pressing.id],
                             agreements: agreements[pressing.id],
                             isSelected: pressing.chosen,
                             loading: loading(pressing),

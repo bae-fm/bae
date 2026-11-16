@@ -267,7 +267,6 @@ struct FindOnlineAutomaticSection: View {
             groups: state.identifiedGroups,
             showsNarrowedOut: narrowedOutExpanded,
             isImporting: state.isImporting,
-            libraryStatuses: state.libraryStatuses,
             agreements: state.identifiedAgreements,
             loadingPick: state.loadingPick,
             releaseSelectionFailure: state.releaseSelectionFailure,

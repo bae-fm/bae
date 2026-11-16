@@ -39,56 +39,6 @@ enum SearchTab: Hashable {
     case barcode
 }
 
-/// One candidate's live read of library membership for the releases its pane
-/// offers: the subscription, pulled through `ScreenSubscription`, and the
-/// revision of the newest checks, so a value answering checks since replaced
-/// is not shown. With no subscription, a shot's or a test's, it reads
-/// nothing.
-@MainActor
-final class LibraryStatusObservation: Equatable {
-    private let subscription: LibraryStatusSubscription?
-    private var pulls: ScreenSubscription<LibraryStatusSubscription>?
-    private var requested: UInt64 = 0
-
-    init(subscription: LibraryStatusSubscription?) {
-        self.subscription = subscription
-    }
-
-    /// Apply each value answering the newest checks, until the subscription
-    /// ends.
-    func start(
-        onValue: @escaping @MainActor ([String: BridgeLibraryStatus]) -> Void,
-        onError: @escaping @MainActor (any Error) -> Void
-    ) {
-        guard let subscription else { return }
-        pulls = ScreenSubscription(
-            subscription,
-            onValue: { [weak self] snapshot in
-                guard let self, snapshot.requestRevision >= self.requested
-                else { return }
-                onValue(snapshot.statuses)
-            },
-            onError: onError
-        )
-    }
-
-    func setChecks(_ checks: Set<BridgeLibraryCheck>) throws {
-        guard let subscription else { return }
-        requested = try subscription.setChecks(
-            checks: checks.sorted {
-                ($0.releaseId, "\($0.source)") < ($1.releaseId, "\($1.source)")
-            }
-        )
-    }
-
-    nonisolated static func == (
-        lhs: LibraryStatusObservation,
-        rhs: LibraryStatusObservation
-    ) -> Bool {
-        lhs === rhs
-    }
-}
-
 enum CandidateMetadataPresentation: Equatable {
     case draft
     case findOnline
@@ -330,8 +280,6 @@ struct Candidate: Equatable, Identifiable {
     /// What is running for this candidate right now and the commands it
     /// offers with it, read with its detail. `nil` for a re-identify session.
     var live: BridgeCandidateLiveState?
-    var libraryStatuses: [String: BridgeLibraryStatus] = [:]
-    var libraryStatusObservation: LibraryStatusObservation?
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
@@ -391,17 +339,6 @@ struct Candidate: Equatable, Identifiable {
         if case .drafting(let draft) = detail.stage {
             session = CandidateSessionState(bridge: draft.session)
         }
-    }
-
-    /// This row over `existing`'s session state: the list re-read the folder,
-    /// and nothing about the user's work on it changed. A pick in flight is
-    /// not here — the store holds that under the candidate's key, where no
-    /// selection change reaches it.
-    func withSessionState(from existing: Candidate) -> Candidate {
-        var copy = self
-        copy.libraryStatuses = existing.libraryStatuses
-        copy.libraryStatusObservation = existing.libraryStatusObservation
-        return copy
     }
 
     /// Construct a re-identify candidate. The release already lives in the

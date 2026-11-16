@@ -191,7 +191,6 @@ struct NarrowedOutDisclosureTests {
                 group: group,
                 showsNarrowedOut: showsNarrowedOut,
                 isImporting: false,
-                libraryStatuses: [:],
                 onSelect: { _ in }
             )
             .shownSections
@@ -503,7 +502,6 @@ struct FindOnlineReadingPickTests {
         ReleaseGroupSection(
             group: group,
             isImporting: false,
-            libraryStatuses: [:],
             onSelect: { _ in }
         )
     }
@@ -572,7 +570,6 @@ struct PickedRowTests {
         ReleaseGroupSection(
             group: PreviewData.searchGroupExact,
             isImporting: false,
-            libraryStatuses: [:],
             loadingPick: loadingPick,
             onSelect: { _ in }
         )
@@ -585,7 +582,6 @@ struct PickedRowTests {
         ImportSearchResultRow(
             pressing: pressing,
             isImporting: false,
-            libraryStatus: nil,
             isSelected: false,
             loading: loading,
             onSelect: { _ in }

@@ -817,7 +817,6 @@ extension PreviewData {
         identifyState: IdentifyState,
         search: BridgeCandidateSearch? = nil,
         signals: Signals? = nil,
-        libraryStatuses: [String: BridgeLibraryStatus] = [:],
         loadingPick: LoadingPick? = nil,
         needsYou: BridgeNeedsYouReason? = nil,
     ) -> ImportSearchState {
@@ -827,7 +826,6 @@ extension PreviewData {
             search: search,
             loadingPick: loadingPick,
             isImporting: false,
-            libraryStatuses: libraryStatuses,
             signals: signals,
             needsYou: needsYou,
         )

@@ -110,17 +110,6 @@ impl LibraryManager {
         Ok(())
     }
 
-    pub fn subscribe_library_statuses(
-        &self,
-        initial: bae_records::LibraryChecks,
-    ) -> coven::ReconfigurableLiveQuery<
-        bae_records::LibraryChecks,
-        Vec<bae_records::LibraryStatus>,
-        bae_store::DbError,
-    > {
-        self.records.subscribe_library_statuses(initial)
-    }
-
     /// Every file of a release — audio files, and the metadata files (cover art,
     /// CUE sheets) that no track owns. Files belong to releases, not to albums or
     /// tracks; a track reaches its audio file through its `audio_segments`.

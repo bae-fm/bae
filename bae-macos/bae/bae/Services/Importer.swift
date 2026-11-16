@@ -36,9 +36,6 @@ private struct ImportOperations: Sendable {
     /// `nil` where no bridge is behind the importer: a shot or a test.
     let subscribeCandidateRuntime:
         @Sendable (Data) -> CandidateRuntimeSubscription?
-    /// `nil` where no bridge is behind the importer: a shot or a test
-    /// that reads no library membership.
-    let subscribeLibraryStatuses: @Sendable () -> LibraryStatusSubscription?
     /// `nil` where no bridge is behind the importer: a shot or a test.
     let folderImages: @Sendable () -> FolderImagesQuery?
     let editCandidateLookupChoices:
@@ -168,7 +165,6 @@ extension ImportOperations {
             subscribeCandidateRuntime: {
                 handle.subscribeCandidateRuntime(candidateKey: $0)
             },
-            subscribeLibraryStatuses: { handle.subscribeLibraryStatuses() },
             folderImages: {
                 FolderImagesQuery(handle.subscribeFolderImages())
             },
@@ -357,8 +353,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (Data) -> CandidateRuntimeSubscription? = {
                 _ in nil
             },
-        subscribeLibraryStatuses:
-            @escaping @Sendable () -> LibraryStatusSubscription? = { nil },
         folderImages: @escaping @Sendable () -> FolderImagesQuery? = { nil },
         editCandidateLookupChoices:
             @escaping @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
@@ -456,7 +450,6 @@ final class Importer: Sendable, Observable {
             startCandidateSearch: startCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
             subscribeCandidateRuntime: subscribeCandidateRuntime,
-            subscribeLibraryStatuses: subscribeLibraryStatuses,
             folderImages: folderImages,
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
@@ -633,12 +626,6 @@ extension Importer {
     /// Re-ask only the providers whose part of the search failed.
     func retryCandidateSearch(_ candidateKey: Data) async throws {
         try await operations.retryCandidateSearch(candidateKey)
-    }
-
-    /// Open one live read of library membership for an import pane's
-    /// offers; `nil` where no bridge is behind the importer.
-    func subscribeLibraryStatuses() -> LibraryStatusSubscription? {
-        operations.subscribeLibraryStatuses()
     }
 
     /// Open one live read of the images a candidate folder's lightbox shows;

@@ -72,16 +72,6 @@ extension ImportSearchFlow {
         // The pane's own view state — the form's focus, the set-aside rows —
         // is this candidate's: another candidate's pane starts on its own.
         .id(key)
-        // Every release the pane is offering is watched for library membership
-        // while it is open: each provider lands its own part, so the set they
-        // amount to changes as the run advances.
-        .task(id: releaseStatusKeys(state: state)) {
-            importStore.refreshLibraryStatusSubscriptions(
-                importer: services.importer,
-                key: key,
-                desired: releaseStatusKeys(state: state)
-            )
-        }
     }
 
     /// What the pane is built from: the candidate's input, its state, and the
@@ -282,30 +272,6 @@ extension ImportSearchFlow {
         }
     }
 
-    /// Every release the pane offers — the identify verdict's pressings and
-    /// the typed search's — as the keys a library-membership subscription
-    /// takes. A pressing carries one release per source and a pick claims them
-    /// all, so each is separately watched.
-    @MainActor
-    static func releaseStatusKeys(
-        state: ImportSearchState
-    ) -> Set<BridgeLibraryCheck> {
-        let searched = (state.search?.groups ?? [])
-            .map(ReleaseGroup.init(bridge:))
-        return Set(
-            (state.identifiedGroups + searched)
-                .flatMap(\.pressings)
-                .flatMap(\.releases)
-                .map { release in
-                    BridgeLibraryCheck(
-                        source: release.source,
-                        releaseId: release.releaseId,
-                        sourceGroupId: release.sourceGroupId
-                    )
-                }
-        )
-    }
-
     /// The pane's read-only state snapshot from the candidate and the pick the
     /// store is reading for it.
     @MainActor
@@ -327,9 +293,6 @@ extension ImportSearchFlow {
                 forKey: input.key
             ),
             isImporting: isImporting(candidate),
-            // Each offered release's library status, from the candidate's
-            // live read of them.
-            libraryStatuses: candidate.libraryStatuses,
             // The signals the run in flight last read, feeding the form's
             // suggestion pools and its scanning indicator: it knows more than
             // the last stored answer does, and for a re-identify key — which

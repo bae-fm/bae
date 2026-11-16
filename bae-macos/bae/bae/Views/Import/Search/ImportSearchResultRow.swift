@@ -9,7 +9,6 @@ struct ImportSearchResultRow: View {
 
     let pressing: Pressing
     let isImporting: Bool
-    let libraryStatus: BridgeLibraryStatus?
     /// What the candidate's own text agrees with about this pressing; `nil`
     /// for typed-search results.
     var agreements: BridgeAgreements?
@@ -24,7 +23,7 @@ struct ImportSearchResultRow: View {
     let onSelect: (Pressing) -> Void
 
     private var isInLibrary: Bool {
-        libraryStatus?.releaseInLibrary == true
+        pressing.inLibrary
     }
 
     /// Whether the row can be picked: no import is running and its pick is not

@@ -106,8 +106,10 @@ impl Records {
     }
 
     /// Check, for each candidate in `checks`, whether the library already
-    /// holds the same pressing or the same album (group). Drives the
-    /// "in library" badges shown in the identify-pipeline result lists.
+    /// holds the same pressing or the same album (group), for an automation
+    /// client that names the releases it asks about. The import pane's rows
+    /// read whether the library holds them in their own statement
+    /// ([`pressing_held_sql`]).
     ///
     /// [`library_status_sql`] says which albums each check finds.
     pub async fn check_releases_in_library(
@@ -116,21 +118,6 @@ impl Records {
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
         self.store.read(move |sql| check_releases_in_library_on(&sql, &checks)).await
-    }
-
-    /// Follow the library membership of every release `initial` checks, in
-    /// one read per change. The releases on offer change by pointing the same
-    /// query at new checks through its request handle, not by opening another.
-    pub fn subscribe_library_statuses(
-        &self,
-        initial: LibraryChecks,
-    ) -> coven::ReconfigurableLiveQuery<LibraryChecks, Vec<LibraryStatus>, DbError> {
-        self.store
-            .subscribe_reconfigurable(initial, |checks, sql| {
-                let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
-                check_releases_in_library_on(&sql, &checks)
-            })
-            .process(Ok)
     }
 }
 
@@ -364,7 +351,7 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
 /// One statement answers every check: the caller passes the checks as one
 /// JSON array, and the statement that [`library_status_sql`] builds returns
 /// one row for each check, in check order.
-pub fn check_releases_in_library_on(
+fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {
@@ -437,6 +424,19 @@ pub fn library_status_sql(checks: &str) -> String {
             FROM checks
             ORDER BY checks.position
         "#
+    )
+}
+
+/// The SQL of a condition that holds when the library holds the release
+/// `key` of `catalog` as a pressing: a release whose records name that
+/// catalog's release as the pressing it is, matched on
+/// `idx_release_records_catalog_key`. A release's records go with it, so a
+/// deleted release is not held.
+pub fn pressing_held_sql(catalog: &str, key: &str) -> String {
+    format!(
+        "EXISTS (SELECT 1 FROM release_records AS held \
+                 WHERE held.catalog = {catalog} AND held.kind = 'pressing' \
+                   AND held.key = {key})"
     )
 }
 

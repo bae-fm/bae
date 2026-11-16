@@ -5,7 +5,9 @@
 //!
 //! The statement orders and groups the stored rows the way the pane draws the
 //! cards: a card's catalog buckets, its sections when it holds two albums of
-//! one catalog, its rows by year, its cover and the catalogs it names. The
+//! one catalog, its rows by year, its cover and the catalogs it names. It
+//! also reads, for each row, whether the library holds the row's lead release
+//! as a pressing. The
 //! statement returns the cards as nested JSON, each record the release itself
 //! as [`match_record_sql`] holds it, and [`groups_of`] reads that JSON into
 //! the cards.
@@ -20,6 +22,7 @@ use bae_identify::release_group::{
     StatedLabelLine, Statement, Statements,
 };
 use bae_identify::{Agreements, AlbumLink, RowAgreements, SharedAlbum, VerdictCards};
+use bae_records::records::release_records::pressing_held_sql;
 use bae_types::pressing::{MediaCount, ReleaseArea};
 use std::str::FromStr;
 
@@ -78,6 +81,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
                      json_group_array(json(rc.record) ORDER BY r.record_order) AS records, \
                      MAX(json_object('catalog', r.source, 'key', r.release_id)) \
                          FILTER (WHERE r.record_order = 0) AS lead, \
+                     MAX({lead_held}) FILTER (WHERE r.record_order = 0) AS in_library, \
                      MAX(r.a_disc_id) + MAX(r.a_barcode) + MAX(r.a_catalog) + MAX(r.a_label) \
                          + MAX(r.a_year) + MAX(r.a_country) AS agreements, \
                      json_object('disc_id', MAX(r.a_disc_id), 'barcode', MAX(r.a_barcode), \
@@ -112,6 +116,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
               SELECT p.*, \
                      json_object( \
                          'records', json(p.records), \
+                         'in_library', p.in_library, \
                          'agreed', json(p.agreed), \
                          'chosen', p.chosen, 'pick_being_read', p.pick_being_read, \
                          'notes', json(COALESCE(n.notes, '[]')), \
@@ -200,7 +205,8 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
               'sections', json(cs.sections)) \
               ORDER BY cs.offers DESC, cs.best DESC, c.card) \
           FROM card_rows AS c JOIN card_secs AS cs ON cs.card = c.card \
-          LEFT JOIN card_sources AS srcs ON srcs.card = c.card)"
+          LEFT JOIN card_sources AS srcs ON srcs.card = c.card)",
+        lead_held = pressing_held_sql("r.source", "r.release_id"),
     )
 }
 
@@ -649,6 +655,8 @@ struct StoredSection {
 #[derive(serde::Deserialize)]
 struct StoredRow {
     records: Vec<StoredRecord>,
+    /// 1 when the library holds the lead record's release as a pressing.
+    in_library: i64,
     statements: Vec<StoredStatement>,
     agreed: StoredAgreed,
     notes: Vec<StoredNote>,
@@ -790,7 +798,12 @@ pub(super) fn groups_from(cards: Vec<StoredCard>) -> Result<Vec<ReleaseGroup>, D
         let records = stored.records.into_iter().map(release).collect::<Result<Vec<_>, _>>()?;
         let choice =
             RowChoice { chosen: stored.chosen != 0, pick_being_read: stored.pick_being_read != 0 };
-        Ok(Pressing::stored(records, statements_of(stored.statements)?, choice))
+        Ok(Pressing::stored(
+            records,
+            statements_of(stored.statements)?,
+            choice,
+            stored.in_library != 0,
+        ))
     };
     cards
         .into_iter()

@@ -59,6 +59,10 @@ pub struct Pressing {
     /// worked it out when the row was formed.
     statements: Statements,
     choice: RowChoice,
+    /// Whether the library holds the lead record's release as a pressing, as
+    /// the statement that read the row found. A row formed in memory has not
+    /// been read against the library, and says it does not.
+    in_library: bool,
 }
 
 impl Pressing {
@@ -104,19 +108,31 @@ impl Pressing {
     /// The row of `releases`, in the order they are given: the first leads.
     pub fn over(releases: Vec<MetadataResult>) -> Self {
         assert!(!releases.is_empty(), "a pressing is built from at least one release");
-        Self { statements: Statements::of(&releases), releases, choice: RowChoice::default() }
+        Self {
+            statements: Statements::of(&releases),
+            releases,
+            choice: RowChoice::default(),
+            in_library: false,
+        }
     }
 
     /// The row whose records, in the order they lead, and whose statements a
     /// store holds. The list's SQL query reads each row as the grouping
-    /// formed it, with what the list's candidate picked among the rows.
+    /// formed it, with what the list's candidate picked among the rows and
+    /// whether the library holds the lead record's release.
     pub fn stored(
         releases: Vec<MetadataResult>,
         statements: Statements,
         choice: RowChoice,
+        in_library: bool,
     ) -> Self {
         assert!(!releases.is_empty(), "a pressing is built from at least one release");
-        Self { releases, statements, choice }
+        Self { releases, statements, choice, in_library }
+    }
+
+    /// Whether the library holds the lead record's release as a pressing.
+    pub fn in_library(&self) -> bool {
+        self.in_library
     }
 
     /// What the row lists where its records state a fact.
