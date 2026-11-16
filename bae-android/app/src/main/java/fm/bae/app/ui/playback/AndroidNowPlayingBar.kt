@@ -30,8 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.creditLineText
 import fm.bae.app.playback.NowPlaying
-import fm.bae.app.playback.artist
 import fm.bae.app.playback.library
 import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
@@ -44,6 +44,7 @@ import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.components.liftsSnackbar
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
@@ -99,14 +100,22 @@ private fun RowScope.NowPlayingTrackInfo(
 ) {
     val context = LocalContext.current
     val title = track.display.title(context)
-    val artist = track.display.artist(context)
-    // A track the library no longer holds has no artist, so the bar names it to TalkBack by its title alone.
-    val nowPlayingDescription =
-        if (artist == null) {
-            title
-        } else {
-            stringResource(R.string.now_playing_track_by_artist, title, artist)
+    // The bar names a library track to TalkBack by its title and artists, and a track the library no longer holds,
+    // which has no artist, by its title alone.
+    val artist: String?
+    val nowPlayingDescription: String
+    when (val display = track.display) {
+        is BridgeNowPlayingDisplay.Library -> {
+            val credited = context.creditLineText(display.display.artistLine)
+            artist = credited
+            nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, title, credited)
         }
+
+        BridgeNowPlayingDisplay.Removed -> {
+            artist = null
+            nowPlayingDescription = title
+        }
+    }
     Row(
         modifier =
             Modifier
