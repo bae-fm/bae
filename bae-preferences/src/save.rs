@@ -398,6 +398,11 @@ impl SavePreset {
         presets.len() > 1
     }
 
+    /// Whether a format other than `own_id` is already named `name`.
+    pub fn name_taken(name: &str, own_id: &str, presets: &[SavePreset]) -> bool {
+        presets.iter().any(|preset| preset.id != own_id && preset.name == name)
+    }
+
     pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.id.trim().is_empty() {
             return Err(PreferencesError::Invalid("export preset id is empty".to_string()));
@@ -443,6 +448,74 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
             codec: SaveFormat::Mp3.default_codec(),
         },
     ]
+}
+
+/// The rules that keep the save presets right: no two share a name or an id,
+/// one is always left, and the last-used one is always a preset that exists.
+impl super::Preferences {
+    /// Add `preset` after the other save presets. This returns `NameTaken`
+    /// when another preset has its name, and an `Invalid` error when a preset
+    /// already has its id.
+    pub fn add_save_preset(&mut self, preset: SavePreset) -> Result<(), PreferencesError> {
+        preset.validate()?;
+        if self.save_presets.iter().any(|stored| stored.id == preset.id) {
+            return Err(PreferencesError::Invalid(format!(
+                "duplicate export preset id {}",
+                preset.id
+            )));
+        }
+        self.refuse_taken_name(&preset)?;
+        self.save_presets.push(preset);
+        Ok(())
+    }
+
+    /// Replace the save preset with `preset`'s id by `preset`, in its place.
+    /// This returns `NameTaken` when another preset has its name, and an
+    /// `Invalid` error when no preset has its id.
+    pub fn replace_save_preset(&mut self, preset: SavePreset) -> Result<(), PreferencesError> {
+        preset.validate()?;
+        self.refuse_taken_name(&preset)?;
+        let stored = self
+            .save_presets
+            .iter_mut()
+            .find(|stored| stored.id == preset.id)
+            .ok_or_else(|| no_save_preset(&preset.id))?;
+        *stored = preset;
+        Ok(())
+    }
+
+    /// Delete the save preset `id`. When it is the last-used one, the first
+    /// preset left becomes the last-used one. This refuses to delete the
+    /// only preset left.
+    pub fn delete_save_preset(&mut self, id: &str) -> Result<(), PreferencesError> {
+        let place = self
+            .save_presets
+            .iter()
+            .position(|stored| stored.id == id)
+            .ok_or_else(|| no_save_preset(id))?;
+        if !SavePreset::can_delete(&self.save_presets) {
+            return Err(PreferencesError::Invalid(
+                "at least one export preset must remain".to_string(),
+            ));
+        }
+        self.save_presets.remove(place);
+        if self.last_save_preset == id {
+            self.last_save_preset = self.save_presets[0].id.clone();
+        }
+        Ok(())
+    }
+
+    /// Refuse `preset` when another stored preset has its name.
+    fn refuse_taken_name(&self, preset: &SavePreset) -> Result<(), PreferencesError> {
+        if SavePreset::name_taken(&preset.name, &preset.id, &self.save_presets) {
+            return Err(PreferencesError::NameTaken(preset.name.clone()));
+        }
+        Ok(())
+    }
+}
+
+fn no_save_preset(id: &str) -> PreferencesError {
+    PreferencesError::Invalid(format!("no export preset {id}"))
 }
 
 #[cfg(test)]
