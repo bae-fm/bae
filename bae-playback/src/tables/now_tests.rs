@@ -20,7 +20,7 @@ async fn now(db: &Store) -> crate::NowPlayingValues {
 async fn next_value(
     values: &mut coven::LiveQuery<crate::NowPlayingValues, DbError>,
 ) -> crate::NowPlayingValues {
-    values.next().await.expect("the read runs").unwrap()
+    values.next_inline().await.expect("the read runs").unwrap()
 }
 
 /// The title `state` shows for its track, `None` for a removed track, or a
