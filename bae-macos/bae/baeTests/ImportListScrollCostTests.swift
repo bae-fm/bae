@@ -81,7 +81,7 @@ enum ScrollCostFixture {
                 foundRows / groups + (group < foundRows % groups ? 1 : 0)
             let header = PreviewData.groupHeaderItem(
                 key: BridgeFolderReleaseDecisionKey(
-                    watchedFolderPath: PreviewData.importWatchedFolder.path,
+                    watchedFolderPath: PreviewData.importWatchedFolderPath,
                     relativeFolder: Data("Collection \(group)".utf8)
                 ),
                 name: "Collection \(group)",

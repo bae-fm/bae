@@ -19,7 +19,6 @@
 
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::triage::{CandidateLiveState, TriageGroup, TriageRow};
-use super::watched_folder::WatchedFolder;
 use bae_store::list_windows::OrderKey;
 use bae_store::WindowRead;
 
@@ -150,12 +149,13 @@ pub struct ImportCandidateListLocation {
     pub key: OrderKey,
 }
 
-/// The watched folders, whether Found has groups, and the narrowing, which a
-/// surface shows beside the list's rows and counts. The summary has its own
-/// live query, so the rows a scan writes do not rerun it.
+/// Whether any folder is watched, whether Found has groups, and the
+/// narrowing, which a surface shows beside the list's rows and counts. The
+/// summary has its own live query, so the rows a scan writes do not rerun it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
-    pub watched_folders: Vec<WatchedFolder>,
+    /// Whether any folder is watched: with none, the surface shows no list.
+    pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
     /// What the view asked the rows to be narrowed by when this read was

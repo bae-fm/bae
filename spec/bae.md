@@ -1030,7 +1030,9 @@ different things about one file fails the scan.
   folders takes them over. What is known about a folder is keyed by its path on
   disk, so the person's groupings survive. Unwatching the folder that covers a
   grouping deletes it. Watching a folder inside a watched one is refused, saying
-  which folder already watches it.
+  which folder already watches it. Every write that watches a folder, an add
+  or a takeover, refuses one that holds or lies in a watched folder, so no two
+  watched folders ever overlap and no read checks them for it.
 - **A dismissed candidate** is skipped by path, so a later scan doesn't offer it
   again.
 
@@ -1225,8 +1227,8 @@ filters cleared and its group opened, the list's other folds kept.
 bae reads everything the list shows from tables, each piece its own live query:
 each window of its rows (a range of its order, bounded by the sort values of a
 row at each end), how many items it holds and how many its filters keep, where
-a key sits in it, the watched folders, whether Found has groups, and what the
-view narrows by, Found's filter entries, and what the selected rows hold and
+a key sits in it, whether any folder is watched, whether Found has groups, and
+what the view narrows by, Found's filter entries, and what the selected rows hold and
 offer. A row carries nothing of the selection: the screen draws each row's
 highlight from the keys it keeps, so selecting rows writes nothing and reruns
 no window, and the selection's own read reruns when the screen gives it other
@@ -6586,7 +6588,7 @@ reads it again once.
 
 | Table | Holds |
 |---|---|
-| `watched_import_folders` | watched folders, in order |
+| `watched_import_folders` | watched folders, in order, no two overlapping: the write that watches a folder refuses one that holds or lies in a watched folder (§3.1) |
 | `release_grouping`, `release_grouping_member` | folders read as one release, or kept apart, and by whom (§3.1) |
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |

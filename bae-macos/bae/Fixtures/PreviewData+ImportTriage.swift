@@ -23,7 +23,7 @@ extension PreviewData {
         BridgeTriageRow(
             candidateKey: candidate.key,
             folderName: candidate.displayName,
-            watchedFolderPath: importWatchedFolder.path,
+            watchedFolderPath: importWatchedFolderPath,
             displayPath: candidate.displayName,
             actionable: true,
             placement: placement,
@@ -49,7 +49,7 @@ extension PreviewData {
                 candidateKey: Data("\(importRootPath)/\(path)".utf8),
                 folderPath: Data("\(importRootPath)/\(path)".utf8),
                 sourceFolderName: name,
-                watchedFolderPath: importWatchedFolder.path,
+                watchedFolderPath: importWatchedFolderPath,
                 files: bridgeCandidateFiles,
                 trackCount: trackCount,
                 skipped: false,
@@ -124,7 +124,7 @@ extension PreviewData {
                 "\(importRootPath)/Artist Collection/Album Title Nine".utf8
             ),
             sourceFolderName: "Album Title Nine",
-            watchedFolderPath: importWatchedFolder.path,
+            watchedFolderPath: importWatchedFolderPath,
             files: bridgeCandidateFiles,
             trackCount: 9,
             skipped: false,
@@ -459,7 +459,7 @@ extension PreviewData {
         ] + importTabGroupedCandidates
 
     private static let importTabGroupKey = BridgeFolderReleaseDecisionKey(
-        watchedFolderPath: importWatchedFolder.path,
+        watchedFolderPath: importWatchedFolderPath,
         relativeFolder: Data("Artist Collection".utf8)
     )
 
@@ -511,7 +511,7 @@ extension PreviewData {
 
     @MainActor
     private static let importTabSummary = importQueueSummary(
-        watchedFolders: [importWatchedFolder],
+        hasWatchedFolders: true,
         hasGroups: true
     )
 

@@ -249,15 +249,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
         ])
     );
     assert_eq!(tables.load_tab_counts().await.unwrap().pending, states.len() as u32);
-    assert_eq!(
-        projection
-            .summary
-            .watched_folders
-            .iter()
-            .map(|folder| folder.path.as_path())
-            .collect::<Vec<_>>(),
-        [root.as_path()]
-    );
+    assert!(projection.summary.has_watched_folders);
     let scans = tables.load_stored_folder_scans().await.unwrap();
     assert_eq!(
         scans

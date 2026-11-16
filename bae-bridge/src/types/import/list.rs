@@ -123,7 +123,8 @@ pub struct BridgeImportListViewChange {
 /// own, the tab counts.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
-    pub watched_folders: Vec<BridgeWatchedFolder>,
+    /// Whether any folder is watched: with none, the screen shows no list.
+    pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
     /// What the view asked the rows to be narrowed by when this read was

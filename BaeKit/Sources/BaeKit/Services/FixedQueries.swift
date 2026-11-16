@@ -355,7 +355,7 @@
                         PulledValues<BridgeImportQueueSummary>
                             .fixed(
                                 BridgeImportQueueSummary(
-                                    watchedFolders: [],
+                                    hasWatchedFolders: false,
                                     hasGroups: false,
                                     narrowing: BridgeImportListNarrowing(
                                         tab: tab,

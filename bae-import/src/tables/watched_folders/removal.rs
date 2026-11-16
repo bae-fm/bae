@@ -54,7 +54,7 @@ impl ImportTables {
                     return Err(WatchedFolderRefusal::NotWatched(root.clone()).into());
                 }
                 if let Some(parent) = &parent {
-                    watch_in_place_of(sql, &watched, parent, &roots)?;
+                    check_in_place_of(&watched, parent, &roots)?;
                 }
                 let mut removed: Vec<CandidateKey> = Vec::new();
                 for root in &roots {
@@ -70,8 +70,10 @@ impl ImportTables {
                         [&root_bytes],
                     )?;
                 }
-                if parent.is_none() {
-                    removed.extend(forget_folders_under(sql, &roots)?);
+                match &parent {
+                    // Watched once the roots inside it are not.
+                    Some(parent) => super::watch_folder_on(sql, parent)?,
+                    None => removed.extend(forget_folders_under(sql, &roots)?),
                 }
                 removed.sort();
                 removed.dedup();
@@ -92,10 +94,10 @@ fn is_among(roots: &[PathBuf], path: &Path) -> bool {
     roots.iter().any(|root| root.as_os_str() == path.as_os_str())
 }
 
-/// Watch `parent` in place of `roots`, which must be exactly the watched
-/// folders inside it, with nothing watching it or a folder holding it.
-fn watch_in_place_of(
-    sql: &CovenWrite<'_>,
+/// Refuse to watch `parent` in place of `roots` unless they are exactly the
+/// watched folders inside it, with nothing watching it or a folder holding
+/// it.
+fn check_in_place_of(
     watched: &[PathBuf],
     parent: &Path,
     roots: &[PathBuf],
@@ -126,15 +128,6 @@ fn watch_in_place_of(
         }
         .into());
     }
-    let position: i64 = sql.query_row(
-        "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
-        [],
-        |row| row.get(0),
-    )?;
-    sql.execute(
-        "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
-        params![coven::path_bytes(parent), position],
-    )?;
     Ok(())
 }
 

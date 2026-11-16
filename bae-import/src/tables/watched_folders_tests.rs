@@ -4,14 +4,12 @@
 use crate::tables::watched_path::host_root;
 use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::temp_db;
-use rusqlite::params;
 use std::path::PathBuf;
 
 /// Two overlapping folders added at once: the overlap check and the insert
 /// are one decision, so exactly one of them is watched and the other is
 /// refused. With the check read ahead of the write, both saw an empty list and
-/// both were stored — a store `load_watched_import_folders` then refuses to
-/// read.
+/// both were stored.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_folders_added_at_once_keep_only_one() {
     for _ in 0..20 {
@@ -36,7 +34,7 @@ async fn overlapping_folders_added_at_once_keep_only_one() {
             (1, 1),
             "one folder is watched and the overlapping one refused: {first:?} / {second:?}"
         );
-        tables.load_watched_import_folders().await.expect("the stored folders do not overlap");
+        assert_eq!(tables.load_watched_import_folders().await.unwrap().len(), 1);
     }
 }
 
@@ -169,35 +167,61 @@ async fn watched_root_rejects_a_path_climbing_out_of_itself() {
     assert!(tables.add_watched_import_folder(&path).await.is_err(), "{}", path.display());
 }
 
-/// The add refuses a root inside another, so stored rows that overlap are
-/// corrupt and fail to load.
+/// The add refuses a folder inside a watched one, and a folder holding one,
+/// naming the watched folder it overlaps, and stores neither.
 #[tokio::test]
-async fn overlapping_stored_roots_fail_to_load() {
+async fn the_add_refuses_a_folder_that_overlaps_a_watched_one() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let outer = host_root("/music");
-    let inner = host_root("/music/artist");
-    tables.add_watched_import_folder(&outer).await.unwrap();
-    let error = tables.add_watched_import_folder(&inner).await.unwrap_err();
-    assert!(
-        matches!(
-            &error,
-            crate::ImportError::WatchedFolders(crate::tables::WatchedFolderRefusal::Overlap {
-                folder,
-                watched,
-            }) if *folder == inner && *watched == outer
-        ),
-        "{error}"
-    );
-    db.call(move |conn| {
-        conn.execute(
-            "INSERT INTO watched_import_folders (path, position) VALUES (?, 1)",
-            params![coven::path_bytes(&inner)],
-        )?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    let music = host_root("/music");
+    let artist = host_root("/music/artist");
+    let album = host_root("/music/artist/album");
+    tables.add_watched_import_folder(&artist).await.unwrap();
+
+    for (folder, watched) in [(&album, &artist), (&music, &artist), (&host_root("/"), &artist)] {
+        let error = tables.add_watched_import_folder(folder).await.unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                crate::ImportError::WatchedFolders(
+                    crate::tables::WatchedFolderRefusal::Overlap { folder: refused, watched: named }
+                ) if refused == folder && named == watched
+            ),
+            "{}: {error}",
+            folder.display()
+        );
+    }
+    let watched: Vec<_> = tables
+        .load_watched_import_folders()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|folder| folder.path)
+        .collect();
+    assert_eq!(watched, [artist]);
+}
+
+/// A folder beside a watched one, whose name only begins with the watched
+/// folder's name, does not overlap it.
+#[tokio::test]
+async fn a_folder_whose_name_begins_with_a_watched_ones_does_not_overlap_it() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    for folder in ["/music", "/musical", "/music-old"] {
+        assert!(
+            tables.add_watched_import_folder(&host_root(folder)).await.unwrap().is_some(),
+            "{folder}"
+        );
+    }
+}
+
+/// A stored watched folder not in its canonical spelling is damage no write
+/// stores, and fails the read.
+#[tokio::test]
+async fn a_stored_root_not_in_its_canonical_spelling_fails_to_load() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    tables.plant_uncanonical_watched_folder_for_test(&host_root("/music")).await.unwrap();
     let error = tables.load_watched_import_folders().await.unwrap_err();
     assert!(matches!(error, bae_store::DbError::Unreadable { .. }), "{error}");
 }

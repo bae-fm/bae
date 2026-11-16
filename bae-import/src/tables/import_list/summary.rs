@@ -1,11 +1,10 @@
-//! The reads a surface makes beside a list's windows: the watched folders,
-//! whether Found has groups, and what the view narrows by; the tab counts and
-//! Found's filter entries, which COUNT queries over the placement return; and
-//! how many items the list holds and how many its filters keep (a search
-//! counts the rows its index finds). The module also holds the reads a
-//! surface makes of a list on its own: where the list would place a
-//! candidate once the app reveals it, and which candidate bae identifies
-//! first.
+//! The reads a surface makes beside a list's windows: whether any folder is
+//! watched, whether Found has groups, and what the view narrows by; the tab
+//! counts and Found's filter entries, which COUNT queries over the placement
+//! return; and how many items the list holds and how many its filters keep (a
+//! search counts the rows its index finds). The module also holds the reads a
+//! surface makes of a list on its own: where the list would place a candidate
+//! once the app reveals it, and which candidate bae identifies first.
 
 use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::views::tab_of;
@@ -80,15 +79,15 @@ pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilt
     .collect()
 }
 
-/// The summary `list` shows beside its rows: the watched folders, whether
-/// Found has any group, and what the view narrows its rows by.
+/// The summary `list` shows beside its rows: whether any folder is watched,
+/// whether Found has any group, and what the view narrows its rows by.
 pub(super) fn summary(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
 ) -> Result<ImportQueueSummary, DbError> {
     let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
     Ok(ImportQueueSummary {
-        watched_folders: super::watched_folders::watched_folders_on(sql)?,
+        has_watched_folders: super::watched_folders::any_watched_on(sql)?,
         has_groups: has_groups_on(sql)?,
         narrowing: ImportListNarrowing {
             tab: list.view.tab,

@@ -257,11 +257,11 @@ impl RootRemovalBackend for FakeRemovalBackend {
     }
 }
 
-/// Plant a watched folder inside another, which every read of the watched
-/// folders refuses.
+/// Plant a watched folder in a spelling that is not its canonical one, which
+/// every read of the watched folders refuses.
 async fn make_watched_folders_unreadable(db: &Store) {
     crate::tables::ImportTables::new(db.clone())
-        .plant_overlapping_watched_folder_for_test(&root_path("/music/inner"))
+        .plant_uncanonical_watched_folder_for_test(&root_path("/music/inner"))
         .await
         .unwrap();
 }
@@ -367,11 +367,12 @@ impl CoordinatorHarness {
         }
     }
 
-    /// Plant a watched folder inside `/music`, which the store's own add
-    /// refuses, so that reading the watched folders fails from here on.
+    /// Plant a watched folder in a spelling that is not its canonical one,
+    /// which the store's own add never stores, so that reading the watched
+    /// folders fails from here on.
     pub(crate) async fn corrupt_watched_folders(&self) {
         crate::tables::ImportTables::new(self.db.clone())
-            .plant_overlapping_watched_folder_for_test(&root_path("/music").join("artist"))
+            .plant_uncanonical_watched_folder_for_test(&root_path("/music").join("artist"))
             .await
             .unwrap();
     }

@@ -9,11 +9,9 @@ extension PreviewData {
     /// The watched folder the import shots read from, as text.
     static let importRootPath = "/Music/Downloads"
 
-    static let importWatchedFolder = BridgeWatchedFolder(
-        path: Data(importRootPath.utf8),
-        pathText: importRootPath,
-        name: "Downloads"
-    )
+    /// The watched folder the import shots read from, as coven's bytes for
+    /// its path.
+    static let importWatchedFolderPath = Data(importRootPath.utf8)
 
     // MARK: - Generated placeholder art
 
@@ -252,12 +250,6 @@ extension PreviewData {
 
     private static let releaseQueueRoot = "/Music/Incoming"
 
-    static let releaseQueueWatchedFolder = BridgeWatchedFolder(
-        path: Data(releaseQueueRoot.utf8),
-        pathText: releaseQueueRoot,
-        name: "Incoming"
-    )
-
     static let releaseQueueGroupKey = BridgeFolderReleaseDecisionKey(
         watchedFolderPath: Data(releaseQueueRoot.utf8),
         relativeFolder: Data("Collection".utf8)
@@ -344,7 +336,7 @@ extension PreviewData {
         + [candidateItem(releaseQueueRows[2])]
 
     private static let releaseQueueSummary = importQueueSummary(
-        watchedFolders: [releaseQueueWatchedFolder],
+        hasWatchedFolders: true,
         hasGroups: true
     )
 
@@ -375,21 +367,11 @@ extension PreviewData {
         )
     }
 
-    /// Every Import-tab state in one fixture, with a second watched root
-    /// so the folder menu has more than one entry.
+    /// Every Import-tab state in one fixture, with one release still being
+    /// identified.
     @MainActor
     static func importSmokeTestScene() -> ImportPreviewFixture {
         let scene = importTabScene()
-        guard let base = scene.store.summary else {
-            preconditionFailure("the tab scene's store holds a summary")
-        }
-        scene.store.applySummary(
-            importQueueSummary(
-                watchedFolders: base.watchedFolders
-                    + [releaseQueueWatchedFolder],
-                hasGroups: base.hasGroups
-            )
-        )
         // Counted off the scene's rows, with the one still identifying
         // yet to land.
         let queue =

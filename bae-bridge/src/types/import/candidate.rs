@@ -1,25 +1,5 @@
 use super::super::*;
 
-/// A folder the user watches for imports — one candidate-list group.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeWatchedFolder {
-    /// The watched folder's absolute path, as coven's bytes for it: what
-    /// every call naming the folder takes back.
-    pub path: Vec<u8>,
-    /// The whole path, shown as text (`coven::path_text`).
-    pub path_text: String,
-    /// Final path component, shown as text — the group header label.
-    pub name: String,
-}
-
-#[cfg(desktop)]
-impl BridgeWatchedFolder {
-    pub fn from_core(folder: bae_import::WatchedFolder) -> Self {
-        let bae_import::WatchedFolder { path, name } = folder;
-        Self { path: coven::path_bytes(&path), path_text: coven::path_text(&path), name }
-    }
-}
-
 /// The text that shows a candidate key, as a log line names it: a folder's
 /// escaped path (`coven::path_text`), or a grouping's or re-identify
 /// session's key. It names nothing back to core.

@@ -161,7 +161,7 @@ struct MacImportSidebarContainer: View {
                 onCancelAll: onCancelAllImports
             )
             FolderScanActivitySlot(importStore: importStore)
-            if importStore.watchedFolders != nil {
+            if importStore.hasWatchedFolders != nil {
                 CandidateListMenu(
                     refreshingFolders: uiStore.refreshingWatchedFolders,
                     hasGroups: summary?.hasGroups ?? false,

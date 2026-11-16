@@ -1,7 +1,8 @@
 //! The watched folders, `watched_import_folders`: which folders import reads,
 //! each keyed by its canonical spelling and in the order it was added. No two
-//! overlap. Every folder a scan, a decision or a skip stores lies under one.
-//! Its table is `watched_folders.sql`.
+//! overlap: every write that watches a folder refuses one that does
+//! ([`watch_folder_on`]). Every folder a scan, a decision or a skip stores
+//! lies under one. Its table is `watched_folders.sql`.
 
 use super::*;
 use crate::RelativeFolder;
@@ -132,30 +133,78 @@ pub(super) fn watched_roots_on(sql: &impl coven::SqlRead) -> Result<Vec<PathBuf>
 }
 
 /// Every watched folder, in the order they were added. A stored root that
-/// is not canonical, or overlaps another, fails the read.
+/// is not canonical fails the read.
 pub(super) fn watched_folders_on(
     sql: &impl coven::SqlRead,
 ) -> Result<Vec<crate::WatchedFolder>, DbError> {
-    watched_folders_of(watched_roots_on(sql)?)
+    watched_roots_on(sql)?
+        .into_iter()
+        .map(|root| {
+            crate::tables::watched_path::validate_absolute_root(&root)
+                .map_err(|_refused| DbError::unreadable("a stored watched folder", &root))?;
+            Ok(crate::WatchedFolder::from_path(root))
+        })
+        .collect()
 }
 
-/// The watched folders `roots`, as stored in the order they were added. A
-/// root that is not canonical, or overlaps another, fails the read.
-fn watched_folders_of(roots: Vec<PathBuf>) -> Result<Vec<crate::WatchedFolder>, DbError> {
-    for (index, root) in roots.iter().enumerate() {
-        crate::tables::watched_path::validate_absolute_root(root)
-            .map_err(|_refused| DbError::unreadable("a stored watched folder", root))?;
-        if let Some(conflict) = roots[index + 1..]
-            .iter()
-            .find(|other| crate::watched_folder::paths_overlap(root, other))
-        {
-            return Err(DbError::unreadable(
-                "two overlapping stored watched folders",
-                (coven::path_text(root), coven::path_text(conflict)),
-            ));
-        }
+/// Whether `folder`, spelled as the store keys it, is a watched folder, read
+/// by the watched folders' key.
+fn is_watched_on(sql: &impl coven::SqlRead, folder: &Path) -> Result<bool, DbError> {
+    Ok(sql.query_row(
+        "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
+        [coven::path_bytes(folder)],
+        |row| row.get(0),
+    )?)
+}
+
+/// Whether any folder is watched.
+pub(super) fn any_watched_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
+    Ok(sql
+        .query_row("SELECT EXISTS (SELECT 1 FROM watched_import_folders)", [], |row| row.get(0))?)
+}
+
+/// The first watched folder, in their order, that holds `folder` or lies
+/// inside it, `folder` itself aside: the folders above it by the watched
+/// folders' key, and those below it by the range of paths below it.
+fn overlapping_watched_folder_on(
+    sql: &impl coven::SqlRead,
+    folder: &Path,
+) -> Result<Option<PathBuf>, DbError> {
+    let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
+    Ok(sql
+        .query_row(
+            "SELECT path FROM watched_import_folders \
+             WHERE path IN (SELECT unhex(value) FROM json_each(:above)) \
+                OR (path >= :below_first AND path < :below_past AND path <> :folder) \
+             ORDER BY position LIMIT 1",
+            named_params! {
+                ":above": path_column::hex_list(folder.ancestors().skip(1)),
+                ":below_first": below_first,
+                ":below_past": below_past,
+                ":folder": coven::path_bytes(folder),
+            },
+            |row| path_column::get(row, 0),
+        )
+        .optional()?)
+}
+
+/// Watch `folder`, keyed by its canonical spelling, after every folder
+/// watched now. Every write that watches a folder does it here, so no two
+/// watched folders overlap: a folder that holds, or lies in, a watched one is
+/// refused, naming that one.
+pub(super) fn watch_folder_on(
+    sql: &CovenWrite<'_>,
+    folder: &Path,
+) -> Result<(), crate::ImportError> {
+    if let Some(watched) = overlapping_watched_folder_on(sql, folder)? {
+        return Err(WatchedFolderRefusal::Overlap { folder: folder.to_path_buf(), watched }.into());
     }
-    Ok(roots.into_iter().map(crate::WatchedFolder::from_path).collect())
+    sql.execute(
+        "INSERT INTO watched_import_folders (path, position) \
+         SELECT ?, COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
+        [coven::path_bytes(folder)],
+    )?;
+    Ok(())
 }
 
 impl ImportTables {
@@ -168,16 +217,8 @@ impl ImportTables {
     /// Whether `path`, spelled as the store keys it, is a watched folder,
     /// read by the watched folders' key.
     pub async fn is_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
-        let path = coven::path_bytes(path);
-        self.store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM watched_import_folders WHERE path = ?)",
-                    [path],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
+        let path = path.to_path_buf();
+        self.store.read(move |sql| is_watched_on(&sql, &path)).await
     }
 
     /// The watched folder that holds `path` inside it, not `path` itself.
@@ -230,28 +271,10 @@ impl ImportTables {
         self.store
             .write(move |sql| {
                 let sql = &sql;
-                let roots = watched_roots_on(sql)?;
-                if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
+                if is_watched_on(sql, &path)? {
                     return Err(WatchedFolderRefusal::AddedMeanwhile(path).into());
                 }
-                if let Some(conflict) =
-                    roots.iter().find(|root| crate::watched_folder::paths_overlap(&path, root))
-                {
-                    return Err(WatchedFolderRefusal::Overlap {
-                        folder: path,
-                        watched: conflict.clone(),
-                    }
-                    .into());
-                }
-                let position: i64 = sql.query_row(
-                    "SELECT COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
-                    [],
-                    |row| row.get(0),
-                )?;
-                sql.execute(
-                    "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
-                    params![coven::path_bytes(&path), position],
-                )?;
+                watch_folder_on(sql, &path)?;
                 Ok(Some(watched_folders_on(sql)?))
             })
             .await
@@ -259,21 +282,23 @@ impl ImportTables {
 }
 
 impl ImportTables {
-    /// Plant damage for a test: `inner`, a folder inside a watched one,
-    /// stored as watched too. The add refuses a folder that overlaps another,
-    /// so no write stores one; a damaged store holds one, and every read of
-    /// the watched folders checks for it.
+    /// Plant damage for a test: `folder` stored as watched in a spelling
+    /// that is not its canonical one, with a separator after its last name.
+    /// The add stores only canonical spellings, so no write stores one; a
+    /// damaged store holds one, and every read of the watched folders
+    /// refuses it.
     #[cfg(test)]
-    pub(crate) async fn plant_overlapping_watched_folder_for_test(
+    pub(crate) async fn plant_uncanonical_watched_folder_for_test(
         &self,
-        inner: &Path,
+        folder: &Path,
     ) -> Result<(), DbError> {
-        let inner = coven::path_bytes(inner);
+        let mut spelling = coven::path_bytes(folder);
+        spelling.push(b'/');
         self.store
             .call(move |sql| {
                 sql.execute(
                     "INSERT INTO watched_import_folders (path, position) VALUES (?, 99)",
-                    [inner],
+                    [spelling],
                 )?;
                 Ok(())
             })
@@ -284,18 +309,20 @@ impl ImportTables {
 #[cfg(test)]
 impl ImportTables {
     /// Plant damage for a test: inside the write of every folder added to
-    /// the library under `directory`, a folder inside it is stored as
-    /// watched too, which every read of the watched folders refuses.
-    pub(crate) async fn plant_overlap_in_every_add_for_test(directory: &Path) {
+    /// the library under `directory`, the folder's spelling with a separator
+    /// after its last name is stored as watched too, which every read of the
+    /// watched folders refuses.
+    pub(crate) async fn plant_uncanonical_spelling_in_every_add_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
         bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "watched_import_folders",
-                "CREATE TRIGGER overlap_each_added_folder AFTER INSERT ON watched_import_folders \
+                "CREATE TRIGGER uncanonical_spelling_of_each_added_folder \
+                 AFTER INSERT ON watched_import_folders \
                  WHEN NEW.position <> 99 BEGIN \
                  INSERT INTO watched_import_folders (path, position) \
-                 VALUES (CAST(CAST(NEW.path AS TEXT) || '/inner' AS BLOB), 99); END;",
+                 VALUES (CAST(CAST(NEW.path AS TEXT) || '/' AS BLOB), 99); END;",
             )
         })
         .await;

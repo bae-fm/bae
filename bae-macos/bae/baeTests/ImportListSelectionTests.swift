@@ -293,7 +293,7 @@ enum ImportListHosting {
 
     /// A summary of a queue with nothing watched and no narrowing.
     static let settledSummary = BridgeImportQueueSummary(
-        watchedFolders: [],
+        hasWatchedFolders: false,
         hasGroups: false,
         narrowing: BridgeImportListNarrowing(
             tab: .pending,

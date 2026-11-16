@@ -547,12 +547,9 @@ impl crate::types::BridgeFolderScanAlert {
 
 impl crate::types::BridgeImportQueueSummary {
     pub(crate) fn from_core(summary: bae_import::ImportQueueSummary) -> Self {
-        let bae_import::ImportQueueSummary { watched_folders, has_groups, narrowing } = summary;
+        let bae_import::ImportQueueSummary { has_watched_folders, has_groups, narrowing } = summary;
         Self {
-            watched_folders: watched_folders
-                .into_iter()
-                .map(crate::types::BridgeWatchedFolder::from_core)
-                .collect(),
+            has_watched_folders,
             has_groups,
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
         }

@@ -200,9 +200,9 @@ async fn an_add_that_fails_leaves_nothing_watched() {
     let (parts, _, tmp) = setup_test_import().await;
     let root = tmp.path().join("watch-root");
     std::fs::create_dir_all(&root).unwrap();
-    // A row inside each added folder, which every read of the watched
-    // folders refuses as overlapping.
-    crate::tables::ImportTables::plant_overlap_in_every_add_for_test(tmp.path()).await;
+    // A second spelling of each added folder, which every read of the
+    // watched folders refuses as not canonical.
+    crate::tables::ImportTables::plant_uncanonical_spelling_in_every_add_for_test(tmp.path()).await;
     let import_handle = parts.start().await.unwrap();
 
     import_handle.add_watched_folder(root).await.unwrap_err();

@@ -314,10 +314,10 @@ struct ImportStoreSummaryTests {
     func watchedFoldersAreUnknownBeforeTheSummary() {
         let store = ImportStore()
         #expect(store.summary == nil)
-        #expect(store.watchedFolders == nil)
+        #expect(store.hasWatchedFolders == nil)
 
         store.applySummary(ImportListHosting.settledSummary)
 
-        #expect(store.watchedFolders == [])
+        #expect(store.hasWatchedFolders == false)
     }
 }

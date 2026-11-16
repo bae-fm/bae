@@ -83,12 +83,12 @@ struct ImportView: View {
                         onRetry: { listSlot.startLoad() }
                     )
                 }
-                else if let watchedFolders = importStore.watchedFolders {
-                    if watchedFolders.isEmpty {
-                        ImportEmptyState()
+                else if let hasWatchedFolders = importStore.hasWatchedFolders {
+                    if hasWatchedFolders {
+                        splitContent
                     }
                     else {
-                        splitContent
+                        ImportEmptyState()
                     }
                 }
                 else {

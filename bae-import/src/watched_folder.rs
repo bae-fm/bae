@@ -1,7 +1,7 @@
 //! Watched folders.
 
 use crate::WatchedPathError;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::warn;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,10 +30,6 @@ impl From<WatchedPathError> for crate::ImportError {
     fn from(error: WatchedPathError) -> Self {
         Self::WatchedFolder(error)
     }
-}
-
-pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
-    left.starts_with(right) || right.starts_with(left)
 }
 
 #[cfg(test)]

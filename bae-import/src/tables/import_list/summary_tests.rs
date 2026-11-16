@@ -110,6 +110,16 @@ async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["invalid Broken"]);
 }
 
+/// The summary says whether any folder is watched, which the screen shows
+/// its list for, and stops saying so once the last one is removed.
+#[tokio::test]
+async fn the_summary_says_whether_any_folder_is_watched() {
+    let lib = Library::new().await;
+    assert!(lib.shown(view(TriageTab::Pending)).await.summary.has_watched_folders);
+    lib.tables().remove_watched_import_folders(vec![lib.root.clone()], None).await.unwrap();
+    assert!(!lib.shown(view(TriageTab::Pending)).await.summary.has_watched_folders);
+}
+
 /// A row the text filter or the filter entry narrows is counted beside the
 /// tab's total, and only while one narrows it.
 #[tokio::test]
@@ -126,7 +136,7 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let whole = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(whole.narrowed, None);
     assert_eq!(whole.total_count, 4);
-    assert_eq!(whole.summary.watched_folders.len(), 1);
+    assert!(whole.summary.has_watched_folders);
     assert_eq!(
         whole.summary.narrowing,
         crate::ImportListNarrowing {
