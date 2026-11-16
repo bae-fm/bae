@@ -819,6 +819,11 @@ internal open class FakeAppHandle(
     override fun subscribeWaitingJoinRequest(closed: List<String>): OpenInviteSubscription =
         FakeOpenInviteSubscription().also { waitingRequests += closed to it }
 
+    /** The reads of one invite the app opened, each with its invite id, newest last. */
+    val inviteReads = mutableListOf<Pair<String, FakeOpenInviteSubscription>>()
+
+    override fun subscribeInvite(invite: String): OpenInviteSubscription = FakeOpenInviteSubscription().also { inviteReads += invite to it }
+
     /** The admin changes the handle answers, which a test delivers to. */
     val adminChanges = FakeAdminChangesSubscription()
 

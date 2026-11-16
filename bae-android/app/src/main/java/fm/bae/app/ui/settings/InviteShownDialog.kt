@@ -77,7 +77,7 @@ internal fun InviteShownDialog(
                 busy = true
                 error = null
                 scope.launch {
-                    // A cancelled invite leaves the list, which closes this dialog.
+                    // A cancelled invite's read answers none, which closes this dialog.
                     performBridgeAction(logger, "cancel an invite", errors, { error = it }) {
                         session.appHandle.cancelInvite(invite.id)
                     }

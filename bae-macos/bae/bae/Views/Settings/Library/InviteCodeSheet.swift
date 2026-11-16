@@ -27,12 +27,18 @@ struct InviteCodeSheet: View {
     @State
     private var confirmingCancel = false
 
-    private var invite: BridgeInvite? {
-        store.invites.first { $0.id == inviteId }
+    /// The invite as its read last answered, once it has answered for this
+    /// sheet's invite.
+    private var read: ShownInvite? {
+        store.shownInvite.flatMap { $0.inviteId == inviteId ? $0 : nil }
     }
 
+    private var invite: BridgeInvite? { read?.invite }
+
     var body: some View {
-        Group {
+        // A stack, not a group: it is on screen before the read answers, so
+        // its appearance starts the read.
+        ZStack {
             if let invite {
                 InviteCodeSheetContent(
                     invite: invite,
@@ -45,10 +51,11 @@ struct InviteCodeSheet: View {
                 )
             }
         }
-        // An ended invite has nothing left to show.
-        .onChange(of: invite == nil) { _, ended in
+        // An ended invite has nothing left to show: its read answers none.
+        .onChange(of: read != nil && invite == nil) { _, ended in
             if ended { onDismiss() }
         }
+        .onAppear { store.showInvite(inviteId) }
         .task { await store.holdInviteScreenSync() }
         .macAlert(
             item: Binding(
@@ -58,10 +65,13 @@ struct InviteCodeSheet: View {
         ) { shown in
             InviteCancelAlert.alert(for: shown) { cancel(shown) }
         }
-        .onDisappear { task?.cancel() }
+        .onDisappear {
+            task?.cancel()
+            store.hideInvite()
+        }
     }
 
-    /// A cancelled invite leaves the list, which closes the sheet.
+    /// A cancelled invite's read answers none, which closes the sheet.
     private func cancel(_ invite: BridgeInvite) {
         error = nil
         task = Task {

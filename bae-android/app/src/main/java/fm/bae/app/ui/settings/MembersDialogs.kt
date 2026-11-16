@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,14 +146,27 @@ private fun InviteDialogsShown(
             onDismiss = { dialogs.inviting = false },
         )
     }
-    model.invites.firstOrNull { it.id == dialogs.shownInvite }?.let { invite ->
-        InviteShownDialog(
-            session = session,
-            invite = invite,
-            storage = model.storage,
-            onDismiss = { dialogs.shownInvite = null },
-        )
+    val shownId = dialogs.shownInvite
+    DisposableEffect(model, shownId) {
+        if (shownId != null) model.watchInvite(shownId)
+        onDispose { model.stopWatchingInvite() }
     }
+    model.shownInvite
+        ?.takeIf { it.inviteId == shownId }
+        ?.let { read ->
+            val invite = read.invite
+            if (invite == null) {
+                // An ended invite has nothing left to show: its read answers none.
+                LaunchedEffect(read) { dialogs.shownInvite = null }
+            } else {
+                InviteShownDialog(
+                    session = session,
+                    invite = invite,
+                    storage = model.storage,
+                    onDismiss = { dialogs.shownInvite = null },
+                )
+            }
+        }
     LaunchedEffect(model, dialogs.closedRequests) { model.watchWaitingRequest(dialogs.closedRequests) }
     // The read answers for the closed invites a moment after one closes, so the one just closed is not shown meanwhile.
     model.waitingRequest

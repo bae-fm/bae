@@ -65,6 +65,12 @@ internal sealed interface PersonRead {
     ) : PersonRead
 }
 
+/** The invite whose dialog shows, by the id it was asked for: no invite once it has ended. */
+internal data class ShownInvite(
+    val inviteId: String,
+    val invite: BridgeInvite?,
+)
+
 /** The read of the library's people: running, answered, or failed with what to show. */
 internal sealed interface PeopleRead {
     data object Loading : PeopleRead
@@ -123,6 +129,10 @@ internal class MembersModel(
     var waitingRequest by mutableStateOf<BridgeInvite?>(null)
         private set
 
+    /** The open invite whose dialog shows, once its read answers; null while no invite's dialog shows. */
+    var shownInvite by mutableStateOf<ShownInvite?>(null)
+        private set
+
     /**
      * The person whose page is open, once the person subscription answers; Loading while no page of a person is
      * open.
@@ -133,11 +143,13 @@ internal class MembersModel(
     private var peopleSubscription: ScreenSubscription<BridgePeople>? = null
     private var personSubscription: ScreenSubscription<BridgePerson?>? = null
     private var waitingRequestSubscription: ScreenSubscription<BridgeInvite?>? = null
+    private var inviteSubscription: ScreenSubscription<BridgeInvite?>? = null
 
     /** Which subscription a people callback belongs to; the model ignores a callback from a replaced subscription. */
     private var peopleGeneration = 0
     private var personGeneration = 0
     private var waitingRequestGeneration = 0
+    private var inviteGeneration = 0
 
     /** Follow the library's people, replacing any subscription already running; a failed read shows Retry. */
     fun watchPeople() {
@@ -227,6 +239,39 @@ internal class MembersModel(
             )
     }
 
+    /** Follow the open invite with id [inviteId] for its dialog, replacing any read of another invite. */
+    fun watchInvite(inviteId: String) {
+        stopWatchingInvite()
+        val generation = inviteGeneration
+        val read =
+            try {
+                appHandle.subscribeInvite(inviteId)
+            } catch (e: BridgeException) {
+                logger.error("reading an invite failed", e)
+                error = errors.display(e)
+                return
+            }
+        inviteSubscription =
+            ScreenSubscription(
+                read.let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value ->
+                    if (generation == inviteGeneration) shownInvite = ShownInvite(inviteId, value)
+                },
+                onError = { error ->
+                    logger.error("reading an invite failed", error)
+                    if (generation == inviteGeneration) this@MembersModel.error = errors.display(error)
+                },
+            )
+    }
+
+    fun stopWatchingInvite() {
+        inviteGeneration++
+        inviteSubscription?.stop()
+        inviteSubscription = null
+        shownInvite = null
+    }
+
     private fun stopWatchingWaitingRequest() {
         waitingRequestGeneration++
         waitingRequestSubscription?.stop()
@@ -294,6 +339,7 @@ internal class MembersModel(
             stopWatchingPeople()
             stopWatchingPerson()
             stopWatchingWaitingRequest()
+            stopWatchingInvite()
             open.stop()
             requested.stop()
             changes.stop()

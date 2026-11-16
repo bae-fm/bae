@@ -202,6 +202,17 @@ impl AppHandle {
     pub fn subscribe_invites(&self) -> Arc<crate::InvitesSubscription> {
         crate::screens::invites(self.services.subscribe_invites(), self.runtime.clone())
     }
+    /// The open invite `invite`, by id, now and after each change: none once
+    /// it has ended.
+    pub fn subscribe_invite(
+        &self,
+        invite: String,
+    ) -> Result<Arc<crate::OpenInviteSubscription>, BridgeError> {
+        Ok(crate::screens::open_invite(
+            self.services.subscribe_invite(crate::from_app::invite(&invite)?),
+            self.runtime.clone(),
+        ))
+    }
     /// The first of this device's open invites whose join request waits for
     /// a decision, leaving out the invites in `closed`, by id: the requests
     /// the person closed. None while no other request waits.

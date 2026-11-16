@@ -286,6 +286,28 @@ struct InvitesSubscriptionTests {
         try await Wait.until { store.waitingRequest == nil }
     }
 
+    @Test("an invite's sheet reads its invite by id, and none once it ends")
+    func shownInviteFollowsItsRead() async throws {
+        let handle = FakeAppHandle()
+        let store = MembershipStore(handle: handle)
+        store.start()
+        store.show()
+
+        store.showInvite("11")
+        #expect(handle.inviteReads.map(\.inviteId) == ["11"])
+        handle.inviteReads.last?.read.values.deliver(invite(id: "11"))
+        try await Wait.until { store.shownInvite?.invite?.id == "11" }
+
+        handle.inviteReads.last?.read.values.deliver(nil)
+        try await Wait.until {
+            store.shownInvite?.inviteId == "11"
+                && store.shownInvite?.invite == nil
+        }
+
+        store.hideInvite()
+        #expect(store.shownInvite == nil)
+    }
+
     private func invite(id: String) -> BridgeInvite {
         BridgeInvite(
             id: id,
@@ -696,6 +718,21 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     /// invites it leaves out, in order.
     var waitingRequestReads: [(closed: [String], read: FakeOpenInvite)] {
         waitingLock.withLock { waitingReads }
+    }
+
+    private var inviteReadList: [(inviteId: String, read: FakeOpenInvite)] = []
+    /// The reads of one invite opened so far, each with its invite id, in
+    /// order.
+    var inviteReads: [(inviteId: String, read: FakeOpenInvite)] {
+        waitingLock.withLock { inviteReadList }
+    }
+
+    override func subscribeInvite(invite: String) throws
+        -> OpenInviteSubscription
+    {
+        let read = FakeOpenInvite()
+        waitingLock.recording { inviteReadList.append((invite, read)) }
+        return read
     }
 
     override func subscribeWaitingJoinRequest(closed: [String]) throws

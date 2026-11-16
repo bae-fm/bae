@@ -85,6 +85,10 @@ const INVITE_ROWS: &str = concat!(
      ORDER BY operation"
 );
 
+/// The open invite whose id, as canonical UUID text, is `?1`, while it is
+/// open.
+const INVITE_BY_ID: &str = concat!(open_invite_rows!(), "WHERE i.invite_id = ?1");
+
 /// The first open invite, in the order coven started their operations, whose
 /// join request waits for the admin's decision, leaving out the invites whose
 /// ids the JSON array `?1` holds.
@@ -154,6 +158,18 @@ impl LibraryViews {
     /// statement, in the order coven started their operations.
     pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<InviteEntry>, bae_store::DbError> {
         self.store.subscribe(|sql| Ok(sql.query(INVITE_ROWS, [], invite_entry)?))
+    }
+
+    /// The open invite `invite`, live: none once it has ended, by approval,
+    /// decline, cancel or expiry, or a sharing refusal.
+    pub fn subscribe_invite(
+        &self,
+        invite: coven::InviteId,
+    ) -> coven::LiveQuery<Option<OpenInvite>, bae_store::DbError> {
+        let invite = invite.0.to_string();
+        self.store.subscribe(move |sql| {
+            Ok(sql.query(INVITE_BY_ID, [invite.as_str()], open_invite)?.pop())
+        })
     }
 
     /// The first of this device's open invites, in the order coven started

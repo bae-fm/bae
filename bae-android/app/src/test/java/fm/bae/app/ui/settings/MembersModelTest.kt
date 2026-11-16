@@ -185,6 +185,42 @@ class MembersModelTest {
         stop()
     }
 
+    /** An invite's dialog follows the read keyed by its id; an invite that ended arrives as none. */
+    @Test
+    fun anInvitesDialogFollowsTheReadKeyedByItsId() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val invite =
+            BridgeInvite(
+                id = "11",
+                member = "member-1",
+                label = "dan@example.com",
+                access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
+                shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),
+                held = null,
+            )
+
+        model.watchInvite("11")
+        assertEquals(listOf("11"), handle.inviteReads.map { it.first })
+        handle.inviteReads
+            .last()
+            .second.pulls
+            .deliver(invite)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(ShownInvite("11", invite), model.shownInvite)
+
+        handle.inviteReads
+            .last()
+            .second.pulls
+            .deliver(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(ShownInvite("11", null), model.shownInvite)
+
+        model.stopWatchingInvite()
+        assertEquals(null, model.shownInvite)
+    }
+
     private val ana = PreviewData.person()
     private val twoPeople = BridgePeople(own = ana, others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
 

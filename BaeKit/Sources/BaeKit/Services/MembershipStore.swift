@@ -47,6 +47,8 @@ public final class MembershipStore {
     /// other than those whose request the page closed, while the page reads
     /// it; nil while none does.
     public private(set) var waitingRequest: BridgeInvite?
+    /// The open invite whose sheet shows, once its read arrives.
+    public private(set) var shownInvite: ShownInvite?
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     public private(set) var adminChanges: [BridgeAdminChange] = []
@@ -68,6 +70,10 @@ public final class MembershipStore {
     /// those of the invites with the ids, handing each value to the store.
     private let subscribeWaitingRequest:
         @MainActor (MembershipStore, Set<String>) throws -> AnyObject
+    /// Starts the subscription to the open invite with the id, handing each
+    /// value to the store.
+    private let subscribeInvite:
+        @MainActor (MembershipStore, String) throws -> AnyObject
     /// Starts the pull of a pairing's status, handing each value to the
     /// closure; the subscription runs until the closure it returns stops it.
     private let followAddDeviceStatus:
@@ -90,6 +96,9 @@ public final class MembershipStore {
     /// What the page reads of the waiting join requests, while it does.
     @ObservationIgnored
     private var waitingRequestSubscription: AnyObject?
+    /// What an invite's sheet reads, with the invite id it reads.
+    @ObservationIgnored
+    private var inviteSubscription: (inviteId: String, subscription: AnyObject)?
 
     public convenience init(handle: AppHandle) {
         self.init(
@@ -112,6 +121,9 @@ public final class MembershipStore {
                     store: store,
                     closed: closed
                 )
+            },
+            subscribeInvite: { store, inviteId in
+                try Self.followInvite(handle, store: store, inviteId: inviteId)
             },
             followAddDeviceStatus: { pairing, apply, fail in
                 let subscription = ScreenSubscription(
@@ -136,6 +148,8 @@ public final class MembershipStore {
         subscribeWaitingRequest:
             @escaping @MainActor (MembershipStore, Set<String>) throws ->
             AnyObject,
+        subscribeInvite:
+            @escaping @MainActor (MembershipStore, String) throws -> AnyObject,
         followAddDeviceStatus:
             @escaping @MainActor (
                 String,
@@ -149,6 +163,7 @@ public final class MembershipStore {
         self.subscribeShown = subscribeShown
         self.subscribePerson = subscribePerson
         self.subscribeWaitingRequest = subscribeWaitingRequest
+        self.subscribeInvite = subscribeInvite
         self.followAddDeviceStatus = followAddDeviceStatus
     }
 
@@ -213,6 +228,7 @@ public final class MembershipStore {
         guard shownSubscriptions != nil else { return }
         hidePerson()
         hideWaitingRequest()
+        hideInvite()
         shownSubscriptions = nil
         people = nil
         requestedProfile = nil
@@ -307,6 +323,45 @@ extension MembershipStore {
         ]
     }
 
+    /// The subscription to the open invite with `inviteId`, which hands each
+    /// value to `store`.
+    private static func followInvite(
+        _ handle: AppHandle,
+        store: MembershipStore,
+        inviteId: String
+    ) throws -> AnyObject {
+        ScreenSubscription(
+            try handle.subscribeInvite(invite: inviteId),
+            onValue: { [weak store] invite in
+                store?.shownInvite = ShownInvite(
+                    inviteId: inviteId,
+                    invite: invite
+                )
+            },
+            onError: { [weak store] error in store?.fail(error) }
+        )
+    }
+
+    /// Read the open invite with the id `inviteId` while its sheet shows.
+    public func showInvite(_ inviteId: String) {
+        guard inviteSubscription?.inviteId != inviteId else { return }
+        hideInvite()
+        do {
+            inviteSubscription = (
+                inviteId, try subscribeInvite(self, inviteId)
+            )
+        }
+        catch {
+            fail(error)
+        }
+    }
+
+    /// End what `showInvite` reads, once the invite's sheet closes.
+    public func hideInvite() {
+        inviteSubscription = nil
+        shownInvite = nil
+    }
+
     /// The subscription to the first waiting join request other than those
     /// of the invites in `closed`, which hands each value to `store`.
     private static func followWaitingRequest(
@@ -364,6 +419,13 @@ extension MembershipStore {
                     return NSObject()
                 },
                 subscribeWaitingRequest: { _, _ in NSObject() },
+                subscribeInvite: { store, inviteId in
+                    store.shownInvite = ShownInvite(
+                        inviteId: inviteId,
+                        invite: invites.first { $0.id == inviteId }
+                    )
+                    return NSObject()
+                },
                 followAddDeviceStatus: { _, apply, _ in
                     if let addDeviceStatus { apply(addDeviceStatus) }
                     return {}
@@ -387,6 +449,13 @@ extension MembershipStore {
 public struct ShownPerson {
     public let memberId: String
     public let person: BridgePerson?
+}
+
+/// The invite an invite's sheet shows, with the invite id it asked for: no
+/// invite once it has ended.
+public struct ShownInvite {
+    public let inviteId: String
+    public let invite: BridgeInvite?
 }
 
 extension BridgeInviteEntry {

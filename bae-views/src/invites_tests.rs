@@ -188,3 +188,24 @@ fn the_waiting_request_is_the_first_one_the_person_did_not_close() {
     assert_eq!(waiting_request(&conn, &["invite-3"]), Some(4));
     assert_eq!(waiting_request(&conn, &["invite-3", "invite-4"]), None);
 }
+
+/// The invite sheet reads its invite by id, and reads none once the invite
+/// has ended and left coven's open invites.
+#[test]
+fn an_invite_is_read_by_its_id_while_it_is_open() {
+    let conn = views();
+    invite(&conn, 1, "waiting");
+    requested(&conn, 2, "waiting");
+    let by_id = |id: &str| -> Option<i64> {
+        conn.prepare(INVITE_BY_ID)
+            .unwrap()
+            .query_map([id], |row| row.get("operation"))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+            .pop()
+    };
+    assert_eq!(by_id("invite-2"), Some(2));
+    conn.execute("DELETE FROM coven_invites WHERE operation = 2", []).unwrap();
+    assert_eq!(by_id("invite-2"), None);
+}

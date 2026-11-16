@@ -549,6 +549,14 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
 
+    /// The open invite `invite`, live: none once it has ended.
+    pub fn subscribe_invite(
+        &self,
+        invite: coven::InviteId,
+    ) -> bae_store::live_query::LiveValues<Option<bae_views::OpenInvite>> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_invite(invite))
+    }
+
     /// The first of this device's open invites whose join request waits for
     /// the admin's decision, other than those in `closed`, live.
     pub fn subscribe_waiting_join_request(

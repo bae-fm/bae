@@ -57,6 +57,18 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     ));
     let invites = handle.subscribe_invites();
     assert!(pull_until(&handle, || Box::pin(invites.clone().next()), |_| true).is_empty());
+    let unknown =
+        handle.subscribe_invite("2f1d6a3e-0000-4000-8000-000000000001".to_string()).unwrap();
+    assert!(pull_until(&handle, || Box::pin(unknown.clone().next()), |_| true).is_none());
+    assert!(matches!(
+        handle.subscribe_invite("not an invite id".to_string()),
+        Err(crate::types::BridgeError::Diagnostic {
+            category: crate::types::BridgeErrorCategory::Config,
+            ..
+        })
+    ));
+    let waiting = handle.subscribe_waiting_join_request(Vec::new()).unwrap();
+    assert!(pull_until(&handle, || Box::pin(waiting.clone().next()), |_| true).is_none());
     let changes = handle.subscribe_admin_changes();
     assert!(pull_until(&handle, || Box::pin(changes.clone().next()), |_| true).is_empty());
 
