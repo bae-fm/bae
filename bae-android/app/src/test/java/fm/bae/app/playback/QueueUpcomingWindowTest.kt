@@ -109,7 +109,7 @@ class QueueUpcomingWindowTest {
         player.onQueueValue(queueValue(shuffled = true))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(listOf(false, true), feed.opened)
-        assertEquals("the old order's rows stay while the new order is unanswered", "e0", itemAt(player, 0))
+        assertEquals("the old order's rows stay until the read in the new order returns its rows", "e0", itemAt(player, 0))
         assertEquals(
             5,
             player.queue.value.context
@@ -119,7 +119,7 @@ class QueueUpcomingWindowTest {
         feed.show((0 until 3).map { upcomingEntry("s$it") })
         feed.answerHeld()
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("the new order's rows replace the old ones once it answers", "s0", itemAt(player, 0))
+        assertEquals("the new order's rows replace the old ones once its read returns", "s0", itemAt(player, 0))
         assertEquals(
             3,
             player.queue.value.context

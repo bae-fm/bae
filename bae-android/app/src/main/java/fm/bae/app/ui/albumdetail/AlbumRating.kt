@@ -18,8 +18,8 @@ import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeStars
 
 /**
- * Shows the album's stars above a line that names who rated the album. A person who can rate the album
- * taps the stars to rate it; everyone sees who rated it.
+ * Shows the line that names who rated the album, with the album's stars above it for a person who can rate
+ * the album. That person taps the stars to rate it.
  */
 @Composable
 internal fun AlbumRating(

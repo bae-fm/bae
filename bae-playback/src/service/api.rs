@@ -84,19 +84,19 @@ impl QueueEditError {
     }
 }
 
-/// Why a volume the person set was not stored.
+/// Why playback did not store a volume the person set.
 #[derive(Debug, thiserror::Error)]
 pub enum SetVolumeError {
     /// The level is no number, so it names no volume. A slider never sends
     /// one, so this is a bug of whoever sent it.
     #[error("the volume {0} is no number")]
     NotANumber(f32),
-    /// The service that held the command ended before answering; that end
-    /// was told to whoever follows playback.
+    /// The service that held the command ended before it answered; the
+    /// service reported its end to whoever follows playback.
     #[error("the playback service stopped before it answered the volume")]
     Stopped(#[source] oneshot::error::RecvError),
-    /// The service's thread had ended before the command was sent: shut
-    /// down, or ended on a bug reported as it happened.
+    /// The service's thread ended before the caller sent the command,
+    /// because the service shut down or because a bug ended it.
     #[error("the playback service had ended")]
     Ended(#[source] WorkerEnd),
     /// The task that stores what playback is doing ended before it stored
@@ -106,8 +106,9 @@ pub enum SetVolumeError {
 }
 
 impl SetVolumeError {
-    /// The class a surface words this failure in. Each is a bug: of whoever
-    /// sent the level, or of the service or task that ended.
+    /// Returns the category a screen uses to describe this failure. Every
+    /// case is a bug in the sender of the level or in the service or task
+    /// that ended.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         bae_diagnostics::UiErrorCategory::Internal
     }
@@ -509,14 +510,16 @@ impl PlaybackHandle {
     pub fn seek_by_ratio(&self, ratio: f64) {
         self.dispatch(PlaybackCommand::SeekByRatio(ratio));
     }
-    /// Set the level to `volume`, held to silent and full, sent at this
-    /// call; the future answers once playback has written the level to the
-    /// `playback_now` row, or why the level never reached that write. The
-    /// progress fan-out forwards an event only after it writes the row change
-    /// the event makes, so the level's `VolumeChanged` on a feed subscribed
-    /// before the send means the write has returned. When that write fails,
-    /// the row keeps the level it had and the fan-out reports the failure as
-    /// a playback error, which the row shows and which halts playback.
+    /// Set the level to `volume`, held to silent and full. The method sends
+    /// the command when it is called, and the future returns once playback
+    /// has written the level to the `playback_now` row, or returns why the
+    /// level never reached that write. The task that writes the row and
+    /// forwards progress events to subscribers forwards an event only after
+    /// it writes the row change the event makes, so the level's
+    /// `VolumeChanged` on a feed subscribed before the send means the write
+    /// has returned. When that write fails, the row keeps the level it had
+    /// and the task reports the failure as a playback error, which the row
+    /// shows and which halts playback.
     pub fn set_volume(
         &self,
         volume: f32,

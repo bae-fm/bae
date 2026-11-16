@@ -453,16 +453,17 @@ async fn set_repeat_mode_applies_and_reports_each_mode() {
     .await;
 }
 
-/// A volume set answers once the `playback_now` row holds the level, so a
-/// slider that holds the dragged level until then draws the stored one after.
+/// `set_volume` returns only after the `playback_now` row holds the new
+/// level, so a slider that keeps the dragged level until then draws the
+/// stored level next.
 #[tokio::test]
 async fn set_volume_answers_once_the_row_holds_the_level() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
-        fixture.playback_handle.set_volume(0.42).await.expect("the volume is stored");
+        fixture.playback_handle.set_volume(0.42).await.expect("playback stores the volume");
         let (volume, _) = bae_playback::tables::playback_level(fixture.library.store())
             .await
             .expect("read the stored level");
-        assert_eq!(volume.get(), 0.42, "the row holds the level when the set answers");
+        assert_eq!(volume.get(), 0.42, "the row holds the level when set_volume returns");
     })
     .await;
 }
@@ -470,7 +471,7 @@ async fn set_volume_answers_once_the_row_holds_the_level() {
 #[tokio::test]
 async fn set_muted_round_trips_and_set_volume_clears_mute() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
-        fixture.playback_handle.set_volume(0.5).await.expect("the volume is stored");
+        fixture.playback_handle.set_volume(0.5).await.expect("playback stores the volume");
 
         fixture.playback_handle.set_muted(true);
         assert!(wait_for_mute(&mut fixture.progress_rx).await, "SetMuted(true) mutes");
@@ -489,7 +490,7 @@ async fn set_muted_round_trips_and_set_volume_clears_mute() {
         // Mute again, then a non-zero SetVolume clears the mute.
         fixture.playback_handle.set_muted(true);
         assert!(wait_for_mute(&mut fixture.progress_rx).await, "muted again");
-        fixture.playback_handle.set_volume(0.7).await.expect("the volume is stored");
+        fixture.playback_handle.set_volume(0.7).await.expect("playback stores the volume");
         assert!(
             !wait_for_mute(&mut fixture.progress_rx).await,
             "SetVolume above zero clears the mute"

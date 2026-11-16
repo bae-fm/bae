@@ -23,9 +23,9 @@ internal class PageError(
     val onRetry: () -> Unit,
 ) {
     /**
-     * The error for a list read that failed with [failure]. This app words [headline], and core's
-     * diagnostic stays behind it for the disclosure. Retry calls [onRetry] unless core says that
-     * reading again cannot fix the failure.
+     * The error for a list read that failed with [failure]. This app writes [headline], and the notice
+     * shows core's diagnostic under Details. The notice offers Retry, which calls [onRetry], unless core
+     * says reading again cannot fix the failure.
      */
     constructor(
         headline: String,
@@ -110,7 +110,7 @@ internal class ComposerPageStore(
     override fun open(parameter: BridgeComposerSortCriterion) = library.composerList(parameter)
 }
 
-/** Holds the rows of one composer's page; a different composer opens a new read. */
+/** Holds the rows of one composer's page; this store opens a new read for each composer. */
 internal class ComposerDetailRowsPageStore(
     private val library: Library,
     appContext: Context,

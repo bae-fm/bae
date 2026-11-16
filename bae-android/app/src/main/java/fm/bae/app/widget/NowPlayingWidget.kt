@@ -62,8 +62,9 @@ import androidx.glance.color.ColorProvider as DayNightColorProvider
 private val logger = BaeLogger("bae.NowPlayingWidget")
 
 /**
- * Home-screen now-playing widget. The open library's session updates it on each now-playing value, and
- * it draws what that session's player plays ([widgetContent]). With no library open, it draws no track.
+ * This widget shows the track now playing on the home screen. The open library's session updates it on each
+ * now-playing value, and it draws what that session's player plays ([widgetContent]). With no library open, it
+ * draws no track.
  */
 class NowPlayingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(

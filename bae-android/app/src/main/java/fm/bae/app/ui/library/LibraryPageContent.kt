@@ -85,7 +85,7 @@ internal fun LibraryPageContent(
                 LibraryReadFailed(pageError)
             }
 
-            // The first window is a local read; nothing shows until it lands.
+            // The first window is a local read, so the screen shows nothing until the read returns.
             page.loading && !page.hasRows -> {
                 ListPlaceholder {}
             }

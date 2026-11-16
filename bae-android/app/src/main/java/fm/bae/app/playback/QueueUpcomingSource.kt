@@ -42,10 +42,10 @@ private fun Library.upcomingList(shuffled: Boolean): ListReads<BridgeQueueEntry>
 /**
  * The context's tracks after the playing one, read as a list: a chain of windows over the order the lane reads in,
  * with its count a read of its own. The rows on screen are the places held with [hold], and the chain follows them;
- * for a place far from the chain's rows, the chain starts over at the key the list has there. [onChange] hears each
- * delivery. When the order changes, the list keeps showing the rows of the old order until the new
- * order's count and first rows arrive. A failed read ends the list, and the tail keeps its error in [failure] until
- * [retry] opens the list again.
+ * for a place far from the chain's rows, the chain starts over at the key the list has there. The tail calls
+ * [onChange] after each delivery. When the order changes, the list keeps showing the rows of the old order until
+ * the new order's count and first rows arrive. A failed read ends the list, and the tail keeps its error in [failure]
+ * until [retry] opens the list again.
  */
 internal class UpcomingTail(
     private val source: QueueUpcomingSource,

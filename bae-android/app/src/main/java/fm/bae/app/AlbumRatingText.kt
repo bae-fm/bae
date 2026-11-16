@@ -5,7 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeStars
 
-// Who rated an album, in the person's language. This file does the same work as `BridgeAlbumRating+Text` on macOS.
+// This file writes who rated an album in the person's language, as `BridgeAlbumRating+Text` does on macOS.
 
 /**
  * Who rated the album: "You" for this person, then "Ana rated it 5" for each other, in the order core

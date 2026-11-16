@@ -326,7 +326,7 @@ internal class ListChain<Row>(
 
     /**
      * Grow, trim and keep the chain around the rows on screen. The chain adds a window below or above only
-     * after the window next to it has delivered, so its bound and its row count are known.
+     * after the window next to it has delivered, so the chain knows that window's bound and row count.
      */
     fun reconcile() {
         val visible = visible ?: return

@@ -73,8 +73,8 @@ class SessionMessages internal constructor(
     }
 
     /**
-     * Run [action] in the session as [perform] does, and return once it has answered, so a control can hold
-     * what the person did until then. Leaving the screen that waits does not stop the action.
+     * Run [action] in the session as [perform] does, and return once the action finishes, so a control can keep
+     * showing the person's change until then. Leaving the screen that waits does not stop the action.
      */
     suspend fun performAndWait(
         operation: String,

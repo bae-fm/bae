@@ -21,8 +21,8 @@ import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * Material's single-choice segmented buttons, full width, the [selected] one checked. [label] names the choice over
- * them, in the secondary text, as a form does, and TalkBack reads the buttons alone, as the boards do; a screen whose
- * board reads the choice's name draws that name itself and passes none.
+ * them, in the secondary text, as a form does, and TalkBack reads only the buttons, as each board specifies. A screen
+ * whose board has TalkBack read the choice's name draws that name itself and passes no label.
  */
 @Composable
 internal fun AndroidSegmentedButtons(

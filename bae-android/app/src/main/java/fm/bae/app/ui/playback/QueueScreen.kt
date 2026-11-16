@@ -247,7 +247,7 @@ private fun LazyListScope.contextLane(
 }
 
 /** One lane's rows for [queueRows], one row per index. [hold] keeps a row's index read until the returned release
- *  runs. It is null for the manual lane, which core reads whole. */
+ *  runs. [hold] is null for the manual lane, which core reads whole. */
 private class QueueLane(
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,

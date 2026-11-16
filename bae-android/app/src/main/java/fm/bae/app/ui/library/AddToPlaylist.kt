@@ -89,7 +89,10 @@ internal fun TrackPlaylistAddShown(
     }
 }
 
-/** The playlists [add]'s track can go into, once their listing answers; its error, or a spinner until then. */
+/**
+ * Shows the playlists that [add]'s track can go into once the listing query returns them. Until then, it shows the
+ * query's error or a spinner.
+ */
 @Composable
 private fun PlaylistTargets(
     session: OpenLibrary,
@@ -131,7 +134,7 @@ private fun PlaylistTargets(
             )
         }
 
-        // The listing has not answered yet, so a spinner shows in its place.
+        // The playlist query has not returned its rows yet, so the sheet shows a spinner.
         else -> {
             AndroidSpinner(
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),

@@ -298,7 +298,7 @@ internal open class FakeAppHandle(
         return searchResults(query).albums.drop(offset.toInt()).take(limit.toInt())
     }
 
-    /** Returns the release's track with that id as a browse item reads it, as the database would. */
+    /** Returns the release's track with that id as a BridgeBrowseTrack, as the database would. */
     override suspend fun readReleaseTrack(
         releaseId: String,
         trackId: String,

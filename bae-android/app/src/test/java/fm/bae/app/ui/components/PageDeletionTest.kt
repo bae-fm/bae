@@ -21,9 +21,9 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
- * Deleting what a page shows asks first, naming what the page asked about;
- * Delete deletes it and leaves the page, Cancel deletes nothing, and a failed
- * delete stays on the page saying why.
+ * Before deleting, the page shows a confirmation that names the item the page
+ * passed to ask. Delete deletes it and leaves the page, Cancel deletes nothing,
+ * and after a failed delete the page stays and says why.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])

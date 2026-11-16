@@ -2,15 +2,15 @@ import BaeKit
 import SwiftUI
 
 /// A knobless volume slider. During a click or drag it shows the level under
-/// the pointer and reports each one through `onDrag`; the level the gesture
-/// ends on is set once through `onChange` and stays shown until that set
-/// returns, and then the slider shows `value`.
+/// the pointer and reports each one through `onDrag`. The slider sets the
+/// level the gesture ends on once through `onChange` and shows that level
+/// until the call returns, and then shows `value`.
 struct SlimSlider: View {
     let value: Float
     let onDrag: (Float) -> Void
     let onChange: (Float) async -> Void
 
-    /// The level under the pointer, from the gesture's start until its set returns.
+    /// The level under the pointer, from the gesture's start until the call that sets it returns.
     @State
     private var dragValue: Float?
 
@@ -28,7 +28,7 @@ struct SlimSlider: View {
         dragValue = level
         Task {
             await onChange(level)
-            // A drag that began since shows its own level.
+            // When a new drag started while this call ran, keep that drag's level.
             if dragValue == level {
                 dragValue = nil
             }

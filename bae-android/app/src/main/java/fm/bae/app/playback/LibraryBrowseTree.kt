@@ -105,7 +105,10 @@ private fun ParentInterests.retain(
     }
 
 internal class LibraryBrowseTree<Owner : Any>(
-    /** The open library's handle: the tree reads one request's answer from it once, and lists through [library]. */
+    /**
+     * The open library's handle. The tree makes one-time reads on it and opens its live list queries through
+     * [library].
+     */
     private val handle: AppHandleInterface,
     private val labels: () -> BrowseLabels,
     private val nodes: BrowseNodeFactory,

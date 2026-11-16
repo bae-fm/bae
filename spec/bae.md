@@ -5260,7 +5260,7 @@ sends two or more plays those tracks, in the order sent, as a list of tracks
 **The home-screen widget.** Android's now-playing widget shows the track the
 open library plays, with Play or Pause and Next, and a tap elsewhere opens the
 app. The app updates it on each change of track or of playing, from the values
-the in-app player bar shows; nothing about it is saved to a file. With no
+the in-app player bar shows, and saves nothing about it to a file. With no
 library open nothing plays, so the widget shows no track and offers nothing to
 resume.
 

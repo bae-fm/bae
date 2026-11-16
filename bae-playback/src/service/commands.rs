@@ -106,7 +106,9 @@ impl PlaybackService {
             PlaybackCommand::SetVolume(volume, reply) => {
                 self.set_volume(volume);
                 if reply.send(()).is_err() {
-                    debug!("a volume set by a caller that stopped waiting");
+                    debug!(
+                        "playback set the volume, but the caller stopped waiting for the answer"
+                    );
                 }
             }
             PlaybackCommand::SetVolumeLive(volume) => {

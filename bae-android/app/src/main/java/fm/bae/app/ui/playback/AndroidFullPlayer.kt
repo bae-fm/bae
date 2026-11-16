@@ -378,8 +378,9 @@ internal fun ExpandedVolumeRow(
         return
     }
     // Follow the finger from a local value while dragging, moving the output
-    // as it goes. The level the drag ends on is set once, where it is stored,
-    // and stays shown until that set returns; then the slider shows [volume].
+    // as it goes. When the drag ends, the row calls onSetVolume once with the
+    // last level and shows that level until the call returns; then the slider
+    // shows [volume].
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     val scope = rememberCoroutineScope()
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -400,7 +401,7 @@ internal fun ExpandedVolumeRow(
                 dragVolume?.let { level ->
                     scope.launch {
                         onSetVolume(level)
-                        // A drag that began since shows its own level.
+                        // When a new drag started while onSetVolume ran, keep that drag's level.
                         if (dragVolume == level) dragVolume = null
                     }
                 }

@@ -772,7 +772,7 @@ async fn the_press_after_the_device_failed_reaches_a_fresh_service() {
     );
     let volume = tokio::time::timeout(HANG_GUARD, playback.set_volume(0.5))
         .await
-        .expect("the volume is answered");
+        .expect("the service answers the volume command");
     assert!(volume.is_ok(), "{volume:?}");
     assert_eq!(bugs.reports(), Vec::new());
 }
@@ -831,7 +831,7 @@ async fn commands_sent_while_the_service_dies_reach_the_next_one() {
         tokio::join!(volume, played, async { script.allow(2) })
     })
     .await
-    .expect("the volume and the play are answered");
+    .expect("the service answers the volume and play commands");
 
     assert!(volume.is_ok(), "{volume:?}");
     assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");

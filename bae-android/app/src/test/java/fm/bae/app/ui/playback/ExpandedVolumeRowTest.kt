@@ -26,7 +26,7 @@ import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeRemotePlayback
 import uniffi.bae_bridge.BridgeRendererKind
 
-/** The volume row: mute and the slider, which holds a dragged level until its set returns, or for a receiver that takes no volume from bae, a line saying where it is set. */
+/** The volume row: mute and the slider, which shows a dragged level until the call that sets it returns, or for a receiver that takes no volume from bae, a line saying where it is set. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ExpandedVolumeRowTest {
@@ -69,7 +69,7 @@ class ExpandedVolumeRowTest {
         compose.onAllNodesWithText("Volume is set on Den").assertCountEquals(0)
     }
 
-    /** The slider shows the level a drag ended on until its set returns, then the stored level. */
+    /** The slider shows the level a drag ended on until the call that sets it returns, then the stored level. */
     @Test
     fun aDraggedLevelStaysUntilItsSetReturns() {
         val stored = CompletableDeferred<Unit>()
@@ -96,11 +96,11 @@ class ExpandedVolumeRowTest {
         }
         compose.waitForIdle()
         assertEquals(listOf(0.3f), sets)
-        assertEquals("the dragged level shows while its set is unanswered", 300, bar.progress)
+        assertEquals("the dragged level shows until the call that sets it returns", 300, bar.progress)
 
         stored.complete(Unit)
         compose.waitForIdle()
-        assertEquals("the stored level shows once the set returns", 700, bar.progress)
+        assertEquals("the stored level shows once the call that sets it returns", 700, bar.progress)
     }
 
     private fun seekBarIn(view: View): SeekBar? =

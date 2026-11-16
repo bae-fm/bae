@@ -14,7 +14,11 @@ async fn a_failed_write_of_the_playback_row_stops_the_track() {
         play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &track).await;
         bae_playback::tables::lose_playback_level_for_test(fixture._temp_dir.path());
 
-        fixture.playback_handle.set_volume(0.5).await.expect("the volume is sent and told");
+        fixture
+            .playback_handle
+            .set_volume(0.5)
+            .await
+            .expect("the playback service applies the volume and reports it");
 
         let mut heard = Vec::new();
         let stopped =

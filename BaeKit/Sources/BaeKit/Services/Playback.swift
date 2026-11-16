@@ -14,8 +14,8 @@ public final class Playback: Sendable, Observable {
     public let nextTrack: @Sendable () -> Void
     public let previousTrack: @Sendable () -> Void
     public let seekByRatio: @Sendable (_ ratio: Double) -> Void
-    /// Set the level where a volume drag ends, returning once it is stored,
-    /// so the slider can show the dragged level until then.
+    /// Set the level where a volume drag ends, and return once playback
+    /// stores that level, so the slider can show the dragged level until then.
     public let setVolume: @Sendable (_ volume: Float) async throws -> Void
     /// Move the output to the level a volume drag is at, storing nothing.
     public let setVolumeLive: @Sendable (_ volume: Float) -> Void
