@@ -13,6 +13,8 @@ pub struct DbReleaseDetail {
     /// them: the release's own, then each track's in playing order, a
     /// track's own before the non-writing credits of the works it performs.
     pub credits: Vec<DbCreditRow>,
+    /// Whether the release has any credit.
+    pub has_credits: bool,
     /// Whether any track of the release performs a work.
     pub performs_works: bool,
     pub files: DbReleaseFiles,
@@ -119,6 +121,10 @@ pub struct DbTrackGroup {
     /// Whether the release has more than one group, so each shows its own
     /// time beside the release's.
     pub shows_time: bool,
+    /// The place among the group's tracks of the first one its second column
+    /// lists: half of them, rounded up, when the group has more than eight;
+    /// `None` when one column lists them all.
+    pub second_column_start: Option<u32>,
 }
 
 /// A track with its credits, works and the stars this device's person gave

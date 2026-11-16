@@ -36,6 +36,7 @@ extension ShotScene {
     private static func creditedBoardAlbum() -> BridgeAlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
         var release = detail.releases[0]
+        release.hasCredits = true
         release.credits = [
             BridgeCreditRow(
                 role: .word("Producer"),

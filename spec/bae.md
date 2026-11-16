@@ -177,6 +177,11 @@ carries the release picked, and core answers with that release while the album
 holds it and with the primary release otherwise, together with the release's
 place among the album's releases and whether it can become the primary release.
 
+On macOS the album page's track list lays each side or disc out in two
+columns. Core says where a side's second column starts: after half its tracks,
+rounded up, when it has more than eight; a shorter side fills the first column
+alone.
+
 The album page's pressing line starts with the release's year only when it
 differs from the album's year shown above it (a 2001 reissue of a 1992 album
 says 2001; the 1992 original says nothing); core decides this once and hands

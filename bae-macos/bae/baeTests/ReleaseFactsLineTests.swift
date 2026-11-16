@@ -57,17 +57,20 @@ struct ReleaseFactsLineTests {
         let both = ReleaseFactsLine(
             pressingLine: release.pressingLine,
             labelsLine: release.labelsLine,
-            records: []
+            records: [],
+            hasRecords: false
         )
         let pressingOnly = ReleaseFactsLine(
             pressingLine: release.pressingLine,
             labelsLine: "",
-            records: []
+            records: [],
+            hasRecords: false
         )
         let long = ReleaseFactsLine(
             pressingLine: release.pressingLine,
             labelsLine: String(repeating: release.labelsLine, count: 6),
-            records: []
+            records: [],
+            hasRecords: false
         )
 
         #expect(both.shownLines.count == 2)

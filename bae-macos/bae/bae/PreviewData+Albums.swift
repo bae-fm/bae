@@ -71,7 +71,8 @@
                             ? "core.track.side" : "core.track.disc",
                         tracks: tracks,
                         totalDuration: groupDuration(tracks),
-                        showsTime: true
+                        showsTime: true,
+                        secondColumnStart: secondColumnStart(tracks)
                     )
                 )
             }
@@ -136,7 +137,8 @@
                             headerKey: nil,
                             tracks: tracks,
                             totalDuration: groupDuration(tracks),
-                            showsTime: false
+                            showsTime: false,
+                            secondColumnStart: secondColumnStart(tracks)
                         )
                     ]
                 )
@@ -192,6 +194,7 @@
                 tracks: tracks,
                 trackGroups: groups,
                 credits: [],
+                hasCredits: false,
                 performsWorks: false,
                 sourceAudio: nil,
                 otherFiles: [],
@@ -213,6 +216,12 @@
                 totalSize: 0,
                 cover: nil,
             )
+        }
+
+        /// Where core starts a group's second column: after half its tracks,
+        /// rounded up, when it has more than eight.
+        static func secondColumnStart(_ tracks: [BridgeTrack]) -> UInt32? {
+            tracks.count > 8 ? UInt32((tracks.count + 1) / 2) : nil
         }
 
         private static func makeDetail(
@@ -300,7 +309,8 @@
                     headerKey: "core.track.disc",
                     tracks: release.tracks,
                     totalDuration: groupDuration(release.tracks),
-                    showsTime: false
+                    showsTime: false,
+                    secondColumnStart: secondColumnStart(release.tracks)
                 )
             ]
             release.totalDuration = groupDuration(release.tracks)

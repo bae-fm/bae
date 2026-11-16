@@ -92,7 +92,13 @@ impl BridgeTrack {
 
 impl BridgeTrackGroup {
     pub(super) fn from_core(g: bae_views::album_detail::TrackGroup) -> Self {
-        let bae_views::album_detail::TrackGroup { side, tracks, total_duration_ms, shows_time } = g;
+        let bae_views::album_detail::TrackGroup {
+            side,
+            tracks,
+            total_duration_ms,
+            shows_time,
+            second_column_start,
+        } = g;
         let side = crate::types::BridgeTrackSide::from_core(side);
         BridgeTrackGroup {
             header_key: side.header_key().map(str::to_string),
@@ -101,6 +107,7 @@ impl BridgeTrackGroup {
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
             shows_time,
+            second_column_start,
         }
     }
 }
@@ -118,6 +125,7 @@ impl BridgeRelease {
             tracks,
             track_groups,
             credits,
+            has_credits,
             performs_works,
             // The Storage sheet reads the files in the order it sorts by
             // (`subscribe_release_files`), not the detail's.
@@ -175,6 +183,7 @@ impl BridgeRelease {
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             track_groups: track_groups.into_iter().map(BridgeTrackGroup::from_core).collect(),
             credits: credits.into_iter().map(crate::types::BridgeCreditRow::from_core).collect(),
+            has_credits,
             performs_works,
             has_other_files,
             other_files: other_files.into_iter().map(BridgeFile::from_core).collect(),

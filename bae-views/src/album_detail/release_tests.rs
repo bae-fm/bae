@@ -9,6 +9,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         total_duration_ms: 0,
         track_groups: Vec::new(),
         credits: Vec::new(),
+        has_credits: false,
         performs_works: false,
         files: bae_records::DbReleaseFiles {
             files: Vec::new(),

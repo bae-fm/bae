@@ -74,6 +74,7 @@ pub fn release_details_on<X>(
                 {total_duration} AS total_duration_ms, \
                 {track_groups} AS track_groups, \
                 {credits} AS credits, \
+                {has_credits} AS has_credits, \
                 {performs_works} AS performs_works, \
                 {files} AS files, \
                 {records} AS records, \
@@ -96,6 +97,7 @@ pub fn release_details_on<X>(
         total_duration = total_duration_sql("rel.id"),
         track_groups = track_groups_json_sql("rel.id", my_stars),
         credits = release_credits_json_sql("rel.id"),
+        has_credits = super::release_credits::release_has_credits_sql("rel.id"),
         performs_works = performs_works_sql("rel.id"),
         files = release_files_json_sql("rel.id"),
         records = release_records_json_sql("rel.id"),
@@ -113,6 +115,7 @@ pub fn release_details_on<X>(
             total_duration_ms: bae_store::read::count_column(row, "total_duration_ms")?,
             track_groups: track_groups_column(row, "track_groups")?,
             credits: credit_rows_column(row, "credits")?,
+            has_credits: row.get("has_credits")?,
             performs_works: row.get("performs_works")?,
             files: release_files_column(row, "files")?,
             records: records_column(row, "records")?,
@@ -135,6 +138,7 @@ pub struct DbReleaseDetailRows {
     total_duration_ms: u64,
     track_groups: Vec<DbTrackGroup>,
     credits: Vec<DbCreditRow>,
+    has_credits: bool,
     performs_works: bool,
     files: DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -160,6 +164,7 @@ impl DbReleaseDetailRows {
             total_duration_ms: self.total_duration_ms,
             track_groups: self.track_groups,
             credits: self.credits,
+            has_credits: self.has_credits,
             performs_works: self.performs_works,
             files: self.files,
             records: self.records,

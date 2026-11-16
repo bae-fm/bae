@@ -342,7 +342,12 @@ async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
         ]
     );
     assert!(detail.track_groups.iter().all(|group| group.shows_time));
+    assert!(
+        detail.track_groups.iter().all(|group| group.second_column_start.is_none()),
+        "a group of eight tracks or fewer is one column"
+    );
     assert_eq!(detail.total_duration_ms, 1_500_000);
+    assert!(detail.has_credits);
     assert_eq!(detail.credits.len(), 1);
     assert_eq!(detail.credits[0].tracks, ["A1", "B1"]);
 }
@@ -486,4 +491,35 @@ async fn a_release_of_one_group_shows_no_group_time_and_its_credits_by_qualifier
             (CreditedAs::of(CreditRoleKind::Mixer), vec!["Mixer Name"], vec![]),
         ]
     );
+}
+
+const LONG_RELEASE: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b02";
+
+/// A group of more than eight tracks starts its second column after half of
+/// them, rounded up, and a release with no credit says it has none.
+#[tokio::test]
+async fn a_long_group_splits_its_tracks_across_two_columns() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let ids = |n: u32| format!("e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b{n:02}");
+    let tracks: Vec<(String, String)> =
+        (20..29).map(|n| (ids(n), format!("Track Title {n}"))).collect();
+    let track_refs: Vec<(&str, &str)> =
+        tracks.iter().map(|(id, title)| (id.as_str(), title.as_str())).collect();
+    RecordsFixture::new()
+        .artist(&ids(10), "Artist Name")
+        .album(&ids(1), "Album Title", None, &[ids(10).as_str()])
+        .release(&ids(1), LONG_RELEASE)
+        .tracks(LONG_RELEASE, &track_refs)
+        .write(&bae_records::test_fixtures::test_records(&db))
+        .await;
+
+    let detail = crate::LibraryViews::new(db.clone())
+        .find_release_detail(LONG_RELEASE)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(detail.track_groups.len(), 1);
+    assert_eq!(detail.track_groups[0].second_column_start, Some(5), "nine tracks put five first");
+    assert!(!detail.has_credits);
 }

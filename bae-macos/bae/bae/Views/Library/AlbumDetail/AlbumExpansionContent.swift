@@ -85,7 +85,8 @@ struct AlbumExpansionContent: View {
                     ReleaseFactsLine(
                         pressingLine: selectedRelease.pressingLine,
                         labelsLine: selectedRelease.labelsLine,
-                        records: selectedRelease.records
+                        records: selectedRelease.records,
+                        hasRecords: selectedRelease.hasRecords
                     )
                     // Why this Mac can't play the release: the device its
                     // audio is on, or its originals missing here.
@@ -122,7 +123,7 @@ struct AlbumExpansionContent: View {
                         picking: picking
                     )
                     .padding(.top, ThemeSpace.edge)
-                    if !selectedRelease.credits.isEmpty {
+                    if selectedRelease.hasCredits {
                         AlbumCreditsView(credits: selectedRelease.credits)
                             .padding(.top, ThemeSpace.edge)
                     }
@@ -222,6 +223,9 @@ struct ReleaseFactsLine: View {
     let pressingLine: String
     let labelsLine: String
     let records: [BridgeReleaseRecord]
+    /// Whether any catalog describes the release, so the line offers the
+    /// card naming them.
+    let hasRecords: Bool
 
     /// How far under the line the card's top sits.
     private static let cardOffset = ThemeSpace.related
@@ -237,7 +241,7 @@ struct ReleaseFactsLine: View {
     private var lineHeight: CGFloat = 0
 
     var body: some View {
-        if records.isEmpty {
+        if !hasRecords {
             factsText
         }
         else {

@@ -54,18 +54,20 @@ impl CreditPart<'_> {
     }
 }
 
-/// The credits the detail of the release `release_expr` (an SQL expression naming
-/// its id) lists, as a JSON array of rows for [`credit_rows_column`]. The
-/// statement orders the credits as the release lists them: the release's, in
-/// the order the catalog stated them; then for each track in playing order,
-/// its own credits, then the credits in a role other than a writing one of
-/// the works it performs, each work in the order the track performs it. An
-/// artist holds a role (with its qualifiers) over the tracks its credits sit
-/// on, all of them for a credit of the release; artists holding a role over
-/// the same tracks are one row, in the order of their first credit, and rows
-/// go in the order of their first credit. A row whose role covers every track
-/// lists no tracks.
-pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
+/// The three parts of the credits of a release.
+struct CreditParts {
+    /// The release's own credits.
+    release: CreditPart<'static>,
+    /// Each track's own credits.
+    track: CreditPart<'static>,
+    /// The credits other than writing credits of the works its tracks
+    /// perform.
+    work: CreditPart<'static>,
+}
+
+/// The parts of the credits of the release `release_expr` (an SQL expression
+/// naming its id).
+fn credit_parts(release_expr: &str) -> CreditParts {
     let release = CreditPart {
         table: "release_artist_roles",
         part: 0,
@@ -103,6 +105,34 @@ pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
              AND credit.role NOT IN (SELECT role FROM writing_credit_roles)"
         ),
     };
+    CreditParts { release, track, work }
+}
+
+/// Whether the release `release_expr` (an SQL expression naming its id) has
+/// any credit [`release_credits_json_sql`] lists.
+pub(super) fn release_has_credits_sql(release_expr: &str) -> String {
+    let CreditParts { release, track, work } = credit_parts(release_expr);
+    format!(
+        "EXISTS ({} UNION ALL {} UNION ALL {})",
+        release.select(),
+        track.select(),
+        work.select()
+    )
+}
+
+/// The credits the detail of the release `release_expr` (an SQL expression naming
+/// its id) lists, as a JSON array of rows for [`credit_rows_column`]. The
+/// statement orders the credits as the release lists them: the release's, in
+/// the order the catalog stated them; then for each track in playing order,
+/// its own credits, then the credits in a role other than a writing one of
+/// the works it performs, each work in the order the track performs it. An
+/// artist holds a role (with its qualifiers) over the tracks its credits sit
+/// on, all of them for a credit of the release; artists holding a role over
+/// the same tracks are one row, in the order of their first credit, and rows
+/// go in the order of their first credit. A row whose role covers every track
+/// lists no tracks.
+pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
+    let CreditParts { release, track, work } = credit_parts(release_expr);
     format!(
         "(WITH {placed}, \
          listed AS ({release} UNION ALL {track} UNION ALL {work}), \

@@ -53,6 +53,9 @@ pub struct TrackGroup {
     /// Whether the release has more than one group, so each shows its own
     /// time beside the release's.
     pub shows_time: bool,
+    /// The place among the group's tracks of the first one its second column
+    /// lists, or `None` when one column lists them all.
+    pub second_column_start: Option<u32>,
 }
 
 impl TrackGroup {
@@ -68,6 +71,7 @@ impl TrackGroup {
                 .collect(),
             total_duration_ms: raw.total_duration_ms,
             shows_time: raw.shows_time,
+            second_column_start: raw.second_column_start,
         }
     }
 }

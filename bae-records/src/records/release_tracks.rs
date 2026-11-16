@@ -130,6 +130,7 @@ struct GroupJson {
     side_ordinal: u32,
     total_duration_ms: u64,
     shows_time: i64,
+    second_column_start: Option<u32>,
     tracks: Vec<TrackJson>,
 }
 
@@ -137,7 +138,7 @@ struct GroupJson {
 /// playing order, grouped by side or disc (a run of tracks on one side is one
 /// group), as a JSON array of groups for [`track_groups_column`]: each group
 /// with its tracks' lengths added up, whether the release has more than one
-/// group, and its tracks.
+/// group, where its second column starts, and its tracks.
 pub(super) fn track_groups_json_sql(release: &str, my_stars: &str) -> String {
     format!(
         "(WITH {placed}, \
@@ -151,6 +152,7 @@ pub(super) fn track_groups_json_sql(release: &str, my_stars: &str) -> String {
             SELECT side_kind, side_ordinal, MIN(position) AS first_position, \
                    SUM(duration_ms) AS total_duration_ms, \
                    COUNT(*) OVER () > 1 AS shows_time, \
+                   CASE WHEN COUNT(*) > 8 THEN (COUNT(*) + 1) / 2 END AS second_column_start, \
                    json_group_array(json_object( \
                        'id', id, 'title', title, 'duration_ms', duration_ms, 'number', number, \
                        'own_credits', json(own_credits), 'shown_credits', json(shown_credits), \
@@ -160,6 +162,7 @@ pub(super) fn track_groups_json_sql(release: &str, my_stars: &str) -> String {
          SELECT json_group_array(json_object( \
                     'side_kind', side_kind, 'side_ordinal', side_ordinal, \
                     'total_duration_ms', total_duration_ms, 'shows_time', shows_time, \
+                    'second_column_start', second_column_start, \
                     'tracks', json(tracks)) ORDER BY first_position) \
          FROM grouped)",
         placed = placed_tracks_ctes(
@@ -236,6 +239,7 @@ pub(super) fn track_groups_column(
                 tracks,
                 total_duration_ms: group.total_duration_ms,
                 shows_time: group.shows_time != 0,
+                second_column_start: group.second_column_start,
             })
         })
         .collect()

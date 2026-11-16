@@ -135,6 +135,8 @@ object PreviewData {
             tracks = tracks,
             totalDuration = null,
             showsTime = false,
+            // Where core starts a second column: after half the tracks, rounded up, past eight.
+            secondColumnStart = if (tracks.size > 8) ((tracks.size + 1) / 2).toUInt() else null,
         )
 
     fun release(
@@ -173,6 +175,7 @@ object PreviewData {
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
             credits = emptyList(),
+            hasCredits = false,
             performsWorks = false,
             sourceAudio = null,
             otherFiles = emptyList(),

@@ -121,6 +121,7 @@ object BridgeFixtures {
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
             credits = emptyList(),
+            hasCredits = false,
             performsWorks = false,
             sourceAudio = sourceAudio,
             otherFiles = emptyList(),

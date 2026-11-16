@@ -2,8 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The track list under an album's detail card. Each side or disc lays out in
-/// two column slots (a side over eight tracks splits across both), so every
-/// row gets one column's width and ends its duration at the same x.
+/// two column slots (core says where a side splits across both), so every row
+/// gets one column's width and ends its duration at the same x.
 struct AlbumTrackListView: View {
     let release: ReleaseDetail
     let isCompilation: Bool
@@ -41,21 +41,19 @@ struct AlbumTrackListView: View {
                         .padding(.top, groupIndex == 0 ? 0 : ThemeSpace.edge)
                         .padding(.bottom, ThemeSpace.compact)
                 }
-                let mid =
-                    group.tracks.count > 8
-                    ? (group.tracks.count + 1) / 2 : group.tracks.count
-                let left = Array(group.tracks.prefix(mid))
-                let right = Array(group.tracks.dropFirst(mid))
                 HStack(alignment: .top, spacing: ThemeSpace.page) {
-                    trackColumn(tracks: left)
-                    if right.isEmpty {
+                    if let start = group.secondColumnStart {
+                        trackColumn(tracks: Array(group.tracks.prefix(start)))
+                        trackColumn(
+                            tracks: Array(group.tracks.dropFirst(start))
+                        )
+                    }
+                    else {
+                        trackColumn(tracks: group.tracks)
                         // Not a `Spacer`: its default minimum length would
                         // claim its own width rather than take the share a
                         // sibling column takes.
                         Color.clear.frame(maxWidth: .infinity)
-                    }
-                    else {
-                        trackColumn(tracks: right)
                     }
                 }
                 // The album's play time sits in the header; only a multi-side

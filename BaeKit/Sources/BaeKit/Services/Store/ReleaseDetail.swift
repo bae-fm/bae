@@ -25,6 +25,9 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// Who did what on the release and its tracks, by role and artist, as
     /// core groups them.
     public var credits: [BridgeCreditRow]
+    /// Whether the release has any credit, so its page shows a Credits
+    /// section.
+    public var hasCredits: Bool
     /// Whether any track of the release performs a work.
     public var performsWorks: Bool
     public var imageFiles: [BridgeFile]
@@ -33,6 +36,8 @@ public struct ReleaseDetail: Identifiable, Sendable {
     /// Every catalog that describes this release, in the order core lists
     /// them. Empty when no catalog does.
     public var records: [BridgeReleaseRecord]
+    /// Whether any catalog describes this release.
+    public var hasRecords: Bool
     /// Why this device can't play the release, in the current locale, or nil
     /// when it can: the device its audio is on ("On Ana's Mac"), or its
     /// originals missing here.
@@ -75,11 +80,13 @@ public struct ReleaseDetail: Identifiable, Sendable {
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
         credits = bridge.credits
+        hasCredits = bridge.hasCredits
         performsWorks = bridge.performsWorks
         imageFiles = bridge.imageFiles
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
+        hasRecords = bridge.hasRecords
         unplayableLine =
             bridgeReleasePlayabilityLine(
                 playability: bridge.playability

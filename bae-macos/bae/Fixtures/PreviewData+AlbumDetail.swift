@@ -207,6 +207,7 @@ extension PreviewData {
             tracks: [],
             trackGroups: [],
             credits: [],
+            hasCredits: false,
             performsWorks: false,
             sourceAudio: .uniform(
                 descriptor: BridgeSourceAudioDescriptor(

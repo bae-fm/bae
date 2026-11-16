@@ -128,8 +128,10 @@ fn one_track(
             }],
             total_duration_ms: track.duration_ms,
             shows_time: false,
+            second_column_start: None,
         }],
         credits: Vec::new(),
+        has_credits: false,
         performs_works: false,
         files: bae_records::DbReleaseFiles {
             files: Vec::new(),

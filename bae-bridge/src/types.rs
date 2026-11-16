@@ -1,4 +1,5 @@
 mod admin_change;
+mod album_page;
 mod configuration;
 #[cfg(desktop)]
 mod conversion;
@@ -32,6 +33,7 @@ mod storage_inspector;
 mod sync_activity;
 
 pub use admin_change::*;
+pub use album_page::*;
 pub use configuration::*;
 #[cfg(desktop)]
 pub use cover::*;
