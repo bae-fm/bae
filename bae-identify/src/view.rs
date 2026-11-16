@@ -1,8 +1,8 @@
-//! The identify state as every surface renders it: a run's or a verdict's
-//! album cards with their badges, as its rows stored them ([`VerdictCards`]),
-//! and the run laid out as a ledger, [`IdentifyRunView`], one row per value
-//! and one cell per provider. The bridge and automation copy it field by
-//! field.
+//! This module holds the identify state that every surface draws: the album
+//! cards of a run or a verdict with their badges, read from the rows the
+//! verdict write stored ([`VerdictCards`]), and the run's ledger
+//! ([`IdentifyRunView`]), one row per value and one cell per provider. The
+//! bridge and automation copy it field by field.
 //!
 //! The ledger is recorded once as a run ends, each release in its cells as
 //! the run last read it, and stored with its verdict.
@@ -223,9 +223,9 @@ impl IdentifyRunView {
 ///
 /// Its `groups` are every card the answers make, the rows agreement set aside
 /// on their album's card beside the offered ones: the cards that offer a row
-/// first, then the cards whose rows were all set aside. `narrowed_out_count`
-/// is how many rows were set aside across every card — what a surface's
-/// "more" disclosure counts.
+/// first, then the cards whose every row the agreement check set aside.
+/// `narrowed_out_count` is how many rows the agreement check set aside across
+/// every card, which a surface's "more" disclosure counts.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdentifyStateView {
     Idle,
@@ -249,9 +249,9 @@ pub enum IdentifyStateView {
         /// The check against the folder the found release failed: why the
         /// verdict picks none of its releases.
         folder_check: Option<super::FolderCheck>,
-        /// The release the verdict picks without a person, which the settle
-        /// reads in full: the lead of its one pressing. `None` when it picks
-        /// none.
+        /// The release the verdict picks on its own, without asking the
+        /// person, which the settle reads in full: the lead of its one
+        /// pressing. `None` when it picks none.
         unattended_pick: Option<String>,
         /// Whether the offered rows are several pressings of one album,
         /// which the folder can be linked to with its pressing unknown.
@@ -302,34 +302,36 @@ pub struct RowAgreements {
     pub notes: Vec<Statement<String>>,
 }
 
-/// The album cards of a verdict or a run in flight, and what a surface shows
-/// beside them, as the verdict's rows stored them: the rows agreement set
-/// aside on their album's card beside the offered ones, each row's badges
-/// keyed by every release id in the row, and the counts the "more" disclosure
-/// and the album link read.
+/// The album cards of a verdict or a run that is still running, and what a
+/// surface shows beside them, as the verdict's rows stored them: the rows
+/// that the agreement check set aside on their album's card beside the
+/// offered ones, each row's badges keyed by every release id in the row, and
+/// the counts the "more" disclosure and the album link read.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct VerdictCards {
-    /// The cards that offer a row first, then the cards whose rows were all
-    /// set aside.
+    /// The cards that offer a row first, then the cards whose every row the
+    /// agreement check set aside.
     pub groups: Vec<ReleaseGroup>,
     pub agreements: Vec<(String, RowAgreements)>,
-    /// How many rows were set aside across every card.
+    /// How many rows the agreement check set aside, across every card.
     pub narrowed_out_count: u32,
-    /// The album the offered rows are several pressings of, where they are.
+    /// The album whose pressings the offered rows are; `None` when they are
+    /// not pressings of one album.
     pub shared_album: Option<crate::SharedAlbum>,
     /// The check against the folder the found release failed: why a found
     /// verdict picks none of its releases. `None` for every other shape.
     pub folder_check: Option<super::FolderCheck>,
-    /// The release a found verdict picks without a person: the lead of its one
-    /// pressing. `None` when it picks none, and for every other shape.
+    /// The release a found verdict picks on its own, without asking the
+    /// person: the lead of its one pressing. `None` when it picks none, and
+    /// for every other shape.
     pub unattended_pick: Option<String>,
 }
 
 /// A verdict's releases judged against the folder's text, and the album
 /// cards they fold into.
 pub struct JudgedFindings {
-    /// Every card the releases make, the rows agreement set aside on their
-    /// album's card beside the offered ones.
+    /// Every card the releases make. A card holds its album's offered rows
+    /// and the rows the agreement check set aside.
     pub groups: Vec<ReleaseGroup>,
     /// What the folder's text agrees with about each release, aligned with
     /// [`Findings::releases`]: the offered releases, then the set-aside ones.
@@ -339,8 +341,8 @@ pub struct JudgedFindings {
 impl JudgedFindings {
     /// Judge `findings` against `text` and fold them into cards. `ledger` is
     /// the run's, whose disc-ID lookups say which releases agree on a disc ID;
-    /// none for a run that laid none out. The medium conflict is stated by
-    /// the folder check, not here.
+    /// `None` when the run made no Disc ID lookups. The folder check states
+    /// the medium conflict; this function does not.
     pub fn of(
         findings: &Findings,
         ledger: Option<&IdentifyRunView>,

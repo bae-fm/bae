@@ -1,6 +1,6 @@
-//! The cards of a verdict as the identify rules fold them in memory: the
-//! reference the stored layout's statement is held to, and what tests of the
-//! rules read the view's cards from. Nothing reads cards this way.
+//! This module builds a verdict's cards in memory by the identify rules.
+//! Tests compare the cards statement with these cards, and tests of the
+//! rules read the view's cards from them; no product code reads them.
 
 use super::{IdentifyRunView, IdentifyStateView, RowAgreements, RunOutcome, VerdictCards};
 use crate::agreements::{judged_results, CandidateText};
@@ -58,8 +58,8 @@ pub fn reference_cards(
         .collect();
     let narrowed_out_count = cards.iter().map(|group| group.narrowed_out().count() as u32).sum();
     VerdictCards {
-        // The album several offered rows share is answered by the stored
-        // layout's statement alone, so the reference does not fold it.
+        // Only the stored layout's statement sets the album that several
+        // offered rows share, so the reference leaves it empty.
         shared_album: None,
         groups: cards,
         agreements,
@@ -83,8 +83,8 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         RunOutcome::Answered(_) => return VerdictCards::default(),
     };
     let mut cards = reference_cards(findings.clone(), ledger, text, track_count);
-    // What a found verdict states of the check it failed, and the release it
-    // picks, as the summary of its findings judges them.
+    // For a found verdict, fill in the check it failed and the release it
+    // picks, as VerdictSummary works them out.
     if let RunOutcome::Answered(verdict @ TerminalVerdict::Found { findings, .. }) = outcome {
         let summary = crate::VerdictSummary::of(verdict, false);
         cards.folder_check = summary.folder_check();

@@ -223,8 +223,8 @@ impl TerminalVerdict {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl TerminalVerdict {
-    /// The identify state this verdict stands as in a test of what consumes a
-    /// run's final state, with no signals' context behind it.
+    /// Builds the identify state for this verdict with a default signals
+    /// context, for tests of code that reads a run's final state.
     pub fn standing_for_tests(self) -> IdentifyState {
         let context = super::state::SignalsContext::default;
         match self {

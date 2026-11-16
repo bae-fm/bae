@@ -1,13 +1,15 @@
-//! The check of the found release against the folder that did not pass, which
-//! the pane states beside Import and under the release in Find online, and,
-//! for tests, the rules' reference for what a stored verdict decides: which
-//! check its release failed, and whether it picks its one release unattended.
+//! This module names the check of the found release against the folder that
+//! failed, which the pane shows beside Import and under the release in Find
+//! online. For tests, it also works out which check a stored verdict's
+//! release failed and whether the verdict picks its one release without
+//! asking.
 //!
-//! A stored verdict's decision is read from its rows, in the view
-//! `import_candidate_verdict_decision`; the summary works the same out of a
-//! verdict in memory, so a test holds the rows' decision to the rules. Whether the release is already in the library
-//! is not part of either — importing a second copy is the person's to
-//! moderate. Nothing here blocks an import a person asks for.
+//! The view `import_candidate_verdict_decision` computes a stored verdict's
+//! decision from its rows. The summary computes it from a verdict in memory,
+//! and a test checks that both give the same answer. Neither looks at
+//! whether the release is already in the library: the person decides
+//! whether to import a second copy. Nothing here blocks an import a person
+//! asks for.
 
 #[cfg(any(test, feature = "test-utils"))]
 use super::fit::Declined;
@@ -46,9 +48,9 @@ pub enum VerdictKind {
 }
 
 /// As much of a verdict as its decisions consult: which shape it is, how many
-/// pressings it named, and how its lead match's tracklist fits the folder. The
-/// reference a stored verdict's decision is held to; nothing reads a verdict
-/// this way.
+/// pressings it named, and how its lead match's tracklist fits the folder.
+/// Tests compare the view's stored decision with this summary's; no product
+/// code reads a verdict this way.
 #[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerdictSummary {
