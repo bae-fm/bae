@@ -56,34 +56,22 @@ impl ProfileRequest {
     }
 }
 
-/// The request with its operation's outcome, and whether `coven_operations`
-/// lists the operation at all.
-const PROFILE_REQUEST_SQL: &str = "SELECT r.operation, r.circle, r.name, \
-         o.operation IS NOT NULL, o.outcome \
+/// The request with its operation's outcome. `coven_operations` lists the
+/// operation until the write that ends the request acknowledges it.
+const PROFILE_REQUEST_SQL: &str = "SELECT r.operation, r.circle, r.name, o.outcome \
      FROM profile_request AS r \
-     LEFT JOIN coven_operations AS o ON o.operation = r.operation";
+     JOIN coven_operations AS o ON o.operation = r.operation";
 
 /// The profile request, if this device's person has one.
 pub(super) fn profile_request_on(
     sql: &impl coven::SqlRead,
 ) -> rusqlite::Result<Option<ProfileRequest>> {
     sql.query(PROFILE_REQUEST_SQL, [], |row| {
-        let operation = coven::OperationId(row.get(0)?);
-        // The write that ends the request acknowledges the operation, and
-        // nothing else does: a request whose operation coven no longer
-        // lists has lost what it waits for.
-        if !row.get::<_, bool>(3)? {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                0,
-                format!("the profile request's operation {operation:?} isn't listed"),
-            ));
-        }
         Ok(ProfileRequest {
-            operation,
+            operation: coven::OperationId(row.get(0)?),
             circle: coven::CircleId(uuid_column(row, 1)?),
             name: row.get(2)?,
-            outcome: row.get(4)?,
+            outcome: row.get(3)?,
         })
     })
     .map(|mut found| found.pop())
