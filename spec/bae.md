@@ -5256,6 +5256,13 @@ A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks
 (§7.8).
 
+**The home-screen widget.** Android's now-playing widget shows the track the
+open library plays, with Play or Pause and Next, and a tap elsewhere opens the
+app. The app updates it on each change of track or of playing, from the values
+the in-app player bar shows; nothing about it is saved to a file. With no
+library open nothing plays, so the widget shows no track and offers nothing to
+resume.
+
 ### 7.8 What a device remembers
 
 The queue and position are per device. The queue is stored as it changes: Up

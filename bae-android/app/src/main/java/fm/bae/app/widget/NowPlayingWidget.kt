@@ -33,11 +33,9 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import fm.bae.app.AppSessionHolder
-import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.mainActivityIntent
@@ -61,22 +59,17 @@ import androidx.glance.color.ColorProvider as DayNightColorProvider
 private val logger = BaeLogger("bae.NowPlayingWidget")
 
 /**
- * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot],
- * which a render without an open library can still read, and played or paused
- * by the open library's player when there is one ([widgetContent]).
+ * Home-screen now-playing widget. The open library's session updates it on each now-playing value, and
+ * it draws what that session's player plays ([widgetContent]). With no library open, it draws no track.
  */
 class NowPlayingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,
     ) {
-        val read = WidgetSnapshotStore(context).read()
-        if (read is WidgetRead.Damaged) {
-            (context.applicationContext as BaeApp).bugs.reportShownInPlace("read the widget's saved track", read.error)
-        }
         val session = AppSessionHolder.currentSession()
-        val content = widgetContent(read, session?.playback)
-        val cover = widgetCover(context, (content as? WidgetContent.Track)?.track?.coverImage, session)
+        val content = widgetContent(session?.playback, context)
+        val cover = widgetCover(context, (content as? WidgetContent.Track)?.coverImage, session)
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
@@ -129,7 +122,7 @@ private fun NowPlayingWidgetContent(
     placeholder: ColorProvider,
 ) {
     val context = LocalContext.current
-    val track = (content as? WidgetContent.Track)?.track
+    val track = content as? WidgetContent.Track
     // The whole surface opens the app; the transport buttons take their own taps.
     Row(
         modifier =
@@ -146,9 +139,8 @@ private fun NowPlayingWidgetContent(
             Text(
                 text =
                     when (content) {
-                        is WidgetContent.Track -> content.track.title
+                        is WidgetContent.Track -> content.title
                         WidgetContent.NothingPlaying -> context.getString(R.string.widget_nothing_playing)
-                        WidgetContent.SomethingWentWrong -> context.coreString("core.error.category.internal")
                     },
                 maxLines = 1,
                 style = ThemeText.rowTitle.glanceStyle(GlanceTheme.colors.onSurface),

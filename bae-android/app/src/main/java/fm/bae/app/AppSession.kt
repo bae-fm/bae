@@ -20,8 +20,6 @@ import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
-import fm.bae.app.widget.WidgetSnapshot
-import fm.bae.app.widget.WidgetSnapshotStore
 import fm.bae.fastvalues.LatestFeed
 import fm.bae.fastvalues.feed
 import fm.bae.screensubscription.ScreenSubscription
@@ -135,7 +133,6 @@ class OpenLibrary internal constructor(
 
     /** The fast streams' feeds, which stop with [screenSubscriptions]. */
     private val streamFeeds = mutableListOf<LatestFeed>()
-    private val widgetSnapshotStore = WidgetSnapshotStore(appContext)
 
     /**
      * Subscribe to retained values first, then route transient notifications
@@ -290,25 +287,17 @@ class OpenLibrary internal constructor(
     }
 
     /**
-     * Mirror the player's now-playing track into the widget snapshot and
-     * refresh the widget on every change of track or of playing, which the
-     * widget reads from this session's player while it is open
-     * ([fm.bae.app.widget.widgetContent]). This observes the same
-     * [BaeCorePlayer.nowPlaying]/[BaeCorePlayer.isPlaying] the in-app bar reads —
-     * not a second bridge subscription — so the widget and the in-app UI reflect
-     * one source. Position ticks don't touch these flows, so `distinctUntilChanged`
-     * limits writes to real track/play-state changes.
+     * Update the widget on every change of track or of playing. The widget draws what this session's
+     * player plays ([fm.bae.app.widget.widgetContent]), from the same [BaeCorePlayer.nowPlaying] and
+     * [BaeCorePlayer.isPlaying] the in-app bar reads. Position ticks don't change these flows, so
+     * `distinctUntilChanged` updates the widget only when the track or the play state changes.
      */
     private fun observeNowPlayingForWidget(scope: CoroutineScope) {
         widgetJob =
             scope.launch {
-                combine(playback.nowPlaying, playback.isPlaying) { nowPlaying, isPlaying ->
-                    WidgetSnapshot.from(nowPlaying, appContext) to isPlaying
-                }.distinctUntilChanged()
-                    .collect { (snapshot, _) ->
-                        widgetSnapshotStore.write(snapshot)
-                        NowPlayingWidget().updateAll(appContext)
-                    }
+                combine(playback.nowPlaying, playback.isPlaying) { nowPlaying, isPlaying -> nowPlaying to isPlaying }
+                    .distinctUntilChanged()
+                    .collect { NowPlayingWidget().updateAll(appContext) }
             }
     }
 
@@ -339,8 +328,8 @@ class OpenLibrary internal constructor(
 
     /**
      * Detach everything that reaches the handle, then redraw the widget, which
-     * shows the last track stopped once no open session is playing it. The
-     * holder has already stopped offering this session as the current one.
+     * shows no track once no library is open. The holder has already stopped
+     * offering this session as the current one.
      */
     private suspend fun stopSessionServices() {
         // No screen of this library may still take a tap.
