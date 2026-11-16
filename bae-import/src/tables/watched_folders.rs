@@ -1,8 +1,8 @@
 //! The watched folders, `watched_import_folders`: which folders import reads,
 //! each keyed by its canonical spelling and in the order it was added. No two
 //! overlap: every write that watches a folder refuses one that does
-//! ([`watch_folder_on`]). Every folder a scan, a decision or a skip stores
-//! lies under one. Its table is `watched_folders.sql`.
+//! ([`watch_folder_on`] says how). Every folder a scan, a decision or a skip
+//! stores lies under one. Its table is `watched_folders.sql`.
 
 use super::*;
 use crate::RelativeFolder;
@@ -193,17 +193,23 @@ fn watched_folders_below_on(
     )?)
 }
 
-/// Watch `folder`, keyed by its canonical spelling, after every folder
-/// watched now. Every write that watches a folder does it here, so no two
-/// watched folders overlap: a folder that holds, or lies in, a watched one is
-/// refused, naming that one.
-pub(super) fn watch_folder_on(
-    sql: &CovenWrite<'_>,
-    folder: &Path,
-) -> Result<(), crate::ImportError> {
-    if let Some(watched) = overlapping_watched_folder_on(sql, folder)? {
-        return Err(WatchedFolderRefusal::Overlap { folder: folder.to_path_buf(), watched }.into());
+/// Refuse `folder` when it holds, or lies in, a watched folder. The error
+/// names that watched folder.
+fn refuse_overlap_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), crate::ImportError> {
+    match overlapping_watched_folder_on(sql, folder)? {
+        Some(watched) => {
+            Err(WatchedFolderRefusal::Overlap { folder: folder.to_path_buf(), watched }.into())
+        }
+        None => Ok(()),
     }
+}
+
+/// Watch `folder`, keyed by its canonical spelling, after every folder
+/// watched now. Each caller checks, in the same write, that `folder`
+/// overlaps no watched folder: the add with [`refuse_overlap_on`], and the
+/// takeover by checking that no watched folder holds `folder` and that the
+/// watched folders inside it are the ones the takeover deleted.
+pub(super) fn watch_folder_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(), DbError> {
     sql.execute(
         "INSERT INTO watched_import_folders (path, position) \
          SELECT ?, COALESCE(MAX(position) + 1, 0) FROM watched_import_folders",
@@ -269,6 +275,7 @@ impl ImportTables {
                 if is_watched_on(sql, &path)? {
                     return Err(WatchedFolderRefusal::AddedMeanwhile(path).into());
                 }
+                refuse_overlap_on(sql, &path)?;
                 watch_folder_on(sql, &path)?;
                 Ok(Some(watched_folders_on(sql)?))
             })
