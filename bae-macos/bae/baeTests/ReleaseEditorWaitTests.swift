@@ -63,7 +63,9 @@ struct ReleaseEditorWaitTests {
             commands: ReleaseEditCommands(
                 open: { _ in opened },
                 searchAlbums: { _ in [] },
-                catalogApply: { nil }
+                catalogApply: {
+                    FixedCatalogApply(step: .fetchingCover(catalog: .discogs))
+                }
             )
         )
     }
@@ -81,11 +83,6 @@ struct ReleaseEditorWaitTests {
                 onSaved: { _ in }
             )
             .frame(width: size.width, height: size.height)
-            // No bridge is behind the apply, so its line draws this step.
-            .environment(
-                \.heldCatalogApplyStep,
-                .fetchingCover(catalog: .discogs)
-            )
             .environment(PreviewData.artistAssignmentsLibrary())
             .environment(SettingsNavigation())
             .albumDetailPreviewEnvironment()
@@ -101,6 +98,6 @@ struct ReleaseEditorWaitTests {
     /// Whether the editor shows an apply's step: the step's bar.
     private func showsStep(_ host: NSView) -> Bool {
         SnapshotTestSupport.descendants(of: host)
-            .contains { $0 is ProgressTrackNSView }
+            .contains { $0 is ProgressTrackNSView && !$0.visibleRect.isEmpty }
     }
 }

@@ -36,10 +36,8 @@ struct ImportSearchResultRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             resultButton
-            if case .followed(let apply) = loading?.reading {
-                CatalogApplyStepLine(apply: apply)
-                    .padding(.horizontal, Self.horizontalPadding)
-            }
+            CatalogApplyStepLine(apply: followedApply)
+                .padding(.horizontal, Self.horizontalPadding)
             unattendedLine
             failureLine
         }
@@ -81,6 +79,13 @@ struct ImportSearchResultRow: View {
         }
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, Self.horizontalPadding)
+    }
+
+    /// The apply of the person's pick being read on this row; `nil` while
+    /// the row reads no such pick.
+    private var followedApply: (any CatalogApplySource)? {
+        guard case .followed(let apply) = loading?.reading else { return nil }
+        return apply
     }
 
     private var isReadingUnattended: Bool {

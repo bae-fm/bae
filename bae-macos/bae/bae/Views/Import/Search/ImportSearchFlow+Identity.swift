@@ -18,7 +18,7 @@ extension ImportSearchFlow {
         key: Data,
         application: MetadataApplication
     ) {
-        let apply: BridgeCatalogApply? =
+        let apply: (any CatalogApplySource)? =
             switch application {
             case .pick: importer.catalogApply()
             case .fileTags: nil
@@ -44,7 +44,7 @@ extension ImportSearchFlow {
                     try await pick(
                         application,
                         key: key,
-                        apply: apply,
+                        apply: apply?.bridgeApply,
                         importer: importer
                     )
                 )

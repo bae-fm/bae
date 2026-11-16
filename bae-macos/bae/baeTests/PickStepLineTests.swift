@@ -26,13 +26,13 @@ struct PickStepLineTests {
                 isSelected: false,
                 loading: LoadingPick(
                     releaseId: pressing.lead.releaseId,
-                    reading: .followed(nil)
+                    reading: .followed(
+                        FixedCatalogApply(
+                            step: .readingRelease(catalog: .discogs)
+                        )
+                    )
                 ),
                 onSelect: { _ in }
-            )
-            .environment(
-                \.heldCatalogApplyStep,
-                .readingRelease(catalog: .discogs)
             )
             .frame(width: size.width)
             .frame(width: size.width, height: size.height, alignment: .top)
@@ -40,9 +40,9 @@ struct PickStepLineTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let bars = SnapshotTestSupport.descendants(of: host)
-                .filter { $0 is ProgressTrackNSView }
-            #expect(bars.count == 1, "drew \(bars)")
+            let shown = SnapshotTestSupport.descendants(of: host)
+                .filter { $0 is ProgressTrackNSView && !$0.visibleRect.isEmpty }
+            #expect(shown.count == 1, "showed \(shown)")
         }
     }
 }

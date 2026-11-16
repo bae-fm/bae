@@ -252,7 +252,7 @@ class ImportStore {
     func beginMetadataApplication(
         key: Data,
         application: MetadataApplication,
-        apply: BridgeCatalogApply?
+        apply: (any CatalogApplySource)?
     ) -> CandidateMetadataApplicationSession? {
         guard let candidate = candidate(forKey: key) else { return nil }
         let session = CandidateMetadataApplicationSession(

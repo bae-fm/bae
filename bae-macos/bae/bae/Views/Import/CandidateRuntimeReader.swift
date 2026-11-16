@@ -27,28 +27,18 @@ struct CandidateRuntimeReader<Content: View>: View {
     private var held
     @Environment(Importer.self)
     private var importer: Importer?
-    @Environment(UiStore.self)
-    private var uiStore: UiStore?
-
-    @State
-    private var runtime: BridgeCandidateRuntimeSnapshot?
-    @State
-    private var subscription: ScreenSubscription<CandidateRuntimeSubscription>?
 
     var body: some View {
-        content(held.map { $0[key] } ?? runtime)
-            .task(id: key) {
-                runtime = nil
-                subscription = nil
-                guard held == nil,
-                    let source = importer?.subscribeCandidateRuntime(key)
-                else { return }
-                subscription = ScreenSubscription(
-                    source,
-                    onValue: { runtime = $0 },
-                    onError: { error in uiStore?.showError(error) }
-                )
-            }
+        if let held {
+            content(held[key])
+        }
+        else {
+            SubscriptionReader(
+                id: key,
+                subscribe: { importer?.subscribeCandidateRuntime(key) },
+                content: content
+            )
+        }
     }
 }
 

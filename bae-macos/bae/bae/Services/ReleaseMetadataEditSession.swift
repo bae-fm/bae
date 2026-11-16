@@ -55,7 +55,7 @@ struct ReleaseEditCommands {
     let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
     /// A new apply of a catalog release; `nil` where no bridge is behind the
     /// editor.
-    let catalogApply: @Sendable () -> BridgeCatalogApply?
+    let catalogApply: @Sendable () -> (any CatalogApplySource)?
 }
 
 /// One release editor's working state, behind the one release editor in the
@@ -72,7 +72,7 @@ final class ReleaseMetadataEditSession {
         case pickingAlbum
         /// Applying a catalog release, whose step its line reads while it
         /// runs; `nil` where no bridge is behind the editor.
-        case applying(BridgeCatalogApply?)
+        case applying((any CatalogApplySource)?)
     }
 
     let releaseId: String
@@ -221,7 +221,7 @@ final class ReleaseMetadataEditSession {
             }
             do {
                 try await serially { [self] in
-                    draft = try await core.apply(link, apply)
+                    draft = try await core.apply(link, apply?.bridgeApply)
                 }
             }
             catch is CancellationError {}
@@ -406,5 +406,5 @@ struct ReleaseMetadataTrackSide: Identifiable {
 /// holds the network read it waits on, or `nil` where no bridge is behind
 /// the editor.
 struct CatalogApplying {
-    let apply: BridgeCatalogApply?
+    let apply: (any CatalogApplySource)?
 }

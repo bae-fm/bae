@@ -104,7 +104,7 @@ struct LoadingPick {
 enum PickReading {
     /// A person's pick, whose apply's row holds each network read it waits
     /// on while it waits; `nil` where no bridge is behind the pick.
-    case followed(BridgeCatalogApply?)
+    case followed((any CatalogApplySource)?)
     /// The run's own pick, which core reads in full before it stores the
     /// answer.
     case unattended
@@ -120,11 +120,11 @@ final class CandidateMetadataApplicationSession: Equatable,
     /// The apply a pick's read writes its steps to, whose step the row
     /// reads while the session lives; `nil` for a read of the files' own
     /// tags, and where no bridge is behind the pick.
-    let apply: BridgeCatalogApply?
+    let apply: (any CatalogApplySource)?
 
     private var task: Task<Void, Never>?
 
-    init(application: MetadataApplication, apply: BridgeCatalogApply?) {
+    init(application: MetadataApplication, apply: (any CatalogApplySource)?) {
         self.application = application
         self.apply = apply
     }

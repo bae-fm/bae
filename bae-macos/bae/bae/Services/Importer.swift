@@ -15,7 +15,7 @@ private struct ImportOperations: Sendable {
         @Sendable (Data, BridgePressingLink, BridgeCatalogApply?) async throws
             -> BridgePaneOutcome
     /// `nil` where no bridge is behind the importer: a shot or a test.
-    let catalogApply: @Sendable () -> BridgeCatalogApply?
+    let catalogApply: @Sendable () -> (any CatalogApplySource)?
     let applyCandidateFileMetadata:
         @Sendable (Data) async throws -> BridgePaneOutcome
     let keepCandidateDraft: @Sendable (Data) async throws -> BridgePaneOutcome
@@ -310,7 +310,9 @@ final class Importer: Sendable, Observable {
             async throws -> BridgePaneOutcome = { _, _, _ in
                 throw StubError.notImplemented
             },
-        catalogApply: @escaping @Sendable () -> BridgeCatalogApply? = { nil },
+        catalogApply: @escaping @Sendable () -> (any CatalogApplySource)? = {
+            nil
+        },
         applyCandidateFileMetadata:
             @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
@@ -540,7 +542,7 @@ extension Importer {
 
     /// A new apply of a catalog release, for the row that shows what it
     /// waits on; `nil` where no bridge is behind the importer.
-    func catalogApply() -> BridgeCatalogApply? {
+    func catalogApply() -> (any CatalogApplySource)? {
         operations.catalogApply()
     }
 

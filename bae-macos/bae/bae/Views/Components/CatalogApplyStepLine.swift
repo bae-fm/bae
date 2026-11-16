@@ -1,50 +1,32 @@
 import BaeKit
 import SwiftUI
 
-extension EnvironmentValues {
-    /// The network read an apply of a catalog release waits on, for a shot or
-    /// a test with no bridge behind it: a line under it draws this step and
-    /// subscribes to nothing. `nil` in the app.
-    @Entry
-    var heldCatalogApplyStep: BridgeCatalogApplyStep?
-}
-
-/// The network read an apply of a catalog release waits on, named over a bar
-/// that counts nothing. The line reads the apply's row through the apply's
-/// subscription, and takes no room while the apply waits on no read.
+/// The network read an apply of a catalog release waits on: the step's title
+/// over a progress bar that shows no fraction. The line reads the step from
+/// `apply`. While the apply waits on no read, the line stays in the layout
+/// with no height and draws nothing.
 struct CatalogApplyStepLine: View {
-    /// The apply whose step the line reads; `nil` where no bridge is behind
-    /// it.
-    let apply: BridgeCatalogApply?
-
-    @Environment(\.heldCatalogApplyStep)
-    private var held
-    @Environment(UiStore.self)
-    private var uiStore: UiStore?
-
-    @State
-    private var step: BridgeCatalogApplyStep?
-    @State
-    private var subscription: ScreenSubscription<CatalogApplyStepSubscription>?
+    /// Where the line reads the apply's step; `nil` while no apply runs.
+    let apply: (any CatalogApplySource)?
 
     var body: some View {
-        Group {
-            if let shown = held ?? step {
-                MacProgress(
-                    title: shown.title,
-                    bar: ProgressTrackBar(progress: shown.fraction)
-                )
-            }
-        }
-        .task(id: apply.map(ObjectIdentifier.init)) {
-            step = nil
-            subscription = nil
-            guard held == nil, let apply else { return }
-            subscription = ScreenSubscription(
-                apply.subscribeStep(),
-                onValue: { step = $0 },
-                onError: { error in uiStore?.showError(error) }
-            )
-        }
+        SubscriptionReader(
+            id: apply.map(ObjectIdentifier.init),
+            subscribe: { apply?.stepValues() },
+            content: Self.line
+        )
+    }
+
+    /// The line for `step`: its title over the bar, or nothing, with no
+    /// height, while there is no step.
+    private static func line(_ step: BridgeCatalogApplyStep?) -> some View {
+        MacProgress(
+            title: step?.title ?? "",
+            bar: ProgressTrackBar(progress: step?.fraction)
+        )
+        .frame(height: step == nil ? 0 : nil, alignment: .top)
+        .clipped()
+        .opacity(step == nil ? 0 : 1)
+        .accessibilityHidden(step == nil)
     }
 }
