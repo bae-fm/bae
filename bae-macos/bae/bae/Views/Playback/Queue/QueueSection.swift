@@ -269,19 +269,15 @@ extension QueueSection {
         let onReorderFailed = onReorderFailed
         Task { @MainActor in
             do {
-                if try await onReorder(
+                let moved = try await onReorder(
                     entryId,
                     lane,
                     UInt64(move.to)
-                ) {
-                    coordinator.reorderMoved(lane, commit: commit)
-                }
-                else {
-                    coordinator.reorderFailed(lane, commit: commit)
-                }
+                )
+                coordinator.reorderReturned(lane, commit: commit, moved: moved)
             }
             catch {
-                coordinator.reorderFailed(lane, commit: commit)
+                coordinator.reorderReturned(lane, commit: commit, moved: false)
                 onReorderFailed(error)
             }
         }

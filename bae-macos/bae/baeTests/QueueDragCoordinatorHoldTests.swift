@@ -22,7 +22,7 @@ extension QueueDragCoordinatorTests {
             "a hold covers only its own lane"
         )
 
-        coordinator.reorderMoved(.manual, commit: commit)
+        coordinator.reorderReturned(.manual, commit: commit, moved: true)
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
     }
 
@@ -33,7 +33,7 @@ extension QueueDragCoordinatorTests {
         let coordinator = QueueDragCoordinator()
         let commit = coordinator.hold(Self.heldMove, lane: .manual)
 
-        coordinator.reorderFailed(.manual, commit: commit)
+        coordinator.reorderReturned(.manual, commit: commit, moved: false)
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
     }
 
@@ -70,7 +70,7 @@ extension QueueDragCoordinatorTests {
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
         )
 
-        coordinator.reorderFailed(.manual, commit: commit)
+        coordinator.reorderReturned(.manual, commit: commit, moved: false)
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
         #expect(
             coordinator.floatingRow(in: .manual)
@@ -88,9 +88,9 @@ extension QueueDragCoordinatorTests {
         let later = QueueRowMove(from: 0, to: 2, count: 5)
         coordinator.hold(later, lane: .manual)
 
-        coordinator.reorderMoved(.manual, commit: first)
+        coordinator.reorderReturned(.manual, commit: first, moved: true)
         #expect(coordinator.displayMove(for: .manual, count: 5) == later)
-        coordinator.reorderFailed(.manual, commit: first)
+        coordinator.reorderReturned(.manual, commit: first, moved: false)
         #expect(coordinator.displayMove(for: .manual, count: 5) == later)
     }
 }

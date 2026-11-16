@@ -352,8 +352,8 @@ final class QueueDragCoordinator {
     }
 
     /// Keep a committed reorder on screen until its write returns, and return
-    /// which commit it is: the caller passes that number to `reorderMoved` or
-    /// `reorderFailed` when the write returns. The floating copy of the
+    /// which commit it is: the caller passes that number to
+    /// `reorderReturned` when the write returns. The floating copy of the
     /// released row moves into the slot the move places it at.
     @discardableResult
     func hold(_ move: QueueRowMove, lane: BridgeQueueLane) -> Int {
@@ -367,27 +367,22 @@ final class QueueDragCoordinator {
         return commits
     }
 
-    /// The write for `commit` moved the row: the lane draws its rows, which
-    /// show the move. When a later drop has replaced this commit, this call
-    /// does nothing.
-    func reorderMoved(_ lane: BridgeQueueLane, commit: Int) {
+    /// The write for `commit` returned, having `moved` the row or not: the
+    /// lane draws its rows, which show the row where the library stores it,
+    /// so a move that failed never stays on screen. When a later drop has
+    /// replaced this commit, this call does nothing.
+    func reorderReturned(
+        _ lane: BridgeQueueLane,
+        commit: Int,
+        moved: Bool
+    ) {
         guard held[lane]?.commit == commit else {
             return
         }
         held[lane] = nil
-    }
-
-    /// The write for `commit` moved nothing or failed: the lane draws its
-    /// rows, which show the row where it is stored, so a move that failed
-    /// never stays on screen.
-    func reorderFailed(_ lane: BridgeQueueLane, commit: Int) {
-        guard held[lane]?.commit == commit else {
-            return
-        }
-        held[lane] = nil
-        // The row didn't move, so the settling copy glides back to its start
-        // slot, not the slot the refused move placed it at.
-        if let settling, settling.lane == lane {
+        // A row that didn't move makes the settling copy glide back to its
+        // start slot, not the slot the refused move placed it at.
+        if !moved, let settling, settling.lane == lane {
             self.settling?.landingSlot = settling.startSlot
         }
     }

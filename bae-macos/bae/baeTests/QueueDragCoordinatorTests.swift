@@ -85,7 +85,7 @@ struct QueueDragCoordinatorTests {
         )
         // The write returns having moved the row, so the coordinator ends the
         // hold. The copy still draws the grabbed row at its slot.
-        coordinator.reorderMoved(.manual, commit: commit)
+        coordinator.reorderReturned(.manual, commit: commit, moved: true)
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
         #expect(
             coordinator.floatingRow(in: .manual)
