@@ -4,14 +4,13 @@
 # (`Type` or `Type/test`). Fails when a name ran no tests: xcodebuild passes a
 # filter that matches nothing, such as a file name.
 #
-# `--build-only` compiles the app, the test targets and the screenshot scenes
-# (baeShots, which this script never runs) into the same tree and
-# stops, running nothing: the check after a change to a bridge shape or Swift code,
+# `--build-only` compiles the app and its test targets, then the screenshot
+# scenes (baeShots) into their own tree (scripts/xcode-trees.sh), and stops,
+# running nothing: the check after a change to a bridge shape or Swift code,
 # which `run.sh` alone misses because it never builds the test target.
 #
 # `--run-only` runs the tests a `--build-only` run already built, without
-# compiling anything (a baeShots run builds its scheme again to put back the
-# bundle a baeTests run deleted): the `macos-tests-run` step of `.app-build` follows the
+# compiling anything: the `macos-tests-run` step of `.app-build` follows the
 # `macos-tests` step with it.
 #
 # Every test has a minute to finish (`-test-timeouts-enabled`): a test that
@@ -23,7 +22,7 @@
 # `--bundle baeShots` (after the action flag) names the tests of the shot
 # scenes' bundle instead: `builds app-build --test <Class>` runs a class
 # declared under bae-macos/bae/baeShots through it (`.app-build`'s
-# `test mac:shots` line), since the baeTests scheme never runs that bundle.
+# `test mac:shots` line), since the `bae` scheme never runs that bundle.
 #
 # Usage: bae-macos/test.sh [--build-only | --run-only] [--bundle baeTests|baeShots] [<Type>[/<test>] ...]
 set -euo pipefail
@@ -42,11 +41,10 @@ elif [[ "${1:-}" == "--run-only" ]]; then
 fi
 
 BUNDLE_NAME=baeTests
-SCHEME=bae
 if [[ "${1:-}" == "--bundle" ]]; then
     case "${2:-}" in
     baeTests) ;;
-    baeShots) BUNDLE_NAME=baeShots SCHEME=baeShots ;;
+    baeShots) BUNDLE_NAME=baeShots ;;
     *)
         echo "--bundle takes baeTests or baeShots" >&2
         exit 2
@@ -91,14 +89,19 @@ if [[ "$ACTION" != test-without-building ]]; then
     CONFIGURATION=Debug ./bae-macos/prepare-build.sh
 fi
 
-# The scheme is the first argument: `bae` for the app's tests, `baeShots` for the
-# screenshot scenes.
+# The bundle is the first argument: baeTests builds and runs the `bae` scheme
+# (baeTests and baeUITests) in the unsigned tree, and baeShots the `baeShots`
+# scheme in the shots tree.
 xcodebuild_tests() {
-    local scheme="$1"
+    local scheme tree
+    case "$1" in
+    baeTests) scheme=bae tree=("${XCODE_MACOS_UNSIGNED_ARGS[@]}") ;;
+    baeShots) scheme=baeShots tree=("${XCODE_MACOS_SHOTS_ARGS[@]}") ;;
+    esac
     shift
     xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme "$scheme" -configuration Debug \
         CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-        "${XCODE_MACOS_UNSIGNED_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
+        "${tree[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}" \
         -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
         -disableAutomaticPackageResolution BAE_SKIP_RUST_BRIDGE=YES "$@"
 }
@@ -121,32 +124,17 @@ UI_TEST_RUNNER="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/baeUITests-Runne
 status=0
 if [[ "$ACTION" != test-without-building ]]; then
     rm -rf "$UI_TEST_RUNNER"
-    xcodebuild_tests bae build-for-testing
-    # The shot scenes (baeShots) are in no run of this script: they need an
-    # unlocked screen and bae-shots runs them. Compiling them here, into the same
-    # tree, fails a change that breaks a scene before CI's Screenshots run does.
+    xcodebuild_tests baeTests build-for-testing
+    # Without `--bundle baeShots`, this script runs nothing from the shot
+    # scenes' bundle: the scenes need an unlocked screen, and bae-shots runs
+    # them. Compiling the bundle here fails a change that breaks a scene before
+    # CI's Screenshots run does, and leaves it built for a `--run-only --bundle
+    # baeShots` run.
     xcodebuild_tests baeShots build-for-testing
     codesign --force --sign - "$UI_TEST_RUNNER"
 fi
 if [[ "$ACTION" != build-for-testing ]]; then
-    # A Swift Testing exit test (the Handle-less fakes suite) re-launches the host
-    # app, which loads "the most recent test bundle" in its PlugIns by
-    # modification time. baeShots.xctest sits next to baeTests.xctest in
-    # bae.app, and whichever was built last wins: when that is baeShots (a
-    # bae-shots run or the build-for-testing above builds it last), the child
-    # runs the shot scenes instead of the exit-test body and exits 1. Deleting
-    # baeShots from the app leaves one bundle to pick; the next build of it
-    # (bae-shots' own xcodebuild, or the next build-for-testing here) copies it
-    # back.
-    if [[ "$BUNDLE_NAME" == baeTests ]]; then
-        rm -rf "$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/bae.app/Contents/PlugIns/baeShots.xctest"
-    elif [[ "$ACTION" == test-without-building ]]; then
-        # A baeTests run before this one deleted baeShots.xctest from the app.
-        # Building the scheme again copies the bundle back; with nothing
-        # changed since the `--build-only` run, it compiles nothing.
-        xcodebuild_tests baeShots build-for-testing
-    fi
-    xcodebuild_tests "$SCHEME" -resultBundlePath "$BUNDLE" \
+    xcodebuild_tests "$BUNDLE_NAME" -resultBundlePath "$BUNDLE" \
         -test-timeouts-enabled YES -default-test-execution-time-allowance 60 \
         ${ONLY_TESTING[@]+"${ONLY_TESTING[@]}"} test-without-building || status=$?
 fi

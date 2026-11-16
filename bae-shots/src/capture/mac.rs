@@ -40,7 +40,7 @@ pub(crate) fn capture(
     }
 
     let trees =
-        Step::new("Xcode trees", root, "scripts/xcode-trees.sh", &["macos-test-args"]).output()?;
+        Step::new("Xcode trees", root, "scripts/xcode-trees.sh", &["macos-shots-args"]).output()?;
     let trees: Vec<String> = trees.lines().map(str::to_string).collect();
 
     let ffmpeg = root.join(FFMPEG_LIBRARIES);

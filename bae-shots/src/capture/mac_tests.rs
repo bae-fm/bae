@@ -5,7 +5,7 @@ fn step(prefixes: &[&str], windows: bool, ffmpeg: Option<&str>, inherited: Optio
         Path::new("/repo/bae-macos/bae"),
         &[
             "<tree flag>".to_string(),
-            "/b/unsigned".to_string(),
+            "/b/shots".to_string(),
             "<packages flag>".to_string(),
             "/b/packages".to_string(),
         ],
@@ -38,7 +38,7 @@ fn xcodebuild_runs_the_shots_scheme_in_the_named_trees() {
             "CODE_SIGNING_ALLOWED=NO",
             "CODE_SIGNING_REQUIRED=NO",
             "<tree flag>",
-            "/b/unsigned",
+            "/b/shots",
             "<packages flag>",
             "/b/packages",
             "test",
