@@ -163,29 +163,34 @@ pub(super) fn any_watched_on(sql: &impl coven::SqlRead) -> Result<bool, DbError>
         .query_row("SELECT EXISTS (SELECT 1 FROM watched_import_folders)", [], |row| row.get(0))?)
 }
 
-/// The first watched folder, in their order, that holds `folder` or lies
-/// inside it, `folder` itself aside: the folders above it by the watched
-/// folders' key, and those below it by the range of paths below it.
+/// A watched folder other than `folder` that overlaps it: the watched folder
+/// that holds `folder`, or else the first watched folder inside it, in their
+/// order. The read looks up the folders above `folder` by the watched
+/// folders' key and finds the folders below it in the range of paths below
+/// it.
 fn overlapping_watched_folder_on(
     sql: &impl coven::SqlRead,
     folder: &Path,
 ) -> Result<Option<PathBuf>, DbError> {
-    let (below_first, below_past) = crate::tables::watched_path::paths_below(folder);
-    Ok(sql
-        .query_row(
-            "SELECT path FROM watched_import_folders \
-             WHERE path IN (SELECT unhex(value) FROM json_each(:above)) \
-                OR (path >= :below_first AND path < :below_past AND path <> :folder) \
-             ORDER BY position LIMIT 1",
-            named_params! {
-                ":above": path_column::hex_list(folder.ancestors().skip(1)),
-                ":below_first": below_first,
-                ":below_past": below_past,
-                ":folder": coven::path_bytes(folder),
-            },
-            |row| path_column::get(row, 0),
-        )
-        .optional()?)
+    if let Some(above) = watched_folder_among_on(sql, folder.ancestors().skip(1))? {
+        return Ok(Some(above));
+    }
+    Ok(watched_folders_below_on(sql, folder)?.into_iter().next())
+}
+
+/// The watched folders inside `folder`, not `folder` itself, in their order:
+/// those whose key lies in the range of paths below it.
+fn watched_folders_below_on(
+    sql: &impl coven::SqlRead,
+    folder: &Path,
+) -> Result<Vec<PathBuf>, DbError> {
+    let (first, past) = crate::tables::watched_path::paths_below(folder);
+    Ok(sql.query(
+        "SELECT path FROM watched_import_folders \
+         WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
+        params![first, past, coven::path_bytes(folder)],
+        |row| path_column::get(row, 0),
+    )?)
 }
 
 /// Watch `folder`, keyed by its canonical spelling, after every folder
@@ -233,18 +238,8 @@ impl ImportTables {
     /// The watched folders inside `path`, not `path` itself, in their order:
     /// those whose key lies in the range of paths below it.
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
-        let (first, past) = crate::tables::watched_path::paths_below(path);
-        let path = coven::path_bytes(path);
-        self.store
-            .read(move |sql| {
-                Ok(sql.query(
-                    "SELECT path FROM watched_import_folders \
-                 WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
-                    params![first, past, path],
-                    |row| path_column::get(row, 0),
-                )?)
-            })
-            .await
+        let path = path.to_path_buf();
+        self.store.read(move |sql| watched_folders_below_on(&sql, &path)).await
     }
 
     /// Every watched root, in the order they were added.
