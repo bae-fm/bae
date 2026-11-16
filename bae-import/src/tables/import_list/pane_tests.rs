@@ -497,8 +497,8 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 /// A folder that failed validation is listed under Skipped as what its scan
 /// stored of it: why it failed, what its tags call it and the image it leads
 /// with. The list selects it like any row, and the pane that looks into it
-/// reads the same row with its files. A scan that finds it again finds it
-/// unchanged.
+/// reads the same row with its images and its other files, each read by its
+/// role. A scan that finds it again finds it unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     use crate::folder_scanner::{
@@ -527,6 +527,16 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
                 relative_path: "02.flac".to_string(),
                 file: version("02.flac", 4_096),
                 role: ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable },
+            },
+            SkippedFile {
+                relative_path: "Album.cue".to_string(),
+                file: version("Album.cue", 200),
+                role: ProposedRole::Cue,
+            },
+            SkippedFile {
+                relative_path: "Scans/back.jpg".to_string(),
+                file: version("Scans/back.jpg", 8),
+                role: ProposedRole::Image,
             },
             SkippedFile {
                 relative_path: "front.jpg".to_string(),
@@ -586,14 +596,28 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .expect("the key names a folder that failed validation");
     assert_eq!(read.candidate, row);
     assert_eq!(
-        read.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
-        ["front.jpg"]
+        read.images
+            .iter()
+            .map(|image| (image.file_id.as_str(), image.name.as_str(), &image.file))
+            .collect::<Vec<_>>(),
+        [
+            ("Scans/back.jpg", "back.jpg", &version("Scans/back.jpg", 8)),
+            ("front.jpg", "front.jpg", &version("front.jpg", 4)),
+        ]
     );
     assert_eq!(
-        read.files.iter().map(|file| (file.file_id.as_str(), file.role)).collect::<Vec<_>>(),
+        read.files
+            .iter()
+            .map(|file| (file.file_id.as_str(), file.role, file.preview_target.is_some()))
+            .collect::<Vec<_>>(),
         [
-            ("01.flac", crate::MappingRole::Audio),
-            ("02.flac", crate::MappingRole::DamagedAudio { damage: AudioDamage::Unreadable }),
+            ("01.flac", crate::MappingRole::Audio, true),
+            (
+                "02.flac",
+                crate::MappingRole::DamagedAudio { damage: AudioDamage::Unreadable },
+                false
+            ),
+            ("Album.cue", crate::MappingRole::Document, false),
         ]
     );
 
@@ -607,8 +631,8 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
 }
 
 /// The pane looking into a folder that failed validation reads nothing for a
-/// folder that passed it: the key is answered by its kind, without reading
-/// the folder whole.
+/// folder that passed it: its statements keep only a folder stored as
+/// invalid.
 #[tokio::test]
 async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
     let (db, _tmp, root) = watched_root().await;

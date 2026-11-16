@@ -2,10 +2,12 @@
 //! looking into it read it: what its scan row stores. The scan judged the
 //! folder's files when it wrote the row, so no read judges them again.
 
+use super::columns::proposed_role_of;
 use super::*;
-use crate::folder_scanner::{FileVersion, InvalidReason, SkippedTags};
+use crate::folder_scanner::{FileVersion, InvalidReason, ProposedRole, SkippedTags};
 use crate::triage::InvalidRow;
 use crate::CandidateKey;
+use crate::{InvalidCandidateDetail, MappingFile, MappingImage, MappingRole};
 
 /// What a read of a window's rows adds to a row of `scan_candidate`, joined
 /// as `candidate`, to show it as a folder that failed validation: the columns
@@ -165,4 +167,113 @@ pub(crate) fn load_invalid_row(
         DbError::unreadable(format!("the reason folder {key} failed validation"), None::<String>)
     })?;
     columns.row(key, name, root).map(Some)
+}
+
+/// The files of the folder that failed validation stored at the key bound
+/// as `?1`, joined as `f`, for a statement that adds which roles it keeps.
+const INVALID_FILES: &str = "FROM scan_candidate AS c \
+     JOIN scan_skipped_file AS f \
+       ON f.watched_folder_path = c.watched_folder_path AND f.candidate_path = c.path \
+     WHERE c.path = ?1 AND c.kind = 'invalid'";
+
+/// The folder that failed validation stored at `key`, as the pane looking
+/// into it reads it: its row, the images that decode, and every other file,
+/// each in name order. Each statement reads by the key the request names, and
+/// SQL keeps each part's files by their role; `None` when no folder that
+/// failed validation is stored there.
+pub(crate) fn load_invalid_detail(
+    sql: &impl coven::SqlRead,
+    key: &CandidateKey,
+) -> Result<Option<InvalidCandidateDetail>, DbError> {
+    let row = load_invalid_row(sql, key)?;
+    let images = sql.query(
+        &format!(
+            "SELECT f.relative_path, f.absolute_path, f.size, f.modified_at_ns {INVALID_FILES} \
+               AND f.role = 'artwork' \
+             ORDER BY f.position"
+        ),
+        [key],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                path_column::get(row, 1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        },
+    )?;
+    let files = sql.query(
+        &format!(
+            "SELECT f.relative_path, f.absolute_path, f.size, f.role, f.audio_damage, \
+                    f.document_kind {INVALID_FILES} \
+               AND f.role <> 'artwork' \
+             ORDER BY f.position"
+        ),
+        [key],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                path_column::get(row, 1)?,
+                row.get::<_, i64>(2)?,
+                (
+                    row.get::<_, String>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, Option<String>>(5)?,
+                ),
+            ))
+        },
+    )?;
+    let Some(candidate) = row else {
+        return Ok(None);
+    };
+    let images = images
+        .into_iter()
+        .map(|(relative_path, path, size, modified_at_ns)| {
+            Ok(MappingImage {
+                name: file_name(&relative_path).to_string(),
+                file_id: relative_path,
+                file: FileVersion {
+                    path,
+                    size: to_u64(size, "a skipped image's size")?,
+                    modified_at_ns,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    let files = files
+        .into_iter()
+        .map(|(relative_path, path, size, (role, damage, document_kind))| {
+            let role =
+                mapping_role(proposed_role_of(&role, damage.as_deref(), document_kind.as_deref())?);
+            Ok(MappingFile {
+                file_id: relative_path.clone(),
+                name: relative_path,
+                size: to_u64(size, "a skipped file's size")?,
+                preview_target: (role == MappingRole::Audio)
+                    .then(|| bae_track_audio::PreviewTarget::whole_file(path)),
+                audio_format: None,
+                role,
+            })
+        })
+        .collect::<Result<Vec<_>, DbError>>()?;
+    Ok(Some(InvalidCandidateDetail { candidate, images, files }))
+}
+
+/// What the pane lists a skipped file as. A sheet in a folder that is never
+/// imported is never bound: it is the text it is.
+fn mapping_role(role: ProposedRole) -> MappingRole {
+    match role {
+        ProposedRole::Audio => MappingRole::Audio,
+        ProposedRole::DamagedAudio { damage } => MappingRole::DamagedAudio { damage },
+        ProposedRole::Cue | ProposedRole::Document { .. } => MappingRole::Document,
+        ProposedRole::Image => MappingRole::Image,
+        ProposedRole::DamagedImage => MappingRole::DamagedImage,
+        ProposedRole::Other => MappingRole::Other,
+    }
+}
+
+/// The last name of a `/`-separated relative path: the file's own name,
+/// without its folders.
+fn file_name(relative_path: &str) -> &str {
+    relative_path.rsplit('/').next().unwrap_or(relative_path)
 }

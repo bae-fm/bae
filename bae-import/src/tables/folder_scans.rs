@@ -46,7 +46,7 @@ pub(super) use self::cover_choice::{
     candidate_cover_choice_on, cover_refusal, cover_version_joins, CoverVersionColumns,
     COVER_VERSION_COLUMNS,
 };
-pub(super) use self::invalid::{invalid_columns_sql, load_invalid_row, InvalidColumns};
+pub(super) use self::invalid::{invalid_columns_sql, load_invalid_detail, InvalidColumns};
 pub(super) use self::read::{
     load_item_by_key, require_current_candidate, RowSources, StoredScanItem,
 };

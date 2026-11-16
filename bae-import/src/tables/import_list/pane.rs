@@ -379,8 +379,9 @@ impl ImportTables {
 
     /// The folder that failed validation at the key the read is set to, as
     /// the pane looking into it reads it, live; `None` for no key, or a key
-    /// naming no such folder, which clears a selection. Only a folder stored
-    /// as invalid is read whole: any other key is answered by its kind.
+    /// naming no such folder, which clears a selection. Each of its statements
+    /// keeps only the rows of a folder stored as invalid, so a key of any
+    /// other kind reads no rows.
     pub(crate) fn subscribe_invalid_candidate(
         &self,
         initial: Option<crate::CandidateKey>,
@@ -391,19 +392,7 @@ impl ImportTables {
     > {
         self.store.subscribe_reconfigurable(initial, |key, sql| match key {
             None => Ok(None),
-            Some(key) => {
-                let Some(row) = folder_scans::load_invalid_row(&sql, key)? else {
-                    return Ok(None);
-                };
-                let stored =
-                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)?;
-                Ok(match stored.map(|(_, stored)| stored.item) {
-                    Some(crate::folder_scanner::ScanItem::Invalid(candidate)) => {
-                        Some(crate::InvalidCandidateDetail::of(row, &candidate.files))
-                    }
-                    _ => None,
-                })
-            }
+            Some(key) => folder_scans::load_invalid_detail(&sql, key),
         })
     }
 

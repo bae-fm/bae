@@ -5,9 +5,7 @@
 //! pairs unit `i` with draft track `i`. Surfaces render this projection without
 //! joining separate lists.
 
-use crate::folder_scanner::{
-    AudioDamage, ProposedRole, SheetDisc, SheetReferenceOptions, SkippedFile,
-};
+use crate::folder_scanner::{AudioDamage, SheetDisc, SheetReferenceOptions};
 use crate::types::RawTrackEdit;
 
 /// The mapping table: every source unit the folder offers, alongside the track
@@ -251,46 +249,6 @@ pub struct InvalidCandidateDetail {
     /// Every other file, in name order, each with what it is — the damaged
     /// audio among them is why the folder failed.
     pub files: Vec<MappingFile>,
-}
-
-impl InvalidCandidateDetail {
-    pub(crate) fn of(candidate: crate::triage::InvalidRow, skipped_files: &[SkippedFile]) -> Self {
-        let mut images = Vec::new();
-        let mut files = Vec::new();
-        for skipped in skipped_files {
-            let entry = |role| {
-                let scanned = skipped.scanned();
-                MappingFile {
-                    file_id: scanned.relative_path.clone(),
-                    name: scanned.relative_path.clone(),
-                    size: scanned.version.size,
-                    preview_target: (role == MappingRole::Audio)
-                        .then(|| bae_track_audio::PreviewTarget::whole_file(scanned.version.path)),
-                    audio_format: None,
-                    role,
-                }
-            };
-            match skipped.role {
-                ProposedRole::Image => images.push(MappingImage {
-                    file_id: skipped.relative_path.clone(),
-                    name: skipped.scanned().file_name,
-                    file: skipped.file.clone(),
-                }),
-                ProposedRole::Audio => files.push(entry(MappingRole::Audio)),
-                ProposedRole::DamagedAudio { damage } => {
-                    files.push(entry(MappingRole::DamagedAudio { damage }))
-                }
-                // A sheet in a folder that is never imported is never bound:
-                // it is the text it is.
-                ProposedRole::Cue | ProposedRole::Document { .. } => {
-                    files.push(entry(MappingRole::Document))
-                }
-                ProposedRole::DamagedImage => files.push(entry(MappingRole::DamagedImage)),
-                ProposedRole::Other => files.push(entry(MappingRole::Other)),
-            }
-        }
-        Self { candidate, images, files }
-    }
 }
 
 #[cfg(test)]
