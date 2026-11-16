@@ -124,8 +124,9 @@ impl LibraryManager {
         self.store.sync_often(crate::bootstrap::WAITING_SCREEN_CHECK_INTERVAL)
     }
 
-    /// The admin changes this device asked for that show in `place`, each
-    /// until the person dismisses its outcome, live (§5.6).
+    /// Returns a live query of the admin changes this device asked for that
+    /// show in `place`. Each change stays in the list until the person
+    /// dismisses its outcome (§5.6).
     pub fn subscribe_admin_changes(
         &self,
         place: bae_people::admin_change::AdminChangePlace,

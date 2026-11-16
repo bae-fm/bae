@@ -337,8 +337,8 @@ async fn a_pattern_that_cant_make_a_name_is_stored_as_typed() {
     assert!(prefs.save_folder_pattern.pieces().is_empty());
 }
 
-/// The format editor reads its preset by id: it follows the preset's edits,
-/// and reads none once the preset is deleted.
+/// The format editor reads its preset by id. The editor sees each edit to
+/// the preset, and gets no preset once the person deletes it.
 #[tokio::test]
 async fn a_preset_is_read_by_its_id_until_it_is_deleted() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -362,8 +362,8 @@ async fn a_preset_is_read_by_its_id_until_it_is_deleted() {
     assert_eq!(next_preset().await, None);
 }
 
-/// The settings read the preset the last save used whole, joined to the id
-/// the preferences name, and follow a change of which preset that is.
+/// `config` returns the full preset that the last save used, found by the id
+/// in the preferences, and returns the new preset when that id changes.
 #[tokio::test]
 async fn the_config_carries_the_last_used_preset() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

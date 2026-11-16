@@ -106,8 +106,8 @@
                         folderPieces: folderPieces,
                         folderPatternError: folderPatternError,
                         saveExtras: PreviewData.saveExtras,
-                        // As core reads it: the first format unless a
-                        // fixture names another.
+                        // Core's new library uses the first format, so the
+                        // preview does too unless a fixture passes another.
                         lastSavePreset: lastSavePreset ?? savePresets[0],
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,

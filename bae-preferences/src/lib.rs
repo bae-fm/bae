@@ -240,7 +240,7 @@ pub enum PreferencesError {
     #[error("invalid configuration: {0}")]
     Invalid(String),
     /// Another save preset already has the name a preset was to take, and
-    /// two presets never share a name. Nothing was written.
+    /// two presets never share a name. The setter writes nothing.
     #[error("another export preset is named {0}")]
     NameTaken(String),
     /// The preferences row could not be read or written.
@@ -388,8 +388,8 @@ pub struct Config {
     pub store_id: coven::StoreId,
     pub library_path: PathBuf,
     pub prefs: Preferences,
-    /// The save preset the last save used, which `prefs` names by id, read
-    /// joined to the preferences.
+    /// The save preset the last save used, which `prefs` names by id. The
+    /// config query reads it by joining the presets to the preferences row.
     pub last_save_preset: SavePreset,
 }
 

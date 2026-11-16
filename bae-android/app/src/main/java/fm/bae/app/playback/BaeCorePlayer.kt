@@ -223,9 +223,8 @@ class BaeCorePlayer(
     private var transport: Transport = Transport.IDLE
     private var playWhenReady: Boolean = false
 
-    /** The up-next tracks in play order as core's read of the session's list
-     *  answers them (Up Next, then the context's, at most [SESSION_UP_NEXT_LIMIT]),
-     *  for the Media3 playlist. */
+    /** The up-next tracks in play order that core sends for the session (Up Next, then the context's tracks, at
+     *  most [SESSION_UP_NEXT_LIMIT]), for the Media3 playlist. */
     private var entries: List<Meta> = emptyList()
 
     /** The queue's two sections, kept apart for the in-app queue. */
@@ -509,7 +508,7 @@ class BaeCorePlayer(
         publish()
     }
 
-    /** The Media3 playlist after the current track, as core's read of the session's list answered it. */
+    /** Core sent the tracks after the current one: make them the Media3 playlist. */
     fun onSessionUpNext(value: List<BridgeQueueEntry>) {
         readFailures.sessionUpNextArrived()
         entries = value.map { it.toMeta() }

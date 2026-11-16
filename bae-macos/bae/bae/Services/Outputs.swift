@@ -29,16 +29,17 @@ final class Outputs: Sendable, Observable {
     /// its number written in the digits of the app's language.
     let newSavePreset:
         @Sendable (_ existing: [BridgeSavePreset]) throws -> BridgeSavePreset
-    /// The pulls of one save preset's live read by id, for its edit sheet.
+    /// Subscribe to the live query of one save preset, by id, for the
+    /// preset's edit sheet.
     let subscribeSavePreset:
         @Sendable (_ id: String) throws -> SavePresetSubscription
-    /// Add a save preset after the others; a name another has is answered
-    /// as taken.
+    /// Add a save preset after the others. When another preset already has
+    /// the name, core returns taken and saves nothing.
     let addSavePreset:
         @Sendable (_ preset: BridgeSavePreset) async throws ->
             BridgeSavePresetWrite
-    /// Replace the save preset with the preset's id; a name another has is
-    /// answered as taken.
+    /// Replace the save preset with the preset's id. When another preset
+    /// already has the name, core returns taken and saves nothing.
     let replaceSavePreset:
         @Sendable (_ preset: BridgeSavePreset) async throws ->
             BridgeSavePresetWrite
@@ -76,7 +77,8 @@ final class Outputs: Sendable, Observable {
         cancelOutput: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
-        // A stub has no core, so a read it is asked for ends at once.
+        // A stub has no core, so subscribeSavePreset throws
+        // CancellationError and the caller's read ends at once.
         subscribeSavePreset:
             @escaping @Sendable (String) throws -> SavePresetSubscription = {
                 _ in throw CancellationError()

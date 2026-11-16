@@ -156,7 +156,7 @@ private fun InviteDialogsShown(
         ?.let { read ->
             val invite = read.value
             if (invite == null) {
-                // An ended invite has nothing left to show: its read answers none.
+                // Once the invite ends, its live query returns no invite, so the screen closes the dialog.
                 LaunchedEffect(read) { dialogs.shownInvite = null }
             } else {
                 InviteShownDialog(

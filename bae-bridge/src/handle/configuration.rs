@@ -132,14 +132,14 @@ forward! { async this => {
         Ok(this.services.set_ask_before_unpinning(enabled).await?)
     }
 
-    /// Add `preset` after the other save presets; a name another preset has
-    /// is answered as taken and adds nothing.
+    /// Add `preset` after the other save presets. When another preset has
+    /// the name, the call returns taken and adds nothing.
     fn add_save_preset(preset: crate::types::BridgeSavePreset) -> crate::types::BridgeSavePresetWrite {
         crate::types::BridgeSavePresetWrite::of(this.services.add_save_preset(preset.into_core()).await)
     }
 
-    /// Replace the save preset with `preset`'s id by `preset`; a name another
-    /// preset has is answered as taken and changes nothing.
+    /// Replace the save preset with `preset`'s id by `preset`. When another
+    /// preset has the name, the call returns taken and changes nothing.
     fn replace_save_preset(preset: crate::types::BridgeSavePreset) -> crate::types::BridgeSavePresetWrite {
         crate::types::BridgeSavePresetWrite::of(
             this.services.replace_save_preset(preset.into_core()).await,
@@ -147,7 +147,8 @@ forward! { async this => {
     }
 
     /// Delete the save preset `id`; deleting the last-used one makes the
-    /// first one left the last used. The only one left is never deleted.
+    /// first one left the last used. The call deletes nothing when only one
+    /// preset is left.
     fn delete_save_preset(id: String) -> () {
         Ok(this.services.delete_save_preset(id).await?)
     }

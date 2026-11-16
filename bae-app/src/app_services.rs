@@ -263,7 +263,7 @@ impl AppServices {
         self.inner.manager.subscribe_config()
     }
 
-    /// The save preset `id`, followed for the format editor: none once no
+    /// The save preset `id`, which the format editor reads live: none once no
     /// preset has the id.
     pub fn subscribe_save_preset(
         &self,

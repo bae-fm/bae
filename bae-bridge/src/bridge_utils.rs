@@ -219,8 +219,8 @@ impl BridgeConfig {
             save_filename_pattern,
             save_folder_pattern,
             save_extras,
-            // Read whole as the config's `last_save_preset` below, joined to
-            // the id this names.
+            // `from_core` reads the whole preset from `config.last_save_preset`
+            // below, which the config query loads by the id in this field.
             last_save_preset: _,
             pause_between_sides,
             side_pause_countdown,

@@ -99,7 +99,8 @@ const WAITING_REQUEST: &str = concat!(
      ORDER BY i.operation LIMIT 1"
 );
 
-/// The error a row the statement read can't become an invite returns.
+/// Wrap the reason a row the statement read cannot become an invite in the
+/// error the row reader returns.
 fn conversion(error: Box<dyn std::error::Error + Send + Sync>) -> rusqlite::Error {
     rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Blob, error)
 }

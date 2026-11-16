@@ -15,10 +15,9 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeQueueSnapshot
 
 /**
- * A failed read of playback values or of the queue (its value or the
- * session's up-next list) stands in for what they
- * last showed until the next value arrives, so the now-playing surfaces and
- * the queue never show the last value as current.
+ * When a read fails, the screen shows the failure instead of the last value
+ * until that read's next value arrives. A queue failure can come from the
+ * queue's value or from the session's up-next list.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -56,7 +55,7 @@ class PlaybackReadFailureTest {
         assertEquals(failure, player.readFailures.queue.value)
 
         player.onQueueValue(emptyQueue())
-        assertEquals("the queue value's read does not answer for it", failure, player.readFailures.queue.value)
+        assertEquals("a new queue value does not clear the session up-next read's failure", failure, player.readFailures.queue.value)
 
         player.onSessionUpNext(emptyList())
         assertNull(player.readFailures.queue.value)

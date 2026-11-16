@@ -71,7 +71,8 @@ class SeekToMediaItemTest {
                     sourceTitle = null,
                 ),
         )
-        // The session's list reads Up Next, then the context's tracks, in one read.
+        // The session's list holds the Up Next entries, then the context's tracks, and one onSessionUpNext call
+        // delivers them all.
         player.onSessionUpNext(listOf(entry("m"), entry("c")))
         shadowOf(Looper.getMainLooper()).idle()
 

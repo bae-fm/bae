@@ -41,7 +41,7 @@ class QueueUpcomingWindowTest {
                     ?.upcomingTotal,
             )
             assertNotNull(itemAt(player, 0))
-            assertNull("rows far down are not read until held", itemAt(player, 300))
+            assertNull("the player does not read rows far down until the screen holds one", itemAt(player, 300))
 
             val release = player.upcoming.hold(300)
             shadowOf(Looper.getMainLooper()).idle()

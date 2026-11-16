@@ -10,11 +10,10 @@ private let logger = Logger.bae("MembershipStore")
 /// for as long as the library is open, from `start()`: the menu bar always
 /// shows Rename Library, which it enables. The store reads the rest while a
 /// screen shows it, from `show()` to `hide()`: it subscribes to the people,
-/// the requested profile and invites, and the people are one subscription
-/// of core's joined list: this device's person, the others and their
-/// counts. A person's page follows its own subscription, keyed by their
-/// member id, and each place that shows admin changes follows its own,
-/// keyed by the place.
+/// the requested profile and the invites, and to core's joined list of the
+/// people: this device's person, the others and their counts. A person's
+/// page reads that person by member id, and each place that shows admin
+/// changes reads its own changes by the place.
 @MainActor
 @Observable
 public final class MembershipStore {

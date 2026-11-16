@@ -8,9 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * The failures of the live reads [BaeCorePlayer] mirrors: playback values, the
  * queue, and the session's up-next list. Each holds until that read delivers
- * again. While one is set, what the player last showed from it is no longer
- * known to be current, so the now-playing surfaces, or the queue, show the
- * failure in its place: the queue shows a failure of either queue read.
+ * again. While one is set, the player can no longer tell whether what it
+ * last showed from that read is current, so the now-playing surfaces, or the
+ * queue, show the failure in its place: the queue shows a failure of either
+ * queue read.
  */
 class PlaybackReadFailures {
     private val _values = MutableStateFlow<DisplayError?>(null)

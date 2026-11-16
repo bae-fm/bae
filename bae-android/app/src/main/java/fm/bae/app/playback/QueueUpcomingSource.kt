@@ -16,8 +16,8 @@ import uniffi.bae_bridge.BridgeQueueEntry
 
 private val logger = BaeLogger("bae.QueueUpcoming")
 
-/** How many tracks the Media3 playlist lists after the current one: Up Next, then the context's, as core's read of the
- *  session's list answers them. */
+/** How many tracks the Media3 playlist lists after the current one: the Up Next tracks, then the context's tracks, in
+ *  the order core sends them for the session. */
 internal const val SESSION_UP_NEXT_LIMIT = 100
 
 /** Opens the reads of the context's upcoming tracks as a list, in the order the lane reads in: its own, or the shuffled

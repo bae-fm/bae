@@ -220,7 +220,7 @@ impl Membership {
     }
 
     /// The admin changes this device asked for that show in `place`, live:
-    /// each until its outcome is acknowledged.
+    /// each until the person acknowledges its outcome.
     pub fn subscribe_admin_changes(
         &self,
         place: AdminChangePlace,

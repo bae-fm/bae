@@ -19,9 +19,9 @@ impl AppHandle {
         crate::screens::queue(self.services.subscribe_queue_values(), self.runtime.clone())
     }
 
-    /// The tracks after the playing one as the system media session lists
-    /// them: Up Next, then the context lane's in the order it reads in, at
-    /// most `limit` in all, now and after each change.
+    /// The tracks the system media session lists after the playing one: the
+    /// Up Next tracks, then the context lane's tracks in their current order,
+    /// at most `limit` in all, now and after each change.
     pub fn subscribe_session_up_next(
         &self,
         limit: u32,

@@ -14,10 +14,10 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_queue_value())
     }
 
-    /// The tracks after the playing one as a system media session lists them:
-    /// Up Next, then the context lane's in the order it reads in, at most
-    /// `limit` in all. The first value at once, then one after each write that
-    /// changes them.
+    /// Returns the tracks a system media session lists after the playing one:
+    /// the Up Next tracks, then the context lane's tracks in queue order, at
+    /// most `limit` in all. The stream yields the first value at once, then a
+    /// new value after each write that changes these tracks.
     pub fn subscribe_session_up_next(
         &self,
         limit: u64,

@@ -261,7 +261,7 @@ struct InvitesSubscriptionTests {
         try await Wait.until { handle.invitesCancels == 1 }
         #expect(
             store.inviteEntries.isEmpty,
-            "what the screen read goes with it"
+            "the store clears the invites when the screen stops reading them"
         )
 
         store.show()
@@ -295,7 +295,7 @@ struct InvitesSubscriptionTests {
         #expect(handle.waitingRequestReads.map(\.closed) == [[], ["11"]])
         #expect(
             store.waitingRequest.shown?.value?.id == "11",
-            "kept until the read answers"
+            "the store keeps the waiting request until the new read returns its first value"
         )
         handle.waitingRequestReads.last?.read.values.deliver(nil)
         try await Wait.until {
@@ -304,7 +304,9 @@ struct InvitesSubscriptionTests {
         }
     }
 
-    @Test("an invite's sheet reads its invite by id, and none once it ends")
+    @Test(
+        "an invite's sheet reads its invite by id, and shows no invite once the invite ends"
+    )
     func shownInviteFollowsItsRead() async throws {
         let handle = FakeAppHandle()
         let store = MembershipStore(handle: handle)

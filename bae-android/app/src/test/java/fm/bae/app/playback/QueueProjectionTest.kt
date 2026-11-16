@@ -96,7 +96,7 @@ class QueueProjectionTest {
         )
 
         feed.show(listOf(entry("c1"), entry("c2")))
-        // The context lane's tracks are read while the queue screen shows them.
+        // The player reads the context lane's tracks only while the queue screen shows them.
         player.showUpcoming().use {
             shadowOf(Looper.getMainLooper()).idle()
 

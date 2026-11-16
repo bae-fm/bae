@@ -257,8 +257,8 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// One save preset as the format editor shows it, or none once it is
-    /// deleted.
+    /// One save preset as the format editor shows it, or none once the
+    /// person deletes it.
     SavePresetSubscription:
         LiveValues<Option<bae_preferences::SavePreset>> => Option<crate::types::BridgeSavePreset>,
     converted by |preset: Option<bae_preferences::SavePreset>| {

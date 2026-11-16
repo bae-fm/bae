@@ -152,7 +152,8 @@ class MembersModelTest {
 
     /**
      * The join request dialog follows the read of the first waiting request, which leaves out the invites whose dialog
-     * the person closed; a new read for more closed invites keeps the last request until it answers.
+     * the person closed. While a new read for more closed invites runs, the model keeps showing the last request
+     * until the read returns its first value.
      */
     @Test
     fun theWaitingRequestFollowsTheReadThatLeavesOutTheClosedInvites() {
@@ -284,8 +285,8 @@ class MembersModelTest {
     }
 
     /**
-     * The admin changes are read for the place the page shows, and each list the read answers replaces the one shown
-     * for that place; another place's page shows none of them.
+     * The model reads the admin changes for the place the page shows, and each list the read returns replaces the list
+     * shown for that place; another place's page shows none of them.
      */
     @Test
     fun eachPulledListOfAdminChangesReplacesTheShownOne() {

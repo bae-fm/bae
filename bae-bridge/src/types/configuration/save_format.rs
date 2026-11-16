@@ -93,14 +93,14 @@ pub fn bridge_save_preset_can_delete(presets: Vec<BridgeSavePreset>) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSavePresetWrite {
     Saved,
-    /// Another preset has the name, and two never share one; nothing was
-    /// written.
+    /// Another preset has the name, and two never share one; the write
+    /// changes no preset.
     NameTaken,
 }
 
 impl BridgeSavePresetWrite {
-    /// The answer to a write of one preset: a name another preset has is
-    /// this answer, and any other failure crosses as an error.
+    /// Returns `NameTaken` when another preset already has the name, and
+    /// returns any other failure as a `BridgeError`.
     pub(crate) fn of(
         written: Result<(), bae_preferences::PreferencesError>,
     ) -> Result<Self, BridgeError> {

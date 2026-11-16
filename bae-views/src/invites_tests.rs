@@ -176,7 +176,8 @@ fn waiting_request(conn: &rusqlite::Connection, closed: &[&str]) -> Option<i64> 
 
 /// The join request dialog shows the first invite whose request waits for
 /// Ana's decision. An invite with no request, or one being approved, is no
-/// request to decide, and a request Ana closed gives its place to the next.
+/// request to decide, and the query skips a request Ana closed and returns
+/// the next waiting request.
 #[test]
 fn the_waiting_request_is_the_first_one_the_person_did_not_close() {
     let conn = views();

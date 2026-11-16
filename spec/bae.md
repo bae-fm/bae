@@ -2784,9 +2784,10 @@ Two ways put a release back on disk, from desktop:
   stays open behind it; the menu follows any change made there, and a format
   added there is chosen in it at once. Deleting the format last used makes the
   first format left the last used, in the same write; the only format left
-  can't be deleted, and its Delete… is off. The settings' read of the
-  preferences carries the format last used whole, joined in SQL to the id the
-  preferences name, and the file name field's preview ends in its extension.
+  can't be deleted, and its Delete… is off. The query that reads the
+  preferences joins the saved formats on the id the preferences name and
+  returns the whole format last used, and the file name field's preview ends
+  in its extension.
   One file name pattern and one folder name pattern serve every format. A
   pattern is text with values in it, each value one chip: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward
@@ -3268,9 +3269,11 @@ is and how it ended, so the row holds neither. Each change shows, in a box title
 where the change is: a rename under the library's name on the Library page, a
 role change on that person's page above their role, and removing a person or a
 device and approving a request on People and devices. Each place reads only
-its own changes: the read of the admin changes takes the place in its request
-and its statement chooses that place's rows from the kind of change coven's
-list gives. Each shows as what it asks ("Remove Ben",
+its own changes: the app passes the place to the read of admin changes, and
+the read's SQL keeps only the kinds of change that belong to that place and
+says whether the place has any change, so the box shows only while it has
+one. A change whose kind no place shows fails the read in every place. Each
+shows as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or

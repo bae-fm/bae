@@ -423,9 +423,10 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
     }
 }
 
-/// The session's up-next list walks Up Next's position index from its start
-/// and each order's place index from the cursor, so it sorts only the rows
-/// each part took, never the lane.
+/// The session's up-next list reads Up Next through its position index from
+/// its start, and each order's place index from the cursor, so SQLite sorts
+/// only the rows each subquery reads and never scans all of
+/// playback_context.
 #[tokio::test]
 async fn the_session_up_next_list_is_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;

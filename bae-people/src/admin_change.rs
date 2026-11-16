@@ -50,9 +50,10 @@ pub enum AdminChangeKind {
     },
 }
 
-/// Where an admin change shows: next to what it changes. A rename shows with
-/// the library's name, a role change on that person's page, and removing a
-/// person or a device and letting a person in on People and devices.
+/// Where an admin change shows: next to what it changes. A rename shows
+/// with the library's name. A role change shows on that person's page. A
+/// removal of a person or a device, and the approval that lets a person in,
+/// show on People and devices.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdminChangePlace {
     Library,

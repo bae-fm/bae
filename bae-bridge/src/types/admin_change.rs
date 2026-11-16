@@ -32,10 +32,11 @@ pub enum BridgeAdminChangeKind {
     RemoveDevice { device: u64, name: Option<String> },
     Approve { member: String, person: Option<String> },
 }
-/// Where an admin change shows: next to what it changes. A rename shows with
-/// the library's name, a role change on that person's page by member id, and
-/// removing a person or a device and letting a person in on People and
-/// devices.
+/// Where the app shows an admin change: next to what it changes. The app
+/// shows a rename next to the library's name and a role change on that
+/// person's page, which the member id names. It shows a removal of a person
+/// or a device, and the approval that lets a person in, on the People and
+/// devices screen.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgeAdminChangePlace {
     Library,
@@ -43,8 +44,8 @@ pub enum BridgeAdminChangePlace {
     People,
 }
 impl BridgeAdminChangePlace {
-    /// The place the app names, with a member id that is no member id
-    /// refused as a configuration error.
+    /// Converts the place the app names, and returns a configuration error
+    /// when its member id does not parse.
     pub(crate) fn into_core(
         self,
     ) -> Result<bae_people::admin_change::AdminChangePlace, super::BridgeError> {

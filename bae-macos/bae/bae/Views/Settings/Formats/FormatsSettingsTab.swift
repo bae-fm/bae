@@ -190,10 +190,11 @@ private struct SavePresetNameTaken: LocalizedError {
 }
 
 /// The edit sheet of the preset `presetId`, drawn from the preset's own live
-/// read. It closes when the read answers that no preset has the id.
+/// read. The sheet closes when the read returns no preset for the id.
 private struct SavePresetSheet: View {
     let presetId: String
-    /// Every format, this one included, for the name a format change gives.
+    /// Every format, this one included, which the editor uses to pick the
+    /// name a codec change gives this format.
     let presets: [BridgeSavePreset]
     let update: (BridgeSavePreset) -> Void
     let onEnded: () -> Void
