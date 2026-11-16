@@ -568,7 +568,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
     result.barcodes = barcodes;
     // Copy rows reference their match's cover, so a match without one has none.
     if let Some(cover) = &mut result.cover_art {
-        cover.image = RemoteImageSet::with_copies(cover.image.url.clone(), cover_copies);
+        cover.image = RemoteImageSet::stored(cover.image.url.clone(), cover_copies);
     }
     result.links = links
         .into_iter()

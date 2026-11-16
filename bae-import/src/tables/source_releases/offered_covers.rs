@@ -87,7 +87,7 @@ pub(crate) fn offered_covers_on<S: coven::SqlRead>(
     rows.into_iter()
         .map(|row| {
             Ok(RemoteCover {
-                image: RemoteImageSet::with_copies(row.url, row.copies),
+                image: RemoteImageSet::stored(row.url, row.copies),
                 label: row.label,
                 source: catalog_column(&row.source)?,
                 standing: CoverStanding::from_column(&row.standing)

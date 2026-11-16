@@ -560,10 +560,7 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
         },
     )? {
         let cover = RemoteCover {
-            image: RemoteImageSet::with_copies(
-                url,
-                super::downscaled_copies::copies_of(&copies_json)?,
-            ),
+            image: RemoteImageSet::stored(url, super::downscaled_copies::copies_of(&copies_json)?),
             label: super::cover_labels::label_of(&label)?,
             source: catalog_column(&source)?,
             standing: CoverStanding::from_column(&standing)

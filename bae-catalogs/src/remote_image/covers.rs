@@ -170,6 +170,13 @@ impl RemoteImageSet {
         Self { url, downscaled: Vec::new() }
     }
 
+    /// The image with the copies a stored row lists, as the read that lists
+    /// them orders them: smallest first, one per box size, which the copies'
+    /// table key keeps.
+    pub fn stored(url: String, downscaled: Vec<DownscaledCopy>) -> Self {
+        Self { url, downscaled }
+    }
+
     /// The image with its downscaled copies, one per box size, smallest first.
     pub fn with_copies(url: String, mut downscaled: Vec<DownscaledCopy>) -> Self {
         downscaled.sort_by_key(|copy| copy.max_edge);

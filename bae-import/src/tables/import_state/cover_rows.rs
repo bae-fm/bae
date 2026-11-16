@@ -143,7 +143,7 @@ impl StoredCover {
                 Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| absent("file_id"))?))
             }
             "remote" => Ok(CoverSelection::Remote(
-                RemoteImageSet::with_copies(
+                RemoteImageSet::stored(
                     self.url.ok_or_else(|| absent("url"))?,
                     copies_of(&self.copies)?,
                 ),
