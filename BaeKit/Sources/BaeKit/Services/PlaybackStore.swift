@@ -301,19 +301,16 @@ extension BridgeNowPlayingDisplay {
 }
 
 extension BridgeLoadingTrack {
-    /// The id of the track being loaded.
-    public var trackId: String {
+    /// The track being loaded. Until core prepares it, its length is not
+    /// known, so its `durationMs` is `nil`.
+    public var nowPlayingTrack: BridgeNowPlayingTrack {
         switch self {
-        case .unprepared(let trackId, _): trackId
-        case .prepared(let track): track.track.trackId
-        }
-    }
-
-    /// What the library shows of the track being loaded.
-    public var display: BridgeNowPlayingDisplay {
-        switch self {
-        case .unprepared(_, let display): display
-        case .prepared(let track): track.display
+        case .unprepared(let trackId, let display):
+            BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(trackId: trackId, durationMs: nil),
+                display: display
+            )
+        case .prepared(let track): track
         }
     }
 }
@@ -326,24 +323,20 @@ extension BridgePlaybackValueState {
         return true
     }
 
-    /// The id of the track the state names: the one loading, playing or
-    /// paused.
-    public var trackId: String? {
+    /// The track the state names: the one loading, playing or paused.
+    public var nowPlayingTrack: BridgeNowPlayingTrack? {
         switch self {
-        case .playing(let track), .paused(let track, _): track.track.trackId
-        case .loading(let loading, _): loading.trackId
+        case .playing(let track), .paused(let track, _): track
+        case .loading(let loading, _): loading.nowPlayingTrack
         case .stopped: nil
         }
     }
 
+    /// The id of the track the state names.
+    public var trackId: String? { nowPlayingTrack?.track.trackId }
+
     /// What the library shows of the track the state names.
-    public var display: BridgeNowPlayingDisplay? {
-        switch self {
-        case .playing(let track), .paused(let track, _): track.display
-        case .loading(let loading, _): loading.display
-        case .stopped: nil
-        }
-    }
+    public var display: BridgeNowPlayingDisplay? { nowPlayingTrack?.display }
 
     public var secondaryLine: String? {
         if case .paused(_, let reason) = self,

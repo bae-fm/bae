@@ -39,6 +39,7 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
+import uniffi.bae_bridge.BridgePlayingTrack
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -363,7 +364,7 @@ class BaeCorePlayer(
                 }
 
                 is BridgePlaybackValueState.Playing -> {
-                    activate(Transport.READY, Current.of(state.track))
+                    activate(Transport.READY, state.track)
                 }
 
                 is BridgePlaybackValueState.Paused -> {
@@ -434,8 +435,14 @@ class BaeCorePlayer(
         // locks, Android may refuse the start.
         val current =
             when (track) {
-                is BridgeLoadingTrack.Unprepared -> Current(track.trackId, null, track.display)
-                is BridgeLoadingTrack.Prepared -> Current.of(track.track)
+                is BridgeLoadingTrack.Unprepared -> {
+                    // Core has not prepared the track, so its length is not known yet.
+                    BridgeNowPlayingTrack(BridgePlayingTrack(track.trackId, durationMs = null), track.display)
+                }
+
+                is BridgeLoadingTrack.Prepared -> {
+                    track.track
+                }
             }
         return activate(Transport.BUFFERING, current)
     }
@@ -446,7 +453,7 @@ class BaeCorePlayer(
      */
     private fun activate(
         transport: Transport,
-        track: Current,
+        track: BridgeNowPlayingTrack,
     ): Boolean {
         // A value also arrives when only the volume, mute, repeat mode or the
         // playing track's display changed, repeating the state already in force;
@@ -455,7 +462,7 @@ class BaeCorePlayer(
         val becameActive =
             !playWhenReady ||
                 this.transport != transport ||
-                track.trackId != playingTrackId
+                track.track.trackId != playingTrackId
         this.transport = transport
         playWhenReady = true
         sidePausePrompt = null
@@ -463,31 +470,16 @@ class BaeCorePlayer(
         return becameActive
     }
 
-    /** The track a value names, as the player takes it: its id, its length once prepared (null while it is not, or
-     *  when unknown), and what the library shows of it. */
-    private data class Current(
-        val trackId: String,
-        val durationMs: Long?,
-        val display: BridgeNowPlayingDisplay,
-    ) {
-        companion object {
-            fun of(track: BridgeNowPlayingTrack): Current {
-                val playing = track.track
-                return Current(playing.trackId, playing.durationMs?.toLong(), track.display)
-            }
-        }
-    }
-
     /** Make [track] the current track. */
-    private fun makeCurrent(track: Current) {
+    private fun makeCurrent(track: BridgeNowPlayingTrack) {
         positionModel.setActiveTrack(
-            trackChanged = track.trackId != playingTrackId,
-            durationMs = track.durationMs,
+            trackChanged = track.track.trackId != playingTrackId,
+            durationMs = track.track.durationMs?.toLong(),
         )
         currentMeta =
             Meta(
                 entryId = null,
-                trackId = track.trackId,
+                trackId = track.track.trackId,
                 display = track.display,
             )
     }
@@ -495,7 +487,7 @@ class BaeCorePlayer(
     private fun applyPaused(state: BridgePlaybackValueState.Paused) {
         transport = Transport.READY
         playWhenReady = false
-        makeCurrent(Current.of(state.track))
+        makeCurrent(state.track)
         sidePausePrompt =
             when (val reason = state.reason) {
                 BridgePlaybackPauseReason.Manual -> null

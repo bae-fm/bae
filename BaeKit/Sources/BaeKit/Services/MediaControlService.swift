@@ -11,34 +11,16 @@ import os.log
 private let logger = Logger.bae("MediaControlService")
 
 /// What `setNowPlaying` writes into `MPNowPlayingInfoCenter` for a library
-/// track: which track, what the library shows of it, its length (`nil`
-/// while it is unknown or the track is not prepared yet), and
-/// `playbackRate`, 1.0 playing and 0.0 otherwise. Internal — construction
-/// happens only inside `updateNowPlaying(state:appHandle:)` via
-/// `libraryMetadata(for:)`, both in this module.
+/// track: the track, with what the library shows of it and its length
+/// (`nil` while the length is unknown or core has not prepared the track),
+/// and `playbackRate`, 1.0 while playing and 0.0 otherwise. The type is
+/// internal: only `libraryMetadata(for:)`, which
+/// `updateNowPlaying(state:appHandle:)` calls, creates one.
 struct NowPlayingMetadata: Equatable {
-    let trackId: String
-    let display: BridgeNowPlayingDisplay
-    let durationMs: UInt64?
+    let track: BridgeNowPlayingTrack
     let playbackRate: Double
 
-    init(track: BridgeNowPlayingTrack, playbackRate: Double) {
-        trackId = track.track.trackId
-        display = track.display
-        durationMs = track.track.durationMs
-        self.playbackRate = playbackRate
-    }
-
-    init(
-        trackId: String,
-        display: BridgeNowPlayingDisplay,
-        playbackRate: Double
-    ) {
-        self.trackId = trackId
-        self.display = display
-        durationMs = nil
-        self.playbackRate = playbackRate
-    }
+    var trackId: String { track.track.trackId }
 }
 
 /// What the Now Playing surface shows: nothing, a library track, or (on
@@ -227,12 +209,9 @@ public final class MediaControlService: @unchecked Sendable {
             return NowPlayingMetadata(track: track, playbackRate: 1.0)
         case .paused(let track, _):
             return NowPlayingMetadata(track: track, playbackRate: 0.0)
-        case .loading(.prepared(let track), _):
-            return NowPlayingMetadata(track: track, playbackRate: 0.0)
-        case .loading(.unprepared(let trackId, let display), _):
+        case .loading(let loading, _):
             return NowPlayingMetadata(
-                trackId: trackId,
-                display: display,
+                track: loading.nowPlayingTrack,
                 playbackRate: 0.0
             )
         case .stopped:
@@ -271,11 +250,11 @@ public final class MediaControlService: @unchecked Sendable {
         writtenLibrary = metadata
         rate = metadata.playbackRate
         shown = .library(trackId: metadata.trackId)
-        let library = metadata.display.library
-        info[MPMediaItemPropertyTitle] = metadata.display.title
+        let library = metadata.track.display.library
+        info[MPMediaItemPropertyTitle] = metadata.track.display.title
         info[MPMediaItemPropertyArtist] = library?.artistLine.text
         info[MPMediaItemPropertyAlbumTitle] = library?.albumTitle
-        trackDuration(metadata.durationMs, into: &info)
+        trackDuration(metadata.track.track.durationMs, into: &info)
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadata.playbackRate
         applyArtwork(
             image: library?.coverImage,
