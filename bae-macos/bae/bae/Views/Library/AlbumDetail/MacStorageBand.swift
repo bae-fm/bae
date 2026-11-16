@@ -6,7 +6,7 @@ import SwiftUI
 /// actions. The pill fills as far as the release's bytes have come, through
 /// native views that read the release's latest progress each frame, so moving
 /// bytes run no SwiftUI update.
-struct StorageStatusBand: View {
+struct MacStorageBand: View {
     let release: ReleaseDetail
     let onAction: (BridgeReleaseStorageAction) -> Void
     let onCancelPin: () -> Void

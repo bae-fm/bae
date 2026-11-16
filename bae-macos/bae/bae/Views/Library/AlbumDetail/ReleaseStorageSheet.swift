@@ -98,7 +98,7 @@ struct ReleaseStorageSheet: View {
                     .padding()
             }
             else {
-                StorageStatusBand(
+                MacStorageBand(
                     release: release,
                     onAction: act,
                     onCancelPin: onCancelPin,

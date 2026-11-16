@@ -226,7 +226,7 @@ extension ShotScene {
             bridge.transitioning =
                 upload != nil || download == .downloading || move == .queued
                 || move == .making
-            return StorageStatusBand(
+            return MacStorageBand(
                 release: ReleaseDetail(bridge: bridge),
                 onAction: { _ in },
                 onCancelPin: {},
@@ -268,7 +268,7 @@ extension ShotScene {
         )
     }
 
-    /// `StorageStatusBand`, a release's storage in its Storage sheet, in
+    /// `MacStorageBand`, a release's storage in its Storage sheet, in
     /// each state the band draws.
     private static let storageBandScenes: [ShotScene] = [
         storageBand(
