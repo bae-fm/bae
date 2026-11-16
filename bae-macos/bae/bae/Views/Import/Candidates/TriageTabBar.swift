@@ -3,11 +3,12 @@ import SwiftUI
 
 /// The Found / Imported / Skipped tab bar above the candidate list, with
 /// every tab's count from the list's count, which a filter does not change.
+/// The bar reads the counts from `listSlot` itself, so a count that changes
+/// redraws the bar alone.
 struct TriageTabBar: View {
     @Binding
     var activeTab: BridgeTriageTab
-    /// `nil` until the list's count arrives; each chip is empty until then.
-    let counts: BridgeTriageTabCounts?
+    let listSlot: ImportListSlot
 
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
@@ -19,6 +20,8 @@ struct TriageTabBar: View {
 
     private func segment(_ tab: BridgeTriageTab) -> some View {
         let isActive = activeTab == tab
+        // `nil` until the list's count arrives; each chip is empty until then.
+        let counts = listSlot.tabCounts
         return Button {
             activeTab = tab
         } label: {

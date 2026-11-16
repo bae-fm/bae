@@ -3,13 +3,14 @@ import SwiftUI
 
 /// The import sidebar: the tabs with their counts, the filter row (the filter
 /// field, then the controls the caller puts at its end), and the list beneath
-/// them. Drawn from the values it is given; `MacImportSidebarContainer` reads
-/// the stores for it.
+/// them. Drawn from the values it is given, except the tab counts, which the
+/// tab bar reads from `listSlot`; `MacImportSidebarContainer` reads the
+/// stores for it.
 struct MacImportSidebar<Trailing: View, Content: View>: View {
     @Binding
     var activeTab: BridgeTriageTab
-    /// Every tab's count; `nil` until the list's count arrives.
-    let counts: BridgeTriageTabCounts?
+    /// The list whose count holds every tab's count.
+    let listSlot: ImportListSlot
     @Binding
     var filterText: String
     /// Reads the count for the filter the field holds now; `nil` while
@@ -32,7 +33,7 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
     var body: some View {
         ImportSidebarList {
             VStack(spacing: 0) {
-                TriageTabBar(activeTab: $activeTab, counts: counts)
+                TriageTabBar(activeTab: $activeTab, listSlot: listSlot)
                     .padding(ThemeSpace.related)
 
                 // Separates choosing the tab from filtering it.

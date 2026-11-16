@@ -14,17 +14,23 @@ struct TriageTabBarTests {
     func fullHitArea(width: Double) async throws {
         let selection = Selection()
         let size = NSSize(width: width, height: 40)
+        let listSlot = ImportListSlot.preview(
+            importStore: PreviewData.importTabScene().store,
+            uiStore: UiStore(),
+            items: [],
+            tabCounts: BridgeTriageTabCounts(
+                pending: 170,
+                done: 32,
+                skipped: 19
+            )
+        )
         try await SnapshotTestSupport.withHostedWindow(
             TriageTabBar(
                 activeTab: Binding(
                     get: { selection.tab },
                     set: { selection.tab = $0 }
                 ),
-                counts: BridgeTriageTabCounts(
-                    pending: 170,
-                    done: 32,
-                    skipped: 19
-                )
+                listSlot: listSlot
             )
             .frame(width: size.width, height: size.height),
             size: size

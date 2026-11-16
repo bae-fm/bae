@@ -146,7 +146,7 @@ struct MacImportSidebarContainer: View {
     var body: some View {
         MacImportSidebar(
             activeTab: activeTabBinding,
-            counts: listSlot.tabCounts,
+            listSlot: listSlot,
             filterText: filterTextBinding,
             narrowed: { listSlot.narrowedCount(under: shownNarrowing) },
             answersView: listSlot.answersView
