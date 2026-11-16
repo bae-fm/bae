@@ -170,9 +170,15 @@
             [.integer(value: Int64(position))]
         }
 
+        /// The position a key of a fixed list names, which `fixedKey` gave
+        /// out.
         private static func fixedPosition(_ key: [BridgeSortValue]) -> Int {
-            if case .integer(let value)? = key.first { return Int(value) }
-            return 0
+            guard key.count == 1, case .integer(let value)? = key.first else {
+                preconditionFailure(
+                    "a fixed list never gave out the key \(key)"
+                )
+            }
+            return Int(value)
         }
 
         /// The delivery a fixed list answers `window` with: the rows of its
