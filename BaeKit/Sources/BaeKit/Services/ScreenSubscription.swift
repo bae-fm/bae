@@ -195,6 +195,7 @@ extension StorageQueuesSubscription: PulledSubscription {}
 #if os(macOS)
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}
+    extension CatalogApplyStepSubscription: PulledSubscription {}
     extension FolderScansSubscription: PulledSubscription {}
     extension SubsonicSubscription: PulledSubscription {}
     extension LibraryStatusSubscription: PulledSubscription {}

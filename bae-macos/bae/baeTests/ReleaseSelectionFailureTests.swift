@@ -21,7 +21,7 @@ struct ReleaseSelectionFailureTests {
             store.beginMetadataApplication(
                 key: key,
                 application: .pick(MappingFixtures.link),
-                steps: nil
+                apply: nil
             )
         )
         store.metadataApplicationFailed(
@@ -66,7 +66,7 @@ struct ReleaseSelectionFailureTests {
             store.beginMetadataApplication(
                 key: key,
                 application: .pick(MappingFixtures.link),
-                steps: nil
+                apply: nil
             )
         )
         store.metadataApplicationFailed(
@@ -86,7 +86,7 @@ struct ReleaseSelectionFailureTests {
             store.beginMetadataApplication(
                 key: key,
                 application: .pick(MappingFixtures.link),
-                steps: nil
+                apply: nil
             )
         )
         #expect(store.releaseSelectionFailure(forKey: key) == nil)

@@ -67,6 +67,9 @@ impl AppServices {
     delegate_sync!(import, subscribe_scan_found_counts => subscribe_scan_found_counts() -> bae_store::live_query::LiveValues<bae_import::ScanFoundCounts>);
     delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_store::live_query::LiveValues<bae_import::ImportCounts>);
     delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_store::live_query::LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>);
+    delegate_sync!(import, new_catalog_apply_id => new_catalog_apply_id() -> bae_import::CatalogApplyId);
+    delegate_sync!(import, catalog_apply_steps => catalog_apply_steps(id: bae_import::CatalogApplyId) -> bae_import::CatalogApplySteps);
+    delegate_sync!(import, subscribe_catalog_apply_step => subscribe_catalog_apply_step(apply: &bae_import::CatalogApplyId) -> bae_store::live_query::LiveValues<Option<bae_import::CatalogApplyStep>>);
 
     /// Register the platform's artwork analyzer, which extraction reads
     /// barcodes and text off a candidate's images with.

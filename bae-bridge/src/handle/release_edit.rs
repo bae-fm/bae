@@ -143,8 +143,8 @@ impl ReleaseEditSession {
 
     /// Apply the catalog release `link` picks to this session: every value it
     /// gives, held until the session saves, replaces the form. Each network
-    /// read it waits on is written to `apply`'s stream, when the app shows
-    /// the apply.
+    /// read it waits on is written to `apply`'s row while it runs, when the
+    /// app shows the apply.
     pub async fn apply_catalog(
         self: std::sync::Arc<Self>,
         link: crate::types::BridgePressingLink,

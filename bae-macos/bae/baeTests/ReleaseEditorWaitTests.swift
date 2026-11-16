@@ -7,7 +7,7 @@ import Testing
 
 /// The release editor's save, cancel and album pick are local and show no
 /// spinner; applying a catalog release can wait on the network, so the editor
-/// follows the apply's steps to name what it waits on.
+/// shows the step the apply's row holds to name what it waits on.
 @MainActor
 @Suite("Release editor waits")
 struct ReleaseEditorWaitTests {
@@ -25,17 +25,17 @@ struct ReleaseEditorWaitTests {
         }
     }
 
-    @Test("an apply follows its steps")
+    @Test("an apply shows its step")
     func applyingFollowsItsSteps() async throws {
         let session = heldSession()
         try await hosted(session) { host in
-            #expect(!followsSteps(host))
+            #expect(!showsStep(host))
 
             session.apply(MappingFixtures.link)
             try await Wait.until { session.isBusy }
             try await SnapshotTestSupport.settle(host)
 
-            #expect(followsSteps(host))
+            #expect(showsStep(host))
             session.cancelTasks()
         }
     }
@@ -63,7 +63,7 @@ struct ReleaseEditorWaitTests {
             commands: ReleaseEditCommands(
                 open: { _ in opened },
                 searchAlbums: { _ in [] },
-                catalogApply: { CatalogApplySteps(host: TestHost.make()) }
+                catalogApply: { nil }
             )
         )
     }
@@ -81,6 +81,11 @@ struct ReleaseEditorWaitTests {
                 onSaved: { _ in }
             )
             .frame(width: size.width, height: size.height)
+            // No bridge is behind the apply, so its line draws this step.
+            .environment(
+                \.heldCatalogApplyStep,
+                .fetchingCover(catalog: .discogs)
+            )
             .environment(PreviewData.artistAssignmentsLibrary())
             .environment(SettingsNavigation())
             .albumDetailPreviewEnvironment()
@@ -93,8 +98,9 @@ struct ReleaseEditorWaitTests {
         }
     }
 
-    private func followsSteps(_ host: NSView) -> Bool {
+    /// Whether the editor shows an apply's step: the step's bar.
+    private func showsStep(_ host: NSView) -> Bool {
         SnapshotTestSupport.descendants(of: host)
-            .contains { $0 is StepProgressNSView<BridgeCatalogApplyStep> }
+            .contains { $0 is ProgressTrackNSView }
     }
 }

@@ -283,7 +283,7 @@ forward! {
         /// release that fails to load, or that lists another number of tracks
         /// than the folder holds, comes back as the error, for its own row to
         /// say. Each network read it waits on is written to `apply`'s
-        /// stream, when the app shows the pick.
+        /// row while it runs, when the app shows the pick.
         fn select_candidate_release(
             candidate_key: Vec<u8>,
             link: crate::types::BridgePressingLink,

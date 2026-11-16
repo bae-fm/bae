@@ -5,6 +5,7 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod catalog_apply_steps;
 mod catalog_group_url;
 mod cover_gallery;
 mod cover_labels;
@@ -34,6 +35,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     source_releases::SCHEMA,
     import_list::SCHEMA,
     cover_gallery::SCHEMA,
+    catalog_apply_steps::SCHEMA,
 ];
 
 pub use cover_gallery::{

@@ -42,7 +42,7 @@ final class ReleaseEditor: Observable {
         @Sendable (_ releaseId: String) async throws -> Void
     /// A new apply of a catalog release and its steps, for the editor to
     /// name what it waits on; `nil` where no bridge is behind the editor.
-    let catalogApply: @Sendable () -> CatalogApplySteps?
+    let catalogApply: @Sendable () -> BridgeCatalogApply?
 
     init(
         changeCover:
@@ -83,7 +83,7 @@ final class ReleaseEditor: Observable {
             },
         refreshReleaseCovers:
             @escaping @Sendable (String) async throws -> Void = { _ in },
-        catalogApply: @escaping @Sendable () -> CatalogApplySteps? = { nil }
+        catalogApply: @escaping @Sendable () -> BridgeCatalogApply? = { nil }
     ) {
         self.changeCover = changeCover
         moveReleasesToCloudAction = moveReleasesToCloud
@@ -98,7 +98,7 @@ final class ReleaseEditor: Observable {
         self.catalogApply = catalogApply
     }
 
-    convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
+    convenience init(handle: any AppHandleProtocol) {
         self.init(
             changeCover: {
                 try await handle.changeCover(
@@ -130,7 +130,7 @@ final class ReleaseEditor: Observable {
             refreshReleaseCovers: {
                 try await handle.refreshReleaseCovers(releaseId: $0)
             },
-            catalogApply: { CatalogApplySteps(host: host) }
+            catalogApply: { handle.catalogApply() }
         )
     }
 

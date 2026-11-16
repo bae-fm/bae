@@ -18,7 +18,7 @@ extension ImportSearchFlow {
         key: Data,
         application: MetadataApplication
     ) {
-        let steps: CatalogApplySteps? =
+        let apply: BridgeCatalogApply? =
             switch application {
             case .pick: importer.catalogApply()
             case .fileTags: nil
@@ -27,7 +27,7 @@ extension ImportSearchFlow {
             let session = importStore.beginMetadataApplication(
                 key: key,
                 application: application,
-                steps: steps
+                apply: apply
             )
         else {
             logger.debug(
@@ -36,7 +36,6 @@ extension ImportSearchFlow {
             return
         }
 
-        let apply = steps?.apply
         let task = Task { @MainActor [weak session] in
             await endEditing()
             let result: Result<BridgePaneOutcome, Error>
@@ -64,7 +63,7 @@ extension ImportSearchFlow {
     }
 
     /// Run the pick core-side, each network read it waits on written to
-    /// `apply`'s stream.
+    /// `apply`'s row while it runs.
     @MainActor
     private static func pick(
         _ application: MetadataApplication,

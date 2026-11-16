@@ -1,53 +1,53 @@
 //! An apply of a catalog release, an import pick or the release editor's, as
-//! the app follows it: the stream the apply reports the network read it waits
-//! on in, which the apply writes. The app makes the object (its constructor
-//! is the host's, whose runtime the stream is pulled on), starts reading its
-//! steps, then hands it to the apply.
+//! the app follows it. The library's handle makes the apply with a new id,
+//! the apply writes each network read it waits on to its row under that id,
+//! and the screen reads that row through the apply's subscription.
 
 use std::sync::Arc;
 
-use crate::keyed_values::{KeyedValueStream, ProgressStream};
 use crate::operation_runtime::OperationRuntime;
-use crate::types::{BridgeCatalogApplyStep, BridgeFastValue};
 
-/// The app makes one for each apply it shows, starts reading its steps with
-/// [`Self::feed_apply_steps`], then hands it to the apply.
+/// The app asks the library's handle for one for each apply it shows,
+/// subscribes to its step with [`Self::subscribe_step`], then hands it to the
+/// apply.
 #[derive(uniffi::Object)]
 pub struct BridgeCatalogApply {
-    /// Where the apply reports its steps: the stream
-    /// [`Self::feed_apply_steps`] last handed out.
-    steps: ProgressStream,
+    /// The id of the apply's row.
+    id: bae_import::CatalogApplyId,
+    /// Where the apply writes its steps: the row `id` names.
+    steps: bae_import::CatalogApplySteps,
+    services: bae_app::AppServices,
+    /// Where the subscription's pulls run.
+    runtime: OperationRuntime,
 }
 
-/// An apply whose stream is pulled on `runtime`.
-pub(crate) fn catalog_apply(runtime: OperationRuntime) -> Arc<BridgeCatalogApply> {
-    Arc::new(BridgeCatalogApply { steps: ProgressStream::new(runtime) })
+/// A new apply over `services`' library, its subscription pulled on
+/// `runtime`.
+pub(crate) fn catalog_apply(
+    services: bae_app::AppServices,
+    runtime: OperationRuntime,
+) -> Arc<BridgeCatalogApply> {
+    let id = services.new_catalog_apply_id();
+    let steps = services.catalog_apply_steps(id.clone());
+    Arc::new(BridgeCatalogApply { id, steps, services, runtime })
 }
 
 #[uniffi::export]
 impl BridgeCatalogApply {
-    /// The stream the apply reports its steps in: its one key, `""`, while
-    /// the apply waits on a read, and nothing between reads or once it ends.
-    /// A cancelled stream holds nothing from then on.
-    pub fn feed_apply_steps(&self) -> Arc<KeyedValueStream> {
-        self.steps.feed()
+    /// The network read the apply waits on, now and as it changes; `None`
+    /// before it starts one, between reads, and once it ends.
+    pub fn subscribe_step(&self) -> Arc<crate::CatalogApplyStepSubscription> {
+        crate::screens::catalog_apply_step(
+            self.services.subscribe_catalog_apply_step(&self.id),
+            self.runtime.clone(),
+        )
     }
 }
 
-/// Where core tells an apply's steps: `apply`'s stream, which empties as
-/// each step ends and as the apply drops it, or nowhere when the app doesn't
-/// show the apply. An apply nobody reads writes nothing.
+/// Where core writes an apply's steps: `apply`'s row, or nowhere when the
+/// app doesn't show the apply.
 pub(crate) fn catalog_apply_steps(
     apply: Option<&BridgeCatalogApply>,
 ) -> bae_import::CatalogApplySteps {
-    let Some(apply) = apply else {
-        return bae_import::CatalogApplySteps::unread();
-    };
-    let writer = apply.steps.writer();
-    bae_import::CatalogApplySteps::new(move |step| match step {
-        Some(step) => writer.set(BridgeFastValue::CatalogApplyStep {
-            step: BridgeCatalogApplyStep::from_core(step),
-        }),
-        None => writer.clear(),
-    })
+    apply.map_or_else(bae_import::CatalogApplySteps::unread, |apply| apply.steps.clone())
 }

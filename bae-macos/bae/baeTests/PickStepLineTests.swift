@@ -6,13 +6,13 @@ import Testing
 @testable import bae
 
 /// A pick can wait on a catalog over the network, so the row it was made on
-/// names the catalog it is reading from while it does. The run's own pick
+/// shows the step it waits on, read from the apply's row, while it does. The run's own pick
 /// says its release is being read in a line of SwiftUI text, which the
 /// `import-search-reading-pick` shot shows.
 @MainActor
 @Suite("Pick step line")
 struct PickStepLineTests {
-    @Test("a pick reading from a catalog names it on its row")
+    @Test("a pick reading from a catalog shows its step on its row")
     func readingNamesTheCatalog() async throws {
         let pressing = try #require(
             PreviewData.searchGroupExact.pressings.first
@@ -26,14 +26,13 @@ struct PickStepLineTests {
                 isSelected: false,
                 loading: LoadingPick(
                     releaseId: pressing.lead.releaseId,
-                    reading: .followed(
-                        LatestStream.catalogApplySteps(
-                            holding: .readingRelease(catalog: .discogs)
-                        )
-                        .only
-                    )
+                    reading: .followed(nil)
                 ),
                 onSelect: { _ in }
+            )
+            .environment(
+                \.heldCatalogApplyStep,
+                .readingRelease(catalog: .discogs)
             )
             .frame(width: size.width)
             .frame(width: size.width, height: size.height, alignment: .top)
@@ -41,18 +40,9 @@ struct PickStepLineTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let words = SnapshotTestSupport.descendants(of: host)
-                .compactMap {
-                    $0 as? StepProgressNSView<BridgeCatalogApplyStep>
-                }
-                .flatMap { SnapshotTestSupport.descendants(of: $0) }
-                .compactMap { ($0 as? NSTextField)?.stringValue }
-            #expect(
-                words.contains {
-                    $0.hasPrefix("Reading the release from Discogs")
-                },
-                "drew \(words)"
-            )
+            let bars = SnapshotTestSupport.descendants(of: host)
+                .filter { $0 is ProgressTrackNSView }
+            #expect(bars.count == 1, "drew \(bars)")
         }
     }
 }

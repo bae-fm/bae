@@ -6,6 +6,37 @@ use super::*;
 use bae_catalogs::rate_limiter::CallClass;
 
 impl ImportServiceHandle {
+    /// A new id for an apply of a catalog release that a screen shows.
+    pub fn new_catalog_apply_id(&self) -> crate::CatalogApplyId {
+        crate::CatalogApplyId::new(self.services.ids.as_ref())
+    }
+
+    /// The steps of the apply of a catalog release that `id` names, which a
+    /// screen shows: the apply writes each network read it waits on to the
+    /// row `id` keys while the read runs.
+    pub fn catalog_apply_steps(&self, id: crate::CatalogApplyId) -> crate::CatalogApplySteps {
+        crate::CatalogApplySteps::shown(
+            id,
+            self.services.tables.clone(),
+            self.services.diagnostics.clone(),
+            self.runtime_handle.clone(),
+        )
+    }
+
+    /// The network read the apply `apply` names waits on: the first value at
+    /// once, then a value after each write that changes it; `None` while it
+    /// waits on none. Closing the library ends it.
+    pub fn subscribe_catalog_apply_step(
+        &self,
+        apply: &crate::CatalogApplyId,
+    ) -> bae_store::live_query::LiveValues<Option<crate::CatalogApplyStep>> {
+        bae_store::live_query::LiveValues::new(
+            self.services.tables.subscribe_catalog_apply_step(apply),
+            self.services.closing.child_token(),
+            self.services.diagnostics.bug_sink(),
+        )
+    }
+
     /// Prepare the release an explicit metadata application reads, a fetch
     /// told to `steps`. A settled lead must already have its release stored;
     /// missing it is a broken invariant. Preparation follows any related

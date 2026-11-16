@@ -177,10 +177,6 @@ pub enum BridgeFastValue {
     /// stream's one key, `""`, while the action runs.
     #[cfg(desktop)]
     SelectionActionProgress { progress: super::BridgeSelectionActionProgress },
-    /// The network read an apply of a catalog release waits on; a stream's
-    /// one key, `""`, while it waits on one.
-    #[cfg(desktop)]
-    CatalogApplyStep { step: super::BridgeCatalogApplyStep },
 }
 
 /// A queued download's phase. How far an active one has gone is its

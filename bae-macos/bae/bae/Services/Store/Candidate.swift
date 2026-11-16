@@ -102,9 +102,9 @@ struct LoadingPick {
 
 /// Whose read a pick is, which says what its row can name.
 enum PickReading {
-    /// A person's pick, telling each network read it waits on as it waits;
-    /// `nil` where no bridge is behind the pick.
-    case followed(LatestSource<BridgeCatalogApplyStep>?)
+    /// A person's pick, whose apply's row holds each network read it waits
+    /// on while it waits; `nil` where no bridge is behind the pick.
+    case followed(BridgeCatalogApply?)
     /// The run's own pick, which core reads in full before it stores the
     /// answer.
     case unattended
@@ -117,16 +117,16 @@ final class CandidateMetadataApplicationSession: Equatable,
     @unchecked Sendable
 {
     let application: MetadataApplication
-    /// The steps a pick's read reports, followed while the session lives;
-    /// `nil` for a read of the files' own tags, and where no bridge is
-    /// behind the pick.
-    let steps: CatalogApplySteps?
+    /// The apply a pick's read writes its steps to, whose step the row
+    /// reads while the session lives; `nil` for a read of the files' own
+    /// tags, and where no bridge is behind the pick.
+    let apply: BridgeCatalogApply?
 
     private var task: Task<Void, Never>?
 
-    init(application: MetadataApplication, steps: CatalogApplySteps?) {
+    init(application: MetadataApplication, apply: BridgeCatalogApply?) {
         self.application = application
-        self.steps = steps
+        self.apply = apply
     }
 
     func install(_ task: Task<Void, Never>) {

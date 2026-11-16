@@ -15,7 +15,7 @@ private struct ImportOperations: Sendable {
         @Sendable (Data, BridgePressingLink, BridgeCatalogApply?) async throws
             -> BridgePaneOutcome
     /// `nil` where no bridge is behind the importer: a shot or a test.
-    let catalogApply: @Sendable () -> CatalogApplySteps?
+    let catalogApply: @Sendable () -> BridgeCatalogApply?
     let applyCandidateFileMetadata:
         @Sendable (Data) async throws -> BridgePaneOutcome
     let keepCandidateDraft: @Sendable (Data) async throws -> BridgePaneOutcome
@@ -82,7 +82,7 @@ private struct ImportOperations: Sendable {
 extension ImportOperations {
     // Flat forwarding from AppHandleProtocol into immutable operation values.
     // swiftlint:disable:next function_body_length
-    static func live(handle: any AppHandleProtocol, host: BridgeHost)
+    static func live(handle: any AppHandleProtocol)
         -> ImportOperations
     {
         ImportOperations(
@@ -119,7 +119,7 @@ extension ImportOperations {
                     apply: $2
                 )
             },
-            catalogApply: { CatalogApplySteps(host: host) },
+            catalogApply: { handle.catalogApply() },
             applyCandidateFileMetadata: {
                 try await handle.readCandidateFileTags(candidateKey: $0)
             },
@@ -310,7 +310,7 @@ final class Importer: Sendable, Observable {
             async throws -> BridgePaneOutcome = { _, _, _ in
                 throw StubError.notImplemented
             },
-        catalogApply: @escaping @Sendable () -> CatalogApplySteps? = { nil },
+        catalogApply: @escaping @Sendable () -> BridgeCatalogApply? = { nil },
         applyCandidateFileMetadata:
             @escaping @Sendable (Data) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
@@ -538,9 +538,9 @@ extension Importer {
         )
     }
 
-    /// A new apply of a catalog release and its steps, for the row that
-    /// shows what it waits on; `nil` where no bridge is behind the importer.
-    func catalogApply() -> CatalogApplySteps? {
+    /// A new apply of a catalog release, for the row that shows what it
+    /// waits on; `nil` where no bridge is behind the importer.
+    func catalogApply() -> BridgeCatalogApply? {
         operations.catalogApply()
     }
 
@@ -806,8 +806,8 @@ extension Importer {
         try await operations.setImportDestination(destination)
     }
 
-    convenience init(handle: any AppHandleProtocol, host: BridgeHost) {
-        self.init(operations: .live(handle: handle, host: host))
+    convenience init(handle: any AppHandleProtocol) {
+        self.init(operations: .live(handle: handle))
     }
 
     /// What one candidate has in flight, for a screen to pull; `nil` where

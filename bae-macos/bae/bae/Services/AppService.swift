@@ -109,7 +109,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             report: { uiStore.showError($0) }
         )
         let importStore = ImportStore()
-        let importer = Importer(handle: appHandle, host: host)
+        let importer = Importer(handle: appHandle)
         importStore.sessionWriter = CandidateSessionWriter(
             importer: importer,
             reportFailure: { uiStore.showError($0) }
@@ -125,7 +125,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             showError: { uiStore.showError($0) }
         )
         previewAudio = PreviewAudio(handle: appHandle)
-        releaseEditor = ReleaseEditor(handle: appHandle, host: host)
+        releaseEditor = ReleaseEditor(handle: appHandle)
         artistEditor = ArtistEditor(handle: appHandle)
         self.importer = importer
         outputs = Outputs(handle: appHandle, host: host)

@@ -36,6 +36,13 @@ impl AppHandle {
         crate::screens::import_counts(self.services.subscribe_import_counts(), self.runtime.clone())
     }
 
+    /// A new apply of a catalog release, for a pick or the release editor's
+    /// apply that the app shows: subscribe to its step, then hand it to the
+    /// apply.
+    pub fn catalog_apply(&self) -> std::sync::Arc<crate::BridgeCatalogApply> {
+        crate::screens::catalog_apply(self.services.clone(), self.runtime.clone())
+    }
+
     /// What one candidate has in flight — a run's identify state and the
     /// signals it last read, a running import's step, its typed search — now
     /// and as it changes; `None` while nothing is.

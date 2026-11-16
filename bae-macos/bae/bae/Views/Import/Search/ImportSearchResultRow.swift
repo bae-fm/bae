@@ -36,8 +36,10 @@ struct ImportSearchResultRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             resultButton
-            MacProgressContainer(steps: followedSteps) { EmptyView() }
-                .padding(.horizontal, Self.horizontalPadding)
+            if case .followed(let apply) = loading?.reading {
+                CatalogApplyStepLine(apply: apply)
+                    .padding(.horizontal, Self.horizontalPadding)
+            }
             unattendedLine
             failureLine
         }
@@ -79,12 +81,6 @@ struct ImportSearchResultRow: View {
         }
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, Self.horizontalPadding)
-    }
-
-    /// The steps of the person's pick being read on this row.
-    private var followedSteps: LatestSource<BridgeCatalogApplyStep>? {
-        guard case .followed(let steps) = loading?.reading else { return nil }
-        return steps
     }
 
     private var isReadingUnattended: Bool {

@@ -83,8 +83,8 @@ struct ReleaseEditorView: View {
             spacing: ReleaseMetadataLayout.blockSpacing
         ) {
             actionRow
-            if let applySteps = session.applySteps {
-                MacProgressContainer(steps: applySteps) { EmptyView() }
+            if let applying = session.catalogApplying {
+                CatalogApplyStepLine(apply: applying.apply)
             }
             if let shown = session.validationMessage.map({
                 DisplayError(line: $0)

@@ -808,7 +808,8 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     );
     let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let keep = told.clone();
-    let steps = bae_import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step));
+    let steps =
+        bae_import::CatalogApplySteps::recorded(move |step| keep.lock().unwrap().push(step));
     let session = manager.library.manager().open_release_edit(&release.id).await.unwrap();
 
     manager

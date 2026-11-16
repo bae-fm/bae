@@ -53,9 +53,9 @@ struct ReleaseEditCommands {
     /// it, with nothing edited, applied or picked.
     let open: @Sendable (String) async throws -> OpenedReleaseEdit
     let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
-    /// A new apply of a catalog release and its steps; `nil` where no bridge
-    /// is behind the editor.
-    let catalogApply: @Sendable () -> CatalogApplySteps?
+    /// A new apply of a catalog release; `nil` where no bridge is behind the
+    /// editor.
+    let catalogApply: @Sendable () -> BridgeCatalogApply?
 }
 
 /// One release editor's working state, behind the one release editor in the
@@ -70,9 +70,9 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
-        /// Applying a catalog release, whose steps are followed while it
+        /// Applying a catalog release, whose step its line reads while it
         /// runs; `nil` where no bridge is behind the editor.
-        case applying(CatalogApplySteps?)
+        case applying(BridgeCatalogApply?)
     }
 
     let releaseId: String
@@ -210,9 +210,8 @@ final class ReleaseMetadataEditSession {
     /// Apply the catalog release `link` picks: every value the form, the
     /// tracks and the album show becomes what it gives, unsaved until Save.
     func apply(_ link: BridgePressingLink) {
-        let steps = commands.catalogApply()
-        let apply = steps?.apply
-        let serial = begin(.applying(steps))
+        let apply = commands.catalogApply()
+        let serial = begin(.applying(apply))
         failure = nil
         operationTask = Task { @MainActor in
             await editingCommands.commitActiveEdits()
@@ -370,11 +369,11 @@ extension ReleaseMetadataEditSession {
         operation != nil
     }
 
-    /// The network read a catalog apply waits on, for the line that names
-    /// it; `nil` while no apply runs.
-    var applySteps: LatestSource<BridgeCatalogApplyStep>? {
-        guard case .applying(let steps) = operation else { return nil }
-        return steps?.steps
+    /// The catalog apply that runs, for the line that names the network
+    /// read it waits on; `nil` while none runs.
+    var catalogApplying: CatalogApplying? {
+        guard case .applying(let apply) = operation else { return nil }
+        return CatalogApplying(apply: apply)
     }
 }
 
@@ -401,4 +400,11 @@ struct ReleaseMetadataTrackSide: Identifiable {
     /// has no header to draw.
     let headerText: String
     let groups: [ReleaseMetadataTrackGroup]
+}
+
+/// A catalog apply the release editor runs: the bridge's apply, whose row
+/// holds the network read it waits on, or `nil` where no bridge is behind
+/// the editor.
+struct CatalogApplying {
+    let apply: BridgeCatalogApply?
 }

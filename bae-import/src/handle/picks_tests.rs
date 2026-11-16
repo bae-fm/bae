@@ -405,7 +405,7 @@ fn recorded() -> (
 ) {
     let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let keep = told.clone();
-    (crate::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step)), told)
+    (crate::CatalogApplySteps::recorded(move |step| keep.lock().unwrap().push(step)), told)
 }
 
 /// A pick of a paired pressing tells each release it reads from its catalog,

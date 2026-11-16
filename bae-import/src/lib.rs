@@ -199,7 +199,7 @@ impl ImportServices {
 }
 
 #[cfg(desktop)]
-pub use apply_steps::{CatalogApplyStep, CatalogApplySteps};
+pub use apply_steps::{CatalogApplyId, CatalogApplyStep, CatalogApplySteps};
 #[cfg(desktop)]
 pub use candidate_detail::{
     CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,

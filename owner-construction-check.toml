@@ -313,6 +313,7 @@ task_types = [
     "AlbumSelectionSubscription",
     "ArtistDetailSubscription",
     "CandidateRuntimeSubscription",
+    "CatalogApplyStepSubscription",
     "CastReceiversSubscription",
     "ComposerDetailSubscription",
     "ConfigSubscription",
@@ -371,6 +372,12 @@ task_types = [
     # holds over it.
     "ReleaseEdit",
     "ReleaseEditSession",
+    # One apply of a catalog release that a screen shows: where it writes the
+    # step it waits on, and the step's row while one read runs.
+    "CatalogApplySteps",
+    "StepsWritten",
+    "ShownApply",
+    "RunningStep",
     # One operation's view of the catalogs.
     "CatalogSession",
     # One file stream's shared buffer, and the fetch that fills one read.
@@ -947,7 +954,6 @@ OpenCalls = "LibrarySessions"
     "Session::end_released",
 ]
 "bae-bridge/src/host/steps.rs" = [
-    "BridgeCatalogApply::new",
     "BridgeLibraryClosing::new",
     "BridgeLibraryOpening::new",
     "BridgeLibrarySetup::new",
@@ -1570,6 +1576,15 @@ homes = [
     "bae-import/src/tables/cover_gallery.sql",
 ]
 tables = ["release_cover_fetch", "release_cover_entry"]
+
+[[database.domains]]
+name = "catalog apply steps"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/catalog_apply_steps.rs",
+    "bae-import/src/tables/catalog_apply_steps.sql",
+]
+tables = ["import_catalog_apply_step"]
 
 [[database.domains]]
 name = "import origin"

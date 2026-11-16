@@ -75,7 +75,7 @@ struct DesktopSubscriptionsTests {
             store.beginMetadataApplication(
                 key: key,
                 application: .pick(MappingFixtures.link),
-                steps: nil
+                apply: nil
             )
         )
 

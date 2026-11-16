@@ -9,9 +9,9 @@
 //! submodules hold the reads whose request a screen changes on the same live
 //! query (lists, searches, details, the Storage Manager, the queue's tail, the
 //! import list) and the streams (fast values, and the steps of an open, a setup
-//! call, a close or an apply of a catalog release). `AppHandle`'s `subscribe_*`
-//! and `feed_*` calls hand out the pull objects this file and its submodules
-//! build, and no other code builds one.
+//! call or a close). `AppHandle`'s `subscribe_*` and `feed_*` calls hand out
+//! the pull objects this file and its submodules build, and no other code
+//! builds one.
 
 use std::future::Future;
 
@@ -199,6 +199,19 @@ pulled_read! {
         runtime.map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
     },
     built by candidate_runtime
+}
+
+#[cfg(desktop)]
+pulled_read! {
+    /// The network read an apply of a catalog release waits on; `None` while
+    /// it waits on none.
+    CatalogApplyStepSubscription:
+        LiveValues<Option<bae_import::CatalogApplyStep>>
+            => Option<crate::types::BridgeCatalogApplyStep>,
+    converted by |step: Option<bae_import::CatalogApplyStep>| {
+        step.map(crate::types::BridgeCatalogApplyStep::from_core)
+    },
+    built by catalog_apply_step
 }
 
 #[cfg(feature = "cast")]

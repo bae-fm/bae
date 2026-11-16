@@ -233,7 +233,7 @@ class ImportStore {
         else { return nil }
         return LoadingPick(
             releaseId: link.record.key,
-            reading: .followed(session.steps?.steps)
+            reading: .followed(session.apply)
         )
     }
 
@@ -252,12 +252,12 @@ class ImportStore {
     func beginMetadataApplication(
         key: Data,
         application: MetadataApplication,
-        steps: CatalogApplySteps?
+        apply: BridgeCatalogApply?
     ) -> CandidateMetadataApplicationSession? {
         guard let candidate = candidate(forKey: key) else { return nil }
         let session = CandidateMetadataApplicationSession(
             application: application,
-            steps: steps
+            apply: apply
         )
         picks[key] = Pick(
             audioIdentity: candidate.files.fileMetadataIdentity,

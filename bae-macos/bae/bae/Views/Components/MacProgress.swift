@@ -90,9 +90,9 @@ enum StepProgressLook {
     case note
 }
 
-/// The step a library's open, a setup call, a close or an apply of a catalog
-/// release runs, over a bar of how much of it is done, set straight from the
-/// call's stream once per display frame. Between steps it is hidden. A step
+/// The step a library's open, a setup call or a close runs, over a bar of
+/// how much of it is done, set straight from the call's stream once per
+/// display frame. Between steps it is hidden. A step
 /// starting or ending in the stream it follows tells `onStepping`, so SwiftUI
 /// swaps what it shows only then, never as one moves.
 final class StepProgressNSView<Step: ProgressStep>: NSView {
