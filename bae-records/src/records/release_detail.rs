@@ -281,55 +281,52 @@ fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<Othe
     })
 }
 
-/// Why bae could not name the other device that holds a release file.
+/// Why bae could not name the device a failed read of a release file names.
 #[derive(Debug, thiserror::Error)]
 pub enum OtherDeviceError {
-    /// No other device alone holds the audio file. The file reached storage,
-    /// this device holds it, or the file left the library, after the read that
-    /// found it on another device.
-    #[error("release file {0} is not an audio file on another device only")]
-    NotOnAnotherDevice(String),
+    /// The read named this device as the only one that holds the file. coven
+    /// keeps the bytes of this device's files here while their record exists
+    /// (coven 17.3), so this is a bug in coven.
+    #[error("the read named this device, {0:?}, as the only one that holds the file")]
+    ThisDevice(coven::DeviceId),
     /// `coven_devices` records a state for the device that coven does not write.
-    #[error(
-        "the device that holds release file {file} has a state coven does not write: {state:?}"
-    )]
-    UnknownState { file: String, state: String },
+    #[error("device {device:?} has a state coven does not write: {state:?}")]
+    UnknownState { device: coven::DeviceId, state: String },
     #[error(transparent)]
     Database(#[from] DbError),
 }
 
 impl Records {
-    /// The other device that alone holds the audio file `file_id`, as the
-    /// view `release_audio_elsewhere` reads it from coven's tables. The read
-    /// fails naming the file when no other device alone holds it.
-    pub async fn release_file_other_device(
+    /// The device `device` that a read of a release file named as the only
+    /// one that holds the file (`coven::FileReadError::DeviceOnly`), with its
+    /// name and state from coven's registration of it in `coven_devices`.
+    pub async fn other_device(
         &self,
-        file_id: &str,
+        device: coven::DeviceId,
     ) -> Result<OtherDevice, OtherDeviceError> {
-        let file = file_id.to_string();
-        let held = self
+        let (name, state, member_removed, is_self) = self
             .store
             .read(move |sql| {
-                Ok(sql
-                    .query(
-                        "SELECT device_name, device_state, member_removed \
-                         FROM release_audio_elsewhere WHERE file_id = ?1",
-                        params![file],
-                        |row| {
-                            Ok((
-                                row.get::<_, String>("device_name")?,
-                                row.get::<_, String>("device_state")?,
-                                row.get::<_, bool>("member_removed")?,
-                            ))
-                        },
-                    )?
-                    .pop())
+                Ok(sql.query_row(
+                    "SELECT d.name, d.state, m.removed, d.is_self FROM coven_devices AS d \
+                     JOIN coven_members AS m ON m.member = d.member WHERE d.device = ?1",
+                    params![device],
+                    |row| {
+                        Ok((
+                            row.get::<_, String>("name")?,
+                            row.get::<_, String>("state")?,
+                            row.get::<_, bool>("removed")?,
+                            row.get::<_, bool>("is_self")?,
+                        ))
+                    },
+                )?)
             })
             .await?;
-        let (name, state, member_removed) =
-            held.ok_or_else(|| OtherDeviceError::NotOnAnotherDevice(file_id.into()))?;
+        if is_self {
+            return Err(OtherDeviceError::ThisDevice(device));
+        }
         other_device(name, &state, member_removed)
-            .ok_or_else(|| OtherDeviceError::UnknownState { file: file_id.into(), state })
+            .ok_or(OtherDeviceError::UnknownState { device, state })
     }
 }
 

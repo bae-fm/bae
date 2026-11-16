@@ -25,19 +25,37 @@ fn the_other_device_follows_its_registration_and_its_person() {
     assert_eq!(other_device(name(), "lost", false), None);
 }
 
-/// A release file the library holds no row of, as one that left after the
-/// read that found it on one device only, is on no one device.
-#[tokio::test]
-async fn a_file_on_no_one_device_names_no_other_device() {
-    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let records = crate::test_fixtures::test_records(&db);
+/// A read that names another device as the only one that holds a file names
+/// that device as coven registers it, and a read that names this device is a
+/// bug in coven that bae reports as one.
+#[test]
+fn a_read_names_the_device_coven_registers_under_its_id() {
+    use crate::test_fixtures::*;
+    bae_store::test_devices::run_two_store_test(TEST_SCHEMA, async |devices| {
+        devices.converge("SELECT hex(device), name, state FROM coven_devices").await;
+        let b = devices.b();
+        let device = |is_self: bool| async move {
+            b.read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT device, name FROM coven_devices WHERE is_self = ?1",
+                    params![is_self],
+                    |row| Ok((row.get::<_, coven::DeviceId>(0)?, row.get::<_, String>(1)?)),
+                )?)
+            })
+            .await
+            .unwrap()
+        };
+        let (a, name_of_a) = device(false).await;
+        let (this, _) = device(true).await;
+        let records = test_records(b);
 
-    let refused = records.release_file_other_device("gone").await;
-
-    assert!(
-        matches!(&refused, Err(OtherDeviceError::NotOnAnotherDevice(file)) if file == "gone"),
-        "{refused:?}"
-    );
+        assert_eq!(records.other_device(a).await.unwrap(), OtherDevice::Active { name: name_of_a });
+        let refused = records.other_device(this).await;
+        assert!(
+            matches!(&refused, Err(OtherDeviceError::ThisDevice(device)) if *device == this),
+            "{refused:?}"
+        );
+    });
 }
 
 /// The track statements place each track where
