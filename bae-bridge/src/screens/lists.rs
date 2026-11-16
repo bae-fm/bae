@@ -211,10 +211,7 @@ impl BridgeListCount {
                 }
                 #[cfg(desktop)]
                 bae_views::ListCountExtra::Import { narrowed } => BridgeListCountExtra::Import {
-                    narrowed: narrowed.map(|narrowed| crate::types::BridgeNarrowedCount {
-                        shown: narrowed.shown,
-                        total: narrowed.total,
-                    }),
+                    narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
                 },
             },
         }

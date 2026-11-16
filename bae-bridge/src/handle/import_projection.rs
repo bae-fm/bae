@@ -501,7 +501,7 @@ mirror_struct! {
 
 mirror_struct! {
     crate::types::BridgeNarrowedCount = bae_import::NarrowedCount,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: { shown, total },
 }
 
