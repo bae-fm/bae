@@ -4,6 +4,8 @@ import Testing
 
 @testable import bae
 
+private struct ReadFailed: Error {}
+
 private func artist(_ id: String) -> BridgeArtistSearchResult {
     BridgeArtistSearchResult(
         artist: BridgeExistingArtist(
@@ -107,6 +109,33 @@ struct ArtistSearchResultsTests {
         try await Wait.until { search.list?.row(at: 0)?.id == "artist-2" }
 
         #expect(opened.all == ["First", "Second"])
+        search.close()
+    }
+
+    @MainActor
+    @Test("a text whose read fails shows the failure, not the list before it")
+    func failedTextShowsItsFailure() async throws {
+        let clock = ManualClock()
+        let search = ArtistSearchResults(
+            open: { text in
+                text == "First"
+                    ? .fixed([artist("artist-1")], answers: UnansweredCount())
+                    : .failing(ReadFailed(), answers: UnansweredCount())
+            },
+            clock: clock
+        )
+
+        search.search("First")
+        await clock.untilSleeps(begun: 1)
+        clock.advance(by: .milliseconds(200))
+        try await Wait.until { search.list?.row(at: 0)?.id == "artist-1" }
+
+        search.search("Second")
+        await clock.untilSleeps(begun: 2)
+        clock.advance(by: .milliseconds(200))
+        try await Wait.until { search.error != nil }
+
+        #expect(search.list == nil, "the first text's list is gone")
         search.close()
     }
 }

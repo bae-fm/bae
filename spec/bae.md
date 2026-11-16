@@ -5585,7 +5585,9 @@ Reads come two ways:
   its order puts the artists whose id or name the text matches exactly first,
   then those whose name starts with it, then the rest, by name and id, and a
   window of it is a range of that order read as the others are, from every
-  artist its text finds.
+  artist its text finds. Until a new text's list answers, the picker shows the
+  list the text before it found; when the new text's read fails, the picker
+  shows that failure instead of a list.
   The Storage manager's count delivers its row count and its files' total
   size, and whether a search narrows it; a new sort, filter or search opens new
   queries. Its selection is a live query of its own. The app tells it which

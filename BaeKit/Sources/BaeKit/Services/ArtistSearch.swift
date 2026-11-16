@@ -19,13 +19,17 @@ public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 ///
 /// Once typing pauses, ArtistSearchResults opens the new text's list, and
 /// keeps showing the previous text's list until the new list's query returns
-/// its first rows, so the results never blank between keystrokes.
+/// its first rows, so the results never blank between keystrokes. When the
+/// new text's first read fails, the picker shows that failure in place of the
+/// list.
 @MainActor
 @Observable
 public final class ArtistSearchResults {
-    /// What the text typed last finds; nil until a text's list has answered.
+    /// What the text typed last finds; nil until a text's list has answered,
+    /// and when the last text's first read failed.
     public private(set) var list: ArtistSearchList?
-    /// The read failed; the list shown, if any, is what it read before.
+    /// Why the last text's read failed: its first read, with no list shown,
+    /// or a later read of the list shown.
     public private(set) var error: DisplayError?
 
     @ObservationIgnored
@@ -78,8 +82,14 @@ public final class ArtistSearchResults {
             return
         }
         list?.cancel()
+        if let failure = next.initialLoadError {
+            next.cancel()
+            list = nil
+            error = failure
+            return
+        }
         list = next
-        error = next.initialLoadError
+        error = nil
     }
 
     /// End the search: the picker is closing.
