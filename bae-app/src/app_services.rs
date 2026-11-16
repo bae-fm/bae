@@ -429,7 +429,9 @@ impl AppServices {
         Ok(())
     }
 
-    delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<bae_preferences::SavePreset>) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, add_save_preset => add_save_preset(preset: bae_preferences::SavePreset) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, replace_save_preset => replace_save_preset(preset: bae_preferences::SavePreset) -> Result<(), bae_preferences::PreferencesError>);
+    delegate_async!(manager, delete_save_preset => delete_save_preset(id: String) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_embed_cover => set_save_embed_cover(on: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_cover_file => set_save_cover_file(on: bool) -> Result<(), bae_preferences::PreferencesError>);
     delegate_async!(manager, set_save_loudness_tags => set_save_loudness_tags(on: bool) -> Result<(), bae_preferences::PreferencesError>);

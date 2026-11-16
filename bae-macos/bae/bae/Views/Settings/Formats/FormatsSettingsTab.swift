@@ -131,16 +131,17 @@ struct FormatsSettingsTab: View {
         }
     }
 
+    /// Write a change of a preset's codec or quality, which keeps its name.
     private func replacePreset(_ preset: BridgeSavePreset) {
-        let presets = configStore.config.savePresets.map {
-            $0.id == preset.id ? preset : $0
+        set {
+            if try await outputs.replaceSavePreset(preset) == .nameTaken {
+                throw SavePresetNameTaken(name: preset.name)
+            }
         }
-        set { try await outputs.setSavePresets(presets) }
     }
 
     private func deletePreset(id: String) {
-        let presets = configStore.config.savePresets.filter { $0.id != id }
-        set { try await outputs.setSavePresets(presets) }
+        set { try await outputs.deleteSavePreset(id) }
     }
 
     /// Adds the preset core makes for a new format and opens its editor once
@@ -150,9 +151,12 @@ struct FormatsSettingsTab: View {
             let preset = try outputs.newSavePreset(
                 configStore.config.savePresets
             )
-            let presets = configStore.config.savePresets + [preset]
             configStore.addedSavePresetId = preset.id
-            do { try await outputs.setSavePresets(presets) }
+            do {
+                if try await outputs.addSavePreset(preset) == .nameTaken {
+                    throw SavePresetNameTaken(name: preset.name)
+                }
+            }
             catch {
                 configStore.addedSavePresetId = nil
                 throw error
@@ -175,11 +179,21 @@ struct FormatsSettingsTab: View {
     }
 }
 
+/// Core refused a preset's write because another preset has its name, where
+/// the screen had no field to say so in.
+private struct SavePresetNameTaken: LocalizedError {
+    let name: String
+
+    var errorDescription: String? {
+        String(localized: "Another format is named \(name).")
+    }
+}
+
 /// The edit sheet of the preset `presetId`, drawn from the preset's own live
 /// read. It closes when the read answers that no preset has the id.
 private struct SavePresetSheet: View {
     let presetId: String
-    /// Every format, this one included, for the names it must not repeat.
+    /// Every format, this one included, for the name a format change gives.
     let presets: [BridgeSavePreset]
     let update: (BridgeSavePreset) -> Void
     let onEnded: () -> Void
@@ -199,7 +213,8 @@ private struct SavePresetSheet: View {
                 SavePresetEditor(
                     preset: preset,
                     presets: presets,
-                    update: update
+                    update: update,
+                    rename: { try await outputs.replaceSavePreset($0) }
                 )
             }
         }

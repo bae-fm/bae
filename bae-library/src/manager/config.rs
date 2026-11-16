@@ -284,43 +284,88 @@ impl LibraryManager {
             .ok_or_else(|| LibraryError::Save(format!("save preset {preset_id} does not exist")))
     }
 
-    pub async fn set_save_presets(
+    /// Add `preset` at the end of the save presets. Refused with `NameTaken`
+    /// when another preset has its name, and as invalid when one has its id.
+    pub async fn add_save_preset(
         &self,
-        presets: Vec<bae_preferences::SavePreset>,
+        preset: bae_preferences::SavePreset,
     ) -> Result<(), bae_preferences::PreferencesError> {
-        let mut ids = std::collections::HashSet::new();
-        let mut names = std::collections::HashSet::new();
-        for preset in &presets {
-            preset.validate()?;
-            if !names.insert(preset.name.clone()) {
-                return Err(bae_preferences::PreferencesError::Invalid(format!(
-                    "another export preset is named {}",
-                    preset.name
-                )));
-            }
-            if !ids.insert(preset.id.clone()) {
+        preset.validate()?;
+        self.update_preferences(move |prefs| {
+            if prefs.save_presets.iter().any(|stored| stored.id == preset.id) {
                 return Err(bae_preferences::PreferencesError::Invalid(format!(
                     "duplicate export preset id {}",
                     preset.id
                 )));
             }
-        }
-        let Some(first) = presets.first().map(|preset| preset.id.clone()) else {
-            return Err(bae_preferences::PreferencesError::Invalid(
-                "at least one export preset must remain".to_string(),
-            ));
-        };
-        // The last-used format is a required, valid preset id: when the new
-        // list no longer holds it, the first remaining format becomes it in
-        // the same write.
-        self.update_preferences(move |prefs| {
-            if !presets.iter().any(|preset| preset.id == prefs.last_save_preset) {
-                prefs.last_save_preset = first;
-            }
-            prefs.save_presets = presets;
+            Self::refuse_taken_name(&preset, &prefs.save_presets)?;
+            prefs.save_presets.push(preset);
             Ok(())
         })
         .await
+    }
+
+    /// Replace the save preset with `preset`'s id by `preset`, in its place.
+    /// Refused with `NameTaken` when another preset has its name, and as
+    /// invalid when no preset has its id.
+    pub async fn replace_save_preset(
+        &self,
+        preset: bae_preferences::SavePreset,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        preset.validate()?;
+        self.update_preferences(move |prefs| {
+            Self::refuse_taken_name(&preset, &prefs.save_presets)?;
+            let stored = prefs
+                .save_presets
+                .iter_mut()
+                .find(|stored| stored.id == preset.id)
+                .ok_or_else(|| Self::no_save_preset(&preset.id))?;
+            *stored = preset;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Delete the save preset `id`. When it is the last-used one, the first
+    /// preset left becomes the last-used one in the same write. The only
+    /// preset left is never deleted.
+    pub async fn delete_save_preset(
+        &self,
+        id: String,
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        self.update_preferences(move |prefs| {
+            let place = prefs
+                .save_presets
+                .iter()
+                .position(|stored| stored.id == id)
+                .ok_or_else(|| Self::no_save_preset(&id))?;
+            if !bae_preferences::SavePreset::can_delete(&prefs.save_presets) {
+                return Err(bae_preferences::PreferencesError::Invalid(
+                    "at least one export preset must remain".to_string(),
+                ));
+            }
+            prefs.save_presets.remove(place);
+            if prefs.last_save_preset == id {
+                prefs.last_save_preset = prefs.save_presets[0].id.clone();
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    /// Refuse `preset` when another stored preset has its name.
+    fn refuse_taken_name(
+        preset: &bae_preferences::SavePreset,
+        stored: &[bae_preferences::SavePreset],
+    ) -> Result<(), bae_preferences::PreferencesError> {
+        if stored.iter().any(|other| other.id != preset.id && other.name == preset.name) {
+            return Err(bae_preferences::PreferencesError::NameTaken(preset.name.clone()));
+        }
+        Ok(())
+    }
+
+    fn no_save_preset(id: &str) -> bae_preferences::PreferencesError {
+        bae_preferences::PreferencesError::Invalid(format!("no export preset {id}"))
     }
 
     /// Set the one file name pattern every save names its files by, whatever

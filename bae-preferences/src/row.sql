@@ -61,8 +61,8 @@ CREATE TABLE IF NOT EXISTS preferences (
     CHECK (subsonic_network_interface IS NULL OR subsonic_network_interface <> '')
 ) STRICT;
 
--- The save presets, in the order the settings list them (§4.6). The editor
--- replaces the list whole.
+-- The save presets, in the order the settings list them (§4.6). The settings
+-- add, change and delete one at a time.
 CREATE TABLE IF NOT EXISTS save_preset (
     id       TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     position INTEGER NOT NULL UNIQUE CHECK (position >= 0),

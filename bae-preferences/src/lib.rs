@@ -239,6 +239,10 @@ impl Preferences {
 pub enum PreferencesError {
     #[error("invalid configuration: {0}")]
     Invalid(String),
+    /// Another save preset already has the name a preset was to take, and
+    /// two presets never share a name. Nothing was written.
+    #[error("another export preset is named {0}")]
+    NameTaken(String),
     /// The preferences row could not be read or written.
     #[error(transparent)]
     Database(#[from] bae_store::DbError),
@@ -249,7 +253,7 @@ pub enum PreferencesError {
 impl bae_util::task_failure::ReportedBug for PreferencesError {
     fn reported_bug(&self) -> Option<&coven::task::Bug> {
         match self {
-            Self::Invalid(_) => None,
+            Self::Invalid(_) | Self::NameTaken(_) => None,
             Self::Database(error) => error.reported_bug(),
         }
     }
@@ -260,7 +264,7 @@ impl PreferencesError {
     /// is the database's failure, not a setting to fix.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Invalid(_) => bae_diagnostics::UiErrorCategory::Config,
+            Self::Invalid(_) | Self::NameTaken(_) => bae_diagnostics::UiErrorCategory::Config,
             Self::Database(error) => bae_diagnostics::database_category(error),
         }
     }

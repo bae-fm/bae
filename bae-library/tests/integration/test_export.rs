@@ -173,7 +173,7 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
     assert_eq!(tracks.len(), 2);
     let manager = f.library.manager();
 
-    let mut presets = manager.save_presets().await.unwrap();
+    let presets = manager.save_presets().await.unwrap();
     let same_as_source = presets.iter().find(|preset| preset.id == "flac").unwrap().clone();
     assert_eq!(same_as_source.codec, SaveCodec::Flac { bit_depth: SaveBitDepth::SameAsSource });
     let sixteen = SavePreset {
@@ -181,8 +181,7 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
         name: "16-bit".to_string(),
         codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
     };
-    presets.push(sixteen.clone());
-    manager.set_save_presets(presets).await.unwrap();
+    manager.add_save_preset(sixteen.clone()).await.unwrap();
 
     let depths = |preset: &SavePreset| {
         let (f, tracks, preset) = (&f, &tracks, preset.id.clone());
@@ -570,10 +569,8 @@ async fn a_wav_track_saves_as_wav_at_its_own_depth_or_16_bits() {
         name: id.to_string(),
         codec: SaveCodec::Wav { bit_depth },
     };
-    let mut presets = manager.save_presets().await.unwrap();
-    presets.push(wav("same", SaveBitDepth::SameAsSource));
-    presets.push(wav("sixteen", SaveBitDepth::Bits16));
-    manager.set_save_presets(presets).await.unwrap();
+    manager.add_save_preset(wav("same", SaveBitDepth::SameAsSource)).await.unwrap();
+    manager.add_save_preset(wav("sixteen", SaveBitDepth::Bits16)).await.unwrap();
 
     let same = f.temp_path().join("same.wav");
     manager.save_track(&tracks[1].id, &same, "same").await.expect("the track saves");
@@ -687,9 +684,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "track title");
     let release_id = import_unknown_local(&f, &album_dir).await;
     let preset = flac_save_preset("titles");
-    let mut presets = f.library.manager().save_presets().await.unwrap();
-    presets.push(preset.clone());
-    f.library.manager().set_save_presets(presets).await.unwrap();
+    f.library.manager().add_save_preset(preset.clone()).await.unwrap();
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
@@ -766,9 +761,7 @@ async fn peak_sources_open_saving(
     source_dir: &Path,
     preset: SavePreset,
 ) -> usize {
-    let mut presets = f.library.manager().save_presets().await.unwrap();
-    presets.push(preset.clone());
-    f.library.manager().set_save_presets(presets).await.unwrap();
+    f.library.manager().add_save_preset(preset.clone()).await.unwrap();
     let target = f.temp_path().join(format!("export-{}", preset.id));
     fs::create_dir_all(&target).unwrap();
 

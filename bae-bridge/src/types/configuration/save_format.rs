@@ -89,16 +89,27 @@ pub fn bridge_save_preset_can_delete(presets: Vec<BridgeSavePreset>) -> bool {
     bae_preferences::SavePreset::can_delete(&presets)
 }
 
-/// Whether a format other than `own_id` among `presets` is already named
-/// `name`.
-#[uniffi::export]
-pub fn bridge_save_name_taken(
-    name: String,
-    own_id: String,
-    presets: Vec<BridgeSavePreset>,
-) -> bool {
-    let presets: Vec<_> = presets.into_iter().map(BridgeSavePreset::into_core).collect();
-    bae_preferences::SavePreset::name_taken(&name, &own_id, &presets)
+/// How adding or changing one save preset ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSavePresetWrite {
+    Saved,
+    /// Another preset has the name, and two never share one; nothing was
+    /// written.
+    NameTaken,
+}
+
+impl BridgeSavePresetWrite {
+    /// The answer to a write of one preset: a name another preset has is
+    /// this answer, and any other failure crosses as an error.
+    pub(crate) fn of(
+        written: Result<(), bae_preferences::PreferencesError>,
+    ) -> Result<Self, BridgeError> {
+        match written {
+            Ok(()) => Ok(Self::Saved),
+            Err(bae_preferences::PreferencesError::NameTaken(_)) => Ok(Self::NameTaken),
+            Err(error) => Err(error.into()),
+        }
+    }
 }
 
 /// The extension of the files `codec` writes, without its dot.

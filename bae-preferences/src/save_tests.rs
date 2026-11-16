@@ -195,20 +195,6 @@ fn a_prefilled_name_follows_a_format_change() {
     assert_eq!(change("FLAC of mine", SaveFormat::Flac, SaveFormat::Mp3, &[]), "FLAC of mine");
 }
 
-/// A name is taken when another format has it; a format's own name is not.
-#[test]
-fn a_name_is_taken_only_by_another_format() {
-    let ids = coven::SequentialIds::new();
-    let flac = SavePreset::new_flac(&ids, &[], Numerals::LATIN);
-    let mp3 =
-        SavePreset { name: "MP3".to_string(), ..SavePreset::new_flac(&ids, &[], Numerals::LATIN) };
-    let presets = vec![flac.clone(), mp3.clone()];
-
-    assert!(SavePreset::name_taken("MP3", &flac.id, &presets));
-    assert!(!SavePreset::name_taken("MP3", &mp3.id, &presets));
-    assert!(!SavePreset::name_taken("Phone", &flac.id, &presets));
-}
-
 /// The number in a name is written in the digits of the viewer's language, and
 /// only those digits make a name a prefill.
 #[test]

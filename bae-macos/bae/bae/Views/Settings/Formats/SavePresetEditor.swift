@@ -2,12 +2,17 @@ import BaeKit
 import SwiftUI
 
 /// The edit sheet for one export preset; every control writes the whole
-/// preset through `update`, so Done only closes it.
+/// preset through `update`, and the name through `rename`, so Done only
+/// closes it.
 struct SavePresetEditor: View {
     let preset: BridgeSavePreset
-    /// Every format, this one included, for the names it must not repeat.
+    /// Every format, this one included, for the name a format change gives.
     let presets: [BridgeSavePreset]
     let update: (BridgeSavePreset) -> Void
+    /// Write the preset with a new name; core answers whether another format
+    /// has it.
+    let rename:
+        @MainActor (BridgeSavePreset) async throws -> BridgeSavePresetWrite
 
     @Environment(\.dismiss)
     private var dismiss
@@ -20,6 +25,10 @@ struct SavePresetEditor: View {
     private var nameDraft = ""
     @FocusState
     private var nameFocused: Bool
+    /// The name core last refused because another format has it, while the
+    /// field still holds it.
+    @State
+    private var refusedName: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -48,13 +57,9 @@ struct SavePresetEditor: View {
         !nameDraft.trimmingCharacters(in: .whitespaces).isEmpty && !nameTaken
     }
 
-    /// Another format already has the name in the field.
+    /// Core refused the name in the field: another format has it.
     private var nameTaken: Bool {
-        bridgeSaveNameTaken(
-            name: nameDraft,
-            ownId: preset.id,
-            presets: presets
-        )
+        refusedName == nameDraft
     }
 
     /// The names of the other formats.
@@ -177,6 +182,16 @@ struct SavePresetEditor: View {
         guard nameValid, nameDraft != preset.name else { return }
         var changed = preset
         changed.name = nameDraft
-        update(changed)
+        Task {
+            do {
+                switch try await rename(changed) {
+                case .saved: refusedName = nil
+                case .nameTaken: refusedName = changed.name
+                }
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
     }
 }

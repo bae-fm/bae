@@ -446,7 +446,9 @@ async fn enqueue_release_save_captures_the_preset() {
             preset
         })
         .collect();
-    manager.set_save_presets(edited).await.unwrap();
+    for preset in edited {
+        manager.replace_save_preset(preset).await.unwrap();
+    }
 
     let snap = output_queue_now(manager).await;
     let bae_transfers::OutputKind::Save { preset, .. } = &snap.rows[0].op.payload.kind else {

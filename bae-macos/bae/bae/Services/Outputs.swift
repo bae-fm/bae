@@ -32,9 +32,18 @@ final class Outputs: Sendable, Observable {
     /// The pulls of one save preset's live read by id, for its edit sheet.
     let subscribeSavePreset:
         @Sendable (_ id: String) throws -> SavePresetSubscription
-    /// Replace configured export presets.
-    let setSavePresets:
-        @Sendable (_ presets: [BridgeSavePreset]) async throws -> Void
+    /// Add a save preset after the others; a name another has is answered
+    /// as taken.
+    let addSavePreset:
+        @Sendable (_ preset: BridgeSavePreset) async throws ->
+            BridgeSavePresetWrite
+    /// Replace the save preset with the preset's id; a name another has is
+    /// answered as taken.
+    let replaceSavePreset:
+        @Sendable (_ preset: BridgeSavePreset) async throws ->
+            BridgeSavePresetWrite
+    /// Delete the save preset with the id.
+    let deleteSavePreset: @Sendable (_ id: String) async throws -> Void
     /// Set the one file name pattern every save names its files by.
     let setFilenamePieces:
         @Sendable (_ pieces: [BridgeSaveFilenamePiece]) async throws -> Void
@@ -72,10 +81,15 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable (String) throws -> SavePresetSubscription = {
                 _ in throw CancellationError()
             },
-        setSavePresets:
-            @escaping @Sendable ([BridgeSavePreset]) async throws -> Void = {
-                _ in
-            },
+        addSavePreset:
+            @escaping @Sendable (BridgeSavePreset) async throws ->
+            BridgeSavePresetWrite = { _ in .saved },
+        replaceSavePreset:
+            @escaping @Sendable (BridgeSavePreset) async throws ->
+            BridgeSavePresetWrite = { _ in .saved },
+        deleteSavePreset: @escaping @Sendable (String) async throws -> Void = {
+            _ in
+        },
         setFilenamePieces:
             @escaping @Sendable ([BridgeSaveFilenamePiece]) async throws
             -> Void = { _ in
@@ -100,7 +114,9 @@ final class Outputs: Sendable, Observable {
         self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
         self.subscribeSavePreset = subscribeSavePreset
-        self.setSavePresets = setSavePresets
+        self.addSavePreset = addSavePreset
+        self.replaceSavePreset = replaceSavePreset
+        self.deleteSavePreset = deleteSavePreset
         self.setFilenamePieces = setFilenamePieces
         self.setFolderPieces = setFolderPieces
         self.setSaveEmbedCover = setSaveEmbedCover
@@ -138,7 +154,11 @@ final class Outputs: Sendable, Observable {
             setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
             cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
             subscribeSavePreset: { handle.subscribeSavePreset(id: $0) },
-            setSavePresets: { try await handle.setSavePresets(presets: $0) },
+            addSavePreset: { try await handle.addSavePreset(preset: $0) },
+            replaceSavePreset: {
+                try await handle.replaceSavePreset(preset: $0)
+            },
+            deleteSavePreset: { try await handle.deleteSavePreset(id: $0) },
             setFilenamePieces: {
                 try await handle.setFilenamePieces(pieces: $0)
             },

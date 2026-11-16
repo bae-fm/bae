@@ -82,7 +82,8 @@ extension ShotScene {
             let sheet = SavePresetEditor(
                 preset: PreviewData.savePresets[1],
                 presets: PreviewData.savePresets,
-                update: { _ in }
+                update: { _ in },
+                rename: { _ in .saved }
             )
             .environment(UiStore())
             return ShotStage(

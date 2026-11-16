@@ -67,19 +67,11 @@ async fn deleting_the_last_used_format_makes_the_first_remaining_the_last_used()
     let manager = test.library.manager();
     manager.set_last_save_preset("mp3".to_string()).await.unwrap();
 
-    let presets_without_mp3: Vec<_> = manager
-        .save_presets()
-        .await
-        .unwrap()
-        .into_iter()
-        .filter(|preset| preset.id != "mp3")
-        .collect();
-    let first_remaining = presets_without_mp3[0].id.clone();
-    manager.set_save_presets(presets_without_mp3).await.unwrap();
+    manager.delete_save_preset("mp3".to_string()).await.unwrap();
 
     let prefs = manager.preferences().await.unwrap();
     assert!(prefs.save_presets.iter().all(|preset| preset.id != "mp3"));
-    assert_eq!(prefs.last_save_preset, first_remaining);
+    assert_eq!(prefs.last_save_preset, "flac");
 }
 
 /// A format that is not the last used leaves the last used alone.
@@ -89,28 +81,25 @@ async fn deleting_another_format_keeps_the_last_used() {
     let manager = test.library.manager();
     manager.set_last_save_preset("flac".to_string()).await.unwrap();
 
-    let without_mp3: Vec<_> = manager
-        .save_presets()
-        .await
-        .unwrap()
-        .into_iter()
-        .filter(|preset| preset.id != "mp3")
-        .collect();
-    manager.set_save_presets(without_mp3).await.unwrap();
+    manager.delete_save_preset("mp3".to_string()).await.unwrap();
 
     assert_eq!(manager.preferences().await.unwrap().last_save_preset, "flac");
 }
 
 /// The only format left is never deleted.
 #[tokio::test]
-async fn set_save_presets_refuses_an_empty_list() {
+async fn the_only_format_left_is_never_deleted() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
+    manager.delete_save_preset("mp3".to_string()).await.unwrap();
 
-    let err = manager.set_save_presets(Vec::new()).await.expect_err("no format left is refused");
+    let err = manager
+        .delete_save_preset("flac".to_string())
+        .await
+        .expect_err("no format left is refused");
 
     assert!(err.to_string().contains("at least one"), "{err}");
-    assert!(!manager.save_presets().await.unwrap().is_empty());
+    assert_eq!(manager.save_presets().await.unwrap().len(), 1);
 }
 
 /// The last-used format must name a preset that exists; any format can be it,
@@ -125,30 +114,47 @@ async fn set_last_save_preset_rejects_unknown_and_takes_any_format() {
         "an unknown preset id is rejected"
     );
 
-    let mut presets = manager.save_presets().await.unwrap();
-    presets.push(bae_preferences::SavePreset {
-        id: "wav-16".to_string(),
-        name: "WAV 16-bit".to_string(),
-        codec: bae_preferences::SaveCodec::Wav { bit_depth: bae_preferences::SaveBitDepth::Bits16 },
-    });
-    manager.set_save_presets(presets).await.unwrap();
+    manager
+        .add_save_preset(bae_preferences::SavePreset {
+            id: "wav-16".to_string(),
+            name: "WAV 16-bit".to_string(),
+            codec: bae_preferences::SaveCodec::Wav {
+                bit_depth: bae_preferences::SaveBitDepth::Bits16,
+            },
+        })
+        .await
+        .unwrap();
 
     manager.set_last_save_preset("wav-16".to_string()).await.unwrap();
     assert_eq!(manager.preferences().await.unwrap().last_save_preset, "wav-16");
 }
 
-/// Two formats never share a name, whoever asks to write them.
+/// Two formats never share a name: adding or changing a format to a name
+/// another has is refused as taken, and a format keeps its own name.
 #[tokio::test]
-async fn set_save_presets_refuses_a_name_another_format_has() {
+async fn adding_or_changing_a_format_refuses_a_name_another_format_has() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let mut presets = manager.save_presets().await.unwrap();
-    presets[1].name = presets[0].name.clone();
+    let mut mp3 = manager.save_presets().await.unwrap()[1].clone();
 
-    let err = manager.set_save_presets(presets).await.expect_err("a taken name is refused");
+    mp3.name = "FLAC".to_string();
+    let replaced = manager.replace_save_preset(mp3.clone()).await;
+    assert!(
+        matches!(&replaced, Err(bae_preferences::PreferencesError::NameTaken(name)) if name == "FLAC"),
+        "{replaced:?}"
+    );
+    let added = manager
+        .add_save_preset(bae_preferences::SavePreset { id: "other".to_string(), ..mp3.clone() })
+        .await;
+    assert!(matches!(added, Err(bae_preferences::PreferencesError::NameTaken(_))), "{added:?}");
+    let names: Vec<_> =
+        manager.save_presets().await.unwrap().into_iter().map(|preset| preset.name).collect();
+    assert_eq!(names, ["FLAC", "MP3"], "nothing was written");
 
-    assert!(err.to_string().contains("another export preset is named FLAC"), "{err}");
-    assert_eq!(manager.save_presets().await.unwrap()[1].name, "MP3");
+    mp3.name = "MP3".to_string();
+    mp3.codec = bae_preferences::SaveCodec::Mp3 { bitrate_kbps: 192 };
+    manager.replace_save_preset(mp3.clone()).await.unwrap();
+    assert_eq!(manager.save_presets().await.unwrap()[1], mp3, "a format keeps its own name");
 }
 
 #[tokio::test]

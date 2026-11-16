@@ -60,6 +60,7 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSaveFilenamePiece
 import uniffi.bae_bridge.BridgeSaveFolderPiece
 import uniffi.bae_bridge.BridgeSavePreset
+import uniffi.bae_bridge.BridgeSavePresetWrite
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSetupCancellation
@@ -693,8 +694,12 @@ internal open class FakeAppHandle(
         unfaked("setPauseBetweenSides")
     }
 
-    override suspend fun setSavePresets(presets: List<BridgeSavePreset>) {
-        unfaked("setSavePresets")
+    override suspend fun addSavePreset(preset: BridgeSavePreset): BridgeSavePresetWrite = unfaked("addSavePreset")
+
+    override suspend fun replaceSavePreset(preset: BridgeSavePreset): BridgeSavePresetWrite = unfaked("replaceSavePreset")
+
+    override suspend fun deleteSavePreset(id: String) {
+        unfaked("deleteSavePreset")
     }
 
     override suspend fun setShowRemainingTime(enabled: Boolean) {

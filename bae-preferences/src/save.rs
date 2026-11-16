@@ -398,11 +398,6 @@ impl SavePreset {
         presets.len() > 1
     }
 
-    /// Whether a format other than `own_id` is already named `name`.
-    pub fn name_taken(name: &str, own_id: &str, presets: &[SavePreset]) -> bool {
-        presets.iter().any(|preset| preset.id != own_id && preset.name == name)
-    }
-
     pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.id.trim().is_empty() {
             return Err(PreferencesError::Invalid("export preset id is empty".to_string()));
