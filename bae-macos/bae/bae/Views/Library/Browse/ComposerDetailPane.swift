@@ -103,7 +103,7 @@ struct ComposerDetailPane: View {
     /// heading work sets the groups apart.
     private func pageRows(_ rows: ComposerDetailRowList) -> some View {
         LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(0..<rows.totalCount, id: \.self) { index in
+            ForEach(0..<rows.positionCount, id: \.self) { index in
                 pageRow(rows.row(at: index), first: index == 0)
                     .task(id: RowLoadID(epoch: rows.loadEpoch, index: index)) {
                         await rows.holdPage(containing: index)

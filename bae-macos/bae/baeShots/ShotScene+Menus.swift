@@ -44,7 +44,7 @@ extension ShotScene {
                     .padding(.top, 330)
                 }
             ) {
-                (backing.session.albums.list?.totalCount ?? 0) > 0
+                (backing.session.albums.list?.positionCount ?? 0) > 0
             }
         },
         component("mac.component.popover.default", width: 300, height: 150) {

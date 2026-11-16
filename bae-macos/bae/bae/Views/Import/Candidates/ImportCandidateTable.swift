@@ -109,7 +109,7 @@ struct ImportCandidateTable: NSViewRepresentable {
         // Reading these `@Observable` fields here is what makes SwiftUI
         // update the table when the list delivers or its selection moves.
         let rows = ImportCandidateTableRows(
-            count: list.totalCount,
+            count: list.positionCount,
             revision: list.contentRevision
         )
         coordinator.update(

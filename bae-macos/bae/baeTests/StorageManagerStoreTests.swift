@@ -87,13 +87,13 @@ struct StorageManagerStoreTests {
         )
 
         store.update(filter: .all, sort: byTitle, search: "")
-        try await Wait.until { store.list?.totalCount == 3 }
+        try await Wait.until { store.list?.count?.rows == 3 }
         #expect(store.totalSize == 7)
         #expect(store.searching == false)
 
         store.update(filter: .all, sort: bySize, search: "")
         store.update(filter: .local, sort: bySize, search: "Album")
-        try await Wait.until { store.searching }
+        try await Wait.until { store.searching == true }
 
         #expect(
             reads.opened == [

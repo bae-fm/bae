@@ -186,10 +186,8 @@ final class ImportListSlot {
     func narrowedCount(
         under narrowing: BridgeImportListNarrowing
     ) -> BridgeNarrowedCount? {
-        guard narrowing == opened.narrowing, let extra = list?.countExtra,
-            case .import(let narrowed) = extra
-        else { return nil }
-        return narrowed
+        guard narrowing == opened.narrowing else { return nil }
+        return list?.narrowed
     }
 
 }
@@ -421,7 +419,7 @@ extension ImportListSlot {
                 queries: handle.queries,
                 onError: { _ in }
             )
-            list.preloadRows(rows: items)
+            list.preloadRows(rows: items, extra: .import(narrowed: nil))
             slot.list = list
             slot.handle = handle
             return slot
@@ -578,10 +576,22 @@ extension PaginatedList<BridgeImportListItem> {
     }
 
     /// Whether the text filter or the filter entry narrows the list, as the
-    /// list's count says.
+    /// list's count says; `false` until the count answers.
     var isNarrowed: Bool {
-        if case .import(let narrowed)? = countExtra { return narrowed != nil }
-        return false
+        narrowed != nil
+    }
+
+    /// How many of the tab's rows the list shows while its filters narrow
+    /// it, as the list's count says; `nil` while they narrow nothing, or
+    /// until the count answers.
+    fileprivate var narrowed: BridgeNarrowedCount? {
+        guard let count else { return nil }
+        guard case .import(let narrowed) = count.extra else {
+            preconditionFailure(
+                "the import list's count carried \(count.extra)"
+            )
+        }
+        return narrowed
     }
 
     /// The covers the loaded rows draw, to decode before they are on screen.

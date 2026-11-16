@@ -10,7 +10,7 @@ where Row.ID: Sendable {
 
     var body: some View {
         List {
-            ForEach(0..<list.totalCount, id: \.self) { index in
+            ForEach(0..<list.positionCount, id: \.self) { index in
                 row(index)
                     .plainListRowEdge(
                         ThemeSpace.related,

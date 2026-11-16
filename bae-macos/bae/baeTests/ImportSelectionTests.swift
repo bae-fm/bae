@@ -225,10 +225,14 @@ struct ListSelectionTests {
                 return PreviewData.candidateItem(row)
             }
         let list = PaginatedList<BridgeImportListItem>(
-            queries: .fixed(items, answers: UnansweredCount()),
+            queries: .fixed(
+                items,
+                answers: UnansweredCount(),
+                extra: .import(narrowed: nil)
+            ),
             onError: { _ in }
         )
-        list.preloadRows(rows: items)
+        list.preloadRows(rows: items, extra: .import(narrowed: nil))
         return list
     }
 

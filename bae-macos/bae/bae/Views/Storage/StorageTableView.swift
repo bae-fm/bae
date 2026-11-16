@@ -122,7 +122,7 @@ struct StorageTableView: NSViewRepresentable {
         // Reading these `@Observable` fields here is what makes SwiftUI
         // re-invoke `updateNSView` when the list grows, changes, or is swapped
         // for a fresh instance on a sort/filter change.
-        let totalCount = list.totalCount
+        let totalCount = list.positionCount
         let epoch = list.loadEpoch
         // The rows held the swapped-out list's pages.
         if coordinator.list !== list {

@@ -196,7 +196,7 @@ extension PlaybackStore {
     /// until the list is open and has answered.
     @MainActor
     public var upcomingTotal: Int {
-        upcoming?.totalCount ?? 0
+        upcoming?.positionCount ?? 0
     }
 
     /// The upcoming item at `index`, or `nil` when it is not read or past

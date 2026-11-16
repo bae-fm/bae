@@ -447,7 +447,7 @@
                 queries: .fixed(albums, answers: UnansweredCount()),
                 onError: { _ in },
             )
-            list.preloadRows(rows: albums)
+            list.preloadRows(rows: albums, extra: .none)
             return list
         }
     }

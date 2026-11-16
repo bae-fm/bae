@@ -38,7 +38,7 @@ extension ShotScene {
                     size: CGSize(width: 1200, height: 760)
                 )
             ) {
-                (backing.session.albums.list?.totalCount ?? 0) > 0
+                (backing.session.albums.list?.positionCount ?? 0) > 0
             }
         }
     ]

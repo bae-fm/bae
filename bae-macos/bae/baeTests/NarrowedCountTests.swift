@@ -29,7 +29,7 @@ struct NarrowedCountTests {
             makeHandle: { _ in handle }
         )
         slot.startLoad()
-        try await Wait.until { slot.list?.countExtra != nil }
+        try await Wait.until { slot.list?.count != nil }
         return slot
     }
 

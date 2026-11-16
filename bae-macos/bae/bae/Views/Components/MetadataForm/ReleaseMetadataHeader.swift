@@ -690,7 +690,7 @@ private struct ArtistAssignmentsEditor: View {
     private func foundArtists(_ list: ArtistSearchList) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ForEach(0..<list.totalCount, id: \.self) { index in
+                ForEach(0..<list.positionCount, id: \.self) { index in
                     ArtistSearchResultRow(
                         result: list.row(at: index),
                         onPick: { picked in

@@ -192,7 +192,7 @@ struct PaginatedListTests {
             onError: { Issue.record("List failed: \($0)") }
         )
         await list.loadInitial()
-        try? await Wait.until { list.countAnswered }
+        try? await Wait.until { list.count != nil }
         return list
     }
 
@@ -220,7 +220,7 @@ struct PaginatedListTests {
         let probe = ProbeList(ids(0...29))
         let list = await open(probe)
 
-        #expect(list.totalCount == 30)
+        #expect(list.count?.rows == 30)
         #expect(idsAt(list, 0...29) == ids(0...29).map(Optional.init))
         #expect(idsAt(list, 30...30) == [nil])
     }
@@ -241,15 +241,13 @@ struct PaginatedListTests {
 
         #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
         #expect(
-            list.totalCount == 0,
-            "the rows read so far never stand for the count"
+            list.count == nil,
+            "the list never uses the rows its windows hold as the count"
         )
-        #expect(!list.countAnswered)
-        #expect(list.countExtra == nil)
 
         probe.releaseCount()
-        try await Wait.until { list.countAnswered }
-        #expect(list.totalCount == 200)
+        try await Wait.until { list.count != nil }
+        #expect(list.count?.rows == 200)
         list.cancel()
     }
 
@@ -258,13 +256,11 @@ struct PaginatedListTests {
     func reopenDropsCount() async {
         let probe = ProbeList(ids(0...199))
         let list = await open(probe)
-        #expect(list.totalCount == 200)
+        #expect(list.count?.rows == 200)
 
         probe.holdCount()
         await list.reopen(at: nil, position: 0)
-        #expect(list.totalCount == 0)
-        #expect(!list.countAnswered)
-        #expect(list.countExtra == nil)
+        #expect(list.count == nil)
         list.cancel()
     }
 
@@ -281,8 +277,8 @@ struct PaginatedListTests {
             onError: { Issue.record("List failed: \($0)") }
         )
         await list.loadInitial()
-        try await Wait.until { list.countAnswered }
-        #expect(list.totalCount == 2)
+        try await Wait.until { list.count != nil }
+        #expect(list.count?.rows == 2)
         #expect(list.itemCount == 1)
         #expect(list.idAt(0) == "shared")
         #expect(list.idAt(1) == "shared")
@@ -330,7 +326,7 @@ struct PaginatedListTests {
             idsAt(list, 0...(all.count - 1 > 100 ? 100 : all.count - 1))
                 == all.prefix(101).map(Optional.init)
         }
-        try await Wait.until { list.totalCount == all.count }
+        try await Wait.until { list.count?.rows == UInt64(all.count) }
     }
 
     @MainActor
@@ -406,7 +402,7 @@ struct PaginatedListTests {
 
         probe.set(ids(0...9))
 
-        try await Wait.until { list.totalCount == 10 }
+        try await Wait.until { list.count?.rows == 10 }
         try await Wait.until { list.idAt(10) == nil }
         #expect(idsAt(list, 0...9) == ids(0...9).map(Optional.init))
     }

@@ -195,8 +195,8 @@ struct StorageManagerView: View {
                         runner: runner,
                     )
                     .overlay {
-                        if storageManagerStore.searching, list.countAnswered,
-                            list.totalCount == 0
+                        if storageManagerStore.searching == true,
+                            list.count?.rows == 0
                         {
                             ContentUnavailableView {
                                 Text("No matches")

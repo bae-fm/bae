@@ -23,10 +23,10 @@ extension LibraryView {
             )
         }
 
-    /// A `Library` whose album/composer counts and pages are all empty,
-    /// driving the real `loadInitial()` → `totalCount == 0` path so the
-    /// shots below hit the actual empty-state branches in
-    /// `albumContent`/`composerContent` rather than a hand-built stand-in.
+    /// A `Library` whose album and composer counts and pages are all empty.
+    /// The real `loadInitial()` reads a count of no rows, so the shots below
+    /// draw the empty-state branches in `albumContent` and `composerContent`
+    /// rather than a hand-built stand-in.
     static func emptyLibrary() -> Library {
         Library(
             albumList: { _, _ in .fixed([], answers: UnansweredCount()) },

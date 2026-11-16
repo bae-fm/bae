@@ -51,21 +51,28 @@ public final class StorageManagerStore {
     }
 
     /// The total size of the files of the releases the list holds, by its
-    /// count's last answer; `nil` until the list has answered.
+    /// count's last answer; `nil` until the list's count answers.
     public var totalSize: UInt64? {
-        guard let list, case .storage(let size, _)? = list.countExtra else {
-            return nil
-        }
-        return size
+        storageCount?.totalSize
     }
 
-    /// Whether the search text narrows the list, by core's last answer.
-    public var searching: Bool {
-        guard let list, case .storage(_, let searching)? = list.countExtra
-        else {
-            return false
+    /// Whether the search text narrows the list, by its count's last answer;
+    /// `nil` until the list's count answers.
+    public var searching: Bool? {
+        storageCount?.searching
+    }
+
+    /// What the list's count carries beside its rows, which for the Storage
+    /// Manager's list is always the total size and whether a search narrows
+    /// it.
+    private var storageCount: (totalSize: UInt64, searching: Bool)? {
+        guard let count = list?.count else { return nil }
+        guard case .storage(let totalSize, let searching) = count.extra else {
+            preconditionFailure(
+                "the Storage Manager's list count carried \(count.extra)"
+            )
         }
-        return searching
+        return (totalSize, searching)
     }
 
     /// Show the list under `filter`, `sort` and the `search` text, which

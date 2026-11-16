@@ -355,10 +355,10 @@ private struct ImportCandidateListSwitch<Table: View>: View {
 
     var body: some View {
         if let list = listSlot.list, importStore.summary != nil {
-            if list.countAnswered, list.totalCount > 0 {
+            if let count = list.count, count.rows > 0 {
                 table()
             }
-            else if listSlot.answersView, list.countAnswered {
+            else if listSlot.answersView, list.count != nil {
                 ContentUnavailableView {
                     Text(
                         list.isNarrowed ? "No matches" : "Nothing here yet"

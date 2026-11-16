@@ -53,7 +53,7 @@ struct ArtistSearchResultsTests {
         clock.advance(by: .milliseconds(200))
         try await Wait.until { search.list != nil }
 
-        #expect(search.list?.totalCount == 2)
+        #expect(search.list?.count?.rows == 2)
         #expect(search.list?.row(at: 1)?.id == "artist-2")
         search.close()
     }

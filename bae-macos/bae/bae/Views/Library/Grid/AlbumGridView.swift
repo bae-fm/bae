@@ -288,7 +288,7 @@ extension AlbumGridView {
 
     private func cells(columnCount: Int) -> AlbumGridLayout {
         AlbumGridLayout(
-            totalCount: list.totalCount,
+            totalCount: list.positionCount,
             sections: groupByArtist ? list.sections : [],
             columnCount: columnCount,
             loaded: list.loadedEntries,
@@ -606,7 +606,7 @@ extension AlbumGridView {
     private func scrollToTop(_ slot: AlbumGridSlot) {
         let id: AlbumGridCell.Identity
         switch slot {
-        case .position(let position) where position < list.totalCount:
+        case .position(let position) where position < list.positionCount:
             if let albumId = list.idAt(position) {
                 id = .album(
                     albumId,

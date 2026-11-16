@@ -111,7 +111,7 @@ extension PreviewData {
             queries: .fixed(rows, answers: UnansweredCount()),
             onError: { _ in },
         )
-        list.preloadRows(rows: rows)
+        list.preloadRows(rows: rows, extra: .none)
         return list
     }
 
@@ -242,7 +242,7 @@ extension PreviewData {
             queries: .fixed(composerSummaries, answers: UnansweredCount()),
             onError: { _ in },
         )
-        list.preloadRows(rows: composerSummaries)
+        list.preloadRows(rows: composerSummaries, extra: .none)
         return list
     }
 }

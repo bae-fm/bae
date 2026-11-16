@@ -449,14 +449,14 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             total: 2
         )
         try await Wait.until {
-            session.albums.list?.totalCount == 2
+            session.albums.list?.count?.rows == 2
         }
         session.albumSelection.setSelected("album-a", selected: true)
         #expect(selectionProbe.requested.last == ["album-a"])
 
         pageProbe.emit(rows: [makeBridgeAlbum(id: "album-c")], total: 3)
         try await Wait.until {
-            session.albums.list?.totalCount == 3
+            session.albums.list?.count?.rows == 3
         }
 
         #expect(session.albumSelection.contains("album-a"))

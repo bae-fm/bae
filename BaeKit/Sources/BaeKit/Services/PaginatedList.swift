@@ -21,36 +21,35 @@ private let logger = Logger.bae("PaginatedList")
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
 where Row.ID: Sendable {
-    /// How many rows the list has, from its count's last value. 0 until the
-    /// count has answered (`countAnswered`): the rows its windows hold never
-    /// stand in for it, so a screen decides what an empty or filled list
-    /// shows only once the count has said which it is.
-    public private(set) var totalCount: Int = 0
+    /// The list's count, from its last value: how many rows the list has,
+    /// and what the count carries beside them, such as the album grid's album
+    /// count or the Storage Manager's total size. `nil` until the count
+    /// answers after `loadInitial` or `reopen` opened the list. The list
+    /// never uses the number of rows its windows hold as the count, so a
+    /// screen decides whether to show an empty list only after the count's
+    /// first value arrives.
+    public private(set) var count: BridgeListCount?
 
-    /// Whether the list's count has answered since the list was opened. A
-    /// screen that shows an empty state, or hides the rows, on `totalCount`
-    /// waits for this.
-    public private(set) var countAnswered = false
-
-    /// What the list's count carries beside its rows, as its last value gave
-    /// it: the album grid's album count, or the Storage Manager's total size;
-    /// `nil` until the count has answered.
-    public private(set) var countExtra: BridgeListCountExtra?
+    /// How many positions a screen lays out: the count's rows once the count
+    /// answers, and none before.
+    public var positionCount: Int {
+        count.map { Int($0.rows) } ?? 0
+    }
 
     /// How many distinct items the list's count carries when a row can show an
     /// item more than once; the row count otherwise. `nil` until the count has
     /// answered.
     public var itemCount: Int? {
-        guard let countExtra else { return nil }
-        if case .albumGrid(let albums, _) = countExtra { return Int(albums) }
-        return totalCount
+        guard let count else { return nil }
+        if case .albumGrid(let albums, _) = count.extra { return Int(albums) }
+        return Int(count.rows)
     }
 
     /// Whether the library holds a track to shuffle, as the album grid's
     /// count says; `nil` until it has answered, and for a list that is not
     /// the album grid.
     public var canShuffle: Bool? {
-        guard case .albumGrid(_, let canShuffle) = countExtra else {
+        guard case .albumGrid(_, let canShuffle)? = count?.extra else {
             return nil
         }
         return canShuffle
@@ -138,7 +137,7 @@ where Row.ID: Sendable {
         initialLoadError = nil
         // The count read before is not this read's: the list holds none until
         // the new one answers.
-        (countAnswered, totalCount, countExtra) = (false, 0, nil)
+        count = nil
         contentRevision += 1
         jump?.cancel()
         jump = nil
@@ -217,16 +216,13 @@ where Row.ID: Sendable {
         )
     }
 
-    private func apply(_ count: BridgeListCount) {
-        let total = Int(count.rows)
-        if total != totalCount {
-            totalCount = total
+    private func apply(_ next: BridgeListCount) {
+        if next.rows != count?.rows {
             contentRevision += 1
         }
-        if countExtra != count.extra {
-            countExtra = count.extra
+        if next != count {
+            count = next
         }
-        countAnswered = true
         settled()
     }
 
@@ -321,7 +317,7 @@ where Row.ID: Sendable {
         jump = nil
         // A position past the list's end has the last row's key, which sits at
         // the last position.
-        let known = countAnswered ? max(totalCount - 1, 0) : position
+        let known = count.map { max(Int($0.rows) - 1, 0) } ?? position
         startChain(at: key, position: min(position, known))
     }
 
@@ -350,7 +346,9 @@ where Row.ID: Sendable {
     /// Whether the row at `position` has landed, or the list is known to end
     /// before it.
     private func isSatisfied(_ position: Int) -> Bool {
-        row(at: position) != nil || (countAnswered && position >= totalCount)
+        if row(at: position) != nil { return true }
+        guard let count else { return false }
+        return position >= Int(count.rows)
     }
 
     private var firstAnswered: Bool { chain?.hasAnswered ?? false }
@@ -371,7 +369,7 @@ where Row.ID: Sendable {
     // MARK: - Failures
 
     private func failed(_ error: any Error) {
-        if !(firstAnswered && countAnswered), placed.isEmpty {
+        if !(firstAnswered && count != nil), placed.isEmpty {
             initialLoadError = DisplayError(error)
             settled()
             return
@@ -385,12 +383,11 @@ extension PaginatedList {
     // MARK: - Test/Preview support
 
     #if DEBUG
-        /// Seed the rows synchronously for shots and tests.
-        public func preloadRows(rows: [Row]) {
+        /// Seed the rows synchronously for shots and tests, with a count of
+        /// `rows` that carries `extra`, the extra this list's count carries.
+        public func preloadRows(rows: [Row], extra: BridgeListCountExtra) {
             placed = rows.isEmpty ? [] : [Placed(start: 0, rows: rows)]
-            totalCount = rows.count
-            countExtra = BridgeListCountExtra.none
-            countAnswered = true
+            count = BridgeListCount(rows: UInt64(rows.count), extra: extra)
         }
     #endif
 }

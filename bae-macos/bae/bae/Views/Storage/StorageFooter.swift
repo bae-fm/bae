@@ -16,8 +16,8 @@ struct StorageFooter: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            if list.countAnswered {
-                Text("\(list.totalCount) releases")
+            if let count = list.count {
+                Text("\(count.rows) releases")
             }
             if let totalSize {
                 Text(verbatim: FactList.glyph)

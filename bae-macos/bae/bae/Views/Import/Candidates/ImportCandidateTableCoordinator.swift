@@ -252,7 +252,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private func loadCurrentRows() {
         load(
             ImportCandidateTableRows(
-                count: list.totalCount,
+                count: list.positionCount,
                 revision: list.contentRevision
             )
         )
