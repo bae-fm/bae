@@ -86,8 +86,7 @@ fn transitioning_sql(release: &str) -> String {
 /// keeps every file, and `MoveToThisDevice`.
 pub(crate) fn storage_action_columns(release: &str) -> String {
     let offered = format!(
-        "COALESCE((SELECT storage = 'connected' FROM coven_sync_status), 0) \
-         AND NOT {transitioning}",
+        "(SELECT storage = 'connected' FROM coven_sync_status) AND NOT {transitioning}",
         transitioning = transitioning_sql(release),
     );
     let stored = "COALESCE(storage.stored = 1, 0)";
