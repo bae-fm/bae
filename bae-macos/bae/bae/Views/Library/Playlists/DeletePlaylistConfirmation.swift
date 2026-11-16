@@ -11,7 +11,16 @@ enum DeletePlaylistConfirmation {
     ) -> (MacAlertWords, [MacAlertButton]) {
         (
             MacAlertWords(
-                Text("Delete \(name)?"),
+                // A key of its own: the library deletion's alert reads "Delete
+                // %@?" in English too, and other languages word the two apart.
+                Text(
+                    LocalizedStringResource(
+                        "playlist.delete.title",
+                        defaultValue: "Delete \(name)?",
+                        comment:
+                            "Playlist deletion: title of the alert that asks before the owner deletes a playlist, naming it. %@ is the playlist's name"
+                    )
+                ),
                 message: Text(
                     "It is deleted from every device. The tracks in it stay in the library."
                 )
