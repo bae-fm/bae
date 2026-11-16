@@ -1,14 +1,14 @@
-//! The open import list's reads as the lists' pull objects take them: each
-//! window, its count and the position of a key are live reads of their own,
-//! the same shapes as every other list's, built over the list's own
-//! cancellation, and the chrome around it, Found's filter entries and the
-//! selection beside them.
+//! This file gives the open import list's live reads in the shapes every
+//! list uses: each window, the count and a key's position, then the summary,
+//! Found's filter entries and the selection. Each read ends when the list
+//! closes.
 
 use bae_import::LiveImportList;
 use bae_store::live_query::LiveValues;
 
-/// One window of `list`, as its first value at once, then one for each write
-/// inside its range and one for each window it is moved to.
+/// One window of `list`: the stream sends the window's rows at once, again
+/// after each write inside the window, and again each time the view moves
+/// the window.
 pub fn import_list_window(
     list: &LiveImportList,
     window: bae_store::ListWindow,
@@ -51,7 +51,8 @@ pub fn import_list_position(
     )
 }
 
-/// What the chrome around `list` shows.
+/// The watched folders, whether Found has groups, and what the view narrows
+/// by, for `list`.
 pub fn import_list_summary(list: &LiveImportList) -> LiveValues<bae_import::ImportQueueSummary> {
     list.values_until_closed(list.subscribe_summary())
 }
@@ -63,7 +64,7 @@ pub fn import_list_filter_entries(
     list.values_until_closed(list.subscribe_filter_entries())
 }
 
-/// What `list`'s selection holds and can be told to do.
+/// What `list`'s selection holds and the actions the person can run on it.
 pub fn import_list_selection(
     list: &LiveImportList,
 ) -> LiveValues<bae_import::selection::SelectionSummary> {

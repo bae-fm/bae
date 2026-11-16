@@ -57,8 +57,8 @@ impl AppServices {
     }
 
     /// The rows of the releases selected in the Storage Manager list that it
-    /// holds, with the storage actions every one allows; the selection starts
-    /// empty and moves in place.
+    /// holds, with the storage actions every one allows. The selection starts
+    /// empty, and the caller changes it on this same subscription.
     pub fn subscribe_storage_selection(
         &self,
         filter: bae_views::StorageFilter,

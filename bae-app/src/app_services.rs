@@ -268,7 +268,8 @@ impl AppServices {
 
     /// The artist sections of the album grid grouped by artist under `sort`:
     /// every artist's heading and where its albums start, the first value at
-    /// once and another each time what they read changes.
+    /// once, then a new value after each write that changes the albums or
+    /// artists the query reads.
     pub fn subscribe_album_sections(
         &self,
         sort: &[bae_views::AlbumSortCriterion],

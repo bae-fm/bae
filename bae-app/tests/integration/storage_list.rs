@@ -75,8 +75,8 @@ pub(crate) fn storage_rows(value: &ListWindowValue) -> &[StorageRow] {
     }
 }
 
-/// The selection of the list under `filter`, nothing searched, holding none
-/// until it is set.
+/// The selection of the list under `filter`, nothing searched. It holds no
+/// selection until the test sets one.
 pub(crate) fn storage_selection(
     manager: &LibraryManager,
     views: &LibraryViews,

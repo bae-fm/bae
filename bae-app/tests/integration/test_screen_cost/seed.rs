@@ -1,8 +1,8 @@
 //! The kept seeds of the screen-cost scenarios: a library of 2,000 (S),
-//! 20,000 (M) and 100,000 (L) albums, each size grown from the one before,
-//! written through each owning domain's own row writes: records and their
-//! files, the transfer queues, the playback queue, people, ratings and
-//! playlists.
+//! 20,000 (M) and 100,000 (L) albums. Each larger seed starts as a copy of
+//! the smaller one and adds albums through each owning domain's own row
+//! writes: records and their files, the transfer queues, the playback queue,
+//! people, ratings and playlists.
 
 use bae_records::test_fixtures::shaped_library;
 use bae_store::test_fixtures::kept_store::KeptSeeds;
@@ -12,8 +12,8 @@ use std::path::Path;
 /// The album counts of S, M and L.
 pub(super) const SIZES: [u64; 3] = [2_000, 20_000, 100_000];
 
-/// Bumped when [`seed`] writes different rows, so the kept seeds are made
-/// again.
+/// Raise this number when [`seed`] writes different rows, so that KeptSeeds
+/// makes the kept seeds again.
 const SEED_VERSION: u32 = 1;
 
 /// How many albums one write holds.
@@ -147,9 +147,9 @@ mod tests {
         assert!(queued > 0, "some files wait to upload");
     }
 
-    /// Making the kept seed of L, which the measuring run reads from, holds
-    /// the shape's counts at 100,000 albums. It grows from M's, so it adds
-    /// the 80,000 albums beyond it.
+    /// The kept seed of L (100,000 albums), which the measuring run reads,
+    /// holds the shape's counts. The step builds L's seed from M's seed and
+    /// adds the 80,000 albums that M's lacks.
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "makes the kept seed of L, which takes a long while"]
     async fn the_seed_of_l_holds_every_domains_rows() {

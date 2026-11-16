@@ -75,7 +75,8 @@ bae-import = { workspace = true, features = ["test-utils"] }
 bae-playback = { workspace = true, features = ["test-utils"] }
 # The transfer queues the screen-cost seed fills.
 bae-transfers = { workspace = true, features = ["test-utils"] }
-# The library views whose trigger families the write costs drop.
+# The library views, whose trigger families the write-cost tests drop to
+# measure each write without them.
 bae-views = { workspace = true, features = ["test-utils"] }
 # The values the screen-cost reads bind.
 rusqlite = { workspace = true }

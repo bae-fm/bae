@@ -179,7 +179,8 @@ impl AppServices {
 }
 
 /// One window of a list, as its first value at once, then one for each
-/// write inside its range and one for each window it is moved to.
+/// write inside its range and one each time the caller moves it to another
+/// window.
 pub(super) fn list_window<Row: Clone + PartialEq + Send + 'static>(
     manager: &bae_library::LibraryManager,
     query: coven::ReconfigurableLiveQuery<
@@ -207,8 +208,8 @@ pub(super) fn list_rows(
     )
 }
 
-/// How many rows of a list come before the row at a key, as one live
-/// query whose key moves in place.
+/// How many rows of a list come before the row at a key, as one live query
+/// whose key the caller changes without a new subscription.
 pub(super) fn list_position(
     manager: &bae_library::LibraryManager,
     query: coven::ReconfigurableLiveQuery<

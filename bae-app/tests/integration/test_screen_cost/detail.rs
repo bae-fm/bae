@@ -80,9 +80,10 @@ async fn release_page(db: &Store, size: u64) {
     }
 }
 
-/// Library search by keystroke: for each kind the first matches and the
-/// total, the text grown a keystroke at a time. The seed's names are
-/// "Album 12345", "Artist 123456", "Work 000123" and "Track 000123-0-004".
+/// Library search by keystroke: for each kind, time the first matches and
+/// the count, adding one letter to the search text each time. The seed's
+/// names are "Album 12345", "Artist 123456", "Work 000123" and
+/// "Track 000123-0-004".
 async fn search(db: &Store, size: u64) {
     let at = size_name(size);
     for (kind, table, column, keystrokes) in [

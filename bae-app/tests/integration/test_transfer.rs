@@ -567,7 +567,8 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     }
 }
 
-/// The next value of `selection` that `holds`.
+/// Wait for the next value of `selection` that `holds` accepts, and return
+/// it.
 async fn next_selection_with(
     selection: &bae_app::live_reads::LiveStorageSelection,
     holds: impl Fn(&bae_views::StorageSelection) -> bool,

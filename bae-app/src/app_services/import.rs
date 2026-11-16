@@ -204,8 +204,9 @@ impl AppServices {
     }
 
     /// Open an import list showing `view`, with nothing folded and nothing
-    /// selected. Its windows, count, summary, filter entries and selection
-    /// are live reads opened from it, ended when it closes.
+    /// selected. The caller opens its windows, count, summary, filter entries
+    /// and selection as live reads of the list, and closing the list ends
+    /// them.
     pub async fn subscribe_import_list(
         &self,
         view: ImportListView,
@@ -214,7 +215,8 @@ impl AppServices {
     }
 
     /// Every item of the list showing `view`, once, for a caller with no list
-    /// open: a list opened for the read and closed after it.
+    /// open. This function opens a list for the read and closes it
+    /// afterward.
     pub async fn load_import_items(
         &self,
         view: ImportListView,
@@ -271,9 +273,9 @@ impl AppServices {
 
 #[cfg(desktop)]
 impl AppServices {
-    /// The covers the picker of the library release the subscription is set
-    /// to shows, as they change; another release or source is a new request
-    /// on the same read.
+    /// Follow the covers that the cover picker shows for the library release
+    /// this subscription names. To show another release or source, set a new
+    /// request on the same read.
     pub fn subscribe_cover_gallery(&self) -> crate::live_reads::LiveCoverGallery {
         crate::live_reads::follow_request(
             &self.inner.manager,

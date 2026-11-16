@@ -1,13 +1,15 @@
-//! What writes cost at M, and what each family of triggers adds to them. Each
-//! write is the median of 15 distinct writes through the owning domain's own
-//! writes. The scenarios run on a copy of the seed with all its triggers
-//! (`write/<scenario>@M`) and again on a copy with one family dropped
+//! This test measures what writes cost at M (20,000 albums) and what each
+//! family of triggers adds to them. Each scenario's time is the median of 15
+//! different writes, each made through the owning domain. The scenarios run
+//! on a copy of the seed with all its triggers (`write/<scenario>@M`) and
+//! again on a copy with one family dropped
 //! (`write/<scenario>/without=<family>@M`); the difference is that family's
 //! cost on that write.
 //!
-//! Not measured: renaming an artist and merging two (no write of the records
-//! does either alone), a rating and a playlist entry (they need a library's
-//! person), a file stored, pinned or upload-done (they need coven storage).
+//! The test does not measure renaming an artist and merging two (no write of
+//! the records does either alone), a rating and a playlist entry (they need a
+//! library's person), or a file that coven stores, pins or finishes uploading
+//! (they need coven storage).
 
 use super::seed::{SEEDS, SIZES};
 use bae_catalogs::catalog::Catalog;
@@ -19,12 +21,11 @@ use bae_store::Store;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 use std::path::Path;
 
-/// M: the writes are measured on the 20,000-album library.
+/// The test measures the writes on M, the 20,000-album library.
 const M: u64 = SIZES[1];
 
-/// A family of triggers: its name in the metrics, and the owning crate's
-/// function that drops it from a closed library file.
-/// The function dropping a family from a closed library's folder.
+/// The function that drops a family of triggers from a closed library's
+/// folder.
 type DropFamily = fn(&Path);
 
 const FAMILIES: &[(&str, DropFamily)] = &[
@@ -39,9 +40,9 @@ const FAMILIES: &[(&str, DropFamily)] = &[
 ];
 
 /// Time writing `count` albums, each the next one `want` accepts from
-/// `next` on, one write each; the albums between are written first, untimed:
-/// albums are written in order, since each refers to the artists and works
-/// the ones before it wrote.
+/// `next` on, one write each. The function first writes the albums in
+/// between without timing them, because each album refers to artists and
+/// works that earlier albums wrote.
 async fn timed_albums(
     db: &Store,
     metric: &str,
@@ -84,7 +85,7 @@ async fn scenarios(db: &Store, label: &str) {
     let records = bae_records::test_fixtures::test_records(db);
     let suffix = |name: &str| format!("write/{name}{label}@M");
     let mut next = M;
-    // The library imported: one release of 12 tracks, then the box set.
+    // Import one release of 12 tracks, then the box set.
     timed_albums(db, &suffix("import-12-tracks"), &mut next, 15, |i| {
         shaped_library::track_count(i) == 12 && shaped_library::release_count(i) == 1
     })
@@ -94,7 +95,7 @@ async fn scenarios(db: &Store, label: &str) {
     })
     .await;
     let base = M;
-    // A release deleted.
+    // Delete a release.
     let mut deleted = 0;
     write_cost(&suffix("delete-release"), |_| {
         let records = records.clone();
@@ -105,7 +106,7 @@ async fn scenarios(db: &Store, label: &str) {
         }
     })
     .await;
-    // An album retitled.
+    // Retitle an album.
     let mut retitled = 0;
     write_cost(&suffix("retitle-album"), |run| {
         let records = records.clone();
@@ -116,7 +117,7 @@ async fn scenarios(db: &Store, label: &str) {
         }
     })
     .await;
-    // A work added to a track, and a role credit to another.
+    // Add a work to one track and a role credit to another.
     write_cost(&suffix("add-work-to-track"), |run| {
         let records = records.clone();
         async move {
@@ -151,8 +152,8 @@ async fn scenarios(db: &Store, label: &str) {
         }
     })
     .await;
-    // A file staged on this device, and one staged for the cloud, its upload
-    // queued.
+    // Stage one file on this device and one for the cloud, which queues its
+    // upload.
     let originals = tempfile::tempdir().unwrap();
     let original = originals.path().join("original.bin");
     std::fs::write(&original, vec![0u8; 20_000]).unwrap();
@@ -178,7 +179,7 @@ async fn scenarios(db: &Store, label: &str) {
         })
         .await;
     }
-    // A release queued to download.
+    // Queue a release to download.
     let mut queued = M + 100_000;
     write_cost(&suffix("queue-download"), |run| {
         let db = db.clone();

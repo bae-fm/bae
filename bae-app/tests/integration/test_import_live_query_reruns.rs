@@ -2,11 +2,11 @@
 //! folders, with the screen open on one candidate: the pane's read of that
 //! candidate, the list's count and two of its windows, and the scans'
 //! progress. The pane reads only its candidate's rows, so a scan writing other
-//! folders must leave it alone; the count and the progress show every folder
-//! and rerun with each write, and a window reruns for the writes its range
-//! can hold. Each
-//! folder holds one file of a size no other folder's file has, so each write
-//! stores rows of its own, as a real scan's folders do. Run explicitly:
+//! folders must not rerun the pane's query; the count and the progress show
+//! every folder and rerun with each write, and a window reruns for the writes
+//! its range can hold. Each folder holds one file of a size no other folder's
+//! file has, so each write stores rows of its own, as a real scan's folders
+//! do. Run explicitly:
 //!
 //!   scripts/cargo.sh test -p bae-app --features test-utils --test integration \
 //!     -- test_import_live_query_reruns:: --ignored --nocapture
@@ -126,8 +126,9 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
 
     // The screen: the list in path order, as its count and two windows of
     // its own: the one before the seed, which the scan's folders sort after,
-    // and the one from the seed on, which they land in; the scans' progress,
-    // and the pane on the seed, each read as the app reads it.
+    // and the one from the seed on, whose range holds the scan's folders; the
+    // scans' progress, and the pane on the seed, each read as the app reads
+    // it.
     let list = services
         .subscribe_import_list(ImportListView {
             tab: TriageTab::Pending,
@@ -152,7 +153,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
             ListWindow::Forward { from: None, until: Some(seed_key.clone()), limit: 50 },
         ),
         (
-            "window the scan lands in",
+            "window that holds the scan",
             ListWindow::Forward { from: Some(seed_key.clone()), until: None, limit: 50 },
         ),
     ] {
@@ -261,7 +262,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         ("candidate pane", pane_counted),
         ("count", count_counted),
         ("window above the scan", windows_counted[0]),
-        ("window the scan lands in", windows_counted[1]),
+        ("window that holds the scan", windows_counted[1]),
         ("progress", progress_counted),
     ];
     for (name, counted) in measured {

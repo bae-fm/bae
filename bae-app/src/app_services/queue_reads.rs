@@ -1,5 +1,6 @@
-//! The playback queue's live reads on [`AppServices`]: the queue value, the
-//! upcoming tracks as a list past it, all read from the queue tables.
+//! The playback queue's live reads on [`AppServices`]: the queue value and
+//! the list of tracks after the playing one, both read from the queue
+//! tables.
 
 use super::*;
 
@@ -13,10 +14,10 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_queue_value())
     }
 
-    /// One window of the upcoming tracks as the queue draws them, a range of
-    /// the order the context lane reads in (`shuffled` picks which). Coven
-    /// reruns it as a track in the range comes, goes or moves, and as the
-    /// playing track moves.
+    /// One window of the tracks after the playing one, a range of the context
+    /// lane's position order, or of its shuffled order when `shuffled` is
+    /// true. Coven reruns it when a write adds, removes or moves a track in
+    /// the range, and when the playing track changes.
     pub fn subscribe_upcoming_window(
         &self,
         shuffled: bool,

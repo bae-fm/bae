@@ -59,9 +59,9 @@ impl AppServices {
     }
 
     /// Run `action` on `selected`, the selected candidates that offer it now,
-    /// read from the list for that action, one at a time in the
-    /// order the list shows them, telling `progress` how many are done of how
-    /// many. The identification and import queues take what they are handed
+    /// which the caller read from the list for that action, one at a time in
+    /// the order the list shows them, telling `progress` how many are done of
+    /// how many. The identification and import queues take what they are handed
     /// first to first, so the top rows start first. A candidate the action
     /// fails on is reported and the rest go on.
     pub async fn run_import_selection_action(

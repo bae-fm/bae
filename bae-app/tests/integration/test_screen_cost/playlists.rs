@@ -74,7 +74,10 @@ async fn playlists_plain_reads() {
                 vec![Value::Text(playlist)],
             )
             .await;
-            assert!(rows >= 10, "the playlist of about {entries} entries has them");
+            assert!(
+                rows >= 10,
+                "the playlist picked for about {entries} entries returns at least 10 rows"
+            );
         }
     }
 }
