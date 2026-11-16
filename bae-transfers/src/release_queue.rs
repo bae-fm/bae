@@ -130,7 +130,7 @@ pub fn transfer_summary<const N: usize>(
     counts
         .into_iter()
         .filter_map(|(key, count, stage)| {
-            CountLabel::nonzero(key, count).map(|label| TransferCount { label, stage })
+            CountLabel::nonzero(key, count.into()).map(|label| TransferCount { label, stage })
         })
         .collect()
 }
@@ -144,7 +144,7 @@ impl ReleaseQueueProgress {
     pub fn summary_parts(&self, active_key: &str, queued_key: &str) -> Vec<CountLabel> {
         [(active_key, self.active), ("core.queue.failed", self.failed), (queued_key, self.queued)]
             .into_iter()
-            .filter_map(|(key, count)| CountLabel::nonzero(key, count))
+            .filter_map(|(key, count)| CountLabel::nonzero(key, count.into()))
             .collect()
     }
 

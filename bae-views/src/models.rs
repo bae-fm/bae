@@ -147,7 +147,7 @@ impl DbArtistSummary {
     pub fn count_line(&self) -> bae_types::count_label::CountLabel {
         bae_types::count_label::CountLabel {
             key: "core.library.album_count".to_string(),
-            count: u32::try_from(self.album_count).expect("an album count is never negative"),
+            count: u64::try_from(self.album_count).expect("an album count is never negative"),
         }
     }
 }
@@ -172,7 +172,7 @@ impl DbComposerSummary {
     pub fn count_line(&self) -> bae_types::count_label::CountLabel {
         bae_types::count_label::CountLabel {
             key: "core.library.work_count".to_string(),
-            count: u32::try_from(self.work_count).expect("a work count is never negative"),
+            count: u64::try_from(self.work_count).expect("a work count is never negative"),
         }
     }
 }

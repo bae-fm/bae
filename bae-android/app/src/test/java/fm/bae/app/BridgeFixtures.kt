@@ -191,7 +191,7 @@ object BridgeFixtures {
         BridgeArtistSummary(
             artistId = artistId,
             name = name,
-            countLine = BridgeCountLabel(key = "core.library.album_count", count = 1u),
+            countLine = BridgeCountLabel(key = "core.library.album_count", count = 1uL),
             image = null,
         )
 
@@ -206,7 +206,7 @@ object BridgeFixtures {
             sharing = sharing,
             owner = BridgePlaylistOwner(person = "person-1", name = "Mara", avatarVersion = null),
             yours = true,
-            trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12u),
+            trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12uL),
             totalDuration = null,
             cover = BridgePlaylistCover.Single(cover = null),
         )
@@ -257,7 +257,7 @@ object BridgeFixtures {
             artistId = artistId,
             name = name,
             sortName = null,
-            countLine = BridgeCountLabel(key = "core.library.work_count", count = 1u),
+            countLine = BridgeCountLabel(key = "core.library.work_count", count = 1uL),
             linkedReleaseCount = 1L,
             unlinkedCreditCount = 0L,
             image = null,

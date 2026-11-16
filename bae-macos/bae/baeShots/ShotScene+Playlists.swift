@@ -154,7 +154,7 @@ extension ShotScene {
 
     private static func summary(
         _ name: String,
-        tracks: UInt32,
+        tracks: UInt64,
         sharing: BridgeSharing,
         minutes: UInt64,
         cover: BridgePlaylistCover

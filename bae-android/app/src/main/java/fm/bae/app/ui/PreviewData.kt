@@ -245,7 +245,7 @@ object PreviewData {
         BridgeArtistSummary(
             artistId = artistId,
             name = name,
-            countLine = BridgeCountLabel(key = "core.library.album_count", count = 4u),
+            countLine = BridgeCountLabel(key = "core.library.album_count", count = 4uL),
             image = null,
         )
 
@@ -257,7 +257,7 @@ object PreviewData {
             artistId = artistId,
             name = name,
             sortName = null,
-            countLine = BridgeCountLabel(key = "core.library.work_count", count = 3u),
+            countLine = BridgeCountLabel(key = "core.library.work_count", count = 3uL),
             linkedReleaseCount = 5L,
             unlinkedCreditCount = 0L,
             image = null,

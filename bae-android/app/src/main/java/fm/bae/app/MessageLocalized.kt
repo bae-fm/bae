@@ -15,4 +15,4 @@ fun Context.coreString(message: BridgeMessage): String {
 
 /** One count core words, such as "2 uploading" or "3 works", in the person's
  *  language, plural and all. */
-fun Context.coreString(label: BridgeCountLabel): String = coreString(label.key, mapOf("count" to label.count.toInt()))
+fun Context.coreString(label: BridgeCountLabel): String = coreString(label.key, mapOf("count" to label.count.toLong()))

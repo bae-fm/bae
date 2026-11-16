@@ -57,7 +57,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
 }
 
 /// Each count of a summary, by its label's key.
-fn counts(summary: &[bae_transfers::TransferCount]) -> Vec<(&str, u32)> {
+fn counts(summary: &[bae_transfers::TransferCount]) -> Vec<(&str, u64)> {
     summary.iter().map(|count| (count.label.key.as_str(), count.label.count)).collect()
 }
 

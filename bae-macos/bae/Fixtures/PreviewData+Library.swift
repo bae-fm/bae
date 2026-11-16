@@ -33,7 +33,7 @@ extension PreviewData {
                 sortName: nil,
                 countLine: BridgeCountLabel(
                     key: "core.library.work_count",
-                    count: UInt32(2 + index % 6)
+                    count: UInt64(2 + index % 6)
                 ),
                 linkedReleaseCount: linkedReleaseCount,
                 unlinkedCreditCount: 0,

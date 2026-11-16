@@ -175,7 +175,7 @@ extension PreviewData {
     /// One count of a transfer summary, as core words it.
     static func transferCount(
         _ key: String,
-        _ count: UInt32,
+        _ count: UInt64,
         _ stage: BridgeTransferStage
     ) -> BridgeTransferCount {
         BridgeTransferCount(

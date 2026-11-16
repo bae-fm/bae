@@ -412,7 +412,7 @@ pub struct BridgeDownloadCounts {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCountLabel {
     pub key: String,
-    pub count: u32,
+    pub count: u64,
 }
 
 mirror_struct! {

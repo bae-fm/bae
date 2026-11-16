@@ -9,10 +9,12 @@ use bae_store::{DbError, Store};
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 
+mod copy_reset_notice;
 mod file_row;
 mod pending;
 mod start_failure;
 mod storage_setup;
+pub use copy_reset_notice::CopyResetNotice;
 pub use file_row::FileRow;
 pub use pending::PendingRow;
 pub use start_failure::StartFailureRecordError;

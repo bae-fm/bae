@@ -4560,7 +4560,8 @@ so bae reset this device’s copy from the cloud.", then "bae did not keep N edi
 not synced." when N is above zero, then "bae did not keep M files that had not
 uploaded." when M is above zero, each with its own plural forms in every
 language. The counts are the edits and files coven's sync state says this
-copy had not sent. With none unsent, no notice shows. A reset
+copy had not sent. Core builds the notice (`CopyResetNotice`) from those
+counts, and with none unsent there is no notice and the app shows none. A reset
 that fails returns to the screen that offers Reset from cloud, saying why. When
 another installation replaced this device (`ResetReason::Replaced`), or the
 member's keys changed, bae still asks before it resets. `copy_reset` returns

@@ -585,54 +585,26 @@ pub struct BridgeCopyReset {
 /// The notice bae shows after a library finds its device id in use and
 /// resets right away: its first sentence, then one sentence for each kind of
 /// unsent work the reset discarded. The app looks up the words of each
-/// sentence by its `Core` table key and joins them with a space.
+/// sentence by its `Core` table key and joins them with a space. Mirrors
+/// `CopyResetNotice`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCopyResetNotice {
     pub intro_key: String,
     pub counts: Vec<crate::BridgeCountLabel>,
 }
 
+mirror_struct! {
+    BridgeCopyResetNotice = bae_sync_status::CopyResetNotice,
+    from_core: fn,
+    fields: { intro_key, counts: (each crate::BridgeCountLabel) },
+}
+
 impl BridgeCopyReset {
     /// The reset of a copy that did not send `unsent`.
     pub fn from_core(unsent: coven::UnsentWork) -> Self {
-        let part = |key: &str, count: u64| {
-            (count > 0).then(|| crate::BridgeCountLabel {
-                key: key.to_string(),
-                count: u32::try_from(count).unwrap_or(u32::MAX),
-            })
-        };
-        let counts: Vec<_> = [
-            part("core.sync.copy_reset.edits", unsent.writes),
-            part("core.sync.copy_reset.files", unsent.files),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
         Self {
-            notice: (!counts.is_empty()).then(|| BridgeCopyResetNotice {
-                intro_key: "core.sync.copy_reset.notice".to_string(),
-                counts,
-            }),
+            notice: bae_sync_status::CopyResetNotice::of(unsent)
+                .map(BridgeCopyResetNotice::from_core),
         }
-    }
-}
-
-#[cfg(test)]
-mod copy_reset_tests {
-    use super::*;
-
-    /// A count of zero has no sentence, and no unsent work has no notice.
-    #[test]
-    fn the_notice_names_only_what_was_not_kept() {
-        let keys = |writes, files| {
-            BridgeCopyReset::from_core(coven::UnsentWork { writes, files }).notice.map(|notice| {
-                assert_eq!(notice.intro_key, "core.sync.copy_reset.notice");
-                notice.counts.into_iter().map(|label| (label.key, label.count)).collect::<Vec<_>>()
-            })
-        };
-        assert_eq!(keys(0, 0), None);
-        assert_eq!(keys(2, 0), Some(vec![("core.sync.copy_reset.edits".to_string(), 2)]));
-        assert_eq!(keys(0, 1), Some(vec![("core.sync.copy_reset.files".to_string(), 1)]));
-        assert_eq!(keys(3, 1).map(|counts| counts.len()), Some(2));
     }
 }
