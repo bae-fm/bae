@@ -18,6 +18,10 @@ let baeAppEdition: AppEdition = {
 enum BaeApp {
     @MainActor
     static func main() {
+        if let log = AppRuntime.uiTestLog(environment: baeAppProcessEnvironment)
+        {
+            BaeLogger.appendEveryMessage(to: log)
+        }
         let delegate = AppDelegate()
         NSApplication.shared.delegate = delegate
         // Before the run starts, so a test host's Dock icon never shows.

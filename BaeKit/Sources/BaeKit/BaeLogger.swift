@@ -16,47 +16,80 @@ public struct BaeLogger: Sendable {
 
     public func debug(_ message: String) {
         osLog.debug("\(message, privacy: .public)")
-        UITestLogFile.append("debug", category, message)
+        installedLogFile.append("debug", category, message)
     }
 
     public func info(_ message: String) {
         osLog.info("\(message, privacy: .public)")
-        UITestLogFile.append("info", category, message)
+        installedLogFile.append("info", category, message)
     }
 
     public func warning(_ message: String) {
         osLog.warning("\(message, privacy: .public)")
-        UITestLogFile.append("warning", category, message)
+        installedLogFile.append("warning", category, message)
     }
 
     public func error(_ message: String) {
         osLog.error("\(message, privacy: .public)")
-        UITestLogFile.append("error", category, message)
+        installedLogFile.append("error", category, message)
     }
 }
 
-/// The file a UI test names in `BAE_UI_TESTING_LOG`, which every message the
-/// app logs is also appended to, at every level. The unified log keeps no
-/// debug messages and a CI job log shows none of the app's, so the test reads
-/// this file back and prints it when it fails.
-private enum UITestLogFile {
-    private static let queue = DispatchQueue(label: "fm.bae.ui-test-log")
-    private static let handle: FileHandle? = {
-        guard
-            let path = ProcessInfo.processInfo
-                .environment["BAE_UI_TESTING_LOG"]
-        else { return nil }
-        FileManager.default.createFile(atPath: path, contents: nil)
-        return FileHandle(forWritingAtPath: path)
-    }()
+extension BaeLogger {
+    /// Append every message every logger logs from now on to `file`, at
+    /// every level. The app calls this once, at launch.
+    public static func appendEveryMessage(to file: LogFile) {
+        installedLogFile.install(file)
+    }
+}
 
-    static func append(_ level: String, _ category: String, _ message: String) {
-        guard let handle else { return }
+/// A file that a logger appends every message to, at every level. The
+/// unified log keeps no debug messages and a CI job log shows none of the
+/// app's, so a UI test names such a file, reads it back and prints it when
+/// it fails.
+public final class LogFile: Sendable {
+    private let handle: FileHandle
+    private let queue = DispatchQueue(label: "fm.bae.log-file")
+
+    /// Opens the file at `path` empty, creating it; `nil` when the file
+    /// cannot be created or opened for writing.
+    public init?(path: String) {
+        guard FileManager.default.createFile(atPath: path, contents: nil),
+            let handle = FileHandle(forWritingAtPath: path)
+        else { return nil }
+        self.handle = handle
+    }
+
+    fileprivate func append(
+        _ level: String,
+        _ category: String,
+        _ message: String
+    ) {
         let line =
             "\(Date().timeIntervalSince1970) \(level) [\(category)] \(message)\n"
-        queue.async {
+        queue.async { [handle] in
             handle.write(Data(line.utf8))
         }
+    }
+}
+
+/// The log file `appendEveryMessage` installed, which every logger appends
+/// to; none until it is called.
+private let installedLogFile = InstalledLogFile()
+
+private final class InstalledLogFile: @unchecked Sendable {
+    private let lock = NSLock()
+    private var file: LogFile?
+
+    func install(_ file: LogFile) {
+        lock.withLock {
+            precondition(self.file == nil, "a log file is already installed")
+            self.file = file
+        }
+    }
+
+    func append(_ level: String, _ category: String, _ message: String) {
+        lock.withLock { file }?.append(level, category, message)
     }
 }
 

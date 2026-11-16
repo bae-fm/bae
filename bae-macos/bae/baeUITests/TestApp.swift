@@ -230,8 +230,7 @@ extension XCTestCase {
         // Registered after the app's termination, so it runs before it: the
         // app is still up to describe.
         addTeardownBlock { [self, app] in
-            let text =
-                (try? String(contentsOf: appLog, encoding: .utf8)) ?? ""
+            let text = try String(contentsOf: appLog, encoding: .utf8)
             let attachment = XCTAttachment(string: text)
             attachment.name = "app.log"
             attachment.lifetime = .keepAlways
