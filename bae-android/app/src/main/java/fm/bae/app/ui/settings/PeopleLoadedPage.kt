@@ -18,13 +18,15 @@ import uniffi.bae_bridge.BridgePeople
 
 // The pages of People and devices as the screen shows them once it has read the people.
 
-/** The page [page] names, over the [people] read, and for a person's page the [person] read of them. */
+/**
+ * Shows the page that [page] names from the [people] read, and on a person's page shows that person
+ * from the model's person read.
+ */
 @Composable
 internal fun LoadedPeoplePage(
     session: OpenLibrary,
     model: MembersModel,
     people: BridgePeople,
-    person: PersonRead,
     callbacks: MemberCallbacks,
     dialogs: MembersDialogs,
     page: PeoplePage,
@@ -52,7 +54,7 @@ internal fun LoadedPeoplePage(
         }
 
         is PeoplePage.Person -> {
-            val shown = (person as? PersonRead.Loaded)?.takeIf { it.memberId == page.memberId }?.person
+            val shown = (model.person as? PersonRead.Loaded)?.takeIf { it.memberId == page.memberId }?.person
             if (shown == null) {
                 PeopleFrame(title = stringResource(R.string.members_unnamed), error = model.error, onBack = onBack) {}
             } else {

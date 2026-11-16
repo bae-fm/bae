@@ -318,7 +318,6 @@ private fun PeopleContent(
             session = session,
             model = model,
             people = read.people,
-            person = model.person,
             callbacks = memberCallbacks(session, model, dialogs),
             dialogs = dialogs,
             page = page,
