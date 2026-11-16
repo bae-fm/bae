@@ -18,13 +18,10 @@ import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 /** The context's upcoming list as a test drives it: the rows it shows are the test's, every window read of them
- *  answers out of those rows, and the list records which orders were opened and which windows were asked for. */
+ *  answers out of those rows, and the list records which order the code under test opened the list in each time. */
 internal class UpcomingFeed {
     /** The order each open of the list asked for. */
     val opened = mutableListOf<Boolean>()
-
-    /** Every window request, in the order made. */
-    val requests = mutableListOf<BridgeListWindow>()
 
     private var rows = emptyList<BridgeQueueEntry>()
     private val windows = mutableListOf<FeedWindow>()
@@ -60,7 +57,6 @@ internal class UpcomingFeed {
     private fun reads() =
         ListReads<BridgeQueueEntry>(
             window = { first ->
-                requests.add(first)
                 FeedWindow(first).also { windows.add(it) }
             },
             count = {
@@ -132,7 +128,6 @@ internal class UpcomingFeed {
         }
 
         override fun setWindow(window: BridgeListWindow) {
-            requests.add(window)
             request = window
             deliver()
         }
