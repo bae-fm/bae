@@ -444,8 +444,10 @@ async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
             &track0,
             &track2,
             |h, entries| {
+                // `play` left both tracks in the context lane, after the
+                // playing one: move the second to the lane's first place.
                 let moved =
-                    h.reorder_entry(entries[1].id.clone(), bae_playback::QueueLane::Manual, 0);
+                    h.reorder_entry(entries[1].id.clone(), bae_playback::QueueLane::Context, 0);
                 let _answered = tokio::spawn(async move {
                     moved.await.expect("the reorder moves the entry");
                 });
