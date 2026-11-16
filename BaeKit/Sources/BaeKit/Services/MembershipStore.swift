@@ -294,14 +294,7 @@ public final class MembershipStore {
         }
         await Task.untilCancelled()
         stop?()
-        Task {
-            do { try await end(pairing) }
-            catch {
-                logger.error(
-                    "Ending the pairing failed: \(String(reflecting: error))"
-                )
-            }
-        }
+        Task { await endAddDevice(pairing, with: end) }
     }
 
     /// Have this device sync every few seconds until the calling task is
@@ -368,6 +361,23 @@ public enum AddDeviceFace: Equatable, Sendable {
     /// coven no longer holds the pairing: the sheet says its code has ended,
     /// as for an expired one.
     case forgotten
+}
+
+/// End the pairing `pairing` with `end`. Ending a pairing is a write to this
+/// device's own database that needs no storage, so a failure is a bug: the
+/// sheet has closed, and the pairing's code stays live in coven until it
+/// expires.
+private func endAddDevice(
+    _ pairing: String,
+    with end: @Sendable (String) async throws -> Void
+) async {
+    do { try await end(pairing) }
+    catch {
+        let detail = "ending the pairing failed: \(String(reflecting: error))"
+        logger.error("\(detail)")
+        CoreBugReporter()
+            .report(operation: "MembershipStore.endAddDevice", detail: detail)
+    }
 }
 
 extension BridgeAddDeviceStatus {
