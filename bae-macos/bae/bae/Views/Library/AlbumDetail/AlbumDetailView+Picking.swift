@@ -8,7 +8,13 @@ extension AlbumDetailView {
     var trackPicking: TrackPicking {
         TrackPicking(
             picked: uiStore.pickedTracks,
-            onExtend: extendPicks(to:),
+            onExtend: { targetId in
+                uiStore.pickedTracks.extend(
+                    to: targetId,
+                    readRange: library.trackIdsBetween,
+                    onFailure: uiStore.showError
+                )
+            },
             onPlay: { trackIds in
                 inReleaseOrder(trackIds) { playback.playTracks($0) }
             },
@@ -19,29 +25,6 @@ extension AlbumDetailView {
                 inReleaseOrder(trackIds) { queue.addToQueue($0) }
             }
         )
-    }
-
-    /// Pick the tracks from the anchor to `targetId`, which core reads; with
-    /// no anchor, pick and anchor `targetId` alone. A failed read says why
-    /// and picks nothing.
-    func extendPicks(to targetId: String) {
-        let picked = uiStore.pickedTracks
-        guard let anchorId = picked.anchorId else {
-            picked.set(targetId, picked: true)
-            return
-        }
-        let library = library
-        let uiStore = uiStore
-        Task { @MainActor in
-            do {
-                picked.extend(
-                    over: try await library.trackIdsBetween(anchorId, targetId)
-                )
-            }
-            catch {
-                uiStore.showError(error)
-            }
-        }
     }
 
     /// Call `apply` with `trackIds` in the order their release lists them.

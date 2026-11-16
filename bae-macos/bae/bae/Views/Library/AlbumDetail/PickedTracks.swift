@@ -10,6 +10,11 @@ import Observation
 final class PickedTracks {
     private(set) var ids: Set<String> = []
     private(set) var anchorId: String?
+    /// The read of the range a shift-click picks, while core reads it. Any
+    /// later change to the picks cancels the read, so a range that core
+    /// returns after the picks changed is never added to them.
+    @ObservationIgnored
+    private(set) var rangeRead: Task<Void, Never>?
 
     func contains(_ id: String) -> Bool {
         ids.contains(id)
@@ -17,6 +22,7 @@ final class PickedTracks {
 
     /// Set the row's membership and make it the anchor.
     func set(_ id: String, picked: Bool) {
+        rangeRead?.cancel()
         if picked {
             ids.insert(id)
         }
@@ -26,13 +32,38 @@ final class PickedTracks {
         anchorId = id
     }
 
-    /// Pick `range`, the tracks core read from the anchor to a shift-clicked
-    /// row. The anchor stays.
-    func extend(over range: [String]) {
-        ids.formUnion(range)
+    /// Pick the tracks from the anchor to `targetId`, which `readRange`
+    /// reads, and keep the anchor. With no anchor, pick `targetId` alone and
+    /// make it the anchor. When `readRange` fails, this picks nothing and
+    /// passes the error to `onFailure`.
+    @MainActor
+    func extend(
+        to targetId: String,
+        readRange:
+            @escaping @Sendable (_ anchorId: String, _ targetId: String)
+            async throws -> [String],
+        onFailure: @escaping @MainActor (any Error) -> Void
+    ) {
+        guard let anchorId else {
+            set(targetId, picked: true)
+            return
+        }
+        rangeRead?.cancel()
+        rangeRead = Task { @MainActor in
+            do {
+                let range = try await readRange(anchorId, targetId)
+                guard !Task.isCancelled else { return }
+                ids.formUnion(range)
+            }
+            catch {
+                guard !Task.isCancelled else { return }
+                onFailure(error)
+            }
+        }
     }
 
     func clear() {
+        rangeRead?.cancel()
         ids = []
         anchorId = nil
     }

@@ -156,7 +156,13 @@ struct AlbumDetailView: View {
         }
         .onAppear { showAlbum() }
         .onChange(of: albumRequest) { showAlbum() }
+        // The picks are tracks of the release the page shows, so the page
+        // clears them when it shows another release or closes.
+        .onChange(of: albumRead.value?.shownRelease.id) {
+            uiStore.pickedTracks.clear()
+        }
         .onDisappear {
+            uiStore.pickedTracks.clear()
             detailReader?.close()
             uiStore.dismissAllModals()
             exportTask?.cancel()
