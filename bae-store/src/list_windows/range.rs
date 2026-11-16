@@ -201,6 +201,33 @@ pub fn rows_before<E>(
     order.seeks_before(key).iter().map(&mut count).sum()
 }
 
+/// How many rows of a list come before the rows `seek` reads in `order`:
+/// the rows of `from`, a statement's FROM clause, that `filter` keeps (every
+/// row when it is `None`), counted in one statement over the index ranges
+/// the seek names. `params` binds the named parameters `filter` names beside
+/// the seek's own. [`rows_before`] adds these counts over the seeks before a
+/// key to find the key's position.
+pub fn seek_count_on(
+    sql: &coven::SqlReadContext<'_>,
+    from: &str,
+    filter: Option<&str>,
+    params: &[(&str, &dyn rusqlite::ToSql)],
+    order: &ListOrder,
+    seek: &Seek,
+) -> Result<u64, crate::DbError> {
+    let condition = order.condition(seek);
+    let condition = match filter {
+        Some(filter) => format!("({filter}) AND ({condition})"),
+        None => condition,
+    };
+    let statement = format!("SELECT COUNT(*) AS count {from} WHERE {condition}");
+    let mut bound = seek.params();
+    bound.extend_from_slice(params);
+    Ok(sql.query_row(&statement, bound.as_slice(), |row| {
+        crate::read::count_column::<u64>(row, "count")
+    })?)
+}
+
 /// The key of the row at `position`, read by offset, or of the last row when
 /// the list ends before it; `None` for a list with no rows. A jump to a
 /// position reads this once and starts a chain of windows there.

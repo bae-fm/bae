@@ -250,16 +250,14 @@ fn composer_detail_seek_count_on(
     order: &ListOrder,
     seek: &Seek,
 ) -> Result<u64, DbError> {
-    let statement = format!(
-        "SELECT COUNT(*) FROM composer_detail_row listing \
-         WHERE listing.artist_id = :artist_id AND {}",
-        order.condition(seek)
-    );
-    let mut params = seek.params();
-    params.push((":artist_id", &artist_id as &dyn rusqlite::ToSql));
-    Ok(sql
-        .query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    bae_store::list_windows::seek_count_on(
+        sql,
+        "FROM composer_detail_row listing",
+        Some("listing.artist_id = :artist_id"),
+        &[(":artist_id", &artist_id)],
+        order,
+        seek,
+    )
 }
 
 fn composer_detail_row_count_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Result<u64, DbError> {

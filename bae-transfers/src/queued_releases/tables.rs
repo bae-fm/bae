@@ -298,10 +298,14 @@ pub fn queue_seek_count_on<P: QueuedPayload>(
     order: &ListOrder,
     seek: &Seek,
 ) -> Result<u64, DbError> {
-    let statement = format!("SELECT COUNT(*) FROM {} q WHERE {}", P::TABLE, order.condition(seek));
-    Ok(sql
-        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    bae_store::list_windows::seek_count_on(
+        sql,
+        &format!("FROM {} q", P::TABLE),
+        None,
+        &[],
+        order,
+        seek,
+    )
 }
 
 fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {

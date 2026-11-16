@@ -117,15 +117,14 @@ pub fn subscribe_upcoming_position(
     let order = upcoming_order(shuffled);
     store.subscribe_reconfigurable(initial, move |key, sql| {
         rows_before(&order, key, |seek| {
-            Ok(sql.query_row(
-                &format!(
-                    "SELECT COUNT(*) FROM playback_context c WHERE {} AND {}",
-                    after_the_playing_track(shuffled),
-                    order.condition(seek)
-                ),
-                seek.params().as_slice(),
-                |row| row.get::<_, i64>(0),
-            )? as u64)
+            bae_store::list_windows::seek_count_on(
+                &sql,
+                "FROM playback_context c",
+                Some(&after_the_playing_track(shuffled)),
+                &[],
+                &order,
+                seek,
+            )
         })
     })
 }

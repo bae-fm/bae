@@ -14,7 +14,7 @@ use rusqlite::{Row, ToSql};
 use std::cmp::Ordering;
 
 mod range;
-pub use range::{key_at, read_range, rows_before, ListWindow, WindowRead};
+pub use range::{key_at, read_range, rows_before, seek_count_on, ListWindow, WindowRead};
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

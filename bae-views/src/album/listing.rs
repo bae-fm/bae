@@ -23,14 +23,14 @@ pub(crate) fn album_seek_count_on(
     order: &ListOrder,
     seek: &Seek,
 ) -> Result<u64, DbError> {
-    let statement = format!(
-        "SELECT COUNT(*) {tables} WHERE {condition}",
-        tables = album_order_tables(group_by_artist),
-        condition = order.condition(seek),
-    );
-    Ok(sql
-        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    bae_store::list_windows::seek_count_on(
+        sql,
+        album_order_tables(group_by_artist),
+        None,
+        &[],
+        order,
+        seek,
+    )
 }
 
 /// The grid grouped by artist's sections: each artist in the grouped order

@@ -551,20 +551,23 @@ pub(crate) fn storage_seek_count_on(
     seek: &Seek,
 ) -> Result<u64, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
-    let statement = format!(
-        "SELECT COUNT(*) FROM release_listing listing \
-         WHERE {filter} AND {searched} AND ({condition})",
+    let kept = format!(
+        "{filter} AND {searched}",
         filter = storage_filter(filter),
         searched = storage_search_condition(rows, "listing.album_id"),
-        condition = order.condition(seek),
     );
-    let mut params = seek.params();
-    if let Some(pattern) = &pattern {
-        params.push((":search", pattern));
-    }
-    Ok(sql
-        .query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    let search: Vec<(&str, &dyn rusqlite::ToSql)> = match &pattern {
+        Some(pattern) => vec![(":search", pattern)],
+        None => Vec::new(),
+    };
+    bae_store::list_windows::seek_count_on(
+        sql,
+        "FROM release_listing listing",
+        Some(&kept),
+        &search,
+        order,
+        seek,
+    )
 }
 
 /// The rows of the `release_ids` the list under `filter` and the search

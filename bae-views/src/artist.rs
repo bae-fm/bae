@@ -226,11 +226,14 @@ pub(crate) fn artist_seek_count_on(
     order: &ListOrder,
     seek: &Seek,
 ) -> Result<u64, DbError> {
-    let statement =
-        format!("SELECT COUNT(*) FROM artist_listing listing WHERE {}", order.condition(seek));
-    Ok(sql
-        .query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    bae_store::list_windows::seek_count_on(
+        sql,
+        "FROM artist_listing listing",
+        None,
+        &[],
+        order,
+        seek,
+    )
 }
 
 fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {

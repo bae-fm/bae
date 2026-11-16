@@ -187,18 +187,15 @@ fn artist_search_seek_count_on(
     seek: &Seek,
 ) -> Result<u64, DbError> {
     let pattern = search_pattern(query.as_str());
-    let statement = format!(
-        "SELECT COUNT(*) FROM artists WHERE {filter} AND {condition}",
-        filter = artist_search_filter(),
-        condition = order.condition(seek),
-    );
     let text = query.as_str();
-    let mut params = seek.params();
-    params.push((":text", &text as &dyn rusqlite::ToSql));
-    params.push((":pattern", &pattern as &dyn rusqlite::ToSql));
-    Ok(sql
-        .query_row(&statement, params.as_slice(), |row| row.get::<_, i64>(0))
-        .map(|count| count as u64)?)
+    bae_store::list_windows::seek_count_on(
+        sql,
+        "FROM artists",
+        Some(&artist_search_filter()),
+        &[(":text", &text), (":pattern", &pattern)],
+        order,
+        seek,
+    )
 }
 
 /// The artists `query` finds that `seek` reads in `order`, at most `limit`
