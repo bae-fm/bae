@@ -22,7 +22,8 @@ struct LibrarySettingsTabPreviewFixture {
             storage.map { PreviewData.connectedConfigStore(storage: $0) }
             ?? PreviewData.configStore()
         membership = MembershipStore.stub(
-            people: storage.map { PreviewData.members(reaching: $0) } ?? [],
+            people: storage.map { PreviewData.members(reaching: $0) }
+                ?? PreviewData.noPeople,
             selfIsAdmin: true
         )
     }

@@ -294,29 +294,31 @@ extension ShotScene {
         },
     ]
 
-    /// The shot people with the other person named Ben, who has a tablet.
-    private static func peopleWithBen(role: BridgeMemberRole) -> [BridgePerson]
-    {
-        PreviewData.members(reaching: PreviewData.previewDropboxStorage)
-            .map {
-                person in
-                guard person.membership.id == otherMemberId else {
-                    return person
-                }
-                var ben = person
-                ben.profile?.name = "Ben"
-                ben.membership.role = role
-                ben.membership.activeDevices = [
-                    BridgeActiveDevice(
-                        id: 5,
-                        name: "Tablet",
-                        isSelf: false,
-                        canRemove: true
-                    )
-                ]
-                ben.membership.formerDevices = []
-                return ben
+    /// The shot people with the other person named Ben, who has a tablet
+    /// and no removed devices.
+    private static func peopleWithBen(role: BridgeMemberRole) -> BridgePeople {
+        var people = PreviewData.members(
+            reaching: PreviewData.previewDropboxStorage
+        )
+        people.others = people.others.map { person in
+            guard person.membership.id == otherMemberId else {
+                return person
             }
+            var ben = person
+            ben.profile?.name = "Ben"
+            ben.membership.role = role
+            ben.membership.activeDevices = [
+                BridgeActiveDevice(
+                    id: 5,
+                    name: "Tablet",
+                    isSelf: false,
+                    canRemove: true
+                )
+            ]
+            ben.membership.formerDevices = []
+            return ben
+        }
+        return people
     }
 
     private static func makeAdmin(

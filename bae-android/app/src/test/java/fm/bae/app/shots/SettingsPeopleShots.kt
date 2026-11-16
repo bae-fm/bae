@@ -19,21 +19,21 @@ class SettingsPeopleShots : BoardShot() {
     @Test
     fun androidSettingsPeople() =
         shot("android.settings.people") {
-            ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(invitation("another@example.com", waitingCode))) }
+            ScreenScene { PeoplePageScene(anaAndBen(), invites = listOf(invitation("another@example.com", waitingCode))) }
         }
 
     /** People and devices as a member sees it: Ben is an admin, and nothing opens or invites. */
     @Test
     fun androidSettingsPeopleMember() =
         shot("android.settings.people.member") {
-            ScreenScene { PeoplePageScene(listOf(ana(BridgeMemberRole.MEMBER), ben(BridgeMemberRole.ADMIN)), selfIsAdmin = false) }
+            ScreenScene { PeoplePageScene(anaAndBen(ana(BridgeMemberRole.MEMBER), ben(BridgeMemberRole.ADMIN)), selfIsAdmin = false) }
         }
 
     /** Dan, invited, whose invite shows a code waiting for his request. */
     @Test
     fun androidSettingsPeopleInviteListed() =
         shot("android.settings.people.invite-listed") {
-            ScreenScene { PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(waitingCode))) }
+            ScreenScene { PeoplePageScene(anaAndBen(), invites = listOf(danInvite(waitingCode))) }
         }
 
     /** Dan's invite while this phone is offline, so sync can't grant his access yet. */
@@ -41,7 +41,7 @@ class SettingsPeopleShots : BoardShot() {
     fun androidSettingsPeopleInviteWaiting() =
         shot("android.settings.people.invite-waiting") {
             ScreenScene {
-                PeoplePageScene(listOf(ana(), ben()), invites = listOf(danInvite(BridgeInviteShown.Granting)), offline = true)
+                PeoplePageScene(anaAndBen(), invites = listOf(danInvite(BridgeInviteShown.Granting)), offline = true)
             }
         }
 
@@ -51,7 +51,7 @@ class SettingsPeopleShots : BoardShot() {
         shot("android.settings.people.invite-failed") {
             ScreenScene {
                 PeoplePageScene(
-                    listOf(ana(), ben()),
+                    anaAndBen(),
                     refused =
                         listOf(
                             BridgeRefusedInvite(

@@ -182,7 +182,7 @@ public final class MembershipStore {
         /// start, with no subscriptions; following a pairing finds
         /// `addDeviceStatus`.
         public static func stub(
-            people: [BridgePerson],
+            people: BridgePeople,
             selfIsAdmin: Bool,
             invites: [BridgeInvite] = [],
             refusedInvites: [BridgeRefusedInvite] = [],
@@ -196,7 +196,8 @@ public final class MembershipStore {
                 subscribePerson: { store, memberId in
                     store.shownPerson = ShownPerson(
                         memberId: memberId,
-                        person: people.first { $0.membership.id == memberId }
+                        person: ([people.own].compactMap { $0 } + people.others)
+                            .first { $0.membership.id == memberId }
                     )
                     return NSObject()
                 },
@@ -207,16 +208,7 @@ public final class MembershipStore {
                 holdFrequentSync: { {} }
             )
             store.selfIsAdmin = selfIsAdmin
-            // The fixture's own person is the one it marks as this device's,
-            // as core would read it.
-            store.people = BridgePeople(
-                own: people.first { $0.membership.isSelf },
-                others: people.filter { !$0.membership.isSelf },
-                people: UInt64(people.count),
-                devices: UInt64(
-                    people.reduce(0) { $0 + $1.membership.activeDevices.count }
-                )
-            )
+            store.people = people
             store.inviteEntries =
                 invites.map { .open(invite: $0) }
                 + refusedInvites.map { .refused(refused: $0) }

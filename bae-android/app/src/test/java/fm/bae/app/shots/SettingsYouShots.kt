@@ -13,7 +13,7 @@ class SettingsYouShots : BoardShot() {
     @Test
     fun androidSettingsListeningHistoryChoosing() =
         shot("android.settings.listening-history.choosing") {
-            InPlaceDialogScene(behind = { PeoplePageScene(listOf(ana(), ben())) }) {
+            InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen()) }) {
                 listeningHistoryParts(current = BridgeHistorySharing.PRIVATE, onChoose = {}, onDismiss = {})
             }
         }
@@ -22,7 +22,7 @@ class SettingsYouShots : BoardShot() {
     @Test
     fun androidSettingsListeningHistoryChanged() =
         shot("android.settings.listening-history.changed") {
-            ScreenScene { PeoplePageScene(listOf(ana(history = BridgeHistorySharing.HOUSEHOLD), ben())) }
+            ScreenScene { PeoplePageScene(anaAndBen(ana(history = BridgeHistorySharing.HOUSEHOLD))) }
         }
 
     /** The name dialog with nothing typed. */
@@ -44,7 +44,7 @@ class SettingsYouShots : BoardShot() {
     @Test
     fun androidSettingsYourNameSaved() =
         shot("android.settings.your-name.saved") {
-            ScreenScene { PeoplePageScene(listOf(ana(name = "Annie"), ben())) }
+            ScreenScene { PeoplePageScene(anaAndBen(ana(name = "Annie"))) }
         }
 }
 
@@ -52,6 +52,6 @@ class SettingsYouShots : BoardShot() {
 private fun YourName(
     draft: String,
     error: DisplayError?,
-) = InPlaceDialogScene(behind = { PeoplePageScene(listOf(ana(), ben())) }) {
+) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen()) }) {
     renameProfileParts(draft = draft, error = error, saving = false, onDraftChange = {}, onSave = {}, onDismiss = {})
 }

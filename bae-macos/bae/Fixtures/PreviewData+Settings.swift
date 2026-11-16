@@ -34,25 +34,42 @@ extension PreviewData {
     /// removed, and one other member with a removable device
     /// and two removed ones, each reaching `storage` as its members do:
     /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
-    /// iCloud. Ids are arbitrary UUIDs.
+    /// iCloud. Ids are arbitrary UUIDs. Core reads them as two people with
+    /// three devices: the Mac and the phone, and the other member's tablet.
     static func members(reaching storage: BridgeStorageLocation)
-        -> [BridgePerson]
+        -> BridgePeople
     {
-        switch storage {
-        case .dropbox, .oneDrive, .cloudKit: accountMembers
-        case .s3:
-            accountMembers.map { person in
-                var person = person
-                person.membership.access = .s3AccessKey(
-                    accessKeyId: "AKIAPREVIEWKEY"
-                )
-                return person
+        let reach: (BridgePerson) -> BridgePerson =
+            switch storage {
+            case .dropbox, .oneDrive, .cloudKit: { $0 }
+            case .s3:
+                { person in
+                    var person = person
+                    person.membership.access = .s3AccessKey(
+                        accessKeyId: "AKIAPREVIEWKEY"
+                    )
+                    return person
+                }
             }
-        }
+        return BridgePeople(
+            own: reach(accountSelf),
+            others: [reach(accountOther)],
+            people: 2,
+            devices: 3
+        )
     }
 
-    /// `members`, each reaching the library by their own account.
-    private static let accountMembers: [BridgePerson] = [
+    /// People with nobody in them, for fixtures that show no people.
+    static let noPeople = BridgePeople(
+        own: nil,
+        others: [],
+        people: 0,
+        devices: 0
+    )
+
+    /// This device's person in `members`, reaching the library by their own
+    /// account.
+    private static let accountSelf =
         BridgePerson(
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
@@ -98,7 +115,11 @@ extension PreviewData {
                     ),
                 ]
             )
-        ),
+        )
+
+    /// The other member in `members`, reaching the library by their own
+    /// account.
+    private static let accountOther =
         BridgePerson(
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000002",
@@ -138,8 +159,7 @@ extension PreviewData {
                     ),
                 ]
             )
-        ),
-    ]
+        )
 
     /// A restore code shaped like coven's: `CVR1-` and uppercase base32,
     /// the one the restore-code board shows.

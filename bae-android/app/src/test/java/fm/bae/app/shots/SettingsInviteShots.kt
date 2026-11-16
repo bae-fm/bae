@@ -93,7 +93,7 @@ class SettingsInviteShots : BoardShot() {
         shot("android.settings.invite.joining") {
             ScreenScene {
                 PeoplePageScene(
-                    listOf(ana(), ben()),
+                    anaAndBen(),
                     invites = listOf(danInvite(BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Joining("Dan")))),
                 )
             }
@@ -113,7 +113,7 @@ class SettingsInviteShots : BoardShot() {
 private fun Invite(
     invites: List<BridgeInvite> = emptyList(),
     dialog: @Composable () -> DialogParts,
-) = InPlaceDialogScene(behind = { PeoplePageScene(listOf(ana(), ben()), invites = invites) }, dialog = dialog)
+) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen(), invites = invites) }, dialog = dialog)
 
 @Composable
 private fun InviteForm(

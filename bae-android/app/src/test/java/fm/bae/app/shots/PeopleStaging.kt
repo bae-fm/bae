@@ -36,20 +36,14 @@ private const val DAN_ID = "00000000-0000-4000-8000-000000000003"
 /** The People and devices page over [people], with [invites] this device has open. */
 @Composable
 internal fun PeoplePageScene(
-    people: List<BridgePerson>,
+    people: BridgePeople,
     selfIsAdmin: Boolean = true,
     invites: List<BridgeInvite> = emptyList(),
     refused: List<BridgeRefusedInvite> = emptyList(),
     offline: Boolean = false,
 ) = AndroidSettingsPeople(
     you = YouActions(NothingFails, {}, {}, {}),
-    people =
-        BridgePeople(
-            own = people.firstOrNull { it.membership.isSelf },
-            others = people.filterNot { it.membership.isSelf },
-            people = people.size.toULong(),
-            devices = people.sumOf { it.membership.activeDevices.size }.toULong(),
-        ),
+    people = people,
     selfIsAdmin = selfIsAdmin,
     requested = null,
     invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
@@ -120,6 +114,15 @@ internal val removedDevices =
         BridgeFormerDevice(id = 3uL, name = "Old Phone", state = BridgeFormerDeviceState.REPLACED),
         BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED),
     )
+
+/**
+ * The people the page lists as core reads them: [ana] reads the page and [ben] is the other person, two people with three
+ * devices, Ana's phone and laptop and Ben's tablet.
+ */
+internal fun anaAndBen(
+    ana: BridgePerson = ana(),
+    ben: BridgePerson = ben(),
+) = BridgePeople(own = ana, others = listOf(ben), people = 2uL, devices = 3uL)
 
 /** Ben, who has one device, a tablet. */
 internal fun ben(role: BridgeMemberRole = BridgeMemberRole.MEMBER): BridgePerson =

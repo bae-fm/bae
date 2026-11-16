@@ -134,7 +134,7 @@ struct LibraryMenuCommandsTests {
             library: Library.stub(),
             playback: Playback.stub(),
             membershipStore: MembershipStore.stub(
-                people: [],
+                people: PreviewData.noPeople,
                 selfIsAdmin: selfIsAdmin
             )
         )
