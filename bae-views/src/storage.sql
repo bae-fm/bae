@@ -14,7 +14,7 @@
 -- `queued_count`, copied from its `release_storage` row; `download_queued`, 1 while this
 -- device's download queue holds it waiting or downloading; `download_failed`,
 -- 1 while that queue holds it failed; `move_failed`, 1 while its
--- `release_storage` row names a file whose original failed a move; and `storage_order`, where it sorts by
+-- `release_storage` row names a file whose move failed because its original changed; and `storage_order`, where it sorts by
 -- storage, worked out from those in the same write: a failed download or move
 -- first (0), uploading (1), pinning (2) while the download queue brings its files
 -- to this device, local (3), pinned (4), in the cloud only (5).

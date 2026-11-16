@@ -82,8 +82,8 @@ fn a_download_place_without_its_entry_is_refused() {
     );
 }
 
-/// A failed move shows the file whose original changed; a failed download
-/// reads first when both failed.
+/// A failed move shows the file whose original changed; when a download
+/// failed too, the row shows the failed download.
 #[test]
 fn a_failed_move_names_the_file_that_changed() {
     assert_eq!(

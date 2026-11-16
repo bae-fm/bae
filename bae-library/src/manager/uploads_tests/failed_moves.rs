@@ -1,5 +1,6 @@
-//! A move that a changed original failed: what the pending list, the
-//! release's storage row and its Cancel show of it.
+//! These tests check what the pending list and the release's storage row
+//! show when a move fails because an original file changed, and what Cancel
+//! does then.
 
 use super::*;
 
@@ -51,9 +52,10 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     .await;
 }
 
-/// A move whose original changed reads Move failed on its release's storage
-/// row, naming the file, and sorts first; the row's Cancel (the release's
-/// transition cancel) ends the move and the row rests Local.
+/// When a move fails because an original changed, the release's storage row
+/// shows Move failed with the file's name, and the row sorts first. The
+/// row's Cancel (the release's transition cancel) ends the move, and the row
+/// then shows the release as stored on this device only.
 #[tokio::test]
 async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
     use bae_views::album_detail::StorageRowStatus;
@@ -93,14 +95,13 @@ async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
     assert_eq!(rested.len(), 2);
     assert!(
         rested.iter().all(|(_, status)| *status == StorageRowStatus::OnOneDevice),
-        "both releases rest on this device: {rested:?}"
+        "both releases are stored on this device only: {rested:?}"
     );
 }
 
-/// The release's storage row takes its failed move and the file named in
-/// one read of the move's pending record: the row names the file whose
-/// original changed while the record stands, and nothing once the cancel
-/// ends the record.
+/// bae reads the failed move and the changed file's name from the move's
+/// pending record in one query. The storage row names the file while the
+/// record exists, and names no file after Cancel deletes the record.
 #[tokio::test]
 async fn a_failed_moves_storage_row_names_the_file_its_pending_record_names() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("failed-file").await;

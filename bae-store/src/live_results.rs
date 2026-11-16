@@ -12,9 +12,9 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 /// What one result of a coven live query is: a value or the query's error,
-/// and for a query with a request, the request and revision it answers. It
-/// holds for every query, so a type that holds a [`LiveResults`] needs no
-/// bounds of its own.
+/// and for a query with a request, the request and revision it answers. This
+/// trait holds for every query, so a type that holds a [`LiveResults`] needs
+/// no bounds of its own.
 pub trait LiveQueryEvent {
     type Event;
 }

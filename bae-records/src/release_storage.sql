@@ -6,9 +6,9 @@
 -- `coven_pins` lists as kept whole on this device; `queued_count` and
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
 -- lists and the place of the first (NULL with none); and `failed_move_file`,
--- the name of the file whose original changed and failed a move of the
--- release, as the move's pending record in `coven_pending` names the
--- original by its path, NULL while no such record stands. One row per
+-- the name of the file whose original changed, so that a move of the release
+-- failed. The move's pending record in `coven_pending` names that original by
+-- its path; the column is NULL while `coven_pending` has no such record. One row per
 -- release, written by the triggers below in the write that changes its
 -- files, their coven records, pins, queue, moves or pending records: bae's
 -- own or coven's.
@@ -165,12 +165,13 @@ BEGIN
     WHERE release_id = (SELECT release_id FROM release_files WHERE file = OLD.file);
 END;
 
--- A pending record that an original changed moves `failed_move_file` of the
--- releases whose files have that original, in the transaction that records
--- the move's failure, changes the record or ends it: coven keeps a failed
--- move's record until the app cancels the move. The record names the
--- original by its path, and the refresh reads which of the files is in the
--- record's move. A record no release file's original matches moves nothing.
+-- A pending record whose reason is an original refreshes `failed_move_file`
+-- of the releases whose files have that original, in the transaction that
+-- records the move's failure, changes the record or deletes it: coven keeps
+-- a failed move's record until the app cancels the move. The record names
+-- the original by its path, and the refresh reads which of the files the
+-- record's move lists. When no release file's original matches the record,
+-- the trigger changes no row.
 CREATE TRIGGER IF NOT EXISTS release_storage_move_record_added AFTER INSERT ON coven_pending
 WHEN NEW.reason_kind = 'original'
 BEGIN
@@ -198,10 +199,10 @@ BEGIN
     WHERE original.path = OLD.original_path;
 END;
 
--- A release file joining or leaving a move moves its release's
+-- A release file joining or leaving a move refreshes its release's
 -- `failed_move_file`, in the transaction that changes the move's list:
 -- the refresh reads a pending record only for a move that lists the file.
--- A file no release file names moves nothing.
+-- When no release file names the file, the trigger changes no row.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_moved AFTER INSERT ON coven_moves
 BEGIN
     INSERT INTO release_storage_refresh (release_id)

@@ -315,8 +315,8 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
 
 /// What the row's storage state shows: where its release's files are, from the
 /// listing's `storage_order`, with the transition, the download queue entry
-/// and the file whose original failed the release's move, as its
-/// `release_storage` row names it from the move's pending record.
+/// and the file whose changed original made the release's move fail, which
+/// the release's `release_storage` row takes from the move's pending record.
 fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StorageRowStatus> {
     use crate::album_detail::{StoragePlace, StorageRowStatus};
     let column = row.as_ref().column_index("storage_order")?;

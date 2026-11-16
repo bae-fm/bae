@@ -28,8 +28,8 @@ pub(crate) type RowsRead<R> =
 /// into one value each time either changes.
 ///
 /// Its reads' failures, the live queries' and the rows', go to whoever pulls
-/// it, which reports a bug one carries, so none is reported here. A panic
-/// around a live query's run goes to the store's bug sink.
+/// it, which reports a bug one carries, so `WithSyncState` reports none of
+/// them. A panic around a live query's run goes to the store's bug sink.
 pub struct WithSyncState<R, T> {
     handle: coven::CovenHandle,
     state: LiveResults<coven::LiveQuery<coven::SyncStatus, coven::CovenError>>,

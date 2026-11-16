@@ -66,10 +66,11 @@ pub enum StorageRowStatus {
 impl StorageRowStatus {
     /// The status of a release at `place` with the download queue entry
     /// `download`, and while its move has failed, the name of the file whose
-    /// original changed, which the move's pending record names. A failed
-    /// download reads first when both failed. A place that names a failed or
-    /// waiting download that the queue doesn't hold is a row the queue and
-    /// the listing disagree on: the reason it fails.
+    /// original changed, which the move's pending record names. When both a
+    /// download and the move failed, the status is the failed download. When
+    /// `place` names a failed or waiting download that the queue doesn't
+    /// hold, the queue and the listing disagree, and the function returns an
+    /// error that says so.
     pub(crate) fn of(
         place: StoragePlace,
         download: Option<DownloadEntry>,
