@@ -12,6 +12,8 @@ struct AlbumExpansionContent: View {
     /// picker.
     let onSelectRelease: (String) -> Void
     let currentTrackId: String?
+    /// The release of the track playing now, which the release picker marks.
+    let currentReleaseId: String?
     let isPlaying: Bool
     let onClose: () -> Void
     let onPlay: () -> Void
@@ -200,9 +202,8 @@ struct AlbumExpansionContent: View {
             segments: releases.map { release in
                 MacSegmentedControl.Segment(
                     label: release.displayName,
-                    systemImage: release.tracks.contains {
-                        $0.id == currentTrackId
-                    } ? "speaker.fill" : nil,
+                    systemImage: release.id == currentReleaseId
+                        ? "speaker.fill" : nil,
                 )
             },
         )

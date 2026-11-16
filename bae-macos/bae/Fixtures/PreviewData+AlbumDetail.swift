@@ -33,6 +33,10 @@ extension PreviewData {
             onBrowseImages: {},
             onSelectRelease: { _ in },
             currentTrackId: currentTrackId,
+            // A fixture's playing track is on the release it shows.
+            currentReleaseId: currentTrackId.map { _ in
+                detail.shownRelease.id
+            },
             isPlaying: isPlaying,
             onClose: {},
             onPlay: {},

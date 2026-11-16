@@ -78,6 +78,8 @@ struct AlbumDetailView: View {
                         selectRelease(releaseId, in: detail)
                     },
                     currentTrackId: playbackStore.nowPlaying.trackId,
+                    currentReleaseId: playbackStore.nowPlaying.display?.library?
+                        .releaseId,
                     isPlaying: playbackStore.nowPlaying.isPlaying,
                     onClose: { uiStore.closeAlbumDetail() },
                     onPlay: {
