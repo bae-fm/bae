@@ -154,23 +154,20 @@ struct AlbumExpansionContent: View {
 
     private var albumMenu: some View {
         MacMenuButton {
-            MacMenuItem("Play", action: onPlay)
-            MacMenuItem("Shuffle", action: onShuffle)
-            MacMenuDivider()
-            MacMenuItem("Play next") { onAddNextAlbum() }
-            MacMenuItem("Add to queue") { onAddAlbumToQueue() }
-            MacMenuDivider()
-            MacMenuItem("Edit…") { onEdit() }
-            MacMenuItem("Storage…") { onOpenStorage() }
-            MacMenuItem("Export…") { onExportRelease() }
-            MacMenuItem("Save as…") { onSaveReleaseAs() }
-            if detail.shownReleaseCanBecomePrimary {
-                MacMenuDivider()
-                MacMenuItem("Set as primary release") { onSetPrimaryRelease() }
-            }
-            MacMenuDivider()
-            MacMenuItem("Delete release", action: onDeleteRelease)
-            MacMenuItem("Delete album…", action: onDeleteAlbum)
+            AlbumMenu(
+                offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
+                onPlay: onPlay,
+                onShuffle: onShuffle,
+                onAddNext: onAddNextAlbum,
+                onAddToQueue: onAddAlbumToQueue,
+                onEdit: onEdit,
+                onOpenStorage: onOpenStorage,
+                onExport: onExportRelease,
+                onSaveAs: onSaveReleaseAs,
+                onSetPrimaryRelease: onSetPrimaryRelease,
+                onDeleteRelease: onDeleteRelease,
+                onDeleteAlbum: onDeleteAlbum
+            )
         } label: {
             Image(systemName: "ellipsis")
                 .themeIcon(.medium)

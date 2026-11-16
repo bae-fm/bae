@@ -137,8 +137,19 @@ struct SavePresetEditor: View {
         .settingsRowInset(ThemeSpace.compact)
     }
 
-    /// The formats the picker offers, in core's order and groups.
-    private static let formatGroups = bridgeSaveFormatGroups()
+    /// The formats the Format pop-up offers, in core's order and groups.
+    @MacPopUpBuilder<BridgeSaveFormat>
+    static var formatOptions: [MacPopUpEntry<BridgeSaveFormat>] {
+        let groups = bridgeSaveFormatGroups()
+        for group in groups.indices {
+            if group > 0 {
+                MacMenuDivider()
+            }
+            for format in groups[group] {
+                MacPopUpOption(verbatim: format.label, value: format)
+            }
+        }
+    }
 
     private var formatRow: some View {
         LabeledContent("Format") {
@@ -173,14 +184,7 @@ struct SavePresetEditor: View {
                 }
             )
         ) {
-            for group in Self.formatGroups.indices {
-                if group > 0 {
-                    MacMenuDivider()
-                }
-                for format in Self.formatGroups[group] {
-                    MacPopUpOption(verbatim: format.label, value: format)
-                }
-            }
+            Self.formatOptions
         }
     }
 

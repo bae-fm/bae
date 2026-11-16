@@ -208,30 +208,13 @@
         private func open() {
             guard let window = anchor.window, let frame = anchor.screenFrame
             else { return }
-            var entries: [MacMenuEntry] = []
-            var chosen: Int?
-            for entry in options {
-                switch entry {
-                case .divider:
-                    entries.append(.divider)
-                case .option(let option):
-                    let isChosen = option.value == selection
-                    if isChosen { chosen = entries.count }
-                    entries.append(
-                        .item(
-                            MacMenuItem(
-                                verbatim: option.title,
-                                checked: isChosen,
-                                disabled: option.isDisabled
-                            ) { selection = option.value }
-                        )
-                    )
-                }
+            let menu = MacPopUpMenu(options, selection: selection) {
+                selection = $0
             }
             MacMenuSession.present(
-                entries,
+                menu.entries,
                 over: window,
-                placement: .over(anchor: frame, chosen: chosen),
+                placement: .over(anchor: frame, chosen: menu.chosen),
                 appearance: appearance,
                 isPopUp: true
             )

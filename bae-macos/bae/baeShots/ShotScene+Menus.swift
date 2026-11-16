@@ -24,19 +24,20 @@ extension ShotScene {
                     )
                     MacMenuInPlace(
                         {
-                            MacMenuItem("Play") {}
-                            MacMenuItem("Shuffle") {}
-                            MacMenuDivider()
-                            MacMenuItem("Play next") {}
-                            MacMenuItem("Add to queue") {}
-                            MacMenuDivider()
-                            MacMenuItem("Edit…") {}
-                            MacMenuItem("Storage…") {}
-                            MacMenuItem("Export…") {}
-                            MacMenuItem("Save as…") {}
-                            MacMenuDivider()
-                            MacMenuItem("Delete release") {}
-                            MacMenuItem("Delete album…") {}
+                            AlbumMenu(
+                                offersSetAsPrimary: false,
+                                onPlay: {},
+                                onShuffle: {},
+                                onAddNext: {},
+                                onAddToQueue: {},
+                                onEdit: {},
+                                onOpenStorage: {},
+                                onExport: {},
+                                onSaveAs: {},
+                                onSetPrimaryRelease: {},
+                                onDeleteRelease: {},
+                                onDeleteAlbum: {}
+                            )
                         },
                         highlighted: 7
                     )
@@ -91,16 +92,13 @@ extension ShotScene {
                     OverWindow.sheet(sheet, over: window)
                     MacMenuInPlace(
                         {
-                            for name in ["FLAC", "WAV", "AIFF"] {
-                                MacMenuItem(verbatim: name, checked: false) {}
-                            }
-                            MacMenuDivider()
-                            for name in ["MP3", "AAC", "Opus"] {
-                                MacMenuItem(
-                                    verbatim: name,
-                                    checked: name == "MP3"
-                                ) {}
-                            }
+                            MacPopUpMenu(
+                                SavePresetEditor.formatOptions,
+                                selection: PreviewData.savePresets[1].codec
+                                    .format,
+                                select: { _ in }
+                            )
+                            .entries
                         },
                         highlighted: 4,
                         isPopUp: true

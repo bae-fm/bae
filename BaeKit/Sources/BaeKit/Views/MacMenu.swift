@@ -239,6 +239,44 @@
         case divider
     }
 
+    /// The menu a pop-up opens: an item for each option, the one `selection`
+    /// names checked, and a divider for each divider.
+    public struct MacPopUpMenu<Value: Hashable> {
+        public let entries: [MacMenuEntry]
+        /// The line of the checked item, which the menu opens over the
+        /// pop-up; `nil` when no option is `selection`.
+        public let chosen: Int?
+
+        public init(
+            _ options: [MacPopUpEntry<Value>],
+            selection: Value,
+            select: @escaping (Value) -> Void
+        ) {
+            var entries: [MacMenuEntry] = []
+            var chosen: Int?
+            for entry in options {
+                switch entry {
+                case .divider:
+                    entries.append(.divider)
+                case .option(let option):
+                    let isChosen = option.value == selection
+                    if isChosen { chosen = entries.count }
+                    entries.append(
+                        .item(
+                            MacMenuItem(
+                                verbatim: option.title,
+                                checked: isChosen,
+                                disabled: option.isDisabled
+                            ) { select(option.value) }
+                        )
+                    )
+                }
+            }
+            self.entries = entries
+            self.chosen = chosen
+        }
+    }
+
     @resultBuilder
     public enum MacPopUpBuilder<Value: Hashable> {
         public static func buildExpression(_ option: MacPopUpOption<Value>)
@@ -251,6 +289,12 @@
             -> [MacPopUpEntry<Value>]
         {
             [.divider]
+        }
+
+        public static func buildExpression(_ entries: [MacPopUpEntry<Value>])
+            -> [MacPopUpEntry<Value>]
+        {
+            entries
         }
 
         public static func buildBlock(_ parts: [MacPopUpEntry<Value>]...)
