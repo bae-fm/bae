@@ -218,8 +218,12 @@ fn only_a_moving_pass_is_syncing() {
     assert!(!syncing(synced()));
     assert!(!syncing(coven::SyncState::WaitingToSync(coven::SyncWait::NotSyncing)));
     assert!(!syncing(offline()));
-    assert!(!syncing(removed_state()));
-    assert!(!syncing(removed_state()));
+    assert!(!syncing(blocked(
+        coven::PendingReason::Removed(coven::Removal::Device),
+        None,
+        coven::SyncState::Failed,
+    )));
+    assert!(!syncing(failed_status(coven::StatusFailure::Other, coven::SyncState::Failed)));
     assert!(!snapshot(synced(), Vec::new(), coven::RetryEffect::NotSyncing).syncing());
     assert!(!syncing(disconnected()));
 }
