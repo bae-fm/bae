@@ -12,12 +12,14 @@ pub(super) const TRACK_NEIGHBORS: &str = "SELECT \
 
 /// Each segment of the audio format `?1`, in segment order, with the size and
 /// container of the release file it names and its scrub points' blob, each
-/// joined by key.
+/// joined by key. A release file's `file` always names a record in
+/// `coven_files` (coven 17.2), so the size is NULL only when no release file
+/// has the segment's id.
 const TRACK_AUDIO_SEGMENTS: &str = "SELECT s.*, coven.size AS file_size, \
      f.source_audio_container AS file_container, p.points AS scrub_points \
      FROM audio_format_segments AS s \
-     LEFT JOIN release_files AS f ON f.id = s.file_id \
-     LEFT JOIN coven_files AS coven ON coven.id = f.file \
+     LEFT JOIN (release_files AS f JOIN coven_files AS coven ON coven.id = f.file) \
+       ON f.id = s.file_id \
      LEFT JOIN audio_segment_scrub_points AS p ON p.audio_format_segment_id = s.id \
      WHERE s.audio_format_id = ?1 \
      ORDER BY s.segment_index";
