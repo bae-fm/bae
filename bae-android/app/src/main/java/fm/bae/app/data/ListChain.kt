@@ -86,8 +86,7 @@ private class StartPosition(
         private set
     var value = 0
         private set
-    private var read: ListPositionRead? = null
-    private var deliveries: ScreenSubscription<BridgeListPosition>? = null
+    private var opened: OpenPositionRead? = null
 
     fun follow(
         key: List<BridgeSortValue>?,
@@ -99,24 +98,22 @@ private class StartPosition(
             stop()
             return
         }
-        val current = read
+        val current = opened
         if (current != null) {
             try {
-                current.setKey(key)
+                current.read.setKey(key)
             } catch (error: BridgeException) {
                 onError(error)
             }
             return
         }
-        val opened = open(key)
-        read = opened
-        deliveries = ScreenSubscription(opened, scope, onValue = ::apply, onError = onError)
+        val read = open(key)
+        opened = OpenPositionRead(read, ScreenSubscription(read, scope, onValue = ::apply, onError = onError))
     }
 
     fun stop() {
-        deliveries?.stop()
-        deliveries = null
-        read = null
+        opened?.deliveries?.stop()
+        opened = null
     }
 
     private fun apply(position: BridgeListPosition) {
@@ -128,6 +125,12 @@ private class StartPosition(
         onChange()
     }
 }
+
+/** A position read [StartPosition] opened, with the subscription that delivers its values. */
+private class OpenPositionRead(
+    val read: ListPositionRead,
+    val deliveries: ScreenSubscription<BridgeListPosition>,
+)
 
 /**
  * The windows a list reads, in the order of its rows: each a live read of a range of the order,

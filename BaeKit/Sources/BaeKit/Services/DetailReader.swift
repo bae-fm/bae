@@ -51,9 +51,9 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     private let open: (Id) throws -> KeyedDetailQuery<Value, Id>
     private let onValue: @MainActor (Id, Value?) -> Void
     private let onError: @MainActor (Id, any Error) -> Void
-    private var query: KeyedDetailQuery<Value, Id>?
-    private var deliveries:
-        ScreenSubscription<PulledValues<KeyedDetailDelivery<Value, Id>>>?
+    /// The read open now, from the first `show` until `close` or a `retry`
+    /// that opens another.
+    private var opened: OpenRead?
     /// The item shown now, or `nil` before the first `show` and after
     /// `close`.
     public private(set) var id: Id?
@@ -89,7 +89,7 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
 
     /// Show `id`, opening the read on first use.
     public func show(_ id: Id) {
-        guard id != self.id || query == nil else { return }
+        guard id != self.id || opened == nil else { return }
         self.id = id
         request(id)
     }
@@ -109,8 +109,8 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
 
     private func request(_ id: Id) {
         do {
-            if let query {
-                try query.setId(id)
+            if let opened {
+                try opened.query.setId(id)
             }
             else {
                 try openRead(id)
@@ -123,16 +123,18 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
 
     private func openRead(_ id: Id) throws {
         let query = try open(id)
-        self.query = query
-        deliveries = ScreenSubscription(
-            query.values,
-            onValue: { [weak self] delivery in
-                guard let self, let id = delivery.id, id == self.id else {
-                    return
-                }
-                self.onValue(id, delivery.value)
-            },
-            onError: { [weak self] error in self?.readFailed(error) }
+        opened = OpenRead(
+            query: query,
+            deliveries: ScreenSubscription(
+                query.values,
+                onValue: { [weak self] delivery in
+                    guard let self, let id = delivery.id, id == self.id else {
+                        return
+                    }
+                    self.onValue(id, delivery.value)
+                },
+                onError: { [weak self] error in self?.readFailed(error) }
+            )
         )
     }
 
@@ -149,9 +151,16 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     }
 
     private func closeRead() {
-        deliveries?.stop()
-        deliveries = nil
-        query = nil
+        opened?.deliveries.stop()
+        opened = nil
+    }
+
+    /// A read the reader opened, with the subscription that hands on its
+    /// values.
+    private struct OpenRead {
+        let query: KeyedDetailQuery<Value, Id>
+        let deliveries:
+            ScreenSubscription<PulledValues<KeyedDetailDelivery<Value, Id>>>
     }
 }
 
