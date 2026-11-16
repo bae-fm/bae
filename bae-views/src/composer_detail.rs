@@ -28,10 +28,7 @@ impl LibraryViews {
         &self,
         artist_id: &str,
     ) -> Result<Option<ComposerDetail>, DbError> {
-        Ok(self.find_composer_detail(artist_id).await?.map(|raw| ComposerDetail {
-            composer: raw.composer,
-            default_work_id: raw.default_work_id,
-        }))
+        Ok(self.find_composer_detail(artist_id).await?.map(composer_detail_of))
     }
 
     /// Follow the composer `initial` names, or none. The detail view moves to
@@ -146,9 +143,12 @@ impl LibraryViews {
 pub fn resolve_composer_detail_projection(
     projection: ComposerDetailProjection,
 ) -> Option<ComposerDetail> {
-    projection
-        .detail
-        .map(|raw| ComposerDetail { composer: raw.composer, default_work_id: raw.default_work_id })
+    projection.detail.map(composer_detail_of)
+}
+
+/// A composer's page above its rows as its row reads it.
+fn composer_detail_of(raw: DbComposerDetail) -> ComposerDetail {
+    ComposerDetail { composer: raw.composer, default_work_id: raw.default_work_id }
 }
 
 /// One delivery of a composer's page's window as the page shows it.
