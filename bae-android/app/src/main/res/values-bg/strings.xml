@@ -39,7 +39,7 @@
     <string name="album_options">Опции за албума</string>
     <string name="delete_album">Изтриване на албума…</string>
     <string name="delete_album_confirm_title">Да се изтрие ли този албум?</string>
-    <string name="delete_album_confirm_body">Всички издания на този албум ще бъдат изтрити завинаги от вашите устройства и от облака. Оригиналните файлове във вашите папки няма да бъдат докоснати.</string>
+    <string name="delete_album_confirm_body">bae ще изтрие завинаги всички издания на този албум от вашите устройства и от облака и ще запази оригиналните файлове във вашите папки.</string>
     <string name="delete_album_confirm">Изтриване</string>
     <string name="now_playing">Текущо възпроизвеждане</string>
     <string name="paused">На пауза</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Редактиране на плейлиста</string>
     <string name="playlist_delete_menu">Изтриване на плейлиста…</string>
     <string name="playlist_delete_title">Изтриване на %1$s?</string>
-    <string name="playlist_delete_message">Изтрива се от всяко устройство. Песните в него остават в библиотеката.</string>
+    <string name="playlist_delete_message">bae ще изтрие този плейлист от всяко устройство. Песните в него остават в библиотеката.</string>
     <string name="playlist_delete_confirm">Изтриване</string>
     <string name="playlist_options">Опции за плейлиста</string>
     <plurals name="album_count">
@@ -192,14 +192,14 @@
     <string name="storage_kind_before_reset">От преди нулирането</string>
     <string name="storage_clear_cache">Изчисти кеша</string>
     <string name="storage_keep_up_to">Задръж до</string>
-    <string name="storage_cache_note">Песните, които сте пускали от облака, както и обложките и снимките. Изтеглят се отново, когато са нужни.</string>
+    <string name="storage_cache_note">bae пази тук парчетата, които сте пускали от облака, обложките и снимките, и ги изтегля отново, когато ги пуснете или отворите.</string>
     <string name="storage_ask_before_unpinning">Питай преди откачване</string>
     <string name="storage_ask_before_unpinning_note">Откачването премахва файловете на изданието от този телефон веднага</string>
     <string name="storage_pinned_note">Закачените издания остават цели на този телефон за слушане офлайн и не се броят към кеша.</string>
-    <string name="storage_delete_before_reset">Изтрий данните от преди нулирането</string>
+    <string name="storage_delete_before_reset">Изтрий тези данни</string>
     <string name="storage_before_reset_nothing_uses">%1$s · нищо не ги използва</string>
-    <string name="storage_delete_before_reset_title">Да се изтрият ли данните от преди нулирането?</string>
-    <string name="storage_delete_before_reset_body">%1$s ще бъдат премахнати от този телефон. Това не може да се върне. Вашата библиотека не се засяга.</string>
+    <string name="storage_delete_before_reset_title">Да се изтрият ли тези данни?</string>
+    <string name="storage_delete_before_reset_body">bae ще изтрие %1$s от този телефон. Не можете да върнете тези данни. Библиотеката ви остава непроменена.</string>
     <string name="storage_delete">Изтрий</string>
     <string name="members_title">Хора и устройства</string>
     <string name="people_people">Хора</string>
@@ -235,7 +235,7 @@
     <string name="pin">Закачи</string>
     <string name="unpin">Откачи</string>
     <string name="unpin_confirm_title">Откачване на това издание?</string>
-    <string name="unpin_confirm_body">Файловете му ще бъдат премахнати от този телефон сега. Остава в облака и се възпроизвежда оттам, докато сте онлайн.</string>
+    <string name="unpin_confirm_body">bae ще премахне файловете му от този телефон сега. Изданието остава в облака и се възпроизвежда оттам, докато сте онлайн.</string>
     <string name="dont_show_again">Да не се показва отново</string>
     <string name="pinned">Закачено</string>
     <string name="pinning">Закачва се</string>
@@ -367,11 +367,11 @@
         <item quantity="one">Премахнато устройство (%1$d)</item>
         <item quantity="other">Премахнати устройства (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Устройството ще бъде премахнато</string>
+    <string name="device_removed_title">Премахване на устройството</string>
     <string name="device_cut_off_confirm">Прекъснах достъпа на това устройство</string>
     <string name="device_cut_off_not_yet">Още не</string>
     <string name="device_cut_off_running_title">Това устройство още се синхронизира с облака</string>
-    <string name="device_cut_off_running_body">Изчакайте да приключи и опитайте отново.</string>
+    <string name="device_cut_off_running_body">Изчакайте да приключи.</string>
     <string name="device_cut_off_not_gone_title">Премахването още не е стигнало до това устройство</string>
     <string name="device_cut_off_not_gone_body">Опитайте отново след следващото синхронизиране.</string>
     <string name="members_invite">Покани</string>

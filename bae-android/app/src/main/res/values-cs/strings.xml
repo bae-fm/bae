@@ -39,7 +39,7 @@
     <string name="album_options">Možnosti alba</string>
     <string name="delete_album">Smazat album…</string>
     <string name="delete_album_confirm_title">Smazat toto album?</string>
-    <string name="delete_album_confirm_body">Všechna vydání tohoto alba budou trvale smazána z vašich zařízení i z cloudu. Původní soubory ve vašich složkách zůstanou nedotčené.</string>
+    <string name="delete_album_confirm_body">bae trvale smaže všechna vydání tohoto alba z vašich zařízení i z cloudu a ponechá původní soubory ve vašich složkách.</string>
     <string name="delete_album_confirm">Smazat</string>
     <string name="now_playing">Právě hraje</string>
     <string name="paused">Pozastaveno</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Upravit seznam skladeb</string>
     <string name="playlist_delete_menu">Smazat seznam skladeb…</string>
     <string name="playlist_delete_title">Smazat %1$s?</string>
-    <string name="playlist_delete_message">Smaže se ze všech zařízení. Skladby v něm zůstanou v knihovně.</string>
+    <string name="playlist_delete_message">bae smaže tento seznam skladeb ze všech zařízení. Jeho skladby zůstanou v knihovně.</string>
     <string name="playlist_delete_confirm">Smazat</string>
     <string name="playlist_options">Možnosti seznamu skladeb</string>
     <plurals name="album_count">
@@ -200,14 +200,14 @@
     <string name="storage_kind_before_reset">Z doby před resetem</string>
     <string name="storage_clear_cache">Vymazat mezipaměť</string>
     <string name="storage_keep_up_to">Ponechat až</string>
-    <string name="storage_cache_note">Skladby, které jste přehráli z cloudu, a také obaly a obrázky. V případě potřeby se stáhnou znovu.</string>
+    <string name="storage_cache_note">bae tu uchovává skladby, které jste přehráli z cloudu, obálky a obrázky, a znovu je stáhne, když je přehrajete nebo otevřete.</string>
     <string name="storage_ask_before_unpinning">Zeptat se před odepnutím</string>
     <string name="storage_ask_before_unpinning_note">Odepnutím se soubory vydání z tohoto telefonu odstraní hned</string>
     <string name="storage_pinned_note">Připnutá vydání zůstávají v tomto telefonu celá pro přehrávání offline a nezapočítávají se do mezipaměti.</string>
-    <string name="storage_delete_before_reset">Smazat data z doby před resetem</string>
+    <string name="storage_delete_before_reset">Smazat tato data</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nic je nepoužívá</string>
-    <string name="storage_delete_before_reset_title">Smazat data z doby před resetem?</string>
-    <string name="storage_delete_before_reset_body">%1$s se z tohoto telefonu odstraní. Nelze to vrátit zpět. Vaše knihovna zůstane nedotčená.</string>
+    <string name="storage_delete_before_reset_title">Smazat tato data?</string>
+    <string name="storage_delete_before_reset_body">bae z tohoto telefonu smaže %1$s. Tato data už nezískáte zpět. Vaše knihovna zůstane tak, jak je.</string>
     <string name="storage_delete">Smazat</string>
     <string name="members_title">Lidé a zařízení</string>
     <string name="people_people">Lidé</string>
@@ -245,7 +245,7 @@
     <string name="pin">Připnout</string>
     <string name="unpin">Odepnout</string>
     <string name="unpin_confirm_title">Odepnout toto vydání?</string>
-    <string name="unpin_confirm_body">Jeho soubory se z tohoto telefonu hned odstraní. Zůstane v cloudu a dokud jste online, přehrává se odtud.</string>
+    <string name="unpin_confirm_body">bae hned odstraní jeho soubory z tohoto telefonu. Vydání zůstane v cloudu a dokud jste online, přehrává se odtud.</string>
     <string name="dont_show_again">Příště nezobrazovat</string>
     <string name="pinned">Připnuto</string>
     <string name="pinning">Připíná se</string>
@@ -383,11 +383,11 @@
         <item quantity="many">Odebraná zařízení (%1$d)</item>
         <item quantity="other">Odebraná zařízení (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Zařízení bude odebráno</string>
+    <string name="device_removed_title">Odebírání zařízení</string>
     <string name="device_cut_off_confirm">Toto zařízení jsem odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ještě ne</string>
     <string name="device_cut_off_running_title">Toto zařízení se stále synchronizuje s cloudem</string>
-    <string name="device_cut_off_running_body">Počkejte, až skončí, a zkuste to znovu.</string>
+    <string name="device_cut_off_running_body">Počkejte, až skončí.</string>
     <string name="device_cut_off_not_gone_title">Odebrání ještě nedorazilo na toto zařízení</string>
     <string name="device_cut_off_not_gone_body">Zkuste to znovu po další synchronizaci.</string>
     <string name="members_invite">Pozvat</string>

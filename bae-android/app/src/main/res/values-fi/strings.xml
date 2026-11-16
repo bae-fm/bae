@@ -39,7 +39,7 @@
     <string name="album_options">Albumin valinnat</string>
     <string name="delete_album">Poista albumi…</string>
     <string name="delete_album_confirm_title">Poistetaanko tämä albumi?</string>
-    <string name="delete_album_confirm_body">Kaikki tämän albumin julkaisut poistetaan pysyvästi laitteiltasi ja pilvestä. Kansioissasi olevia alkuperäisiä tiedostoja ei kosketa.</string>
+    <string name="delete_album_confirm_body">bae poistaa kaikki tämän albumin julkaisut pysyvästi laitteiltasi ja pilvestä ja säilyttää alkuperäiset tiedostot kansioissasi.</string>
     <string name="delete_album_confirm">Poista</string>
     <string name="now_playing">Nyt toistetaan</string>
     <string name="paused">Tauolla</string>
@@ -117,7 +117,7 @@
     <string name="playlist_edit_title">Muokkaa soittolistaa</string>
     <string name="playlist_delete_menu">Poista soittolista…</string>
     <string name="playlist_delete_title">Poistetaanko %1$s?</string>
-    <string name="playlist_delete_message">Se poistetaan jokaiselta laitteelta. Sen kappaleet säilyvät kirjastossa.</string>
+    <string name="playlist_delete_message">bae poistaa tämän soittolistan jokaiselta laitteelta. Sen kappaleet säilyvät kirjastossa.</string>
     <string name="playlist_delete_confirm">Poista</string>
     <string name="playlist_options">Soittolistan valinnat</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Ennen nollausta</string>
     <string name="storage_clear_cache">Tyhjennä välimuisti</string>
     <string name="storage_keep_up_to">Säilytä enintään</string>
-    <string name="storage_cache_note">Pilvestä toistamasi raidat sekä kansikuvat ja kuvat. Ne ladataan uudelleen tarvittaessa.</string>
+    <string name="storage_cache_note">bae säilyttää täällä pilvestä toistamasi kappaleet, kansikuvat ja kuvat ja lataa ne uudelleen, kun toistat tai avaat ne.</string>
     <string name="storage_ask_before_unpinning">Kysy ennen irrottamista</string>
     <string name="storage_ask_before_unpinning_note">Irrottaminen poistaa julkaisun tiedostot tästä puhelimesta heti</string>
     <string name="storage_pinned_note">Kiinnitetyt julkaisut pysyvät kokonaisina tässä puhelimessa offline-toistoa varten, eivätkä ne lasketa välimuistiin.</string>
-    <string name="storage_delete_before_reset">Poista ennen nollausta olleet tiedot</string>
+    <string name="storage_delete_before_reset">Poista nämä tiedot</string>
     <string name="storage_before_reset_nothing_uses">%1$s · mikään ei käytä niitä</string>
-    <string name="storage_delete_before_reset_title">Poistetaanko ennen nollausta olleet tiedot?</string>
-    <string name="storage_delete_before_reset_body">%1$s poistetaan tästä puhelimesta. Poistoa ei voi perua. Kirjastoasi se ei koske.</string>
+    <string name="storage_delete_before_reset_title">Poistetaanko nämä tiedot?</string>
+    <string name="storage_delete_before_reset_body">bae poistaa tästä puhelimesta %1$s. Et saa näitä tietoja takaisin. Kirjastosi pysyy ennallaan.</string>
     <string name="storage_delete">Poista</string>
     <string name="members_title">Ihmiset ja laitteet</string>
     <string name="people_people">Henkilöt</string>
@@ -238,7 +238,7 @@
     <string name="pin">Kiinnitä</string>
     <string name="unpin">Irrota</string>
     <string name="unpin_confirm_title">Irrotetaanko tämä julkaisu?</string>
-    <string name="unpin_confirm_body">Sen tiedostot poistetaan tästä puhelimesta nyt. Se pysyy pilvessä ja suoratoistetaan sieltä, kun olet verkossa.</string>
+    <string name="unpin_confirm_body">bae poistaa sen tiedostot tästä puhelimesta nyt. Julkaisu pysyy pilvessä, ja sitä suoratoistetaan sieltä, kun olet verkossa.</string>
     <string name="dont_show_again">Älä näytä tätä uudelleen</string>
     <string name="pinned">Kiinnitetty</string>
     <string name="pinning">Kiinnitetään</string>
@@ -365,11 +365,11 @@
         <item quantity="one">Poistettu laite (%1$d)</item>
         <item quantity="other">Poistetut laitteet (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Laite poistetaan</string>
+    <string name="device_removed_title">Laitetta poistetaan</string>
     <string name="device_cut_off_confirm">Olen katkaissut tämän laitteen pääsyn</string>
     <string name="device_cut_off_not_yet">Ei vielä</string>
     <string name="device_cut_off_running_title">Tämä laite synkronoi yhä pilven kanssa</string>
-    <string name="device_cut_off_running_body">Odota, että se päättyy, ja yritä sitten uudelleen.</string>
+    <string name="device_cut_off_running_body">Odota, että se päättyy.</string>
     <string name="device_cut_off_not_gone_title">Poisto ei ole vielä saapunut tälle laitteelle</string>
     <string name="device_cut_off_not_gone_body">Yritä uudelleen seuraavan synkronoinnin jälkeen.</string>
     <string name="members_invite">Kutsu</string>

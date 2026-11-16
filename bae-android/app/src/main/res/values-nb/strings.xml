@@ -39,7 +39,7 @@
     <string name="album_options">Albumvalg</string>
     <string name="delete_album">Slett album…</string>
     <string name="delete_album_confirm_title">Slette dette albumet?</string>
-    <string name="delete_album_confirm_body">Alle utgivelser av dette albumet slettes permanent fra enhetene dine og fra skyen. Originalfilene i mappene dine blir ikke rørt.</string>
+    <string name="delete_album_confirm_body">bae vil slette alle utgivelser av dette albumet permanent fra enhetene dine og fra skyen, og beholde originalfilene i mappene dine.</string>
     <string name="delete_album_confirm">Slett</string>
     <string name="now_playing">Spilles nå</string>
     <string name="paused">Satt på pause</string>
@@ -117,7 +117,7 @@
     <string name="playlist_edit_title">Rediger spilleliste</string>
     <string name="playlist_delete_menu">Slett spilleliste…</string>
     <string name="playlist_delete_title">Slette %1$s?</string>
-    <string name="playlist_delete_message">Den slettes fra alle enheter. Sporene i den blir værende i biblioteket.</string>
+    <string name="playlist_delete_message">bae vil slette denne spillelisten fra alle enheter. Sporene i den blir værende i biblioteket.</string>
     <string name="playlist_delete_confirm">Slett</string>
     <string name="playlist_options">Spillelistealternativ</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Fra før tilbakestillingen</string>
     <string name="storage_clear_cache">Tøm bufferen</string>
     <string name="storage_keep_up_to">Behold opptil</string>
-    <string name="storage_cache_note">Spor du har spilt fra skyen, samt omslag og bilder. De lastes ned igjen når det trengs.</string>
+    <string name="storage_cache_note">bae lagrer spor du har spilt av fra skyen, omslag og bilder her, og laster dem ned igjen når du spiller av eller åpner dem.</string>
     <string name="storage_ask_before_unpinning">Spør før løsning</string>
     <string name="storage_ask_before_unpinning_note">Når du løsner en utgivelse, fjernes filene fra denne telefonen med en gang</string>
     <string name="storage_pinned_note">Festede utgivelser blir liggende hele på denne telefonen for avspilling uten nett, og telles ikke med i bufferen.</string>
-    <string name="storage_delete_before_reset">Slett data fra før tilbakestillingen</string>
+    <string name="storage_delete_before_reset">Slett disse dataene</string>
     <string name="storage_before_reset_nothing_uses">%1$s · ingenting bruker det</string>
-    <string name="storage_delete_before_reset_title">Slette data fra før tilbakestillingen?</string>
-    <string name="storage_delete_before_reset_body">%1$s fjernes fra denne telefonen. Det kan ikke angres. Biblioteket ditt påvirkes ikke.</string>
+    <string name="storage_delete_before_reset_title">Slette disse dataene?</string>
+    <string name="storage_delete_before_reset_body">bae vil slette %1$s fra denne telefonen. Du kan ikke få disse dataene tilbake. Biblioteket ditt forblir som det er.</string>
     <string name="storage_delete">Slett</string>
     <string name="members_title">Personer og enheter</string>
     <string name="people_people">Personer</string>
@@ -238,7 +238,7 @@
     <string name="pin">Fest</string>
     <string name="unpin">Løsne</string>
     <string name="unpin_confirm_title">Løsne denne utgivelsen?</string>
-    <string name="unpin_confirm_body">Filene fjernes fra denne telefonen nå. Utgivelsen blir værende i skyen og strømmes derfra mens du er på nett.</string>
+    <string name="unpin_confirm_body">bae vil fjerne filene fra denne telefonen nå. Utgivelsen blir værende i skyen og strømmes derfra mens du er på nett.</string>
     <string name="dont_show_again">Ikke vis dette igjen</string>
     <string name="pinned">Festet</string>
     <string name="pinning">Fester</string>
@@ -365,11 +365,11 @@
         <item quantity="one">Fjernet enhet (%1$d)</item>
         <item quantity="other">Fjernede enheter (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Enheten blir fjernet</string>
+    <string name="device_removed_title">Fjerner enheten</string>
     <string name="device_cut_off_confirm">Jeg har koblet fra denne enheten</string>
     <string name="device_cut_off_not_yet">Ikke ennå</string>
     <string name="device_cut_off_running_title">Denne enheten synkroniserer fortsatt med skyen</string>
-    <string name="device_cut_off_running_body">Vent til den er ferdig, og prøv igjen.</string>
+    <string name="device_cut_off_running_body">Vent til den er ferdig.</string>
     <string name="device_cut_off_not_gone_title">Fjerningen har ikke nådd denne enheten ennå</string>
     <string name="device_cut_off_not_gone_body">Prøv igjen etter neste synkronisering.</string>
     <string name="members_invite">Inviter</string>

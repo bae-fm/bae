@@ -39,7 +39,7 @@
     <string name="album_options">Параметри альбому</string>
     <string name="delete_album">Видалити альбом…</string>
     <string name="delete_album_confirm_title">Видалити цей альбом?</string>
-    <string name="delete_album_confirm_body">Усі релізи цього альбому буде остаточно видалено з ваших пристроїв і з хмари. Оригінальні файли у ваших теках не буде змінено.</string>
+    <string name="delete_album_confirm_body">bae остаточно видалить усі релізи цього альбому з ваших пристроїв і з хмари та збереже оригінальні файли у ваших теках.</string>
     <string name="delete_album_confirm">Видалити</string>
     <string name="now_playing">Зараз відтворюється</string>
     <string name="paused">Призупинено</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Редагувати плейлист</string>
     <string name="playlist_delete_menu">Видалити плейлист…</string>
     <string name="playlist_delete_title">Видалити %1$s?</string>
-    <string name="playlist_delete_message">Його буде видалено з усіх пристроїв. Треки з нього залишаться в бібліотеці.</string>
+    <string name="playlist_delete_message">bae видалить цей плейлист з усіх пристроїв. Його треки залишаться в бібліотеці.</string>
     <string name="playlist_delete_confirm">Видалити</string>
     <string name="playlist_options">Параметри плейлиста</string>
     <plurals name="album_count">
@@ -200,14 +200,14 @@
     <string name="storage_kind_before_reset">З часів до скидання</string>
     <string name="storage_clear_cache">Очистити кеш</string>
     <string name="storage_keep_up_to">Зберігати до</string>
-    <string name="storage_cache_note">Треки, які ви відтворювали з хмари, а також обкладинки й зображення. За потреби вони завантажуються знову.</string>
+    <string name="storage_cache_note">bae зберігає тут треки, які ви відтворювали з хмари, обкладинки й зображення, і завантажує їх знову, коли ви їх відтворюєте або відкриваєте.</string>
     <string name="storage_ask_before_unpinning">Питати перед відкріпленням</string>
     <string name="storage_ask_before_unpinning_note">Відкріплення одразу видаляє файли релізу з цього телефона</string>
     <string name="storage_pinned_note">Закріплені релізи залишаються цілими на цьому телефоні для відтворення офлайн і не враховуються в кеші.</string>
-    <string name="storage_delete_before_reset">Видалити дані з часів до скидання</string>
+    <string name="storage_delete_before_reset">Видалити ці дані</string>
     <string name="storage_before_reset_nothing_uses">%1$s · ніщо їх не використовує</string>
-    <string name="storage_delete_before_reset_title">Видалити дані з часів до скидання?</string>
-    <string name="storage_delete_before_reset_body">%1$s буде видалено з цього телефона. Це не можна скасувати. Вашу бібліотеку це не зачепить.</string>
+    <string name="storage_delete_before_reset_title">Видалити ці дані?</string>
+    <string name="storage_delete_before_reset_body">bae видалить %1$s з цього телефона. Ви не зможете повернути ці дані. Ваша бібліотека залишиться такою, як є.</string>
     <string name="storage_delete">Видалити</string>
     <string name="members_title">Люди та пристрої</string>
     <string name="people_people">Люди</string>
@@ -245,7 +245,7 @@
     <string name="pin">Закріпити</string>
     <string name="unpin">Відкріпити</string>
     <string name="unpin_confirm_title">Відкріпити цей реліз?</string>
-    <string name="unpin_confirm_body">Його файли буде одразу видалено з цього телефона. Він залишиться в хмарі й відтворюватиметься звідти, поки ви онлайн.</string>
+    <string name="unpin_confirm_body">bae одразу видалить його файли з цього телефона. Реліз залишиться в хмарі й відтворюватиметься звідти, поки ви онлайн.</string>
     <string name="dont_show_again">Більше не показувати</string>
     <string name="pinned">Закріплено</string>
     <string name="pinning">Закріплення</string>
@@ -383,11 +383,11 @@
         <item quantity="many">Вилучені пристрої (%1$d)</item>
         <item quantity="other">Вилучені пристрої (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Пристрій буде вилучено</string>
+    <string name="device_removed_title">Вилучення пристрою</string>
     <string name="device_cut_off_confirm">Я відключив(-ла) цей пристрій</string>
     <string name="device_cut_off_not_yet">Ще ні</string>
     <string name="device_cut_off_running_title">Цей пристрій ще синхронізується з хмарою</string>
-    <string name="device_cut_off_running_body">Зачекайте, поки він завершиться, і спробуйте ще раз.</string>
+    <string name="device_cut_off_running_body">Зачекайте, поки він завершиться.</string>
     <string name="device_cut_off_not_gone_title">Видалення ще не дійшло до цього пристрою</string>
     <string name="device_cut_off_not_gone_body">Спробуйте ще раз після наступної синхронізації.</string>
     <string name="members_invite">Запросити</string>

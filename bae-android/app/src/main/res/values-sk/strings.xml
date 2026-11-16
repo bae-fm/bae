@@ -39,7 +39,7 @@
     <string name="album_options">Možnosti albumu</string>
     <string name="delete_album">Odstrániť album…</string>
     <string name="delete_album_confirm_title">Odstrániť tento album?</string>
-    <string name="delete_album_confirm_body">Všetky vydania tohto albumu sa natrvalo odstránia z tvojich zariadení aj z cloudu. Pôvodné súbory v tvojich priečinkoch sa nedotknú.</string>
+    <string name="delete_album_confirm_body">bae natrvalo odstráni všetky vydania tohto albumu z tvojich zariadení aj z cloudu a ponechá pôvodné súbory v tvojich priečinkoch.</string>
     <string name="delete_album_confirm">Odstrániť</string>
     <string name="now_playing">Prehráva sa</string>
     <string name="paused">Pozastavené</string>
@@ -119,7 +119,7 @@
     <string name="playlist_edit_title">Upraviť zoznam skladieb</string>
     <string name="playlist_delete_menu">Odstrániť zoznam skladieb…</string>
     <string name="playlist_delete_title">Odstrániť %1$s?</string>
-    <string name="playlist_delete_message">Odstráni sa zo všetkých zariadení. Skladby v ňom zostanú v knižnici.</string>
+    <string name="playlist_delete_message">bae odstráni tento zoznam skladieb zo všetkých zariadení. Jeho skladby zostanú v knižnici.</string>
     <string name="playlist_delete_confirm">Odstrániť</string>
     <string name="playlist_options">Možnosti zoznamu skladieb</string>
     <plurals name="album_count">
@@ -206,14 +206,14 @@
     <string name="storage_kind_before_reset">Spred resetu</string>
     <string name="storage_clear_cache">Vymazať vyrovnávaciu pamäť</string>
     <string name="storage_keep_up_to">Ponechať až</string>
-    <string name="storage_cache_note">Skladby, ktoré si prehral z cloudu, a tiež obaly a obrázky. V prípade potreby sa stiahnu znova.</string>
+    <string name="storage_cache_note">bae tu uchováva skladby, ktoré si prehral z cloudu, obaly a obrázky, a znova ich stiahne, keď ich prehráš alebo otvoríš.</string>
     <string name="storage_ask_before_unpinning">Opýtať sa pred odopnutím</string>
     <string name="storage_ask_before_unpinning_note">Odopnutím sa súbory vydania z tohto telefónu odstránia hneď</string>
     <string name="storage_pinned_note">Pripnuté vydania ostávajú v tomto telefóne celé na prehrávanie offline a nezapočítavajú sa do vyrovnávacej pamäte.</string>
-    <string name="storage_delete_before_reset">Odstrániť dáta spred resetu</string>
+    <string name="storage_delete_before_reset">Odstrániť tieto dáta</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nič ich nepoužíva</string>
-    <string name="storage_delete_before_reset_title">Odstrániť dáta spred resetu?</string>
-    <string name="storage_delete_before_reset_body">%1$s sa z tohto telefónu odstráni. Nedá sa to vrátiť späť. Tvoja knižnica zostane nedotknutá.</string>
+    <string name="storage_delete_before_reset_title">Odstrániť tieto dáta?</string>
+    <string name="storage_delete_before_reset_body">bae z tohto telefónu odstráni %1$s. Tieto dáta už nezískaš späť. Tvoja knižnica zostane taká, aká je.</string>
     <string name="storage_delete">Odstrániť</string>
     <string name="members_title">Ľudia a zariadenia</string>
     <string name="people_people">Ľudia</string>
@@ -250,7 +250,7 @@
     <string name="pin">Pripnúť</string>
     <string name="unpin">Odopnúť</string>
     <string name="unpin_confirm_title">Odopnúť toto vydanie?</string>
-    <string name="unpin_confirm_body">Jeho súbory sa z tohto telefónu hneď odstránia. Zostane v cloude a bude sa odtiaľ streamovať, kým si online.</string>
+    <string name="unpin_confirm_body">bae hneď odstráni jeho súbory z tohto telefónu. Vydanie zostane v cloude a bude sa odtiaľ streamovať, kým si online.</string>
     <string name="dont_show_again">Už nezobrazovať</string>
     <string name="pinned">Pripnuté</string>
     <string name="pinning">Pripína sa</string>
@@ -381,11 +381,11 @@
         <item quantity="many">Odstránené zariadenia (%1$d)</item>
         <item quantity="other">Odstránené zariadenia (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Zariadenie bude odstránené</string>
+    <string name="device_removed_title">Odstraňovanie zariadenia</string>
     <string name="device_cut_off_confirm">Toto zariadenie som odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ešte nie</string>
     <string name="device_cut_off_running_title">Toto zariadenie sa stále synchronizuje s cloudom</string>
-    <string name="device_cut_off_running_body">Počkajte, kým skončí, a skúste to znova.</string>
+    <string name="device_cut_off_running_body">Počkajte, kým skončí.</string>
     <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
     <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>
     <string name="members_invite">Pozvať</string>

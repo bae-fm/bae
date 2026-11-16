@@ -39,7 +39,7 @@
     <string name="album_options">Opțiuni pentru album</string>
     <string name="delete_album">Șterge albumul…</string>
     <string name="delete_album_confirm_title">Ștergi acest album?</string>
-    <string name="delete_album_confirm_body">Toate edițiile acestui album vor fi șterse definitiv de pe dispozitivele tale și din cloud. Fișierele originale din dosarele tale nu vor fi atinse.</string>
+    <string name="delete_album_confirm_body">bae va șterge definitiv toate edițiile acestui album de pe dispozitivele tale și din cloud și va păstra fișierele originale în dosarele tale.</string>
     <string name="delete_album_confirm">Șterge</string>
     <string name="now_playing">Se redă acum</string>
     <string name="paused">În pauză</string>
@@ -118,7 +118,7 @@
     <string name="playlist_edit_title">Editează lista de redare</string>
     <string name="playlist_delete_menu">Șterge lista de redare…</string>
     <string name="playlist_delete_title">Ștergi %1$s?</string>
-    <string name="playlist_delete_message">Se șterge de pe toate dispozitivele. Piesele din ea rămân în bibliotecă.</string>
+    <string name="playlist_delete_message">bae va șterge această listă de redare de pe toate dispozitivele. Piesele din ea rămân în bibliotecă.</string>
     <string name="playlist_delete_confirm">Șterge</string>
     <string name="playlist_options">Opțiuni pentru lista de redare</string>
     <plurals name="album_count">
@@ -201,14 +201,14 @@
     <string name="storage_kind_before_reset">De dinainte de resetare</string>
     <string name="storage_clear_cache">Golește memoria cache</string>
     <string name="storage_keep_up_to">Păstrează până la</string>
-    <string name="storage_cache_note">Piesele pe care le-ai redat din cloud, plus copertele și imaginile. Se descarcă din nou când e nevoie.</string>
+    <string name="storage_cache_note">bae păstrează aici piesele redate din cloud, copertele și imaginile și le descarcă din nou când le redai sau le deschizi.</string>
     <string name="storage_ask_before_unpinning">Întreabă înainte de a anula fixarea</string>
     <string name="storage_ask_before_unpinning_note">Anularea fixării elimină imediat de pe acest telefon fișierele unei ediții</string>
     <string name="storage_pinned_note">Edițiile fixate rămân întregi pe acest telefon pentru redare offline și nu se iau în calcul pentru cache.</string>
-    <string name="storage_delete_before_reset">Șterge datele de dinainte de resetare</string>
+    <string name="storage_delete_before_reset">Șterge aceste date</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nimic nu le folosește</string>
-    <string name="storage_delete_before_reset_title">Ștergi datele de dinainte de resetare?</string>
-    <string name="storage_delete_before_reset_body">%1$s vor fi eliminate de pe acest telefon. Nu pot fi recuperate. Biblioteca ta nu este afectată.</string>
+    <string name="storage_delete_before_reset_title">Ștergi aceste date?</string>
+    <string name="storage_delete_before_reset_body">bae va șterge %1$s de pe acest telefon. Nu poți recupera aceste date. Biblioteca ta rămâne așa cum este.</string>
     <string name="storage_delete">Șterge</string>
     <string name="members_title">Persoane și dispozitive</string>
     <string name="people_people">Persoane</string>
@@ -244,7 +244,7 @@
     <string name="pin">Fixează</string>
     <string name="unpin">Anulează fixarea</string>
     <string name="unpin_confirm_title">Anulezi fixarea pentru această ediție?</string>
-    <string name="unpin_confirm_body">Fișierele ei vor fi eliminate acum de pe acest telefon. Rămâne în cloud și se redă de acolo în flux cât timp ești online.</string>
+    <string name="unpin_confirm_body">bae va elimina acum fișierele ei de pe acest telefon. Ediția rămâne în cloud și se redă de acolo în flux cât timp ești online.</string>
     <string name="dont_show_again">Nu mai afișa acest mesaj</string>
     <string name="pinned">Fixat</string>
     <string name="pinning">Se fixează</string>
@@ -373,11 +373,11 @@
         <item quantity="few">Dispozitive eliminate (%1$d)</item>
         <item quantity="other">Dispozitive eliminate (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Dispozitivul va fi eliminat</string>
+    <string name="device_removed_title">Se elimină dispozitivul</string>
     <string name="device_cut_off_confirm">Am deconectat acest dispozitiv</string>
     <string name="device_cut_off_not_yet">Încă nu</string>
     <string name="device_cut_off_running_title">Acest dispozitiv încă se sincronizează cu cloudul</string>
-    <string name="device_cut_off_running_body">Așteaptă să se termine, apoi încearcă din nou.</string>
+    <string name="device_cut_off_running_body">Așteaptă să se termine.</string>
     <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
     <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>
     <string name="members_invite">Invită</string>

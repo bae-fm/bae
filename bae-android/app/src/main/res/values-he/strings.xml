@@ -39,7 +39,7 @@
     <string name="album_options">אפשרויות אלבום</string>
     <string name="delete_album">מחיקת אלבום…</string>
     <string name="delete_album_confirm_title">למחוק את האלבום הזה?</string>
-    <string name="delete_album_confirm_body">כל המהדורות של האלבום הזה יימחקו לצמיתות מהמכשירים שלך ומהענן. הקבצים המקוריים בתיקיות שלך לא ייפגעו.</string>
+    <string name="delete_album_confirm_body">bae ימחק לצמיתות את כל המהדורות של האלבום הזה מהמכשירים שלך ומהענן, וישאיר את הקבצים המקוריים בתיקיות שלך.</string>
     <string name="delete_album_confirm">מחיקה</string>
     <string name="now_playing">מתנגן כעת</string>
     <string name="paused">מושהה</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">עריכת רשימת השמעה</string>
     <string name="playlist_delete_menu">מחיקת רשימת השמעה…</string>
     <string name="playlist_delete_title">למחוק את %1$s?</string>
-    <string name="playlist_delete_message">היא נמחקת מכל מכשיר. הרצועות שבה נשארות בספרייה.</string>
+    <string name="playlist_delete_message">bae ימחק את רשימת ההשמעה הזו מכל מכשיר. הרצועות שבה נשארות בספרייה.</string>
     <string name="playlist_delete_confirm">מחק</string>
     <string name="playlist_options">אפשרויות רשימת השמעה</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">מלפני האיפוס</string>
     <string name="storage_clear_cache">ניקוי המטמון</string>
     <string name="storage_keep_up_to">לשמור עד</string>
-    <string name="storage_cache_note">רצועות שהשמעת מהענן, וגם עטיפות ותמונות. הן יורדות שוב לפי הצורך.</string>
+    <string name="storage_cache_note">bae שומר כאן רצועות שהשמעת מהענן, עטיפות ותמונות, ומוריד אותן שוב כשאתה משמיע או פותח אותן.</string>
     <string name="storage_ask_before_unpinning">לשאול לפני ביטול הצמדה</string>
     <string name="storage_ask_before_unpinning_note">ביטול הצמדה מסיר מיד את קבצי המהדורה מהטלפון הזה</string>
     <string name="storage_pinned_note">מהדורות מוצמדות נשארות שלמות בטלפון הזה להשמעה ללא חיבור, ואינן נספרות במטמון.</string>
-    <string name="storage_delete_before_reset">מחיקת נתונים מלפני האיפוס</string>
+    <string name="storage_delete_before_reset">מחיקת הנתונים האלה</string>
     <string name="storage_before_reset_nothing_uses">%1$s · שום דבר לא משתמש בהם</string>
-    <string name="storage_delete_before_reset_title">למחוק נתונים מלפני האיפוס?</string>
-    <string name="storage_delete_before_reset_body">%1$s יוסרו מהטלפון הזה. אי אפשר לשחזר אותם. הספרייה שלך לא תושפע.</string>
+    <string name="storage_delete_before_reset_title">למחוק את הנתונים האלה?</string>
+    <string name="storage_delete_before_reset_body">bae ימחק %1$s מהטלפון הזה. לא תוכל לקבל את הנתונים האלה בחזרה. הספרייה שלך נשארת כפי שהיא.</string>
     <string name="storage_delete">מחיקה</string>
     <string name="members_title">אנשים ומכשירים</string>
     <string name="people_people">אנשים</string>
@@ -240,7 +240,7 @@
     <string name="pin">הצמד</string>
     <string name="unpin">בטל הצמדה</string>
     <string name="unpin_confirm_title">לבטל את ההצמדה של המהדורה הזו?</string>
-    <string name="unpin_confirm_body">הקבצים שלה יוסרו מהטלפון הזה עכשיו. היא נשארת בענן ומוזרמת משם כל עוד יש חיבור לאינטרנט.</string>
+    <string name="unpin_confirm_body">bae יסיר את הקבצים שלה מהטלפון הזה עכשיו. המהדורה נשארת בענן ומוזרמת משם כל עוד יש חיבור לאינטרנט.</string>
     <string name="dont_show_again">אל תציג זאת שוב</string>
     <string name="pinned">מוצמד</string>
     <string name="pinning">מצמיד</string>
@@ -375,11 +375,11 @@
         <item quantity="two">מכשירים שהוסרו (%1$d)</item>
         <item quantity="other">מכשירים שהוסרו (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">המכשיר יוסר</string>
+    <string name="device_removed_title">הסרת המכשיר</string>
     <string name="device_cut_off_confirm">ניתקתי את המכשיר הזה</string>
     <string name="device_cut_off_not_yet">עדיין לא</string>
     <string name="device_cut_off_running_title">המכשיר הזה עדיין מסתנכרן עם הענן</string>
-    <string name="device_cut_off_running_body">המתן לסיומה ונסה שוב.</string>
+    <string name="device_cut_off_running_body">המתן לסיומה.</string>
     <string name="device_cut_off_not_gone_title">ההסרה עוד לא הגיעה למכשיר הזה</string>
     <string name="device_cut_off_not_gone_body">נסה שוב אחרי הסנכרון הבא.</string>
     <string name="members_invite">הזמנה</string>

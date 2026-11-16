@@ -39,7 +39,7 @@
     <string name="album_options">Albüm seçenekleri</string>
     <string name="delete_album">Albümü sil…</string>
     <string name="delete_album_confirm_title">Bu albüm silinsin mi?</string>
-    <string name="delete_album_confirm_body">Bu albümün tüm yayınları cihazlarınızdan ve buluttan kalıcı olarak silinecek. Klasörlerinizdeki özgün dosyalara dokunulmayacak.</string>
+    <string name="delete_album_confirm_body">bae, bu albümün tüm yayınlarını cihazlarınızdan ve buluttan kalıcı olarak silecek ve klasörlerinizdeki özgün dosyaları koruyacak.</string>
     <string name="delete_album_confirm">Sil</string>
     <string name="now_playing">Çalıyor</string>
     <string name="paused">Duraklatıldı</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Çalma listesini düzenle</string>
     <string name="playlist_delete_menu">Çalma listesini sil…</string>
     <string name="playlist_delete_title">%1$s silinsin mi?</string>
-    <string name="playlist_delete_message">Her cihazdan silinir. İçindeki parçalar kitaplıkta kalır.</string>
+    <string name="playlist_delete_message">bae, bu çalma listesini her cihazdan silecek. İçindeki parçalar kitaplıkta kalır.</string>
     <string name="playlist_delete_confirm">Sil</string>
     <string name="playlist_options">Çalma listesi seçenekleri</string>
     <plurals name="album_count">
@@ -192,14 +192,14 @@
     <string name="storage_kind_before_reset">Sıfırlamadan önceki</string>
     <string name="storage_clear_cache">Önbelleği temizle</string>
     <string name="storage_keep_up_to">En fazla şu kadar tut</string>
-    <string name="storage_cache_note">Bulutta çaldığınız parçalar ile kapaklar ve resimler. Gerektiğinde yeniden indirilir.</string>
+    <string name="storage_cache_note">bae, buluttan oynattığınız parçaları, kapakları ve resimleri burada tutar ve bunları oynattığınızda ya da açtığınızda yeniden indirir.</string>
     <string name="storage_ask_before_unpinning">Sabitlemeyi kaldırmadan önce sor</string>
     <string name="storage_ask_before_unpinning_note">Sabitlemeyi kaldırmak, bir yayının dosyalarını bu telefondan hemen siler</string>
     <string name="storage_pinned_note">Sabitlenen yayınlar çevrimdışı çalmak için bu telefonda eksiksiz kalır ve önbelleğe sayılmaz.</string>
-    <string name="storage_delete_before_reset">Sıfırlamadan önceki verileri sil</string>
+    <string name="storage_delete_before_reset">Bu verileri sil</string>
     <string name="storage_before_reset_nothing_uses">%1$s · hiçbir şey kullanmıyor</string>
-    <string name="storage_delete_before_reset_title">Sıfırlamadan önceki veriler silinsin mi?</string>
-    <string name="storage_delete_before_reset_body">%1$s bu telefondan kaldırılacak. Geri alınamaz. Kitaplığınız etkilenmez.</string>
+    <string name="storage_delete_before_reset_title">Bu veriler silinsin mi?</string>
+    <string name="storage_delete_before_reset_body">bae, %1$s veriyi bu telefondan silecek. Bu verileri geri alamazsınız. Kitaplığınız olduğu gibi kalır.</string>
     <string name="storage_delete">Sil</string>
     <string name="members_title">Kişiler ve cihazlar</string>
     <string name="people_people">Kişiler</string>
@@ -235,7 +235,7 @@
     <string name="pin">Sabitle</string>
     <string name="unpin">Sabitlemeyi kaldır</string>
     <string name="unpin_confirm_title">Bu yayının sabitlemesi kaldırılsın mı?</string>
-    <string name="unpin_confirm_body">Dosyaları şimdi bu telefondan kaldırılacak. Bulutta kalır ve çevrimiçi olduğunuzda oradan akışla oynatılır.</string>
+    <string name="unpin_confirm_body">bae, dosyalarını şimdi bu telefondan kaldıracak. Yayın bulutta kalır ve çevrimiçi olduğunuzda oradan akışla oynatılır.</string>
     <string name="dont_show_again">Bunu bir daha gösterme</string>
     <string name="pinned">Sabitlendi</string>
     <string name="pinning">Sabitleniyor</string>
@@ -367,11 +367,11 @@
         <item quantity="one">Kaldırılan cihaz (%1$d)</item>
         <item quantity="other">Kaldırılan cihazlar (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Cihaz kaldırılacak</string>
+    <string name="device_removed_title">Cihaz kaldırılıyor</string>
     <string name="device_cut_off_confirm">Bu cihazın erişimini kestim</string>
     <string name="device_cut_off_not_yet">Henüz değil</string>
     <string name="device_cut_off_running_title">Bu cihaz hâlâ bulutla eşitleniyor</string>
-    <string name="device_cut_off_running_body">Bitmesini bekleyin, sonra tekrar deneyin.</string>
+    <string name="device_cut_off_running_body">Bitmesini bekleyin.</string>
     <string name="device_cut_off_not_gone_title">Kaldırma işlemi henüz bu cihaza ulaşmadı</string>
     <string name="device_cut_off_not_gone_body">Bir sonraki senkronizasyondan sonra tekrar deneyin.</string>
     <string name="members_invite">Davet et</string>

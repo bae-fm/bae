@@ -23,7 +23,7 @@ enum DeletePlaylistConfirmation {
                     )
                 ),
                 message: Text(
-                    "It is deleted from every device. The tracks in it stay in the library."
+                    "bae will delete this playlist from every device. Its tracks stay in the library."
                 )
             ),
             [

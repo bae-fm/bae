@@ -3284,9 +3284,10 @@ isn't offered. When that read fails the removal fails to the person, changing
 nothing, and they retry it. Coven refuses a device the
 history doesn't have removed yet, which the removal on this device may not have
 reached; the app then says the removal hasn't reached this device yet and asks
-to **Try again** after the next sync, or **Cancel**. While a request to one of
+to **Try again** after the next sync, or **Not yet**. While a request to one of
 the accounts runs, coven changes nothing and the app says this device is still
-syncing with the cloud, with the same two buttons. Another person's device
+syncing with the cloud and to wait for it to end, with **Try again** and
+**Cancel**. Another person's device
 removed by an admin gets only **OK**: its person does the step.
 
 A new phone's first screen shows bae's sheep and name over "Your music,

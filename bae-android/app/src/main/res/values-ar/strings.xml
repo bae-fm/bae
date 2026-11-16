@@ -39,7 +39,7 @@
     <string name="album_options">خيارات الألبوم</string>
     <string name="delete_album">حذف الألبوم…</string>
     <string name="delete_album_confirm_title">حذف هذا الألبوم؟</string>
-    <string name="delete_album_confirm_body">ستُحذف كل إصدارات هذا الألبوم نهائيًا من أجهزتك ومن السحابة. لن تُمَسّ الملفات الأصلية في مجلداتك.</string>
+    <string name="delete_album_confirm_body">سيحذف bae كل إصدارات هذا الألبوم نهائيًا من أجهزتك ومن السحابة، ويُبقي الملفات الأصلية في مجلداتك.</string>
     <string name="delete_album_confirm">حذف</string>
     <string name="now_playing">قيد التشغيل الآن</string>
     <string name="paused">متوقف مؤقتًا</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">تحرير قائمة التشغيل</string>
     <string name="playlist_delete_menu">حذف قائمة التشغيل…</string>
     <string name="playlist_delete_title">حذف %1$s؟</string>
-    <string name="playlist_delete_message">تُحذف من كل جهاز. تبقى المقاطع التي فيها في المكتبة.</string>
+    <string name="playlist_delete_message">سيحذف bae قائمة التشغيل هذه من كل جهاز. تبقى مقاطعها في المكتبة.</string>
     <string name="playlist_delete_confirm">حذف</string>
     <string name="playlist_options">خيارات قائمة التشغيل</string>
     <plurals name="album_count">
@@ -208,14 +208,14 @@
     <string name="storage_kind_before_reset">من قبل إعادة الضبط</string>
     <string name="storage_clear_cache">مسح ذاكرة التخزين المؤقت</string>
     <string name="storage_keep_up_to">الاحتفاظ بحد أقصى</string>
-    <string name="storage_cache_note">المقاطع التي شغّلتها من السحابة، إضافةً إلى الأغلفة والصور. تُنزَّل مجددًا عند الحاجة.</string>
+    <string name="storage_cache_note">يحتفظ bae هنا بالمقاطع التي شغّلتها من السحابة والأغلفة والصور، ويعيد تنزيلها عندما تشغّلها أو تفتحها.</string>
     <string name="storage_ask_before_unpinning">السؤال قبل إلغاء التثبيت</string>
     <string name="storage_ask_before_unpinning_note">يؤدي إلغاء التثبيت إلى إزالة ملفات الإصدار من هذا الهاتف فورًا</string>
     <string name="storage_pinned_note">تبقى الإصدارات المثبّتة كاملة على هذا الهاتف للتشغيل بلا اتصال، ولا تُحتسب ضمن ذاكرة التخزين المؤقت.</string>
-    <string name="storage_delete_before_reset">حذف البيانات من قبل إعادة الضبط</string>
+    <string name="storage_delete_before_reset">حذف هذه البيانات</string>
     <string name="storage_before_reset_nothing_uses">%1$s · لا شيء يستخدمها</string>
-    <string name="storage_delete_before_reset_title">حذف البيانات من قبل إعادة الضبط؟</string>
-    <string name="storage_delete_before_reset_body">ستُزال %1$s من هذا الهاتف. لا يمكن استرجاعها. لن تتأثر مكتبتك.</string>
+    <string name="storage_delete_before_reset_title">حذف هذه البيانات؟</string>
+    <string name="storage_delete_before_reset_body">سيحذف bae %1$s من هذا الهاتف. لا يمكنك استعادة هذه البيانات. تبقى مكتبتك كما هي.</string>
     <string name="storage_delete">حذف</string>
     <string name="members_title">الأشخاص والأجهزة</string>
     <string name="people_people">الأشخاص</string>
@@ -255,7 +255,7 @@
     <string name="pin">تثبيت</string>
     <string name="unpin">إلغاء التثبيت</string>
     <string name="unpin_confirm_title">إلغاء تثبيت هذا الإصدار؟</string>
-    <string name="unpin_confirm_body">ستُزال ملفاته من هذا الهاتف الآن. يبقى في السحابة ويُبَثّ منها أثناء اتصالك بالإنترنت.</string>
+    <string name="unpin_confirm_body">سيزيل bae ملفاته من هذا الهاتف الآن. يبقى الإصدار في السحابة ويُبَثّ منها أثناء اتصالك بالإنترنت.</string>
     <string name="dont_show_again">عدم إظهار هذا مرة أخرى</string>
     <string name="pinned">مثبّت</string>
     <string name="pinning">جارٍ التثبيت</string>
@@ -399,11 +399,11 @@
         <item quantity="many">الأجهزة المُزالة (%1$d)</item>
         <item quantity="other">الأجهزة المُزالة (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">ستتم إزالة الجهاز</string>
+    <string name="device_removed_title">إزالة الجهاز</string>
     <string name="device_cut_off_confirm">لقد فصلت هذا الجهاز</string>
     <string name="device_cut_off_not_yet">ليس بعد</string>
     <string name="device_cut_off_running_title">هذا الجهاز لا يزال يزامن مع السحابة</string>
-    <string name="device_cut_off_running_body">انتظر حتى ينتهي، ثم حاول مرة أخرى.</string>
+    <string name="device_cut_off_running_body">انتظر حتى ينتهي.</string>
     <string name="device_cut_off_not_gone_title">إزالة الجهاز لم تصل إلى هذا الجهاز بعد</string>
     <string name="device_cut_off_not_gone_body">حاول مرة أخرى بعد المزامنة التالية.</string>
     <string name="members_invite">دعوة</string>

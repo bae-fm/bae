@@ -39,7 +39,7 @@
     <string name="album_options">アルバムオプション</string>
     <string name="delete_album">アルバムを削除…</string>
     <string name="delete_album_confirm_title">このアルバムを削除しますか？</string>
-    <string name="delete_album_confirm_body">このアルバムのすべてのリリースが、お使いのデバイスとクラウドから完全に削除されます。フォルダ内の元のファイルには手を加えません。</string>
+    <string name="delete_album_confirm_body">bae は、このアルバムのすべてのリリースをお使いのデバイスとクラウドから完全に削除し、フォルダ内の元のファイルは残します。</string>
     <string name="delete_album_confirm">削除</string>
     <string name="now_playing">再生中</string>
     <string name="paused">一時停止中</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">プレイリストを編集</string>
     <string name="playlist_delete_menu">プレイリストを削除…</string>
     <string name="playlist_delete_title">%1$sを削除しますか？</string>
-    <string name="playlist_delete_message">すべてのデバイスから削除されます。プレイリスト内のトラックはライブラリに残ります。</string>
+    <string name="playlist_delete_message">bae は、このプレイリストをすべてのデバイスから削除します。プレイリストのトラックはライブラリに残ります。</string>
     <string name="playlist_delete_confirm">削除</string>
     <string name="playlist_options">プレイリストオプション</string>
     <plurals name="album_count">
@@ -188,14 +188,14 @@
     <string name="storage_kind_before_reset">リセット前のデータ</string>
     <string name="storage_clear_cache">キャッシュを消去</string>
     <string name="storage_keep_up_to">保持する上限</string>
-    <string name="storage_cache_note">クラウドから再生したトラック、ならびにカバーと画像。必要になると再びダウンロードされます。</string>
+    <string name="storage_cache_note">bae は、クラウドから再生したトラック、カバー、画像をここに保存し、再生したり開いたりしたときに再びダウンロードします。</string>
     <string name="storage_ask_before_unpinning">ピン留めを解除する前に確認</string>
     <string name="storage_ask_before_unpinning_note">ピン留めを解除すると、リリースのファイルはすぐにこのスマートフォンから削除されます</string>
     <string name="storage_pinned_note">ピン留めしたリリースは、オフラインで再生できるようこのスマートフォンにそのまま残り、キャッシュには含まれません。</string>
-    <string name="storage_delete_before_reset">リセット前のデータを削除</string>
+    <string name="storage_delete_before_reset">このデータを削除</string>
     <string name="storage_before_reset_nothing_uses">%1$s · どこからも使われていません</string>
-    <string name="storage_delete_before_reset_title">リセット前のデータを削除しますか？</string>
-    <string name="storage_delete_before_reset_body">%1$s がこのスマートフォンから削除されます。元に戻すことはできません。ライブラリには影響しません。</string>
+    <string name="storage_delete_before_reset_title">このデータを削除しますか？</string>
+    <string name="storage_delete_before_reset_body">bae はこのスマートフォンから %1$s を削除します。このデータは元に戻せません。ライブラリはそのまま残ります。</string>
     <string name="storage_delete">削除</string>
     <string name="members_title">メンバーとデバイス</string>
     <string name="people_people">メンバー</string>
@@ -230,7 +230,7 @@
     <string name="pin">ピン留め</string>
     <string name="unpin">ピン留めを解除</string>
     <string name="unpin_confirm_title">このリリースのピン留めを解除しますか？</string>
-    <string name="unpin_confirm_body">このリリースのファイルは、今すぐこのスマートフォンから削除されます。クラウドには残り、オンラインの間はそこからストリーミング再生されます。</string>
+    <string name="unpin_confirm_body">bae は、このリリースのファイルを今すぐこのスマートフォンから削除します。リリースはクラウドに残り、オンラインの間はそこからストリーミング再生されます。</string>
     <string name="dont_show_again">今後このメッセージを表示しない</string>
     <string name="pinned">ピン留め済み</string>
     <string name="pinning">ピン留め中</string>
@@ -359,11 +359,11 @@
     <plurals name="members_former_devices">
         <item quantity="other">削除済みのデバイス（%1$d）</item>
     </plurals>
-    <string name="device_removed_title">デバイスは削除されます</string>
+    <string name="device_removed_title">デバイスの削除</string>
     <string name="device_cut_off_confirm">このデバイスを切り離しました</string>
     <string name="device_cut_off_not_yet">まだ</string>
     <string name="device_cut_off_running_title">このデバイスはまだクラウドと同期中です</string>
-    <string name="device_cut_off_running_body">終了するまで待ってから、もう一度お試しください。</string>
+    <string name="device_cut_off_running_body">終了するまでお待ちください。</string>
     <string name="device_cut_off_not_gone_title">削除はまだこのデバイスに届いていません</string>
     <string name="device_cut_off_not_gone_body">次の同期のあとでもう一度お試しください。</string>
     <string name="members_invite">招待</string>

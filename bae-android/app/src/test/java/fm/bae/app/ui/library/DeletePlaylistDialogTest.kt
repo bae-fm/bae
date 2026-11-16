@@ -35,7 +35,7 @@ class DeletePlaylistDialogTest {
         showDialog()
         compose.onNodeWithText("Delete Late night?").assertExists()
         compose
-            .onNodeWithText("It is deleted from every device. The tracks in it stay in the library.")
+            .onNodeWithText("bae will delete this playlist from every device. Its tracks stay in the library.")
             .assertExists()
         assertEquals(0, confirmed)
     }

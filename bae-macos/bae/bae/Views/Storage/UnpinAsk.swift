@@ -76,11 +76,11 @@ struct PendingUnpin: Equatable {
         releaseIds.count == 1
             ? String(
                 localized:
-                    "Its files will be removed from this Mac now. It stays in the cloud, and plays from there while you are online."
+                    "bae will remove its files from this Mac now. The release stays in the cloud and plays from there while you are online."
             )
             : String(
                 localized:
-                    "Their files will be removed from this Mac now. They stay in the cloud, and play from there while you are online."
+                    "bae will remove their files from this Mac now. The releases stay in the cloud and play from there while you are online."
             )
     }
 }

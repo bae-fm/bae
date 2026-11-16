@@ -39,7 +39,7 @@
     <string name="album_options">Albumoptionen</string>
     <string name="delete_album">Album löschen…</string>
     <string name="delete_album_confirm_title">Dieses Album löschen?</string>
-    <string name="delete_album_confirm_body">Alle Veröffentlichungen dieses Albums werden endgültig von deinen Geräten und aus der Cloud gelöscht. Originaldateien in deinen Ordnern werden nicht angetastet.</string>
+    <string name="delete_album_confirm_body">bae wird alle Veröffentlichungen dieses Albums endgültig von deinen Geräten und aus der Cloud löschen und die Originaldateien in deinen Ordnern behalten.</string>
     <string name="delete_album_confirm">Löschen</string>
     <string name="now_playing">Aktuelle Wiedergabe</string>
     <string name="paused">Pausiert</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Wiedergabeliste bearbeiten</string>
     <string name="playlist_delete_menu">Wiedergabeliste löschen…</string>
     <string name="playlist_delete_title">%1$s löschen?</string>
-    <string name="playlist_delete_message">Sie wird auf allen Geräten gelöscht. Die Titel darin bleiben in der Bibliothek.</string>
+    <string name="playlist_delete_message">bae wird diese Wiedergabeliste auf allen Geräten löschen. Ihre Titel bleiben in der Bibliothek.</string>
     <string name="playlist_delete_confirm">Löschen</string>
     <string name="playlist_options">Wiedergabelisten-Optionen</string>
     <plurals name="album_count">
@@ -192,14 +192,14 @@
     <string name="storage_kind_before_reset">Aus der Zeit vor dem Zurücksetzen</string>
     <string name="storage_clear_cache">Cache leeren</string>
     <string name="storage_keep_up_to">Behalten bis zu</string>
-    <string name="storage_cache_note">Titel, die du aus der Cloud abgespielt hast, sowie Cover und Bilder. Sie werden bei Bedarf erneut geladen.</string>
+    <string name="storage_cache_note">bae speichert hier Titel, die du aus der Cloud abgespielt hast, sowie Cover und Bilder, und lädt sie erneut, wenn du sie abspielst oder öffnest.</string>
     <string name="storage_ask_before_unpinning">Vor dem Loslösen fragen</string>
     <string name="storage_ask_before_unpinning_note">Beim Loslösen werden die Dateien einer Veröffentlichung sofort von diesem Smartphone entfernt</string>
     <string name="storage_pinned_note">Angeheftete Veröffentlichungen bleiben vollständig auf diesem Smartphone, um offline abgespielt zu werden, und zählen nicht zum Cache.</string>
-    <string name="storage_delete_before_reset">Daten aus der Zeit vor dem Zurücksetzen löschen</string>
+    <string name="storage_delete_before_reset">Diese Daten löschen</string>
     <string name="storage_before_reset_nothing_uses">%1$s · wird nicht verwendet</string>
-    <string name="storage_delete_before_reset_title">Daten aus der Zeit vor dem Zurücksetzen löschen?</string>
-    <string name="storage_delete_before_reset_body">%1$s werden von diesem Smartphone entfernt. Das lässt sich nicht rückgängig machen. Deine Bibliothek bleibt unberührt.</string>
+    <string name="storage_delete_before_reset_title">Diese Daten löschen?</string>
+    <string name="storage_delete_before_reset_body">bae wird %1$s von diesem Smartphone löschen. Du kannst diese Daten nicht zurückholen. Deine Bibliothek bleibt, wie sie ist.</string>
     <string name="storage_delete">Löschen</string>
     <string name="members_title">Personen und Geräte</string>
     <string name="people_people">Personen</string>
@@ -235,7 +235,7 @@
     <string name="pin">Anheften</string>
     <string name="unpin">Loslösen</string>
     <string name="unpin_confirm_title">Diese Veröffentlichung loslösen?</string>
-    <string name="unpin_confirm_body">Ihre Dateien werden jetzt von diesem Smartphone entfernt. Sie bleibt in der Cloud und wird von dort gestreamt, solange du online bist.</string>
+    <string name="unpin_confirm_body">bae wird ihre Dateien jetzt von diesem Smartphone entfernen. Die Veröffentlichung bleibt in der Cloud und wird von dort gestreamt, solange du online bist.</string>
     <string name="dont_show_again">Nicht mehr anzeigen</string>
     <string name="pinned">Angeheftet</string>
     <string name="pinning">Wird angeheftet</string>
@@ -367,11 +367,11 @@
         <item quantity="one">Entferntes Gerät (%1$d)</item>
         <item quantity="other">Entfernte Geräte (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Das Gerät wird entfernt</string>
+    <string name="device_removed_title">Gerät wird entfernt</string>
     <string name="device_cut_off_confirm">Ich habe dieses Gerät getrennt</string>
     <string name="device_cut_off_not_yet">Noch nicht</string>
     <string name="device_cut_off_running_title">Dieses Gerät synchronisiert noch mit der Cloud</string>
-    <string name="device_cut_off_running_body">Warte, bis sie beendet ist, und versuche es dann erneut.</string>
+    <string name="device_cut_off_running_body">Warte, bis sie beendet ist.</string>
     <string name="device_cut_off_not_gone_title">Das Entfernen ist noch nicht auf diesem Gerät angekommen</string>
     <string name="device_cut_off_not_gone_body">Versuche es nach der nächsten Synchronisierung erneut.</string>
     <string name="members_invite">Einladen</string>

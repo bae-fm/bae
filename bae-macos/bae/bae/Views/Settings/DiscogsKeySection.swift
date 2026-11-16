@@ -191,7 +191,9 @@ struct DiscogsSettingsContent: View {
             }
             if isEnabled, status == .unvalidated {
                 Notice(
-                    title: String(localized: "Validation pending"),
+                    title: String(
+                        localized: "bae has not checked your key yet"
+                    ),
                     advice: nil,
                     error: nil,
                     tone: .warning,

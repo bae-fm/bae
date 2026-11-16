@@ -39,7 +39,7 @@
     <string name="album_options">Opções do álbum</string>
     <string name="delete_album">Eliminar álbum…</string>
     <string name="delete_album_confirm_title">Eliminar este álbum?</string>
-    <string name="delete_album_confirm_body">Todas as edições deste álbum serão eliminadas permanentemente dos seus dispositivos e da nuvem. Os ficheiros originais nas suas pastas não serão alterados.</string>
+    <string name="delete_album_confirm_body">O bae vai eliminar permanentemente todas as edições deste álbum dos seus dispositivos e da nuvem, e manter os ficheiros originais nas suas pastas.</string>
     <string name="delete_album_confirm">Eliminar</string>
     <string name="now_playing">A reproduzir</string>
     <string name="paused">Em pausa</string>
@@ -117,7 +117,7 @@
     <string name="playlist_edit_title">Editar lista de reprodução</string>
     <string name="playlist_delete_menu">Eliminar lista de reprodução…</string>
     <string name="playlist_delete_title">Eliminar %1$s?</string>
-    <string name="playlist_delete_message">É eliminada de todos os dispositivos. As faixas que contém ficam na biblioteca.</string>
+    <string name="playlist_delete_message">O bae vai eliminar esta lista de reprodução de todos os dispositivos. As faixas que contém ficam na biblioteca.</string>
     <string name="playlist_delete_confirm">Eliminar</string>
     <string name="playlist_options">Opções da lista de reprodução</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">De antes da reposição</string>
     <string name="storage_clear_cache">Limpar cache</string>
     <string name="storage_keep_up_to">Manter até</string>
-    <string name="storage_cache_note">Faixas que reproduziu a partir da nuvem, mais capas e imagens. São transferidas de novo quando necessário.</string>
+    <string name="storage_cache_note">O bae guarda aqui as faixas que reproduziu a partir da nuvem, as capas e as imagens, e transfere-as novamente quando as reproduz ou abre.</string>
     <string name="storage_ask_before_unpinning">Perguntar antes de desafixar</string>
     <string name="storage_ask_before_unpinning_note">Desafixar remove de imediato os ficheiros de uma edição deste telemóvel</string>
     <string name="storage_pinned_note">As edições fixadas ficam completas neste telemóvel para reprodução offline e não contam para a cache.</string>
-    <string name="storage_delete_before_reset">Eliminar dados de antes da reposição</string>
+    <string name="storage_delete_before_reset">Eliminar estes dados</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nada os usa</string>
-    <string name="storage_delete_before_reset_title">Eliminar dados de antes da reposição?</string>
-    <string name="storage_delete_before_reset_body">%1$s serão removidos deste telemóvel. Não é possível recuperá-los. A sua biblioteca não é afetada.</string>
+    <string name="storage_delete_before_reset_title">Eliminar estes dados?</string>
+    <string name="storage_delete_before_reset_body">O bae vai eliminar %1$s deste telemóvel. Não pode recuperar estes dados. A sua biblioteca fica como está.</string>
     <string name="storage_delete">Eliminar</string>
     <string name="members_title">Pessoas e dispositivos</string>
     <string name="people_people">Pessoas</string>
@@ -239,7 +239,7 @@
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
     <string name="unpin_confirm_title">Desafixar esta edição?</string>
-    <string name="unpin_confirm_body">Os ficheiros da edição serão removidos deste telemóvel agora. Continua na nuvem e é transmitida a partir de lá enquanto estiver online.</string>
+    <string name="unpin_confirm_body">O bae vai remover os ficheiros da edição deste telemóvel agora. A edição continua na nuvem e é transmitida a partir de lá enquanto estiver online.</string>
     <string name="dont_show_again">Não mostrar novamente</string>
     <string name="pinned">Fixado</string>
     <string name="pinning">A fixar</string>
@@ -366,11 +366,11 @@
         <item quantity="one">Dispositivo removido (%1$d)</item>
         <item quantity="other">Dispositivos removidos (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">O dispositivo será removido</string>
+    <string name="device_removed_title">A remover o dispositivo</string>
     <string name="device_cut_off_confirm">Desliguei este dispositivo</string>
     <string name="device_cut_off_not_yet">Ainda não</string>
     <string name="device_cut_off_running_title">Este dispositivo ainda está a sincronizar com a nuvem</string>
-    <string name="device_cut_off_running_body">Aguarde que termine e tente novamente.</string>
+    <string name="device_cut_off_running_body">Aguarde que termine.</string>
     <string name="device_cut_off_not_gone_title">A remoção ainda não chegou a este dispositivo</string>
     <string name="device_cut_off_not_gone_body">Tente novamente após a próxima sincronização.</string>
     <string name="members_invite">Convidar</string>

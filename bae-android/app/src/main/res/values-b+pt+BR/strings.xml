@@ -39,7 +39,7 @@
     <string name="album_options">Opções do álbum</string>
     <string name="delete_album">Excluir álbum…</string>
     <string name="delete_album_confirm_title">Excluir este álbum?</string>
-    <string name="delete_album_confirm_body">Todos os lançamentos deste álbum serão excluídos permanentemente dos seus dispositivos e da nuvem. Os arquivos originais nas suas pastas não serão alterados.</string>
+    <string name="delete_album_confirm_body">O bae vai excluir permanentemente todos os lançamentos deste álbum dos seus dispositivos e da nuvem, e manter os arquivos originais nas suas pastas.</string>
     <string name="delete_album_confirm">Excluir</string>
     <string name="now_playing">Tocando agora</string>
     <string name="paused">Pausado</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Editar playlist</string>
     <string name="playlist_delete_menu">Excluir playlist…</string>
     <string name="playlist_delete_title">Excluir %1$s?</string>
-    <string name="playlist_delete_message">Ela é excluída de todos os dispositivos. As faixas dela continuam na biblioteca.</string>
+    <string name="playlist_delete_message">O bae vai excluir esta playlist de todos os dispositivos. As faixas dela continuam na biblioteca.</string>
     <string name="playlist_delete_confirm">Excluir</string>
     <string name="playlist_options">Opções da playlist</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">De antes da redefinição</string>
     <string name="storage_clear_cache">Limpar cache</string>
     <string name="storage_keep_up_to">Manter até</string>
-    <string name="storage_cache_note">Faixas que você tocou da nuvem, além de capas e imagens. São baixadas de novo quando necessário.</string>
+    <string name="storage_cache_note">O bae guarda aqui as faixas que você reproduziu da nuvem, as capas e as imagens, e as baixa de novo quando você as reproduz ou abre.</string>
     <string name="storage_ask_before_unpinning">Perguntar antes de desafixar</string>
     <string name="storage_ask_before_unpinning_note">Desafixar remove os arquivos de um lançamento deste celular na hora</string>
     <string name="storage_pinned_note">Lançamentos fixados ficam inteiros neste celular para tocar offline e não contam para o cache.</string>
-    <string name="storage_delete_before_reset">Excluir dados de antes da redefinição</string>
+    <string name="storage_delete_before_reset">Excluir estes dados</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nada os usa</string>
-    <string name="storage_delete_before_reset_title">Excluir dados de antes da redefinição?</string>
-    <string name="storage_delete_before_reset_body">%1$s serão removidos deste celular. Não é possível recuperá-los. Sua biblioteca não é afetada.</string>
+    <string name="storage_delete_before_reset_title">Excluir estes dados?</string>
+    <string name="storage_delete_before_reset_body">O bae vai excluir %1$s deste celular. Você não poderá recuperar esses dados. Sua biblioteca continua como está.</string>
     <string name="storage_delete">Excluir</string>
     <string name="members_title">Pessoas e dispositivos</string>
     <string name="people_people">Pessoas</string>
@@ -240,7 +240,7 @@
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
     <string name="unpin_confirm_title">Desafixar este lançamento?</string>
-    <string name="unpin_confirm_body">Os arquivos dele serão removidos deste celular agora. Ele continua na nuvem e é transmitido de lá enquanto você estiver online.</string>
+    <string name="unpin_confirm_body">O bae vai remover os arquivos dele deste celular agora. O lançamento continua na nuvem e é transmitido de lá enquanto você estiver online.</string>
     <string name="dont_show_again">Não mostrar isto novamente</string>
     <string name="pinned">Fixado</string>
     <string name="pinning">Fixando</string>
@@ -373,11 +373,11 @@
         <item quantity="one">Dispositivo removido (%1$d)</item>
         <item quantity="other">Dispositivos removidos (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">O dispositivo será removido</string>
+    <string name="device_removed_title">Removendo o dispositivo</string>
     <string name="device_cut_off_confirm">Eu desconectei este dispositivo</string>
     <string name="device_cut_off_not_yet">Ainda não</string>
     <string name="device_cut_off_running_title">Este dispositivo ainda está sincronizando com a nuvem</string>
-    <string name="device_cut_off_running_body">Aguarde o término e tente novamente.</string>
+    <string name="device_cut_off_running_body">Aguarde o término.</string>
     <string name="device_cut_off_not_gone_title">A remoção ainda não chegou a este dispositivo</string>
     <string name="device_cut_off_not_gone_body">Tente novamente após a próxima sincronização.</string>
     <string name="members_invite">Convidar</string>

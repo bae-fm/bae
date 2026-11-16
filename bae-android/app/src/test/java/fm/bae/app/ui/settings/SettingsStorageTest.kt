@@ -113,11 +113,11 @@ class SettingsStorageTest {
         var storage: BridgeDeviceStorage by mutableStateOf(BridgeFixtures.deviceStorage())
         compose.setContent { TestTheme { Page(storage) } }
 
-        compose.onNodeWithText("Delete data from before the reset").assertDoesNotExist()
+        compose.onNodeWithText("Delete this data").assertDoesNotExist()
 
         storage = BridgeFixtures.deviceStorage(beforeReset = 540_000_000uL)
         compose.waitForIdle()
-        compose.onNodeWithText("Delete data from before the reset").assertExists()
+        compose.onNodeWithText("Delete this data").assertExists()
         compose.onNodeWithText("${size(540_000_000)} · nothing uses it").assertExists()
     }
 
@@ -196,10 +196,10 @@ class SettingsStorageTest {
             }
         }
 
-        compose.onNode(inDialog("Delete data from before the reset?")).assertExists()
+        compose.onNode(inDialog("Delete this data?")).assertExists()
         compose
             .onNode(
-                inDialog("540 MB will be removed from this phone. It cannot be recovered. Your library is not affected."),
+                inDialog("bae will delete 540 MB from this phone. You cannot get this data back. Your library stays as it is."),
             ).assertExists()
         compose.onNode(inDialog("Cancel")).performClick()
         assertEquals(0 to 1, deleted to dismissed)
@@ -226,7 +226,7 @@ class SettingsStorageTest {
         compose.onNode(isToggleable()).performScrollTo().performClick()
         compose.onNodeWithText("Keep up to").performScrollTo().performClick()
         compose.onNode(inDialog(size(5_000_000_000))).performClick()
-        compose.onNodeWithText("Delete data from before the reset").performScrollTo().performClick()
+        compose.onNodeWithText("Delete this data").performScrollTo().performClick()
         compose.onNode(inDialog("Delete")).performClick()
         compose.waitForIdle()
 
@@ -234,7 +234,7 @@ class SettingsStorageTest {
             listOf("clearCache", "setAskBeforeUnpinning(false)", "setCacheLimit(GB5)", "deleteDataFromBeforeReset"),
             handle.calls,
         )
-        compose.onNode(inDialog("Delete data from before the reset?")).assertDoesNotExist()
+        compose.onNode(inDialog("Delete this data?")).assertDoesNotExist()
     }
 
     @Test

@@ -39,7 +39,7 @@
     <string name="album_options">Albumalternativ</string>
     <string name="delete_album">Radera album…</string>
     <string name="delete_album_confirm_title">Radera det här albumet?</string>
-    <string name="delete_album_confirm_body">Alla utgåvor av det här albumet raderas permanent från dina enheter och från molnet. Originalfilerna i dina mappar rörs inte.</string>
+    <string name="delete_album_confirm_body">bae kommer att radera alla utgåvor av det här albumet permanent från dina enheter och från molnet och behålla originalfilerna i dina mappar.</string>
     <string name="delete_album_confirm">Radera</string>
     <string name="now_playing">Spelas nu</string>
     <string name="paused">Pausad</string>
@@ -117,7 +117,7 @@
     <string name="playlist_edit_title">Redigera spellista</string>
     <string name="playlist_delete_menu">Radera spellista…</string>
     <string name="playlist_delete_title">Radera %1$s?</string>
-    <string name="playlist_delete_message">Den raderas från alla enheter. Spåren i den finns kvar i biblioteket.</string>
+    <string name="playlist_delete_message">bae kommer att radera den här spellistan från alla enheter. Spåren i den finns kvar i biblioteket.</string>
     <string name="playlist_delete_confirm">Radera</string>
     <string name="playlist_options">Spellistealternativ</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Från före återställningen</string>
     <string name="storage_clear_cache">Rensa cache</string>
     <string name="storage_keep_up_to">Behåll upp till</string>
-    <string name="storage_cache_note">Spår du spelat från molnet samt omslag och bilder. De hämtas igen när de behövs.</string>
+    <string name="storage_cache_note">bae sparar spår du spelat från molnet, omslag och bilder här och hämtar dem igen när du spelar eller öppnar dem.</string>
     <string name="storage_ask_before_unpinning">Fråga innan lossning</string>
     <string name="storage_ask_before_unpinning_note">När du lossar tas en utgåvas filer bort från den här telefonen direkt</string>
     <string name="storage_pinned_note">Fästa utgåvor ligger kvar hela på den här telefonen för uppspelning offline och räknas inte in i cachen.</string>
-    <string name="storage_delete_before_reset">Radera data från före återställningen</string>
+    <string name="storage_delete_before_reset">Radera den här datan</string>
     <string name="storage_before_reset_nothing_uses">%1$s · inget använder det</string>
-    <string name="storage_delete_before_reset_title">Radera data från före återställningen?</string>
-    <string name="storage_delete_before_reset_body">%1$s tas bort från den här telefonen. Det går inte att ångra. Ditt bibliotek påverkas inte.</string>
+    <string name="storage_delete_before_reset_title">Radera den här datan?</string>
+    <string name="storage_delete_before_reset_body">bae kommer att radera %1$s från den här telefonen. Du kan inte få tillbaka den här datan. Ditt bibliotek förblir som det är.</string>
     <string name="storage_delete">Radera</string>
     <string name="members_title">Personer och enheter</string>
     <string name="people_people">Personer</string>
@@ -238,7 +238,7 @@
     <string name="pin">Fäst</string>
     <string name="unpin">Lossa</string>
     <string name="unpin_confirm_title">Lossa den här utgåvan?</string>
-    <string name="unpin_confirm_body">Dess filer tas bort från den här telefonen nu. Den ligger kvar i molnet och strömmas därifrån medan du är online.</string>
+    <string name="unpin_confirm_body">bae kommer att ta bort dess filer från den här telefonen nu. Utgåvan ligger kvar i molnet och strömmas därifrån medan du är online.</string>
     <string name="dont_show_again">Visa inte detta igen</string>
     <string name="pinned">Fäst</string>
     <string name="pinning">Fäster</string>
@@ -369,7 +369,7 @@
     <string name="device_cut_off_confirm">Jag har kopplat bort den här enheten</string>
     <string name="device_cut_off_not_yet">Inte än</string>
     <string name="device_cut_off_running_title">Den här enheten synkroniseras fortfarande med molnet</string>
-    <string name="device_cut_off_running_body">Vänta tills den är klar och försök igen.</string>
+    <string name="device_cut_off_running_body">Vänta tills den är klar.</string>
     <string name="device_cut_off_not_gone_title">Borttagningen har inte nått den här enheten än</string>
     <string name="device_cut_off_not_gone_body">Försök igen efter nästa synkronisering.</string>
     <string name="members_invite">Bjud in</string>

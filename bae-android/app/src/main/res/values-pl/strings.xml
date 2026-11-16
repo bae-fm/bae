@@ -39,7 +39,7 @@
     <string name="album_options">Opcje albumu</string>
     <string name="delete_album">Usuń album…</string>
     <string name="delete_album_confirm_title">Usunąć ten album?</string>
-    <string name="delete_album_confirm_body">Wszystkie wydania tego albumu zostaną trwale usunięte z Twoich urządzeń i z chmury. Oryginalne pliki w Twoich folderach nie zostaną naruszone.</string>
+    <string name="delete_album_confirm_body">bae trwale usunie wszystkie wydania tego albumu z Twoich urządzeń i z chmury, a oryginalne pliki w Twoich folderach zachowa.</string>
     <string name="delete_album_confirm">Usuń</string>
     <string name="now_playing">Teraz odtwarzane</string>
     <string name="paused">Wstrzymano</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Edytuj playlistę</string>
     <string name="playlist_delete_menu">Usuń playlistę…</string>
     <string name="playlist_delete_title">Usunąć %1$s?</string>
-    <string name="playlist_delete_message">Zostanie usunięta ze wszystkich urządzeń. Utwory z niej zostaną w bibliotece.</string>
+    <string name="playlist_delete_message">bae usunie tę playlistę ze wszystkich urządzeń. Jej utwory zostaną w bibliotece.</string>
     <string name="playlist_delete_confirm">Usuń</string>
     <string name="playlist_options">Opcje playlisty</string>
     <plurals name="album_count">
@@ -200,14 +200,14 @@
     <string name="storage_kind_before_reset">Sprzed resetu</string>
     <string name="storage_clear_cache">Wyczyść pamięć podręczną</string>
     <string name="storage_keep_up_to">Zachowaj do</string>
-    <string name="storage_cache_note">Utwory odtworzone z chmury oraz okładki i obrazy. Zostaną pobrane ponownie, gdy będą potrzebne.</string>
+    <string name="storage_cache_note">bae przechowuje tu utwory odtwarzane z chmury, okładki i obrazy oraz pobiera je ponownie, gdy je odtwarzasz lub otwierasz.</string>
     <string name="storage_ask_before_unpinning">Pytaj przed odpięciem</string>
     <string name="storage_ask_before_unpinning_note">Odpięcie od razu usuwa pliki wydania z tego telefonu</string>
     <string name="storage_pinned_note">Przypięte wydania pozostają w całości na tym telefonie do odtwarzania offline i nie wliczają się do pamięci podręcznej.</string>
-    <string name="storage_delete_before_reset">Usuń dane sprzed resetu</string>
+    <string name="storage_delete_before_reset">Usuń te dane</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nic z nich nie korzysta</string>
-    <string name="storage_delete_before_reset_title">Usunąć dane sprzed resetu?</string>
-    <string name="storage_delete_before_reset_body">%1$s zostanie usunięte z tego telefonu. Nie można tego cofnąć. Twoja biblioteka nie jest naruszona.</string>
+    <string name="storage_delete_before_reset_title">Usunąć te dane?</string>
+    <string name="storage_delete_before_reset_body">bae usunie %1$s z tego telefonu. Nie odzyskasz tych danych. Twoja biblioteka pozostanie bez zmian.</string>
     <string name="storage_delete">Usuń</string>
     <string name="members_title">Osoby i urządzenia</string>
     <string name="people_people">Osoby</string>
@@ -245,7 +245,7 @@
     <string name="pin">Przypnij</string>
     <string name="unpin">Odepnij</string>
     <string name="unpin_confirm_title">Odpiąć to wydanie?</string>
-    <string name="unpin_confirm_body">Jego pliki zostaną teraz usunięte z tego telefonu. Pozostanie w chmurze i będzie stamtąd streamowane, gdy jesteś online.</string>
+    <string name="unpin_confirm_body">bae usunie teraz jego pliki z tego telefonu. Wydanie pozostanie w chmurze i będzie stamtąd streamowane, gdy jesteś online.</string>
     <string name="dont_show_again">Nie pokazuj ponownie</string>
     <string name="pinned">Przypięto</string>
     <string name="pinning">Przypinanie</string>
@@ -383,11 +383,11 @@
         <item quantity="many">Usunięte urządzenia (%1$d)</item>
         <item quantity="other">Usunięte urządzenia (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Urządzenie zostanie usunięte</string>
+    <string name="device_removed_title">Usuwanie urządzenia</string>
     <string name="device_cut_off_confirm">Odciąłem(-am) to urządzenie</string>
     <string name="device_cut_off_not_yet">Jeszcze nie</string>
     <string name="device_cut_off_running_title">To urządzenie wciąż synchronizuje się z chmurą</string>
-    <string name="device_cut_off_running_body">Poczekaj, aż się zakończy, i spróbuj ponownie.</string>
+    <string name="device_cut_off_running_body">Poczekaj, aż się zakończy.</string>
     <string name="device_cut_off_not_gone_title">Usunięcie nie dotarło jeszcze na to urządzenie</string>
     <string name="device_cut_off_not_gone_body">Spróbuj ponownie po następnej synchronizacji.</string>
     <string name="members_invite">Zaproś</string>

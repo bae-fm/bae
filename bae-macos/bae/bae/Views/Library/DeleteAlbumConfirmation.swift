@@ -24,7 +24,7 @@ struct DeleteAlbumConfirmation: ViewModifier {
             MacAlertWords(
                 Text("Delete album"),
                 message: Text(
-                    "Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
+                    "bae will permanently delete every release of this album from your devices and the cloud, and keep the original files in your folders."
                 )
             ),
             [
@@ -49,7 +49,7 @@ enum DeleteReleaseConfirmation {
             MacAlertWords(
                 Text("Delete release"),
                 message: Text(
-                    "This release will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched."
+                    "bae will permanently delete this release from your devices and the cloud, and keep the original files in your folders."
                 )
             ),
             [

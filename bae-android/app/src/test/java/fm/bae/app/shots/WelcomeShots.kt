@@ -158,7 +158,7 @@ class WelcomeShots : BoardShot() {
                     error =
                         ScreenFailure(
                             FailedStep.LIBRARY_OPEN,
-                            DisplayError("This device must be reset before it can sync."),
+                            DisplayError("This device cannot sync."),
                         ),
                     lines = testRecoveryLines,
                     prepare = { error("a shot was tapped") },

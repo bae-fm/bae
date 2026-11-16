@@ -39,7 +39,7 @@
     <string name="album_options">Opzioni album</string>
     <string name="delete_album">Elimina album…</string>
     <string name="delete_album_confirm_title">Eliminare questo album?</string>
-    <string name="delete_album_confirm_body">Tutte le pubblicazioni di questo album verranno eliminate definitivamente dai tuoi dispositivi e dal cloud. I file originali nelle tue cartelle non verranno toccati.</string>
+    <string name="delete_album_confirm_body">bae eliminerà definitivamente tutte le pubblicazioni di questo album dai tuoi dispositivi e dal cloud, e manterrà i file originali nelle tue cartelle.</string>
     <string name="delete_album_confirm">Elimina</string>
     <string name="now_playing">In riproduzione</string>
     <string name="paused">In pausa</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Modifica playlist</string>
     <string name="playlist_delete_menu">Elimina playlist…</string>
     <string name="playlist_delete_title">Eliminare %1$s?</string>
-    <string name="playlist_delete_message">Viene eliminata da ogni dispositivo. I brani al suo interno restano nella libreria.</string>
+    <string name="playlist_delete_message">bae eliminerà questa playlist da ogni dispositivo. I suoi brani restano nella libreria.</string>
     <string name="playlist_delete_confirm">Elimina</string>
     <string name="playlist_options">Opzioni playlist</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Da prima del ripristino</string>
     <string name="storage_clear_cache">Svuota la cache</string>
     <string name="storage_keep_up_to">Conserva fino a</string>
-    <string name="storage_cache_note">I brani che hai riprodotto dal cloud, più copertine e immagini. Vengono scaricati di nuovo quando servono.</string>
+    <string name="storage_cache_note">bae conserva qui i brani che hai riprodotto dal cloud, le copertine e le immagini, e li scarica di nuovo quando li riproduci o li apri.</string>
     <string name="storage_ask_before_unpinning">Chiedi prima di rimuovere il fissaggio</string>
     <string name="storage_ask_before_unpinning_note">Rimuovere il fissaggio elimina subito da questo telefono i file di una pubblicazione</string>
     <string name="storage_pinned_note">Le pubblicazioni fissate restano complete su questo telefono per essere riprodotte offline e non contano nella cache.</string>
-    <string name="storage_delete_before_reset">Elimina i dati precedenti al ripristino</string>
+    <string name="storage_delete_before_reset">Elimina questi dati</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nessuno li usa</string>
-    <string name="storage_delete_before_reset_title">Eliminare i dati precedenti al ripristino?</string>
-    <string name="storage_delete_before_reset_body">%1$s verranno rimossi da questo telefono. Non potranno essere recuperati. La tua libreria non è interessata.</string>
+    <string name="storage_delete_before_reset_title">Eliminare questi dati?</string>
+    <string name="storage_delete_before_reset_body">bae eliminerà %1$s da questo telefono. Non potrai recuperare questi dati. La tua libreria resta com’è.</string>
     <string name="storage_delete">Elimina</string>
     <string name="members_title">Persone e dispositivi</string>
     <string name="people_people">Persone</string>
@@ -240,7 +240,7 @@
     <string name="pin">Fissa</string>
     <string name="unpin">Rimuovi fissaggio</string>
     <string name="unpin_confirm_title">Rimuovere il fissaggio di questa pubblicazione?</string>
-    <string name="unpin_confirm_body">I suoi file verranno rimossi subito da questo telefono. Resta nel cloud e viene riprodotta in streaming da lì finché sei online.</string>
+    <string name="unpin_confirm_body">bae rimuoverà subito i suoi file da questo telefono. La pubblicazione resta nel cloud e viene riprodotta in streaming da lì finché sei online.</string>
     <string name="dont_show_again">Non mostrare più</string>
     <string name="pinned">Fissato</string>
     <string name="pinning">Fissaggio</string>
@@ -373,11 +373,11 @@
         <item quantity="one">Dispositivo rimosso (%1$d)</item>
         <item quantity="other">Dispositivi rimossi (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Il dispositivo verrà rimosso</string>
+    <string name="device_removed_title">Rimozione del dispositivo</string>
     <string name="device_cut_off_confirm">Ho disconnesso questo dispositivo</string>
     <string name="device_cut_off_not_yet">Non ancora</string>
     <string name="device_cut_off_running_title">Questo dispositivo è ancora in sincronizzazione con il cloud</string>
-    <string name="device_cut_off_running_body">Attendi che finisca, poi riprova.</string>
+    <string name="device_cut_off_running_body">Attendi che finisca.</string>
     <string name="device_cut_off_not_gone_title">La rimozione non è ancora arrivata su questo dispositivo</string>
     <string name="device_cut_off_not_gone_body">Riprova dopo la prossima sincronizzazione.</string>
     <string name="members_invite">Invita</string>

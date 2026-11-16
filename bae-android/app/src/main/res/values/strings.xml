@@ -57,7 +57,7 @@
     <string name="album_options">Album options</string>
     <string name="delete_album">Delete album…</string>
     <string name="delete_album_confirm_title">Delete this album?</string>
-    <string name="delete_album_confirm_body">Every release of this album will be permanently deleted from your devices and the cloud. Original files in your folders will not be touched.</string>
+    <string name="delete_album_confirm_body">bae will permanently delete every release of this album from your devices and the cloud, and keep the original files in your folders.</string>
     <string name="delete_album_confirm">Delete</string>
     <string name="now_playing">Now playing</string>
     <string name="paused">Paused</string>
@@ -143,7 +143,7 @@
     <string name="playlist_edit_title">Edit playlist</string>
     <string name="playlist_delete_menu">Delete playlist…</string>
     <string name="playlist_delete_title">Delete %1$s?</string>
-    <string name="playlist_delete_message">It is deleted from every device. The tracks in it stay in the library.</string>
+    <string name="playlist_delete_message">bae will delete this playlist from every device. Its tracks stay in the library.</string>
     <string name="playlist_delete_confirm">Delete</string>
     <string name="playlist_options">Playlist options</string>
     <plurals name="album_count">
@@ -226,14 +226,14 @@
     <string name="storage_kind_before_reset">From before the reset</string>
     <string name="storage_clear_cache">Clear cache</string>
     <string name="storage_keep_up_to">Keep up to</string>
-    <string name="storage_cache_note">Tracks you played from the cloud, and covers and pictures. They download again when needed.</string>
+    <string name="storage_cache_note">bae keeps tracks you played from the cloud, covers and pictures here, and downloads them again when you play or open them.</string>
     <string name="storage_ask_before_unpinning">Ask before unpinning</string>
     <string name="storage_ask_before_unpinning_note">Unpinning removes a release’s files from this phone at once</string>
     <string name="storage_pinned_note">Pinned releases stay whole on this phone to play offline, and do not count toward the cache.</string>
-    <string name="storage_delete_before_reset">Delete data from before the reset</string>
+    <string name="storage_delete_before_reset">Delete this data</string>
     <string name="storage_before_reset_nothing_uses">%1$s · nothing uses it</string>
-    <string name="storage_delete_before_reset_title">Delete data from before the reset?</string>
-    <string name="storage_delete_before_reset_body">%1$s will be removed from this phone. It cannot be recovered. Your library is not affected.</string>
+    <string name="storage_delete_before_reset_title">Delete this data?</string>
+    <string name="storage_delete_before_reset_body">bae will delete %1$s from this phone. You cannot get this data back. Your library stays as it is.</string>
     <string name="storage_delete">Delete</string>
 
     <!-- People and devices (membership) -->
@@ -280,7 +280,7 @@
     <string name="pin">Pin</string>
     <string name="unpin">Unpin</string>
     <string name="unpin_confirm_title">Unpin this release?</string>
-    <string name="unpin_confirm_body">Its files will be removed from this phone now. It stays in the cloud, and streams while you are online.</string>
+    <string name="unpin_confirm_body">bae will remove its files from this phone now. The release stays in the cloud and streams while you are online.</string>
     <string name="dont_show_again">Do not show this again</string>
     <string name="pinned">Pinned</string>
     <string name="pinning">Pinning</string>
@@ -419,11 +419,11 @@
         <item quantity="one">Removed device (%1$d)</item>
         <item quantity="other">Removed devices (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">The device will be removed</string>
+    <string name="device_removed_title">Removing the device</string>
     <string name="device_cut_off_confirm">I cut off this device</string>
     <string name="device_cut_off_not_yet">Not yet</string>
     <string name="device_cut_off_running_title">This device is still syncing with the cloud</string>
-    <string name="device_cut_off_running_body">Wait for it to end, then try again.</string>
+    <string name="device_cut_off_running_body">Wait for it to end.</string>
     <string name="device_cut_off_not_gone_title">The removal has not reached this device yet</string>
     <string name="device_cut_off_not_gone_body">Try again after the next sync.</string>
     <string name="members_invite">Invite</string>

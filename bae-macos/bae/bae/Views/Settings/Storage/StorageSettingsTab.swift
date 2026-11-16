@@ -93,9 +93,9 @@ struct StorageSettingsForm: View {
                             .disabled(!storage.canClearCache)
                     } label: {
                         row(
-                            "Cache",
+                            "Cached files",
                             note:
-                                "Tracks you played from the cloud, and covers and pictures. They download again when needed."
+                                "bae keeps tracks you played from the cloud, covers and pictures here, and downloads them again when you play or open them."
                         )
                     }
                     LabeledContent("Keep up to") {
@@ -142,9 +142,9 @@ struct StorageSettingsForm: View {
                         )
                     } label: {
                         row(
-                            "Data from before you reset this Mac",
+                            "Old library",
                             note:
-                                "The library as it was on this Mac before you reset from cloud. Nothing uses it."
+                                "bae kept the library as it was on this Mac. Nothing uses it."
                         )
                     }
                 } header: {
@@ -158,7 +158,9 @@ struct StorageSettingsForm: View {
     }
 
     private var localReleasesNote: some View {
-        Text("Local releases stay in your folders and are not counted here.")
+        Text(
+            "Local releases stay in your folders, and bae does not count them here."
+        )
     }
 
     private func row(

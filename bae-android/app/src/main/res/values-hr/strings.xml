@@ -39,7 +39,7 @@
     <string name="album_options">Mogućnosti albuma</string>
     <string name="delete_album">Izbriši album…</string>
     <string name="delete_album_confirm_title">Izbrisati ovaj album?</string>
-    <string name="delete_album_confirm_body">Sva izdanja ovog albuma trajno će se izbrisati s vaših uređaja i iz oblaka. Izvorne datoteke u vašim mapama neće se dirati.</string>
+    <string name="delete_album_confirm_body">bae će trajno izbrisati sva izdanja ovog albuma s vaših uređaja i iz oblaka te zadržati izvorne datoteke u vašim mapama.</string>
     <string name="delete_album_confirm">Izbriši</string>
     <string name="now_playing">Trenutno svira</string>
     <string name="paused">Pauzirano</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Uredi popis za reprodukciju</string>
     <string name="playlist_delete_menu">Izbriši popis za reprodukciju…</string>
     <string name="playlist_delete_title">Izbrisati %1$s?</string>
-    <string name="playlist_delete_message">Briše se sa svakog uređaja. Pjesme u njemu ostaju u fonoteci.</string>
+    <string name="playlist_delete_message">bae će izbrisati ovaj popis za reprodukciju sa svakog uređaja. Njegove pjesme ostaju u fonoteci.</string>
     <string name="playlist_delete_confirm">Izbriši</string>
     <string name="playlist_options">Mogućnosti popisa za reprodukciju</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Od prije resetiranja</string>
     <string name="storage_clear_cache">Očisti predmemoriju</string>
     <string name="storage_keep_up_to">Zadrži do</string>
-    <string name="storage_cache_note">Pjesme koje ste reproducirali iz oblaka te omoti i slike. Ponovno se preuzimaju kad zatrebaju.</string>
+    <string name="storage_cache_note">bae ovdje čuva skladbe koje ste reproducirali iz oblaka, omote i slike te ih ponovno preuzima kada ih reproducirate ili otvorite.</string>
     <string name="storage_ask_before_unpinning">Pitaj prije otkvačivanja</string>
     <string name="storage_ask_before_unpinning_note">Otkvačivanjem se datoteke izdanja odmah uklanjaju s ovog telefona</string>
     <string name="storage_pinned_note">Prikvačena izdanja ostaju cijela na ovom telefonu za reprodukciju bez mreže i ne ubrajaju se u predmemoriju.</string>
-    <string name="storage_delete_before_reset">Izbriši podatke od prije resetiranja</string>
+    <string name="storage_delete_before_reset">Izbriši ove podatke</string>
     <string name="storage_before_reset_nothing_uses">%1$s · ništa ih ne koristi</string>
-    <string name="storage_delete_before_reset_title">Izbrisati podatke od prije resetiranja?</string>
-    <string name="storage_delete_before_reset_body">%1$s bit će uklonjeno s ovog telefona. To se ne može poništiti. Vaša fonoteka nije pogođena.</string>
+    <string name="storage_delete_before_reset_title">Izbrisati ove podatke?</string>
+    <string name="storage_delete_before_reset_body">bae će izbrisati %1$s s ovog telefona. Te podatke ne možete vratiti. Vaša fonoteka ostaje kakva jest.</string>
     <string name="storage_delete">Izbriši</string>
     <string name="members_title">Osobe i uređaji</string>
     <string name="people_people">Osobe</string>
@@ -240,7 +240,7 @@
     <string name="pin">Prikvači</string>
     <string name="unpin">Otkvači</string>
     <string name="unpin_confirm_title">Otkvačiti ovo izdanje?</string>
-    <string name="unpin_confirm_body">Njegove datoteke bit će odmah uklonjene s ovog telefona. Ostaje u oblaku i strimuje se odatle dok ste na mreži.</string>
+    <string name="unpin_confirm_body">bae će odmah ukloniti njegove datoteke s ovog telefona. Izdanje ostaje u oblaku i strimuje se odatle dok ste na mreži.</string>
     <string name="dont_show_again">Ne prikazuj ovo ponovno</string>
     <string name="pinned">Prikvačeno</string>
     <string name="pinning">Prikvačivanje</string>
@@ -375,11 +375,11 @@
         <item quantity="few">Uklonjeni uređaji (%1$d)</item>
         <item quantity="other">Uklonjeni uređaji (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Uređaj će biti uklonjen</string>
+    <string name="device_removed_title">Uklanjanje uređaja</string>
     <string name="device_cut_off_confirm">Odspojio/la sam ovaj uređaj</string>
     <string name="device_cut_off_not_yet">Još ne</string>
     <string name="device_cut_off_running_title">Ovaj se uređaj još sinkronizira s oblakom</string>
-    <string name="device_cut_off_running_body">Pričekajte da završi pa pokušajte ponovno.</string>
+    <string name="device_cut_off_running_body">Pričekajte da završi.</string>
     <string name="device_cut_off_not_gone_title">Uklanjanje još nije stiglo na ovaj uređaj</string>
     <string name="device_cut_off_not_gone_body">Pokušajte ponovno nakon sljedeće sinkronizacije.</string>
     <string name="members_invite">Pozovi</string>

@@ -22,7 +22,8 @@ struct ImportSettingsTab: View {
                 Section {
                     SettingToggleRow(
                         title: "Identify automatically",
-                        note: "Looks up each new album as soon as it is added.",
+                        note:
+                            "bae looks up each new album as soon as you add it.",
                         isOn: identifyAutomatically
                     )
                     ForEach(sourceSwitches.beforeKey, id: \.catalog) {
@@ -47,7 +48,7 @@ struct ImportSettingsTab: View {
                     SettingToggleRow(
                         title: "Import automatically when identified",
                         note:
-                            "Adds the album to your library once bae is sure of the match.",
+                            "bae adds the album to your library once it is sure of the match.",
                         isOn: importWhenIdentified
                     )
                     if configStore.syncs {
@@ -226,7 +227,7 @@ enum TurnOffDiscogsConfirmation {
         (
             MacAlertWords(
                 Text("Turn off Discogs?"),
-                message: Text("Your saved key will be cleared.")
+                message: Text("bae will delete your saved key.")
             ),
             [
                 MacAlertButton(Text("Turn off"), action: onTurnOff),

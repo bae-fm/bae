@@ -39,7 +39,7 @@
     <string name="album_options">Options de l’album</string>
     <string name="delete_album">Supprimer l’album…</string>
     <string name="delete_album_confirm_title">Supprimer cet album ?</string>
-    <string name="delete_album_confirm_body">Toutes les éditions de cet album seront supprimées définitivement de vos appareils et du cloud. Les fichiers originaux de vos dossiers ne seront pas modifiés.</string>
+    <string name="delete_album_confirm_body">bae supprimera définitivement toutes les éditions de cet album de vos appareils et du cloud, et conservera les fichiers originaux dans vos dossiers.</string>
     <string name="delete_album_confirm">Supprimer</string>
     <string name="now_playing">Lecture en cours</string>
     <string name="paused">En pause</string>
@@ -113,7 +113,7 @@
     <string name="playlist_edit_title">Modifier la liste de lecture</string>
     <string name="playlist_delete_menu">Supprimer la liste de lecture…</string>
     <string name="playlist_delete_title">Supprimer %1$s ?</string>
-    <string name="playlist_delete_message">Elle est supprimée de tous les appareils. Les titres qu’elle contient restent dans la bibliothèque.</string>
+    <string name="playlist_delete_message">bae supprimera cette liste de lecture de tous les appareils. Ses pistes restent dans la bibliothèque.</string>
     <string name="playlist_delete_confirm">Supprimer</string>
     <string name="playlist_options">Options de la liste de lecture</string>
     <plurals name="album_count">
@@ -196,14 +196,14 @@
     <string name="storage_kind_before_reset">Avant la réinitialisation</string>
     <string name="storage_clear_cache">Vider le cache</string>
     <string name="storage_keep_up_to">Conserver jusqu’à</string>
-    <string name="storage_cache_note">Les pistes lues depuis le cloud, ainsi que les pochettes et les images. Elles sont téléchargées à nouveau en cas de besoin.</string>
+    <string name="storage_cache_note">bae conserve ici les pistes que vous avez lues depuis le cloud, les pochettes et les images, et les télécharge de nouveau quand vous les lisez ou les ouvrez.</string>
     <string name="storage_ask_before_unpinning">Demander avant de désépingler</string>
     <string name="storage_ask_before_unpinning_note">Désépingler supprime immédiatement les fichiers d’une édition de ce téléphone</string>
     <string name="storage_pinned_note">Les éditions épinglées restent entières sur ce téléphone pour être lues hors ligne et ne comptent pas dans le cache.</string>
-    <string name="storage_delete_before_reset">Supprimer les données d’avant la réinitialisation</string>
+    <string name="storage_delete_before_reset">Supprimer ces données</string>
     <string name="storage_before_reset_nothing_uses">%1$s · plus rien ne les utilise</string>
-    <string name="storage_delete_before_reset_title">Supprimer les données d’avant la réinitialisation ?</string>
-    <string name="storage_delete_before_reset_body">%1$s seront supprimés de ce téléphone. Cette action est irréversible. Votre bibliothèque n’est pas affectée.</string>
+    <string name="storage_delete_before_reset_title">Supprimer ces données ?</string>
+    <string name="storage_delete_before_reset_body">bae supprimera %1$s de ce téléphone. Vous ne pourrez pas récupérer ces données. Votre bibliothèque reste telle quelle.</string>
     <string name="storage_delete">Supprimer</string>
     <string name="members_title">Personnes et appareils</string>
     <string name="people_people">Personnes</string>
@@ -240,7 +240,7 @@
     <string name="pin">Épingler</string>
     <string name="unpin">Désépingler</string>
     <string name="unpin_confirm_title">Désépingler cette édition ?</string>
-    <string name="unpin_confirm_body">Ses fichiers seront supprimés de ce téléphone dès maintenant. Elle reste dans le cloud et est diffusée depuis celui-ci tant que vous êtes en ligne.</string>
+    <string name="unpin_confirm_body">bae supprimera ses fichiers de ce téléphone dès maintenant. L’édition reste dans le cloud et est diffusée depuis celui-ci tant que vous êtes en ligne.</string>
     <string name="dont_show_again">Ne plus afficher ce message</string>
     <string name="pinned">Épinglé</string>
     <string name="pinning">Épinglage</string>
@@ -373,11 +373,11 @@
         <item quantity="one">Appareil retiré (%1$d)</item>
         <item quantity="other">Appareils retirés (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">L’appareil va être supprimé</string>
+    <string name="device_removed_title">Suppression de l’appareil</string>
     <string name="device_cut_off_confirm">J’ai coupé l’accès de cet appareil</string>
     <string name="device_cut_off_not_yet">Pas encore</string>
     <string name="device_cut_off_running_title">Cet appareil est toujours en cours de synchronisation avec le cloud</string>
-    <string name="device_cut_off_running_body">Attendez qu’elle se termine, puis réessayez.</string>
+    <string name="device_cut_off_running_body">Attendez qu’elle se termine.</string>
     <string name="device_cut_off_not_gone_title">La suppression n’est pas encore arrivée sur cet appareil</string>
     <string name="device_cut_off_not_gone_body">Réessayez après la prochaine synchronisation.</string>
     <string name="members_invite">Inviter</string>

@@ -48,7 +48,7 @@ internal fun cutOffRetryParts(
         },
         dismissButton = {
             AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.device_cut_off_not_yet))
+                Text(stringResource(if (notGone) R.string.device_cut_off_not_yet else R.string.cancel))
             }
         },
     )
