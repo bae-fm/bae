@@ -17,6 +17,9 @@ use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::fixed_now;
 use std::path::PathBuf;
 
+#[path = "pane_tests/parts.rs"]
+mod parts;
+
 /// A MusicBrainz release linking a Discogs release, in a group linking
 /// AllMusic and Wikidata.
 fn musicbrainz_release_linked_out(release_id: &str, group_id: &str) -> serde_json::Value {
