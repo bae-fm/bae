@@ -177,8 +177,7 @@ struct ShotForm<Content: View>: View {
 
     var body: some View {
         Form { content }
-            .formStyle(.settings)
+            .formStyle(.settingsWithoutMargin)
             .scrollDisabled(true)
-            .padding(.horizontal, -SettingsPaneMetrics.sideInset)
     }
 }

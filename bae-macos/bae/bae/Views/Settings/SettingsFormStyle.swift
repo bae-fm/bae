@@ -53,6 +53,13 @@ extension FormStyle where Self == SettingsFormStyle {
     /// The form the settings panes are drawn in: each section a box on the
     /// surface colour under its heading, with its footer below.
     static var settings: SettingsFormStyle { SettingsFormStyle() }
+
+    // periphery:ignore - called by baeShots
+    /// The settings form without the page margin a pane puts at its sides,
+    /// for a form that a component's frame holds.
+    static var settingsWithoutMargin: SettingsFormStyle {
+        SettingsFormStyle(sideInset: 0)
+    }
 }
 
 /// A form drawn the way the settings boards draw a pane: boxes in `surface`
@@ -65,6 +72,9 @@ extension FormStyle where Self == SettingsFormStyle {
 /// from the style they are given, so it also sets the ones the panes use: a
 /// switch with its label to the left, a label with its value at the right.
 struct SettingsFormStyle: FormStyle {
+    /// The page margin at each side of the sections.
+    var sideInset = SettingsPaneMetrics.sideInset
+
     func makeBody(configuration: Configuration) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -81,7 +91,7 @@ struct SettingsFormStyle: FormStyle {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, SettingsPaneMetrics.sideInset)
+            .padding(.horizontal, sideInset)
             .padding(.bottom, SettingsPaneMetrics.topInset)
         }
         .settingsRowControls()
