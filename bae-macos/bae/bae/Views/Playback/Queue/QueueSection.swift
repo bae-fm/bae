@@ -126,14 +126,12 @@ struct QueueSection: View {
                         // the row above it; gap 0 uses row 0's top.
                         .overlay(alignment: .bottom) {
                             if insertGapForLine == slot.displaySlot + 1 {
-                                insertionLine
-                                    .allowsHitTesting(false)
+                                MacQueueInsertLine()
                             }
                         }
                         .overlay(alignment: .top) {
                             if slot.displaySlot == 0, insertGapForLine == 0 {
-                                insertionLine
-                                    .allowsHitTesting(false)
+                                MacQueueInsertLine()
                             }
                         }
                         // The dragged row keeps its slot and gesture but is
@@ -172,9 +170,8 @@ struct QueueSection: View {
             // Only an empty lane needs this line; otherwise the last row's
             // bottom overlay marks the append gap.
             if acceptsExternalDrops, count == 0 {
-                insertionLine
+                MacQueueInsertLine()
                     .opacity(insertGapForLine == 0 ? 1 : 0)
-                    .allowsHitTesting(false)
             }
 
             // The manual lane's append drop zone and cross-lane append target;
@@ -302,13 +299,6 @@ extension QueueSection {
         case .context:
             return String(localized: "Clear playing from")
         }
-    }
-
-    private var insertionLine: some View {
-        Rectangle()
-            .fill(Color.accentColor)
-            .frame(height: 2)
-            .padding(.horizontal, ThemeSpace.related)
     }
 
     /// The dragged row drawn at the cursor, then gliding into its slot. A copy,

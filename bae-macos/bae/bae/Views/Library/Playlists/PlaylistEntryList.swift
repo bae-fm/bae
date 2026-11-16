@@ -125,12 +125,8 @@ struct PlaylistEntryList: View {
     @ViewBuilder
     private func insertLine(_ target: PlaylistEntryTarget?) -> some View {
         if let target {
-            Rectangle()
-                .fill(Color.accentColor)
-                .frame(height: 2)
-                .padding(.horizontal, ThemeSpace.related)
+            MacQueueInsertLine()
                 .offset(y: target.edge - 1)
-                .allowsHitTesting(false)
         }
     }
 
