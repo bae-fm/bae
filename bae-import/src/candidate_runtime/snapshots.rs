@@ -1,9 +1,11 @@
 //! Each key's [`CandidateRuntimeSnapshot`]: where the standings table says it
-//! stands — the step its import is at among it — with the state the run the
-//! table names last published, a library release's re-identify run, and its
-//! typed search, each read from its own table.
+//! stands (the step its import is at among it), with the state of the run
+//! its runtime shows (the run the table names, or a library release's
+//! re-identify run), and its typed search, each read from its own table. And
+//! each key's [`CandidateRuntimeView`]: the snapshot with the identify state
+//! its pane shows.
 
-use super::stored_standing::{Admission, SaveFailure};
+use super::stored_standing::{Admission, SaveFailure, StoredVerdict};
 use super::{CandidateRuntime, IdentificationStage, StoredRuntime};
 use crate::types::ImportStep;
 use crate::CandidateKey;
@@ -28,6 +30,23 @@ pub(crate) fn compose(
     Some(CandidateRuntimeSnapshot { identification, import, search })
 }
 
+/// `key`'s view from its stored runtime: the identify state its pane shows,
+/// which is what identification is doing for it while it does something,
+/// else its stored verdict's, with what is in flight for it.
+pub(crate) fn compose_view(key: &CandidateKey, stored: &StoredRuntime) -> CandidateRuntimeView {
+    let in_flight = compose(key, stored);
+    let identify_state =
+        match in_flight.as_ref().and_then(CandidateRuntimeSnapshot::identification_in_flight) {
+            Some(IdentificationInFlight::Queued) => ShownIdentifyState::Queued,
+            Some(IdentificationInFlight::Run(state)) => ShownIdentifyState::Run(state),
+            None => match stored.stored_verdict.clone() {
+                Some(verdict) => ShownIdentifyState::Stored(verdict),
+                None => ShownIdentifyState::Idle,
+            },
+        };
+    CandidateRuntimeView { identify_state, in_flight }
+}
+
 /// A folder candidate's identification as the table holds it, with the
 /// state its run last published.
 fn stored_identification(
@@ -36,7 +55,8 @@ fn stored_identification(
     stored: &StoredRuntime,
 ) -> Option<IdentificationRuntime> {
     let published = |run| {
-        let state = stored.runs.get(&run).cloned();
+        // The statement joins the run the standing names.
+        let state = stored.run.as_ref().map(|(_, state)| state.clone());
         if state.is_none() {
             // A run's first state is stored in the write that starts it, and
             // goes in the write that moves the standing off it.
@@ -63,20 +83,16 @@ fn stored_identification(
     }
 }
 
-/// A library release's re-identify run: its latest run in flight, else its
-/// latest answer. A key with no identification standing has rows only of a
-/// release's runs: a folder candidate's run has its row only while the
-/// standing names it.
+/// A library release's re-identify run, which the statement picks: its
+/// latest run in flight, else its latest answer. A key with no
+/// identification standing has rows only of a release's runs: a folder
+/// candidate's run has its row only while the standing names it.
 fn release_run(stored: &StoredRuntime) -> Option<IdentificationRuntime> {
-    let latest_first: Vec<_> = stored.runs.values().rev().collect();
-    if let Some(running) = latest_first.iter().find(|published| !published.outcome.is_answered()) {
-        return Some(IdentificationRuntime::Running((*running).clone()));
-    }
-    latest_first.first().map(|answered| {
-        IdentificationRuntime::Saving(SavingAnswer {
-            state: (*answered).clone(),
-            import_asked: false,
-        })
+    let (_, state) = stored.run.clone()?;
+    Some(if state.outcome.is_answered() {
+        IdentificationRuntime::Saving(SavingAnswer { state, import_asked: false })
+    } else {
+        IdentificationRuntime::Running(state)
     })
 }
 
@@ -186,6 +202,29 @@ impl CandidateRuntimeSnapshot {
             IdentificationRuntime::SaveFailed(_) => None,
         }
     }
+}
+
+/// The identify state one key's pane shows, with what is in flight for it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CandidateRuntimeView {
+    pub identify_state: ShownIdentifyState,
+    /// What is in flight for the key; `None` while nothing is.
+    pub in_flight: Option<CandidateRuntimeSnapshot>,
+}
+
+/// The identify state a key's pane shows.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShownIdentifyState {
+    /// On the identification queue, its run not started.
+    Queued,
+    /// The latest state a run published: in flight, or the answer being
+    /// written.
+    Run(PublishedRun),
+    /// Nothing identifies the key, and its current state holds this verdict.
+    Stored(StoredVerdict),
+    /// Nothing identifies the key, and nothing is stored for its current
+    /// files.
+    Idle,
 }
 
 /// Where one key's identification stands right now.

@@ -26,12 +26,18 @@ async fn library() -> (ImportTables, tempfile::TempDir) {
     (ImportTables::new(db), tmp)
 }
 
-/// What `key`'s runs published, as stored.
+/// What the run `key`'s runtime shows published, as stored, by its run.
 async fn stored_runs(
     tables: &ImportTables,
     key: &CandidateKey,
 ) -> BTreeMap<IdentifyRunId, PublishedRun> {
-    tables.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
+    tables
+        .load_candidate_runtime(key)
+        .await
+        .expect("a test reads the runs table")
+        .run
+        .into_iter()
+        .collect()
 }
 
 async fn change(tables: &ImportTables, key: &CandidateKey, change: IdentificationChange) {
@@ -382,9 +388,9 @@ fn typed_search() -> crate::candidate_search::CandidateSearch {
 }
 
 /// One query loads the runtime of every key at once: a folder candidate
-/// holding only its standing and a search, a release holding two runs, a
-/// release holding one, and a release holding only a search; each under its
-/// own key, its runs in run order, and the keys in key order.
+/// holding only its standing and a search, a release holding two runs in
+/// flight, which shows the later one, a release holding one, and a release
+/// holding only a search; each under its own key, and the keys in key order.
 #[tokio::test]
 async fn every_key_read_together_holds_what_it_holds_alone() {
     let (tables, key, files, _tmp) = scanned().await;
@@ -392,8 +398,6 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
     let first = CandidateKey::reidentify("release-1");
     let second = CandidateKey::reidentify("release-2");
     let third = CandidateKey::reidentify("release-3");
-    // The test publishes the runs out of order, and the read returns them in
-    // run order.
     tables.publish_release_run(&first, run(2), &search_waiting(), None).await.unwrap();
     tables
         .publish_release_run(&first, run(1), &barcode_half_answered(), Some(&scanning_signals()))
@@ -412,21 +416,19 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
     let of = |key: &CandidateKey| together.iter().find(|(held, _)| held == key).map(|(_, r)| r);
 
     let folder = of(&key).unwrap();
-    assert!(folder.runs.is_empty());
+    assert!(folder.run.is_none());
     assert!(folder.standing.identification.is_some());
     assert_eq!(folder.search.as_ref(), Some(&typed_search()));
 
     let two = of(&first).unwrap();
-    assert_eq!(two.runs.keys().copied().collect::<Vec<_>>(), vec![run(1), run(2)]);
-    assert_eq!(two.runs[&run(2)], published(search_waiting()));
-    assert!(two.runs[&run(1)].signals.is_some());
+    assert_eq!(two.run, Some((run(2), published(search_waiting()))));
     assert!(two.search.is_none());
 
     let one = of(&second).unwrap();
-    assert_eq!(one.runs, BTreeMap::from([(run(3), published(search_waiting()))]));
+    assert_eq!(one.run, Some((run(3), published(search_waiting()))));
 
     let search_only = of(&third).unwrap();
-    assert!(search_only.runs.is_empty());
+    assert!(search_only.run.is_none());
     assert!(search_only.standing.identification.is_none());
     assert_eq!(search_only.search.as_ref(), Some(&typed_search()));
 

@@ -13,7 +13,9 @@ struct CatalogApplyStepLine: View {
         SubscriptionReader(
             id: apply.map(ObjectIdentifier.init),
             subscribe: { apply?.stepValues() },
-            content: Self.line
+            // The reader draws nil before the first value, and the
+            // subscription's own nil says no apply waits on a read.
+            content: { step in Self.line(step ?? nil) }
         )
     }
 

@@ -374,7 +374,6 @@ extension PreviewData {
                 candidate: folder,
                 partCount: 0,
                 actionable: true,
-                resumedIdentifyState: .idle,
                 placement: .pending(folderCheck: nil, records: []),
                 live: BridgeCandidateLiveState(
                     identifying: nil,

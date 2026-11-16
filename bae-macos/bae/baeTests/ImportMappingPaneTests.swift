@@ -101,11 +101,14 @@ private final class Recorder {
     }
 }
 
+/// What core's runtime read says of a candidate the pane shows `shown` for,
+/// with nothing in flight.
 private func runtime(
-    _ identifyState: BridgeIdentifyState
+    shown identifyState: BridgeIdentifyState
 ) -> BridgeCandidateRuntimeSnapshot {
     BridgeCandidateRuntimeSnapshot(
-        identification: .run(state: identifyState),
+        identifyState: .state(state: identifyState),
+        identification: nil,
         import: nil,
         search: nil,
         signals: nil
@@ -146,10 +149,10 @@ struct ImportMappingPaneTests {
         }
     }
 
-    /// A candidate opened on Find online lists the matches of the run it
-    /// resumed, or of a run arriving now in its place; a stored pick settles
-    /// the identity, and the pane draws the draft instead, whatever the run
-    /// left behind. How each looks is the find online scenes' and
+    /// A candidate opened on Find online lists the matches of the identify
+    /// state core's runtime read says it shows; a stored pick settles the
+    /// identity, and the pane draws the draft instead, whatever the run left
+    /// behind. How each looks is the find online scenes' and
     /// `import-metadata-draft`'s.
     @MainActor
     @Test(
@@ -166,21 +169,13 @@ struct ImportMappingPaneTests {
         )
         browsing.session.presentation = .findOnline
         #expect(browsing.metadataPresentation == .findOnline)
-        let disagreement = IdentifyState(
-            bridge: PreviewData.bridgeDisagreementState
-        )
-
-        browsing.resumedIdentifyState = disagreement
-        #expect(area(browsing, runtime: nil) == .groups)
-
-        browsing.resumedIdentifyState = .manualOnly(trackCount: 11, run: nil)
-        #expect(area(browsing, runtime: nil) == .noSignals)
         #expect(
-            area(
-                browsing,
-                runtime: runtime(PreviewData.bridgeDisagreementState)
-            )
+            area(runtime: runtime(shown: PreviewData.bridgeDisagreementState))
                 == .groups
+        )
+        #expect(
+            area(runtime: runtime(shown: .manualOnly(trackCount: 11, run: nil)))
+                == .noSignals
         )
 
         // A stored pick settles the identity: the match list gives way to the
@@ -193,17 +188,14 @@ struct ImportMappingPaneTests {
         #expect(settled.metadataPresentation == .draft)
     }
 
-    /// The result area the candidate's Find online page shows.
+    /// The result area a Find online page shows for the identify state
+    /// `runtime` says its pane shows.
     @MainActor
     private func area(
-        _ candidate: Candidate,
-        runtime: BridgeCandidateRuntimeSnapshot?
+        runtime: BridgeCandidateRuntimeSnapshot
     ) -> FindOnlineResultArea {
         FindOnlineResultArea(
-            identifyState: shownIdentifyState(
-                resumed: candidate.resumedIdentifyState,
-                runtime: runtime
-            )
+            identifyState: IdentifyState(shown: runtime.identifyState)
         )
     }
 

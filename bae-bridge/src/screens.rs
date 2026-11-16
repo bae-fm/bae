@@ -191,12 +191,16 @@ pulled_read! {
 
 #[cfg(desktop)]
 pulled_read! {
-    /// What one candidate has in flight; `None` while nothing is.
+    /// The identify state one candidate's pane shows, and what it has in
+    /// flight.
     CandidateRuntimeSubscription:
-        LiveValues<Option<bae_import::CandidateRuntimeSnapshot>>
-            => Option<crate::types::BridgeCandidateRuntimeSnapshot>,
-    converted by |runtime: Option<bae_import::CandidateRuntimeSnapshot>| {
-        runtime.map(crate::types::BridgeCandidateRuntimeSnapshot::from_core)
+        LiveValues<bae_import::CandidateRuntimeView>
+            => crate::types::BridgeCandidateRuntimeSnapshot,
+    // A closure rather than the function's path: the ownership check
+    // follows a closure the read passes to its live query into what it
+    // calls, and checks the conversion as read code.
+    converted by |view: bae_import::CandidateRuntimeView| {
+        crate::types::BridgeCandidateRuntimeSnapshot::from_core(view)
     },
     built by candidate_runtime
 }

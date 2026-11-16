@@ -45,13 +45,13 @@ mod snapshots;
 mod standing_writes;
 mod stored_standing;
 mod work;
-pub(crate) use snapshots::compose;
+pub(crate) use snapshots::compose_view;
 pub use snapshots::{
-    CandidateRuntimeSnapshot, IdentificationInFlight, IdentificationRuntime, ImportInFlight,
-    ImportPercentsWatch, SavingAnswer,
+    CandidateRuntimeSnapshot, CandidateRuntimeView, IdentificationInFlight, IdentificationRuntime,
+    ImportInFlight, ImportPercentsWatch, SavingAnswer, ShownIdentifyState,
 };
 pub(crate) use standing_writes::RunSubject;
-pub use stored_standing::{Admission, CandidateFiles, SaveFailure};
+pub use stored_standing::{Admission, CandidateFiles, SaveFailure, StoredVerdict};
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredRuntime, StoredStanding,

@@ -216,8 +216,9 @@ pub(crate) use candidate_runtime::CandidateWork;
 pub use candidate_runtime::ImportPercentsWatch;
 #[cfg(desktop)]
 pub use candidate_runtime::{
-    Admission, CandidateFiles, CandidateRuntimeSnapshot, IdentificationInFlight,
-    IdentificationRuntime, ImportInFlight, SaveFailure, SavingAnswer,
+    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateRuntimeView,
+    IdentificationInFlight, IdentificationRuntime, ImportInFlight, SaveFailure, SavingAnswer,
+    ShownIdentifyState, StoredVerdict,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use candidate_runtime::{

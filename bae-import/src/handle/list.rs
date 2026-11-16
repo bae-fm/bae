@@ -104,13 +104,13 @@ impl ImportServiceHandle {
         )
     }
 
-    /// What is in flight for `key`: the first value at once, then a value
-    /// after each write that changes it; `None` while nothing is. Closing the
-    /// library ends it.
+    /// The identify state `key`'s pane shows and what is in flight for it:
+    /// the first value at once, then a value after each write that changes
+    /// it. Closing the library ends it.
     pub fn subscribe_candidate_runtime(
         &self,
         key: &crate::CandidateKey,
-    ) -> bae_store::live_query::LiveValues<Option<crate::CandidateRuntimeSnapshot>> {
+    ) -> bae_store::live_query::LiveValues<crate::CandidateRuntimeView> {
         bae_store::live_query::LiveValues::new(
             self.services.tables.subscribe_candidate_runtime(key),
             self.services.closing.child_token(),

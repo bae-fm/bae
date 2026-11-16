@@ -384,13 +384,13 @@ impl Fixture {
         wanted: impl Fn(&crate::CandidateRuntimeSnapshot) -> bool,
     ) {
         let mut runtime = self.context.tables.subscribe_candidate_runtime(key);
-        live_until(&mut runtime, |runtime| runtime.as_ref().is_some_and(&wanted)).await;
+        live_until(&mut runtime, |view| view.in_flight.as_ref().is_some_and(&wanted)).await;
     }
 
     /// Wait until nothing is recorded as running for `key`.
     pub(crate) async fn await_no_runtime(&self, key: &crate::CandidateKey) {
         let mut runtime = self.context.tables.subscribe_candidate_runtime(key);
-        live_until(&mut runtime, Option::is_none).await;
+        live_until(&mut runtime, |view| view.in_flight.is_none()).await;
     }
 
     /// Wait until no candidate of `keys` stands identifying.

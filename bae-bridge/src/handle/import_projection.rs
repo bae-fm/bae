@@ -116,7 +116,18 @@ impl crate::types::BridgeInvalidCandidateDetail {
 }
 
 impl crate::types::BridgeCandidateRuntimeSnapshot {
-    pub(crate) fn from_core(runtime: bae_import::CandidateRuntimeSnapshot) -> Self {
+    pub(crate) fn from_core(view: bae_import::CandidateRuntimeView) -> Self {
+        let bae_import::CandidateRuntimeView { identify_state, in_flight: runtime } = view;
+        let identify_state = crate::types::BridgeShownIdentifyState::from_core(identify_state);
+        let Some(runtime) = runtime else {
+            return Self {
+                identify_state,
+                identification: None,
+                import: None,
+                search: None,
+                signals: None,
+            };
+        };
         // A failed write, and whether an Import was asked of the answer,
         // reach the UI through the row's live state.
         let in_flight = runtime.identification_in_flight();
@@ -128,11 +139,29 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
         };
         let bae_import::CandidateRuntimeSnapshot { identification: _, import, search } = runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
+            identify_state,
             identification: in_flight.map(crate::types::BridgeIdentificationInFlight::from_core),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
             signals,
         }
+    }
+}
+
+impl crate::types::BridgeShownIdentifyState {
+    fn from_core(state: bae_import::ShownIdentifyState) -> Self {
+        let state = match state {
+            bae_import::ShownIdentifyState::Queued => return Self::Queued,
+            bae_import::ShownIdentifyState::Run(published) => {
+                crate::types::BridgeIdentifyState::from_published(published)
+            }
+            bae_import::ShownIdentifyState::Stored(bae_import::StoredVerdict {
+                view,
+                not_cd_rate,
+            }) => crate::types::BridgeIdentifyState::from_view(view, not_cd_rate),
+            bae_import::ShownIdentifyState::Idle => crate::types::BridgeIdentifyState::Idle,
+        };
+        Self::State { state }
     }
 }
 
@@ -619,7 +648,9 @@ impl crate::types::BridgeImportCandidateDetail {
             part_count,
             actionable,
             skipped,
-            resumed_identify_state,
+            // The pane reads the identify state it shows from the
+            // candidate's runtime read.
+            resumed_identify_state: _,
             placement,
             live,
             import_status,
@@ -646,10 +677,6 @@ impl crate::types::BridgeImportCandidateDetail {
             ),
             part_count,
             actionable,
-            resumed_identify_state: crate::types::BridgeIdentifyState::from_view(
-                resumed_identify_state,
-                rate,
-            ),
             placement: crate::types::BridgeCandidatePanePlacement::from_core(placement, rate),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),

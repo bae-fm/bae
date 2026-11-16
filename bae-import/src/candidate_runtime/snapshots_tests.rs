@@ -115,9 +115,9 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
 // however many writes land before it pulls, it reads where they left off.
 
 /// The next value `query` delivers; the test fails if none ever comes.
-async fn next_runtime(
-    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError>,
-) -> Option<crate::CandidateRuntimeSnapshot> {
+async fn next_view(
+    query: &mut coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError>,
+) -> crate::CandidateRuntimeView {
     tokio::time::timeout(HANG_GUARD, query.next_inline())
         .await
         .expect("the query delivers")
@@ -125,17 +125,33 @@ async fn next_runtime(
         .expect("the query reads")
 }
 
-/// Pull from `query` until a value satisfies `wanted`, and return it.
-async fn runtime_until(
-    query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError>,
-    wanted: impl Fn(&Option<crate::CandidateRuntimeSnapshot>) -> bool,
+/// What is in flight in the next value `query` delivers.
+async fn next_runtime(
+    query: &mut coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError>,
 ) -> Option<crate::CandidateRuntimeSnapshot> {
+    next_view(query).await.in_flight
+}
+
+/// Pull from `query` until a value satisfies `wanted`, and return it.
+async fn view_until(
+    query: &mut coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError>,
+    wanted: impl Fn(&crate::CandidateRuntimeView) -> bool,
+) -> crate::CandidateRuntimeView {
     loop {
-        let value = next_runtime(query).await;
+        let value = next_view(query).await;
         if wanted(&value) {
             return value;
         }
     }
+}
+
+/// Pull from `query` until what is in flight satisfies `wanted`, and return
+/// it.
+async fn runtime_until(
+    query: &mut coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError>,
+    wanted: impl Fn(&Option<crate::CandidateRuntimeSnapshot>) -> bool,
+) -> Option<crate::CandidateRuntimeSnapshot> {
+    view_until(query, |view| wanted(&view.in_flight)).await.in_flight
 }
 
 /// Wait for the percents watch to satisfy a condition, failing the test if
@@ -289,4 +305,92 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     });
     percents_reach(percents.wait_for(|percents| !percents.contains_key(key))).await;
     runtime_until(&mut query, Option::is_none).await;
+}
+
+/// The pane shows what identification is doing for a key while it does
+/// something, and otherwise the state the key's stored verdict stands back up
+/// as: Idle with no verdict, the verdict once one is stored, Queued and the
+/// run's state while one is admitted and runs, and the verdict again after.
+#[tokio::test]
+async fn the_shown_identify_state_is_the_run_s_while_one_runs_else_the_verdict_s() {
+    use crate::ShownIdentifyState;
+    let runtime = CandidateRuntime::for_test().await;
+    let key = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let files = scanned_key(&runtime, key).await;
+    let mut query = runtime.tables.subscribe_candidate_runtime(key);
+    assert_eq!(next_view(&mut query).await.identify_state, ShownIdentifyState::Idle);
+
+    assert!(runtime
+        .tables
+        .store_verdict(&crate::tables::NewImportCandidateVerdict {
+            content_hash: files.content_hash.clone(),
+            file_edit_revision: files.file_edit_revision,
+            candidate_key: key.clone(),
+            verdict: bae_identify::TerminalVerdict::ManualOnly { track_count: 9, ledger: None },
+            signals: bae_identify::signals::Signals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: bae_identify::signals::DiscIdSignal::Absent,
+                barcode: bae_identify::signals::BarcodeSignal::Absent,
+                text: bae_identify::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
+            pick: None,
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap());
+    let stored =
+        view_until(&mut query, |view| matches!(view.identify_state, ShownIdentifyState::Stored(_)))
+            .await;
+    assert!(stored.in_flight.is_none(), "nothing is identifying it");
+    let ShownIdentifyState::Stored(verdict) = stored.identify_state else {
+        unreachable!("the value was picked for its stored verdict")
+    };
+    assert!(
+        matches!(verdict.view, bae_identify::IdentifyStateView::ManualOnly { track_count: 9, .. }),
+        "{:?}",
+        verdict.view
+    );
+
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
+    view_until(&mut query, |view| view.identify_state == ShownIdentifyState::Queued).await;
+
+    assert!(runtime.run_started(key, &files, run(1), &triangulating()).await.unwrap());
+    view_until(&mut query, |view| {
+        view.identify_state == ShownIdentifyState::Run(published(triangulating()))
+    })
+    .await;
+
+    runtime.run_ended(key, run(1)).await.unwrap();
+    view_until(&mut query, |view| matches!(view.identify_state, ShownIdentifyState::Stored(_)))
+        .await;
+}
+
+/// A library release's re-identify session shows its latest run in flight
+/// over a later run's answer, and the latest answer once none is in flight.
+#[tokio::test]
+async fn a_re_identify_session_shows_its_run_in_flight_over_a_later_answer() {
+    let runtime = CandidateRuntime::for_test().await;
+    let key = &crate::CandidateKey::reidentify("release-1");
+
+    runtime.tables.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(2), &manual_only(), None).await.unwrap();
+    assert_eq!(
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        Some(IdentificationRuntime::Running(published(triangulating())))
+    );
+
+    let later = bae_identify::IdentifyState::ManualOnly {
+        ledger: None,
+        track_count: 7,
+        context: crate::candidate_runtime::tests::signals_context(7),
+    };
+    runtime.tables.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(3), &later, None).await.unwrap();
+    assert_eq!(in_flight(&runtime, key).await, Some(IdentificationInFlight::Run(published(later))));
 }

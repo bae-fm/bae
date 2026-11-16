@@ -218,10 +218,6 @@ pub struct BridgeImportCandidateDetail {
     /// then `candidate.parts` is empty.
     pub part_count: u64,
     pub actionable: bool,
-    /// The identify state the candidate's stored verdict stands back up as:
-    /// what the pane shows when its runtime holds no run. `Idle` when nothing
-    /// is stored for the candidate's current files.
-    pub resumed_identify_state: BridgeIdentifyState,
     /// Where the queue places the candidate, with what the pane states beside
     /// it.
     pub placement: BridgeCandidatePanePlacement,

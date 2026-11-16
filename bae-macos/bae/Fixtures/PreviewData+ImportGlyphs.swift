@@ -7,11 +7,7 @@ import Foundation
 /// whether its draft was read from a catalog record.
 extension PreviewData {
     private static func glyphCandidate(_ name: String) -> Candidate {
-        importTabFolder(
-            path: name,
-            name: name,
-            identifyState: searchStateNotFound.identifyState
-        )
+        importTabFolder(path: name, name: name)
     }
 
     private static let glyphSummary = BridgeTriageMetadataSummary(

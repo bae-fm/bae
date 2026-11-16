@@ -158,12 +158,16 @@ pub struct BridgeInvalidCandidateDetail {
     pub files: Vec<BridgeMappingFile>,
 }
 
-/// What is happening for one candidate right now; what finished work left
-/// behind is on its row.
+/// The identify state one candidate's pane shows, and what is happening for
+/// the candidate right now; what finished work left behind is on its row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
+    /// The identify state the pane shows: what identification is doing for
+    /// the candidate while it does something, else the state its stored
+    /// verdict stands back up as.
+    pub identify_state: BridgeShownIdentifyState,
     /// What identification is doing for the candidate; `None` when nothing
-    /// is, and the pane shows its stored verdict.
+    /// is.
     pub identification: Option<BridgeIdentificationInFlight>,
     pub import: Option<BridgeImportInFlight>,
     /// The typed search submitted for this candidate, as its sources answer.
@@ -173,6 +177,16 @@ pub struct BridgeCandidateRuntimeSnapshot {
     /// `None` while no run is, and the form reads the candidate's stored
     /// signals.
     pub signals: Option<BridgeSignals>,
+}
+
+/// The identify state a candidate's pane shows.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeShownIdentifyState {
+    /// On the identification queue, its run not started.
+    Queued,
+    /// The state the run in flight last published, the answer being written,
+    /// or the stored verdict's; `Idle` when there is none.
+    State { state: BridgeIdentifyState },
 }
 
 /// What identification is doing for a candidate right now.

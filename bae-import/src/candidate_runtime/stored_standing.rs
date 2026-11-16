@@ -33,15 +33,28 @@ impl StoredStanding {
     }
 }
 
-/// One key's standing with what each of its runs in flight last published
-/// (`import_identify_run`) — a folder candidate's run the standing names, or
-/// a library release's re-identify runs, which hold no standing — and its
-/// typed search (`import_candidate_search`).
+/// One key's standing, what the run its runtime shows last published
+/// (`import_identify_run`), its stored verdict, and its typed search
+/// (`import_candidate_search`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct StoredRuntime {
     pub(crate) standing: StoredStanding,
-    pub(crate) runs: std::collections::BTreeMap<IdentifyRunId, bae_identify::PublishedRun>,
+    /// The run the key's identification standing names, or, for a key with
+    /// no identification standing (a library release's re-identify session),
+    /// its latest run in flight, else its latest answer.
+    pub(crate) run: Option<(IdentifyRunId, bae_identify::PublishedRun)>,
+    /// The verdict of the key's current state, when it has one.
+    pub(crate) stored_verdict: Option<StoredVerdict>,
     pub(crate) search: Option<crate::candidate_search::CandidateSearch>,
+}
+
+/// A key's stored verdict as its pane shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredVerdict {
+    /// The identify state the verdict stands back up as.
+    pub view: bae_identify::IdentifyStateView,
+    /// The sample rate the key's stored signals say rules out a CD.
+    pub not_cd_rate: Option<u32>,
 }
 
 /// An identification of the files it names.

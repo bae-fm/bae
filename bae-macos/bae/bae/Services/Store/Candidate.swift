@@ -314,12 +314,6 @@ struct Candidate: Equatable, Identifiable {
 
     /// Dynamic — mutated by the import-candidate projection or by views.
     var files: BridgeCandidateFiles
-    /// The state the candidate's stored verdict stands back up as, from the
-    /// candidate list. `.idle` when nothing is stored for its current files.
-    /// What a surface shows is this or the run in flight — see
-    /// `shownIdentifyState(resumed:runtime:)`, which reads the run from the
-    /// candidate-runtime signal rather than from here.
-    var resumedIdentifyState: IdentifyState = .idle
     /// Everything the pane draws, as core reads it back for this key: the
     /// metadata draft and provenance, mapping table, cover, and the
     /// last failed import. `nil` for a re-identify session, which has no
@@ -382,17 +376,14 @@ struct Candidate: Equatable, Identifiable {
         files = folder.files
     }
 
-    /// One read of a selected candidate: the folder, its resumed identify
-    /// state, and where the queue places it.
+    /// One read of a selected candidate: the folder, and where the queue
+    /// places it.
     init(
         detail: BridgeImportCandidateDetail
     ) {
         self.init(
             folder: detail.candidate,
             folders: CandidateFolders(detail: detail)
-        )
-        resumedIdentifyState = IdentifyState(
-            bridge: detail.resumedIdentifyState
         )
         placement = detail.placement
         live = detail.live

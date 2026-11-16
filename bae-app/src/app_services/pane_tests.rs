@@ -137,12 +137,8 @@ impl Library {
     async fn until_queued(&self, key: &CandidateKey) {
         let runtime = self.import.subscribe_candidate_runtime(key);
         tokio::time::timeout(HANG_GUARD, async {
-            while runtime
-                .next()
-                .await
-                .unwrap()
-                .and_then(|runtime| runtime.identification_in_flight())
-                != Some(bae_import::IdentificationInFlight::Queued)
+            while runtime.next().await.unwrap().identify_state
+                != bae_import::ShownIdentifyState::Queued
             {}
         })
         .await

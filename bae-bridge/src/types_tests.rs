@@ -17,14 +17,16 @@ mod triage_tests {
 
     #[test]
     fn an_idle_candidate_crosses_with_its_running_import() {
-        let idle =
-            BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeSnapshot {
+        let idle = BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeView {
+            identify_state: bae_import::ShownIdentifyState::Idle,
+            in_flight: Some(bae_import::CandidateRuntimeSnapshot {
                 identification: None,
                 import: Some(bae_import::ImportInFlight {
                     step: bae_import::ImportStep::Running(bae_import::ImportPhase::ReadingFiles),
                 }),
                 search: None,
-            });
+            }),
+        });
         assert!(idle.identification.is_none());
         assert!(matches!(
             idle.import.map(|import| import.step),
@@ -36,15 +38,18 @@ mod triage_tests {
     /// its pane says so rather than offering to start.
     #[test]
     fn a_queued_candidate_crosses_as_queued() {
-        let queued =
-            BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeSnapshot {
+        let queued = BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeView {
+            identify_state: bae_import::ShownIdentifyState::Queued,
+            in_flight: Some(bae_import::CandidateRuntimeSnapshot {
                 identification: Some(bae_import::IdentificationRuntime::Queued(
                     bae_import::Admission::Automatic,
                 )),
                 import: None,
                 search: None,
-            });
+            }),
+        });
         assert!(matches!(queued.identification, Some(BridgeIdentificationInFlight::Queued)));
+        assert!(matches!(queued.identify_state, BridgeShownIdentifyState::Queued));
     }
 }
 

@@ -38,14 +38,13 @@ extension PreviewData {
         )
     }
 
-    /// A shot candidate showing `identifyState`.
+    /// A shot candidate: a folder under the import root.
     static func importTabFolder(
         path: String,
         name: String,
-        trackCount: UInt32 = 9,
-        identifyState: IdentifyState
+        trackCount: UInt32 = 9
     ) -> Candidate {
-        var candidate = Candidate(
+        Candidate(
             folder: BridgeFolderCandidate(
                 parts: [],
                 candidateKey: Data("\(importRootPath)/\(path)".utf8),
@@ -59,72 +58,24 @@ extension PreviewData {
             ),
             folders: .one(folderPath: Data("\(importRootPath)/\(path)".utf8))
         )
-        candidate.resumedIdentifyState = identifyState
-        return candidate
     }
 
     static let importTabSeveralMatchesCandidate = importTabFolder(
         path: "Album Title Five",
         name: "Album Title Five",
-        trackCount: 12,
-        identifyState: .found(
-            run: identifyRunFound,
-            groups: [searchGroupExact],
-            trackCount: 12,
-            agreements: searchAgreementsExact,
-            narrowedOutCount: 0,
-            folderCheck: nil,
-            offersSharedAlbum: false
-        )
+        trackCount: 12
     )
 
     static let importTabDisagreementCandidate = importTabFolder(
         path: "Album Title Six - Remaster",
         name: "Album Title Six - Remaster",
-        trackCount: 11,
-        identifyState: searchStateDisagreement.identifyState
-    )
-
-    private static let noTracklistGroup = ReleaseGroup(
-        bridge: BridgeReleaseGroup(
-            id: "group-no-tracklist",
-            titles: ["Album Title Seven"],
-            artists: [.named("Artist Name")],
-            labels: ["Label Name"],
-            coverArt: nil,
-            sources: [
-                BridgeReleaseGroupSource(
-                    source: .musicBrainz,
-                    groupUrl:
-                        "https://musicbrainz.org/release-group/group-no-tracklist",
-                    albumLinksUnread: false
-                )
-            ],
-            yearMin: 1994,
-            yearMax: 1994,
-            sections: [
-                BridgePressingSection(
-                    album: nil,
-                    pressings: [exactPressings[0]],
-                    narrowedOut: []
-                )
-            ]
-        )
+        trackCount: 11
     )
 
     static let importTabNoTracklistCandidate = importTabFolder(
         path: "Album Title Seven",
         name: "Album Title Seven",
-        trackCount: 10,
-        identifyState: .found(
-            run: identifyRunFound,
-            groups: [noTracklistGroup],
-            trackCount: 10,
-            agreements: [:],
-            narrowedOutCount: 0,
-            folderCheck: .sourceTracksUnknown,
-            offersSharedAlbum: false
-        )
+        trackCount: 10
     )
 
     private static let importTabAlreadyInLibraryStatus =
@@ -145,16 +96,7 @@ extension PreviewData {
         var candidate = importTabFolder(
             path: "Album Title Eight - Reissue",
             name: "Album Title Eight - Reissue",
-            trackCount: 14,
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 14,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                offersSharedAlbum: false
-            )
+            trackCount: 14
         )
         candidate.libraryStatuses = [
             releaseDetailBridge.releaseId: importTabAlreadyInLibraryStatus
@@ -164,14 +106,12 @@ extension PreviewData {
 
     static let importTabNoMatchCandidate = importTabFolder(
         path: "Unmatched Folder",
-        name: "Unmatched Folder",
-        identifyState: searchStateNotFound.identifyState
+        name: "Unmatched Folder"
     )
 
     static let importTabIdentifyingCandidate = importTabFolder(
         path: "Queued Folder",
-        name: "Queued Folder",
-        identifyState: searchStateTriangulating.identifyState
+        name: "Queued Folder"
     )
 
     @MainActor
@@ -207,50 +147,29 @@ extension PreviewData {
         importTabGroupedReadyCandidate,
         importTabFolder(
             path: "Artist Collection/Album Title Ten",
-            name: "Album Title Ten",
-            identifyState: searchStateNotFound.identifyState
+            name: "Album Title Ten"
         ),
     ]
 
     private static let importTabUnidentifiedCandidate = importTabFolder(
         path: "Release Folder Eleven",
-        name: "Release Folder Eleven",
-        identifyState: searchStateNotFound.identifyState
+        name: "Release Folder Eleven"
     )
 
     private static let importTabTaggedCandidate = importTabFolder(
         path: "Release Folder Twelve",
-        name: "Release Folder Twelve",
-        identifyState: searchStateNotFound.identifyState
+        name: "Release Folder Twelve"
     )
 
     private static let importTabIdentifiedCandidate = importTabFolder(
         path: "Release Folder Thirteen",
-        name: "Release Folder Thirteen",
-        identifyState: .found(
-            run: identifyRunFound,
-            groups: [searchGroupExact],
-            trackCount: 9,
-            agreements: searchAgreementsExact,
-            narrowedOutCount: 0,
-            folderCheck: nil,
-            offersSharedAlbum: false
-        )
+        name: "Release Folder Thirteen"
     )
 
     private static let importTabIdentifiedSeveralMatchesCandidate =
         importTabFolder(
             path: "Release Folder Fourteen",
-            name: "Release Folder Fourteen",
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                trackCount: 9,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                folderCheck: nil,
-                offersSharedAlbum: false
-            )
+            name: "Release Folder Fourteen"
         )
 
     /// No draft yet: the row shows its folder and the folder's image.

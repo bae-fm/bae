@@ -9,21 +9,18 @@ import SwiftUI
 struct SubscriptionReader<
     ID: Hashable,
     Source: PulledSubscription,
-    Wrapped: Sendable,
     Content: View
->:
-    View
-where Source.Value == Wrapped? {
+>: View {
     let id: ID
     let subscribe: () -> Source?
     @ViewBuilder
-    let content: (Wrapped?) -> Content
+    let content: (Source.Value?) -> Content
 
     @Environment(UiStore.self)
     private var uiStore: UiStore?
 
     @State
-    private var latest: Wrapped?
+    private var latest: Source.Value?
     @State
     private var subscription: ScreenSubscription<Source>?
 

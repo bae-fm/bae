@@ -314,10 +314,11 @@ extension ImportSearchFlow {
         importStore: ImportStore
     ) -> ImportSearchState {
         let candidate = input.candidate
-        let identifyState = shownIdentifyState(
-            resumed: candidate.resumedIdentifyState,
-            runtime: input.runtime
-        )
+        // Core's runtime read says which identify state the pane shows;
+        // before its first value the pane shows none.
+        let identifyState =
+            input.runtime.map { IdentifyState(shown: $0.identifyState) }
+            ?? .idle
         return ImportSearchState(
             identifyState: identifyState,
             error: candidate.error,

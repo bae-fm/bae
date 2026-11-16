@@ -622,11 +622,6 @@ extension PreviewData {
     )
 
     /// The Disc ID and the barcode named different albums, all offered.
-    static let searchStateDisagreement = searchState(
-        identifyState: IdentifyState(bridge: bridgeDisagreementState)
-    )
-
-    /// The bridge shape of the disagreement above.
     static let bridgeDisagreementState = BridgeIdentifyState.found(
         run: identifyRunFound,
         groups: [discidOnlyGroup, barcodeOnlyGroup],

@@ -119,7 +119,6 @@ private func detail(
     watchedFolderPath: Data,
     name: String,
     skipped: Bool = false,
-    resumedIdentifyState: BridgeIdentifyState = .idle,
     cover: BridgeCoverChoice? = nil,
     remoteCovers: [BridgeRemoteCover] = [],
     presentation: BridgeMetadataPresentation = .draft
@@ -133,7 +132,6 @@ private func detail(
         ),
         partCount: 0,
         actionable: true,
-        resumedIdentifyState: resumedIdentifyState,
         placement: .pending(folderCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identifying: nil,
@@ -175,7 +173,7 @@ private func detail(
 @Suite("ImportStore per-candidate reads")
 struct ImportStoreCandidateDetailTests {
     @MainActor
-    @Test("a read installs the folder, its resumed state and its row")
+    @Test("a read installs the folder and its row")
     func installsTheRead() throws {
         let store = ImportStore()
 
@@ -184,15 +182,12 @@ struct ImportStoreCandidateDetailTests {
             detail: detail(
                 folderPath: Data("/w1/a".utf8),
                 watchedFolderPath: Data("/w1".utf8),
-                name: "A",
-                resumedIdentifyState: .notFoundAnywhere(run: nil)
+                name: "A"
             )
         )
 
         let read = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
         #expect(read.displayName == "A")
-        // With no run live the resumed state is what the pane shows.
-        #expect(read.resumedIdentifyState == .notFoundAnywhere(run: nil))
         #expect(read.placement == .pending(folderCheck: nil, records: []))
         #expect(read.importStatus == nil)
     }

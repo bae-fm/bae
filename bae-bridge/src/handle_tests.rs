@@ -419,24 +419,21 @@ fn a_run_s_signals_cross_with_its_runtime() {
         track_titles: Vec::new(),
     };
     let running = |signals: Option<bae_identify::signals::Signals>| {
-        crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-            bae_import::CandidateRuntimeSnapshot {
-                identification: Some(bae_import::IdentificationRuntime::Running(
-                    bae_identify::PublishedRun {
-                        outcome: bae_identify::RunOutcome::Answered(
-                            bae_identify::TerminalVerdict::ManualOnly {
-                                track_count: 9,
-                                ledger: None,
-                            },
-                        ),
-                        signals,
-                        cards: Default::default(),
-                    },
-                )),
+        let run = bae_identify::PublishedRun {
+            outcome: bae_identify::RunOutcome::Answered(
+                bae_identify::TerminalVerdict::ManualOnly { track_count: 9, ledger: None },
+            ),
+            signals,
+            cards: Default::default(),
+        };
+        crate::types::BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeView {
+            identify_state: bae_import::ShownIdentifyState::Run(run.clone()),
+            in_flight: Some(bae_import::CandidateRuntimeSnapshot {
+                identification: Some(bae_import::IdentificationRuntime::Running(run)),
                 import: None,
                 search: None,
-            },
-        )
+            }),
+        })
     };
 
     let crossed = running(Some(signals)).signals.expect("the run's signals cross with its runtime");
@@ -447,15 +444,17 @@ fn a_run_s_signals_cross_with_its_runtime() {
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
     assert!(running(None).signals.is_none(), "a run extraction has not reported to carries none");
 
-    let queued = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
-        bae_import::CandidateRuntimeSnapshot {
-            identification: Some(bae_import::IdentificationRuntime::Queued(
-                bae_import::Admission::Automatic,
-            )),
-            import: None,
-            search: None,
-        },
-    );
+    let queued =
+        crate::types::BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeView {
+            identify_state: bae_import::ShownIdentifyState::Queued,
+            in_flight: Some(bae_import::CandidateRuntimeSnapshot {
+                identification: Some(bae_import::IdentificationRuntime::Queued(
+                    bae_import::Admission::Automatic,
+                )),
+                import: None,
+                search: None,
+            }),
+        });
     assert!(queued.signals.is_none(), "a queued key has no run to have read any");
 }
 
@@ -766,10 +765,14 @@ mod candidate_runtime {
         let handle = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.handle().subscribe_candidate_runtime(key.clone());
-        assert!(
-            pull_until(handle.handle(), || watching.clone().next(), |_| true).is_none(),
-            "nothing runs yet"
-        );
+        let idle = pull_until(handle.handle(), || watching.clone().next(), |_| true);
+        assert!(idle.import.is_none() && idle.identification.is_none(), "nothing runs yet");
+        assert!(matches!(
+            idle.identify_state,
+            crate::types::BridgeShownIdentifyState::State {
+                state: crate::types::BridgeIdentifyState::Idle
+            }
+        ));
 
         handle.handle().runtime.block_on(
             handle
@@ -778,8 +781,11 @@ mod candidate_runtime {
                 .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
-        let claimed = pull_until(handle.handle(), || watching.clone().next(), Option::is_some)
-            .expect("a claimed candidate is in flight");
+        let claimed = pull_until(
+            handle.handle(),
+            || watching.clone().next(),
+            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| runtime.import.is_some(),
+        );
         let import = claimed.import.clone().expect("a claimed candidate has an import in flight");
         assert!(
             matches!(import.step, crate::types::BridgeImportStep::Preparing { .. }),
@@ -790,9 +796,7 @@ mod candidate_runtime {
         // A subscriber opening mid-import reads what is running.
         let joining = handle.handle().subscribe_candidate_runtime(key.clone());
         assert!(
-            pull_until(handle.handle(), || joining.clone().next(), |_| true)
-                .and_then(|runtime| runtime.import)
-                .is_some(),
+            pull_until(handle.handle(), || joining.clone().next(), |_| true).import.is_some(),
             "a late subscriber reads the running import"
         );
 
@@ -804,7 +808,11 @@ mod candidate_runtime {
 
         // A failed import is a row by the time it is announced, so the key
         // simply stops being in flight.
-        pull_until(handle.handle(), || watching.clone().next(), Option::is_none);
+        pull_until(
+            handle.handle(),
+            || watching.clone().next(),
+            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| runtime.import.is_none(),
+        );
 
         // Cancelling ends the pulls: a pull after it answers that it was
         // cancelled.

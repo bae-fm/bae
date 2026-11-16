@@ -44,16 +44,12 @@ struct CandidateRuntimeReader<Content: View>: View {
 
 // MARK: - The state a surface shows
 
-/// The identify state a candidate shows: what identification is doing for it
-/// while core says it is doing something, else the state its stored verdict
-/// stands back up as.
-func shownIdentifyState(
-    resumed: IdentifyState,
-    runtime: BridgeCandidateRuntimeSnapshot?
-) -> IdentifyState {
-    switch runtime?.identification {
-    case nil: resumed
-    case .queued: .queued
-    case .run(let state): IdentifyState(bridge: state)
+extension IdentifyState {
+    /// The identify state core says a candidate's pane shows.
+    init(shown: BridgeShownIdentifyState) {
+        switch shown {
+        case .queued: self = .queued
+        case .state(let state): self.init(bridge: state)
+        }
     }
 }
