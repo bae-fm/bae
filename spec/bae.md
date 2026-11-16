@@ -409,7 +409,8 @@ one artist twice keeps both credits. Every reader takes the whole list:
   (accents still count: `ecrin` doesn't find `Écrin`), and each kind of result
   comes in title or name order, ties going by id.
   The search also says whether it found anything of any kind, which is what
-  the screens' no-results state reads.
+  the screens' no-results state reads, and counts the rows each section
+  lists, which is what decides whether the screens show that section.
 - A track shows its own credits, else its album's, wherever bae names a
   track's artists: its search row, its row in an album's detail, what plays,
   the tags of a saved copy, and Subsonic's songs. One rule in the library's
