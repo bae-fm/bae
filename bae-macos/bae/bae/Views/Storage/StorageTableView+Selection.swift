@@ -1,5 +1,8 @@
 import AppKit
 import BaeKit
+import OSLog
+
+private let logger = Logger.bae("StorageTableSelection")
 
 // MARK: - Selection
 
@@ -20,7 +23,8 @@ extension StorageTableView.Coordinator {
         let event = table.handlingEvent
         let target = event.flatMap { table.pressedRow($0) }
         let proposedIds = ids(at: proposed)
-        // A proposal of rows still loading selects nothing.
+        // A proposal of rows still loading selects nothing, and `ids(at:)`
+        // logs the rows.
         guard proposed.isEmpty || !proposedIds.isEmpty else {
             return table.selectedRowIndexes
         }
@@ -56,7 +60,12 @@ extension StorageTableView.Coordinator {
             return
         }
         let end = target ?? (last > (current.last ?? -1) ? last : first)
-        guard let to = list.row(at: end)?.id else { return }
+        guard let to = list.row(at: end)?.id else {
+            logger.debug(
+                "A Shift gesture to row \(end) selects nothing: the row is still loading"
+            )
+            return
+        }
         let from = anchorId ?? to
         anchorId = from
         selection.wrappedValue = kept.union(ids(at: proposed))
@@ -98,10 +107,25 @@ extension StorageTableView.Coordinator {
         applyingSelection = false
     }
 
-    /// The releases of the rows the table draws at `rows`; a row still
-    /// loading names none.
+    /// The releases of the rows the table draws at `rows`. A row still
+    /// loading names no release, and the coordinator logs it.
     private func ids(at rows: IndexSet) -> Set<String> {
-        Set(rows.compactMap { list.row(at: $0)?.id })
+        var ids = Set<String>()
+        var loading: [Int] = []
+        for row in rows {
+            if let id = list.row(at: row)?.id {
+                ids.insert(id)
+            }
+            else {
+                loading.append(row)
+            }
+        }
+        if !loading.isEmpty {
+            logger.debug(
+                "The selection skips rows \(loading), which are still loading"
+            )
+        }
+        return ids
     }
 
     /// The rows in view whose releases `kept` names.
