@@ -9,7 +9,7 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 use super::preview_target::{preview_target_from_row, preview_target_values};
 use super::queue::repeat_from_row;
 use super::track_display::{
-    now_track_display_columns, now_track_display_from_row, NOW_TRACK_DISPLAY_JOINS,
+    now_track_display_from_row, track_display_columns, NOW_TRACK_DISPLAY_JOINS,
 };
 use super::*;
 use crate::renderer::picker::{kind_column, kind_from_column};
@@ -489,7 +489,7 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<NowPlayingValues, DbError>
         &format!(
             "SELECT n.*, q.repeat, {columns} \
              FROM playback_now n CROSS JOIN playback_queue q {joins}",
-            columns = now_track_display_columns(),
+            columns = track_display_columns("display_"),
             joins = NOW_TRACK_DISPLAY_JOINS,
         ),
         [],

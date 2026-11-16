@@ -6,7 +6,7 @@
 
 use super::queue::context_order_column;
 use super::queue_upcoming::after_the_playing_track_in_order;
-use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
+use super::track_display::{track_display_columns, track_display_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
 use crate::{ContextSource, QueueItem};
 
@@ -84,24 +84,23 @@ fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueI
 /// every column `rows` selects, then the track's columns.
 pub(super) fn queue_items_sql(rows: &str) -> String {
     format!(
-        "SELECT e.*, {columns} \
+        "SELECT e.*, t.id AS track_id, t.duration_ms, {columns} \
          FROM ({rows}) e \
          JOIN tracks t ON t.id = e.lane_track \
          {joins} \
          ORDER BY e.position",
-        columns = track_display_columns(),
+        columns = track_display_columns(""),
         joins = TRACK_DISPLAY_JOINS,
     )
 }
 
 /// One queue row as [`queue_items_sql`] reads it.
 pub(super) fn queue_item_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QueueItem> {
-    let meta = track_queue_meta_from_row(row)?;
     Ok(QueueItem {
         entry_id: row.get("entry")?,
         track_id: row.get("track_id")?,
-        display: meta.display,
-        duration_ms: meta.duration_ms,
+        display: track_display_from_row(row, "")?,
+        duration_ms: row.get("duration_ms")?,
     })
 }
 
