@@ -595,6 +595,7 @@ impl crate::types::BridgeImportCandidateDetail {
         let bae_import::ImportCandidateDetail {
             candidate,
             files,
+            part_count,
             actionable,
             skipped,
             resumed_identify_state,
@@ -622,6 +623,7 @@ impl crate::types::BridgeImportCandidateDetail {
                 skipped,
                 is_added,
             ),
+            part_count,
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_view(
                 resumed_identify_state,

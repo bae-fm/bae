@@ -842,7 +842,9 @@ scan's. The person can flip it: read a folder as one release, or keep its parts
 apart. Their answer is marked as theirs, and no later scan overrides it. The
 person can also combine releases from anywhere into one, in an order they
 choose; such a grouping reads exactly those folders. Combining selects the
-release it makes. A combined release's pane offers Keep as Separate
+release it makes. A release read from several folders shows those folders at
+the top of its pane, which the pane decides from the count of them its read
+returns from SQL. A combined release's pane offers Keep as Separate
 Releases, which separates it at once, with no confirmation, and selects the
 releases it returns.
 

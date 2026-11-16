@@ -152,6 +152,7 @@ private func detail(
             name: name,
             skipped: skipped
         ),
+        partCount: 0,
         actionable: true,
         resumedIdentifyState: resumedIdentifyState,
         placement: .pending(folderCheck: nil, records: []),

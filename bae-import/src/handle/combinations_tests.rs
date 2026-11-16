@@ -67,8 +67,9 @@ async fn separating_picked_folders_returns_them_as_they_were() {
 
 /// Picking every release below one folder reads that folder as one release,
 /// the way the scan reads a folder of disc parts: the same action, and the
-/// same reading the header's "Combine as one release" writes. Separating it
-/// keeps the folder's releases apart.
+/// same reading the header's "Combine as one release" writes. The pane's
+/// part count, which SQL counts, is 0 for each folder and 2 for the release
+/// read from both. Separating it keeps the folder's releases apart.
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     let (parts, db, _library) = setup_test_import().await;
@@ -95,6 +96,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         .map(|live| crate::CandidateKey::folder(&root.join("Artist").join(live)))
         .collect();
 
+    assert_eq!(pane(&handle, &keys[0]).await.part_count, 0);
+
     let key = handle.combine_candidates(keys.clone()).await.unwrap();
     assert_eq!(
         tables.load_grouping(&key).await.unwrap(),
@@ -109,6 +112,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     assert_eq!(pending(&handle).await, vec!["Artist".to_string()]);
     let release = handle.get_release_candidate(&key).await.unwrap().unwrap();
     assert_eq!(release.files.parts.len(), 2);
+    assert_eq!(pane(&handle, &key).await.part_count, 2);
 
     assert_eq!(handle.separate_candidate(&key).await.unwrap(), keys);
     assert_eq!(

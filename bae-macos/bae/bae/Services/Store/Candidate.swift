@@ -341,6 +341,9 @@ struct Candidate: Equatable, Identifiable {
     /// The folders this release is read from, when it is several. Empty for
     /// a release read from one folder.
     var parts: [BridgeReleasePart] { detail?.candidate.parts ?? [] }
+    /// How many folders this release is read from when it is several, as
+    /// core counts them; 0 for one folder.
+    var partCount: UInt64 { detail?.partCount ?? 0 }
     /// Where this candidate's import stands for the pane: running now, or
     /// what the last one left.
     var importStatus: BridgeCandidateImportStatus? { detail?.importStatus }
@@ -349,7 +352,7 @@ struct Candidate: Equatable, Identifiable {
     var sourceFolderPaths: [Data] {
         switch source {
         case .folder(_, let folderPath):
-            parts.isEmpty ? [folderPath] : parts.map(\.folderPath)
+            partCount == 0 ? [folderPath] : parts.map(\.folderPath)
         case .releaseReIdentify:
             []
         }

@@ -28,6 +28,9 @@ use bae_records::records::release_records::{
 pub(super) struct CandidateDetailRows {
     candidate: FolderCandidate,
     files: crate::PaneFiles,
+    /// How many folders the candidate is read from when it is several; 0
+    /// for one folder.
+    part_count: u64,
     source_error: Option<crate::GroupingBlock>,
     actionable: bool,
     skipped: bool,
@@ -69,16 +72,27 @@ pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &crate::CandidateKey,
 ) -> Result<Option<CandidateDetailRows>, DbError> {
-    let Some(listed) = sql
+    let Some((listed, part_count)) = sql
         .query_row(
             &format!(
-                "SELECT {LISTED_COLUMNS}, {actions} FROM import_list_placement AS p \
+                "SELECT {LISTED_COLUMNS}, {actions}, \
+                        (SELECT COUNT(*) FROM scan_candidate AS candidate \
+                         JOIN scan_candidate_part AS part \
+                           ON part.watched_folder_path = candidate.watched_folder_path \
+                          AND part.candidate_path = candidate.path \
+                         WHERE candidate.path = p.key) AS part_count \
+                 FROM import_list_placement AS p \
                  LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
                  WHERE p.key = ? AND p.item = 'candidate'",
                 actions = super::actions::action_columns(),
             ),
             [key],
-            |row| ListedColumns::read(row, 0),
+            |row| {
+                Ok((
+                    ListedColumns::read(row, 0)?,
+                    bae_store::read::count_column::<u64>(row, "part_count")?,
+                ))
+            },
         )
         .optional()?
     else {
@@ -103,6 +117,7 @@ pub(super) fn load_candidate_detail_on(
     Ok(Some(CandidateDetailRows {
         candidate,
         files,
+        part_count,
         source_error: stored.error,
         actionable: stored.actionable,
         skipped,
@@ -253,6 +268,7 @@ impl CandidateDetailRows {
         let Self {
             candidate,
             files,
+            part_count,
             source_error,
             actionable,
             skipped,
@@ -318,6 +334,7 @@ impl CandidateDetailRows {
         Ok(ImportCandidateDetailProjection {
             candidate,
             files,
+            part_count,
             source_error,
             actionable,
             skipped,

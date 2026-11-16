@@ -27,6 +27,9 @@ pub struct ImportCandidateDetailProjection {
     pub candidate: FolderCandidate,
     /// The candidate's files as the pane lists them.
     pub files: PaneFiles,
+    /// How many folders the candidate is read from when it is several; 0
+    /// for one folder.
+    pub part_count: u64,
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
@@ -197,6 +200,7 @@ impl ImportCandidateDetailProjection {
         let Self {
             candidate,
             files,
+            part_count,
             source_error,
             actionable,
             skipped,
@@ -311,6 +315,7 @@ impl ImportCandidateDetailProjection {
         ImportCandidateDetail {
             candidate,
             files,
+            part_count,
             actionable,
             skipped,
             // A candidate with no stored verdict shows no run.
@@ -390,6 +395,9 @@ pub struct ImportCandidateDetail {
     pub candidate: FolderCandidate,
     /// The candidate's files as the pane lists them.
     pub files: PaneFiles,
+    /// How many folders the candidate is read from when it is several, as
+    /// SQL counts them; 0 for one folder.
+    pub part_count: u64,
     pub actionable: bool,
     pub skipped: bool,
     pub resumed_identify_state: IdentifyStateView,

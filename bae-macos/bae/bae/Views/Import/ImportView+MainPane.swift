@@ -39,7 +39,7 @@ extension ImportView {
     /// that draw it, so a progress step redraws those alone.
     func mainPane(for candidate: Candidate) -> some View {
         VStack(spacing: 0) {
-            if !candidate.parts.isEmpty {
+            if candidate.partCount > 0 {
                 ImportCombinedSourceView(
                     parts: candidate.parts,
                     canSeparate: candidate.live?.actions

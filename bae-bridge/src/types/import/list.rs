@@ -189,6 +189,9 @@ pub struct BridgeActiveFolderScan {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidateDetail {
     pub candidate: BridgeFolderCandidate,
+    /// How many folders the candidate is read from when it is several, as
+    /// SQL counts them; 0 for one folder, whose `candidate.parts` is empty.
+    pub part_count: u64,
     pub actionable: bool,
     /// The identify state the candidate's stored verdict stands back up as:
     /// what the pane shows when its runtime holds no run. `Idle` when nothing
