@@ -5,8 +5,7 @@ import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
 import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
-import fm.bae.app.data.LibrarySearch
-import fm.bae.app.data.LiveQueryEvent
+import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -27,8 +26,7 @@ import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeException.Diagnostic
-import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
-import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -51,14 +49,6 @@ internal data class BrowsePage(
 )
 
 private class ParentInterest
-
-/** A search's album count, for the listener of the request it answers; given outside the lock. */
-private class SearchNotice(
-    private val listener: (Int) -> Unit,
-    private val count: Int,
-) {
-    fun give() = listener(count)
-}
 
 private data class ParentInterests(
     val explicit: MutableMap<String, ParentInterest> = mutableMapOf(),
@@ -124,101 +114,42 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     /**
-     * One controller's search: one live query for as long as the controller is connected, pointed
-     * at each phrase it searches. State is guarded by the tree's lock; only values answering the
-     * newest phrase's request are kept or heard.
+     * One controller's search of one phrase: a live count of the albums the phrase lists, read
+     * until the controller searches another phrase or disconnects. Each count tells the controller
+     * its results changed; [search] reads each page of them once.
      */
     private inner class OwnerSearch(
-        private val search: LibrarySearch,
+        private val count: PulledSubscription<BridgeListCount>,
+        private val onResultsChanged: (Int) -> Unit,
     ) {
-        /** The phrase the newest request searches, as the controller sent it. */
-        var query: String = ""
-            private set
-        private var listener: (Int) -> Unit = {}
-        private var revision: ULong = 0u
-        private var latest: LiveQueryEvent<BridgeSearchResults>? = null
-        private var answered = CompletableDeferred<Unit>()
-        private var lastCount: Int? = null
+        /** Completes at the count's first answer, or fails with its first error or when the search ends first. */
+        private val answered = CompletableDeferred<Unit>()
         private var reader: Job? = null
-
-        /** The newest value the query delivered, whichever request it answers: one can land while
-         *  `setQuery` is still returning the revision it will carry. */
-        private var delivered: BridgeLibrarySearchSnapshot? = null
-
-        /**
-         * Search [phrase] from now on; call under the tree's lock. Returns the request's revision,
-         * and the notice to give when its answer already landed.
-         */
-        fun point(
-            phrase: String,
-            onResultsChanged: (Int) -> Unit,
-        ): Pair<ULong, SearchNotice?> {
-            query = phrase
-            listener = onResultsChanged
-            latest = null
-            lastCount = null
-            answered.complete(Unit)
-            answered = CompletableDeferred()
-            revision = search.setQuery(phrase)
-            return revision to delivered?.takeIf { it.requestRevision == revision }?.let(::accept)
-        }
-
-        private fun accept(value: BridgeLibrarySearchSnapshot): SearchNotice {
-            latest = LiveQueryEvent.Value(value.results)
-            lastCount = value.results.albums.size
-            answered.complete(Unit)
-            return SearchNotice(listener, value.results.albums.size)
-        }
-
-        /** The newest request's results once they arrive, or its error. */
-        suspend fun results(): BridgeSearchResults {
-            while (true) {
-                val (event, waiting) = synchronized(lock) { latest to answered }
-                when (event) {
-                    is LiveQueryEvent.Value -> return event.value
-                    is LiveQueryEvent.Error -> throw event.error
-                    null -> waiting.await()
-                }
-                synchronized(lock) { if (!retained) throw searchInterestEnded() }
-            }
-        }
-
-        private val retained: Boolean
-            get() = searchesByOwner.values.any { it === this }
-
-        /** Whether [requested] is still the newest request of this controller's search. */
-        fun isCurrent(requested: ULong): Boolean = retained && requested != 0uL && revision == requested
 
         fun start() {
             reader = scope.launch { read() }
         }
 
+        /** Wait for the count's first answer, throwing its error. */
+        suspend fun awaitAnswer() = answered.await()
+
         suspend fun close() {
-            synchronized(lock) { answered.complete(Unit) }
+            answered.completeExceptionally(searchInterestEnded())
             reader?.cancelAndJoin()
-            search.release()
+            count.cancel()
         }
 
         private suspend fun read() {
-            search.pullEach(
+            count.pullEach(
                 onValue = { value ->
-                    val notice =
-                        synchronized(lock) {
-                            delivered = value
-                            if (isCurrent(value.requestRevision)) accept(value) else null
-                        }
-                    notice?.give()
+                    if (synchronized(lock) { searchesByOwner.values.any { it === this@OwnerSearch } }) {
+                        onResultsChanged(value.rows.toInt())
+                    }
+                    answered.complete(Unit)
                 },
                 onError = { error ->
                     onQueryError(error)
-                    val notice =
-                        synchronized(lock) {
-                            if (!isCurrent(revision)) return@synchronized null
-                            latest = LiveQueryEvent.Error(error)
-                            answered.complete(Unit)
-                            lastCount?.let { SearchNotice(listener, it) }
-                        }
-                    notice?.give()
+                    answered.completeExceptionally(error)
                 },
             )
         }
@@ -421,8 +352,8 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 
     /**
-     * Point [owner]'s search at [query], opening it on the controller's first search, and wait for
-     * its first answer. Later values for this query reach [onResultsChanged] with their album count.
+     * Search [query] for [owner], replacing its last search, and wait for the first count of the
+     * albums it lists. That count and each later one reach [onResultsChanged].
      */
     suspend fun subscribeSearch(
         owner: Owner,
@@ -430,17 +361,19 @@ internal class LibraryBrowseTree<Owner : Any>(
         onResultsChanged: (Int) -> Unit,
     ) {
         checkOpen()
-        var opened: OwnerSearch? = null
-        val search =
+        val search = OwnerSearch(library.searchAlbumCount(query), onResultsChanged)
+        val (opened, replaced) =
             synchronized(lock) {
-                if (closed) throw treeClosedError()
-                searchesByOwner.getOrPut(owner) { OwnerSearch(library.librarySearch()).also { opened = it } }
+                if (closed) false to null else true to searchesByOwner.put(owner, search)
             }
-        opened?.start()
-        val (requested, answered) = synchronized(lock) { search.point(query, onResultsChanged) }
-        answered?.give()
-        search.results()
-        if (!synchronized(lock) { search.isCurrent(requested) }) throw searchInterestEnded()
+        if (!opened) {
+            search.close()
+            throw treeClosedError()
+        }
+        replaced?.close()
+        search.start()
+        search.awaitAnswer()
+        if (!synchronized(lock) { searchesByOwner[owner] === search }) throw searchInterestEnded()
     }
 
     fun disconnect(owner: Owner) =

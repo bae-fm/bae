@@ -5291,7 +5291,10 @@ controls playback browses the library and plays from it through the system's
 media session. Covers reach it as links it opens itself. Only an app connected
 to the session can open them, and it loses access when its last connection
 ends or the session closes. A composer there lists its page's rows (§2.4), a
-work opening its parts and releases and a credit opening its album.
+work opening its parts and releases and a credit opening its album. A search
+there lists the first 50 albums library search finds, in title order: the
+controller reads each page of them from the database when it asks for it, and a
+live count of those albums tells it each time their number changes.
 A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks
 (§7.8).

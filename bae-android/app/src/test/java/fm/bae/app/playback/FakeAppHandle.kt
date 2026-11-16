@@ -304,6 +304,17 @@ internal open class FakeAppHandle(
             }
         }.also(searchSubscriptions::add)
 
+    /** The search album counts the handle opened, oldest first, each answering its phrase's first count when it opens. */
+    val searchAlbumCounts = mutableListOf<FakeCountSubscription>()
+
+    override fun subscribeSearchAlbumCount(query: String): ListCountSubscription =
+        FakeCountSubscription(query).also { count ->
+            searchAlbumCounts += count
+            if (deliverSearchResultsImmediately) {
+                initialSearchError(query)?.let(count::fail) ?: count.emit(searchResults(query).albums.size)
+            }
+        }
+
     /** Returns the window of the search's albums from [offset], at most [limit], as the database would. */
     override suspend fun readSearchAlbumPage(
         query: String,

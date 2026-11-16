@@ -61,6 +61,22 @@ impl LibraryViews {
             .await
     }
 
+    /// Follow how many albums a search for `query` lists: the albums it
+    /// finds, up to the [`crate::SEARCH_RESULT_LIMIT`] that
+    /// [`Self::search_album_page`] pages through. No query (`None`) lists
+    /// none.
+    pub fn subscribe_search_album_count(
+        &self,
+        query: Option<crate::LibrarySearchQuery>,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        let pattern = query.map(|query| search_pattern(query.as_str()));
+        let cap = crate::SEARCH_RESULT_LIMIT as i64;
+        self.store.subscribe(move |sql| match &pattern {
+            Some(pattern) => search_album_count_on(&sql, pattern, cap),
+            None => Ok(0),
+        })
+    }
+
     /// The track `track_id` of the release `release_id` as a browse item shows
     /// it; `None` when the release has no such track.
     pub async fn find_release_track(
@@ -473,6 +489,23 @@ fn search_albums_on(
             artist_line: credit_line_column(row, "artist_name")?,
         })
     })?)
+}
+
+/// How many albums hold the search `pattern`, counting at most `cap`: the
+/// albums [`search_albums_on`] reads with that cap.
+fn search_album_count_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+    cap: i64,
+) -> Result<u64, DbError> {
+    Ok(sql.query_row(
+        &format!(
+            "SELECT COUNT(*) AS count FROM (SELECT 1 FROM albums a WHERE {} LIMIT ?2)",
+            album_matches_sql("a.id", "?1"),
+        ),
+        params![pattern, cap],
+        |row| count_column::<u64>(row, "count"),
+    )?)
 }
 
 /// The library rows holding the search `pattern` (see [`search_pattern`]),

@@ -139,6 +139,16 @@ impl AppHandle {
         )
     }
 
+    /// Read live how many albums a search for `query` lists: the albums
+    /// `read_search_album_page` pages through. A blank query lists none.
+    pub fn subscribe_search_album_count(&self, query: String) -> Arc<crate::ListCountSubscription> {
+        crate::screens::list_count(
+            self.services
+                .subscribe_search_album_count(bae_views::LibrarySearchQuery::parse(&query)),
+            self.runtime.clone(),
+        )
+    }
+
     /// The album detail view's read, showing nothing until `set_id`.
     pub fn subscribe_album_detail(&self) -> Arc<crate::AlbumDetailSubscription> {
         crate::screens::album_detail(self.services.subscribe_album_detail(), self.runtime.clone())

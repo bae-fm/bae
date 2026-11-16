@@ -174,6 +174,15 @@ impl AppServices {
             self.inner.views.subscribe_artist_search_position(query, key),
         )
     }
+
+    /// How many albums library search's `query` lists, which a media
+    /// browser pages through by offset; no query (`None`) lists none.
+    pub fn subscribe_search_album_count(
+        &self,
+        query: Option<bae_views::LibrarySearchQuery>,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
+    }
 }
 
 /// One window of a list, as its first value at once, then one for each

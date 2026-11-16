@@ -239,3 +239,27 @@ internal class FakeComposerList :
         idOf = { it.artistId },
         wrap = { BridgeListRows.Composers(it) },
     )
+
+/** A count read that counts [counted], answered by hand: a test [emit]s each count or [fail]s it. */
+internal class FakeCountSubscription(
+    val counted: String,
+) : ListCountSubscription(NoHandle) {
+    private val events = Channel<Result<BridgeListCount>>(Channel.UNLIMITED)
+    var cancelled = false
+        private set
+
+    override suspend fun next(): BridgeListCount = events.receive().getOrThrow()
+
+    override suspend fun cancel() {
+        cancelled = true
+        events.close(BridgeException.Cancelled())
+    }
+
+    fun emit(count: Int) {
+        events.trySend(Result.success(BridgeListCount(count.toULong(), count.toULong(), BridgeListCountExtra.None)))
+    }
+
+    fun fail(error: BridgeException) {
+        events.trySend(Result.failure(error))
+    }
+}

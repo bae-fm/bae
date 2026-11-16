@@ -409,45 +409,47 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
+    /** A search's album count is a live read of its own, and each count it delivers tells the controller. */
     @Test
-    fun aControllersNextSearchMovesItsOneQueryRejectingOldDeliveriesAndItsKnownCount() =
+    fun aSearchTellsTheControllerEachCountOfItsAlbums() =
         runBlocking {
             val handle =
                 FakeAppHandle(
-                    searchResults = { query ->
-                        BridgeFixtures.searchResults(
-                            albums =
-                                List(if (query == "first") 2 else 3) { index ->
-                                    BridgeFixtures.albumSearchResult(id = "$query-$index")
-                                },
-                        )
+                    searchResults = {
+                        BridgeFixtures.searchResults(albums = List(2) { BridgeFixtures.albumSearchResult(id = "album-$it") })
                     },
-                    initialSearchError = { query -> if (query == "second") queryFailure() else null },
                 )
+            val tree = tree(handle)
+            val notifications = mutableListOf<Int>()
+
+            tree.subscribeSearch(Any(), "query", notifications::add)
+            val count = handle.searchAlbumCounts.single()
+            assertEquals("query", count.counted)
+            assertEquals(listOf(2), notifications)
+
+            count.emit(5)
+            assertEquals(listOf(2, 5), notifications)
+            tree.close()
+            assertTrue(count.cancelled)
+        }
+
+    /** A controller's next phrase replaces its count read, and a failed first count fails that search. */
+    @Test
+    fun aControllersNextSearchReplacesItsCountRead() =
+        runBlocking {
+            val handle = FakeAppHandle(initialSearchError = { query -> if (query == "second") queryFailure() else null })
             val tree = tree(handle)
             val owner = Any()
             val notifications = mutableListOf<Int>()
             tree.subscribeSearch(owner, "first", notifications::add)
 
-            assertTrue(runCatching { tree.subscribeSearch(owner, "second", notifications::add) }.isFailure)
-            assertEquals("a controller keeps one search across its phrases", 1, handle.searchSubscriptions.size)
-            handle.failSearchResults(0, queryFailure())
-            handle.emitSearchResults(
-                0,
-                BridgeFixtures.searchResults(
-                    albums = List(9) { BridgeFixtures.albumSearchResult(id = "stale-$it") },
-                ),
-                revision = 1uL,
-            )
-            assertEquals(listOf(2), notifications)
-
-            handle.emitSearchResults(
-                0,
-                BridgeFixtures.searchResults(albums = listOf(BridgeFixtures.albumSearchResult(id = "recovered"))),
-            )
-            assertEquals(listOf(2, 1), notifications)
+            assertTrue(runCatching { tree.subscribeSearch(owner, "second", notifications::add) }.exceptionOrNull() is BridgeException)
+            val (first, second) = handle.searchAlbumCounts
+            assertTrue("the next phrase ends the last one's read", first.cancelled)
+            second.emit(1)
+            assertEquals(listOf(0, 1), notifications)
             tree.close()
-            assertTrue(handle.searchSubscriptions.single().closed)
+            assertTrue(second.cancelled)
         }
 
     @Test

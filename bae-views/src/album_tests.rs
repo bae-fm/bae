@@ -642,9 +642,11 @@ async fn a_search_skips_a_found_album_with_no_track_to_play() {
 const PAGED_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5021";
 
 /// `search_album_page` returns a search's albums one page at a time, in title
-/// order; the page past the last album is empty.
+/// order; the page past the last album is empty. The search's album count is
+/// a live query of its own, which counts a new album the search finds, and
+/// no query counts none.
 #[tokio::test]
-async fn a_search_pages_its_albums_in_sql() {
+async fn a_search_pages_and_counts_its_albums_in_sql() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let mut fixture = RecordsFixture::new().artist(PAGED_ARTIST, "Paged Artist");
     for (id, release, title) in [
@@ -686,6 +688,19 @@ async fn a_search_pages_its_albums_in_sql() {
     assert_eq!(page(0, 2).await, ["Window A", "Window B"]);
     assert_eq!(page(2, 2).await, ["Window C"]);
     assert!(page(4, 2).await.is_empty());
+
+    let mut count = views.subscribe_search_album_count(Some(query.clone()));
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+    let (added, added_release) =
+        ("f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5034", "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5064");
+    RecordsFixture::new()
+        .album(added, "Window D", Some(2026), &[PAGED_ARTIST])
+        .release(added, added_release)
+        .write(&test_records(&db))
+        .await;
+    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
+    assert_eq!(counted, 4);
+    assert_eq!(views.subscribe_search_album_count(None).next().await.unwrap().unwrap(), 0);
 }
 
 const PICKED_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5043";
