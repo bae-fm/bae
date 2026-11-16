@@ -123,8 +123,8 @@ class ImportStore {
     /// way folder events do. The sheet inserts on open and removes on dismiss.
     var reIdentifyCandidates: OrderedDictionary<Data, Candidate> = [:]
 
-    /// Whether any folder is watched for imports; `nil` before the summary
-    /// has landed.
+    /// Whether bae watches any folder for imports; `nil` until the first
+    /// summary arrives.
     var hasWatchedFolders: Bool? {
         summary?.hasWatchedFolders
     }

@@ -157,7 +157,7 @@ fn is_watched_on(sql: &impl coven::SqlRead, folder: &Path) -> Result<bool, DbErr
     )?)
 }
 
-/// Whether any folder is watched.
+/// Whether bae watches any folder.
 pub(super) fn any_watched_on(sql: &impl coven::SqlRead) -> Result<bool, DbError> {
     Ok(sql
         .query_row("SELECT EXISTS (SELECT 1 FROM watched_import_folders)", [], |row| row.get(0))?)
@@ -220,7 +220,7 @@ pub(super) fn watch_folder_on(sql: &CovenWrite<'_>, folder: &Path) -> Result<(),
 
 impl ImportTables {
     /// Every watched folder, in the order they were added. A stored root that
-    /// is not canonical, or overlaps another, fails the read.
+    /// is not canonical fails the read.
     pub async fn load_watched_import_folders(&self) -> Result<Vec<crate::WatchedFolder>, DbError> {
         self.store.read(move |sql| watched_folders_on(&sql)).await
     }

@@ -110,8 +110,8 @@ async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["invalid Broken"]);
 }
 
-/// The summary says whether any folder is watched, which the screen shows
-/// its list for, and stops saying so once the last one is removed.
+/// The summary says whether bae watches any folder, so the screen knows to
+/// show its list, and stops saying so after bae stops watching the last one.
 #[tokio::test]
 async fn the_summary_says_whether_any_folder_is_watched() {
     let lib = Library::new().await;

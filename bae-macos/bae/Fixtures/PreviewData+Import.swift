@@ -367,8 +367,8 @@ extension PreviewData {
         )
     }
 
-    /// Every Import-tab state in one fixture, with one release still being
-    /// identified.
+    /// Every Import-tab state in one fixture, with one release that bae is
+    /// still identifying.
     @MainActor
     static func importSmokeTestScene() -> ImportPreviewFixture {
         let scene = importTabScene()

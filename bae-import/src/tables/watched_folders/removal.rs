@@ -71,7 +71,8 @@ impl ImportTables {
                     )?;
                 }
                 match &parent {
-                    // Watched once the roots inside it are not.
+                    // The write watches `parent` after it deletes the roots
+                    // inside it.
                     Some(parent) => super::watch_folder_on(sql, parent)?,
                     None => removed.extend(forget_folders_under(sql, &roots)?),
                 }

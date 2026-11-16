@@ -123,7 +123,7 @@ pub struct BridgeImportListViewChange {
 /// own, the tab counts.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportQueueSummary {
-    /// Whether any folder is watched: with none, the screen shows no list.
+    /// Whether bae watches any folder: with none, the screen shows no list.
     pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,

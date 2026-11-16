@@ -149,12 +149,12 @@ pub struct ImportCandidateListLocation {
     pub key: OrderKey,
 }
 
-/// Whether any folder is watched, whether Found has groups, and the
+/// Whether bae watches any folder, whether Found has groups, and the
 /// narrowing, which a surface shows beside the list's rows and counts. The
 /// summary has its own live query, so the rows a scan writes do not rerun it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
-    /// Whether any folder is watched: with none, the surface shows no list.
+    /// Whether bae watches any folder: with none, the surface shows no list.
     pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,

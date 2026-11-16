@@ -1,5 +1,5 @@
-//! The reads a surface makes beside a list's windows: whether any folder is
-//! watched, whether Found has groups, and what the view narrows by; the tab
+//! The reads a surface makes beside a list's windows: whether bae watches
+//! any folder, whether Found has groups, and what the view narrows by; the tab
 //! counts and Found's filter entries, which COUNT queries over the placement
 //! return; and how many items the list holds and how many its filters keep (a
 //! search counts the rows its index finds). The module also holds the reads a
@@ -79,7 +79,7 @@ pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilt
     .collect()
 }
 
-/// The summary `list` shows beside its rows: whether any folder is watched,
+/// The summary `list` shows beside its rows: whether bae watches any folder,
 /// whether Found has any group, and what the view narrows its rows by.
 pub(super) fn summary(
     sql: &SqlReadContext<'_>,

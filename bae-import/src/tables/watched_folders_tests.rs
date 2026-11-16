@@ -6,10 +6,9 @@ use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::temp_db;
 use std::path::PathBuf;
 
-/// Two overlapping folders added at once: the overlap check and the insert
-/// are one decision, so exactly one of them is watched and the other is
-/// refused. With the check read ahead of the write, both saw an empty list and
-/// both were stored.
+/// Two overlapping folders added at once: each add checks for an overlap and
+/// inserts its folder in one write, so bae watches exactly one of them and
+/// refuses the other.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_folders_added_at_once_keep_only_one() {
     for _ in 0..20 {

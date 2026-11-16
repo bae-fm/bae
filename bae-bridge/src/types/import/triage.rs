@@ -10,8 +10,8 @@ pub struct BridgeFolderCandidate {
     /// The folder it is read from, as coven's bytes for its path.
     pub folder_path: Vec<u8>,
     pub source_folder_name: String,
-    /// The watched folder this candidate was scanned from, as coven's bytes
-    /// for its path.
+    /// The watched folder where bae's scan found this candidate, as coven's
+    /// bytes for its path.
     pub watched_folder_path: Vec<u8>,
     pub files: BridgeCandidateFiles,
     pub track_count: u32,
@@ -130,8 +130,8 @@ pub struct BridgeInvalidCandidate {
     /// Its folder, as coven's bytes for its path.
     pub folder_path: Vec<u8>,
     pub source_folder_name: String,
-    /// The watched folder this was scanned from, as coven's bytes for its
-    /// path.
+    /// The watched folder where bae's scan found this folder, as coven's
+    /// bytes for its path.
     pub watched_folder_path: Vec<u8>,
     /// Its folder below the watched folder, shown as text.
     pub display_path: String,
@@ -656,8 +656,8 @@ pub struct BridgeTriageRow {
     pub candidate_key: Vec<u8>,
     /// The folder's name, which is the row's title while it has no draft.
     pub folder_name: String,
-    /// The watched folder this was scanned from, as coven's bytes for its
-    /// path.
+    /// The watched folder where bae's scan found this folder, as coven's
+    /// bytes for its path.
     pub watched_folder_path: Vec<u8>,
     /// Its folder below the watched folder, shown as text.
     pub display_path: String,

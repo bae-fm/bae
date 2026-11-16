@@ -1227,9 +1227,9 @@ filters cleared and its group opened, the list's other folds kept.
 bae reads everything the list shows from tables, each piece its own live query:
 each window of its rows (a range of its order, bounded by the sort values of a
 row at each end), how many items it holds and how many its filters keep, where
-a key sits in it, whether any folder is watched, whether Found has groups, and
-what the view narrows by, Found's filter entries, and what the selected rows hold and
-offer. A row carries nothing of the selection: the screen draws each row's
+a key sits in it, whether bae watches any folder, whether Found has groups,
+and what the view narrows by, Found's filter entries, and what the selected
+rows hold and offer. A row carries nothing of the selection: the screen draws each row's
 highlight from the keys it keeps, so selecting rows writes nothing and reruns
 no window, and the selection's own read reruns when the screen gives it other
 keys or a write changes their rows. Folding a group reruns the windows holding
