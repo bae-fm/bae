@@ -118,9 +118,6 @@ struct TrackRowView: View {
     /// How the person picks several tracks in the list, or `nil` when the
     /// list does not allow picking.
     var picking: TrackPicking?
-    /// The ids of the page's rows in the order it lists them, read when a
-    /// shift-click extends the picks.
-    var rowOrder: () -> [String] = { [] }
 
     @State
     private var isHovered = false
@@ -196,13 +193,14 @@ struct TrackRowView: View {
     /// Cmd picks or unpicks the row, shift picks the range from the last
     /// pick, and a plain click clears the picks.
     private func handleTap() {
-        guard let picked = picking?.picked else { return }
+        guard let picking else { return }
+        let picked = picking.picked
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
             picked.set(track.id, picked: !picked.contains(track.id))
         }
         else if modifiers.contains(.shift) {
-            picked.extend(to: track.id, in: rowOrder())
+            picking.onExtend(track.id)
         }
         else {
             picked.clear()

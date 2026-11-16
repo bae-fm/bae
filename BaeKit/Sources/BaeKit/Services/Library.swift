@@ -122,6 +122,11 @@ public final class Library: Sendable, Observable {
     /// their release lists them, which core reads.
     public let tracksInReleaseOrder:
         @Sendable (_ trackIds: [String]) async throws -> [String]
+    /// The tracks from the anchor to the target, both included, in the order
+    /// their release lists them, which core reads: what a shift-click picks.
+    public let trackIdsBetween:
+        @Sendable (_ anchorId: String, _ targetId: String) async throws
+            -> [String]
     /// Give an album or a track of this device's person these stars, or clear
     /// their rating with none.
     public let setRating:
@@ -247,6 +252,11 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable ([String]) async throws -> [String] = {
                 _ in throw StubError.notImplemented
             },
+        trackIdsBetween:
+            @escaping @Sendable (String, String) async throws -> [String] = {
+                _,
+                _ in throw StubError.notImplemented
+            },
         setRating:
             @escaping @Sendable (BridgeRatingTarget, BridgeStars?) async throws
             -> Void = { _, _ in throw StubError.notImplemented }
@@ -281,6 +291,7 @@ public final class Library: Sendable, Observable {
         self.setLibraryFullWidth = setLibraryFullWidth
         self.playlistWrites = playlistWrites
         self.tracksInReleaseOrder = tracksInReleaseOrder
+        self.trackIdsBetween = trackIdsBetween
         self.setRating = setRating
     }
 
@@ -351,6 +362,7 @@ extension Library {
                 },
                 playlistWrites: .live(handle),
                 tracksInReleaseOrder: Self.tracksInReleaseOrder(handle),
+                trackIdsBetween: Self.trackIdsBetween(handle),
                 setRating: { try await handle.setRating(target: $0, stars: $1) }
             )
         }
@@ -462,6 +474,13 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
             { DetailQuery(handle.subscribePlaylistDetail()) }
+        }
+
+        /// Read the tracks from an anchor to a target through `handle`.
+        private static func trackIdsBetween(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (String, String) async throws -> [String] {
+            { try await handle.trackIdsBetween(anchorId: $0, targetId: $1) }
         }
 
         /// Order picked tracks as their release lists them through `handle`.

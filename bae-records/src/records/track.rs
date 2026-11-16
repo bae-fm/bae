@@ -136,6 +136,44 @@ impl Records {
             .await
     }
 
+    /// The tracks from `anchor_id` to `target_id`, both included, in the
+    /// order their release lists them: what a shift-click on `target_id`
+    /// picks after a pick of `anchor_id`. The target alone when the anchor is
+    /// no track of the target's release, and none when the library lacks the
+    /// target.
+    pub async fn track_ids_between(
+        &self,
+        anchor_id: String,
+        target_id: String,
+    ) -> Result<Vec<String>, DbError> {
+        self.store
+            .read(move |sql| {
+                sql.query(
+                    "SELECT id FROM ( \
+                         SELECT t.id, t.position FROM tracks AS t \
+                         JOIN tracks AS target ON target.id = ?2 \
+                         JOIN tracks AS anchor \
+                           ON anchor.id = ?1 AND anchor.release_id = target.release_id \
+                         WHERE t.release_id = target.release_id \
+                           AND ((t.position, t.id) BETWEEN (anchor.position, anchor.id) \
+                                                       AND (target.position, target.id) \
+                             OR (t.position, t.id) BETWEEN (target.position, target.id) \
+                                                       AND (anchor.position, anchor.id)) \
+                         UNION ALL \
+                         SELECT target.id, target.position FROM tracks AS target \
+                         WHERE target.id = ?2 \
+                           AND NOT EXISTS (SELECT 1 FROM tracks AS anchor \
+                                           WHERE anchor.id = ?1 \
+                                             AND anchor.release_id = target.release_id)) \
+                     ORDER BY position, id",
+                    params![anchor_id, target_id],
+                    |row| row.get::<_, String>("id"),
+                )
+                .map_err(DbError::from)
+            })
+            .await
+    }
+
     /// Every track id in the library, in a deterministic base order (the same
     /// order across calls, so a listing pages through a stable list): by
     /// release, then stored position, id — the order the playback queue's

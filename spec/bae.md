@@ -189,19 +189,20 @@ the apps the year or nothing.
 
 On macOS the person picks several tracks of the album page's track list:
 cmd-click picks or unpicks a row, shift-click picks the rows from the last pick
-to the one clicked, and a plain click clears the picks. The app tints a picked
-row and marks it as selected for screen readers. The picks belong to the open
-album's page: when the page stops listing a track, the app removes the track
-from the picks. A row's menu acts on every pick when the row is among several,
-and on the row alone otherwise. For several it offers *Play N tracks*, *Play
-next*, *Add to queue* and *Add to playlist*. The app hands core the picked ids
-in no order, and core answers with the tracks the library holds, each once, in
-the order their release lists them (by release, then stored position). Play
-plays that list from its first track as a list of tracks (§7.1), Play next and
-Add to queue put it in Up next in that order, and Add to playlist appends it to
-the playlist in that order in one write: when the library lacks any of the
-tracks, Add to playlist adds none of them. New playlist starts a playlist
-holding it.
+to the one clicked, and a plain click clears the picks. Core reads the rows a
+shift-click picks: the tracks from the last pick to the one clicked in the
+order their release lists them, or the clicked track alone when the last pick
+is no track of its release. The app tints a picked row and marks it as
+selected for screen readers. A row's menu acts on every pick when the row is
+among several, and on the row alone otherwise. For several it offers *Play N
+tracks*, *Play next*, *Add to queue* and *Add to playlist*. The app hands core
+the picked ids in no order, and core answers with the tracks the library holds,
+each once, in the order their release lists them (by release, then stored
+position). Play plays that list from its first track as a list of tracks
+(§7.1), Play next and Add to queue put it in Up next in that order, and Add to
+playlist appends it to the playlist in that order in one write: when the
+library lacks any of the tracks, Add to playlist adds none of them. New
+playlist starts a playlist holding it.
 
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).

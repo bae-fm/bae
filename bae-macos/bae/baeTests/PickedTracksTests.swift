@@ -4,8 +4,6 @@ import Testing
 
 @Suite("Picked tracks")
 struct PickedTracksTests {
-    private let rows = ["a", "b", "c", "d", "e"]
-
     @Test("setting a row's state picks or unpicks it")
     func setsMembership() {
         let picked = PickedTracks()
@@ -16,23 +14,15 @@ struct PickedTracksTests {
         #expect(picked.ids == ["d"])
     }
 
-    @Test("shift picks the rows from the anchor to the target, either way")
-    func extendsFromTheAnchor() {
+    @Test("shift picks the range core read, keeping the anchor")
+    func extendsOverTheRange() {
         let picked = PickedTracks()
         picked.set("b", picked: true)
-        picked.extend(to: "d", in: rows)
+        picked.extend(over: ["b", "c", "d"])
         #expect(picked.ids == ["b", "c", "d"])
-        picked.extend(to: "a", in: rows)
+        picked.extend(over: ["a", "b"])
         #expect(picked.ids == ["a", "b", "c", "d"])
         #expect(picked.anchorId == "b")
-    }
-
-    @Test("shift without an anchor on the page picks the target alone")
-    func extendsWithoutAnAnchor() {
-        let picked = PickedTracks()
-        picked.extend(to: "c", in: rows)
-        #expect(picked.ids == ["c"])
-        #expect(picked.anchorId == "c")
     }
 
     @Test("a plain click clears the picks and the anchor")
@@ -41,16 +31,6 @@ struct PickedTracksTests {
         picked.set("a", picked: true)
         picked.clear()
         #expect(picked.ids.isEmpty)
-        #expect(picked.anchorId == nil)
-    }
-
-    @Test("rows the page no longer lists leave the picks")
-    func keepsOnlyListedRows() {
-        let picked = PickedTracks()
-        picked.set("a", picked: true)
-        picked.set("b", picked: true)
-        picked.keep(["a", "c"])
-        #expect(picked.ids == ["a"])
         #expect(picked.anchorId == nil)
     }
 

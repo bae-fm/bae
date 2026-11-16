@@ -66,11 +66,6 @@ struct AlbumTrackListView: View {
                 }
             }
         }
-        // When the page shows another release or someone deletes a track,
-        // the view drops the picks of tracks the page no longer lists.
-        .onChange(of: release.tracks.map(\.id)) { _, rows in
-            picking?.picked.keep(Set(rows))
-        }
         .background {
             // Every position label laid out but not drawn: the stack is as
             // wide as the widest.
@@ -111,8 +106,7 @@ struct AlbumTrackListView: View {
                         { rate(track.id, $0) }
                     },
                     playlists: playlists,
-                    picking: picking,
-                    rowOrder: { release.tracks.map(\.id) }
+                    picking: picking
                 )
                 .id(track.id)
                 .frame(height: height)

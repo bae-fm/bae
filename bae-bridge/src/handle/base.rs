@@ -300,6 +300,13 @@ forward! { async this => {
         this.services.track_ids_in_release_order(track_ids).await.map_err(BridgeError::from)
     }
 
+    /// The tracks from `anchor_id` to `target_id`, both included, in the
+    /// order their release lists them: what a shift-click on the album page
+    /// picks. The target alone when the anchor is no track of its release.
+    fn track_ids_between(anchor_id: String, target_id: String) -> Vec<String> {
+        this.services.track_ids_between(anchor_id, target_id).await.map_err(BridgeError::from)
+    }
+
     /// Resolve a list of IDs (album or track) to track IDs.
     /// Album IDs are expanded to the primary release's tracks.
     fn resolve_to_track_ids(ids: Vec<String>) -> Vec<String> {

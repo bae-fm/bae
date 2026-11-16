@@ -484,6 +484,7 @@ impl AppServices {
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
     delegate_lib!(records, track_ids_in_release_order => track_ids_in_release_order(track_ids: Vec<String>) -> Vec<String>);
+    delegate_lib!(records, track_ids_between => track_ids_between(anchor_id: String, target_id: String) -> Vec<String>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
     delegate_view!(get_composer_detail => get_composer_detail(artist_id: &str) -> Option<bae_views::album_detail::ComposerDetail>);
     delegate_view!(get_work_detail => get_work_detail(work_id: &str) -> Option<bae_views::album_detail::WorkDetail>);

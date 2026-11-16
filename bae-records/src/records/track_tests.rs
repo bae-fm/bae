@@ -15,6 +15,29 @@ async fn filter_existing_track_ids_merges_chunks() {
     assert_eq!(existing, expected_existing);
 }
 
+/// `track_ids_between` returns the tracks from the anchor to the target in
+/// their release's order, whichever comes first; the target alone when the
+/// library lacks the anchor, and nothing when it lacks the target.
+#[tokio::test]
+async fn track_ids_between_run_from_the_anchor_to_the_target_in_release_order() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let listed = crate::test_fixtures::chunked_tracks::track_ids(6);
+    let seeded = listed.clone();
+    db.write(move |sql| crate::test_fixtures::chunked_tracks::seed_release(&sql, &seeded))
+        .await
+        .unwrap();
+    let records = crate::test_fixtures::test_records(&db);
+    let between = |anchor: &str, target: &str| {
+        records.track_ids_between(anchor.to_string(), target.to_string())
+    };
+
+    assert_eq!(between(&listed[1], &listed[4]).await.unwrap(), listed[1..=4]);
+    assert_eq!(between(&listed[4], &listed[1]).await.unwrap(), listed[1..=4]);
+    assert_eq!(between(&listed[2], &listed[2]).await.unwrap(), [listed[2].clone()]);
+    assert_eq!(between("missing-track", &listed[3]).await.unwrap(), [listed[3].clone()]);
+    assert!(between(&listed[3], "missing-track").await.unwrap().is_empty());
+}
+
 /// `track_ids_in_release_order` returns the picked ids in the order their
 /// release lists them, whatever order the picks came in, keeps one copy of a
 /// repeated id and drops an id the library does not have.

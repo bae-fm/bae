@@ -26,34 +26,15 @@ final class PickedTracks {
         anchorId = id
     }
 
-    /// Pick every row from the anchor to `targetId`, both ends included, in
-    /// `order`, the page's row order. Without an anchor on the page, picks
-    /// and anchors `targetId` alone. The anchor stays.
-    func extend(to targetId: String, in order: [String]) {
-        guard let anchorId,
-            let anchorIndex = order.firstIndex(of: anchorId),
-            let targetIndex = order.firstIndex(of: targetId)
-        else {
-            set(targetId, picked: true)
-            return
-        }
-        ids.formUnion(
-            order[min(anchorIndex, targetIndex)...max(anchorIndex, targetIndex)]
-        )
+    /// Pick `range`, the tracks core read from the anchor to a shift-clicked
+    /// row. The anchor stays.
+    func extend(over range: [String]) {
+        ids.formUnion(range)
     }
 
     func clear() {
         ids = []
         anchorId = nil
-    }
-
-    /// Drop the picks that are no longer rows of the page, as `rows` lists
-    /// them.
-    func keep(_ rows: Set<String>) {
-        ids.formIntersection(rows)
-        if let anchorId, !rows.contains(anchorId) {
-            self.anchorId = nil
-        }
     }
 
     /// What a row's menu acts on: the whole set when the row is among
@@ -67,10 +48,14 @@ final class PickedTracks {
     }
 }
 
-/// Picking on a track list: the picked set and what a menu on it does, each
-/// action given the picked ids in no order.
+/// Picking on a track list: the picked set, what a shift-click on a row
+/// picks, and what a menu on it does, each action given the picked ids in no
+/// order.
 struct TrackPicking {
     let picked: PickedTracks
+    /// Pick the rows from the anchor to the row `targetId`, as core reads
+    /// them.
+    let onExtend: (_ targetId: String) -> Void
     let onPlay: ([String]) -> Void
     let onAddNext: ([String]) -> Void
     let onAddToQueue: ([String]) -> Void
