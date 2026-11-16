@@ -48,7 +48,7 @@ public typealias DetailQuery<Value: Sendable> = KeyedDetailQuery<Value, String>
 /// is handed on only while it answers the item shown now.
 @MainActor
 public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
-    private let open: () -> KeyedDetailQuery<Value, Id>
+    private let open: (Id) throws -> KeyedDetailQuery<Value, Id>
     private let onValue: @MainActor (Id, Value?) -> Void
     private let onError: @MainActor (Id, any Error) -> Void
     private var query: KeyedDetailQuery<Value, Id>?
@@ -58,14 +58,33 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     /// `close`.
     public private(set) var id: Id?
 
+    /// A reader whose `open` opens the read of the id it is given.
     public init(
-        open: @escaping () -> KeyedDetailQuery<Value, Id>,
+        opening open: @escaping (Id) throws -> KeyedDetailQuery<Value, Id>,
         onValue: @escaping @MainActor (Id, Value?) -> Void,
         onError: @escaping @MainActor (Id, any Error) -> Void
     ) {
         self.open = open
         self.onValue = onValue
         self.onError = onError
+    }
+
+    /// A reader whose `open` opens a read of no id, which the reader then
+    /// moves to the id shown.
+    public convenience init(
+        open: @escaping () -> KeyedDetailQuery<Value, Id>,
+        onValue: @escaping @MainActor (Id, Value?) -> Void,
+        onError: @escaping @MainActor (Id, any Error) -> Void
+    ) {
+        self.init(
+            opening: { id in
+                let query = open()
+                try query.setId(id)
+                return query
+            },
+            onValue: onValue,
+            onError: onError
+        )
     }
 
     /// Show `id`, opening the read on first use.
@@ -90,15 +109,20 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
 
     private func request(_ id: Id) {
         do {
-            try (query ?? openRead()).setId(id)
+            if let query {
+                try query.setId(id)
+            }
+            else {
+                try openRead(id)
+            }
         }
         catch {
             onError(id, error)
         }
     }
 
-    private func openRead() -> KeyedDetailQuery<Value, Id> {
-        let query = open()
+    private func openRead(_ id: Id) throws {
+        let query = try open(id)
         self.query = query
         deliveries = ScreenSubscription(
             query.values,
@@ -110,7 +134,6 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
             },
             onError: { [weak self] error in self?.readFailed(error) }
         )
-        return query
     }
 
     private func readFailed(_ error: any Error) {

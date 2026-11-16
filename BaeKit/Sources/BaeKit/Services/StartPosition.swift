@@ -1,20 +1,30 @@
 import Foundation
 
 /// Where a chain's first row sits in its list: the key of that row and the
-/// count of the rows before it, a live read of its own that follows the key.
-/// The list's top has no key and sits at zero. Until a count answers for a
-/// key, the position it was given stands in.
+/// number of rows before it, a live read of its own that follows the key.
+/// The list's top has no key and sits at zero. Until the read answers for a
+/// key, StartPosition uses the position the chain gave with the key.
 @MainActor
 final class StartPosition {
-    private(set) var key: [BridgeSortValue]?
     private(set) var value = 0
+
+    /// The key of the chain's first row; `nil` at the list's top and once
+    /// `stop` has ended the read.
+    var key: [BridgeSortValue]? { reader.id }
 
     private let position: @Sendable ([BridgeSortValue]) -> ListPositionQuery
     private let onChange: () -> Void
     private let onError: (any Error) -> Void
-    private var query: ListPositionQuery?
-    private var deliveries:
-        ScreenSubscription<PulledValues<BridgeListPosition>>?
+    private lazy var reader = KeyedDetailReader<UInt64, [BridgeSortValue]>(
+        opening: { [position] key in Self.read(position(key)) },
+        onValue: { [weak self] _, rowsBefore in
+            guard let rowsBefore else {
+                preconditionFailure("a list position read answers every key")
+            }
+            self?.apply(Int(rowsBefore))
+        },
+        onError: { [onError] _, error in onError(error) }
+    )
 
     init(
         position: @escaping @Sendable ([BridgeSortValue]) -> ListPositionQuery,
@@ -26,45 +36,41 @@ final class StartPosition {
         self.onError = onError
     }
 
-    /// Follow `key` (the list's top when nil), standing `position` in for its
-    /// count until the count answers.
+    /// Follow `key` (the list's top when nil), using `position` as the
+    /// number of rows before it until the position read returns.
     func follow(_ key: [BridgeSortValue]?, assuming position: Int) {
-        self.key = key
-        value = key == nil ? 0 : position
         guard let key else {
-            stop()
+            value = 0
+            reader.close()
             return
         }
-        if let query {
-            do {
-                try query.setKey(key)
-            }
-            catch {
-                onError(error)
-            }
-            return
-        }
-        let query = self.position(key)
-        self.query = query
-        deliveries = ScreenSubscription(
-            query.values,
-            onValue: { [weak self] position in self?.apply(position) },
-            onError: { [weak self] error in self?.onError(error) }
-        )
+        value = position
+        reader.show(key)
     }
 
     func stop() {
-        deliveries?.stop()
-        deliveries = nil
-        query = nil
+        reader.close()
     }
 
-    private func apply(_ position: BridgeListPosition) {
-        // A value for a key the chain has since left draws nothing.
-        guard position.key == key else { return }
-        let rowsBefore = Int(position.rowsBefore)
+    private func apply(_ rowsBefore: Int) {
         guard rowsBefore != value else { return }
         value = rowsBefore
         onChange()
+    }
+
+    /// The position read `query` as a keyed read: each value names the key
+    /// it counts the rows before.
+    private static func read(
+        _ query: ListPositionQuery
+    ) -> KeyedDetailQuery<UInt64, [BridgeSortValue]> {
+        KeyedDetailQuery(
+            setId: { try query.setKey($0) },
+            values: PulledValues(query.values) { position in
+                KeyedDetailDelivery(
+                    id: position.key,
+                    value: position.rowsBefore
+                )
+            }
+        )
     }
 }
