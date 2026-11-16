@@ -62,16 +62,6 @@ impl<R> WindowRead<R> {
     ) -> Result<WindowRead<Other>, E> {
         self.try_convert_rows(|rows| rows.into_iter().map(convert).collect())
     }
-
-    /// The window with each row made into another by `convert`.
-    pub fn map_rows<Other>(self, convert: impl FnMut(R) -> Other) -> WindowRead<Other> {
-        WindowRead {
-            window: self.window,
-            rows: self.rows.into_iter().map(convert).collect(),
-            first: self.first,
-            beyond: self.beyond,
-        }
-    }
 }
 
 impl ListOrder {
