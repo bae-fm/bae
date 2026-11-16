@@ -120,7 +120,6 @@ jobs:
     - name: Build Rust bridge
       run: |
         ./bae-bridge/build-macos.sh --release
-        ./bae-bridge/install-swift-bindings.sh macos
 
     - name: Generate Xcode project
       working-directory: ./bae-macos/bae
@@ -155,6 +154,7 @@ jobs:
           -configuration Release \
           "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+          BAE_SKIP_RUST_BRIDGE=YES \
           BAE_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           BAE_APP_PRODUCT_NAME="$PRODUCT_NAME" \
           DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \

@@ -38,12 +38,11 @@ jobs:
       run: |
         brew install xcodegen
         ./bae-bridge/build-macos.sh
-        ./bae-bridge/install-swift-bindings.sh macos
         source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          SWIFT_EMIT_LOC_STRINGS=YES \
+          SWIFT_EMIT_LOC_STRINGS=YES BAE_SKIP_RUST_BRIDGE=YES \
           "${XCODE_MACOS_UNSIGNED_ARGS[@]}" build
 
     # Each post-build check below runs whenever the build itself succeeded,
@@ -78,7 +77,7 @@ jobs:
         source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
           -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
+          BAE_SKIP_RUST_BRIDGE=YES "${XCODE_MACOS_UNSIGNED_ARGS[@]}" \
           -resultBundlePath "$RUNNER_TEMP/baeTests.xcresult" test
 
     # The log does not say why a UI test's app stopped; the bundle holds its
@@ -163,21 +162,16 @@ jobs:
         cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 
     - name: Build macOS app (baeium, S3-only)
-      # Exported for the whole step, not just the bridge line: xcodebuild's
-      # scheme pre-action reruns build-macos.sh, and with the variable unset it
-      # would rebuild with its full-feature default and rewrite
-      # Features.xcconfig mid-build.
       env:
         BAE_BRIDGE_FEATURES: cast
       run: |
         brew install xcodegen
         ./bae-bridge/build-macos.sh
-        ./bae-bridge/install-swift-bindings.sh macos
         source "$GITHUB_WORKSPACE/scripts/xcode-trees.sh"
         cd bae-macos/bae && xcodegen
         xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          SWIFT_EMIT_LOC_STRINGS=YES \
+          SWIFT_EMIT_LOC_STRINGS=YES BAE_SKIP_RUST_BRIDGE=YES \
           "${XCODE_MACOS_UNSIGNED_ARGS[@]}" build
 
     # The baeium flavor compiles the other side of every BAE_* #if. Its compiled
