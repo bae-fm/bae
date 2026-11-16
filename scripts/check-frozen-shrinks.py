@@ -2,11 +2,11 @@
 """Keep the read rule's frozen lists from growing.
 
 `owner-construction-check.toml` (`read_shapes.frozen`) lists the violations bae
-has today, keyed and counted exactly. It only shrinks: a row may be removed or
-its count lowered, never added or raised. This compares the file's `frozen`
-rows with the same file at HEAD and fails on a new key or a higher count. A file that
-or a list that does not exist at HEAD has nothing to compare with (the commit
-that adds the list).
+has today, keyed and counted exactly. The list only shrinks: a commit may
+remove a row or lower its count, never add a row or raise a count. The script
+compares the file's `frozen` rows with the same file at HEAD and fails on a new
+row or a higher count. When the file or its list does not exist at HEAD, as in
+the commit that adds the list, the script has nothing to compare with.
 """
 
 from __future__ import annotations
@@ -30,7 +30,8 @@ LISTS = {
 
 REMEDY = (
     "Frozen rows only shrink: remove the code the row covers, or, when the "
-    "values are not a read's rows, put the use in `allowed` with what they are."
+    "values are not a read's rows, add the call to `allowed` and say what the "
+    "values are."
 )
 
 
@@ -74,8 +75,9 @@ def violations(root: Path) -> list[str]:
         if before_rows is None or after_rows is None:
             continue
         before = counts(before_rows, fields)
-        # A shape the lists had no row for, found by a checker this change
-        # taught it, starts with its own findings: they freeze once.
+        # When this change edits the checker and the checker finds a shape the
+        # lists had no row for, the check accepts that shape's new rows. Later
+        # changes can only remove them or lower their counts.
         known = {row[kind] for row in before_rows}
         taught = path_text_changed(root, teacher)
         for key, count in counts(after_rows, fields).items():
@@ -83,10 +85,12 @@ def violations(root: Path) -> list[str]:
             if key not in before and taught and key[fields.index(kind)] not in known:
                 continue
             if key not in before:
-                found.append(f"{name}: new frozen row ({label}) with count {count}. {REMEDY}")
+                found.append(
+                    f"{name}: this change adds the frozen row ({label}) with count {count}. {REMEDY}"
+                )
             elif count > before[key]:
                 found.append(
-                    f"{name}: frozen row ({label}) raised from {before[key]} to {count}. {REMEDY}"
+                    f"{name}: this change raises the frozen row ({label}) from {before[key]} to {count}. {REMEDY}"
                 )
     return found
 

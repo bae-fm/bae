@@ -513,8 +513,8 @@ task_types = [
 # Only the owner makes and returns one; a holder receives it when it is built
 # and keeps it for its one piece of work.
 [handles]
-# The way to the installation's places for open files, which work that opens
-# the person's files on threads and in services of its own takes its places by.
+# The handle through which work on its own threads and services takes places of
+# the budget of open files.
 FileLeases = "Store"
 # Where one close or removal writes its steps: the send end of the stream
 # the app pulls from the closing it made.
@@ -1073,8 +1073,7 @@ OpenCalls = "LibrarySessions"
     "ScanCancellation::child",
     "ScanCancellation::new",
     "Walk::new",
-    # A folder read on its own, outside any library, reads in places of a
-    # budget of its own.
+    # A folder read outside any library makes its own budget of open files.
     "scan_for_candidates_with_decisions",
     "collect_release_candidate_files_with_scope",
 ]
@@ -1090,8 +1089,8 @@ OpenCalls = "LibrarySessions"
     "RootScanTask::new",
     "ScanServices::new",
 ]
-# A scan item stored without a library's store reads in places of a budget of
-# its own.
+# store_scan_item makes its own budget of open files when no library's store
+# gives it one.
 "bae-import/src/scan_passes/scan_items.rs" = ["store_scan_item"]
 "bae-import/src/tables.rs" = ["ImportTables::new"]
 "bae-import/src/watching/active_roots.rs" = ["ActiveRoots::new"]
@@ -1214,7 +1213,7 @@ OpenCalls = "LibrarySessions"
     "ReleaseTransfers::new",
     "ReleaseTransfers::report",
 ]
-# The places of the open-files budget a test makes its work take.
+# A test builds its own budget of open files with these functions.
 "bae-store/src/file_leases.rs" = ["FileLeases::for_test", "FileLeases::for_test_default"]
 "bae-util/src/server.rs" = [
     "ServerController::new",
@@ -1222,7 +1221,8 @@ OpenCalls = "LibrarySessions"
     "ServerController::start",
 ]
 "bae-util/src/test_host.rs" = ["FakeHost::start"]
-# A test takes its place on a thread of its own, off the runtime's budget of work.
+# place() waits for its place on a thread of its own, so tokio's limit on a
+# task's work cannot stall it.
 "bae-util/src/test_files.rs" = ["place"]
 
 # Work that runs on after its caller returns starts only at a listed root,
@@ -1283,8 +1283,8 @@ paths = ["Uuid::new_v4", "Uuid::new_v7", "Uuid::now_v7"]
 # file creates is in one domain.
 [database]
 capability = "SQLite"
-# Items gated on test support take a raw connection: a bare library's schema is
-# applied in one place, `Schema::open_bare_library`, for every crate's tests.
+# Items gated on test support take a raw connection: `Schema::open_bare_library`
+# applies a bare library's schema for every crate's tests.
 test_support_features = ["test-utils"]
 
 [[database.domains]]
@@ -1642,11 +1642,11 @@ tables = [
 [library_names]
 "coreaudio-rs" = "coreaudio"
 
-# The read rule (read-shapes): what a read is, the types that keep memory or
-# run a live query, and the read plumbing that is no read code. A read
-# returns what the screen shows; the lists below hold the findings the rule
-# finds today (frozen: they only shrink) and the ones that are not a read's
-# work (allowed).
+# This table tells the read-shapes rule what a read is, which types keep memory
+# or run a live query, and which store files run every live query and are not
+# themselves read code. A read returns what the screen shows; the lists below
+# hold the findings the rule finds today (frozen: they only shrink) and, in
+# `allowed`, the matches whose values are not a read's rows.
 [read_shapes]
 rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
 read_types = ["SqlRead", "SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
@@ -1866,9 +1866,9 @@ allowed = [
     { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
     { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
     { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
-    { path = "bae-import/src/folder_scanner/files.rs", item = "content_hash_of", shape = "sort", count = 1, reason = "orders the scanned files' relative paths to fingerprint a folder as the scan found it on disk; the files, not rows" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "length-branch", count = 1, reason = "checks a key's term count against the part's order; the key's shape, not rows" },
-    { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::between", shape = "length-branch", count = 1, reason = "tests whether a term is the order's last, by position in its fixed list of terms; terms, not rows" },
+    { path = "bae-import/src/folder_scanner/files.rs", item = "content_hash_of", shape = "sort", count = 1, reason = "orders the scanned files' relative paths to fingerprint a folder as the scan found it on disk; the values are files, not rows" },
+    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "length-branch", count = 1, reason = "checks a key's term count against the part's order; the value is the key's term count, not a row" },
+    { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::between", shape = "length-branch", count = 1, reason = "tests whether a term is the order's last, by position in its fixed list of terms; the values are terms, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::first_difference", shape = "pick", count = 1, reason = "finds the first term two keys differ on; the values are sort values the screen sends back, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::range_seeks", shape = "filter", count = 2, reason = "keeps the seeks of a range that tie on a longer prefix than the keys' first difference; the values are the statements a window runs, not rows" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::range_plan", shape = "filter", count = 2, reason = "keeps a range's bound only for the part the loop is at; the values are the range's two bounds, not rows" },

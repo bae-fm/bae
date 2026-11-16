@@ -219,11 +219,12 @@ incremental = true
 opt-level = 3
 
 [patch.crates-io]
-# Android's platform verifier treats unavailable revocation data as a soft
-# failure while preserving confirmed revocation. The published 0.7.1 verifier
-# misclassifies every revocation-check exception as a revoked certificate. The
-# fork's branch commits its Android AAR in android-release-support/maven,
-# where the Android app's settings.gradle.kts finds it.
+# Android's platform verifier accepts a certificate when it cannot get the
+# certificate's revocation data, and still refuses a certificate it confirmed
+# is revoked. The published 0.7.1 verifier misclassifies every revocation-check
+# exception as a revoked certificate. The fork's branch commits its Android AAR
+# in android-release-support/maven, where the Android app's settings.gradle.kts
+# finds it.
 rustls-platform-verifier = { git = "https://github.com/bae-fm/rustls-platform-verifier", rev = "47a4336458b70db9c92a40ba8e0e30ca5fef0b29" }
 # v0.17.0 plus a scanner that builds a token's debug position only when it is
 # logged, which took scanning 001_initial.sql at debug level from 2 s to 1 ms.

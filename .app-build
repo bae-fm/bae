@@ -7,8 +7,8 @@ results mac shots/mac
 results android shots/android bae-android/app/build/test-results
 android build ./bae-android/run.sh
 # What `builds check` builds for a branch: the steps of each rule whose pattern
-# matches a path the branch changes from its merge-base with origin/main. A
-# branch of Rust only builds nothing.
+# matches a path the branch changes from its merge-base with origin/main. For a
+# branch that changes only Rust files, `builds check` builds nothing.
 on bae-macos/ macos-tests
 on BaeKit/ macos-tests
 on bae-android/ android-bridge android
@@ -17,9 +17,10 @@ on bae-bridge/ macos-tests android-bridge android
 # lane builds.
 needs mac macos-tests
 needs android android-bridge android
-# Where each lane's test classes are declared, to find a class's lane.
+# The folders where builds looks for a test class to find its lane.
 sources mac bae-macos BaeKit
-# The shot scenes' own test bundle: the baeTests line never runs it.
+# The shot scenes are in their own test bundle, baeShots, which the `test mac`
+# line does not run.
 sources mac:shots bae-macos/bae/baeShots
 sources android bae-android
 

@@ -115,8 +115,8 @@ PLAN
 # clippy over --all-targets turns on. The bridges and apps build the crates
 # that way, and a `pub use` of a test-only item without its `#[cfg]` gate
 # compiles in a build with `test-utils` and fails in theirs. A check with no
-# target named builds each crate's library and binaries, and a crate with only
-# binaries (bae-shots) is refused by `--lib`.
+# target named builds each crate's library and binaries, and `--lib` refuses a
+# crate with only binaries, such as bae-shots.
 library_check_args() {
     echo check
     local kind value

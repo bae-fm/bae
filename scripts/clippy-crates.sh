@@ -57,9 +57,9 @@ while IFS= read -r feature; do
 done <<< "$features"
 # A crate scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to
 # cargo, which would then never lint it; scripts/clippy-stale-units.sh makes
-# each crate named here stale. It runs before cargo on whichever machine runs
-# cargo (`builds cargo` sends clippy to the host with the most room), through
-# BUILDS_CARGO_BEFORE.
+# each crate named here stale. builds runs scripts/clippy-stale-units.sh before
+# cargo on whichever machine runs cargo (`builds cargo` sends clippy to the host
+# with the most free cores), through BUILDS_CARGO_BEFORE.
 if [ "${#crates[@]}" -gt 0 ]; then
     export BUILDS_CARGO_BEFORE="scripts/clippy-stale-units.sh ${crates[*]}"
 fi

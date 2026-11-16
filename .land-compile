@@ -1,8 +1,8 @@
 #!/bin/bash
-# Compile check that builds land runs on a cherry-picked result before pushing it
-# (the `whole` lines of .checks are the static ones): clippy with --all-targets over the
-# crates the landed commits touch and the crates that depend on them, warnings
-# denied.
+# `builds land` runs this compile check on a cherry-picked result before it
+# pushes the result (the `whole` lines of .checks are the static ones): clippy
+# with --all-targets over the crates the landed commits touch and the crates
+# that depend on them, warnings denied.
 # Then the same crates' libraries and binaries without test features, which
 # the apps and bridges build them with (a test-only `pub use` without its
 # `#[cfg]` gate compiles with `test-utils` and breaks every app build), with

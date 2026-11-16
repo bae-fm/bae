@@ -66,8 +66,8 @@ echo "Running on simulator: ${SIMULATOR#*$'\t'} ($SIMULATOR_ID)"
 # Build into the same derived-data cache iOS CI uses, so they share module
 # caches and SourcePackages checkouts. Caveat: CI builds with
 # CODE_SIGNING_ALLOWED=NO while this script ad-hoc signs for the simulator, so
-# alternating the two invalidates some incremental state; the bulk of the cache
-# is still shared.
+# alternating the two invalidates some incremental state; CI and this script
+# still share most of the cache.
 xcodebuild -project bae-ios/bae/bae.xcodeproj \
     -scheme bae \
     -configuration Debug \

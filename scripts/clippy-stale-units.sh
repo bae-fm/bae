@@ -1,10 +1,10 @@
 #!/bin/sh
 # Makes the units of the crates named as arguments stale, so cargo rebuilds
 # and lints them. A crate scripts/clippy-rustc-wrapper.sh compiled without
-# lints is fresh to cargo, which would then never lint it. Its records name the
-# unit's folder in .fingerprint; dating that folder's files to 1970 makes cargo
-# see every input of the unit as newer than its last build, so it rebuilds, and
-# lints, each unit of a crate named here.
+# lints is fresh to cargo, which would then never lint it. The wrapper's records
+# in clippy-unlinted name the unit's folder in .fingerprint; dating that
+# folder's files to 1970 makes cargo see every input of the unit as newer than
+# its last build, so it rebuilds, and lints, each unit of a crate named here.
 #
 # scripts/clippy-crates.sh names this script in BUILDS_CARGO_BEFORE, so it runs
 # in the checkout before cargo on whichever machine runs cargo: the folders it

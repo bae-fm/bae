@@ -32,23 +32,24 @@ scenario's raw output beside it. `accept` copies the last run's medians and
 spreads into the machine's baseline file for the person to commit.
 
 `accept --as NAME` writes `perf/baselines/<machine>.<NAME>.json` instead, a
-named baseline that stays put while the machine's own moves with every accept;
-`run --against NAME` compares with it.
+named baseline that a later plain `accept` leaves unchanged (a plain `accept`
+overwrites only the machine's own); `run --against NAME` compares with it.
 
 A number may carry its bar, the cost the screen it serves needs: `bar=` on a
 `COST` line, `bar_ms=` on a `WINDOW_COST` line. Each reported number says
 `meets bar` or `over bar (N unit)` beside its verdict, and the last run and
 the baselines record the bar. A number over its bar does not change the exit
-status: the bar judges the work done after the baseline, `slower` judges the
-baseline.
+status: the bar compares a number with the cost its screen needs, and `slower`
+compares it with the accepted baseline.
 
 A measurement may also print the plans of the statements it ran, one line per
 plan step: `PLAN metric= n= sql= step=` (`n` numbers the metric's statements,
 `sql` is the statement's first 200 characters, `step` an EXPLAIN QUERY PLAN
-detail). They are recorded per metric in the last run and the baselines, and
-`run` prints each step that scans a table of the seeds' big ones
-(`BIG_TABLES`) or sorts with a temporary b-tree. SQLite names a scan by the
-statement's alias, so only an unaliased big table is recognised.
+detail). `run` records each metric's plans in the last run, and `accept`
+copies them into the baseline; `run` also prints each step that scans a table
+of the seeds' big ones (`BIG_TABLES`) or sorts with a temporary b-tree. SQLite
+names a scan by the statement's alias, so `run` reports a scan of a big table
+only when the statement gives it no alias.
 
 The numbers are read from three kinds of line the measurements print:
 `WINDOW_COST ... median_ms=` (bae-store's `window_cost::report`),
