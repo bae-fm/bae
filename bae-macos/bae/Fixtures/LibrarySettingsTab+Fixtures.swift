@@ -78,7 +78,7 @@ func syncSettingsPagePreview(
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     storageReadError: DisplayError? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
-        code: PreviewData.restoreCodeGrouped
+        PreviewData.restoreCodeShare
     )
 ) -> some View {
     let sync = PreviewData.previewSync(

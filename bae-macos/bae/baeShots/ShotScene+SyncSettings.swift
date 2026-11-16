@@ -125,7 +125,7 @@ extension ShotScene {
                         storage: PreviewData.previewDropboxStorage
                     ),
                     shown: .fixtureSynced,
-                    restoreCode: .shown(code: PreviewData.restoreCodeGrouped)
+                    restoreCode: .shown(PreviewData.restoreCodeShare)
                 )
             )
         },
@@ -143,7 +143,7 @@ private func syncSettingsWindow(
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     storageReadError: DisplayError? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
-        code: PreviewData.restoreCodeGrouped
+        PreviewData.restoreCodeShare
     )
 ) -> some View {
     SettingsWindowShot(

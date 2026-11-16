@@ -45,6 +45,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 private val logger = BaeLogger("bae.RestoreCodeSection")
 
@@ -55,14 +56,14 @@ internal sealed interface RestoreCodeState {
 
     data object Loading : RestoreCodeState
 
-    /** The code in groups of four, held for Copy and Print and shown only as its first groups. */
+    /** The code, held for Copy and Print and shown as core masks it. */
     data class Masked(
-        val code: String,
+        val share: BridgeRestoreCodeShare,
     ) : RestoreCodeState
 
     /** The code in groups of four, as core formats it. */
     data class Shown(
-        val code: String,
+        val share: BridgeRestoreCodeShare,
     ) : RestoreCodeState
 
     data class Failed(
@@ -78,7 +79,7 @@ internal sealed interface RestoreCodeState {
  */
 internal class RestoreCodeReveal(
     private val scope: CoroutineScope,
-    private val generate: suspend () -> String,
+    private val generate: suspend () -> BridgeRestoreCodeShare,
     private val errorDisplay: (BridgeException) -> DisplayError?,
 ) {
     var state by mutableStateOf<RestoreCodeState>(RestoreCodeState.Closed)
@@ -109,11 +110,11 @@ internal class RestoreCodeReveal(
     }
 
     fun show() {
-        (state as? RestoreCodeState.Masked)?.let { state = RestoreCodeState.Shown(it.code) }
+        (state as? RestoreCodeState.Masked)?.let { state = RestoreCodeState.Shown(it.share) }
     }
 
     fun hide() {
-        (state as? RestoreCodeState.Shown)?.let { state = RestoreCodeState.Masked(it.code) }
+        (state as? RestoreCodeState.Shown)?.let { state = RestoreCodeState.Masked(it.share) }
     }
 
     fun close() {
@@ -130,7 +131,7 @@ internal class RestoreCodeReveal(
 @Composable
 internal fun rememberRestoreCodeReveal(
     enabled: Boolean,
-    generate: suspend () -> String,
+    generate: suspend () -> BridgeRestoreCodeShare,
 ): RestoreCodeReveal {
     val context = LocalContext.current
     val scope = rememberScreenScope()
@@ -168,7 +169,7 @@ internal fun RestoreCodeSection(
 internal fun RestoreCodeSection(
     needsS3Key: Boolean,
     location: String,
-    generate: suspend () -> String,
+    generate: suspend () -> BridgeRestoreCodeShare,
 ) {
     RestoreCodeSection(
         reveal = rememberRestoreCodeReveal(enabled = true, generate = generate),
@@ -218,12 +219,12 @@ internal fun RestoreCodeBody(
             }
 
             is RestoreCodeState.Masked -> {
-                CodeBox(code = state.code, shown = false, onToggle = onShow, onPrint = onPrint)
+                CodeBox(share = state.share, shown = false, onToggle = onShow, onPrint = onPrint)
                 Notes(needsS3Key)
             }
 
             is RestoreCodeState.Shown -> {
-                CodeBox(code = state.code, shown = true, onToggle = onHide, onPrint = onPrint)
+                CodeBox(share = state.share, shown = true, onToggle = onHide, onPrint = onPrint)
                 Notes(needsS3Key)
             }
 
@@ -253,7 +254,7 @@ private fun Notes(needsS3Key: Boolean) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CodeBox(
-    code: String,
+    share: BridgeRestoreCodeShare,
     shown: Boolean,
     onToggle: () -> Unit,
     onPrint: (String) -> Unit,
@@ -264,7 +265,7 @@ private fun CodeBox(
         if (shown) {
             SelectionContainer {
                 Text(
-                    text = code.withWordGap(),
+                    text = share.code.withWordGap(),
                     style = ThemeText.mono.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(ThemeSpace.edge),
@@ -280,7 +281,7 @@ private fun CodeBox(
                     },
             ) {
                 Text(
-                    text = maskedRestoreCode(code).withWordGap(),
+                    text = share.maskedGroups.joinToString(" ").withWordGap(),
                     style = ThemeText.mono.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(ThemeSpace.edge),
@@ -296,33 +297,24 @@ private fun CodeBox(
         AndroidButton(kind = ButtonKind.OUTLINED, onClick = onToggle) {
             Text(stringResource(if (shown) R.string.hide else R.string.restore_code_show))
         }
-        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(code) }) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { copy(share.code) }) {
             Text(stringResource(R.string.copy))
         }
-        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { onPrint(code) }) {
+        AndroidButton(kind = ButtonKind.OUTLINED, onClick = { onPrint(share.code) }) {
             Text(stringResource(R.string.restore_code_print))
         }
     }
 }
 
-/**
- * [grouped], a code in groups of four, with every group between the second and the last as
- * dots: the prefix, the first four characters and the last group stay, which tells one code
- * from another without it being readable over a shoulder.
- */
-internal fun maskedRestoreCode(grouped: String): String {
-    val groups = grouped.split(' ').filter { it.isNotEmpty() }
-    return groups
-        .mapIndexed { index, group -> if (index < VISIBLE_GROUPS || index == groups.lastIndex) group else MASK }
-        .joinToString(" ")
-}
-
-private const val VISIBLE_GROUPS = 2
-private const val MASK = "••••"
-
-/** A restore code in groups of four, for the shots; never a library's. */
-private const val PREVIEW_CODE =
-    "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST"
+/** A restore code in groups of four, and its masked groups, for the shots; never a library's. */
+private val PREVIEW_CODE =
+    BridgeRestoreCodeShare(
+        code =
+            "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 " +
+                "ABCD EFGH IJKL MNOP QRST",
+        maskedGroups = listOf("CVR1", "ABCD") + List(19) { "••••" } + "QRST",
+        qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRST",
+    )
 
 /** The section on a Dropbox library with a fixture code, masked or shown, for the screenshot gallery. */
 @Composable

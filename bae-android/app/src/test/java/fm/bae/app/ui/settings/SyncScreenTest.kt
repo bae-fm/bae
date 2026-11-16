@@ -217,7 +217,11 @@ class SyncScreenTest {
         )
 
     private val restoreCodeShare =
-        BridgeRestoreCodeShare(code = "CVR1 ABCD EFGH JKMN", qrText = "qr")
+        BridgeRestoreCodeShare(
+            code = "CVR1 ABCD EFGH JKMN",
+            maskedGroups = listOf("CVR1", "ABCD", "••••", "JKMN"),
+            qrText = "qr",
+        )
 
     private val keyNotAccepted =
         BridgeSyncShown(

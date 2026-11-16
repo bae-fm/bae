@@ -48,7 +48,7 @@ struct RestoreCodeRevealTests {
     nonisolated private static func share(_ code: String)
         -> BridgeRestoreCodeShare
     {
-        BridgeRestoreCodeShare(code: code, qrText: code)
+        BridgeRestoreCodeShare(code: code, maskedGroups: [code], qrText: code)
     }
 
     @Test("starts closed, holds the code masked once it is generated")
@@ -59,19 +59,23 @@ struct RestoreCodeRevealTests {
         reveal.open { Self.share("CVR1 SHOWN") }
         #expect(reveal.state == .loading)
 
-        try await Wait.until { reveal.state == .masked(code: "CVR1 SHOWN") }
+        try await Wait.until {
+            reveal.state == .masked(Self.share("CVR1 SHOWN"))
+        }
     }
 
     @Test("show reveals the held code and hide masks it again")
     func showAndHide() async throws {
         let reveal = RestoreCodeReveal()
         reveal.open { Self.share("CVR1 HELD") }
-        try await Wait.until { reveal.state == .masked(code: "CVR1 HELD") }
+        try await Wait.until {
+            reveal.state == .masked(Self.share("CVR1 HELD"))
+        }
 
         reveal.show()
-        #expect(reveal.state == .shown(code: "CVR1 HELD"))
+        #expect(reveal.state == .shown(Self.share("CVR1 HELD")))
         reveal.hide()
-        #expect(reveal.state == .masked(code: "CVR1 HELD"))
+        #expect(reveal.state == .masked(Self.share("CVR1 HELD")))
     }
 
     @Test("a failure core gave a line shows that line")
@@ -124,36 +128,10 @@ struct RestoreCodeRevealTests {
         try await Wait.until { gate.entered }
 
         reveal.open { Self.share("CVR1 NEW") }
-        try await Wait.until { reveal.state == .masked(code: "CVR1 NEW") }
+        try await Wait.until { reveal.state == .masked(Self.share("CVR1 NEW")) }
 
         gate.open()
         await reveal.generationsEnded()
-        #expect(reveal.state == .masked(code: "CVR1 NEW"))
-    }
-}
-
-/// How a restore code shows while it is masked.
-@Suite("RestoreCodeMask")
-struct RestoreCodeMaskTests {
-    @Test("keeps the first two groups and the last, eliding the rest")
-    func masksTheMiddle() {
-        #expect(
-            RestoreCodeMask.masked("CVR1 UJZD EGXD NCF3 2EPF 3DHO")
-                == RestoreCodeMask.Parts(
-                    leading: "CVR1 UJZD •••• •••• ••••",
-                    trailing: "3DHO"
-                )
-        )
-    }
-
-    @Test("a code too short to elide hides every group")
-    func shortCodeIsAllBullets() {
-        #expect(
-            RestoreCodeMask.masked("CVR1 UJZD EGXD")
-                == RestoreCodeMask.Parts(
-                    leading: "•••• •••• ••••",
-                    trailing: ""
-                )
-        )
+        #expect(reveal.state == .masked(Self.share("CVR1 NEW")))
     }
 }

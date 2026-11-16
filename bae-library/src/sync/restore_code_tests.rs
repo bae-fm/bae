@@ -36,3 +36,15 @@ fn text_too_short_to_hold_a_prefix_is_left_alone() {
     assert_eq!(entered("CVR"), "CVR");
     assert_eq!(entered(""), "");
 }
+
+#[test]
+fn a_masked_code_shows_its_first_two_groups_and_its_last() {
+    let share = RestoreCodeShare::new("CVR1-UJZDEGXDNCF32EPF3DHO".to_string(), "qr".to_string());
+    assert_eq!(share.masked_groups, ["CVR1", "UJZD", "••••", "••••", "••••", "3DHO"]);
+}
+
+#[test]
+fn a_masked_code_of_three_groups_hides_none() {
+    let share = RestoreCodeShare::new("CVR1-UJZDEGXD".to_string(), "qr".to_string());
+    assert_eq!(share.masked_groups, ["CVR1", "UJZD", "EGXD"]);
+}

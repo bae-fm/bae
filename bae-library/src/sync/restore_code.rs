@@ -3,22 +3,54 @@
 //! No restore code holds an S3 key (coven §13.1): the new device asks for it.
 
 /// What this device shows for its person's restore code: the code to type or
-/// copy, and the code for the QR.
+/// copy, its groups as the masked code shows them, and the code for the QR.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RestoreCodeShare {
     pub code: String,
+    pub masked_groups: Vec<String>,
     pub qr_text: String,
 }
 
 impl RestoreCodeShare {
     /// Show `code` to type, and `qr_text`, the code coven made for the QR.
     pub fn new(code: String, qr_text: String) -> Self {
-        Self { code: grouped(&code), qr_text }
+        let code = grouped(&code);
+        Self { masked_groups: masked_groups(&code), code, qr_text }
     }
 }
 
 /// How many characters of a code show before the next space.
 const GROUP: usize = 4;
+
+/// How many groups a masked code shows before its hidden ones: the prefix
+/// and the first four characters.
+const MASK_SHOWS_FIRST: usize = 2;
+
+/// What a masked code shows in place of each hidden group.
+const HIDDEN_GROUP: &str = "••••";
+
+/// The groups of `grouped`, a code in groups of four, as the masked code
+/// shows them: the first two and the last as they are, and each group between
+/// as dots. A person can tell one code from another by them, and nobody can
+/// read the code over their shoulder.
+fn masked_groups(grouped: &str) -> Vec<String> {
+    let groups: Vec<&str> = grouped.split(' ').collect();
+    let last = groups.len() - 1;
+    groups
+        .iter()
+        .enumerate()
+        .map(
+            |(index, group)| {
+                if index < MASK_SHOWS_FIRST || index == last {
+                    group
+                } else {
+                    HIDDEN_GROUP
+                }
+            },
+        )
+        .map(str::to_string)
+        .collect()
+}
 
 /// A code in groups of four, its prefix (`CVR1`) the first: how the code to
 /// type or copy shows and prints. [`entered`] reads it back.

@@ -182,6 +182,19 @@ extension PreviewData {
         return (["CVR1"] + groups).joined(separator: " ")
     }()
 
+    /// That code as core shares it: grouped, its masked groups, and the
+    /// code for the QR.
+    static let restoreCodeShare: BridgeRestoreCodeShare = {
+        let groups = restoreCodeGrouped.split(separator: " ").map(String.init)
+        return BridgeRestoreCodeShare(
+            code: restoreCodeGrouped,
+            maskedGroups: groups.prefix(2)
+                + Array(repeating: "••••", count: groups.count - 3)
+                + groups.suffix(1),
+            qrText: restoreCode
+        )
+    }()
+
     /// A `Sync` whose reads serve shot values, so the library-settings
     /// shots never touch cloud storage. It reads the library's
     /// location as `storage`.
@@ -190,12 +203,7 @@ extension PreviewData {
             followStorageSetup: {
                 StorageSetupFollowing(host: BaeHost.inTemporaryFolder())
             },
-            generateRestoreCode: {
-                BridgeRestoreCodeShare(
-                    code: restoreCodeGrouped,
-                    qrText: restoreCode,
-                )
-            },
+            generateRestoreCode: { restoreCodeShare },
             addDevice: AddDeviceCalls(start: {
                 BridgeAddDevice(
                     id: "6f1f0ab0-0000-4000-8000-000000000001",

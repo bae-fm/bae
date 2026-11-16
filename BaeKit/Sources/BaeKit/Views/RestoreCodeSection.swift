@@ -43,11 +43,11 @@ public struct RestoreCodeSection: View {
             case .loading:
                 MacSpinner("Making your restore code…")
                     .frame(maxWidth: .infinity)
-            case .masked(let code):
-                codeRow(code, shown: false)
+            case .masked(let share):
+                codeRow(share, shown: false)
                 caption
-            case .shown(let code):
-                codeRow(code, shown: true)
+            case .shown(let share):
+                codeRow(share, shown: true)
                 caption
             case .failed(let error):
                 Notice(error: error)
@@ -55,22 +55,29 @@ public struct RestoreCodeSection: View {
         }
     }
 
-    private func codeRow(_ code: String, shown: Bool) -> some View {
+    private func codeRow(_ share: BridgeRestoreCodeShare, shown: Bool)
+        -> some View
+    {
         HStack(spacing: ThemeSpace.related) {
             if shown {
-                Text(code)
+                Text(share.code)
                     .themeText(.mono)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {
-                let parts = RestoreCodeMask.masked(code)
+                // The last group stays whole when the row is too narrow for
+                // every group.
                 HStack(spacing: ThemeSpace.inline) {
-                    Text(parts.leading)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Text(parts.trailing)
-                        .layoutPriority(1)
+                    Text(
+                        share.maskedGroups.dropLast().joined(separator: " ")
+                    )
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    if let last = share.maskedGroups.last {
+                        Text(last)
+                            .layoutPriority(1)
+                    }
                 }
                 .themeText(.mono)
                 .foregroundStyle(.secondary)
@@ -88,10 +95,10 @@ public struct RestoreCodeSection: View {
                 }
             }
             if let onPrint {
-                Button("Print…") { onPrint(code) }
+                Button("Print…") { onPrint(share.code) }
             }
             Button {
-                Pasteboard.copy(code)
+                Pasteboard.copy(share.code)
                 copied = true
             } label: {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")

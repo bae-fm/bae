@@ -285,7 +285,7 @@ internal fun SyncScreen(
     val restoreCode =
         rememberRestoreCodeReveal(
             enabled = location != null,
-            generate = { session.appHandle.generateRestoreCode().code },
+            generate = { session.appHandle.generateRestoreCode() },
         )
 
     val locationLabel = location?.let { storageLocationLabel(it) }

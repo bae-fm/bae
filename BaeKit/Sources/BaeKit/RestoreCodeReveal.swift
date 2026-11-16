@@ -16,10 +16,10 @@ public final class RestoreCodeReveal {
         /// The screen isn't open: no code is held.
         case closed
         case loading
-        /// The code, held for Copy and Print, shown only as its first groups.
-        case masked(code: String)
+        /// The code, held for Copy and Print, shown as core masks it.
+        case masked(BridgeRestoreCodeShare)
         /// The code in groups of four, as core formats it.
-        case shown(code: String)
+        case shown(BridgeRestoreCodeShare)
         case failed(DisplayError)
     }
 
@@ -60,7 +60,7 @@ public final class RestoreCodeReveal {
                 // Cancelling this task also cancels the Rust call.
                 let share = try await generate()
                 try Task.checkCancellation()
-                state = .masked(code: share.code)
+                state = .masked(share)
             }
             catch is CancellationError {
                 logger.debug("restore code generation cancelled")
@@ -98,12 +98,12 @@ public final class RestoreCodeReveal {
 
     /// Show the held code.
     public func show() {
-        if case .masked(let code) = state { state = .shown(code: code) }
+        if case .masked(let share) = state { state = .shown(share) }
     }
 
     /// Mask the shown code again.
     public func hide() {
-        if case .shown(let code) = state { state = .masked(code: code) }
+        if case .shown(let share) = state { state = .masked(share) }
     }
 
     /// The screen closed: drop the code, cancelling a generation still

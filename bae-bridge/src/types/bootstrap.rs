@@ -16,15 +16,17 @@ impl BridgeS3Credentials {
 }
 
 /// This person's restore code as their own device shows it: the code to type
-/// or copy, and the code for the QR, which holds this device's S3 key.
+/// or copy, its groups as the masked code shows them (the hidden ones as
+/// dots), and the code for the QR, which holds this device's S3 key.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeRestoreCodeShare {
     pub code: String,
+    pub masked_groups: Vec<String>,
     pub qr_text: String,
 }
 impl BridgeRestoreCodeShare {
     pub(crate) fn from_core(value: bae_library::sync::restore_code::RestoreCodeShare) -> Self {
-        Self { code: value.code, qr_text: value.qr_text }
+        Self { code: value.code, masked_groups: value.masked_groups, qr_text: value.qr_text }
     }
 }
 

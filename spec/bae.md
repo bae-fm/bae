@@ -3654,7 +3654,9 @@ it. It is
 made when Settings opens, one local read of her keys that the section names
 while it runs, never a bare spinner: the sheet says it is making a code for her
 new device, and the section that it is making her restore code. It shows
-masked: its first two groups and its last, the groups between as dots.
+masked: its first two groups and its last, the groups between as dots. Core
+masks the code and sends the masked groups beside it, so every app shows the
+same groups.
 **Show** reveals it in
 groups of four and **Hide** masks it again; **Copy** copies the whole code,
 shown or not; **Print…** on a Mac and **Print** on Android print one page: the

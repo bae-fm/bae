@@ -9,6 +9,7 @@ import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
@@ -116,9 +117,21 @@ private fun Sync(
     )
 }
 
-private const val RESTORE_CODE = "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 3MNB"
+private val RESTORE_CODE =
+    BridgeRestoreCodeShare(
+        code = "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 3MNB",
+        maskedGroups = listOf("CVR1", "UJZD") + List(12) { "••••" } + "3MNB",
+        qrText = "CVR1-UJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT73MNB",
+    )
 
-private const val SHOWN_RESTORE_CODE =
+private val SHOWN_RESTORE_CODE =
+    BridgeRestoreCodeShare(
+        code = SHOWN_RESTORE_CODE_TEXT,
+        maskedGroups = listOf("CVR1", "UJZD") + List(60) { "••••" } + "B",
+        qrText = SHOWN_RESTORE_CODE_TEXT,
+    )
+
+private const val SHOWN_RESTORE_CODE_TEXT =
     "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 V4SE H2KV J72C EUVW 75EF R6ED T4SY WB5W KH7D NSIP " +
         "ZZ7F K4ZR I3R2 WYOJ FLJO OA7L QSAJ 2XUI D5ZZ ZZG6 ZDME N4KH VDGA JGXB ENYJ QWX6 HH75 66TF JGVQ 6KBN XJBT FQXK WOVO MPZO " +
         "M7WB BR6Q MW4W XFOG O6MV N6A6 WFHY M6L3 VFZ5 ZFKK IBJ5 J6WJ IBAG I3MN B"

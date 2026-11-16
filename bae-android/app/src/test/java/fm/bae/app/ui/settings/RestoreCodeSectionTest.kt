@@ -26,6 +26,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -39,7 +40,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
                 }
             }
         }
@@ -61,7 +62,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
                 }
             }
         }
@@ -78,7 +79,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = true, location = "S3", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = true, location = "S3", generate = { SHARE })
                 }
             }
         }
@@ -91,7 +92,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { CODE })
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
                 }
             }
         }
@@ -100,22 +101,29 @@ class RestoreCodeSectionTest {
     }
 
     @Test
-    fun aMaskedCodeKeepsItsFirstTwoGroupsAndItsLast() {
-        assertEquals("CVR1 ABCD •••• •••• MNOP", maskedRestoreCode("CVR1 ABCD EFGH IJKL MNOP"))
-        assertEquals("CVR1 ABCD", maskedRestoreCode("CVR1 ABCD"))
+    fun theMaskedCodeShowsTheGroupsCoreMasked() {
+        compose.setContent {
+            TestTheme {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
+                }
+            }
+        }
+
+        compose.onNodeWithText("CVR1 ABCD •••• •••• •••• •••• •••• •••• 4567", useUnmergedTree = true).assertExists()
     }
 
     @Test
     fun aCodeGeneratedAfterClosingStaysDropped() =
         runTest {
-            val pending = CompletableDeferred<String>()
+            val pending = CompletableDeferred<BridgeRestoreCodeShare>()
             val reveal = RestoreCodeReveal(this, generate = { pending.await() }, errorDisplay = { null })
             reveal.open()
             advanceUntilIdle()
             assertEquals(RestoreCodeState.Loading, reveal.state)
 
             reveal.close()
-            pending.complete(CODE)
+            pending.complete(SHARE)
             advanceUntilIdle()
 
             assertEquals(RestoreCodeState.Closed, reveal.state)
@@ -124,36 +132,36 @@ class RestoreCodeSectionTest {
     @Test
     fun showRevealsTheHeldCodeAndHideMasksItAgain() =
         runTest {
-            val reveal = RestoreCodeReveal(this, generate = { CODE }, errorDisplay = { null })
+            val reveal = RestoreCodeReveal(this, generate = { SHARE }, errorDisplay = { null })
             reveal.open()
             advanceUntilIdle()
-            assertEquals(RestoreCodeState.Masked(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Masked(SHARE), reveal.state)
 
             reveal.show()
-            assertEquals(RestoreCodeState.Shown(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Shown(SHARE), reveal.state)
             reveal.hide()
-            assertEquals(RestoreCodeState.Masked(CODE), reveal.state)
+            assertEquals(RestoreCodeState.Masked(SHARE), reveal.state)
         }
 
     @Test
     fun aNewerRequestReplacesOneStillGenerating() =
         runTest {
-            val first = CompletableDeferred<String>()
+            val first = CompletableDeferred<BridgeRestoreCodeShare>()
             var calls = 0
             val reveal =
                 RestoreCodeReveal(
                     this,
-                    generate = { if (calls++ == 0) first.await() else "CVR1 NEWER" },
+                    generate = { if (calls++ == 0) first.await() else NEWER },
                     errorDisplay = { null },
                 )
             reveal.open()
             advanceUntilIdle()
 
             reveal.open()
-            first.complete(CODE)
+            first.complete(SHARE)
             advanceUntilIdle()
 
-            assertEquals(RestoreCodeState.Masked("CVR1 NEWER"), reveal.state)
+            assertEquals(RestoreCodeState.Masked(NEWER), reveal.state)
         }
 
     @Test
@@ -209,5 +217,13 @@ class RestoreCodeSectionTest {
 
     private companion object {
         const val CODE = "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567"
+        val SHARE =
+            BridgeRestoreCodeShare(
+                code = CODE,
+                maskedGroups = listOf("CVR1", "ABCD", "••••", "••••", "••••", "••••", "••••", "••••", "4567"),
+                qrText = CODE,
+            )
+        val NEWER =
+            BridgeRestoreCodeShare(code = "CVR1 NEWE R", maskedGroups = listOf("CVR1", "NEWE", "R"), qrText = "CVR1-NEWER")
     }
 }
