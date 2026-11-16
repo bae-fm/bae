@@ -1,6 +1,9 @@
 import AppKit
 import BaeKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger.bae("BatchBar")
 
 /// A transfer line's bar: the share of its batch's bytes done, as the line's
 /// row says, then for each file or release on the move a segment that starts
@@ -93,7 +96,15 @@ final class BatchBarNSView<Value: Sendable & Equatable>: NSView {
     }
 
     private func show(_ value: Value?, at index: Int) {
-        guard segments.indices.contains(index) else { return }
+        guard segments.indices.contains(index) else {
+            // `show(_:stream:)` stops each following past the row's length,
+            // and a stopped following calls nothing.
+            let detail =
+                "a following called segment \(index) of \(segments.count)"
+            logger.error("\(detail)")
+            CoreBugReporter().report(operation: "BatchBar.show", detail: detail)
+            return
+        }
         segments[index].fraction = min(max(value.map(fraction) ?? 0, 0), 1)
         needsDisplay = true
     }

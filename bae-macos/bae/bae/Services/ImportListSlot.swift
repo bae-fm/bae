@@ -191,7 +191,8 @@ final class ImportListSlot {
         openings.send(position)
     }
 
-    /// Every tab's count, as the list's count says; `nil` until it arrives.
+    /// How many rows each tab holds, which core sends with the list's count.
+    /// The value is `nil` until core sends the count.
     var tabCounts: BridgeTriageTabCounts? {
         guard let count = list?.count else { return nil }
         guard case .import(_, let tabs) = count.extra else {
