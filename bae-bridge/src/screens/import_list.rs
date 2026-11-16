@@ -1,17 +1,17 @@
 //! The import tab's list as the app holds it open: its view and folds, the
 //! selection it owns and the bulk actions over it, and the live reads of its
-//! windows, count, position and chrome.
+//! windows, count, position, and its summary.
 
 use crate::types::{BridgeError, BridgeSortValue};
 
 /// The import tab's open list. Its windows, count and position are the same
 /// live reads every list has (`subscribe_list_window`, `subscribe_list_count`,
 /// `subscribe_list_position` and `list_key_at`), opened from the list because
-/// they read the list's own view, folds and selection; the chrome around
-/// them, Found's filter entries and the selection are reads of their own.
-/// Every read opened from it ends when it is cancelled. The selection only
-/// ever holds rows the list shows, so changing it and acting on it are this
-/// list's to do.
+/// they read the list's own view, folds and selection; the list opens a
+/// separate live read for its summary, Found's filter entries and the
+/// selection. When the app cancels the list, every read opened from the list
+/// ends. The selection only ever holds rows the list shows, so changing it
+/// and acting on it are this list's to do.
 #[derive(uniffi::Object)]
 pub struct ImportList {
     inner: bae_import::LiveImportList,
@@ -48,7 +48,8 @@ impl ImportList {
         self.selection_progress.feed()
     }
 
-    /// `window` of the list, a range of its order, read live from now on.
+    /// Read the rows of the list in `window`, in the list's order, and keep
+    /// reading them live.
     pub fn subscribe_list_window(
         &self,
         window: crate::types::BridgeListWindow,
@@ -91,15 +92,15 @@ impl ImportList {
         )
     }
 
-    /// What the selection holds and can be told to do, read live.
+    /// What the selection holds and the actions it offers, read live.
     pub fn subscribe_selection(&self) -> std::sync::Arc<ImportSelectionSubscription> {
         import_selection(bae_app::import_list_selection(&self.inner), self.runtime.clone())
     }
 }
 
 pulled_read! {
-    /// The chrome around the import list: its watched folders, whether Found
-    /// has groups, and what the view narrows by.
+    /// The import list's watched folders, whether Found has groups, and what
+    /// the view narrows by.
     ImportSummarySubscription:
         bae_store::live_query::LiveValues<bae_import::ImportQueueSummary>
             => crate::types::BridgeImportQueueSummary,
@@ -119,7 +120,7 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// What the import list's selection holds and can be told to do.
+    /// What the import list's selection holds and the actions it offers.
     ImportSelectionSubscription:
         bae_store::live_query::LiveValues<bae_import::selection::SelectionSummary>
             => crate::types::BridgeSelectionSummary,

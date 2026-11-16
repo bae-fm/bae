@@ -14388,7 +14388,7 @@ nb = "En annen kopi av denne enheten lå foran denne, så bae tilbakestilte denn
 fi = "Tämän laitteen toinen kopio oli tätä edellä, joten bae nollasi tämän kopion pilvestä."
 
 [messages."core.sync.copy_reset.edits"]
-comment = "Second sentence of that notice, shown only when edits were not kept. count: the edits made here that had not synced."
+comment = "Second sentence of that notice; bae shows it only when the reset discarded edits. count: the edits made here that had not synced."
 args = { count = "Int" }
 value = "{count, plural, one {bae did not keep # edit that had not synced.} other {bae did not keep # edits that had not synced.}}"
 
@@ -14422,7 +14422,7 @@ nb = "{count, plural, one {bae beholdt ikke # endring som ikke var synkronisert.
 fi = "{count, plural, one {bae ei säilyttänyt # muokkausta, jota ei ollut synkronoitu.} other {bae ei säilyttänyt # muokkausta, joita ei ollut synkronoitu.}}"
 
 [messages."core.sync.copy_reset.files"]
-comment = "Last sentence of that notice, shown only when files were not kept. count: the files that had not uploaded."
+comment = "Last sentence of that notice; bae shows it only when the reset discarded files. count: the files that had not uploaded."
 args = { count = "Int" }
 value = "{count, plural, one {bae did not keep # file that had not uploaded.} other {bae did not keep # files that had not uploaded.}}"
 

@@ -56,8 +56,8 @@ pub enum BridgeList {
     ComposerPage { artist_id: String },
     /// The download queue, in the order queued.
     Downloads,
-    /// The context's tracks after the playing one, in the order the lane
-    /// reads in: its own, or the shuffled one when `shuffled`.
+    /// The context's tracks after the playing one, in the context lane's
+    /// position order, or in its shuffled order when `shuffled` is true.
     Upcoming { shuffled: bool },
     /// The artists an artist picker's `text` finds; blank text finds none.
     ArtistSearch { text: String },
@@ -151,7 +151,8 @@ pub enum BridgeListCountExtra {
     /// rows.
     AlbumGrid {
         albums: u64,
-        /// Whether the library holds a track, which shuffling it plays.
+        /// Whether the library holds at least one track, so Shuffle Library
+        /// has something to play.
         can_shuffle: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether

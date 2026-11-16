@@ -16,9 +16,9 @@ pub struct BridgePendingRecord {
     /// receives such a record has a bug.
     pub sends_files: bool,
     /// For the upload of a cover, artist image or avatar that is waiting: the
-    /// image, which holds every later write of this device until it is
-    /// stored. `give_up_held_image` is the way out. None for every other
-    /// record.
+    /// image. Until coven stores it, coven sends no later write of this
+    /// device. `give_up_held_image` removes the image's reference to its
+    /// file, and coven then sends those writes. None for every other record.
     pub held_image: Option<BridgeHeldImage>,
 }
 
@@ -48,8 +48,8 @@ impl BridgeHeldImage {
         Self { file: held.file.to_string(), kind }
     }
 
-    /// The image as the app sent it back; text that is no file id is the
-    /// app's mistake, refused as a configuration error.
+    /// The image as the app sent it back. When the text is not a file id, the
+    /// app made a mistake, and to_core returns a configuration error.
     pub(crate) fn to_core(&self) -> Result<bae_sync_status::HeldImage, super::BridgeError> {
         use bae_sync_status::HeldImageKind as K;
         let file = coven::FileId(self.file.parse().map_err(super::BridgeError::config)?);
@@ -157,7 +157,8 @@ impl BridgePendingReason {
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,
             R::Paused => K::Paused,
-            // Removed from the library, or never admitted to it (coven §13.2).
+            // The library removed this device, or never admitted it (coven
+            // §13.2).
             R::Removed(_) => K::Removed,
             R::MemberKeysReplaced { .. } => K::MemberKeysReplaced,
         };

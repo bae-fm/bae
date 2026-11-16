@@ -46,8 +46,9 @@ fn a_record_sends_files_when_it_is_an_upload_or_a_move() {
     assert!(!sends(coven::PendingSubject::Connection));
 }
 
-/// A held image crosses with its file as text, and comes back as the same
-/// image; text that is no file id is refused.
+/// from_core turns a held image into a bridge record with its file id as
+/// text, and to_core turns that record back into the same image. to_core
+/// returns an error when the text is not a file id.
 #[test]
 fn a_held_image_crosses_and_comes_back() {
     let held = bae_sync_status::HeldImage {

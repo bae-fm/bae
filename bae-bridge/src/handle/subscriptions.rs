@@ -8,7 +8,8 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    /// `window` of `list`, a range of its order, read live from now on.
+    /// Read the rows of `list` in `window`, in the list's order, and keep
+    /// reading them live.
     pub fn subscribe_list_window(
         &self,
         list: BridgeList,
@@ -45,7 +46,8 @@ impl AppHandle {
         crate::screens::list_window(live, self.runtime.clone())
     }
 
-    /// How many rows `list` has, and what changes with them, read live.
+    /// Read live how many rows `list` has, with the values its count carries
+    /// (`BridgeListCountExtra`).
     pub fn subscribe_list_count(&self, list: BridgeList) -> Arc<crate::ListCountSubscription> {
         let live = match list {
             BridgeList::AlbumGrid { group_by_artist, .. } => {
@@ -175,9 +177,9 @@ impl AppHandle {
         crate::screens::work_detail(self.services.subscribe_work_detail(), self.runtime.clone())
     }
 
-    /// The rows of the releases selected in the Storage Manager list under
-    /// `filter` and `search` that it holds, with the storage actions every
-    /// one allows, holding no selection until `set_selected` names it.
+    /// Read live the rows of the selected releases that the Storage Manager
+    /// list holds under `filter` and `search`, and the storage actions all of
+    /// them allow. The read has no selection until `set_selected` names one.
     pub fn subscribe_storage_selection(
         &self,
         filter: BridgeStorageFilter,

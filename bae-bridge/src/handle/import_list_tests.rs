@@ -47,7 +47,7 @@ fn until(
             }
         })
         .await
-        .expect("the window gets there")
+        .expect("a window value meets the test's condition")
     })
 }
 
@@ -67,7 +67,7 @@ fn until_selected(
             }
         })
         .await
-        .expect("the selection gets there")
+        .expect("a selection value meets the test's condition")
     })
 }
 

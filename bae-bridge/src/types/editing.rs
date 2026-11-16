@@ -353,7 +353,8 @@ pub struct BridgeTrackMapping {
     pub length: BridgeDurationClock,
     /// The length the track's source lists, present only when more than three
     /// seconds from the measured one — core's judgement, so every surface
-    /// marks the same rows. It marks a row; it disables nothing.
+    /// marks the same rows. The listed length marks a row and disables
+    /// nothing.
     pub listed_length: Option<BridgeDurationClock>,
 }
 
@@ -575,8 +576,8 @@ pub struct BridgeRawReleaseEdit {
 /// a library release's edit session's. Mirrors `bae_import::DraftAlbum`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDraftAlbum {
-    /// A new album, because none is picked and the draft's records name none
-    /// the library holds.
+    /// A new album, because the person picked none and the draft's records
+    /// name none the library holds.
     New,
     /// A new album the person picked, over what the records name.
     PickedNew,

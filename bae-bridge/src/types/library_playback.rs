@@ -68,7 +68,8 @@ impl BridgeCatalog {
 /// The name of the catalog a description came from — "MusicBrainz",
 /// "Discogs", "Rate Your Music".
 ///
-/// A brand name, so it is not translated and needs no catalog key.
+/// A catalog's name is a brand, so the apps show it untranslated and it needs
+/// no catalog key.
 #[uniffi::export]
 pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
     catalog.name().to_string()
@@ -177,9 +178,9 @@ pub struct BridgeLibrary {
     pub path: String,
     pub state: BridgeLibraryState,
     pub is_active: bool,
-    /// Whether another library is listed beside this one, which the
-    /// switcher needs to show: one that opens, or one that offers to finish
-    /// a reset, a restore or a removal.
+    /// Whether this device's list holds a library besides this one: one that
+    /// opens, or one that offers to finish a reset, a restore or a removal.
+    /// The apps show the library switcher when this is true.
     pub has_other_libraries: bool,
     /// On the active library, when another listed library opens: the id of
     /// the next library that opens after it in the list, wrapping to the

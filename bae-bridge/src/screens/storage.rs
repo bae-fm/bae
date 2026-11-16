@@ -5,11 +5,11 @@ use crate::types::{BridgeError, BridgeStorageRow};
 
 /// The rows of the selected releases the Storage Manager list holds, in a
 /// window or not, the storage actions every one of them allows, and whether
-/// any of them can only be cancelled.
+/// Cancel is the only action one of them offers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageSelection {
-    /// The releases the selection was asked about, held or not: which
-    /// selection this answers.
+    /// The release ids the app last asked about, held or not, so the app can
+    /// tell which request this answers.
     pub asked: Vec<String>,
     pub selected: Vec<BridgeStorageRow>,
     /// The one release the list holds among those asked about, when it holds
@@ -81,8 +81,8 @@ impl BridgeStorageSelection {
 
 pulled_read! {
     /// The rows of the selected releases the Storage Manager list holds, read
-    /// live: the selection moves in place with `set_selected`, and starts
-    /// empty.
+    /// live. `set_selected` changes the selection without opening a new read,
+    /// and the selection starts empty.
     StorageSelectionSubscription:
         bae_app::live_reads::LiveStorageSelection => BridgeStorageSelection,
     converted by BridgeStorageSelection::from_core,

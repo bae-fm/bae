@@ -82,7 +82,7 @@ fn the_active_library_names_its_neighbours_that_open() {
     );
 }
 
-/// Every library says whether another is listed beside it.
+/// Each library's flag is true when the list holds another library.
 #[test]
 fn a_library_says_whether_another_is_listed_beside_it() {
     let alone = BridgeLibrary::list_from_core(vec![listed("a", true, true)]).unwrap();

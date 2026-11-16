@@ -1,5 +1,5 @@
-//! The library's list screens' other reads: the album grid's selection, and
-//! the conversions a window's sort values take across the bridge.
+//! This module reads the album grid's selection live, and converts window
+//! sort values between the bridge and the core.
 
 use crate::types::BridgeError;
 

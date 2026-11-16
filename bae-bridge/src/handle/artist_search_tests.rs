@@ -1,5 +1,6 @@
-//! The artist picker's search through the bridge objects the platforms hold:
-//! its text is part of the list, so a new text is a new subscription.
+//! These tests check the artist picker's search through the bridge objects
+//! the apps hold. The text is part of the list, so each new text opens a new
+//! subscription.
 
 use crate::types::{BridgeList, BridgeListRows, BridgeListWindow};
 use std::sync::Arc;

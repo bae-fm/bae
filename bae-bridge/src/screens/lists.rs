@@ -1,6 +1,6 @@
-//! The library's lists as the screens that draw them pull them: each window
-//! of a list, its count and the position of a key in it is a live read of its
-//! own, the same objects for every list.
+//! This module gives screens a live read of each list window, of each list's
+//! row count and of each key's position, with the same objects for every
+//! list.
 
 use crate::types::{
     BridgeError, BridgeList, BridgeListCount, BridgeListCountExtra, BridgeListPosition,
@@ -10,9 +10,9 @@ use bae_store::list_windows::OrderKey;
 use bae_store::ListWindow;
 
 pulled_read! {
-    /// One window of a list, a range of its order, read live: it moves in
-    /// place with `set_window`, and the list's other windows are other
-    /// subscriptions.
+    /// One window of a list, a range of its order, read live. `set_window`
+    /// changes the range this subscription reads, and the list's other
+    /// windows are other subscriptions.
     ListWindowSubscription: bae_views::LiveListWindow => BridgeListWindowValue,
     converted by BridgeListWindowValue::from_core,
     built by list_window
@@ -27,7 +27,8 @@ impl ListWindowSubscription {
 }
 
 pulled_read! {
-    /// How many rows a list has, and what changes with them, read live.
+    /// Read live how many rows a list has, with the values its count carries
+    /// (`BridgeListCountExtra`).
     ListCountSubscription:
         bae_store::live_query::LiveValues<bae_views::ListCount> => BridgeListCount,
     converted by BridgeListCount::from_core,
@@ -35,8 +36,8 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// How many rows of a list come before the row at a key, read live: it
-    /// moves in place with `set_key`.
+    /// How many rows of a list come before the row at a key, read live.
+    /// `set_key` changes the key this subscription reads.
     ListPositionSubscription: bae_views::LiveListPosition => BridgeListPosition,
     converted by BridgeListPosition::from_core,
     built by list_position
@@ -50,13 +51,13 @@ impl ListPositionSubscription {
     }
 }
 
-/// The sort values a screen sent back, as the key they are.
+/// Turn the sort values a screen sent back into an order key.
 pub(crate) fn order_key(values: Vec<BridgeSortValue>) -> OrderKey {
     OrderKey::new(values.into_iter().map(BridgeSortValue::into_core).collect())
 }
 
 impl BridgeList {
-    /// The album grid's sort in core's terms.
+    /// Converts the album grid's sort from the bridge type to core's type.
     pub(crate) fn album_sort(
         sort: Vec<crate::types::BridgeSortCriterion>,
     ) -> Vec<bae_views::AlbumSortCriterion> {
@@ -65,28 +66,30 @@ impl BridgeList {
 }
 
 impl BridgeList {
-    /// The artist list's sort in core's terms.
+    /// Converts the artist list's sort from the bridge type to core's type.
     pub(crate) fn artist_sort(
         sort: Vec<crate::types::BridgeArtistSortCriterion>,
     ) -> Vec<bae_views::ArtistSortCriterion> {
         sort.into_iter().map(crate::types::BridgeArtistSortCriterion::into_core).collect()
     }
 
-    /// The composer list's sort in core's terms.
+    /// Converts the composer list's sort from the bridge type to core's type.
     pub(crate) fn composer_sort(
         sort: Vec<crate::types::BridgeComposerSortCriterion>,
     ) -> Vec<bae_views::ComposerSortCriterion> {
         sort.into_iter().map(crate::types::BridgeComposerSortCriterion::into_core).collect()
     }
 
-    /// The Storage Manager's sort in core's terms.
+    /// Converts the Storage Manager's sort from the bridge type to core's
+    /// type.
     pub(crate) fn storage_sort(
         sort: crate::types::BridgeStorageSort,
     ) -> bae_views::StorageSortCriterion {
         sort.into_core()
     }
 
-    /// What an artist picker's text searches for: a blank text is no search.
+    /// Parses an artist picker's text into a search query, or returns None
+    /// when the text is blank.
     pub(crate) fn artist_search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {
         bae_views::LibrarySearchQuery::parse(text)
     }

@@ -2,9 +2,9 @@
 
 use super::*;
 
-/// Where a cover's bytes are read from. Every source carries the identity its
-/// bytes have, so the app caches what it drew under it without reading the
-/// file to learn whether it changed.
+/// Where the app reads a cover's bytes from. Every source carries the
+/// identity of its bytes, so the app caches the image it drew under that
+/// identity and does not read the file to learn whether it changed.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverImageSource {
     /// The cover of the library release imported from the folder's files.

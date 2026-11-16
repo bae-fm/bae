@@ -569,11 +569,11 @@ pub fn bridge_recovery_lines() -> BridgeRecoveryLines {
     }
 }
 
-/// The notice after a copy that found its device id in use reset at once: its
-/// first sentence, then one sentence for each kind of unsent work the copy did
-/// not keep. The app words each by its `Core` table key and joins them with a
-/// space. `counts` is empty when nothing was unsent, and then the app shows no
-/// notice.
+/// The notice bae shows after a library finds its device id in use and
+/// resets right away: its first sentence, then one sentence for each kind of
+/// unsent work the reset discarded. The app looks up the words of each
+/// sentence by its `Core` table key and joins them with a space. `counts` is
+/// empty when nothing was unsent, and then the app shows no notice.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCopyResetNotice {
     pub intro_key: String,

@@ -15,9 +15,10 @@ impl crate::types::BridgeCoverGallerySnapshot {
 }
 
 pulled_read! {
-    /// The covers a library release's picker shows under one source, read
-    /// live: one read for as long as the picker shows, moved in place as its
-    /// source changes. It shows nothing until `set_request` names a release.
+    /// The covers a library release's picker shows under one source. The
+    /// subscription keeps one live query while the picker is open, and
+    /// changes the query's request when the person picks another source. The
+    /// subscription delivers nothing until `set_request` names a release.
     CoverGallerySubscription:
         bae_app::live_reads::LiveCoverGallery => crate::types::BridgeCoverGallerySnapshot,
     converted by crate::types::BridgeCoverGallerySnapshot::from_core,

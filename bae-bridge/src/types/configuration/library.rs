@@ -259,8 +259,8 @@ pub struct BridgeStorageRow {
     pub release: BridgeReleaseSummary,
     pub album: BridgeAlbum,
     pub status: BridgeStorageRowStatus,
-    /// Whether the release can only be cancelled: it is mid-transition, or
-    /// its move failed.
+    /// Whether Cancel is the only action the release offers: it is
+    /// mid-transition, or its move failed.
     pub cancel_only: bool,
     pub date_added: std::time::SystemTime,
 }
@@ -416,10 +416,10 @@ pub struct BridgeSyncStatusSnapshot {
     /// it, shown until the person dismisses it with
     /// `AppHandle::dismiss_undone_storage_setup`.
     pub undone_setup: Option<BridgeUndoneStorageSetup>,
-    /// Another installation uses this device's id and this copy is the one
-    /// behind: the app closes the library and resets this device at once,
-    /// without asking, and then tells the person these edits and files were
-    /// not kept.
+    /// Another installation uses this device's id and this copy lacks the
+    /// other installation's newer changes: the app closes the library and
+    /// resets this device at once, without asking, and then tells the person
+    /// that the reset discarded these edits and files.
     pub copy_behind: Option<BridgeUnsentWork>,
 }
 

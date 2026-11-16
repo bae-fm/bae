@@ -147,7 +147,7 @@ impl BridgePerson {
     }
 }
 /// The person using this device, the other people, and how many people and
-/// devices the library has. Mirrors `PeopleView`.
+/// devices the library has. This record has the same fields as `PeopleView`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePeople {
     pub own: Option<BridgePerson>,

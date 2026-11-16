@@ -39,8 +39,8 @@ pub enum BridgeCoverFetch {
     NotFetched,
     /// The release names no catalog release, so there is nothing to offer.
     Unlinked,
-    /// The release is linked; the covers stored are what its catalogs offered,
-    /// possibly none.
+    /// The release names a catalog release, and the last fetch stored the
+    /// covers its catalogs offered, which can be none.
     Linked,
 }
 

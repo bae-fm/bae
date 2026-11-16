@@ -1,7 +1,7 @@
-//! Searches as their screens pull them: the library search, and whether the
-//! releases an import pane offers are already in the library. Each is one
-//! live query for as long as its screen is open, moved in place to each text
-//! the person types.
+//! This module runs the searches that screens open: the library search, and
+//! whether the releases an import pane offers are already in the library.
+//! Each is one live query while its screen is open, and the screen changes
+//! its text on that query as the person types.
 
 use crate::types::BridgeError;
 

@@ -276,10 +276,11 @@ mirror_enum! {
 pub struct BridgeDownloadOp {
     pub release_id: String,
     pub kind: BridgeDownloadKind,
-    /// How many files the release had when it was queued, which the row
-    /// keeps after the library no longer has the release.
+    /// How many files the release had when the person queued it, which the
+    /// row keeps after the library no longer has the release.
     pub file_count: u64,
-    /// Their total size in bytes when it was queued. The UI formats it.
+    /// The total size in bytes of the release's files when the person queued
+    /// it. The UI formats it.
     pub total_size: u64,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.
@@ -483,10 +484,11 @@ pub struct BridgeOutputOp {
     /// The chosen destination, as `coven::path_text` shows its path; the
     /// release's folder is rebuilt under it.
     pub target_dir: String,
-    /// How many files the release had when it was queued, which the row
-    /// keeps after the library no longer has the release.
+    /// How many files the release had when the person queued it, which the
+    /// row keeps after the library no longer has the release.
     pub file_count: u64,
-    /// Their total size in bytes when it was queued. The UI formats it.
+    /// The total size in bytes of the release's files when the person queued
+    /// it. The UI formats it.
     pub total_size: u64,
     /// The release as the library holds it now; `None` once the library no
     /// longer has it.

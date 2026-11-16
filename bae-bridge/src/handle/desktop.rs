@@ -694,7 +694,7 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// The artwork the candidate's links offer.
+        /// Fetch the covers that the catalogs the candidate links to offer.
         fn fetch_candidate_covers(
             candidate_key: Vec<u8>,
         ) -> crate::types::BridgeRemoteCoverGallery {

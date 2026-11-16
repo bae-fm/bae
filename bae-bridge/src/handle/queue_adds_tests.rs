@@ -48,9 +48,9 @@ fn each_add_answers_how_many_tracks_went_in() {
     let runtime = &handle.handle().runtime;
 
     let added = runtime.block_on(handle.handle().clone().add_to_queue(tracks.clone()));
-    assert_eq!(added.expect("the tracks are added"), 2);
+    assert_eq!(added.expect("add the tracks"), 2);
     let added = runtime.block_on(handle.handle().clone().add_next(vec![tracks[0].clone()]));
-    assert_eq!(added.expect("the track is added"), 1);
+    assert_eq!(added.expect("add the track next"), 1);
     let added = runtime.block_on(handle.handle().clone().insert_in_queue(tracks, 1));
-    assert_eq!(added.expect("the tracks are inserted"), 2);
+    assert_eq!(added.expect("insert the tracks"), 2);
 }

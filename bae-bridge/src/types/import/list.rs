@@ -95,12 +95,12 @@ pub struct BridgeImportCandidateListLocation {
     pub tab: BridgeTriageTab,
     pub group_key: Option<BridgeFolderReleaseDecisionKey>,
     pub visible_position: u64,
-    /// Where the candidate sits in that view, as a window's bound: a chain
-    /// of windows that starts at it shows it.
+    /// Where the candidate sits in that view, as a window's bound. A chain of
+    /// windows that starts at this key shows the candidate.
     pub key: Vec<BridgeSortValue>,
 }
 
-/// Where a list's view opens once it is set.
+/// Where a list's view opens after the app sets the view.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportListOpening {
     /// The list's top: the view showed no selected row.

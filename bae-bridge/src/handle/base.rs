@@ -142,7 +142,7 @@ forward! { async this => {
 
     /// The sort values of the row at `position` of `list`, read by offset, or
     /// of its last row when the list ends before it; none for an empty list.
-    /// A jump to a position starts the windows a screen holds there.
+    /// A screen reads this key to start its windows at a position.
     fn list_key_at(list: BridgeList, position: u64) -> Option<Vec<BridgeSortValue>> {
         let key = match list {
             BridgeList::AlbumGrid { sort, group_by_artist } => this
@@ -231,8 +231,8 @@ forward! { async this => {
     }
 
     /// The tracks of `track_ids` the library holds, each once, in the order
-    /// their release lists them: what an action on a picked set of tracks
-    /// acts on, whatever order they were picked in.
+    /// their release lists them. An action on tracks the person picked uses
+    /// this order, whatever order the person picked them in.
     fn tracks_in_release_order(track_ids: Vec<String>) -> Vec<String> {
         this.services.track_ids_in_release_order(track_ids).await.map_err(BridgeError::from)
     }
@@ -454,8 +454,8 @@ impl AppHandle {
     /// Move the entry `entry_id` to sit immediately before `before_entry_id`,
     /// or to the end of its lane without one, and answer whether it moved:
     /// `false` when the entry, or the one it goes before, is no longer queued
-    /// there, so nothing moved. The lane's list shows the move when it
-    /// arrives.
+    /// there, so nothing moved. The lane's list shows the new order when its
+    /// live query runs again after the write.
     ///
     /// The move is sent before the call first waits, so moves sent one after
     /// another, as a drag sends its steps, reach the queue in that order.

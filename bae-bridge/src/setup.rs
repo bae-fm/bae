@@ -19,8 +19,8 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 }
 
 impl BridgeLibrary {
-    /// The libraries as the list shows them, in the order core lists them,
-    /// with the active library's neighbours among the ones that open.
+    /// Converts core's libraries in core's order and puts on the active one
+    /// the ids of the next and previous libraries that open.
     pub(crate) fn list_from_core(
         infos: Vec<bae_app_dir::LibraryInfo>,
     ) -> Result<Vec<Self>, BridgeError> {
