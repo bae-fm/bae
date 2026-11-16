@@ -486,7 +486,7 @@ extension PeopleAndDevicesPage {
 
     private func deviceCount(_ member: BridgeMember) -> String {
         String(
-            localized: "\(member.activeDevices.count) devices",
+            localized: "\(member.activeDeviceCount) devices",
             comment: "How many devices a person has in the library"
         )
     }
@@ -574,8 +574,11 @@ extension PeopleAndDevicesPage {
                 }
             }
         }
-        if !member.formerDevices.isEmpty {
-            FormerDevicesDisclosure(devices: member.formerDevices)
+        if member.formerDeviceCount > 0 {
+            FormerDevicesDisclosure(
+                devices: member.formerDevices,
+                count: member.formerDeviceCount
+            )
         }
     }
 
@@ -858,6 +861,7 @@ private struct RenameProfileSheet: View {
 /// longer have access, so they offer no actions.
 private struct FormerDevicesDisclosure: View {
     let devices: [BridgeFormerDevice]
+    let count: UInt32
 
     @State
     private var isExpanded = false
@@ -876,7 +880,7 @@ private struct FormerDevicesDisclosure: View {
                 }
             }
         } label: {
-            Text("Removed devices (\(devices.count))")
+            Text("Removed devices (\(count))")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
         }

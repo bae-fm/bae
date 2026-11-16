@@ -16,13 +16,16 @@ import uniffi.bae_bridge.BridgeFormerDeviceState
 /**
  * A person's removed and replaced devices behind a card row that expands them
  * into rows of the same card, closed at first. They no longer have access, so
- * they offer no actions.
+ * they offer no actions. [count] is how many there are, as the member's read counts them.
  */
 @Composable
-internal fun FormerDevices(devices: List<BridgeFormerDevice>) {
+internal fun FormerDevices(
+    devices: List<BridgeFormerDevice>,
+    count: UInt,
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     AndroidDisclosure(
-        label = pluralStringResource(R.plurals.members_former_devices, devices.size, devices.size),
+        label = pluralStringResource(R.plurals.members_former_devices, count.toInt(), count.toInt()),
         open = expanded,
         onToggle = { expanded = !expanded },
     ) {

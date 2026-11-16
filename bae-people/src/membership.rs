@@ -68,6 +68,10 @@ pub struct MembershipMember {
     pub can_remove: bool,
     pub active_devices: Vec<ActiveDevice>,
     pub former_devices: Vec<FormerDevice>,
+    /// How many devices can sync for them.
+    pub active_device_count: u32,
+    /// How many of their devices were removed or replaced.
+    pub former_device_count: u32,
 }
 
 /// The library's members: everyone in it, and whether this device's person

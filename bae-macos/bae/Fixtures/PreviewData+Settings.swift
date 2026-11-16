@@ -115,7 +115,9 @@ extension PreviewData {
                         name: "Old phone",
                         state: .removed
                     ),
-                ]
+                ],
+                activeDeviceCount: 2,
+                formerDeviceCount: 2
             )
         )
 
@@ -159,7 +161,9 @@ extension PreviewData {
                         name: "Person B's Tablet",
                         state: .removed
                     ),
-                ]
+                ],
+                activeDeviceCount: 1,
+                formerDeviceCount: 2
             )
         )
 

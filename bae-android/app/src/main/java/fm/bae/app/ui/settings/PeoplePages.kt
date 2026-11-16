@@ -169,8 +169,8 @@ private fun PeopleCard(
                         stringResource(member.role.labelRes()),
                         pluralStringResource(
                             R.plurals.people_device_count,
-                            member.activeDevices.size,
-                            member.activeDevices.size,
+                            member.activeDeviceCount.toInt(),
+                            member.activeDeviceCount.toInt(),
                         ),
                     ),
                 onClick = if (selfIsAdmin) ({ onOpen(PeoplePage.Person(member.id)) }) else null,
