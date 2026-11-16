@@ -10,8 +10,8 @@
 //! node's box is the range of its words, not its parent's), and for text its
 //! computed font.
 
-use crate::names::Platform;
 use crate::shots::{words, Bounds, Element, Role, TextStyle};
+use bae_shots_lint::names::Platform;
 use chromiumoxide::cdp::browser_protocol::accessibility::{
     AxNode, AxNodeId, AxPropertyName, EnableParams, GetFullAxTreeParams,
 };

@@ -10,7 +10,7 @@ pub(crate) mod runtime;
 pub(crate) mod serve;
 
 use crate::design;
-use crate::names::{self, Name};
+use bae_shots_lint::names::{self, Name};
 use std::path::Path;
 
 #[derive(serde::Serialize)]

@@ -5,7 +5,7 @@
 //! answer for is `null` or, for `text`, `placeholder` and Android's `focused`,
 //! left out; the types keep it absent.
 
-use crate::names::{Name, Platform};
+use bae_shots_lint::names::{Name, Platform};
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::Path;

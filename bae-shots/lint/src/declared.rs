@@ -11,7 +11,7 @@ const KOTLIN_DIRECTORY: &str = "bae-android/app/src/test/java/fm/bae/app/shots";
 const SWIFT_DIRECTORY: &str = "bae-macos/bae/baeShots";
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum DeclaredError {
+pub enum DeclaredError {
     #[error("{0}: {1}")]
     Name(PathBuf, NameError),
     #[error("cannot read {0}: {1}")]
@@ -23,16 +23,16 @@ pub(crate) enum DeclaredError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Declared {
-    pub(crate) name: Name,
-    pub(crate) file: PathBuf,
+pub struct Declared {
+    pub name: Name,
+    pub file: PathBuf,
     /// The scene is shown in its window, which takes the focus, so only a run
     /// given `--windows` takes it. Declared in Swift by `frame: .window(…)`.
-    pub(crate) needs_window: bool,
+    pub needs_window: bool,
 }
 
 /// Every shot both harnesses declare, in name order, each once.
-pub(crate) fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
+pub fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
     let mut all = Vec::new();
     for (directory, extension, find) in [
         (KOTLIN_DIRECTORY, "kt", kotlin as fn(&str) -> Vec<(String, bool)>),

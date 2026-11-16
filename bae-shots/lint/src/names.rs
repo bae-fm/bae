@@ -5,19 +5,19 @@
 use std::fmt;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub(crate) enum NameError {
+pub enum NameError {
     #[error("'{0}' is not a board name: {1}")]
     Invalid(String, &'static str),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Platform {
+pub enum Platform {
     Mac,
     Android,
 }
 
 impl Platform {
-    pub(crate) fn parse(word: &str) -> Option<Self> {
+    pub fn parse(word: &str) -> Option<Self> {
         match word {
             "mac" => Some(Self::Mac),
             "android" => Some(Self::Android),
@@ -26,7 +26,7 @@ impl Platform {
     }
 
     /// The first segment of every name on this platform.
-    pub(crate) fn word(self) -> &'static str {
+    pub fn word(self) -> &'static str {
         match self {
             Self::Mac => "mac",
             Self::Android => "android",
@@ -34,7 +34,7 @@ impl Platform {
     }
 
     /// The platform's word in a shot's file name (`<name>@macos.png`).
-    pub(crate) fn file_word(self) -> &'static str {
+    pub fn file_word(self) -> &'static str {
         match self {
             Self::Mac => "macos",
             Self::Android => "android",
@@ -42,7 +42,7 @@ impl Platform {
     }
 
     /// The platform whose word in a shot's file name is `word`.
-    pub(crate) fn from_file_word(word: &str) -> Option<Self> {
+    pub fn from_file_word(word: &str) -> Option<Self> {
         [Self::Mac, Self::Android].into_iter().find(|platform| platform.file_word() == word)
     }
 
@@ -57,13 +57,13 @@ impl Platform {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Name {
+pub enum Name {
     Screen(ScreenName),
     Component(ComponentName),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct ScreenName {
+pub struct ScreenName {
     platform: Platform,
     area: String,
     screen: String,
@@ -71,14 +71,14 @@ pub(crate) struct ScreenName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct ComponentName {
+pub struct ComponentName {
     platform: Platform,
     thing: String,
     state: String,
 }
 
 impl Name {
-    pub(crate) fn parse(text: &str) -> Result<Self, NameError> {
+    pub fn parse(text: &str) -> Result<Self, NameError> {
         let invalid = |why| NameError::Invalid(text.to_string(), why);
         let segments: Vec<&str> = text.split('.').collect();
         if !segments.iter().all(|s| is_segment(s)) {
@@ -111,7 +111,7 @@ impl Name {
 }
 
 impl Name {
-    pub(crate) fn platform(&self) -> Platform {
+    pub fn platform(&self) -> Platform {
         match self {
             Self::Screen(s) => s.platform,
             Self::Component(c) => c.platform,
@@ -120,16 +120,13 @@ impl Name {
 
     /// The file a shot writes with `extension` (`png` or `json`):
     /// `<name>@<platform>.<extension>`.
-    pub(crate) fn file_name(&self, extension: &str) -> String {
+    pub fn file_name(&self, extension: &str) -> String {
         format!("{self}@{}.{extension}", self.platform().file_word())
     }
 
     /// The shot a file in a capture directory belongs to, when its name has the
     /// form of a shot file of `platform`.
-    pub(crate) fn from_file_name(
-        platform: Platform,
-        file_name: &str,
-    ) -> Option<Result<Self, NameError>> {
+    pub fn from_file_name(platform: Platform, file_name: &str) -> Option<Result<Self, NameError>> {
         let suffix_png = format!("@{}.png", platform.file_word());
         let suffix_json = format!("@{}.json", platform.file_word());
         let stem =
@@ -141,13 +138,13 @@ impl Name {
 /// The start of board names a run is limited to: `mac.welcome.` is the Mac
 /// welcome boards, `mac.component.row.` one component's states.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Prefix {
+pub struct Prefix {
     platform: Platform,
     text: String,
 }
 
 impl Prefix {
-    pub(crate) fn parse(text: &str) -> Result<Self, NameError> {
+    pub fn parse(text: &str) -> Result<Self, NameError> {
         let invalid = |why| NameError::Invalid(text.to_string(), why);
         let (platform, rest) = text
             .split_once('.')
@@ -163,15 +160,15 @@ impl Prefix {
         Ok(Self { platform, text: text.to_string() })
     }
 
-    pub(crate) fn platform(&self) -> Platform {
+    pub fn platform(&self) -> Platform {
         self.platform
     }
 
-    pub(crate) fn matches(&self, name: &Name) -> bool {
+    pub fn matches(&self, name: &Name) -> bool {
         name.to_string().starts_with(&self.text)
     }
 
-    pub(crate) fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &self.text
     }
 }
@@ -179,7 +176,7 @@ impl Prefix {
 impl ComponentName {
     /// The design-system component the shot draws: `cast-row` on Android is
     /// `AndroidCastRow`.
-    pub(crate) fn component(&self) -> String {
+    pub fn component(&self) -> String {
         let words = self.thing.split('-').map(|word| {
             let mut chars = word.chars();
             chars
@@ -190,7 +187,7 @@ impl ComponentName {
         std::iter::once(self.platform.component_prefix().to_string()).chain(words).collect()
     }
 
-    pub(crate) fn state(&self) -> &str {
+    pub fn state(&self) -> &str {
         &self.state
     }
 }
@@ -221,7 +218,7 @@ impl fmt::Display for Name {
 
 /// The id of a preview row's state: its name in lower-case words joined by
 /// `-` (`Nested, off` is `nested-off`).
-pub(crate) fn state_id(row_name: &str) -> String {
+pub fn state_id(row_name: &str) -> String {
     let mut words = Vec::new();
     let mut word = String::new();
     for c in row_name.chars() {

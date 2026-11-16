@@ -4,7 +4,7 @@ use crate::render::fixture;
 use crate::shots::Role;
 
 fn repository() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()
+    Path::new(env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
 }
 
 #[test]

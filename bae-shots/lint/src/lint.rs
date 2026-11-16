@@ -21,16 +21,16 @@ fn states(html: &str) -> Vec<String> {
 
 /// A shot or a record entry with no board.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Problem {
-    pub(crate) name: String,
+pub struct Problem {
+    pub name: String,
     /// True for a shot a harness declares, false for an entry of the record.
-    pub(crate) declared: bool,
-    pub(crate) sentence: String,
+    pub declared: bool,
+    pub sentence: String,
 }
 
 /// One problem for each declared shot and each entry of the record that has
 /// no board.
-pub(crate) fn problems(root: &Path, declared: &[Declared], record: &Record) -> Vec<Problem> {
+pub fn problems(root: &Path, declared: &[Declared], record: &Record) -> Vec<Problem> {
     let shots = declared.iter().filter_map(|d| {
         no_board(root, &d.name).map(|why| Problem {
             name: d.name.to_string(),

@@ -22,7 +22,8 @@ pub(crate) fn write(root: &Path, path: &str, text: &str) {
 pub(crate) fn tree(boards: &[(&str, &str)]) -> tempfile::TempDir {
     let root = tempfile::tempdir().unwrap();
     let r = root.path();
-    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("canvas/dc-runtime.js");
+    let runtime =
+        Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("canvas/dc-runtime.js");
     write(r, "bae-shots/canvas/dc-runtime.js", &std::fs::read_to_string(runtime).unwrap());
     write(r, "design/system/tokens.css", ":root{--text-primary:#fff}");
     write(r, "design/system/components/bundle.css", "");

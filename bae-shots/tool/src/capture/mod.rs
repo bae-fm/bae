@@ -3,9 +3,9 @@
 pub(crate) mod android;
 pub(crate) mod mac;
 
-use crate::declared::Declared;
-use crate::names::{Name, Platform, Prefix};
 use crate::shots::Shot;
+use bae_shots_lint::declared::Declared;
+use bae_shots_lint::names::{Name, Platform, Prefix};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

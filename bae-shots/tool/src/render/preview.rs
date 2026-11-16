@@ -10,11 +10,11 @@
 //! state, `default`, drawn by the whole page.
 
 use crate::design::Frame;
-use crate::names::{state_id, Platform};
 use crate::render::board::{self, BoardError};
 use crate::render::read;
 use crate::render::Size;
 use crate::shots::Element;
+use bae_shots_lint::names::{state_id, Platform};
 use chromiumoxide::cdp::browser_protocol::dom::DescribeNodeParams;
 use chromiumoxide::cdp::browser_protocol::page::{CaptureScreenshotFormat, Viewport};
 use chromiumoxide::cdp::js_protocol::runtime::EvaluateParams;

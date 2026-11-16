@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-pub(crate) const FILE: &str = "design/shots.toml";
+pub const FILE: &str = "design/shots.toml";
 
 /// The record a run's results make, written beside its shots.
-pub(crate) const RESULTS: &str = "record.toml";
+pub const RESULTS: &str = "record.toml";
 
 const HEADER: &str =
     "# Written by `bae-shots record`: the pairs of a shot and its board confirmed \
@@ -18,7 +18,7 @@ together, each with the hash of the board and of the shot, and the warnings it w
 with. Do not edit by hand.\n\n";
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum RecordError {
+pub enum RecordError {
     #[error("cannot read {0}: {1}")]
     Read(PathBuf, std::io::Error),
     #[error("cannot write {0}: {1}")]
@@ -33,18 +33,18 @@ pub(crate) enum RecordError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Entry {
+pub struct Entry {
     /// The board hash.
-    pub(crate) board: String,
+    pub board: String,
     /// The hash of the element list file and the picture's decoded pixels.
-    pub(crate) shot: String,
+    pub shot: String,
     /// The warnings the pair was confirmed with.
-    pub(crate) warnings: Vec<String>,
+    pub warnings: Vec<String>,
 }
 
 /// Where a pair stands against a record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Standing {
+pub enum Standing {
     /// The record's entry has both hashes.
     Confirmed,
     /// The record has an entry, with other hashes.
@@ -55,17 +55,17 @@ pub(crate) enum Standing {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub(crate) struct Record {
+pub struct Record {
     entries: BTreeMap<String, Entry>,
 }
 
 impl Record {
-    pub(crate) fn parse(text: &str, source: &str) -> Result<Self, RecordError> {
+    pub fn parse(text: &str, source: &str) -> Result<Self, RecordError> {
         toml::from_str(text).map_err(|e| RecordError::Parse(source.to_string(), e))
     }
 
     /// The record in the file at `path`; none when there is no file.
-    pub(crate) fn load(path: &Path) -> Result<Self, RecordError> {
+    pub fn load(path: &Path) -> Result<Self, RecordError> {
         match std::fs::read_to_string(path) {
             Ok(text) => Self::parse(&text, &path.display().to_string()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
@@ -75,7 +75,7 @@ impl Record {
 
     /// The record of the branch `reference` in the repository at `root`; none
     /// when that commit holds no record.
-    pub(crate) fn at(root: &Path, reference: &str) -> Result<Self, RecordError> {
+    pub fn at(root: &Path, reference: &str) -> Result<Self, RecordError> {
         let git = |args: &[&str]| {
             std::process::Command::new("git")
                 .args(args)
@@ -102,17 +102,17 @@ impl Record {
         Self::parse(&String::from_utf8_lossy(&shown.stdout), &object)
     }
 
-    pub(crate) fn to_text(&self) -> Result<String, RecordError> {
+    pub fn to_text(&self) -> Result<String, RecordError> {
         Ok(format!("{HEADER}{}", toml::to_string(self).map_err(RecordError::Format)?))
     }
 
-    pub(crate) fn save(&self, path: &Path) -> Result<(), RecordError> {
+    pub fn save(&self, path: &Path) -> Result<(), RecordError> {
         std::fs::write(path, self.to_text()?).map_err(|e| RecordError::Write(path.to_path_buf(), e))
     }
 
     /// Writes the record in `results` as the repository's record at `root`:
     /// the one place a run's results reach `design/shots.toml`.
-    pub(crate) fn promote(results: &Path, root: &Path) -> Result<(), RecordError> {
+    pub fn promote(results: &Path, root: &Path) -> Result<(), RecordError> {
         if !results.is_file() {
             return Err(RecordError::Read(
                 results.to_path_buf(),
@@ -122,30 +122,30 @@ impl Record {
         Self::load(results)?.save(&root.join(FILE))
     }
 
-    pub(crate) fn get(&self, board: &str) -> Option<&Entry> {
+    pub fn get(&self, board: &str) -> Option<&Entry> {
         self.entries.get(board)
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
-    pub(crate) fn names(&self) -> impl Iterator<Item = &String> {
+    pub fn names(&self) -> impl Iterator<Item = &String> {
         self.entries.keys()
     }
 
     /// Records the pair `board` as confirmed with `entry`.
-    pub(crate) fn confirm(&mut self, board: &str, entry: Entry) {
+    pub fn confirm(&mut self, board: &str, entry: Entry) {
         self.entries.insert(board.to_string(), entry);
     }
 
     /// Drops the entry of `board`.
-    pub(crate) fn forget(&mut self, board: &str) {
+    pub fn forget(&mut self, board: &str) {
         self.entries.remove(board);
     }
 
     /// Where the pair of `board` with these hashes stands.
-    pub(crate) fn standing(&self, board: &str, board_hash: &str, shot_hash: &str) -> Standing {
+    pub fn standing(&self, board: &str, board_hash: &str, shot_hash: &str) -> Standing {
         match self.get(board) {
             None => Standing::New,
             Some(e) if e.board == board_hash && e.shot == shot_hash => Standing::Confirmed,

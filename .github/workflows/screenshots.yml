@@ -96,7 +96,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/chrome-for-testing
-          key: chrome-for-testing-${{ hashFiles('bae-shots/src/render/chrome.rs') }}
+          key: chrome-for-testing-${{ hashFiles('bae-shots/tool/src/render/chrome.rs') }}
       # A pull request's pairs are marked new or changed against the record on
       # the branch it targets.
       - name: Fetch the base branch

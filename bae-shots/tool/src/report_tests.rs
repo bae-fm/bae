@@ -1,10 +1,10 @@
 use super::*;
 use crate::compare::normalize::Entry;
-use crate::lint::Problem;
 use crate::lists::Lists;
-use crate::names::Name;
 use crate::shots::tests::{png, LIST};
 use crate::shots::{ElementList, Role};
+use bae_shots_lint::lint::Problem;
+use bae_shots_lint::names::Name;
 
 fn entry(index: usize, words: &str, kind: Role) -> Entry {
     Entry {

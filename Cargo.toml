@@ -29,7 +29,8 @@ members = [
     "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
-    "bae-shots",
+    "bae-shots/lint",
+    "bae-shots/tool",
     "bae-views",
 ]
 resolver = "2"
@@ -88,6 +89,7 @@ bae-library = { path = "bae-library" }
 bae-people = { path = "bae-people" }
 bae-sync-status = { path = "bae-sync-status" }
 bae-records = { path = "bae-records" }
+bae-shots-lint = { path = "bae-shots/lint" }
 bae-store = { path = "bae-store" }
 bae-desktop = { path = "bae-desktop" }
 bae-desktop-cfg = { path = "bae-desktop-cfg" }

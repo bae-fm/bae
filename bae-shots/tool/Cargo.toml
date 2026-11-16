@@ -11,6 +11,7 @@ name = "bae-shots"
 path = "src/main.rs"
 
 [dependencies]
+bae-shots-lint = { workspace = true }
 chromiumoxide = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }

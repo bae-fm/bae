@@ -4,7 +4,7 @@
 //! directory.
 
 use super::{check_complete, clear, selected, CaptureError, Step};
-use crate::names::{Name, Platform, Prefix};
+use bae_shots_lint::names::{Name, Platform, Prefix};
 use std::path::Path;
 
 const BINDINGS: &str = "bae-bridge/kotlin-bindings-full/uniffi";

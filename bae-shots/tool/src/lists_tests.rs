@@ -1,5 +1,5 @@
 use super::*;
-use crate::record::Entry;
+use bae_shots_lint::record::Entry;
 
 fn name(text: &str) -> Name {
     Name::parse(text).unwrap()

@@ -20,6 +20,7 @@ tools = ["bae-uniffi-bindgen"]
 # library's tests read the views.
 crate_order = [
     "bae-desktop-cfg",
+    "bae-shots-lint",
     "bae-shots",
     "bae-loc",
     "bae-mirror",
@@ -665,9 +666,9 @@ OpenCalls = "LibrarySessions"
 # The design-board renderer builds its runtime, serves its pages and starts its
 # browser once around all the boards it draws; they run in the caller's
 # futures and end with the call.
-"bae-shots/src/render.rs" = ["boards"]
-"bae-shots/src/render/chrome.rs" = ["with_chrome"]
-"bae-shots/src/render/serve.rs" = ["with_server"]
+"bae-shots/tool/src/render.rs" = ["boards"]
+"bae-shots/tool/src/render/chrome.rs" = ["with_chrome"]
+"bae-shots/tool/src/render/serve.rs" = ["with_server"]
 # A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # A test's catalog fakes: the providers its library asks are built over

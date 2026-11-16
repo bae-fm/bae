@@ -2,9 +2,9 @@
 //! harness shoots (to build), the shots whose board changed since the pair was
 //! confirmed (to update), and the shots with no board (to delete).
 
-use crate::lint::Problem;
-use crate::names::Name;
-use crate::record::Record;
+use bae_shots_lint::lint::Problem;
+use bae_shots_lint::names::Name;
+use bae_shots_lint::record::Record;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Default, PartialEq, Eq)]

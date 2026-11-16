@@ -62,7 +62,7 @@ whole loc-english-skeleton-all scripts/loc-english-skeleton.py,scripts/loc-skele
 whole loc-words *.xcstrings,bae-android/app/src/main/res/**/strings.xml,bae-bridge/loc/catalog.toml,spec/words.md,bae-macos/bae/bae/Shell/*Menu*.swift,scripts/loc-words.py python3 scripts/loc-words.py
 
 # Boards and workflows
-check shots-without-boards design/mocks/**,design/system/components/**,bae-android/app/src/test/java/fm/bae/app/shots/**,bae-macos/bae/baeShots/**,design/shots.toml scripts/cargo.sh run -q -p bae-shots -- lint
+check shots-without-boards design/mocks/**,design/system/components/**,bae-android/app/src/test/java/fm/bae/app/shots/**,bae-macos/bae/baeShots/**,design/shots.toml scripts/cargo.sh run -q -p bae-shots-lint
 check actionlint .github/workflows/**,.github/actions/** env SHELLCHECK_OPTS=--severity=error actionlint -color
 
 # Checker tests, run in CI when a push touches a checker or its test

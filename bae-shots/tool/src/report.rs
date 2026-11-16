@@ -2,8 +2,8 @@
 //! the same findings as Markdown for a CI step summary.
 
 use crate::compare::{self, Finding, Warning};
-use crate::record::Standing;
 use crate::verify::{Checked, Outcome, Skipped};
+use bae_shots_lint::record::Standing;
 use std::path::Path;
 
 /// Appends formatted text to a string.

@@ -2,14 +2,14 @@
 //! the boards that need it, the comparison, the record's update and the lists.
 
 use crate::compare::{self, Finding, Side, Warning};
-use crate::declared::Declared;
 use crate::design;
-use crate::lint::{self, Problem};
 use crate::lists::{self, Lists};
-use crate::names::{Name, Platform};
-use crate::record::{self, Entry, Record, Standing};
 use crate::render::{self, runtime};
 use crate::shots::{ElementList, Picture, Shot};
+use bae_shots_lint::declared::Declared;
+use bae_shots_lint::lint::{self, Problem};
+use bae_shots_lint::names::{Name, Platform};
+use bae_shots_lint::record::{self, Entry, Record, Standing};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

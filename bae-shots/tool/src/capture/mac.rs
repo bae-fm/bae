@@ -3,8 +3,8 @@
 //! `<board>@macos.{png,json}` into the output directory.
 
 use super::{check_complete, clear, taken, CaptureError, Step, NEEDS_WINDOW};
-use crate::declared::Declared;
-use crate::names::{Name, Platform, Prefix};
+use bae_shots_lint::declared::Declared;
+use bae_shots_lint::names::{Name, Platform, Prefix};
 use std::path::Path;
 
 const XCODE_DIRECTORY: &str = "bae-macos/bae";

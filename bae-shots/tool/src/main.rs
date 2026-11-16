@@ -3,19 +3,16 @@
 
 mod capture;
 mod compare;
-mod declared;
 mod design;
-mod lint;
 mod lists;
-mod names;
-mod record;
 mod render;
 mod report;
 mod shots;
 mod verify;
 
+use bae_shots_lint::names::{Name, Platform, Prefix};
+use bae_shots_lint::{declared, record, repository_root};
 use clap::{Args, Parser, Subcommand};
-use names::{Name, Platform, Prefix};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -31,8 +28,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Action {
-    /// List the shots the harnesses declare that have no board.
-    Lint,
     /// Check the canvas runtime copy against its record and the canvas's.
     Runtime,
     /// Write the record the last `run` made (shots/record.toml) to
@@ -100,17 +95,6 @@ impl Selection {
         platforms.dedup();
         platforms
     }
-}
-
-/// The checkout the command runs in: the nearest directory above the working
-/// directory that holds the design system's components.
-fn repository_root() -> Result<PathBuf, String> {
-    let start = std::env::current_dir().map_err(|e| e.to_string())?;
-    start
-        .ancestors()
-        .find(|d| d.join("design/system/components").is_dir())
-        .map(Path::to_path_buf)
-        .ok_or_else(|| format!("no design/system/components above {}", start.display()))
 }
 
 fn capture(
@@ -196,16 +180,6 @@ fn finish(
 fn run(action: Action) -> Result<bool, String> {
     let root = repository_root()?;
     match action {
-        Action::Lint => {
-            let declared = declared::read(&root).map_err(|e| e.to_string())?;
-            let record =
-                record::Record::load(&root.join(record::FILE)).map_err(|e| e.to_string())?;
-            let problems = lint::problems(&root, &declared, &record);
-            for problem in &problems {
-                eprintln!("{}", problem.sentence);
-            }
-            Ok(problems.is_empty())
-        }
         Action::Run(selection) => {
             capture(&root, &selection, |p| root.join("shots").join(p.word()))?;
             let taken = selected(&root, &selection)?;
