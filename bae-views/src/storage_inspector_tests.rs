@@ -206,12 +206,12 @@ async fn the_file_details_read_the_file_by_its_id() {
     let cover = bae_util::test_ids::test_uuid("ordering-file-1");
 
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_storage_file(Some(cover.clone()));
-    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.map(|file| file.original_filename), Some("cover.jpg".to_string()));
 
     live.requests().set(Some("no-such-file".to_string())).expect("the query is open");
     let read = loop {
-        let event = live.next().await.expect("the query stays open");
+        let event = live.next_inline().await.expect("the query stays open");
         if event.request.as_deref() == Some("no-such-file") {
             break event.result.unwrap();
         }
