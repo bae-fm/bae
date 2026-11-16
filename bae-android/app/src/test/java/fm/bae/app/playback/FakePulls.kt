@@ -5,6 +5,7 @@ import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.BridgeAddDeviceStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeQueueSnapshot
@@ -12,6 +13,7 @@ import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.DownloadCountsSubscription
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.NoHandle
+import uniffi.bae_bridge.OpenInviteSubscription
 import uniffi.bae_bridge.PeopleSubscription
 import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.QueueSubscription
@@ -87,6 +89,17 @@ internal class FakePersonSubscription : PersonSubscription(NoHandle) {
     val pulls = PullChannel<BridgePerson?>()
 
     override suspend fun next(): BridgePerson? = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** One open invite, or none, as a test hands it to the app. */
+internal class FakeOpenInviteSubscription : OpenInviteSubscription(NoHandle) {
+    val pulls = PullChannel<BridgeInvite?>()
+
+    override suspend fun next(): BridgeInvite? = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

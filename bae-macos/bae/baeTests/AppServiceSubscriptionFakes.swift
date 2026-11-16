@@ -137,6 +137,25 @@ final class FakeInvites: InvitesSubscription, @unchecked Sendable {
     }
 }
 
+/// One open invite or none, as a test hands it to the app.
+final class FakeOpenInvite: OpenInviteSubscription, @unchecked Sendable {
+    let values = PullQueue<BridgeInvite?>()
+
+    init() {
+        super.init(noHandle: OpenInviteSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+
+    override func next() async throws -> BridgeInvite? {
+        try await values.next()
+    }
+
+    override func cancel() async throws { values.cancel() }
+}
+
 /// Preferences that never change after the ones the service was built with:
 /// a pull waits until the caller cancels it.
 final class SilentConfig: ConfigSubscription, @unchecked Sendable {

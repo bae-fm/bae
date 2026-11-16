@@ -548,6 +548,15 @@ impl AppServices {
     ) -> bae_store::live_query::LiveValues<Vec<bae_views::InviteEntry>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
+
+    /// The first of this device's open invites whose join request waits for
+    /// the admin's decision, other than those in `closed`, live.
+    pub fn subscribe_waiting_join_request(
+        &self,
+        closed: Vec<coven::InviteId>,
+    ) -> bae_store::live_query::LiveValues<Option<bae_views::OpenInvite>> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_waiting_request(closed))
+    }
     delegate_lib!(membership, dismiss_refused_invite => dismiss_refused_invite(operation: coven::OperationId) -> ());
     delegate_lib!(membership, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> ());
     delegate_lib!(store, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> ());

@@ -338,6 +338,7 @@ task_types = [
     "ListPositionSubscription",
     "ListWindowSubscription",
     "MembersSubscription",
+    "OpenInviteSubscription",
     "PeopleSubscription",
     "PersonSubscription",
     "PlaybackTimelineSubscription",

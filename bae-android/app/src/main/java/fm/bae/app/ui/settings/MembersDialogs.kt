@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -152,8 +153,10 @@ private fun InviteDialogsShown(
             onDismiss = { dialogs.shownInvite = null },
         )
     }
-    model.invites
-        .firstOrNull { it.requestToDecide != null && it.id !in dialogs.closedRequests }
+    LaunchedEffect(model, dialogs.closedRequests) { model.watchWaitingRequest(dialogs.closedRequests) }
+    // The read answers for the closed invites a moment after one closes, so the one just closed is not shown meanwhile.
+    model.waitingRequest
+        ?.takeIf { it.id !in dialogs.closedRequests }
         ?.let { invite ->
             JoinRequestDialog(
                 invite = invite,

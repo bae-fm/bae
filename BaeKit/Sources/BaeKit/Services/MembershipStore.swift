@@ -43,6 +43,10 @@ public final class MembershipStore {
             }
         }
     }
+    /// The first open invite whose join request waits for a decision,
+    /// other than those whose request the page closed, while the page reads
+    /// it; nil while none does.
+    public private(set) var waitingRequest: BridgeInvite?
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     public private(set) var adminChanges: [BridgeAdminChange] = []
@@ -60,6 +64,10 @@ public final class MembershipStore {
     /// each value to the store.
     private let subscribePerson:
         @MainActor (MembershipStore, String) throws -> AnyObject
+    /// Starts the subscription to the first waiting join request other than
+    /// those of the invites with the ids, handing each value to the store.
+    private let subscribeWaitingRequest:
+        @MainActor (MembershipStore, Set<String>) throws -> AnyObject
     /// Starts the pull of a pairing's status, handing each value to the
     /// closure; the subscription runs until the closure it returns stops it.
     private let followAddDeviceStatus:
@@ -79,6 +87,9 @@ public final class MembershipStore {
     /// What a person's page reads, with the member id it reads.
     @ObservationIgnored
     private var personSubscription: (memberId: String, subscription: AnyObject)?
+    /// What the page reads of the waiting join requests, while it does.
+    @ObservationIgnored
+    private var waitingRequestSubscription: AnyObject?
 
     public convenience init(handle: AppHandle) {
         self.init(
@@ -91,39 +102,16 @@ public final class MembershipStore {
                     onError: { [weak store] error in store?.fail(error) }
                 )
             },
-            subscribeShown: { store in
-                [
-                    ScreenSubscription(
-                        handle.subscribePeople(),
-                        onValue: { [weak store] people in store?.people = people
-                        },
-                        onError: { [weak store] error in store?.fail(error) }
-                    ),
-                    ScreenSubscription(
-                        handle.subscribeRequestedProfile(),
-                        onValue: { [weak store] requested in
-                            store?.requestedProfile = requested
-                        },
-                        onError: { [weak store] error in store?.fail(error) }
-                    ),
-                    ScreenSubscription(
-                        handle.subscribeAdminChanges(),
-                        onValue: { [weak store] changes in
-                            store?.adminChanges = changes
-                        },
-                        onError: { [weak store] error in store?.fail(error) }
-                    ),
-                    ScreenSubscription(
-                        handle.subscribeInvites(),
-                        onValue: { [weak store] entries in
-                            store?.inviteEntries = entries
-                        },
-                        onError: { [weak store] error in store?.fail(error) }
-                    ),
-                ]
-            },
+            subscribeShown: { store in Self.followShown(handle, store: store) },
             subscribePerson: { store, memberId in
                 try Self.followPerson(handle, store: store, memberId: memberId)
+            },
+            subscribeWaitingRequest: { store, closed in
+                try Self.followWaitingRequest(
+                    handle,
+                    store: store,
+                    closed: closed
+                )
             },
             followAddDeviceStatus: { pairing, apply, fail in
                 let subscription = ScreenSubscription(
@@ -140,30 +128,14 @@ public final class MembershipStore {
         )
     }
 
-    /// The subscription to the person with `memberId`, which hands each value
-    /// to `store`.
-    private static func followPerson(
-        _ handle: AppHandle,
-        store: MembershipStore,
-        memberId: String
-    ) throws -> AnyObject {
-        ScreenSubscription(
-            try handle.subscribePerson(member: memberId),
-            onValue: { [weak store] person in
-                store?.shownPerson = ShownPerson(
-                    memberId: memberId,
-                    person: person
-                )
-            },
-            onError: { [weak store] error in store?.fail(error) }
-        )
-    }
-
     private init(
         subscribeMembers: @escaping @MainActor (MembershipStore) -> AnyObject,
         subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
         subscribePerson:
             @escaping @MainActor (MembershipStore, String) throws -> AnyObject,
+        subscribeWaitingRequest:
+            @escaping @MainActor (MembershipStore, Set<String>) throws ->
+            AnyObject,
         followAddDeviceStatus:
             @escaping @MainActor (
                 String,
@@ -176,49 +148,9 @@ public final class MembershipStore {
         self.subscribeMembers = subscribeMembers
         self.subscribeShown = subscribeShown
         self.subscribePerson = subscribePerson
+        self.subscribeWaitingRequest = subscribeWaitingRequest
         self.followAddDeviceStatus = followAddDeviceStatus
     }
-
-    #if DEBUG
-        /// A store showing `invites` and `refusedInvites` and `people` from the
-        /// start, with no subscriptions; following a pairing finds
-        /// `addDeviceStatus`.
-        public static func stub(
-            people: BridgePeople,
-            selfIsAdmin: Bool,
-            invites: [BridgeInvite] = [],
-            refusedInvites: [BridgeRefusedInvite] = [],
-            requestedProfile: BridgeRequestedProfile? = nil,
-            adminChanges: [BridgeAdminChange] = [],
-            addDeviceStatus: BridgeAddDeviceStatus? = nil
-        ) -> MembershipStore {
-            let store = MembershipStore(
-                subscribeMembers: { _ in NSObject() },
-                subscribeShown: { _ in [] },
-                subscribePerson: { store, memberId in
-                    store.shownPerson = ShownPerson(
-                        memberId: memberId,
-                        person: ([people.own].compactMap { $0 } + people.others)
-                            .first { $0.membership.id == memberId }
-                    )
-                    return NSObject()
-                },
-                followAddDeviceStatus: { _, apply, _ in
-                    if let addDeviceStatus { apply(addDeviceStatus) }
-                    return {}
-                },
-                holdFrequentSync: { {} }
-            )
-            store.selfIsAdmin = selfIsAdmin
-            store.people = people
-            store.inviteEntries =
-                invites.map { .open(invite: $0) }
-                + refusedInvites.map { .refused(refused: $0) }
-            store.requestedProfile = requestedProfile
-            store.adminChanges = adminChanges
-            return store
-        }
-    #endif
 
     /// Read whether this device's person is an admin, for as long as the
     /// library is open.
@@ -253,11 +185,34 @@ public final class MembershipStore {
         shownPerson = nil
     }
 
+    /// Read the first waiting join request other than those of the invites
+    /// in `closed`, replacing the read of an earlier `closed`. The last
+    /// request read stays until the new read answers.
+    public func showWaitingRequest(closed: Set<String>) {
+        waitingRequestSubscription = nil
+        do {
+            waitingRequestSubscription = try subscribeWaitingRequest(
+                self,
+                closed
+            )
+        }
+        catch {
+            fail(error)
+        }
+    }
+
+    /// End what `showWaitingRequest` reads, once the page closes.
+    public func hideWaitingRequest() {
+        waitingRequestSubscription = nil
+        waitingRequest = nil
+    }
+
     /// End what `show` reads, once no screen shows it. What it read goes
     /// with it, so the next screen starts from its own read.
     public func hide() {
         guard shownSubscriptions != nil else { return }
         hidePerson()
+        hideWaitingRequest()
         shownSubscriptions = nil
         people = nil
         requestedProfile = nil
@@ -313,6 +268,118 @@ public final class MembershipStore {
         logger.error("membership read failed: \(String(reflecting: error))")
         self.error = DisplayError(error)
     }
+}
+
+extension MembershipStore {
+    /// The subscriptions to what a screen showing the people reads, which
+    /// hand each value to `store`.
+    private static func followShown(
+        _ handle: AppHandle,
+        store: MembershipStore
+    ) -> [AnyObject] {
+        [
+            ScreenSubscription(
+                handle.subscribePeople(),
+                onValue: { [weak store] people in store?.people = people },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+            ScreenSubscription(
+                handle.subscribeRequestedProfile(),
+                onValue: { [weak store] requested in
+                    store?.requestedProfile = requested
+                },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+            ScreenSubscription(
+                handle.subscribeAdminChanges(),
+                onValue: { [weak store] changes in
+                    store?.adminChanges = changes
+                },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+            ScreenSubscription(
+                handle.subscribeInvites(),
+                onValue: { [weak store] entries in
+                    store?.inviteEntries = entries
+                },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+        ]
+    }
+
+    /// The subscription to the first waiting join request other than those
+    /// of the invites in `closed`, which hands each value to `store`.
+    private static func followWaitingRequest(
+        _ handle: AppHandle,
+        store: MembershipStore,
+        closed: Set<String>
+    ) throws -> AnyObject {
+        ScreenSubscription(
+            try handle.subscribeWaitingJoinRequest(closed: Array(closed)),
+            onValue: { [weak store] invite in store?.waitingRequest = invite },
+            onError: { [weak store] error in store?.fail(error) }
+        )
+    }
+    /// The subscription to the person with `memberId`, which hands each value
+    /// to `store`.
+    private static func followPerson(
+        _ handle: AppHandle,
+        store: MembershipStore,
+        memberId: String
+    ) throws -> AnyObject {
+        ScreenSubscription(
+            try handle.subscribePerson(member: memberId),
+            onValue: { [weak store] person in
+                store?.shownPerson = ShownPerson(
+                    memberId: memberId,
+                    person: person
+                )
+            },
+            onError: { [weak store] error in store?.fail(error) }
+        )
+    }
+
+    #if DEBUG
+        /// A store showing `invites` and `refusedInvites` and `people` from the
+        /// start, with no subscriptions; following a pairing finds
+        /// `addDeviceStatus`.
+        public static func stub(
+            people: BridgePeople,
+            selfIsAdmin: Bool,
+            invites: [BridgeInvite] = [],
+            refusedInvites: [BridgeRefusedInvite] = [],
+            requestedProfile: BridgeRequestedProfile? = nil,
+            adminChanges: [BridgeAdminChange] = [],
+            addDeviceStatus: BridgeAddDeviceStatus? = nil
+        ) -> MembershipStore {
+            let store = MembershipStore(
+                subscribeMembers: { _ in NSObject() },
+                subscribeShown: { _ in [] },
+                subscribePerson: { store, memberId in
+                    store.shownPerson = ShownPerson(
+                        memberId: memberId,
+                        person: ([people.own].compactMap { $0 } + people.others)
+                            .first { $0.membership.id == memberId }
+                    )
+                    return NSObject()
+                },
+                subscribeWaitingRequest: { _, _ in NSObject() },
+                followAddDeviceStatus: { _, apply, _ in
+                    if let addDeviceStatus { apply(addDeviceStatus) }
+                    return {}
+                },
+                holdFrequentSync: { {} }
+            )
+            store.selfIsAdmin = selfIsAdmin
+            store.people = people
+            store.inviteEntries =
+                invites.map { .open(invite: $0) }
+                + refusedInvites.map { .refused(refused: $0) }
+            store.requestedProfile = requestedProfile
+            store.adminChanges = adminChanges
+            return store
+        }
+    #endif
 }
 
 /// The person a person's page shows, with the member id it asked for: no

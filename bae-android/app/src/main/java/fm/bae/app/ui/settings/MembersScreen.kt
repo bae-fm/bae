@@ -117,6 +117,13 @@ internal class MembersModel(
     var error by mutableStateOf<DisplayError?>(null)
 
     /**
+     * The first open invite whose join request waits for a decision, other than those whose dialog the person closed;
+     * null while none does.
+     */
+    var waitingRequest by mutableStateOf<BridgeInvite?>(null)
+        private set
+
+    /**
      * The person whose page is open, once the person subscription answers; Loading while no page of a person is
      * open.
      */
@@ -125,10 +132,12 @@ internal class MembersModel(
 
     private var peopleSubscription: ScreenSubscription<BridgePeople>? = null
     private var personSubscription: ScreenSubscription<BridgePerson?>? = null
+    private var waitingRequestSubscription: ScreenSubscription<BridgeInvite?>? = null
 
     /** Which subscription a people callback belongs to; the model ignores a callback from a replaced subscription. */
     private var peopleGeneration = 0
     private var personGeneration = 0
+    private var waitingRequestGeneration = 0
 
     /** Follow the library's people, replacing any subscription already running; a failed read shows Retry. */
     fun watchPeople() {
@@ -187,6 +196,42 @@ internal class MembersModel(
         personSubscription?.stop()
         personSubscription = null
         person = PersonRead.Loading
+    }
+
+    /**
+     * Follow the first waiting join request other than those of the invites in [closed], replacing the read of an
+     * earlier [closed]. The last request read stays until the new read answers.
+     */
+    fun watchWaitingRequest(closed: Set<String>) {
+        waitingRequestGeneration++
+        waitingRequestSubscription?.stop()
+        waitingRequestSubscription = null
+        val generation = waitingRequestGeneration
+        val read =
+            try {
+                appHandle.subscribeWaitingJoinRequest(closed.toList())
+            } catch (e: BridgeException) {
+                logger.error("reading the waiting join request failed", e)
+                error = errors.display(e)
+                return
+            }
+        waitingRequestSubscription =
+            ScreenSubscription(
+                read.let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value -> if (generation == waitingRequestGeneration) waitingRequest = value },
+                onError = { error ->
+                    logger.error("reading the waiting join request failed", error)
+                    if (generation == waitingRequestGeneration) this@MembersModel.error = errors.display(error)
+                },
+            )
+    }
+
+    private fun stopWatchingWaitingRequest() {
+        waitingRequestGeneration++
+        waitingRequestSubscription?.stop()
+        waitingRequestSubscription = null
+        waitingRequest = null
     }
 
     /** Subscribe to the people again after a failed read, showing the spinner while it runs. */
@@ -248,6 +293,7 @@ internal class MembersModel(
             members.stop()
             stopWatchingPeople()
             stopWatchingPerson()
+            stopWatchingWaitingRequest()
             open.stop()
             requested.stop()
             changes.stop()

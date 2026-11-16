@@ -145,6 +145,46 @@ class MembersModelTest {
         assertEquals(PersonRead.Loading, model.person)
     }
 
+    /**
+     * The join request dialog follows the read of the first waiting request, which leaves out the invites whose dialog
+     * the person closed; a new read for more closed invites keeps the last request until it answers.
+     */
+    @Test
+    fun theWaitingRequestFollowsTheReadThatLeavesOutTheClosedInvites() {
+        val handle = SilentMembersHandle()
+        val model =
+            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val stop = model.subscribe()
+        val request =
+            BridgeInvite(
+                id = "11",
+                member = "member-1",
+                label = "dan@example.com",
+                access = BridgeMemberAccess.ProviderAccount("dan@example.com"),
+                shown = BridgeInviteShown.Code(code = "invite-code", progress = BridgeInviteProgress.Waiting),
+                held = null,
+            )
+
+        model.watchWaitingRequest(emptySet())
+        handle.waitingRequests
+            .last()
+            .second.pulls
+            .deliver(request)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(request, model.waitingRequest)
+
+        model.watchWaitingRequest(setOf("11"))
+        assertEquals(listOf(emptyList(), listOf("11")), handle.waitingRequests.map { it.first })
+        assertEquals("the last request stays until the new read answers", request, model.waitingRequest)
+        handle.waitingRequests
+            .last()
+            .second.pulls
+            .deliver(null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(null, model.waitingRequest)
+        stop()
+    }
+
     private val ana = PreviewData.person()
     private val twoPeople = BridgePeople(own = ana, others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
 

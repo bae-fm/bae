@@ -266,6 +266,26 @@ struct InvitesSubscriptionTests {
         #expect(handle.subscribed.filter { $0 == "members" }.count == 1)
     }
 
+    @Test(
+        "the waiting join request leaves out the closed invites and stays until the next read answers"
+    )
+    func waitingRequestFollowsTheClosedInvites() async throws {
+        let handle = FakeAppHandle()
+        let store = MembershipStore(handle: handle)
+        store.start()
+        store.show()
+
+        store.showWaitingRequest(closed: [])
+        handle.waitingRequestReads.last?.read.values.deliver(invite(id: "11"))
+        try await Wait.until { store.waitingRequest?.id == "11" }
+
+        store.showWaitingRequest(closed: ["11"])
+        #expect(handle.waitingRequestReads.map(\.closed) == [[], ["11"]])
+        #expect(store.waitingRequest?.id == "11", "kept until the read answers")
+        handle.waitingRequestReads.last?.read.values.deliver(nil)
+        try await Wait.until { store.waitingRequest == nil }
+    }
+
     private func invite(id: String) -> BridgeInvite {
         BridgeInvite(
             id: id,
@@ -668,6 +688,22 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     override func subscribeAdminChanges() -> AdminChangesSubscription {
         record("adminChanges")
         return SilentAdminChanges()
+    }
+
+    private let waitingLock = NSLock()
+    private var waitingReads: [(closed: [String], read: FakeOpenInvite)] = []
+    /// The reads of the waiting join request opened so far, each with the
+    /// invites it leaves out, in order.
+    var waitingRequestReads: [(closed: [String], read: FakeOpenInvite)] {
+        waitingLock.withLock { waitingReads }
+    }
+
+    override func subscribeWaitingJoinRequest(closed: [String]) throws
+        -> OpenInviteSubscription
+    {
+        let read = FakeOpenInvite()
+        waitingLock.recording { waitingReads.append((closed.sorted(), read)) }
+        return read
     }
 
     func deliverInvites(

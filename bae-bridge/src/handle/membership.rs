@@ -202,6 +202,22 @@ impl AppHandle {
     pub fn subscribe_invites(&self) -> Arc<crate::InvitesSubscription> {
         crate::screens::invites(self.services.subscribe_invites(), self.runtime.clone())
     }
+    /// The first of this device's open invites whose join request waits for
+    /// a decision, leaving out the invites in `closed`, by id: the requests
+    /// the person closed. None while no other request waits.
+    pub fn subscribe_waiting_join_request(
+        &self,
+        closed: Vec<String>,
+    ) -> Result<Arc<crate::OpenInviteSubscription>, BridgeError> {
+        let closed = closed
+            .iter()
+            .map(|invite| crate::from_app::invite(invite))
+            .collect::<Result<_, _>>()?;
+        Ok(crate::screens::open_invite(
+            self.services.subscribe_waiting_join_request(closed),
+            self.runtime.clone(),
+        ))
+    }
 }
 forward! {async this => {
     fn add_device()->BridgeAddDevice {Ok(BridgeAddDevice::from_core(this.services.add_device().await?))}
@@ -218,5 +234,5 @@ forward! {async this => {
     fn approve_add_device(request:Arc<BridgeAddDeviceRequest>)->() {Ok(this.services.approve_add_device(&request.request).await?)}
     fn decline_add_device(request:Arc<BridgeAddDeviceRequest>)->() {Ok(this.services.decline_add_device(&request.request).await?)}
     fn end_add_device(pairing:String)->() {Ok(this.services.end_add_device(coven::AddDeviceId(pairing.parse().map_err(BridgeError::config)?)).await?)}
-    fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&coven::InviteId(invite.parse().map_err(BridgeError::config)?)).await?)}
+    fn cancel_invite(invite:String)->() {Ok(this.services.cancel_invite(&crate::from_app::invite(&invite)?).await?)}
 } }

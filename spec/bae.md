@@ -6052,7 +6052,9 @@ release's or track's id as UTF-8, or a candidate's key.
   else in the app calls a subscription's `next()`. What
   playback is doing is one (§9.4); so are the settings, the sync status and
   activity, the queue, the download counts, whether uploads are paused, whether
-  files move only on unmetered networks, the members, this device's open invites, the device that joins from Add
+  files move only on unmetered networks, the members, this device's open invites, the first
+  invite whose join request waits for a decision other than those whose request the person
+  closed, the device that joins from Add
   Device's code, the profiles, ratings, playlists and a playlist's entries,
   the library's name, the watched folders' scans, and an import pane's
   library membership, which moves its checks in place.

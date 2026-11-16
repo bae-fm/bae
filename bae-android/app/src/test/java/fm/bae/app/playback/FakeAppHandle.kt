@@ -91,6 +91,7 @@ import uniffi.bae_bridge.ListPositionSubscription
 import uniffi.bae_bridge.ListWindowSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
+import uniffi.bae_bridge.OpenInviteSubscription
 import uniffi.bae_bridge.PeopleSubscription
 import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
@@ -811,6 +812,12 @@ internal open class FakeAppHandle(
     val invites = FakeInvitesSubscription()
 
     override fun subscribeInvites(): InvitesSubscription = invites
+
+    /** The reads of the waiting join request the app opened, each with the invites it left out, newest last. */
+    val waitingRequests = mutableListOf<Pair<List<String>, FakeOpenInviteSubscription>>()
+
+    override fun subscribeWaitingJoinRequest(closed: List<String>): OpenInviteSubscription =
+        FakeOpenInviteSubscription().also { waitingRequests += closed to it }
 
     /** The admin changes the handle answers, which a test delivers to. */
     val adminChanges = FakeAdminChangesSubscription()

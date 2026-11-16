@@ -26,6 +26,12 @@ pub(crate) fn member(member_id: &str) -> Result<coven::MemberId, BridgeError> {
     Ok(coven::MemberId(member_id.parse().map_err(BridgeError::config)?))
 }
 
+/// The invite the app names by `invite_id`, refused as [`store`] refuses a
+/// library's.
+pub(crate) fn invite(invite_id: &str) -> Result<coven::InviteId, BridgeError> {
+    Ok(coven::InviteId(invite_id.parse().map_err(BridgeError::config)?))
+}
+
 /// A name the person typed in the app, refused as a configuration error when
 /// it is blank.
 pub(crate) fn name(name: &str) -> Result<bae_store::EnteredName, BridgeError> {

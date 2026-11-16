@@ -342,6 +342,16 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// One of this device's open invites, or none.
+    OpenInviteSubscription:
+        LiveValues<Option<bae_views::OpenInvite>> => Option<crate::types::BridgeInvite>,
+    converted by |invite: Option<bae_views::OpenInvite>| {
+        invite.map(crate::types::BridgeInvite::from_core)
+    },
+    built by open_invite
+}
+
+pulled_read! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:

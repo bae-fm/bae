@@ -200,7 +200,13 @@ struct PeopleAndDevicesPage: View {
                 store.hidePerson()
             }
         }
-        .onDisappear { store.hidePerson() }
+        .onChange(of: closedRequests, initial: true) { _, closed in
+            store.showWaitingRequest(closed: closed)
+        }
+        .onDisappear {
+            store.hidePerson()
+            store.hideWaitingRequest()
+        }
         .sheet(isPresented: $renaming) {
             RenameProfileSheet(
                 name: store.selfProfile?.name ?? "",
@@ -566,11 +572,13 @@ extension PeopleAndDevicesPage {
 
     // MARK: - Actions
 
-    /// The first invite whose request waits for a decision, unless the
-    /// person closed its sheet.
+    /// The first invite whose request waits for a decision, other than
+    /// those whose sheet the person closed. The read answers for the closed
+    /// invites a moment after one closes, so the one just closed is not
+    /// shown meanwhile.
     private var requestShown: BridgeInvite? {
-        store.invites.first {
-            $0.requestToDecide != nil && !closedRequests.contains($0.id)
+        store.waitingRequest.flatMap {
+            closedRequests.contains($0.id) ? nil : $0
         }
     }
 
