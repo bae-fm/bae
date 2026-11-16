@@ -18,7 +18,8 @@ pub fn upcoming_order(shuffled: bool) -> ListOrder {
 
 /// The rows of the context lane after its playing one, as a condition over
 /// `playback_context c`: those placed past the cursor of the order the lane
-/// reads in. No playing track, no cursor, no rows.
+/// reads in. When no track is playing, the cursor is NULL and the condition
+/// matches no rows.
 fn after_the_playing_track(shuffled: bool) -> String {
     format!(
         "c.{place} > (SELECT {cursor} FROM playback_queue)",
@@ -28,8 +29,8 @@ fn after_the_playing_track(shuffled: bool) -> String {
 }
 
 /// The upcoming tracks `seek` reads in the lane's order, at most `limit` from
-/// `offset`, each with its key. The page is cut before the join, so the rows
-/// an offset passes over are never joined to their tracks.
+/// `offset`, each with its key. The inner query applies LIMIT and OFFSET
+/// before the join, so SQLite never joins the skipped rows to their tracks.
 pub(super) fn upcoming_rows_on(
     sql: &SqlReadContext<'_>,
     shuffled: bool,
@@ -87,8 +88,8 @@ pub fn subscribe_upcoming_window(
     )
 }
 
-/// Follow how many tracks come after the playing one. Its own query, never
-/// beside a window's rows.
+/// Follow how many tracks come after the playing one. The count runs as its
+/// own query, apart from the window's rows.
 pub fn subscribe_upcoming_count(
     store: &Store,
     shuffled: bool,
@@ -106,7 +107,8 @@ pub fn subscribe_upcoming_count(
 }
 
 /// Follow how many upcoming tracks come before the row at `initial`, a count
-/// over index ranges that moves in place with the key.
+/// over index ranges; when the caller changes the key, the same live query
+/// counts again for the new key.
 pub fn subscribe_upcoming_position(
     store: &Store,
     shuffled: bool,

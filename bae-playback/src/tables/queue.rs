@@ -93,8 +93,8 @@ impl PlaybackQueueTables {
 /// played. A library with nothing to resume opens with an empty queue, and
 /// one opened with "restore on launch" off forgets what it played. Either
 /// way `playback_now` starts stopped, at the resumed volume or at full
-/// volume, and `playback_timeline` holds no line. A bulk write, so emptying a library-sized lane
-/// takes one step.
+/// volume, and `playback_timeline` holds no line. The function writes in
+/// bulk, so emptying a library-sized lane takes one step.
 pub async fn settle_playback_queue(store: &Store, resume: bool) -> Result<(), DbError> {
     store
         .call_bulk(move |sql| {
@@ -837,9 +837,9 @@ pub fn fill_context_lane_on(
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-/// A queue as a library in use leaves it: the first `up_next` tracks of the
-/// library, named by `track_id_sql` (an SQL expression over `i`), in Up Next.
-/// The context lane is filled by [`fill_context_lane_on`].
+/// Puts the library's first `up_next` tracks in Up Next, each named by
+/// `track_id_sql` (an SQL expression over `i`), as a library in use would
+/// have. [`fill_context_lane_on`] fills the context lane.
 pub fn shaped_playback_on(
     sql: &CovenWrite<'_>,
     up_next: u64,

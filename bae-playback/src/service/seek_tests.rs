@@ -100,9 +100,10 @@ async fn a_seek_by_ratio_leaves_a_track_with_no_length_where_it_is() {
     assert_eq!(cur.position, StreamPosition::from_millis(10_000));
 }
 
-/// A seek names its target as the track's position when the service accepts
-/// it, before the stream is rebuilt, so a bar draws the target at once and
-/// shows no earlier position while the rebuild runs; the applied seek follows.
+/// When the service accepts a seek, it sends the target as the track's
+/// position before it rebuilds the stream, so a bar draws the target at once
+/// and shows no earlier position while the rebuild runs; then it sends
+/// Seeked.
 #[tokio::test]
 async fn a_seek_names_its_target_as_the_position_when_it_is_accepted() {
     let (_home, mut service, mut progress_rx) =

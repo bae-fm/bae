@@ -75,9 +75,9 @@ impl PlaybackService {
             return;
         }
 
-        // The seek is accepted: its target is the track's position from now,
-        // so a bar draws it at once and no earlier position follows while the
-        // stream is rebuilt. The `Seeked` below says the rebuild is done.
+        // The service has accepted the seek, so it sends the target as the
+        // track's position now, before it rebuilds the stream. The `Seeked`
+        // below says the rebuild is done.
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::position_update(cur.prepared.timeline, track_id.clone(), position),

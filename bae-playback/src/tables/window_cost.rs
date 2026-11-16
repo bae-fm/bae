@@ -9,8 +9,9 @@ pub use super::queue::{fill_context_lane_on, shaped_playback_on};
 
 /// What the playback queue's upcoming windows cost to read.
 pub async fn measure_playback_queue(store: &Store, n: u64) {
-    // A jump into the context lane's upcoming tracks reads by offset alone:
-    // the offset steps over the lane's places before any track is read.
+    // A window that jumps into the context lane's upcoming tracks finds them
+    // by offset alone: SQLite skips the lane's earlier places by offset
+    // before it reads any track.
     for (at, offset) in offsets(n) {
         let timing = median(store, move |sql| {
             let order = super::queue_upcoming::upcoming_order(false);

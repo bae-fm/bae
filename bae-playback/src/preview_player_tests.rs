@@ -191,8 +191,8 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
         )),
         "the applied seek is told at its position: {told:?}"
     );
-    // The target is the position from the moment the seek is accepted, before
-    // the stream is rebuilt.
+    // The player reports the target as its position as soon as it accepts
+    // the seek, before it rebuilds the stream.
     let positions: Vec<_> = told
         .iter()
         .filter_map(|event| match event {

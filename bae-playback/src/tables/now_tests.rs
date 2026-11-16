@@ -16,9 +16,8 @@ async fn now(db: &Store) -> crate::NowPlayingValues {
     now_playing(db).await.unwrap().expect("the library holds the track the row names")
 }
 
-/// What playback is doing, with the playing track's display and the queue's
-/// repeat mode, is one statement: the track's display is joined to the row,
-/// not read apart.
+/// One statement reads what playback is doing, the playing track's display
+/// and the queue's repeat mode, and joins the track's display to the row.
 #[tokio::test]
 async fn now_playing_is_read_in_one_statement() {
     let (db, _tmp, tracks) = release_db(1).await;

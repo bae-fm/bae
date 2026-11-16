@@ -146,8 +146,8 @@ impl PlaybackQueue {
 
     /// Move the entry to sit just before `before`, or to the end of its lane;
     /// both in one lane. Answers whether it moved: `false` when either names
-    /// no entry of that lane, so the caller can count the anomaly; the
-    /// mismatch is logged here.
+    /// no entry of that lane, so the caller can count the anomaly; `reorder`
+    /// logs the mismatch.
     pub async fn reorder(
         &mut self,
         id: QueueEntryId,

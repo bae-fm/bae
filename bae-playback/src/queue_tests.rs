@@ -603,8 +603,8 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
     let mut count = crate::tables::subscribe_upcoming_count(&f.db, false);
     assert_eq!(count.next().await.expect("the query stays open").unwrap(), 119);
 
-    // A jump: the key at a position starts a window there, and the rows
-    // before the key are the position.
+    // A jump: the key at a position starts a window there, and the number of
+    // rows before the key is the position.
     let at = crate::tables::upcoming_key_at(&f.db, false, 100).await.unwrap().expect("a key");
     let mut jumped =
         crate::tables::subscribe_upcoming_window(&f.db, false, window(Some(at.clone()), None, 20));
@@ -735,9 +735,10 @@ async fn each_reorder_answers_whether_it_moved() {
     );
 }
 
-/// A write that moves rows inside one window of the upcoming list reruns that
-/// window alone: the other windows hold rows the write did not touch, and
-/// the count, which the write leaves where it was, reruns none of them.
+/// When a write moves rows inside one window of the upcoming list, coven
+/// reruns only that window, and does not rerun the other window or the
+/// count: the other window holds rows the write did not touch, and the write
+/// leaves the count where it was.
 #[tokio::test]
 async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
     use bae_store::list_windows::ListWindow::Forward;
@@ -764,5 +765,5 @@ async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
     let (t45, t50) = (f.entry("t45").await, f.entry("t50").await);
     f.queue.reorder(t50, Some(t45)).await.unwrap();
     assert!(upper.is_marked_for_rerun(), "the rows moved inside the upper window");
-    assert!(!lower.is_marked_for_rerun(), "the lower window's rows were not touched");
+    assert!(!lower.is_marked_for_rerun(), "the reorder did not touch the lower window's rows");
 }

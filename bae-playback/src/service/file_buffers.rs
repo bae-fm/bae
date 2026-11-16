@@ -44,8 +44,8 @@ pub(super) struct FileBuffers {
     files: FileLeases,
     /// The places every fill opens its file in while anything plays: those of
     /// the playing track and the preloaded next one, each reading at most two
-    /// files. Taken when a track is first prepared, and given up with the
-    /// last buffer by [`Self::cancel_all`].
+    /// files. `lease` takes them when playback first prepares a track, and
+    /// [`Self::cancel_all`] drops them with the last buffer.
     lease: Option<FileLease>,
     /// Every fill started so far, each holding its file open until it ends,
     /// for a test to wait on.
@@ -148,9 +148,9 @@ impl FileBuffers {
     }
 
     /// The places the fills of the playing and preloaded tracks open their
-    /// files in, taken from the budget in one wait the first time a track is
-    /// prepared after nothing was playing. Waits only while other work holds
-    /// the budget, and holds no place of it while it waits.
+    /// files in. This method takes them in one wait the first time playback
+    /// prepares a track after nothing played. Waits only while other work
+    /// holds the budget, and holds no place of it while it waits.
     async fn lease(&mut self) -> Result<FileLease, PlaybackError> {
         if let Some(lease) = &self.lease {
             return Ok(lease.clone());

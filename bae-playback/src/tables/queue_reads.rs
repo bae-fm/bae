@@ -1,6 +1,7 @@
 //! The queue screens' reads of the playback queue tables: the queue value,
-//! with Up Next whole and what the context lane plays from. The context
-//! lane's upcoming tracks are read as a list (`queue_upcoming`).
+//! with Up Next whole and what the context lane plays from. The
+//! `queue_upcoming` module reads the context lane's upcoming tracks as a
+//! list for the queue screens.
 
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
@@ -21,9 +22,10 @@ pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, 
 
 /// The statement that reads the rows `rows` picks — a `SELECT entry,
 /// track_id AS lane_track, position …` in lane order, already cut to the page
-/// asked for — each with its track as the queue rows show it. The page is cut
-/// before the join, so the rows an offset passes over are never joined to
-/// their tracks. Every column `rows` picks comes through beside the track's.
+/// asked for — each with its track as the queue rows show it. The `rows`
+/// query applies its LIMIT and OFFSET before this statement joins the tracks,
+/// so SQLite never joins a skipped row to its track. The statement returns
+/// every column `rows` selects, then the track's columns.
 pub(super) fn queue_items_sql(rows: &str) -> String {
     format!(
         "SELECT e.*, {columns} \
@@ -95,8 +97,9 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
         "SELECT 'm' || entry AS entry, track_id AS lane_track, position FROM playback_manual \
          ORDER BY position",
     )?;
-    // The context lane's playing place is its cursor in the order it reads
-    // in; with no cursor nothing comes before or after it.
+    // The playing track is the one at the lane's cursor, in shuffled order
+    // when shuffle is on and in list order otherwise; with no cursor, no
+    // track comes before or after it.
     let (has_next, has_previous): (bool, bool) = sql.query_row(
         "SELECT q.repeat <> 'off' \
                 OR EXISTS (SELECT 1 FROM playback_manual) \

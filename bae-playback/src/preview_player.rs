@@ -227,9 +227,10 @@ impl PreviewPlayer {
             }
         };
 
-        // One place for the whole preview: the probe opens the file in it,
-        // and once the probe closes it the fill opens the file in it and
-        // holds it while the preview plays. Taken here, holding no place.
+        // The preview holds one place: the probe opens the file in it, and
+        // once the probe closes it the fill opens the file in it and holds it
+        // while the preview plays. play takes the lease here, while it holds
+        // no other place.
         let lease = self.files.lease(1).await.expect("a budget holds at least one place");
         let Some(probe) = probe_preview_audio(&self.diagnostics, target.path(), &lease).await
         else {
@@ -316,9 +317,9 @@ impl PreviewPlayer {
         let buffer = source.buffer.clone();
         let timeline = source.timeline();
 
-        // The seek is accepted: its target is the preview's position from now,
-        // so a bar draws it at once and no earlier position follows while the
-        // stream is rebuilt.
+        // The player has accepted the seek, so it sends the target as the
+        // preview's position now; a bar draws it at once and shows no earlier
+        // position while the player rebuilds the stream.
         emit_progress(&self.progress_tx, PlaybackProgress::preview_position(timeline, position));
 
         let was_paused = self
@@ -356,8 +357,9 @@ impl PreviewPlayer {
             return;
         }
 
-        // The seek is applied: tell where. A paused preview fires no tick to
-        // carry the position, and a playing one's listener ticks on from here.
+        // The new stream plays from the target, so the player sends the
+        // position. A paused preview fires no tick to carry the position, and
+        // a playing one's listener ticks on from here.
         emit_progress(&self.progress_tx, PlaybackProgress::preview_seeked(timeline, position));
     }
 

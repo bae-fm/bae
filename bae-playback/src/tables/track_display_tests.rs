@@ -136,10 +136,10 @@ const INFO_SECOND_DISC: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b13";
 const INFO_SIDE_C: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b15";
 const INFO_GONE: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b14";
 
-/// The side facts of the tracks asked for come back in the order asked, as one
-/// list across releases: a record's sides are lettered and a pause at each is
-/// a side's, a CD's disc is numbered and a pause there is a disc's, and a
-/// track the library does not hold is left out.
+/// The query returns each requested track's side facts in the order of the
+/// ids, as one list across releases: it letters a record's sides, and a pause
+/// at each is a side's; it numbers a CD's discs, and a pause there is a
+/// disc's; and it skips a track the library does not hold.
 #[tokio::test]
 async fn track_infos_follow_the_ids_asked_across_releases_and_leave_out_the_missing() {
     use bae_types::mediums::ReleaseMedium;

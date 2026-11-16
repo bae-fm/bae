@@ -60,18 +60,17 @@ pub(crate) fn track_display_columns() -> String {
     )
 }
 
-/// What the joins and columns of `playback_now`'s read add to its row for
-/// the track it names: the joins from `playback_now n` to that track, its
-/// release, album and cover, all LEFT, so a row naming no track, or one the
-/// library no longer holds, still reads.
+/// The joins from `playback_now n` to its track, release, album and cover,
+/// all LEFT, so the query still returns a row that names no track or a track
+/// the library no longer holds.
 pub(crate) const NOW_TRACK_DISPLAY_JOINS: &str = "LEFT JOIN tracks t ON t.id = n.track_id \
      LEFT JOIN releases r ON r.id = t.release_id \
      LEFT JOIN albums a ON a.id = r.album_id \
      LEFT JOIN covers c ON c.id = r.id";
 
 /// The columns of the playing track's display over
-/// [`NOW_TRACK_DISPLAY_JOINS`], named apart from `playback_now`'s own
-/// (`display_*`).
+/// [`NOW_TRACK_DISPLAY_JOINS`], each named with a `display_` prefix so it
+/// does not clash with `playback_now`'s own columns.
 pub(crate) fn now_track_display_columns() -> String {
     format!(
         "t.title AS display_title, a.id AS display_album_id, a.title AS display_album_title, \
