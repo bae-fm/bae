@@ -42,8 +42,7 @@ struct CatalogPluralFormsTests {
         "%lld releases",
         "%lld tracks",
         "%lld more releases",
-        "%llu files · %@",
-        "%llu files · %@ · %@",
+        "%llu files",
     ]
 
     private static func strings() throws -> [String: Any] {
@@ -97,10 +96,7 @@ struct CatalogPluralFormsTests {
     func englishSingular() throws {
         #expect(try Self.forms("%lld releases", "en")["one"] == "%lld release")
         #expect(try Self.forms("%lld tracks", "en")["one"] == "%lld track")
-        #expect(
-            try Self.forms("%llu files · %@ · %@", "en")["one"]
-                == "%1$llu file · %2$@ · %3$@"
-        )
+        #expect(try Self.forms("%llu files", "en")["one"] == "%llu file")
     }
 
     @Test("Polish and Arabic tell 1, 2-4 and 5+ apart")

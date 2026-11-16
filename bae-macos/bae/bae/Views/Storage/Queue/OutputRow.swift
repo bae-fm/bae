@@ -10,6 +10,13 @@ struct OutputRow: View {
     let percent: LatestSource<UInt8>
     let onCancel: () -> Void
 
+    private var filesText: String {
+        BridgeQueuedRelease.filesText(
+            fileCount: op.fileCount,
+            totalSize: op.totalSize
+        )
+    }
+
     private var presetName: String? {
         if case .save(let name) = op.kind { return name }
         return nil
@@ -41,11 +48,9 @@ struct OutputRow: View {
     private var detailLine: some View {
         switch (op.release, presetName) {
         case (_?, let presetName?):
-            Text(
-                "\(op.fileCount) files · \(op.totalSize.fileSizeText) · \(presetName)"
-            )
+            Text(verbatim: FactList.joined([filesText, presetName]))
         case (_?, nil):
-            Text("\(op.fileCount) files · \(op.totalSize.fileSizeText)")
+            Text(verbatim: filesText)
         case (nil, let presetName?):
             Text(presetName)
         case (nil, nil):
