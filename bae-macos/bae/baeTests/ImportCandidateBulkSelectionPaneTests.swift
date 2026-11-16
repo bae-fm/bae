@@ -95,8 +95,7 @@ struct ImportCandidateBulkSelectionPaneTests {
             offers: ImportCandidateActionOffer.selection(
                 PreviewData.importSelection(
                     of: Self.selectedKeys,
-                    in: PreviewData.importTabScene().store,
-                    combinable: true
+                    PreviewData.importTabPairSelection(combinable: true)
                 )
                 .summary
             )
@@ -183,7 +182,7 @@ struct ImportCandidateBulkSelectionPaneTests {
     private static func selection() -> ImportSelection {
         PreviewData.importSelection(
             of: selectedKeys,
-            in: PreviewData.importTabScene().store
+            PreviewData.importTabPairSelection()
         )
     }
 

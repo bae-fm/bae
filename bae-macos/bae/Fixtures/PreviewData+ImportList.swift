@@ -129,60 +129,56 @@ extension PreviewData {
         )
     }
 
-    /// A selection of `keys`, with what it offers as core's selection
-    /// statement answers it: each action offered once per selected candidate
-    /// whose row offers it, in the order the surfaces list them. The fixture
-    /// offers Combine when the person selects two or more rows. When
-    /// `combinable` is true, the Combine offer counts every selected row and
-    /// is enabled. Otherwise the Combine offer counts none and is disabled.
-    /// This function repeats core's selection query for fixtures, because the
-    /// apps have no copy of that query.
+    /// What core's selection statement answers for the Import tab's
+    /// identified folder and its folder whose signals disagree, selected
+    /// together: only the first offers Import, and both offer the rest. When
+    /// `combinable` is true, every selected folder can join one release, so
+    /// Combine counts both and is enabled. Otherwise Combine counts none and
+    /// is disabled.
+    static func importTabPairSelection(
+        combinable: Bool = false
+    ) -> BridgeSelectionSummary {
+        BridgeSelectionSummary(
+            count: 2,
+            single: nil,
+            offers: [
+                BridgeSelectionOffer(action: .import, count: 1, enabled: true),
+                BridgeSelectionOffer(
+                    action: .resetToFileMetadata,
+                    count: 2,
+                    enabled: true
+                ),
+                BridgeSelectionOffer(
+                    action: .clearMetadata,
+                    count: 2,
+                    enabled: true
+                ),
+                BridgeSelectionOffer(
+                    action: .combine,
+                    count: combinable ? 2 : 0,
+                    enabled: combinable
+                ),
+                BridgeSelectionOffer(action: .skip, count: 2, enabled: true),
+                BridgeSelectionOffer(
+                    action: .revealFolder,
+                    count: 2,
+                    enabled: true
+                ),
+            ]
+        )
+    }
+
+    /// A selection of `keys` holding `summary`.
     @MainActor
     static func importSelection(
         of keys: [Data],
-        in store: ImportStore,
-        combinable: Bool = false
+        _ summary: BridgeSelectionSummary
     ) -> ImportSelection {
-        let listed: [[BridgeCandidateAction]] = keys.map {
-            store.selectedCandidates[$0]?.live?.offers.map(\.action) ?? []
-        }
-        let offers = selectionActionOrder.compactMap {
-            action -> BridgeSelectionOffer? in
-            if action == .combine {
-                return keys.count >= 2
-                    ? BridgeSelectionOffer(
-                        action: action,
-                        count: combinable ? UInt64(keys.count) : 0,
-                        enabled: combinable
-                    ) : nil
-            }
-            let count = listed.filter { $0.contains(action) }.count
-            return count > 0
-                ? BridgeSelectionOffer(
-                    action: action,
-                    count: UInt64(count),
-                    enabled: true
-                ) : nil
-        }
         let selection = ImportSelection()
         selection.select(Set(keys))
-        selection.apply(
-            BridgeSelectionSummary(
-                count: UInt64(keys.count),
-                single: keys.count == 1
-                    ? keys.first.map { .candidate(key: $0) } : nil,
-                offers: offers
-            )
-        )
+        selection.apply(summary)
         return selection
     }
-
-    /// The order every surface lists an action in.
-    private static let selectionActionOrder: [BridgeCandidateAction] = [
-        .import, .cancelImport, .identify, .cancelIdentification,
-        .retryIdentification, .resetToFileMetadata, .clearMetadata, .combine,
-        .separate, .skip, .restore, .revealFolder,
-    ]
 
     /// `bytes` as lowercase hex, the way core spells bytes in a list key.
     private static func hex(_ bytes: Data) -> String {

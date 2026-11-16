@@ -199,7 +199,7 @@ struct ImportSelectionTests {
                 PreviewData.importTabCandidate.key,
                 PreviewData.importTabDisagreementCandidate.key,
             ],
-            in: PreviewData.importTabScene().store
+            PreviewData.importTabPairSelection()
         )
         let counts = Dictionary(
             uniqueKeysWithValues:
