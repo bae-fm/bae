@@ -447,10 +447,7 @@ pub async fn setup_test_library_with_album_dir(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
 ) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
-    let (library, temp_dir) = setup_test_library_with(providers, http).await;
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).expect("test album dir");
-    (library, album_dir, temp_dir)
+    setup_test_library_with_album_dir_within(providers, http, coven::FileBudget::for_test()).await
 }
 
 /// Set up a fresh library through the production creation and open paths.
