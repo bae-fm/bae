@@ -15,7 +15,7 @@ use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::test_releases::mb_release_json;
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-use bae_identify::{FolderCheck, VerdictSummary};
+use bae_identify::FolderCheck;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::BTreeMap;
@@ -509,11 +509,23 @@ impl Fixture {
             .unwrap();
     }
 
-    /// Whether a stored row's verdict is auto-importable, and the check
-    /// against the folder it failed.
+    /// Whether the verdict stored for `dir` picks a release on its own, and
+    /// the check against the folder it failed, as the candidate's pane reads
+    /// them from the view `import_candidate_verdict_decision`.
     pub(crate) async fn judgement_for(&self, dir: &Path) -> (bool, Option<FolderCheck>) {
-        let row = self.stored_for(dir).await.expect("a row was stored");
-        VerdictSummary::of(&identify_result(&row).verdict, false).judgement()
+        let detail = self
+            .context
+            .tables
+            .load_import_candidate(&crate::CandidateKey::folder(dir))
+            .await
+            .unwrap()
+            .expect("the candidate reads back");
+        match detail.stored_verdict.expect("a verdict was stored") {
+            bae_identify::IdentifyStateView::Found { decision, .. } => {
+                (decision.pick().is_some(), decision.folder_check().cloned())
+            }
+            _ => (false, None),
+        }
     }
 
     /// Route a disc-ID match for `dir` to one release listing `tracks` tracks

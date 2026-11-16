@@ -7,7 +7,6 @@
 //! applies to the draft is the release automatic import takes, and the reason
 //! it picks none is the check the pane states.
 
-use super::verdict_summary::FolderCheck;
 use super::MediumConflict;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
 
@@ -84,6 +83,23 @@ pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> 
     !fits().any(TracklistFit::admits)
         && fits()
             .any(|fit| matches!(fit, TracklistFit::Disagrees { .. } | TracklistFit::Unreadable))
+}
+
+/// A check of the found release against the folder that did not pass,
+/// carrying what it takes to state the disagreement beside Import and under
+/// the release in Find online. Neither check looks at whether the release is
+/// already in the library: the person decides whether to import a second
+/// copy, and nothing here blocks an import a person asks for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FolderCheck {
+    /// The release lists no tracks, so its count cannot be checked against
+    /// the folder's. Not admitted unverified.
+    SourceTracksUnknown,
+    /// The folder's own files rule out every release found — a CD rip against
+    /// no CD, or audio no CD holds against CDs alone — carrying what they
+    /// prove. The releases are offered for a person to pick; none is picked
+    /// for them.
+    MediumDisagrees { folder: MediumConflict },
 }
 
 /// Why a found verdict picks none of its releases unattended.

@@ -7,8 +7,7 @@
 //! they return. Import's identify service feeds it extraction snapshots and
 //! lookup results and publishes each state as an
 //! `ImportEvent::IdentifyStateChanged`. [`view`] shapes a state for surfaces,
-//! [`verdict::TerminalVerdict`] is what a terminal state stores, and
-//! [`verdict_summary`] reads a stored verdict back as what the queue needs.
+//! and [`verdict::TerminalVerdict`] is what a terminal state stores.
 //!
 //! Identification is part of the import pipeline, which only the desktop
 //! builds carry: a mobile build compiles this crate empty.
@@ -30,12 +29,11 @@ pub mod shared_album;
 pub mod signals;
 pub mod state;
 pub mod verdict;
-pub mod verdict_summary;
 pub mod view;
 
 pub use agreements::{Agreements, CandidateText};
 pub use combine::{Findings, LookupAnswers, NamedNote, NarrowedOut};
-pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
+pub use fit::{unattended_pick, Declined, FolderCheck, TracklistFit, UnattendedPick};
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
@@ -47,9 +45,6 @@ pub use state::{
     SearchProgress, TitleSearch, ValueLookup,
 };
 pub use verdict::{IdentifyFailure, TerminalVerdict};
-pub use verdict_summary::FolderCheck;
-#[cfg(any(test, feature = "test-utils"))]
-pub use verdict_summary::{VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     FoundDecision, IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings, LookupView,

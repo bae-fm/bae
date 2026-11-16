@@ -632,8 +632,13 @@ fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
     );
     let findings = outcome;
     assert_eq!(ids(&findings.matches), vec!["dg-1988", "mb-album-two"]);
-    let verdict = crate::TerminalVerdict::Found { findings, track_count: 10, ledger: None };
-    assert_eq!(crate::VerdictSummary::of(&verdict, false).judgement(), (true, None));
+    assert!(crate::unattended_pick(
+        &findings.matches,
+        &findings.pressings,
+        findings.medium_conflict,
+        10
+    )
+    .is_ok());
 }
 
 /// A row is offered whole or set aside whole.

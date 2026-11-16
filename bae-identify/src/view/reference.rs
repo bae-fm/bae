@@ -83,15 +83,23 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         RunOutcome::Answered(_) => return VerdictCards::default(),
     };
     let mut cards = reference_cards(findings.clone(), ledger, text, track_count);
-    // For a found verdict, fill in what it decides, as VerdictSummary works
-    // it out.
-    if let RunOutcome::Answered(verdict @ TerminalVerdict::Found { findings, .. }) = outcome {
-        let summary = crate::VerdictSummary::of(verdict, false);
-        cards.decision = Some(if summary.picks_unattended() {
-            let lead = findings.matches.first().expect("a verdict that picks has a lead");
-            super::FoundDecision::Picks(lead.release_id.clone())
-        } else {
-            super::FoundDecision::Declined(summary.folder_check())
+    // For a found verdict, fill in what it decides, by the rule the settle
+    // picks by.
+    if let RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, .. }) = outcome {
+        let picked = crate::unattended_pick(
+            &findings.matches,
+            &findings.pressings,
+            findings.medium_conflict,
+            *track_count,
+        );
+        cards.decision = Some(match picked {
+            Ok(pick) => super::FoundDecision::Picks(pick.records[0].release_id.clone()),
+            Err(crate::Declined::FolderCheck(check)) => super::FoundDecision::Declined(Some(check)),
+            Err(
+                crate::Declined::NothingFound
+                | crate::Declined::Several
+                | crate::Declined::UnreadDocument,
+            ) => super::FoundDecision::Declined(None),
         });
     }
     cards

@@ -371,11 +371,8 @@ fn every_row_of_a_wide_tie_is_read_before_it_is_offered() {
     let (state, effects) = crate::state::step(state, read_with_tracks(&releases, |_| 5));
     assert!(effects.is_empty(), "{effects:?}");
     assert_eq!(offered_ids(&state).len(), 8);
-    let verdict = crate::TerminalVerdict::try_from(state).expect("the run settled");
-    assert!(
-        !crate::VerdictSummary::of(&verdict, false).judgement().0,
-        "tied rows are the person's to pick"
-    );
+    assert!(state.is_terminal(), "the run settled");
+    assert!(!state.picks_unattended(), "tied rows are the person's to pick");
 }
 
 /// Rows that tie and look alike are listed once, and only the one kept is
@@ -450,11 +447,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
         unreachable!("offered_ids checked it");
     };
     assert!(findings.narrowed_out.is_empty(), "{:?}", findings.narrowed_out);
-    let verdict = crate::TerminalVerdict::try_from(state).expect("the run settled");
-    assert!(
-        crate::VerdictSummary::of(&verdict, false).judgement().0,
-        "the one row left fits, and is picked"
-    );
+    assert!(state.picks_unattended(), "the one row left fits, and is picked");
 }
 
 // The order of the folder's track titles against what each read document

@@ -422,8 +422,7 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         FolderAudio { track_count: 11, ..MONO_FILES },
     );
     assert_eq!(findings.medium_conflict, None);
-    let verdict = crate::TerminalVerdict::Found { findings, track_count: 11, ledger: None };
-    assert_eq!(crate::VerdictSummary::of(&verdict, false).judgement(), (true, None));
+    assert!(crate::unattended_pick(&findings.matches, &findings.pressings, None, 11).is_ok());
 }
 
 /// Of two releases on the folder's label and country, the one whose title and
