@@ -3,13 +3,7 @@ package fm.bae.app.ui.sync
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
-import android.util.TypedValue
-import android.view.View
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.animation.LinearInterpolator
-import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -19,11 +13,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
-
-private const val BAR_HEIGHT_DP = 4f
-
-/** The range a screen reader is told the bar runs over. */
-private const val PERCENT = 100f
 
 /** The gap between the filled part and the rest of the track, and the stop dot's size: Material 3's own. */
 private const val GAP_DP = 4f
@@ -62,11 +51,9 @@ private const val MOVING_SHARE = 0.4f
  */
 internal class ShareBarView(
     context: Context,
-) : View(context) {
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val track = Paint(Paint.ANTI_ALIAS_FLAG)
+) : TrackBarView(context) {
     private var fraction = 0f
-    private val bounds = RectF()
+    override val shareDone: Float get() = fraction
 
     /** Where the moving piece is; before it first moves it sits part way, so a still frame shows it. */
     private var phase = MOVING_REST_PHASE
@@ -80,33 +67,6 @@ internal class ShareBarView(
                 invalidate()
             }
         }
-
-    init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
-    }
-
-    /** A progress bar of a percent, so a screen reader says how much is done. */
-    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
-        super.onInitializeAccessibilityNodeInfo(info)
-        info.className = ProgressBar::class.java.name
-        info.rangeInfo =
-            AccessibilityNodeInfo.RangeInfo.obtain(
-                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
-                0f,
-                PERCENT,
-                fraction * PERCENT,
-            )
-    }
-
-    fun applyColors(
-        accent: Int,
-        track: Int,
-    ) {
-        if (fill.color == accent && this.track.color == track) return
-        fill.color = accent
-        this.track.color = track
-        invalidate()
-    }
 
     /** Shows [share] of the track filled, without following a stream. */
     fun showFraction(share: Float) {
@@ -126,13 +86,8 @@ internal class ShareBarView(
         super.onDetachedFromWindow()
     }
 
-    override fun onMeasure(
-        widthMeasureSpec: Int,
-        heightMeasureSpec: Int,
-    ) = setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(BAR_HEIGHT_DP).toInt())
-
     override fun onDraw(canvas: Canvas) {
-        val height = dp(BAR_HEIGHT_DP)
+        val height = barHeight()
         val gap = dp(GAP_DP)
         val radius = height / 2f
         if (crossing.isStarted) {
@@ -153,10 +108,5 @@ internal class ShareBarView(
             canvas.drawRoundRect(bounds.apply { set(trackStart, 0f, width.toFloat(), height) }, radius, radius, track)
         }
         canvas.drawCircle(width - radius, radius, radius, fill)
-    }
-
-    private fun dp(value: Float): Float {
-        val metrics = resources.displayMetrics
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 }

@@ -2,12 +2,6 @@ package fm.bae.app.ui.sync
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
-import android.util.TypedValue
-import android.view.View
-import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -18,11 +12,6 @@ import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeBatchBar
-
-private const val BAR_HEIGHT_DP = 4f
-
-/** The range a screen reader is told the bar runs over. */
-private const val PERCENT = 100f
 
 /**
  * A transfer line's bar: the share of its batch's bytes done, as the line's row says, then for
@@ -61,7 +50,7 @@ internal fun <V : Any> BatchBar(
  */
 internal class BatchBarView<V : Any>(
     context: Context,
-) : View(context) {
+) : TrackBarView(context) {
     /** One file or release on the move, and how far its stream says it has got. */
     private class Segment<V : Any>(
         val following: FrameFollowing<V>,
@@ -71,40 +60,11 @@ internal class BatchBarView<V : Any>(
         var fraction = 0f
     }
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val track = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bounds = RectF()
     private var done = 0f
+    override val shareDone: Float get() = done
     private val segments = mutableListOf<Segment<V>>()
     private var shown = 0
     private var fraction: (V) -> Double = { 0.0 }
-
-    init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
-    }
-
-    /** A progress bar of a percent, so a screen reader says how much is stored. */
-    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
-        super.onInitializeAccessibilityNodeInfo(info)
-        info.className = ProgressBar::class.java.name
-        info.rangeInfo =
-            AccessibilityNodeInfo.RangeInfo.obtain(
-                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
-                0f,
-                PERCENT,
-                done * PERCENT,
-            )
-    }
-
-    fun applyColors(
-        accent: Int,
-        track: Int,
-    ) {
-        if (fill.color == accent && this.track.color == track) return
-        fill.color = accent
-        this.track.color = track
-        invalidate()
-    }
 
     /** Draw [bar], each segment following its key's value in [stream]. */
     fun show(
@@ -144,13 +104,8 @@ internal class BatchBarView<V : Any>(
         invalidate()
     }
 
-    override fun onMeasure(
-        widthMeasureSpec: Int,
-        heightMeasureSpec: Int,
-    ) = setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(BAR_HEIGHT_DP).toInt())
-
     override fun onDraw(canvas: Canvas) {
-        val height = dp(BAR_HEIGHT_DP)
+        val height = barHeight()
         val radius = height / 2f
         val width = width.toFloat()
         canvas.drawRoundRect(bounds.apply { set(0f, 0f, width, height) }, radius, radius, track)
@@ -163,10 +118,5 @@ internal class BatchBarView<V : Any>(
             val end = width * (segment.start + segment.share * segment.fraction)
             canvas.drawRoundRect(bounds.apply { set(start, 0f, end, height) }, radius, radius, fill)
         }
-    }
-
-    private fun dp(value: Float): Float {
-        val metrics = resources.displayMetrics
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 }
