@@ -3,9 +3,9 @@ import BaeKit
 
 /// NSSlider subclass that reports drag start/end and jumps to the clicked
 /// position. `mouseDown` blocks until the user releases, so `isDragging` is
-/// accurate. Used by `SeekBarNSView`. Its value is the fill core sends, from
-/// 0 to 1, or where the person drags it to, so the cell draws the value as
-/// it is.
+/// accurate. Used by `SeekBarNSView`. The slider's value runs from 0 to 1:
+/// core sends the played fraction, or the person drags to a new one. The cell
+/// draws that value directly as the fill fraction.
 class SeekSlider: NSSlider {
     var accent: NSColor = .controlAccentColor {
         didSet { needsDisplay = true }

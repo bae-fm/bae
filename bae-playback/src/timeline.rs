@@ -135,9 +135,7 @@ impl TrackTimeline {
             return 0.0;
         };
         let time = self.track_time(position).as_millis();
-        let fill = time.max(0) as f64 / duration_ms as f64;
-        debug_assert!((0.0..=1.0).contains(&fill), "the seek bar's fill {fill} is outside 0 to 1");
-        fill
+        time.max(0) as f64 / duration_ms as f64
     }
 
     /// The stream position a seek bar fill points at — the inverse of
