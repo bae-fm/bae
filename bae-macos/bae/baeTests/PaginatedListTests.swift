@@ -203,13 +203,15 @@ private func ids(_ range: ClosedRange<Int>) -> [String] {
 @Suite("PaginatedList")
 struct PaginatedListTests {
     @MainActor
-    private func open(_ list: ProbeList) async -> PaginatedList<BridgeAlbum> {
+    private func open(_ list: ProbeList) async throws
+        -> PaginatedList<BridgeAlbum>
+    {
         let list = PaginatedList(
             queries: list.queries,
             onError: { Issue.record("List failed: \($0)") }
         )
         await list.loadInitial()
-        try? await Wait.until { list.count != nil }
+        try await Wait.until { list.count != nil }
         return list
     }
 
@@ -233,9 +235,9 @@ struct PaginatedListTests {
 
     @MainActor
     @Test("loadInitial reads the top window and the count")
-    func loadInitialReadsTopAndCount() async {
+    func loadInitialReadsTopAndCount() async throws {
         let probe = ProbeList(ids(0...29))
-        let list = await open(probe)
+        let list = try await open(probe)
 
         #expect(list.count?.rows == 30)
         #expect(idsAt(list, 0...29) == ids(0...29).map(Optional.init))
@@ -316,9 +318,9 @@ struct PaginatedListTests {
 
     @MainActor
     @Test("reopening a list drops the count it held until the new one arrives")
-    func reopenDropsCount() async {
+    func reopenDropsCount() async throws {
         let probe = ProbeList(ids(0...199))
-        let list = await open(probe)
+        let list = try await open(probe)
         #expect(list.count?.rows == 200)
 
         probe.holdCount()
@@ -366,7 +368,7 @@ struct PaginatedListTests {
     @Test("a window cut by its limit closes at the key beyond it")
     func closesAtBeyond() async throws {
         let probe = ProbeList(ids(0...199))
-        let list = await open(probe)
+        let list = try await open(probe)
         let tasks = held(list, 0...10)
         defer {
             for task in tasks { task.cancel() }
@@ -386,7 +388,7 @@ struct PaginatedListTests {
     @Test("a split on beyond keeps every row once")
     func splitKeepsEveryRowOnce() async throws {
         let probe = ProbeList(ids(0...199))
-        let list = await open(probe)
+        let list = try await open(probe)
         let tasks = held(list, 0...10)
         defer {
             for task in tasks { task.cancel() }
@@ -410,7 +412,7 @@ struct PaginatedListTests {
     @Test("the list merges a window that goes empty into its neighbour")
     func emptyWindowIsDropped() async throws {
         let probe = ProbeList(ids(0...129))
-        let list = await open(probe)
+        let list = try await open(probe)
         let tasks = held(list, 0...110)
         defer {
             for task in tasks { task.cancel() }
@@ -429,7 +431,7 @@ struct PaginatedListTests {
     @Test("a jump starts a chain at the key the list has there")
     func jumpStartsAtKey() async throws {
         let probe = ProbeList(ids(0...999))
-        let list = await open(probe)
+        let list = try await open(probe)
 
         await list.withPage(containing: 900) {
             #expect(list.idAt(900) == "a0900")
@@ -443,7 +445,7 @@ struct PaginatedListTests {
     @Test("a value for a replaced window draws nothing")
     func replacedWindowDrawsNothing() async throws {
         let probe = ProbeList(ids(0...199))
-        let list = await open(probe)
+        let list = try await open(probe)
         let tasks = held(list, 0...10)
         defer {
             for task in tasks { task.cancel() }
@@ -475,7 +477,7 @@ struct PaginatedListTests {
     @Test("the rows of a window are its last value only")
     func rowsAreTheLastValueOnly() async throws {
         let probe = ProbeList(ids(0...29))
-        let list = await open(probe)
+        let list = try await open(probe)
 
         probe.set(ids(0...9))
 
