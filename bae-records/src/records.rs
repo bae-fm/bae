@@ -45,20 +45,6 @@ mod artist_sql;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_NAME_KEY};
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
-// Only the desktop's import pane offers a cover or shows its track table, so
-// only desktop builds register the SQL functions that compute them.
-#[cfg(desktop)]
-mod catalog_group_url;
-#[cfg(desktop)]
-pub(crate) use catalog_group_url::CATALOG_GROUP_URL;
-#[cfg(desktop)]
-mod layout_text;
-#[cfg(desktop)]
-pub(crate) use layout_text::{LENGTHS_DISAGREE, MEDIUM_IS_SIDED, SIDE_LETTERS, TRIM};
-#[cfg(desktop)]
-mod release_group_cover;
-#[cfg(desktop)]
-pub(crate) use release_group_cover::RELEASE_GROUP_COVER;
 mod artist;
 pub mod artist_credit_names;
 use artist_credit_names::settle_credit_name;
@@ -186,19 +172,6 @@ pub const SCHEMA: bae_store::SchemaPart =
 
 /// The SQL functions `records.sql` names, and the artist functions that other
 /// crates' queries call.
-#[cfg(desktop)]
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
-    &CATALOG_RANK,
-    &ARTIST_NAME_KEY,
-    &ARTIST_IDENTITY,
-    &CATALOG_GROUP_URL,
-    &RELEASE_GROUP_COVER,
-    &SIDE_LETTERS,
-    &MEDIUM_IS_SIDED,
-    &LENGTHS_DISAGREE,
-    &TRIM,
-];
-#[cfg(not(desktop))]
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
     &[&CATALOG_RANK, &ARTIST_NAME_KEY, &ARTIST_IDENTITY];
 

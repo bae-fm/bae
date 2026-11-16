@@ -5,6 +5,7 @@
 //! runs them through the store for everything else.
 
 mod album_link_rows;
+mod catalog_group_url;
 mod cover_gallery;
 mod cover_labels;
 mod downscaled_copies;
@@ -12,6 +13,8 @@ mod folder_scans;
 mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
+mod layout_text;
+mod release_group_cover;
 mod release_groupings;
 mod release_sheet_decisions;
 mod skipped_candidates;

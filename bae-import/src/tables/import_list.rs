@@ -93,12 +93,18 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
 .functions(SQL_FUNCTIONS)
 .collations(SQL_COLLATIONS);
 
-/// The SQL functions the import list's SQL names.
+/// The SQL functions the import's statements name.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &bae_store::FOLD_CASE,
     &bae_store::SEARCH_PATTERN,
     &super::watched_path::FOLDER_BELOW,
     &super::watched_path::FOLDER_RELATIVE,
+    &super::catalog_group_url::CATALOG_GROUP_URL,
+    &super::release_group_cover::RELEASE_GROUP_COVER,
+    &super::layout_text::SIDE_LETTERS,
+    &super::layout_text::MEDIUM_IS_SIDED,
+    &super::layout_text::LENGTHS_DISAGREE,
+    &super::layout_text::TRIM,
 ];
 
 /// The collations the import list's SQL names.
