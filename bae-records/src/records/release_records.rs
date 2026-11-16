@@ -27,12 +27,7 @@ impl Records {
     }
 
     /// The library album `records` file a release under, leaving out the
-    /// releases `excluding`. The applied record — the list's first — decides,
-    /// then each other record in order: the first that names an
-    /// album the library holds names it, by a copy of its pressing, else by
-    /// its album (MusicBrainz release group, Discogs master). Where one record
-    /// names several, its group's own album is it if the library holds it,
-    /// else the oldest.
+    /// releases `excluding`, as [`album_records_name_sql`] names it.
     pub async fn album_records_name(
         &self,
         records: &[bae_catalogs::records::ReleaseRecord],
@@ -114,10 +109,7 @@ impl Records {
     /// holds the same pressing or the same album (group). Drives the
     /// "in library" badges shown in the identify-pipeline result lists.
     ///
-    /// Per check, every album holding a release whose record matches
-    /// `(check.catalog, check.release_id)` — a copy of this pressing — or
-    /// `(check.catalog, check.source_group_id)` — another release of its
-    /// group — each once, those holding the pressing first, then by age.
+    /// [`library_status_sql`] says which albums each check finds.
     pub async fn check_releases_in_library(
         &self,
         checks: &[LibraryCheck],
@@ -298,11 +290,12 @@ pub fn album_records_name_on(
 /// for none. `excluding` is an SQL expression for a JSON array of the
 /// releases whose records the statement ignores.
 ///
-/// The applied record — the first, at the lowest `position` — decides, then
-/// each other record in order: the first that names an album the library
-/// holds names it, by a copy of its pressing (a pressing record naming the
-/// same release, on `idx_release_records_catalog_key`), else by its album (a
-/// record naming the same release group or master, on
+/// The statement reads the applied record first, which is the record at the
+/// lowest `position`, then each other record in order. The first record that
+/// names an album the library holds decides. A record names an album through
+/// a copy of its pressing, which is a pressing record that names the same
+/// release (on `idx_release_records_catalog_key`), or else through its album,
+/// which is a record that names the same release group or master (on
 /// `idx_release_records_catalog_album`). Library albums are the curator's:
 /// two albums the records name stay two, and the applied record's wins over a
 /// partner's. Where one record names several albums, the statement picks the
