@@ -143,43 +143,20 @@
     }
 
     extension StorageSelectionQuery {
-        /// A selection over fixed `rows`, for shots and tests: every set of
-        /// ids is answered with the rows among `rows` it names, beside the
-        /// actions all of them allow.
+        /// A selection read whose answers the caller chose, in core's place,
+        /// for shots and tests: every set of ids is answered with what
+        /// `answer` returns for it.
         public static func fixed(
-            _ rows: [BridgeStorageRow],
             answers: UnansweredCount,
-            sole: @escaping @Sendable (Set<String>) -> String?
+            _ answer:
+                @escaping @Sendable (Set<String>) -> BridgeStorageSelection
         ) -> StorageSelectionQuery {
             let requests = FixedRequests<[String]>(answers: answers)
             requests.request([])
             return StorageSelectionQuery(
                 setSelected: { requests.request($0) },
                 values: PulledValues(
-                    read: {
-                        let ids = Set(try await requests.take())
-                        let selected = rows.filter { ids.contains($0.id) }
-                        return BridgeStorageSelection(
-                            asked: Array(ids),
-                            selected: selected,
-                            // Core's canned answer for these ids.
-                            sole: sole(ids),
-                            // The fixture's stand-in for core's answer: the
-                            // actions every selected row lists.
-                            selectionActions: selected.first.map { first in
-                                first.release.storageActions.filter { action in
-                                    selected.allSatisfy {
-                                        $0.release.storageActions.contains(
-                                            action
-                                        )
-                                    }
-                                }
-                            } ?? [],
-                            cancelOnly: selected.contains {
-                                $0.release.transitioning
-                            }
-                        )
-                    },
+                    read: { answer(Set(try await requests.take())) },
                     cancel: { requests.close() }
                 )
             )

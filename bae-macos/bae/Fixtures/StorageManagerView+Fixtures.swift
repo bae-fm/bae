@@ -28,14 +28,16 @@ struct StorageManagerPreviewFixture {
         outputs: [BridgeOutputOp] = PreviewData.outputOps,
         uploads: [PreviewData.PreviewReleaseUpload] =
             PreviewData.defaultUploads,
-        answers: UnansweredCount = UnansweredCount()
+        answers: UnansweredCount = UnansweredCount(),
+        selections: [Set<String>: BridgeStorageSelection] = [:]
     ) {
         let library = PreviewData.storageLibrary(
             answers: answers,
             rows: rows,
             downloads: downloads,
             outputs: outputs,
-            uploads: uploads
+            uploads: uploads,
+            selections: selections
         )
         let uiStore = UiStore()
         self.library = library

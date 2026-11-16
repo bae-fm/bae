@@ -29,7 +29,12 @@ private final class OpenedReads: @unchecked Sendable {
     var opened: [List] { lock.withLock { lists } }
     var selected: [[String]] { lock.withLock { selections } }
 
-    func library(rows: [BridgeStorageRow]) -> Library {
+    /// A library over `rows` whose selection read answers each set of ids
+    /// with its entry in `answers`.
+    func library(
+        rows: [BridgeStorageRow],
+        answers: [Set<String>: BridgeStorageSelection] = [[]: .nothing]
+    ) -> Library {
         Library(
             storageList: { [self] sort, filter, search in
                 lock.withLock {
@@ -45,13 +50,13 @@ private final class OpenedReads: @unchecked Sendable {
             },
             storageSelection: { [self] _, _ in
                 let fixed = StorageSelectionQuery.fixed(
-                    rows,
-                    answers: UnansweredCount(),
-                    sole: { ids in
-                        ids.count == 1 && ids.first == rows.first?.id
-                            ? ids.first : nil
+                    answers: UnansweredCount()
+                ) { ids in
+                    guard let selection = answers[ids] else {
+                        preconditionFailure("no selection answer for \(ids)")
                     }
-                )
+                    return selection
+                }
                 return StorageSelectionQuery(
                     setSelected: { [self] ids in
                         lock.withLock { selections.append(ids.sorted()) }
@@ -136,11 +141,20 @@ struct StorageManagerStoreTests {
     func selectionActionsAreCoresAnswer() async throws {
         let reads = OpenedReads()
         let rows = Array(PreviewData.storageRows.prefix(3))
+        let selected: Set<String> = [rows[0].id, rows[1].id]
         let store = StorageManagerStore(
-            library: reads.library(rows: rows),
+            library: reads.library(
+                rows: rows,
+                answers: [
+                    []: .nothing,
+                    selected: .of(
+                        [rows[0], rows[1]],
+                        actions: commonActions(of: [rows[0], rows[1]])
+                    ),
+                ]
+            ),
             onError: { _ in }
         )
-        let selected: Set<String> = [rows[0].id, rows[1].id]
         store.select(selected)
         store.update(filter: .all, sort: byTitle, search: "")
         try await Wait.until { store.list != nil }
@@ -176,7 +190,21 @@ struct StorageManagerStoreTests {
         let reads = OpenedReads()
         let rows = Array(PreviewData.storageRows.prefix(3))
         let store = StorageManagerStore(
-            library: reads.library(rows: rows),
+            library: reads.library(
+                rows: rows,
+                answers: [
+                    []: .nothing,
+                    [rows[0].id]: .of(
+                        [rows[0]],
+                        actions: rows[0].release.storageActions,
+                        sole: rows[0].id
+                    ),
+                    [rows[0].id, rows[1].id]: .of(
+                        [rows[0], rows[1]],
+                        actions: commonActions(of: [rows[0], rows[1]])
+                    ),
+                ]
+            ),
             onError: { _ in }
         )
         store.update(filter: .all, sort: byTitle, search: "")
@@ -200,5 +228,32 @@ struct StorageManagerStoreTests {
             .filter { action in
                 rows.allSatisfy { $0.release.storageActions.contains(action) }
             }
+    }
+}
+
+extension BridgeStorageSelection {
+    /// Core's answer for a selection of no releases.
+    fileprivate static let nothing = BridgeStorageSelection(
+        asked: [],
+        selected: [],
+        sole: nil,
+        selectionActions: [],
+        cancelOnly: false
+    )
+
+    /// Core's answer for a selection of `rows`, held and offering `actions`,
+    /// with `sole` as the one release when it holds one.
+    fileprivate static func of(
+        _ rows: [BridgeStorageRow],
+        actions: [BridgeReleaseStorageAction],
+        sole: String? = nil
+    ) -> BridgeStorageSelection {
+        BridgeStorageSelection(
+            asked: rows.map(\.id),
+            selected: rows,
+            sole: sole,
+            selectionActions: actions,
+            cancelOnly: false
+        )
     }
 }

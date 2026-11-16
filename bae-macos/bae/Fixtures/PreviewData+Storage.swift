@@ -448,13 +448,15 @@ extension PreviewData {
     /// populate the table — and whose inspector shows each row's release
     /// with its entry in `downloads`, `outputs` and `uploads`.
     /// The fixture's library, its reads answered off the main thread and
-    /// counted in `answers`.
+    /// counted in `answers`. The selection read answers a set of several
+    /// releases with its entry in `selections`.
     static func storageLibrary(
         answers: UnansweredCount,
         rows: [BridgeStorageRow] = storageRows,
         downloads: [BridgeDownloadOp] = downloadOps,
         outputs: [BridgeOutputOp] = outputOps,
-        uploads: [PreviewReleaseUpload] = defaultUploads
+        uploads: [PreviewReleaseUpload] = defaultUploads,
+        selections: [Set<String>: BridgeStorageSelection] = [:]
     ) -> Library {
         let rows = storageRows(rows, uploading: uploads)
         let details = Dictionary(
@@ -502,15 +504,46 @@ extension PreviewData {
                 )
             },
             storageSelection: { _, _ in
-                // The shots select at most one release, which core answers
-                // as the sole one.
-                .fixed(rows, answers: answers, sole: { $0.first })
+                .fixed(answers: answers) { ids in
+                    selections[ids] ?? storageSelection(ids, in: rows)
+                }
             },
             storageHoldsAll: Library.fixedStorageHoldsAll(),
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }
             }
+        )
+    }
+
+    /// Core's answer for no release or the one release `ids` names among
+    /// `rows`: core answers one release as the sole one, with its own
+    /// actions, offering only cancelling while it is on the move. A shot that
+    /// selects several releases passes core's answer for them in
+    /// `selections`.
+    nonisolated private static func storageSelection(
+        _ ids: Set<String>,
+        in rows: [BridgeStorageRow]
+    ) -> BridgeStorageSelection {
+        precondition(
+            ids.count <= 1,
+            "no answer in `selections` for the releases \(ids)"
+        )
+        guard let row = rows.first(where: { ids.contains($0.id) }) else {
+            return BridgeStorageSelection(
+                asked: Array(ids),
+                selected: [],
+                sole: nil,
+                selectionActions: [],
+                cancelOnly: false
+            )
+        }
+        return BridgeStorageSelection(
+            asked: [row.id],
+            selected: [row],
+            sole: row.id,
+            selectionActions: row.release.storageActions,
+            cancelOnly: row.release.transitioning
         )
     }
 
