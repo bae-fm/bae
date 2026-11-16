@@ -509,7 +509,7 @@ struct PaginatedListTests {
 
 extension PaginatedListTests {
     /// Another order starts the windows over at the key the list now has at
-    /// the first position on screen, and the count stands.
+    /// the first position on screen, and the total count stays the same.
     @MainActor
     @Test("another order rereads the windows from the first row on screen")
     func reorderStartsAtTheFirstRowOnScreen() async throws {

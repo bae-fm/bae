@@ -113,10 +113,12 @@ struct ImportCandidateTablePlaceTests {
         }
     }
 
-    /// A list narrowed anew while its table is shown opens at its top,
-    /// wherever the person had scrolled.
+    /// When the person narrows the list again while the table shows it,
+    /// the table scrolls to the top, wherever the person had scrolled.
     @MainActor
-    @Test("a list narrowed anew while shown opens at its top")
+    @Test(
+        "the table scrolls to the top when the person narrows the list it shows"
+    )
     func anOpeningPutsItsRowOnTop() async throws {
         let source = MutableImportList(
             items: (0..<80).map(Self.candidateItem)

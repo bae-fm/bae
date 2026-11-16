@@ -10,8 +10,9 @@ import Observation
 /// folded shut decide which items sit in which windows, so they are core's
 /// list's rather than applied to a window after it arrives. A view change is
 /// a write. One that narrows the list anew answers where the new view opens;
-/// once it has, the list's windows and count are dropped and read again from
-/// that place, so every value they deliver was read after the write. Until the first of them lands
+/// once it has, the slot drops the list's windows and count and reads them
+/// again from that place, so every value they deliver was read after the
+/// write. Until the first of them lands
 /// the rows the list holds are the previous view's, which the sidebar does
 /// not show as this one's. Which groups are folded is core's alone; each
 /// header says whether it is open.
@@ -31,8 +32,9 @@ final class ImportListSlot {
     private(set) var sortOrder: BridgeImportListOrder
     /// The row each opening of the list puts on top: its first selected row,
     /// or its top. Core answers an opening only when another tab, filter or
-    /// search narrows the list anew, and the table scrolls to each one it
-    /// hears. A table not shown then finds the opening in `place`.
+    /// search narrows the list anew, and the table scrolls to each position
+    /// `openings` sends. A table not shown then finds the opening in
+    /// `place`.
     @ObservationIgnored
     let openings = PassthroughSubject<Int, Never>()
     /// Where the person is in the list, as the table last recorded it. Held

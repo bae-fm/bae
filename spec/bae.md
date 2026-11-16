@@ -1231,11 +1231,11 @@ answers with it, as the row's key and its position, or its top, with the
 selected rows that leave the selection; the screen drops the windows and
 counts it holds, opens new ones from that place, and scrolls the table there,
 so a read opened after the write sees the new view from its first value and no
-read carries a revision. Another order is not an opening: the write answers
-nothing, as it does when the view did not change, and no selected row leaves
-the selection. The screen reads its windows again from the row now at the
-first position on screen, since a window starts at a row's sort values in the
-order it was read in, and keeps its count, since another order moves the rows
+read carries a revision. Changing the order does not move the list to a new
+place: the write answers nothing, as it does when the view did not change, and
+no selected row leaves the selection. The screen reads its windows again from
+the row now at the first position on screen, since a window starts at a row's
+sort values in the order the screen read it in, and keeps its count, since another order moves the rows
 and not how many there are; the table keeps its own scroll while the rows
 redraw in the new order under it. Nothing keeps the place on the list: selecting rows
 since moves no place, and the list otherwise keeps the person's place as rows

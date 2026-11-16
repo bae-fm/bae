@@ -292,9 +292,10 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     }
 
     /// Put `row` on top: a view change opened the list there, and the slot
-    /// already holds it as the person's place, which the table does not
-    /// take from where it stands now. A table the opening's reread replaces
-    /// while the count is out goes to that place when it mounts.
+    /// already holds it as the person's place, so the table does not record
+    /// its current scroll position as the place. When the slot rereads the
+    /// list for the opening, the sidebar replaces the table until the count
+    /// query returns, and the new table goes to that place when it mounts.
     private func showOpening(_ row: Int) {
         placeTask?.cancel()
         placeTask = nil
