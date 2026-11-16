@@ -621,7 +621,7 @@ mod window_cost {
                 end,
                 &bulk_library::release_id_sql(),
             )?;
-            bae_playback::tables::window_cost::fill_context_lane_on(
+            bae_playback::tables::fill_context_lane_on(
                 &sql,
                 start,
                 end,

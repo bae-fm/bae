@@ -72,10 +72,10 @@ pub(super) async fn seed(db: &Store, originals: &Path, start: u64, end: u64) {
     db.write(move |sql| {
         bae_transfers::tables::bulk::queue_shaped_downloads_on(&sql, start, end, &release)?;
         bae_transfers::tables::bulk::queue_shaped_outputs_on(&sql, start, end, OUTPUTS, &release)?;
-        bae_playback::tables::window_cost::fill_context_lane_on(&sql, start, end, &track)?;
+        bae_playback::tables::fill_context_lane_on(&sql, start, end, &track)?;
         if start == 0 {
-            bae_playback::tables::window_cost::shaped_playback_on(&sql, UP_NEXT, &track)?;
-            bae_playback::tables::window_cost::shaped_now_playing_on(&sql, &first_track)?;
+            bae_playback::tables::shaped_playback_on(&sql, UP_NEXT, &track)?;
+            bae_playback::tables::shaped_now_playing_on(&sql, &first_track)?;
         }
         bae_people::people::shaped_people::insert_on(&sql, start, end, &album_id_sql(), &track)?;
         Ok::<(), bae_store::DbError>(())
