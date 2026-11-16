@@ -5758,7 +5758,8 @@ elevated face with 20 point corners hung 36 points below the window's top edge,
 the title in bold, the message small and secondary under it, and bae's buttons
 below. It sits over the frontmost window, or over the sheet open on it, and
 nothing below it can be reached while it is up, by pointer, keyboard or
-VoiceOver. The first button listed is the default, drawn in the
+VoiceOver. It draws in that window's tone, accent and light or dark
+appearance, and follows them when they change while it is up. The first button listed is the default, drawn in the
 accent unless it removes something, which draws red; Return presses it and
 Escape presses Cancel. A
 category whose line names the whole fault, with the counts, discs or folder it

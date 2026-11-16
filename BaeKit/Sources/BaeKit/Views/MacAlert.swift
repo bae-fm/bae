@@ -292,9 +292,16 @@
     /// panel is a window of its own, so it draws in the tone, accent and
     /// light or dark scheme of the window it sits on, which it inherits from
     /// nothing.
-    private struct PanelLook {
-        let appearance: HostedAppearance
-        let scheme: ColorScheme
+    @MainActor
+    @Observable
+    private final class PanelLook {
+        var appearance: HostedAppearance
+        var scheme: ColorScheme
+
+        init(appearance: HostedAppearance, scheme: ColorScheme) {
+            self.appearance = appearance
+            self.scheme = scheme
+        }
     }
 
     private struct AlertPanelContent: View {
@@ -468,6 +475,15 @@
             panel.makeKeyAndOrderFront(nil)
         }
 
+        /// Draws the alert `id` in the light or dark appearance its parent
+        /// window has now, after the parent's appearance changed.
+        func matchParentAppearance(id: UUID) {
+            guard let alert = shown.first(where: { $0.id == id }) else {
+                return
+            }
+            alert.panel.appearance = alert.parent.effectiveAppearance
+        }
+
         func withdraw(id: UUID) {
             guard let index = shown.firstIndex(where: { $0.id == id }) else {
                 return
@@ -593,6 +609,10 @@
         private var id = UUID()
         @State
         private var anchor = WindowAnchor()
+        /// The look the alert shown now draws in, which follows the
+        /// window's tone, accent and scheme while the alert is up.
+        @State
+        private var look: PanelLook?
         @Environment(\.surfaceTone)
         private var tone
         @Environment(\.accentChoice)
@@ -614,10 +634,22 @@
                         AlertWindows.shared.withdraw(id: id)
                     }
                 }
+                .onChange(of: hostedAppearance) { _, appearance in
+                    look?.appearance = appearance
+                }
+                .onChange(of: scheme) { _, scheme in
+                    look?.scheme = scheme
+                    AlertWindows.shared.matchParentAppearance(id: id)
+                }
                 .onDisappear {
                     anchor.arrived = nil
                     AlertWindows.shared.withdraw(id: id)
                 }
+        }
+
+        /// The window's tone and accent, which the alert draws in.
+        private var hostedAppearance: HostedAppearance {
+            HostedAppearance(tone: tone, accent: accent)
         }
 
         /// Shows the alert over the anchor's window, or when there is none
@@ -628,10 +660,8 @@
             let id = id
             let build = build
             let finish = finish
-            let look = PanelLook(
-                appearance: HostedAppearance(tone: tone, accent: accent),
-                scheme: scheme
-            )
+            let look = PanelLook(appearance: hostedAppearance, scheme: scheme)
+            self.look = look
             let show: @MainActor () -> Void = {
                 AlertWindows.shared.present(
                     id: id,
