@@ -29,6 +29,12 @@ impl AppHandle {
             BridgeList::ComposerPage { artist_id } => {
                 self.services.subscribe_composer_page_window(&artist_id, window)
             }
+            BridgeList::AlbumTracks { album_id } => {
+                self.services.subscribe_album_track_window(&album_id, window)
+            }
+            BridgeList::WorkChildren { work_id } => {
+                self.services.subscribe_work_child_window(&work_id, window)
+            }
             BridgeList::Downloads => self.services.subscribe_download_window(window),
             BridgeList::Upcoming { shuffled } => {
                 self.services.subscribe_upcoming_window(shuffled, window)
@@ -57,6 +63,12 @@ impl AppHandle {
             BridgeList::Composers { .. } => self.services.subscribe_composer_count(),
             BridgeList::ComposerPage { artist_id } => {
                 self.services.subscribe_composer_page_count(&artist_id)
+            }
+            BridgeList::AlbumTracks { album_id } => {
+                self.services.subscribe_album_track_count(&album_id)
+            }
+            BridgeList::WorkChildren { work_id } => {
+                self.services.subscribe_work_child_count(&work_id)
             }
             BridgeList::Downloads => self.services.subscribe_download_count(),
             BridgeList::Upcoming { shuffled } => self.services.subscribe_upcoming_count(shuffled),
@@ -89,6 +101,12 @@ impl AppHandle {
             }
             BridgeList::ComposerPage { artist_id } => {
                 self.services.subscribe_composer_page_position(&artist_id, key)
+            }
+            BridgeList::AlbumTracks { album_id } => {
+                self.services.subscribe_album_track_position(&album_id, key)
+            }
+            BridgeList::WorkChildren { work_id } => {
+                self.services.subscribe_work_child_position(&work_id, key)
             }
             BridgeList::Downloads => self.services.subscribe_download_position(key),
             BridgeList::Upcoming { shuffled } => {
@@ -145,27 +163,6 @@ impl AppHandle {
         crate::screens::list_count(
             self.services
                 .subscribe_search_album_count(bae_views::LibrarySearchQuery::parse(&query)),
-            self.runtime.clone(),
-        )
-    }
-
-    /// Read live how many tracks the album `album_id` has: the tracks
-    /// `read_album_track_page` pages through.
-    pub fn subscribe_album_track_count(
-        &self,
-        album_id: String,
-    ) -> Arc<crate::ListCountSubscription> {
-        crate::screens::list_count(
-            self.services.subscribe_album_track_count(&album_id),
-            self.runtime.clone(),
-        )
-    }
-
-    /// Read live how many children the work `work_id` has: the rows
-    /// `read_work_child_page` pages through.
-    pub fn subscribe_work_child_count(&self, work_id: String) -> Arc<crate::ListCountSubscription> {
-        crate::screens::list_count(
-            self.services.subscribe_work_child_count(&work_id),
             self.runtime.clone(),
         )
     }

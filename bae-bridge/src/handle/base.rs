@@ -80,40 +80,40 @@ forward! { async this => {
             .collect())
     }
 
-    /// One page of the tracks of the album `album_id`, read once: at most
-    /// `limit` of its main release's tracks starting `offset` in, in playing
-    /// order.
-    fn read_album_track_page(
+    /// The window of the album `album_id`'s tracks (`BridgeList::AlbumTracks`)
+    /// that holds the `limit` tracks from `offset`, read once: from the first
+    /// of them to the track past the last. A media browser names a page by
+    /// its offset and reads the window live. None when the album lists fewer
+    /// tracks than `offset`.
+    fn read_album_track_page_window(
         album_id: String,
         offset: u64,
         limit: u64,
-    ) -> Vec<crate::types::BridgeBrowseTrack> {
+    ) -> Option<BridgeListWindow> {
         Ok(this
             .services
-            .album_track_page(&album_id, offset, limit)
+            .album_track_page_window(&album_id, offset, limit)
             .await
             .map_err(BridgeError::from)?
-            .into_iter()
-            .map(crate::types::BridgeBrowseTrack::from_core)
-            .collect())
+            .map(BridgeListWindow::from_core))
     }
 
-    /// One page of the children of the work `work_id`, read once: at most
-    /// `limit` of them starting `offset` in, its parts and then the releases
-    /// that perform it.
-    fn read_work_child_page(
+    /// The window of the work `work_id`'s children (`BridgeList::WorkChildren`)
+    /// that holds the `limit` children from `offset`, read once: from the
+    /// first of them to the child past the last. A media browser names a page
+    /// by its offset and reads the window live. None when the work has fewer
+    /// children than `offset`.
+    fn read_work_child_page_window(
         work_id: String,
         offset: u64,
         limit: u64,
-    ) -> Vec<crate::types::BridgeWorkChild> {
+    ) -> Option<BridgeListWindow> {
         Ok(this
             .services
-            .work_child_page(&work_id, offset, limit)
+            .work_child_page_window(&work_id, offset, limit)
             .await
             .map_err(BridgeError::from)?
-            .into_iter()
-            .map(crate::types::BridgeWorkChild::from_core)
-            .collect())
+            .map(BridgeListWindow::from_core))
     }
 
     /// One track of a release as a browse item shows it, read once; `None`
@@ -199,6 +199,16 @@ forward! { async this => {
             BridgeList::ComposerPage { artist_id } => this
                 .services
                 .composer_detail_key_at(&artist_id, position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::AlbumTracks { album_id } => this
+                .services
+                .album_track_key_at(&album_id, position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::WorkChildren { work_id } => this
+                .services
+                .work_child_key_at(&work_id, position)
                 .await
                 .map_err(BridgeError::from)?,
             BridgeList::Downloads => this

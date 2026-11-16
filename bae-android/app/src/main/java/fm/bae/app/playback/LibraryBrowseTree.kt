@@ -4,15 +4,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
-import fm.bae.screensubscription.PulledSubscription
-import fm.bae.screensubscription.pullEach
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbum
@@ -22,7 +16,6 @@ import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
@@ -102,56 +95,16 @@ internal class LibraryBrowseTree<Owner : Any>(
         logger.error("library browse live query failed", error)
     }
 
-    /**
-     * One controller's search of one phrase: a live count of the albums the phrase lists, read
-     * until the controller searches another phrase or disconnects. Each count tells the controller
-     * its results changed; [search] reads each page of them once.
-     */
-    private inner class OwnerSearch(
-        private val count: PulledSubscription<BridgeListCount>,
-        private val onResultsChanged: (Int) -> Unit,
-    ) {
-        /** Completes at the count's first answer, or fails with its first error or when the search ends first. */
-        private val answered = CompletableDeferred<Unit>()
-        private var reader: Job? = null
-
-        fun start() {
-            reader = scope.launch { read() }
-        }
-
-        /** Wait for the count's first answer, throwing its error. */
-        suspend fun awaitAnswer() = answered.await()
-
-        suspend fun close() {
-            answered.completeExceptionally(searchInterestEnded())
-            reader?.cancelAndJoin()
-            count.cancel()
-        }
-
-        private suspend fun read() {
-            count.pullEach(
-                onValue = { value ->
-                    if (synchronized(lock) { searchesByOwner.values.any { it === this@OwnerSearch } }) {
-                        onResultsChanged(value.rows.toInt())
-                    }
-                    answered.complete(Unit)
-                },
-                onError = { error ->
-                    onQueryError(error)
-                    answered.completeExceptionally(error)
-                },
-            )
-        }
-    }
-
     val root: MediaItem
         get() = nodes.browsable(BrowseId.Root, labels().library, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
     private val lock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
 
-    /** The live count of each retained parent's children whose pages the tree reads once each, by its media id. */
-    private val childCounts = mutableMapOf<String, ChildCount>()
-    private val searchesByOwner = mutableMapOf<Owner, OwnerSearch>()
+    /** The live pages of each retained album's tracks and each retained work's children, by its media id. */
+    private val childPages = mutableMapOf<String, ChildPages<*>>()
+
+    /** Each controller's search: a live count of the albums its phrase lists. */
+    private val searchesByOwner = mutableMapOf<Owner, LiveCount>()
     private var albums: ListProjection<BridgeAlbumAppearance, BridgeAlbum>? = null
     private var composers: ListProjection<BridgeComposerSummary, BridgeComposerSummary>? = null
 
@@ -208,20 +161,8 @@ internal class LibraryBrowseTree<Owner : Any>(
                 }
             }
 
-            is BrowseId.Album -> {
-                pageAt(page, pageSize) { offset ->
-                    reportingFailure(onQueryError) {
-                        handle.readAlbumTrackPage(id.albumId, offset.toULong(), pageSize.toULong())
-                    }.map(nodes::browseTrack)
-                }
-            }
-
-            is BrowseId.Work -> {
-                pageAt(page, pageSize) { offset ->
-                    reportingFailure(onQueryError) {
-                        handle.readWorkChildPage(id.workId, offset.toULong(), pageSize.toULong())
-                    }.map(nodes::workChild)
-                }
+            is BrowseId.Album, is BrowseId.Work -> {
+                pageAt(page, pageSize) { offset -> childPages(parentId).rows(offset, pageSize) }
             }
 
             is BrowseId.Track -> {
@@ -328,12 +269,8 @@ internal class LibraryBrowseTree<Owner : Any>(
                 composerPageProjection(parentId, id.artistId).awaitReady()
             }
 
-            is BrowseId.Album -> {
-                childCount(parentId) { library.albumTrackCount(id.albumId) }.awaitAnswer()
-            }
-
-            is BrowseId.Work -> {
-                childCount(parentId) { library.workChildCount(id.workId) }.awaitAnswer()
+            is BrowseId.Album, is BrowseId.Work -> {
+                childPages(parentId).awaitReady()
             }
 
             else -> {
@@ -374,18 +311,26 @@ internal class LibraryBrowseTree<Owner : Any>(
         onResultsChanged: (Int) -> Unit,
     ) {
         checkOpen()
-        val search = OwnerSearch(library.searchAlbumCount(query), onResultsChanged)
+        val search =
+            LiveCount(
+                scope,
+                library.searchAlbumCount(query),
+                tellsFirst = true,
+                isCurrent = { read -> synchronized(lock) { searchesByOwner[owner] === read } },
+                onCount = onResultsChanged,
+                onError = onQueryError,
+            )
         val (opened, replaced) =
             synchronized(lock) {
                 if (closed) false to null else true to searchesByOwner.put(owner, search)
             }
         if (!opened) {
-            search.close()
+            search.close(searchInterestEnded())
             throw treeClosedError()
         }
-        replaced?.close()
+        replaced?.close(searchInterestEnded())
         search.start()
-        search.awaitAnswer()
+        search.awaitFirst()
         if (!synchronized(lock) { searchesByOwner[owner] === search }) throw searchInterestEnded()
     }
 
@@ -399,7 +344,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                         .orEmpty()
                         .map { it.first } to searchesByOwner.remove(owner)
                 }
-            search?.close()
+            search?.close(searchInterestEnded())
             parents.forEach { closeParentIfUnused(it) }
         }
 
@@ -413,18 +358,18 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     private suspend fun closeSuspending() {
         val pages = mutableListOf<ListProjection<BridgeComposerDetailRow, BridgeComposerDetailRow>>()
-        val counts = mutableListOf<ChildCount>()
+        val children = mutableListOf<ChildPages<*>>()
         val state =
             synchronized(lock) {
                 if (closed) return
                 closed = true
                 val state = Pair(albums to composers, searchesByOwner.values.toList())
                 pages += composerPages.values
-                counts += childCounts.values
+                children += childPages.values
                 albums = null
                 composers = null
                 composerPages.clear()
-                childCounts.clear()
+                childPages.clear()
                 searchesByOwner.clear()
                 parentsByOwner.clear()
                 state
@@ -432,8 +377,8 @@ internal class LibraryBrowseTree<Owner : Any>(
         state.first.first?.close()
         state.first.second?.close()
         pages.forEach { it.close() }
-        counts.forEach { it.close() }
-        state.second.forEach { it.close() }
+        children.forEach { it.close() }
+        state.second.forEach { it.close(searchInterestEnded()) }
     }
 
     private fun albumProjection(): ListProjection<BridgeAlbumAppearance, BridgeAlbum> =
@@ -476,20 +421,39 @@ internal class LibraryBrowseTree<Owner : Any>(
             ).also { composerPages[parentId] = it }
         }
 
-    /** The live count of [parentId]'s children, which [open] reads, opened on first use. */
-    private fun childCount(
-        parentId: String,
-        open: () -> PulledSubscription<BridgeListCount>,
-    ): ChildCount =
+    /** The live pages of [parentId]'s children, an album's tracks or a work's children, opened on first use. */
+    private fun childPages(parentId: String): ChildPages<*> =
         synchronized(lock) {
             check(!closed)
-            childCounts.getOrPut(parentId) {
-                ChildCount(
-                    scope,
-                    open(),
-                    onChanged = { count -> notifyParent(parentId, count) },
-                    onError = onQueryError,
-                )
+            childPages.getOrPut(parentId) {
+                val onChanged = { count: Int -> notifyParent(parentId, count) }
+                when (val id = BrowseId.parse(parentId)) {
+                    is BrowseId.Album -> {
+                        ChildPages(
+                            scope,
+                            library.albumTrackList(id.albumId),
+                            { offset, limit -> handle.readAlbumTrackPageWindow(id.albumId, offset, limit) },
+                            nodes::browseTrack,
+                            onChanged,
+                            onQueryError,
+                        )
+                    }
+
+                    is BrowseId.Work -> {
+                        ChildPages(
+                            scope,
+                            library.workChildList(id.workId),
+                            { offset, limit -> handle.readWorkChildPageWindow(id.workId, offset, limit) },
+                            nodes::workChild,
+                            onChanged,
+                            onQueryError,
+                        )
+                    }
+
+                    else -> {
+                        error("$parentId lists no children a page at a time")
+                    }
+                }
             }
         }
 
@@ -503,7 +467,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Albums -> synchronized(lock) { albums.also { albums = null } }?.close()
             BrowseId.Composers -> synchronized(lock) { composers.also { composers = null } }?.close()
             is BrowseId.Composer -> synchronized(lock) { composerPages.remove(parentId) }?.close()
-            is BrowseId.Album, is BrowseId.Work -> synchronized(lock) { childCounts.remove(parentId) }?.close()
+            is BrowseId.Album, is BrowseId.Work -> synchronized(lock) { childPages.remove(parentId) }?.close()
             BrowseId.Root, is BrowseId.Track, null -> Unit
         }
     }

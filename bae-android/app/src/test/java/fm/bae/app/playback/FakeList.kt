@@ -56,6 +56,17 @@ internal open class FakeList<Row>(
 
     fun keyAt(position: ULong): List<BridgeSortValue>? = if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1))
 
+    /** The window that holds the [limit] rows from [offset] as the list stands, or none past its end. */
+    fun pageWindow(
+        offset: ULong,
+        limit: ULong,
+    ): BridgeListWindow? {
+        val start = offset.toInt()
+        if (start >= rows.size) return null
+        val stop = start + limit.toInt()
+        return BridgeListWindow.Forward(key(start), if (stop < rows.size) key(stop) else null, limit)
+    }
+
     fun count() = BridgeListCount(rows.size.toULong(), rows.size.toULong(), extra(rows.size))
 
     fun value(window: BridgeListWindow): BridgeListWindowValue {

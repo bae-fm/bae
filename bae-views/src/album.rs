@@ -1,5 +1,6 @@
 //! The album views: the album grid, flat or grouped by artist, its
-//! selection, an album's detail, and library search.
+//! selection, an album's detail, an album's tracks as a list, and library
+//! search.
 
 use super::*;
 use listing::{
@@ -75,6 +76,105 @@ impl LibraryViews {
             Some(pattern) => search_album_count_on(&sql, pattern, cap),
             None => Ok(0),
         })
+    }
+
+    /// Follow one window of the album `album_id`'s tracks: a range of
+    /// [`album_track_order`] (`list_windows`), which coven reruns for a write
+    /// inside it alone.
+    pub fn subscribe_album_track_window(
+        &self,
+        album_id: &str,
+        initial: ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<
+        ListWindow,
+        WindowRead<DbTrackSearchResult>,
+        bae_store::DbError,
+    > {
+        let album_id = album_id.to_string();
+        let order = album_track_order();
+        let read_order = order.clone();
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+            album_track_rows_on(sql, &album_id, &read_order, seek, limit, offset)
+        })
+    }
+
+    /// Follow how many tracks the album `album_id` lists. The count runs as a
+    /// separate query from the windows' rows.
+    pub fn subscribe_album_track_count(
+        &self,
+        album_id: &str,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        let album_id = album_id.to_string();
+        self.store.subscribe(move |sql| {
+            Ok(sql.query_row(
+                &format!(
+                    "SELECT COUNT(*) AS count {TRACK_HIT_FROM} WHERE {}",
+                    album_track_filter()
+                ),
+                rusqlite::named_params! { ":album_id": album_id },
+                |row| count_column::<u64>(row, "count"),
+            )?)
+        })
+    }
+
+    /// Follow how many of the album `album_id`'s tracks come before the row
+    /// at a key; the caller changes the key on the same query.
+    pub fn subscribe_album_track_position(
+        &self,
+        album_id: &str,
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let album_id = album_id.to_string();
+        let order = album_track_order();
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            bae_store::list_windows::rows_before_on(
+                &sql,
+                TRACK_HIT_FROM,
+                Some(&album_track_filter()),
+                &[(":album_id", &album_id)],
+                &order,
+                key,
+            )
+        })
+    }
+
+    /// The key of the album `album_id`'s track at `position`, or of its last
+    /// track when the list ends before it; `None` for an album with no tracks.
+    pub async fn album_track_key_at(
+        &self,
+        album_id: &str,
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let album_id = album_id.to_string();
+        let order = album_track_order();
+        self.store
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    album_track_rows_on(&sql, &album_id, &order, seek, limit, offset)
+                })
+            })
+            .await
+    }
+
+    /// The window of the album `album_id`'s tracks that holds the `limit`
+    /// tracks from `position`, read once: a media browser names a page by
+    /// its offset and follows this window live. `None` when the album lists
+    /// fewer tracks than `position`.
+    pub async fn album_track_page_window(
+        &self,
+        album_id: &str,
+        position: u64,
+        limit: u64,
+    ) -> Result<Option<ListWindow>, DbError> {
+        let album_id = album_id.to_string();
+        let order = album_track_order();
+        self.store
+            .read(move |sql| {
+                page_window(&order, position, limit, &mut |seek, limit, offset| {
+                    album_track_rows_on(&sql, &album_id, &order, seek, limit, offset)
+                })
+            })
+            .await
     }
 
     /// The track `track_id` of the release `release_id` as a browse item shows
@@ -422,21 +522,28 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
 }
 
 /// What a track hit shows: the track, its release's album, its credit line and
-/// its release's cover version.
-pub(crate) static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+/// its release's cover version, as columns of [`TRACK_HIT_FROM`].
+static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     format!(
-        "SELECT t.id, t.title, t.duration_ms, t.release_id, \
-                r.album_id, a.title as album_title, {} as artist_name, \
-                {} as cover_version \
-         FROM tracks t \
-         JOIN releases r ON t.release_id = r.id \
-         JOIN albums a ON r.album_id = a.id",
+        "t.id, t.title, t.duration_ms, t.release_id, \
+         r.album_id, a.title as album_title, {} as artist_name, \
+         {} as cover_version",
         track_credits_json_sql("t"),
         bae_records::records::files::cover_version_sql("t.release_id"),
     )
 });
 
-pub(crate) fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
+/// The tables a track hit reads: the track `t`, its release `r` and the
+/// release's album `a`.
+const TRACK_HIT_FROM: &str = "FROM tracks t \
+     JOIN releases r ON t.release_id = r.id \
+     JOIN albums a ON r.album_id = a.id";
+
+/// A track hit's statement up to its WHERE clause.
+static TRACK_HIT_SELECT: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| format!("SELECT {} {TRACK_HIT_FROM}", TRACK_HIT_COLUMNS.as_str()));
+
+fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
     Ok(DbTrackSearchResult {
         id: row.get("id")?,
         title: row.get("title")?,
@@ -719,6 +826,62 @@ pub struct AlbumDetailProjection {
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
 }
+
+/// One delivery of a window of an album's tracks as a media browser lists
+/// them.
+pub fn resolve_album_track_window(read: WindowRead<DbTrackSearchResult>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, |rows| {
+        crate::ListRows::AlbumTracks(
+            rows.into_iter().map(crate::album_detail::TrackSearchResult::from_raw).collect(),
+        )
+    })
+}
+
+/// The order of an album's tracks: playing order. A release holds one track
+/// at each position, and the list holds one release's tracks, so the position
+/// tells every two tracks apart.
+fn album_track_order() -> ListOrder {
+    ListOrder::new(vec![SortTerm::ascending("t.position")])
+}
+
+/// Which track hits ([`TRACK_HIT_FROM`]) the album `:album_id` lists: its
+/// main release's tracks.
+fn album_track_filter() -> String {
+    format!("a.id = :album_id AND r.id = {}", album_primary_release_sql())
+}
+
+/// The album `album_id`'s tracks that `seek` reads in `order`, at most
+/// `limit` from `offset`, each with its key.
+fn album_track_rows_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<DbTrackSearchResult>>, DbError> {
+    let statement = format!(
+        "SELECT {columns}, {keys} {TRACK_HIT_FROM}
+         WHERE {filter} AND {condition}
+         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+        columns = TRACK_HIT_COLUMNS.as_str(),
+        keys = order.key_columns(),
+        filter = album_track_filter(),
+        condition = order.condition(seek),
+        ordering = order.ordering(seek),
+    );
+    Ok(seek.bound(limit, offset, |params| {
+        let mut params = params.to_vec();
+        params.push((":album_id", &album_id as &dyn rusqlite::ToSql));
+        sql.query(&statement, params.as_slice(), |row| {
+            Ok((track_hit_row(row)?, order.key_of(row)?))
+        })
+    })?)
+}
+
+#[cfg(test)]
+#[path = "album/tracks_tests.rs"]
+mod track_list_tests;
 
 #[cfg(test)]
 #[path = "album_tests.rs"]

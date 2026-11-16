@@ -269,10 +269,11 @@ object BridgeFixtures {
     fun browseTrack(
         id: String = "trk-1",
         releaseId: String = "rel-1",
+        title: String = "Track Title",
     ): BridgeBrowseTrack =
         BridgeBrowseTrack(
             id = id,
-            title = "Track Title",
+            title = title,
             durationMs = 180_000uL,
             releaseId = releaseId,
             artistLine = BridgeCreditLine(names = emptyList()),

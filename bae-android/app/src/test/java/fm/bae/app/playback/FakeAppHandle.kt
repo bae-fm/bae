@@ -38,6 +38,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeList
+import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
@@ -219,24 +220,26 @@ internal open class FakeAppHandle(
     override fun subscribeListWindow(
         list: BridgeList,
         window: BridgeListWindow,
-    ): ListWindowSubscription = albumGrid(list).openWindow(window)
+    ): ListWindowSubscription = fakeList(list).openWindow(window)
 
-    override fun subscribeListCount(list: BridgeList): ListCountSubscription = albumGrid(list).openCount()
+    override fun subscribeListCount(list: BridgeList): ListCountSubscription = fakeList(list).openCount()
 
     override fun subscribeListPosition(
         list: BridgeList,
         key: List<BridgeSortValue>,
-    ): ListPositionSubscription = albumGrid(list).openPosition(key)
+    ): ListPositionSubscription = fakeList(list).openPosition(key)
 
     override suspend fun listKeyAt(
         list: BridgeList,
         position: ULong,
-    ): List<BridgeSortValue>? = albumGrid(list).keyAt(position)
+    ): List<BridgeSortValue>? = fakeList(list).keyAt(position)
 
     private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
+    private val albumTrackLists = mutableMapOf<String, FakeList<BridgeBrowseTrack>>()
+    private val workChildLists = mutableMapOf<String, FakeList<BridgeWorkChild>>()
 
     /** The list [list] names, which a test changes and delivers. */
-    private fun albumGrid(list: BridgeList): FakeList<*> =
+    fun fakeList(list: BridgeList): FakeList<*> =
         when (list) {
             is BridgeList.AlbumGrid -> {
                 albumList
@@ -250,6 +253,16 @@ internal open class FakeAppHandle(
                 composerPageLists.getOrPut(
                     list.artistId,
                 ) { FakeComposerPage(composerDetailRows[list.artistId].orEmpty()) }
+            }
+
+            is BridgeList.AlbumTracks -> {
+                albumTrackList(list.albumId)
+            }
+
+            is BridgeList.WorkChildren -> {
+                workChildLists.getOrPut(list.workId) {
+                    FakeList(workChildren[list.workId].orEmpty(), ::workChildId, { BridgeListRows.WorkChildren(it) })
+                }
             }
 
             is BridgeList.Artists,
@@ -307,6 +320,19 @@ internal open class FakeAppHandle(
             }
         }.also(searchSubscriptions::add)
 
+    /** The album [albumId]'s tracks as the bridge lists them, which a test changes and delivers. */
+    fun albumTrackList(albumId: String): FakeList<BridgeBrowseTrack> =
+        albumTrackLists.getOrPut(albumId) {
+            FakeList(albumTracks[albumId].orEmpty(), { it.id }, { BridgeListRows.AlbumTracks(it) })
+        }
+
+    /** A work's child as the fake work child list orders it: by the part's work id or the release's id. */
+    private fun workChildId(child: BridgeWorkChild): String =
+        when (child) {
+            is BridgeWorkChild.Part -> child.work.workId
+            is BridgeWorkChild.Release -> child.release.releaseId
+        }
+
     /** The search album counts the handle opened, oldest first, each answering its phrase's first count when it opens. */
     val searchAlbumCounts = mutableListOf<FakeCountSubscription>()
 
@@ -318,37 +344,19 @@ internal open class FakeAppHandle(
             }
         }
 
-    /** The album track counts the handle opened, oldest first, each answering its album's first count when it opens. */
-    val albumTrackCounts = mutableListOf<FakeCountSubscription>()
-
-    override fun subscribeAlbumTrackCount(albumId: String): ListCountSubscription =
-        FakeCountSubscription(albumId).also { count ->
-            albumTrackCounts += count
-            count.emit(albumTracks[albumId].orEmpty().size)
-        }
-
-    /** Returns the album's tracks from [offset], at most [limit], as the database would. */
-    override suspend fun readAlbumTrackPage(
+    /** Reads once, as the database would, the window of the album's tracks that holds the page at [offset]. */
+    override suspend fun readAlbumTrackPageWindow(
         albumId: String,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeBrowseTrack> = albumTracks[albumId].orEmpty().drop(offset.toInt()).take(limit.toInt())
+    ): BridgeListWindow? = fakeList(BridgeList.AlbumTracks(albumId)).pageWindow(offset, limit)
 
-    /** The work child counts the handle opened, oldest first, each answering its work's first count when it opens. */
-    val workChildCounts = mutableListOf<FakeCountSubscription>()
-
-    override fun subscribeWorkChildCount(workId: String): ListCountSubscription =
-        FakeCountSubscription(workId).also { count ->
-            workChildCounts += count
-            count.emit(workChildren[workId].orEmpty().size)
-        }
-
-    /** Returns the work's children from [offset], at most [limit], as the database would. */
-    override suspend fun readWorkChildPage(
+    /** Reads once, as the database would, the window of the work's children that holds the page at [offset]. */
+    override suspend fun readWorkChildPageWindow(
         workId: String,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeWorkChild> = workChildren[workId].orEmpty().drop(offset.toInt()).take(limit.toInt())
+    ): BridgeListWindow? = fakeList(BridgeList.WorkChildren(workId)).pageWindow(offset, limit)
 
     /** Returns the window of the search's albums from [offset], at most [limit], as the database would. */
     override suspend fun readSearchAlbumPage(

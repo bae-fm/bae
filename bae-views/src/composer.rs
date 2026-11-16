@@ -1,10 +1,10 @@
-//! The composer views: the composer list and a work's detail. A composer's
-//! own page is `composer_detail`.
+//! The composer views: the composer list, a work's detail and a work's
+//! children as a list. A composer's own page is `composer_detail`.
 //!
 //! Its tables and the triggers keeping them are `composer.sql`.
 
 use super::*;
-use crate::album_detail::{WorkDetail, WorkReleaseSummary};
+use crate::album_detail::{WorkChild, WorkDetail, WorkReleaseSummary};
 
 /// The SQL creating this part's tables and triggers.
 pub(super) const SQL: &str = include_str!("composer.sql");
@@ -106,11 +106,121 @@ impl LibraryViews {
             Ok(WorkDetailProjection { detail: find_work_detail_on(&sql, work_id)? })
         })
     }
+
+    /// Follow one window of the work `work_id`'s children: a range of
+    /// [`work_child_order`] (`list_windows`).
+    pub fn subscribe_work_child_window(
+        &self,
+        work_id: &str,
+        initial: ListWindow,
+    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbWorkChild>, bae_store::DbError>
+    {
+        let work_id = work_id.to_string();
+        let order = work_child_order();
+        let read_order = order.clone();
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
+            work_child_rows_on(sql, &work_id, &read_order, seek, limit, offset)
+        })
+    }
+
+    /// Follow how many children the work `work_id` has. The count runs as a
+    /// separate query from the windows' rows.
+    pub fn subscribe_work_child_count(
+        &self,
+        work_id: &str,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        let work_id = work_id.to_string();
+        self.store.subscribe(move |sql| {
+            Ok(sql.query_row(
+                &format!("SELECT COUNT(*) AS count FROM ({}) child", work_children_sql()),
+                rusqlite::named_params! { ":work_id": work_id },
+                |row| count_column::<u64>(row, "count"),
+            )?)
+        })
+    }
+
+    /// Follow how many of the work `work_id`'s children come before the row
+    /// at a key; the caller changes the key on the same query.
+    pub fn subscribe_work_child_position(
+        &self,
+        work_id: &str,
+        initial: OrderKey,
+    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
+        let work_id = work_id.to_string();
+        let order = work_child_order();
+        self.store.subscribe_reconfigurable(initial, move |key, sql| {
+            bae_store::list_windows::rows_before_on(
+                &sql,
+                &format!("FROM ({}) child", work_children_sql()),
+                None,
+                &[(":work_id", &work_id)],
+                &order,
+                key,
+            )
+        })
+    }
+
+    /// The key of the work `work_id`'s child at `position`, or of its last
+    /// child when the list ends before it; `None` for a work with no
+    /// children.
+    pub async fn work_child_key_at(
+        &self,
+        work_id: &str,
+        position: u64,
+    ) -> Result<Option<OrderKey>, DbError> {
+        let work_id = work_id.to_string();
+        let order = work_child_order();
+        self.store
+            .read(move |sql| {
+                key_at(&order, position, &mut |seek, limit, offset| {
+                    work_child_rows_on(&sql, &work_id, &order, seek, limit, offset)
+                })
+            })
+            .await
+    }
+
+    /// The window of the work `work_id`'s children that holds the `limit`
+    /// children from `position`, read once: a media browser names a page by
+    /// its offset and follows this window live. `None` when the work has
+    /// fewer children than `position`.
+    pub async fn work_child_page_window(
+        &self,
+        work_id: &str,
+        position: u64,
+        limit: u64,
+    ) -> Result<Option<ListWindow>, DbError> {
+        let work_id = work_id.to_string();
+        let order = work_child_order();
+        self.store
+            .read(move |sql| {
+                page_window(&order, position, limit, &mut |seek, limit, offset| {
+                    work_child_rows_on(&sql, &work_id, &order, seek, limit, offset)
+                })
+            })
+            .await
+    }
 }
 
 /// One delivery of a composer list window as the list shows it.
 pub fn resolve_composer_window(read: WindowRead<DbComposerSummary>) -> crate::ListWindowValue {
     crate::ListWindowValue::of(read, crate::ListRows::Composers)
+}
+
+/// One delivery of a window of a work's children as a media browser lists
+/// them.
+pub fn resolve_work_child_window(read: WindowRead<DbWorkChild>) -> crate::ListWindowValue {
+    crate::ListWindowValue::of(read, |rows| {
+        crate::ListRows::WorkChildren(
+            rows.into_iter()
+                .map(|child| match child {
+                    DbWorkChild::Part(work) => WorkChild::Part(work),
+                    DbWorkChild::Release(release) => {
+                        WorkChild::Release(WorkReleaseSummary::from_raw(release))
+                    }
+                })
+                .collect(),
+        )
+    })
 }
 
 /// One delivery of the work detail as the detail view shows it.
@@ -145,7 +255,10 @@ fn find_work_detail_on(
     let child_works = sql.query(
         &work_summary_query(
             Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?"),
-            Some(&format!("ORDER BY wp.position, {}", crate::sort_key_sql("w.title"))),
+            Some(&{
+                let parts = WorkPartOrder::over("wp", "w");
+                format!("ORDER BY {}, {}", parts.place, parts.title)
+            }),
         ),
         params![work.work.id],
         row_to_work_summary,
@@ -164,10 +277,7 @@ fn find_work_detail_on(
                 a.year AS album_year,
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
-         FROM track_works tw
-         JOIN tracks t ON t.id = tw.track_id
-         JOIN releases r ON r.id = t.release_id
-         JOIN albums a ON a.id = r.album_id
+         {WORK_RELEASES_FROM}
          WHERE tw.work_id = ?
          ORDER BY {releases}, t.position, tw.position",
             releases = work_release_order("a", "r"),
@@ -267,13 +377,60 @@ pub(crate) fn composer_listing_query(
 /// `release`: albums by title, compared by sort key as the composer page
 /// compares titles, then by id, so two albums sharing a title don't
 /// interleave; each album's releases in album order. The work's page lists
-/// its releases and their tracks in it, and its cover is the first.
+/// its releases and their tracks in it, its cover is the first, and a media
+/// browser lists its releases in it ([`work_children_sql`]).
+struct WorkReleaseOrder {
+    album_title: String,
+    album_id: String,
+    album_order: String,
+    release_id: String,
+}
+
+impl WorkReleaseOrder {
+    fn over(album: &str, release: &str) -> Self {
+        Self {
+            album_title: crate::sort_key_sql(&format!("{album}.title")),
+            album_id: format!("{album}.id"),
+            album_order: format!("{release}.album_order"),
+            release_id: format!("{release}.id"),
+        }
+    }
+}
+
+/// [`WorkReleaseOrder`] as an ORDER BY list.
 fn work_release_order(album: &str, release: &str) -> String {
+    let order = WorkReleaseOrder::over(album, release);
     format!(
-        "{}, {album}.id, {release}.album_order, {release}.id",
-        crate::sort_key_sql(&format!("{album}.title"))
+        "{}, {}, {}, {}",
+        order.album_title, order.album_id, order.album_order, order.release_id
     )
 }
+
+/// The order a work's parts take over the link `part` (`work_parts`) and the
+/// part's work `work`: by their place among the work's parts, then by title.
+/// The work's page and a media browser both list its parts in it.
+struct WorkPartOrder {
+    place: String,
+    title: String,
+}
+
+impl WorkPartOrder {
+    fn over(part: &str, work: &str) -> Self {
+        Self {
+            place: format!("{part}.position"),
+            title: crate::sort_key_sql(&format!("{work}.title")),
+        }
+    }
+}
+
+/// The tables a work's releases come from: each track `t` linked to a work
+/// by `tw` (`track_works`), its release `r` and the release's album `a`.
+/// Each release appears once per linked track, so a read of the releases
+/// alone selects DISTINCT.
+const WORK_RELEASES_FROM: &str = "FROM track_works tw
+         JOIN tracks t ON t.id = tw.track_id
+         JOIN releases r ON r.id = t.release_id
+         JOIN albums a ON a.id = r.album_id";
 
 /// The release whose cover a work shows (a SQL expression over `w`): the
 /// first of the releases performing it in [`work_release_order`]. That is the
@@ -371,7 +528,7 @@ pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
 
 /// The columns [`row_to_work_release_summary`] reads of the release `r`, its
 /// album `a` and its place among the album's releases `number`.
-pub(crate) fn work_release_columns() -> String {
+fn work_release_columns() -> String {
     format!(
         "r.id AS release_id,
             r.album_id,
@@ -393,11 +550,8 @@ fn work_release_rows(
     sql.query(
         &format!(
             "SELECT DISTINCT {columns}
-         FROM track_works tw
-         JOIN tracks t ON t.id = tw.track_id
-         JOIN releases r ON r.id = t.release_id
+         {WORK_RELEASES_FROM}
          JOIN release_number_in_album number ON number.release_id = r.id
-         JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
          ORDER BY {order}",
             columns = work_release_columns(),
@@ -409,7 +563,7 @@ fn work_release_rows(
     .map_err(DbError::from)
 }
 
-pub(crate) fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
+fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
     Ok(DbWorkReleaseSummary {
         release_id: row.get("release_id")?,
         album_id: row.get("album_id")?,
@@ -442,6 +596,95 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
         .collect::<Vec<_>>();
     let ordered_by_name = sort.iter().any(|c| c.field == ComposerSortField::Name);
     ListOrder::named(terms, ordered_by_name, "listing.name_sort_key", "listing.artist_id")
+}
+
+/// The children of the work the parameter `:work_id` names, one row each,
+/// with the columns its order ([`work_child_order`]) reads: its parts
+/// (`section` 0) in [`WorkPartOrder`], then the releases performing it
+/// (`section` 1) in [`WorkReleaseOrder`]. `item_id` is the part's
+/// work or the release, which ends the order with a term no two children
+/// share.
+fn work_children_sql() -> String {
+    let part = WorkPartOrder::over("part", "w");
+    let release = WorkReleaseOrder::over("a", "r");
+    format!(
+        "SELECT 0 AS section, {place} AS place, {part_title} AS title_key,
+                NULL AS album_id, NULL AS album_order, part.child_work_id AS item_id
+         FROM work_parts part
+         JOIN works w ON w.id = part.child_work_id
+         WHERE part.parent_work_id = :work_id
+         UNION ALL
+         SELECT DISTINCT 1, NULL, {album_title}, {album_id}, {album_order}, {release_id}
+         {WORK_RELEASES_FROM}
+         WHERE tw.work_id = :work_id",
+        place = part.place,
+        part_title = part.title,
+        album_title = release.album_title,
+        album_id = release.album_id,
+        album_order = release.album_order,
+        release_id = release.release_id,
+    )
+}
+
+/// The order of a work's children over [`work_children_sql`] aliased
+/// `child`: its parts, then its releases, each in their own order.
+fn work_child_order() -> ListOrder {
+    let term = |column: &str| format!("child.{column}");
+    ListOrder::new(vec![
+        SortTerm::ascending(term("section")),
+        SortTerm::ascending(term("place")).nullable(),
+        SortTerm::ascending(term("title_key")),
+        SortTerm::ascending(term("album_id")).nullable(),
+        SortTerm::ascending(term("album_order")).nullable(),
+        SortTerm::ascending(term("item_id")),
+    ])
+}
+
+/// The work `work_id`'s children that `seek` reads in `order`, at most
+/// `limit` from `offset`, each with its key and what it shows: a part's
+/// summary or a release's.
+fn work_child_rows_on(
+    sql: &SqlReadContext<'_>,
+    work_id: &str,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+) -> Result<Vec<Keyed<DbWorkChild>>, DbError> {
+    let statement = format!(
+        "SELECT child.section, {work}, {release}, {keys}
+         FROM ({children}) child
+         LEFT JOIN works w ON child.section = 0 AND w.id = child.item_id
+         LEFT JOIN releases r ON child.section = 1 AND r.id = child.item_id
+         LEFT JOIN release_number_in_album number ON number.release_id = r.id
+         LEFT JOIN albums a ON a.id = r.album_id
+         WHERE {condition}
+         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+        work = work_summary_columns(),
+        release = work_release_columns(),
+        children = work_children_sql(),
+        keys = order.key_columns(),
+        condition = order.condition(seek),
+        ordering = order.ordering(seek),
+    );
+    Ok(seek.bound(limit, offset, |params| {
+        let mut params = params.to_vec();
+        params.push((":work_id", &work_id as &dyn rusqlite::ToSql));
+        sql.query(&statement, params.as_slice(), |row| {
+            let child = match row.get::<_, i64>("section")? {
+                0 => DbWorkChild::Part(row_to_work_summary(row)?),
+                1 => DbWorkChild::Release(row_to_work_release_summary(row)?),
+                other => {
+                    return Err(column_conversion_error(
+                        row,
+                        "section",
+                        format!("work child section {other} names no kind of child"),
+                    ))
+                }
+            };
+            Ok((child, order.key_of(row)?))
+        })
+    })?)
 }
 
 #[derive(Debug, Clone, PartialEq)]

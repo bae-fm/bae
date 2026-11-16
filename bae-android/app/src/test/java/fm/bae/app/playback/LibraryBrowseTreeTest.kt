@@ -28,6 +28,7 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeReleaseRoleSummary
+import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeWorkChild
 import java.util.concurrent.CountDownLatch
@@ -37,6 +38,8 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class LibraryBrowseTreeTest {
     private val labels = BrowseLabels(library = "Library", albums = "Albums", composers = "Composers")
+
+    private fun textKey(id: String): List<BridgeSortValue> = listOf(BridgeSortValue.Text(id))
 
     private fun tree(
         handle: FakeAppHandle,
@@ -49,12 +52,13 @@ class LibraryBrowseTreeTest {
             onChildrenChanged = onChildrenChanged,
         )
 
-    /** An album's children are the page of its tracks the database read returns at the page's offset. */
+    /** An album's children on each page are the tracks the window that holds the page reads, and none past the end. */
     @Test
-    fun anAlbumsChildrenAreThePageTheReadReturns() =
+    fun anAlbumsChildrenAreTheWindowOfThePageAsked() =
         runBlocking {
             val tracks = List(3) { BridgeFixtures.browseTrack(id = "trk-$it", releaseId = "rel-main") }
-            val tree = tree(FakeAppHandle(albumTracks = mapOf("album-1" to tracks)))
+            val handle = FakeAppHandle(albumTracks = mapOf("album-1" to tracks))
+            val tree = tree(handle)
             val album = BrowseId.Album("album-1").mediaId
 
             assertEquals(
@@ -62,7 +66,54 @@ class LibraryBrowseTreeTest {
                 tree.children(album, 0, 2)!!.map { it.mediaId },
             )
             assertEquals(listOf(BrowseId.Track("rel-main", "trk-2").mediaId), tree.children(album, 1, 2)!!.map { it.mediaId })
+            assertTrue(tree.children(album, 2, 2)!!.isEmpty())
+            val windows = handle.albumTrackList("album-1").windows.map { it.window }
+            assertEquals(
+                listOf(
+                    BridgeListWindow.Forward(textKey("trk-0"), textKey("trk-2"), 2u),
+                    BridgeListWindow.Forward(textKey("trk-2"), null, 2u),
+                ),
+                windows,
+            )
             tree.close()
+        }
+
+    /**
+     * A change inside a page the controller asked for tells the controller the album's children changed, with
+     * their number unknown, and the controller's next request for the page reads it again.
+     */
+    @Test
+    fun aChangeInsideAnAskedPageTellsTheControllerAndTheNextRequestReadsIt() =
+        runBlocking {
+            val handle =
+                FakeAppHandle(albumTracks = mapOf("album-1" to listOf(BridgeFixtures.browseTrack(id = "trk-0", title = "Old"))))
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parent, count -> notifications += parent to count }
+            val album = BrowseId.Album("album-1").mediaId
+            tree.subscribeParent(Any(), album)
+            assertEquals(
+                "Old",
+                tree
+                    .children(album, 0, 10)!!
+                    .single()
+                    .mediaMetadata.title,
+            )
+
+            val list = handle.albumTrackList("album-1")
+            list.rows = listOf(BridgeFixtures.browseTrack(id = "trk-0", title = "New"))
+            list.windows.single().deliver()
+
+            assertEquals(listOf(album to UNKNOWN_CHILD_COUNT), notifications)
+            assertEquals(
+                "New",
+                tree
+                    .children(album, 0, 10)!!
+                    .single()
+                    .mediaMetadata.title,
+            )
+            assertTrue(list.windows.first().cancelled)
+            tree.close()
+            assertTrue(list.windows.last().cancelled)
         }
 
     /** The tree tells the controller each time an album's live track count changes, but not when the read delivers its first count. */
@@ -76,51 +127,35 @@ class LibraryBrowseTreeTest {
 
             tree.subscribeParent(Any(), album)
             assertTrue(notifications.isEmpty())
-            handle.albumTrackCounts.single().emit(2)
+            val list = handle.albumTrackList("album-1")
+            list.rows = List(2) { BridgeFixtures.browseTrack(id = "trk-$it") }
+            list.emitCount()
 
             assertEquals(listOf(album to 2), notifications)
             tree.close()
-            assertTrue(handle.albumTrackCounts.single().cancelled)
+            assertTrue(list.counts.single().cancelled)
         }
 
-    /** A work's children are the page the database read returns at the page's offset: its parts, then its releases as their albums. */
+    /** A work's children on each page are its parts, then its releases as their albums, as the page's window reads them. */
     @Test
-    fun aWorksChildrenAreThePageTheReadReturns() =
+    fun aWorksChildrenAreTheWindowOfThePageAsked() =
         runBlocking {
             val children =
                 listOf(
-                    BridgeWorkChild.Part(BridgeFixtures.workSummary(workId = "work-part")),
-                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "rel-1", albumId = "album-1")),
-                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "rel-2", albumId = "album-2")),
+                    BridgeWorkChild.Part(BridgeFixtures.workSummary(workId = "child-1")),
+                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "child-2", albumId = "album-1")),
+                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "child-3", albumId = "album-2")),
                 )
             val tree = tree(FakeAppHandle(workChildren = mapOf("work-1" to children)))
             val work = BrowseId.Work("work-1").mediaId
 
             assertEquals(
-                listOf(BrowseId.Work("work-part").mediaId, BrowseId.Album("album-1").mediaId),
+                listOf(BrowseId.Work("child-1").mediaId, BrowseId.Album("album-1").mediaId),
                 tree.children(work, 0, 2)!!.map { it.mediaId },
             )
             assertEquals(listOf(BrowseId.Album("album-2").mediaId), tree.children(work, 1, 2)!!.map { it.mediaId })
             assertTrue(tree.children(work, 2, 2)!!.isEmpty())
             tree.close()
-        }
-
-    /** The tree tells the controller each time a work's live child count changes, but not when the read delivers its first count. */
-    @Test
-    fun aWorksChildCountTellsTheControllerEachChange() =
-        runBlocking {
-            val handle = FakeAppHandle(workChildren = mapOf("work-1" to listOf(BridgeWorkChild.Part(BridgeFixtures.workSummary()))))
-            val notifications = mutableListOf<Pair<String, Int>>()
-            val tree = tree(handle) { parent, count -> notifications += parent to count }
-            val work = BrowseId.Work("work-1").mediaId
-
-            tree.subscribeParent(Any(), work)
-            assertTrue(notifications.isEmpty())
-            handle.workChildCounts.single().emit(3)
-
-            assertEquals(listOf(work to 3), notifications)
-            tree.close()
-            assertTrue(handle.workChildCounts.single().cancelled)
         }
 
     /** A composer's children are its page's rows, the window the car asks for: works, then credits as their albums. */

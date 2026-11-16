@@ -38,6 +38,11 @@ pub enum ListRows {
     ArtistSearch(Vec<crate::album_detail::ArtistSearchResult>),
     /// The Storage Manager's rows, each a release beside its album.
     Storage(Vec<crate::album_detail::StorageRow>),
+    /// An album's tracks as a media browser lists them: its main release's.
+    AlbumTracks(Vec<crate::album_detail::TrackSearchResult>),
+    /// A work's children as a media browser lists them: its parts, then the
+    /// releases that perform it.
+    WorkChildren(Vec<crate::album_detail::WorkChild>),
     /// The import list's items, and the header of the group the first of
     /// them is a member of when the window starts inside the group.
     #[cfg(desktop)]

@@ -184,8 +184,20 @@ impl AppServices {
         list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
     }
 
-    /// How many tracks the album `album_id` has, which a media browser pages
-    /// through by offset.
+    /// One window of the album `album_id`'s tracks.
+    pub fn subscribe_album_track_window(
+        &self,
+        album_id: &str,
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
+        list_window(
+            &self.inner.manager,
+            self.inner.views.subscribe_album_track_window(album_id, window),
+            bae_views::album::resolve_album_track_window,
+        )
+    }
+
+    /// How many tracks the album `album_id` lists.
     pub fn subscribe_album_track_count(
         &self,
         album_id: &str,
@@ -193,13 +205,51 @@ impl AppServices {
         list_rows(&self.inner.manager, self.inner.views.subscribe_album_track_count(album_id))
     }
 
-    /// How many children the work `work_id` has, which a media browser pages
-    /// through by offset.
+    /// How many of the album `album_id`'s tracks come before the row at
+    /// `key`.
+    pub fn subscribe_album_track_position(
+        &self,
+        album_id: &str,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        list_position(
+            &self.inner.manager,
+            self.inner.views.subscribe_album_track_position(album_id, key),
+        )
+    }
+
+    /// One window of the work `work_id`'s children.
+    pub fn subscribe_work_child_window(
+        &self,
+        work_id: &str,
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
+        list_window(
+            &self.inner.manager,
+            self.inner.views.subscribe_work_child_window(work_id, window),
+            bae_views::composer::resolve_work_child_window,
+        )
+    }
+
+    /// How many children the work `work_id` has.
     pub fn subscribe_work_child_count(
         &self,
         work_id: &str,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         list_rows(&self.inner.manager, self.inner.views.subscribe_work_child_count(work_id))
+    }
+
+    /// How many of the work `work_id`'s children come before the row at
+    /// `key`.
+    pub fn subscribe_work_child_position(
+        &self,
+        work_id: &str,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        list_position(
+            &self.inner.manager,
+            self.inner.views.subscribe_work_child_position(work_id, key),
+        )
     }
 }
 

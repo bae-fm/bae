@@ -54,6 +54,12 @@ pub enum BridgeList {
     Composers { sort: Vec<crate::types::BridgeComposerSortCriterion> },
     /// The rows of a composer's page.
     ComposerPage { artist_id: String },
+    /// An album's tracks as a media browser lists them: its main release's,
+    /// in playing order.
+    AlbumTracks { album_id: String },
+    /// A work's children as a media browser lists them: its parts, then the
+    /// releases that perform it.
+    WorkChildren { work_id: String },
     /// The download queue, in the order queued.
     Downloads,
     /// The context's tracks after the playing one, in the context lane's
@@ -108,6 +114,12 @@ pub enum BridgeListRows {
     },
     Storage {
         rows: Vec<crate::types::BridgeStorageRow>,
+    },
+    AlbumTracks {
+        rows: Vec<crate::types::BridgeBrowseTrack>,
+    },
+    WorkChildren {
+        rows: Vec<crate::types::BridgeWorkChild>,
     },
     /// The import list's items, and the header of the group the first of
     /// them is a member of when the window starts inside the group, which

@@ -462,6 +462,10 @@ impl AppServices {
     delegate_view!(artist_key_at => artist_key_at(sort: &[bae_views::ArtistSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(composer_key_at => composer_key_at(sort: &[bae_views::ComposerSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(composer_detail_key_at => composer_detail_key_at(artist_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(album_track_key_at => album_track_key_at(album_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(album_track_page_window => album_track_page_window(album_id: &str, position: u64, limit: u64) -> Option<bae_store::ListWindow>);
+    delegate_view!(work_child_key_at => work_child_key_at(work_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
+    delegate_view!(work_child_page_window => work_child_page_window(work_id: &str, position: u64, limit: u64) -> Option<bae_store::ListWindow>);
     delegate_view!(artist_search_key_at => artist_search_key_at(query: Option<bae_views::LibrarySearchQuery>, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(album_key_at => album_key_at(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
@@ -593,8 +597,6 @@ impl AppServices {
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str) -> Result<String, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
-    delegate_view!(album_track_page => album_track_page(album_id: &str, offset: u64, limit: u64) -> Vec<bae_views::album_detail::TrackSearchResult>);
-    delegate_view!(work_child_page => work_child_page(work_id: &str, offset: u64, limit: u64) -> Vec<bae_views::album_detail::WorkChild>);
     delegate_view!(search_album_page => search_album_page(query: &bae_views::LibrarySearchQuery, offset: u64, limit: u64) -> Vec<bae_views::album_detail::AlbumSearchResult>);
     delegate_view!(find_release_track => find_release_track(release_id: &str, track_id: &str) -> Option<bae_views::album_detail::TrackSearchResult>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);

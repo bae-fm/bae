@@ -106,7 +106,7 @@ impl BridgeListWindow {
         }
     }
 
-    fn from_core(window: ListWindow) -> Self {
+    pub(crate) fn from_core(window: ListWindow) -> Self {
         let values = |key: &OrderKey| BridgeSortValue::of_key(key);
         match window {
             ListWindow::Forward { from, until, limit } => Self::Forward {
@@ -164,6 +164,15 @@ impl BridgeListWindowValue {
                 },
                 bae_views::ListRows::Storage(rows) => BridgeListRows::Storage {
                     rows: rows.into_iter().map(crate::types::BridgeStorageRow::from_core).collect(),
+                },
+                bae_views::ListRows::AlbumTracks(rows) => BridgeListRows::AlbumTracks {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeBrowseTrack::from_core)
+                        .collect(),
+                },
+                bae_views::ListRows::WorkChildren(rows) => BridgeListRows::WorkChildren {
+                    rows: rows.into_iter().map(crate::types::BridgeWorkChild::from_core).collect(),
                 },
                 #[cfg(desktop)]
                 bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {

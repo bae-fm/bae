@@ -4701,7 +4701,11 @@ which, and nothing plays when it finds neither. Android Auto reads that answer,
 and each item it opens, once from the database, not through a live query. The
 database picks the one track an item names and returns only the albums of the
 page a search shows, so Android Auto never filters or pages through rows it
-already holds.
+already holds. Each page of an album's tracks or a work's children that
+Android Auto shows is its own read, bounded by the keys of the page's first row
+and of the row after its last. The number of rows in each such list, and the
+number of albums a search lists, come from a count the database takes, never
+from rows Android Auto holds.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
@@ -5295,10 +5299,12 @@ work opening its parts and releases and a credit opening its album. An album
 lists its main release's tracks, in playing order. A work lists its parts, in
 their order, then the releases that perform it, ordered as its page orders
 them, each opening its album. When the controller asks for a page of an
-album's or a work's list, bae reads that page from the database, and bae tells
-the controller each time the list's count changes. A search there lists the
-first 50 albums library search finds, in title order. When the controller asks
-for a page of them, bae reads that page from the database, and bae tells the
+album's or a work's list, bae reads the page's rows live, from the page's first
+row up to the row after its last. bae tells the controller each time a row on
+the page changes and each time the list's count changes, and reads the page
+again when the controller asks for it again. A search there lists the first 50
+albums library search finds, in title order. When the controller asks for a
+page of them, bae reads that page from the database, and bae tells the
 controller each time the number of those albums changes.
 A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks

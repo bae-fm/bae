@@ -212,7 +212,7 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeBrowseTrack {
-    pub(super) fn from_core(t: bae_views::album_detail::TrackSearchResult) -> Self {
+    pub(crate) fn from_core(t: bae_views::album_detail::TrackSearchResult) -> Self {
         Self {
             id: t.id,
             title: t.title,
@@ -624,7 +624,7 @@ impl BridgeWorkTrackSummary {
 }
 
 impl crate::types::BridgeWorkChild {
-    pub(super) fn from_core(child: bae_views::album_detail::WorkChild) -> Self {
+    pub(crate) fn from_core(child: bae_views::album_detail::WorkChild) -> Self {
         match child {
             bae_views::album_detail::WorkChild::Part(work) => {
                 Self::Part { work: BridgeWorkSummary::from_core(work) }

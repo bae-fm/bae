@@ -216,6 +216,44 @@ fn a_position_is_counted_before_a_key_and_read_as_a_key() {
     }
 }
 
+/// A page named by its offset is the window from the row at that offset up
+/// to the row past its last, which holds exactly the page's rows; a page
+/// that reaches the list's end has no upper bound, and a page past the end
+/// has no window.
+#[test]
+fn a_page_at_an_offset_is_the_window_bounded_by_its_rows_keys() {
+    let conn = rows();
+    for order in orders() {
+        let everything = listed(&conn, &order);
+        let mut read_rows = |seek: &Seek, limit, offset| read(&conn, &order, seek, limit, offset);
+        let page = |position, limit, read_rows: &mut _| {
+            page_window(&order, position, limit, read_rows).unwrap()
+        };
+        let window = page(40, 20, &mut read_rows).expect("the list holds the page");
+        assert_eq!(
+            window,
+            ListWindow::Forward {
+                from: Some(everything[40].1.clone()),
+                until: Some(everything[60].1.clone()),
+                limit: 20,
+            },
+            "{order:?}"
+        );
+        let held = read_range(&order, &window, &mut read_rows).unwrap();
+        assert_eq!(held.rows, ids(&everything[40..60]), "{order:?}");
+        assert_eq!(
+            page(190, 20, &mut read_rows),
+            Some(ListWindow::Forward {
+                from: Some(everything[190].1.clone()),
+                until: None,
+                limit: 20
+            }),
+            "{order:?}"
+        );
+        assert_eq!(page(200, 20, &mut read_rows), None, "{order:?}");
+    }
+}
+
 /// Every seek of a range bounded at both ends is one search of the order's
 /// index, with the terms it holds equal and the bounds it compares in the
 /// search, and no temp b-tree.

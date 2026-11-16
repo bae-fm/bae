@@ -260,6 +260,27 @@ pub fn key_at<R, E>(
     Ok(read(&order.everything_reversed(), 1, 0)?.pop().map(|(_, key)| key))
 }
 
+/// The window of the `limit` rows from `position`, bounded by the keys that
+/// two reads by offset find: from the row at `position` up to the row at
+/// `position + limit`, or to the list's end when no row is there.
+/// `None` when the list ends before `position`. A caller that names a page of
+/// a list by its offset reads this once and follows the window live, so coven
+/// reruns the window for a write inside that page alone.
+pub fn page_window<R, E>(
+    order: &ListOrder,
+    position: u64,
+    limit: u64,
+    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
+) -> Result<Option<ListWindow>, E> {
+    let mut key_at_offset =
+        |offset| Ok(read(&order.everything(), 1, offset)?.into_iter().next().map(|(_, key)| key));
+    let Some(from) = key_at_offset(position)? else {
+        return Ok(None);
+    };
+    let until = key_at_offset(position.saturating_add(limit))?;
+    Ok(Some(ListWindow::Forward { from: Some(from), until, limit }))
+}
+
 impl crate::Store {
     /// A live query of one window of the list `order` sorts. When the screen
     /// changes the window's bounds, coven reruns this same live query with
