@@ -182,7 +182,12 @@ fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
         "a damaged image is no artwork"
     );
     assert!(
-        candidate.files.cover_files().all(|entry| entry.file.relative_path != "front.png"),
+        candidate
+            .files
+            .files
+            .iter()
+            .filter(|entry| entry.file.relative_path == "front.png")
+            .all(|entry| entry.cover_choice().is_none()),
         "a damaged image is offered to no cover picker"
     );
     assert_eq!(
@@ -270,7 +275,11 @@ fn test_collect_release_candidate_files_cue_alac_source_audio() {
 
     let files = scan_files(root);
 
-    assert_uniform_source_audio(&files, bae_records::source_audio::SourceAudioLayout::Cue, "ALAC");
+    assert_audio_layout_and_codec(
+        &files,
+        bae_records::source_audio::SourceAudioLayout::Cue,
+        "ALAC",
+    );
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].sheet.tracks.len(), 8);
@@ -334,7 +343,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 
     let files = scan_files(root);
 
-    assert_uniform_source_audio(&files, bae_records::source_audio::SourceAudioLayout::Cue, "APE");
+    assert_audio_layout_and_codec(&files, bae_records::source_audio::SourceAudioLayout::Cue, "APE");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     let track_count = bound[0].sheet.tracks.len();
@@ -578,7 +587,7 @@ fn invalid_flac_audio_yields_no_candidate() {
 fn flat_flac_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Flac));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &c.files,
         bae_records::source_audio::SourceAudioLayout::File,
         "FLAC",
@@ -596,7 +605,7 @@ fn flat_flac_release_surfaces_as_trackfiles() {
 fn mp3_release_surfaces_as_mp3_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Mp3));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &c.files,
         bae_records::source_audio::SourceAudioLayout::File,
         "MP3",
@@ -608,7 +617,7 @@ fn mp3_release_surfaces_as_mp3_trackfiles() {
 fn m4a_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::M4a));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &c.files,
         bae_records::source_audio::SourceAudioLayout::File,
         "ALAC",
@@ -635,7 +644,7 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &c.files,
         bae_records::source_audio::SourceAudioLayout::Cue,
         "ALAC",

@@ -251,11 +251,6 @@ impl CategorizedFiles {
             .map(|entry| &entry.file)
     }
 
-    /// Artwork offered by cover pickers; other images remain in `artwork`.
-    pub fn cover_files(&self) -> impl Iterator<Item = &CandidateFile> {
-        self.files.iter().filter(|entry| entry.cover_choice().is_some())
-    }
-
     /// The release's readable evidence files.
     pub fn documents(&self) -> impl Iterator<Item = &ScannedFile> {
         self.files
