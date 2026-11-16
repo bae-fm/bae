@@ -35,8 +35,13 @@ struct AutomationSettingsContent: View {
     let configStore: ConfigStore
     let copyToPasteboard: @MainActor (String) -> Void
 
+    /// The toggle's new value while the save that writes it is in flight,
+    /// named by that save. The toggle draws the stored value otherwise.
     @State
-    private var enabled: Bool
+    private var heldEnabled: HeldToggle?
+    /// How many saves have started, which names each save.
+    @State
+    private var saves = 0
     @State
     private var portText: String
     @State
@@ -64,9 +69,7 @@ struct AutomationSettingsContent: View {
         self.automation = automation
         self.configStore = configStore
         self.copyToPasteboard = copyToPasteboard
-        let mcp = configStore.config.mcp
-        _enabled = State(initialValue: mcp.enabled)
-        _portText = State(initialValue: String(mcp.port))
+        _portText = State(initialValue: String(configStore.config.mcp.port))
     }
 
     private var isWorking: Bool { mutationTask != nil }
@@ -148,12 +151,10 @@ struct AutomationSettingsContent: View {
     }
 
     private func syncFromConfig(_ mcp: BridgeMcpConfig) {
-        enabled = mcp.enabled
         portText = String(mcp.port)
     }
 
     private func setEnabled(_ target: Bool) {
-        enabled = target
         save(enabled: target)
     }
 
@@ -161,15 +162,27 @@ struct AutomationSettingsContent: View {
         save(enabled: enabled)
     }
 
+    /// Write `targetEnabled` and the typed port. The toggle draws
+    /// `targetEnabled` until this save returns, then the stored value, which
+    /// is the old one when the save failed.
     private func save(enabled targetEnabled: Bool) {
         mutationTask?.cancel()
         message = nil
+        saves += 1
+        let save = saves
+        heldEnabled = HeldToggle(value: targetEnabled, save: save)
         let automation = automation
         let portText = portText
         mutationTask = Task {
             defer { mutationTask = nil }
             do {
-                try await automation.setMcpServerConfig(targetEnabled, portText)
+                do {
+                    defer { releaseHeldEnabled(save: save) }
+                    try await automation.setMcpServerConfig(
+                        targetEnabled,
+                        portText
+                    )
+                }
                 status = try await automation.getMcpServerStatus()
             }
             catch is CancellationError {
@@ -279,6 +292,28 @@ struct AutomationSettingsContent: View {
                     )
                 }
             }
+        }
+    }
+}
+
+/// The MCP switch's value while a save writes it, named by that save.
+private struct HeldToggle {
+    let value: Bool
+    let save: Int
+}
+
+/// What the MCP switch draws.
+extension AutomationSettingsContent {
+    /// The value a save in flight writes, else the stored value.
+    private var enabled: Bool {
+        heldEnabled?.value ?? configStore.config.mcp.enabled
+    }
+
+    /// The save `save` returned: the switch draws the stored value, unless a
+    /// later save holds its own.
+    private func releaseHeldEnabled(save: Int) {
+        if heldEnabled?.save == save {
+            heldEnabled = nil
         }
     }
 }

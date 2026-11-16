@@ -5402,6 +5402,10 @@ token. A request that hits a bug is reported as one and answered with an
 internal error: HTTP 500, or, for a tool call, the call's own internal error
 in the response stream already under way.
 
+On macOS, Settings' Automation page turns the server on or off and sets its port.
+Its switch shows the new setting while bae saves it, and the stored setting once
+the save returns, so a save that fails puts the switch back.
+
 ---
 ## 9. API
 
