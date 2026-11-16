@@ -629,6 +629,7 @@ impl AppServices {
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::LibraryError>);
     delegate_view!(find_release_track => find_release_track(release_id: &str, track_id: &str) -> Option<bae_views::album_detail::TrackSearchResult>);
     delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
+    delegate_view!(search_top_playable => search_top_playable(query: &bae_views::LibrarySearchQuery) -> Option<bae_views::DbTopPlayable>);
     #[cfg(desktop)]
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), bae_library::LibraryError>);
     #[cfg(desktop)]

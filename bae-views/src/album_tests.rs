@@ -474,9 +474,10 @@ const ALBUM_NEEDLE_LAST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4001";
 const RELEASE_NEEDLE_LAST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4002";
 const TRACK_NEEDLE_SONG: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a4003";
 
-/// What a spoken "play" of a search plays is the search's own `top_playable`:
-/// the first track found, else the first track of the first album found, and
-/// nothing when the search finds neither, as the library's SQL orders them.
+/// What a spoken "play" of a search plays, read alone, is the search's own
+/// `top_playable`: the first track found, else the first track of the first
+/// album found, and nothing when the search finds neither, as the library's
+/// SQL orders them.
 #[tokio::test]
 async fn a_search_names_the_track_a_spoken_play_plays() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -499,12 +500,11 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
     let top = |query: &'static str| {
         let views = crate::LibraryViews::new(db.clone());
         async move {
-            views
-                .search_rows(query, 10)
-                .await
-                .unwrap()
-                .top_playable
-                .map(|top| (top.release_id, top.track_id))
+            let query = crate::LibrarySearchQuery::parse(query).unwrap();
+            let alone = views.search_top_playable(&query).await.unwrap();
+            let searched = views.search_rows(query.as_str(), 10).await.unwrap().top_playable;
+            assert_eq!(alone, searched, "the read alone plays what the search plays");
+            alone.map(|top| (top.release_id, top.track_id))
         }
     };
 

@@ -28,6 +28,17 @@ impl LibraryViews {
         Ok(crate::album_detail::SearchResults::from_raw(rows))
     }
 
+    /// The track a spoken "play" of `query` plays: the search's
+    /// `top_playable`. The method runs only the SQL statement that picks
+    /// that track, not the whole search.
+    pub async fn search_top_playable(
+        &self,
+        query: &crate::LibrarySearchQuery,
+    ) -> Result<Option<DbTopPlayable>, DbError> {
+        let pattern = search_pattern(query.as_str());
+        self.store.read(move |sql| top_playable_on(&sql, &pattern)).await
+    }
+
     /// The albums, tracks, composers and works whose title or name `query`
     /// finds, at most `limit` of each, as their rows read.
     pub async fn search_rows(
@@ -620,37 +631,7 @@ fn search_library_on(
         params![pattern, limit],
         row_to_work_summary,
     )?;
-    // The first track found, and failing that the first track of the first
-    // album found that has a track: one row, whichever kind of hit ranks first.
-    let top_playable: Option<DbTopPlayable> = sql
-        .query_row(
-            &format!(
-                r#"
-                SELECT release_id, track_id FROM (
-                    SELECT t.release_id AS release_id, t.id AS track_id, 0 AS kind,
-                           {track_key} AS found_key, t.id AS tie
-                    FROM tracks t
-                    WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
-                    UNION ALL
-                    SELECT a.release_id, (SELECT id FROM tracks
-                                          WHERE release_id = a.release_id
-                                          ORDER BY position, id LIMIT 1),
-                           1, {album_key}, a.id
-                    FROM (SELECT a.id, a.title, {primary_release} AS release_id
-                          FROM albums a WHERE {album_matches}) a
-                )
-                WHERE track_id IS NOT NULL
-                ORDER BY kind, found_key, tie LIMIT 1
-                "#,
-                track_key = crate::sort_key_sql("t.title"),
-                album_key = crate::sort_key_sql("a.title"),
-                primary_release = album_primary_release_sql(),
-                album_matches = album_matches_sql("a.id", "?1"),
-            ),
-            params![pattern],
-            |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
-        )
-        .optional()?;
+    let top_playable = top_playable_on(sql, pattern)?;
     // This query checks whether any album, track, artist, composer or work
     // matches, through the statements that list each kind, and stops at the
     // first match.
@@ -696,6 +677,44 @@ fn search_library_on(
         found,
         section_counts,
     })
+}
+
+/// The first track `pattern` finds, and failing that the first track of the
+/// first album it finds that has a track: one row, whichever kind of hit
+/// ranks first. A spoken "play" of a search plays it.
+fn top_playable_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+) -> Result<Option<DbTopPlayable>, DbError> {
+    Ok(sql
+        .query_row(
+            &format!(
+                r#"
+                SELECT release_id, track_id FROM (
+                    SELECT t.release_id AS release_id, t.id AS track_id, 0 AS kind,
+                           {track_key} AS found_key, t.id AS tie
+                    FROM tracks t
+                    WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
+                    UNION ALL
+                    SELECT a.release_id, (SELECT id FROM tracks
+                                          WHERE release_id = a.release_id
+                                          ORDER BY position, id LIMIT 1),
+                           1, {album_key}, a.id
+                    FROM (SELECT a.id, a.title, {primary_release} AS release_id
+                          FROM albums a WHERE {album_matches}) a
+                )
+                WHERE track_id IS NOT NULL
+                ORDER BY kind, found_key, tie LIMIT 1
+                "#,
+                track_key = crate::sort_key_sql("t.title"),
+                album_key = crate::sort_key_sql("a.title"),
+                primary_release = album_primary_release_sql(),
+                album_matches = album_matches_sql("a.id", "?1"),
+            ),
+            params![pattern],
+            |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
+        )
+        .optional()?)
 }
 
 /// The album `album_id`'s detail, showing the release `chosen_release_id`

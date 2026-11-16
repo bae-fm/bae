@@ -150,10 +150,9 @@ forward! { async this => {
         };
         Ok(this
             .services
-            .search_library(&query)
+            .search_top_playable(&query)
             .await
             .map_err(BridgeError::from)?
-            .top_playable
             .map(crate::types::BridgeTopPlayable::from_core))
     }
 
