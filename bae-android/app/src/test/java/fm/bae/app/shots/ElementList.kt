@@ -39,6 +39,9 @@ internal object ElementList {
         val density = root.layoutInfo.density.density
         val listed = mutableListOf<Listed>()
 
+        // Compose gives a node with no traversal index the index 0.
+        fun inTraversalOrder(nodes: List<SemanticsNode>) = nodes.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }
+
         fun visit(
             node: SemanticsNode,
             parent: Listed?,
@@ -46,9 +49,9 @@ internal object ElementList {
             val here = Listed(element(node, density), parent)
             listed.add(here)
             // A node's children read in their traversal order, as TalkBack reads them, not in the order they are drawn.
-            node.children.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }.forEach { visit(it, here) }
+            inTraversalOrder(node.children).forEach { visit(it, here) }
         }
-        root.children.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }.forEach { visit(it, null) }
+        inTraversalOrder(root.children).forEach { visit(it, null) }
         // The tree keeps a bare, childless node where an embedded view sits; its elements are read there, in
         // the view's order. A view with no such node is read where the reading order reaches its box.
         var from = 0
