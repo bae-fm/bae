@@ -40,7 +40,7 @@ impl AppHandle {
                 self.services.subscribe_upcoming_window(shuffled, window)
             }
             BridgeList::Storage { sort, filter, search } => self.services.subscribe_storage_window(
-                &BridgeList::storage_sort(sort),
+                &sort.into_core(),
                 filter.into_core(),
                 &search,
                 window,
@@ -118,14 +118,9 @@ impl AppHandle {
             BridgeList::Upcoming { shuffled } => {
                 self.services.subscribe_upcoming_position(shuffled, key)
             }
-            BridgeList::Storage { sort, filter, search } => {
-                self.services.subscribe_storage_position(
-                    &BridgeList::storage_sort(sort),
-                    filter.into_core(),
-                    &search,
-                    key,
-                )
-            }
+            BridgeList::Storage { sort, filter, search } => self
+                .services
+                .subscribe_storage_position(&sort.into_core(), filter.into_core(), &search, key),
             BridgeList::ArtistSearch { text } => {
                 self.services.subscribe_artist_search_position(BridgeList::search_query(&text), key)
             }

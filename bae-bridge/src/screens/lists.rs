@@ -80,14 +80,6 @@ impl BridgeList {
         sort.into_iter().map(crate::types::BridgeComposerSortCriterion::into_core).collect()
     }
 
-    /// Converts the Storage Manager's sort from the bridge type to core's
-    /// type.
-    pub(crate) fn storage_sort(
-        sort: crate::types::BridgeStorageSort,
-    ) -> bae_views::StorageSortCriterion {
-        sort.into_core()
-    }
-
     /// Parses a search's text, an artist picker's or library search's, into
     /// a search query, or returns None when the text is blank.
     pub(crate) fn search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {

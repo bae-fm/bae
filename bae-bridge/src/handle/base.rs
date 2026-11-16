@@ -244,7 +244,7 @@ forward! { async this => {
                 .map_err(BridgeError::from)?,
             BridgeList::Storage { sort, filter, search } => this
                 .services
-                .storage_key_at(&BridgeList::storage_sort(sort), filter.into_core(), &search, position)
+                .storage_key_at(&sort.into_core(), filter.into_core(), &search, position)
                 .await
                 .map_err(BridgeError::from)?,
         };
