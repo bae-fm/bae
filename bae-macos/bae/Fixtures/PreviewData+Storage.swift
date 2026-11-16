@@ -506,7 +506,7 @@ extension PreviewData {
                 // as the sole one.
                 .fixed(rows, answers: answers, sole: { $0.first })
             },
-            storageHoldsAll: Library.fixedStorageHoldsAll(true),
+            storageHoldsAll: Library.fixedStorageHoldsAll(),
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }

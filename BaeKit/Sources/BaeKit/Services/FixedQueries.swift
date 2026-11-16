@@ -132,15 +132,13 @@
 
     extension Library {
         /// Core's canned answer to whether the list holds every release
-        /// asked about, for shots and tests: `answer`, whatever the filter,
+        /// asked about, for shots and tests: it does, whatever the filter,
         /// search and releases.
-        public static func fixedStorageHoldsAll(
-            _ answer: Bool
-        )
+        public static func fixedStorageHoldsAll()
             -> @Sendable (BridgeStorageFilter, String, [String]) async throws
             -> Bool
         {
-            { _, _, _ in answer }
+            { _, _, _ in true }
         }
     }
 
@@ -151,7 +149,7 @@
         public static func fixed(
             _ rows: [BridgeStorageRow],
             answers: UnansweredCount,
-            sole: @escaping @Sendable (Set<String>) -> String? = { _ in nil }
+            sole: @escaping @Sendable (Set<String>) -> String?
         ) -> StorageSelectionQuery {
             let requests = FixedRequests<[String]>(answers: answers)
             requests.request([])

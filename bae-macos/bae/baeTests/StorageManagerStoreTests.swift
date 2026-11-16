@@ -60,7 +60,7 @@ private final class OpenedReads: @unchecked Sendable {
                     values: fixed.values
                 )
             },
-            storageHoldsAll: Library.fixedStorageHoldsAll(true),
+            storageHoldsAll: Library.fixedStorageHoldsAll(),
             storageQueues: {
                 .fixed(
                     BridgeStorageQueues(
