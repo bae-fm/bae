@@ -1,7 +1,7 @@
 //! Identify's states and progress as the JSON an MCP client reads: a field
 //! copy of core's `IdentifyStateView`. Not `Serialize` derives on core's
-//! types, because some of their leaves already serialize as the stored
-//! `failures_json` format, which differs from this one.
+//! types, because some of their leaves already serialize in a format of
+//! their own, which differs from this one.
 
 use super::*;
 

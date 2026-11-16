@@ -66,6 +66,7 @@ pub fn reference_cards(
         agreements,
         narrowed_out_count,
         decision: None,
+        failure_lines: Vec::new(),
     }
 }
 
@@ -83,6 +84,14 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         RunOutcome::Answered(_) => return VerdictCards::default(),
     };
     let mut cards = reference_cards(findings.clone(), ledger, text, track_count);
+    // The failures of a failed verdict that no cell of its ledger shows.
+    if let RunOutcome::Answered(TerminalVerdict::Failed { failures, ledger, .. }) = outcome {
+        cards.failure_lines = failures
+            .iter()
+            .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
+            .cloned()
+            .collect();
+    }
     // For a found verdict, fill in what it decides, by the rule the settle
     // picks by.
     if let RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, .. }) = outcome {

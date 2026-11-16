@@ -174,8 +174,10 @@ impl IdentifyRunView {
 
     /// Whether one of the ledger's cells shows `failure`: a lookup's cell
     /// that failed as it did. The lookup of an offered row's pressing and the
-    /// fetches applying the release a run picked have no cell.
-    fn shows(&self, failure: &super::IdentifyFailure) -> bool {
+    /// fetches applying the release a run picked have no cell. The reference
+    /// cards (`reference_cards_of`) state the rule the stored
+    /// cards' statement answers with.
+    pub(super) fn shows(&self, failure: &super::IdentifyFailure) -> bool {
         use super::IdentifyFailure;
         let failed_as = |lookup: &LookupView, failed: &LookupFailure| {
             let LookupView::Failed { failure } = lookup else {
@@ -316,6 +318,10 @@ pub struct VerdictCards {
     pub shared_album: Option<crate::SharedAlbum>,
     /// What a found verdict decides; `None` for every other shape.
     pub decision: Option<FoundDecision>,
+    /// The failures of a failed verdict that no cell of its ledger shows,
+    /// which a surface says in lines of their own beneath it, in the order
+    /// the run met them. Empty for every other shape.
+    pub failure_lines: Vec<super::IdentifyFailure>,
 }
 
 /// What a found verdict decides about its releases, as the view

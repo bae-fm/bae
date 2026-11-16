@@ -11,14 +11,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
         CHECK (kind IN ('running', 'found', 'not_found', 'manual_only', 'failed', 'error')),
     -- How many tracks the folder played when the verdict was reached.
     track_count   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
-    -- The lookup failures of a failed verdict, stored as JSON since no query
-    -- reads into them.
-    failures_json TEXT CHECK (
-        failures_json IS NULL
-        OR (json_valid(failures_json)
-            AND json_type(failures_json) = 'array'
-            AND json_array_length(failures_json) > 0)
-    ),
     -- How each clue stood in the ledger the run recorded as it ended, or as
     -- it stands for a run in flight, all NULL when it recorded none. The
     -- ledger's rows and lookups are import_candidate_lookup_value and the
@@ -65,7 +57,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
                AND catalog_step IS NOT 'scanning' AND isrc_step IS NOT 'reading'
                AND search_step IS NOT 'waiting')),
     CHECK ((kind IN ('not_found', 'error')) = (track_count IS NULL)),
-    CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
     CHECK ((kind = 'error') = (error_detail IS NOT NULL)),
     CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed')),
     CHECK ((disc_id_step IS NULL) = (barcode_step IS NULL)
@@ -75,6 +66,31 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     CHECK (kind <> 'error' OR disc_id_step IS NULL),
     CHECK ((search_step IS 'searched' OR search_step IS 'waiting') = (search_album IS NOT NULL)),
     CHECK ((search_album IS NULL) = (search_artist IS NULL))
+) STRICT;
+
+-- The lookups a failed verdict's run could not get answered, in the order the
+-- run met them (a failed verdict holds at least one): the disc ID, a barcode,
+-- a catalog number, the title search or the ISRCs, which the ledger lays out,
+-- or the lookup of an offered row's pressing or of the picked release's cover,
+-- which it does not. `catalog` is the catalog that failed, none for a disc ID
+-- or the ISRCs, which MusicBrainz alone answers; `failure` and
+-- `failure_status` are how it failed, as a ledger lookup stores it.
+CREATE TABLE IF NOT EXISTS import_candidate_verdict_failure (
+    content_hash   TEXT,
+    identify_run   INTEGER,
+    position       INTEGER NOT NULL CHECK (position >= 0),
+    lookup         TEXT NOT NULL
+        CHECK (lookup IN ('disc_id', 'barcode', 'catalog', 'search', 'isrc', 'pressing', 'cover')),
+    catalog        TEXT CHECK (catalog IN ('musicbrainz', 'discogs')),
+    failure        TEXT NOT NULL CHECK (failure IN ('network', 'provider', 'timeout')),
+    failure_status INTEGER,
+    UNIQUE (content_hash, position),
+    UNIQUE (identify_run, position),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    CHECK ((lookup IN ('disc_id', 'isrc')) = (catalog IS NULL)),
+    CHECK (failure_status IS NULL OR failure = 'provider'),
+    CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
 
 -- What a verdict row decides about its releases, computed from its stored

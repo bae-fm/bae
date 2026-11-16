@@ -92,6 +92,7 @@ mod seed_rows;
 mod session_rows;
 mod signal_rows;
 mod standing_rows;
+mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
 

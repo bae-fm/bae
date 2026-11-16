@@ -19,6 +19,7 @@ use super::ledger_rows::{
     StoredLedger,
 };
 use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
+use super::verdict_failure_rows::{failures_of, store_failures, verdict_failures_sql};
 use super::verdict_layout::{verdict_text_on, VerdictLayout};
 use super::*;
 use bae_catalogs::search::MetadataResult;
@@ -181,17 +182,13 @@ pub(super) fn store_outcome(
                 MediumConflict::NotCdAudio => "not_cd_audio",
             }
         });
-    let failures_json = match outcome {
+    let failures: &[IdentifyFailure] = match outcome {
         Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
             // A run fails only on a lookup that failed.
             assert!(!failures.is_empty(), "failed verdict for {owner} contains no failed lookup");
-            Some(
-                serde_json::to_string(failures).map_err(|error| {
-                    DbError::encode(format!("identify failure for {owner}"), error)
-                })?,
-            )
+            failures
         }
-        Outcome::Running { .. } | Outcome::Settled(_) => None,
+        Outcome::Running { .. } | Outcome::Settled(_) => &[],
     };
     let error_detail = match outcome {
         Outcome::Settled(TerminalVerdict::Error { failure }) => Some(failure.detail.as_str()),
@@ -201,13 +198,13 @@ pub(super) fn store_outcome(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_verdict \
-                 (content_hash, identify_run, kind, track_count, failures_json, error_detail, \
+                 (content_hash, identify_run, kind, track_count, error_detail, \
                   disc_id_step, barcode_step, catalog_step, isrc_step, search_step, \
                   search_album, search_artist, medium_conflict, kept_own_draft) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT ({column}) DO UPDATE SET \
                  kind = excluded.kind, track_count = excluded.track_count, \
-                 failures_json = excluded.failures_json, error_detail = excluded.error_detail, \
+                 error_detail = excluded.error_detail, \
                  disc_id_step = excluded.disc_id_step, barcode_step = excluded.barcode_step, \
                  catalog_step = excluded.catalog_step, isrc_step = excluded.isrc_step, \
                  search_step = excluded.search_step, search_album = excluded.search_album, \
@@ -220,7 +217,6 @@ pub(super) fn store_outcome(
             owner.run(),
             kind,
             track_count,
-            failures_json,
             error_detail,
             steps.disc_id,
             steps.barcode,
@@ -233,6 +229,7 @@ pub(super) fn store_outcome(
             kept_own_draft,
         ],
     )?;
+    store_failures(sql, owner, failures)?;
     // The ledger's rows link the match rows, and the rows under each match
     // name what the match row below may change (its cover's address, its
     // media's kind), so the previous verdict's go first. The import list
@@ -364,7 +361,8 @@ pub(super) struct VerdictRow {
     pub(super) content_hash: String,
     pub(super) kind: String,
     pub(super) track_count: Option<i64>,
-    pub(super) failures_json: Option<String>,
+    /// The verdict's failures, a JSON array of [`verdict_failures_sql`].
+    pub(super) failures: String,
     pub(super) error_detail: Option<String>,
     pub(super) ledger: StoredLedger,
     pub(super) medium_conflict: Option<MediumConflict>,
@@ -382,7 +380,7 @@ pub(super) fn verdict_columns() -> ColumnList {
         ),
         ("verdict_kind", "verdict.kind".to_string()),
         ("verdict_track_count", "verdict.track_count".to_string()),
-        ("verdict_failures_json", "verdict.failures_json".to_string()),
+        ("verdict_failures", verdict_failures_sql("verdict")),
         ("verdict_error_detail", "verdict.error_detail".to_string()),
         ("verdict_medium_conflict", "verdict.medium_conflict".to_string()),
         ("verdict_kept_own_draft", "verdict.kept_own_draft".to_string()),
@@ -401,7 +399,7 @@ pub(super) fn read_verdict_row(row: &impl Columns) -> Result<Option<VerdictRow>,
         content_hash,
         kind: row.get("verdict_kind")?,
         track_count: row.get("verdict_track_count")?,
-        failures_json: row.get("verdict_failures_json")?,
+        failures: row.get("verdict_failures")?,
         error_detail: row.get("verdict_error_detail")?,
         ledger: read_ledger(row)?,
         medium_conflict: medium_conflict_of(row.get("verdict_medium_conflict")?)?,
@@ -439,12 +437,20 @@ pub(super) fn outcome_of(
         content_hash,
         kind,
         track_count,
-        failures_json,
+        failures,
         error_detail,
         ledger,
         medium_conflict,
         kept_own_draft,
     } = row;
+    let failures = failures_of(&failures)?;
+    // Only a failed verdict holds failures, and it holds at least one.
+    if (kind == "failed") == failures.is_empty() {
+        return Err(DbError::unreadable(
+            format!("the failures of verdict {kind} for {content_hash}"),
+            &failures,
+        ));
+    }
     // Only a typed search's catalog returns a release; a verdict-shaped
     // owner's rows are listed or unlisted.
     if let Some(returned) = found.rows.iter().find(|row| matches!(row.listing, Listing::Returned)) {
@@ -538,33 +544,12 @@ pub(super) fn outcome_of(
             no_findings(&found)?;
             TerminalVerdict::ManualOnly { track_count: count_of()?, ledger }
         }
-        "failed" => {
-            let json = failures_json.ok_or_else(|| {
-                DbError::unreadable(
-                    format!("import_candidate_verdict.failures_json of failed {content_hash}"),
-                    None::<String>,
-                )
-            })?;
-            let failures: Vec<IdentifyFailure> = serde_json::from_str(&json).map_err(|error| {
-                DbError::unreadable_json(
-                    format!("identify failure for {content_hash}"),
-                    &json,
-                    error,
-                )
-            })?;
-            if failures.is_empty() {
-                return Err(DbError::unreadable(
-                    format!("import_candidate_verdict.failures_json of failed {content_hash}"),
-                    &json,
-                ));
-            }
-            TerminalVerdict::Failed {
-                failures,
-                findings: findings_of(found),
-                track_count: count_of()?,
-                ledger,
-            }
-        }
+        "failed" => TerminalVerdict::Failed {
+            failures,
+            findings: findings_of(found),
+            track_count: count_of()?,
+            ledger,
+        },
         "error" => {
             no_findings(&found)?;
             let detail = error_detail.ok_or_else(|| {

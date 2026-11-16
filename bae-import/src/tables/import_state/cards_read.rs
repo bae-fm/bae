@@ -281,10 +281,11 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
 /// joined as `verdict` (a candidate's verdict, or a run's): the cards of its
 /// offered and set-aside releases with what the folder's text agrees with
 /// about each row, how many rows the agreement check set aside, whether the
-/// offered rows are several pressings of one album, and the check against the
+/// offered rows are several pressings of one album, the check against the
 /// folder and the release the verdict decides on
-/// (`import_candidate_verdict_decision`). [`verdict_cards_of`] reads the JSON
-/// object the subquery returns.
+/// (`import_candidate_verdict_decision`), and the failures no cell of its
+/// ledger shows. [`verdict_cards_of`] reads the JSON object the subquery
+/// returns.
 pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     let owner = format!(
         "{{table}}.content_hash IS {verdict}.content_hash \
@@ -331,6 +332,7 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                                 AND decision.identify_run IS {verdict}.identify_run \
                                 AND (decision.declined IS NOT NULL \
                                      OR decision.unattended_pick IS NOT NULL))), \
+            'failure_lines', json({failure_lines}), \
             'narrowed_out_count', (SELECT COUNT(DISTINCT found.pressing) \
                                    FROM import_candidate_match AS found \
                                    WHERE {found} AND found.listing = 'narrowed_out'), \
@@ -350,7 +352,8 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                                     FROM (SELECT source, MIN(source_group_id) AS group_id \
                                           FROM offered WHERE source_group_id IS NOT NULL \
                                           GROUP BY source) AS album))) END) \
-           FROM listed_cards)"
+           FROM listed_cards)",
+        failure_lines = super::verdict_failure_rows::failure_lines_sql(verdict),
     )
 }
 
@@ -387,6 +390,9 @@ pub(super) struct StoredVerdictCards {
     /// other kind of verdict, whose decision row declines nothing and picks
     /// nothing.
     decision: Option<StoredDecision>,
+    /// The failures no cell of the ledger shows, as
+    /// [`super::verdict_failure_rows::failure_lines_sql`] answers them.
+    failure_lines: Vec<super::verdict_failure_rows::StoredFailure>,
 }
 
 /// A found verdict's row of `import_candidate_verdict_decision`: the release
@@ -454,7 +460,7 @@ impl StoredSharedAlbum {
 /// The cards of a verdict that [`verdict_cards_sql`] answered, with each
 /// row's agreements and notes.
 pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
-    let StoredVerdictCards { cards, narrowed_out_count, shared_album, decision } =
+    let StoredVerdictCards { cards, narrowed_out_count, shared_album, decision, failure_lines } =
         serde_json::from_str(json)
             .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
     let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
@@ -497,6 +503,10 @@ pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
         narrowed_out_count,
         shared_album: shared_album.map(StoredSharedAlbum::shared_album).transpose()?,
         decision: decision.map(StoredDecision::decision).transpose()?,
+        failure_lines: failure_lines
+            .into_iter()
+            .map(super::verdict_failure_rows::StoredFailure::failure)
+            .collect::<Result<_, _>>()?,
     })
 }
 

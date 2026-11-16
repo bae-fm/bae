@@ -128,24 +128,18 @@ impl IdentifyStateView {
                 IdentifyStateView::Error { failure }
             }
             RunOutcome::Answered(TerminalVerdict::Failed {
-                failures,
+                failures: _,
                 findings: _,
                 track_count: _,
                 ledger,
-            }) => {
-                let failure_lines = failures
-                    .into_iter()
-                    .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
-                    .collect();
-                IdentifyStateView::Failed {
-                    run: ledger,
-                    failure_lines,
-                    groups: cards.groups,
-                    agreements: cards.agreements,
-                    narrowed_out_count: cards.narrowed_out_count,
-                    offers_shared_album: cards.shared_album.is_some(),
-                }
-            }
+            }) => IdentifyStateView::Failed {
+                run: ledger,
+                failure_lines: cards.failure_lines,
+                groups: cards.groups,
+                agreements: cards.agreements,
+                narrowed_out_count: cards.narrowed_out_count,
+                offers_shared_album: cards.shared_album.is_some(),
+            },
         }
     }
 }
