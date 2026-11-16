@@ -69,20 +69,22 @@ public struct SecondaryButtonStyle: ButtonStyle {
                 .frame(height: height)
                 .background(fill, in: shape)
                 .overlay {
-                    if configuration.isPressed {
-                        shape.fill(Theme.pressed)
-                    }
-                    else if hovering && enabled {
-                        shape.fill(Theme.hover)
-                    }
+                    shape.fill(Theme.pressed)
+                        .opacity(configuration.isPressed ? 1 : 0)
                 }
                 .overlay {
-                    if !dark {
-                        shape.stroke(
-                            SecondaryButtonStyle.lightEdge,
-                            lineWidth: 0.5
+                    shape.fill(Theme.hover)
+                        .opacity(
+                            !configuration.isPressed && hovering && enabled
+                                ? 1 : 0
                         )
-                    }
+                }
+                .overlay {
+                    shape.stroke(
+                        SecondaryButtonStyle.lightEdge,
+                        lineWidth: 0.5
+                    )
+                    .opacity(dark ? 0 : 1)
                 }
                 .contentShape(shape)
                 .opacity(enabled ? 1 : ThemeOpacity.off)
