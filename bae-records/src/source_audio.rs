@@ -5,8 +5,15 @@
 //! layout match. Bitrate is not part of it: a variable-bitrate encode states a
 //! different average for every file, and those files are one format. A shared
 //! lossy format states the release's average bitrate instead.
+//!
+//! One SQL statement, [`source_audio_summary_sql`], computes the summary for
+//! every surface: the library's album detail and release editor read it over
+//! a release's stored files, and the import pane reads it over a scanned
+//! folder's files.
 
+use bae_store::SchemaFunction;
 use bae_types::audio_format::AudioFormat;
+use bae_util::content_type::ContentType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SourceAudioLayout {
@@ -20,18 +27,6 @@ pub struct SourceAudioDescriptor {
     pub format: AudioFormat,
 }
 
-impl SourceAudioDescriptor {
-    /// Whether `other` is the same format: everything but the bitrate.
-    fn shares_format(&self, other: &Self) -> bool {
-        let (a, b) = (&self.format, &other.format);
-        self.layout == other.layout
-            && a.codec == b.codec
-            && a.sample_rate_hz == b.sample_rate_hz
-            && a.bits_per_sample == b.bits_per_sample
-            && a.channels == b.channels
-    }
-}
-
 /// The scan facts persisted with one physical release file.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SourceAudioFile {
@@ -42,26 +37,6 @@ pub struct SourceAudioFile {
     pub content_type: bae_util::content_type::ContentType,
     /// The container the file's bytes are in, as the probe read it.
     pub container: bae_util::audio_container::AudioContainer,
-    pub duration_ms: u64,
-}
-
-impl SourceAudioFile {
-    pub fn descriptor(&self) -> Option<SourceAudioDescriptor> {
-        Some(SourceAudioDescriptor { layout: self.layout?, format: self.format.clone() })
-    }
-
-    /// This file as one the release's summary is read from, when it
-    /// contributes tracks.
-    pub fn summarized(&self) -> Option<SummarizedAudio> {
-        Some(SummarizedAudio { descriptor: self.descriptor()?, duration_ms: self.duration_ms })
-    }
-}
-
-/// One file a release's summary is read from: its format and how long it
-/// plays, which weighs its bitrate in the release's average.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SummarizedAudio {
-    pub descriptor: SourceAudioDescriptor,
     pub duration_ms: u64,
 }
 
@@ -99,70 +74,159 @@ pub enum SourceAudioDifference {
     },
 }
 
-impl SourceAudioSummary {
-    pub fn from_files(files: impl IntoIterator<Item = SummarizedAudio>) -> Option<Self> {
-        let files: Vec<SummarizedAudio> = files.into_iter().collect();
-        let first = files.first()?;
-        if files.iter().all(|file| file.descriptor.shares_format(&first.descriptor)) {
-            let mut descriptor = first.descriptor.clone();
-            descriptor.format.bitrate_kbps = average_bitrate_kbps(&files);
-            return Some(Self::Uniform { descriptor });
+/// `bae_audio_codec`: the name bae shows for the codec of the audio content
+/// type that its one argument names, as stored.
+pub(crate) static AUDIO_CODEC: SchemaFunction = SchemaFunction {
+    name: "bae_audio_codec",
+    arguments: 1,
+    version: 1,
+    compute: |arguments| {
+        let content_type = arguments.get::<String>(0)?;
+        Ok(rusqlite::types::Value::Text(
+            ContentType::from_mime(&content_type).display_name().to_string(),
+        ))
+    },
+};
+
+/// An SQL expression for the summary of the audio files that the statement
+/// `audio` selects: a JSON object that [`SourceAudioSummary::deserialize_stored`]
+/// reads, or NULL when no file counts.
+///
+/// `audio` returns one row for each file, with the columns `position` (the
+/// order the files are read in), `layout` (`'file'` or `'cue'`, NULL for a
+/// file the tracklist leaves out), `content_type`, `sample_rate_hz`,
+/// `bits_per_sample`, `bitrate_kbps`, `channels` and `duration_ms`. The
+/// summary leaves out a file with no layout and a file whose content type,
+/// sample rate or channels the scan did not read.
+///
+/// When every file has the same layout, codec, sample rate, bit depth and
+/// channels, the summary is that format, with the average of the files'
+/// bitrates, each file's weighted by its duration (each file counts once when
+/// no file states a duration). Otherwise the summary lists each fact the files
+/// disagree on, with its values in the order the files first show them.
+pub fn source_audio_summary_sql(audio: &str) -> String {
+    let differing = |column: &str| {
+        format!(
+            "json((SELECT json_group_array({column} ORDER BY first) \
+                   FROM (SELECT {column}, MIN(position) AS first FROM audio \
+                         WHERE {column} IS NOT NULL GROUP BY {column}) \
+                   HAVING COUNT(*) >= 2))"
+        )
+    };
+    format!(
+        "json((WITH audio AS ( \
+              SELECT position, layout, bae_audio_codec(content_type) AS codec, \
+                     sample_rate_hz, bits_per_sample, bitrate_kbps, channels, \
+                     COALESCE(duration_ms, 0) AS duration_ms \
+              FROM ({audio}) \
+              WHERE layout IS NOT NULL AND content_type IS NOT NULL \
+                AND sample_rate_hz IS NOT NULL AND channels IS NOT NULL), \
+          rated AS (SELECT bitrate_kbps, duration_ms FROM audio WHERE bitrate_kbps IS NOT NULL) \
+          SELECT CASE WHEN EXISTS (SELECT 1 FROM audio) THEN json_object( \
+              'uniform', (SELECT COUNT(*) FROM (SELECT DISTINCT layout, codec, sample_rate_hz, \
+                                                       bits_per_sample, channels \
+                                                FROM audio)) = 1, \
+              'first', json((SELECT json_object('layout', layout, 'codec', codec, \
+                                                'sample_rate_hz', sample_rate_hz, \
+                                                'bits_per_sample', bits_per_sample, \
+                                                'channels', channels) \
+                             FROM audio ORDER BY position LIMIT 1)), \
+              'bitrate_kbps', \
+                  (SELECT CASE WHEN COUNT(*) = 0 THEN NULL \
+                               WHEN SUM(duration_ms) > 0 \
+                               THEN (SUM(bitrate_kbps * duration_ms) + SUM(duration_ms) / 2) \
+                                    / SUM(duration_ms) \
+                               ELSE (SUM(bitrate_kbps) + COUNT(*) / 2) / COUNT(*) END \
+                   FROM rated), \
+              'layouts', {layouts}, 'codecs', {codecs}, 'sample_rates_hz', {rates}, \
+              'bits_per_sample', {bits}, 'channels', {channels}) END))",
+        layouts = differing("layout"),
+        codecs = differing("codec"),
+        rates = differing("sample_rate_hz"),
+        bits = differing("bits_per_sample"),
+        channels = differing("channels"),
+    )
+}
+
+/// The JSON object [`source_audio_summary_sql`] computes.
+#[derive(serde::Deserialize)]
+struct StoredSummary {
+    uniform: i64,
+    first: StoredFormat,
+    bitrate_kbps: Option<i64>,
+    layouts: Option<Vec<String>>,
+    codecs: Option<Vec<String>>,
+    sample_rates_hz: Option<Vec<i64>>,
+    bits_per_sample: Option<Vec<i64>>,
+    channels: Option<Vec<i64>>,
+}
+
+#[derive(serde::Deserialize)]
+struct StoredFormat {
+    layout: String,
+    codec: String,
+    sample_rate_hz: i64,
+    bits_per_sample: Option<i64>,
+    channels: i64,
+}
+
+fn stored_layout(stored: &str) -> Result<SourceAudioLayout, String> {
+    match stored {
+        "file" => Ok(SourceAudioLayout::File),
+        "cue" => Ok(SourceAudioLayout::Cue),
+        other => Err(format!("{other:?} is no audio layout")),
+    }
+}
+
+impl StoredSummary {
+    fn summary(self) -> Result<SourceAudioSummary, String> {
+        if self.uniform != 0 {
+            return Ok(SourceAudioSummary::Uniform {
+                descriptor: SourceAudioDescriptor {
+                    layout: stored_layout(&self.first.layout)?,
+                    format: AudioFormat {
+                        codec: self.first.codec,
+                        sample_rate_hz: self.first.sample_rate_hz,
+                        bits_per_sample: self.first.bits_per_sample,
+                        bitrate_kbps: self.bitrate_kbps,
+                        channels: self.first.channels,
+                    },
+                },
+            });
         }
-        let formats: Vec<&AudioFormat> = files.iter().map(|file| &file.descriptor.format).collect();
+        let layouts = self
+            .layouts
+            .map(|layouts| layouts.iter().map(|stored| stored_layout(stored)).collect())
+            .transpose()?
+            .map(|layouts| SourceAudioDifference::Layout { layouts });
         let differences = [
-            differing(files.iter().map(|file| Some(file.descriptor.layout)))
-                .map(|layouts| SourceAudioDifference::Layout { layouts }),
-            differing(formats.iter().map(|format| Some(format.codec.clone())))
-                .map(|codecs| SourceAudioDifference::Codec { codecs }),
-            differing(formats.iter().map(|format| Some(format.sample_rate_hz)))
+            layouts,
+            self.codecs.map(|codecs| SourceAudioDifference::Codec { codecs }),
+            self.sample_rates_hz
                 .map(|sample_rates_hz| SourceAudioDifference::SampleRate { sample_rates_hz }),
-            differing(formats.iter().map(|format| format.bits_per_sample))
+            self.bits_per_sample
                 .map(|bits_per_sample| SourceAudioDifference::BitDepth { bits_per_sample }),
-            differing(formats.iter().map(|format| Some(format.channels)))
-                .map(|channels| SourceAudioDifference::Channels { channels }),
+            self.channels.map(|channels| SourceAudioDifference::Channels { channels }),
         ]
         .into_iter()
         .flatten()
         .collect();
-        Some(Self::Mixed { differences })
+        Ok(SourceAudioSummary::Mixed { differences })
     }
 }
 
-/// The distinct present values, first seen first, when there are two or more.
-fn differing<T: PartialEq>(values: impl Iterator<Item = Option<T>>) -> Option<Vec<T>> {
-    let mut distinct = Vec::new();
-    for value in values.flatten() {
-        if !distinct.contains(&value) {
-            distinct.push(value);
-        }
+impl SourceAudioSummary {
+    /// Reads the JSON object that [`source_audio_summary_sql`] computes, or
+    /// `None` from its NULL; for a `#[serde(deserialize_with)]` field.
+    pub fn deserialize_stored<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Self>, D::Error> {
+        use serde::Deserialize;
+        Option::<StoredSummary>::deserialize(deserializer)?
+            .map(StoredSummary::summary)
+            .transpose()
+            .map_err(serde::de::Error::custom)
     }
-    (distinct.len() >= 2).then_some(distinct)
-}
-
-/// The files' bitrate, each file's weighted by how long it plays, or `None`
-/// for lossless files, which state none. Files that report no length count
-/// equally, since there is nothing to weigh them by.
-fn average_bitrate_kbps(files: &[SummarizedAudio]) -> Option<i64> {
-    let rated: Vec<(i64, u64)> = files
-        .iter()
-        .filter_map(|file| Some((file.descriptor.format.bitrate_kbps?, file.duration_ms)))
-        .collect();
-    if rated.is_empty() {
-        return None;
-    }
-    let played: u64 = rated.iter().map(|(_, duration_ms)| duration_ms).sum();
-    let (weighted, weight) = if played > 0 {
-        (
-            rated
-                .iter()
-                .map(|(kbps, duration_ms)| i128::from(*kbps) * i128::from(*duration_ms))
-                .sum::<i128>(),
-            i128::from(played),
-        )
-    } else {
-        (rated.iter().map(|(kbps, _)| i128::from(*kbps)).sum(), rated.len() as i128)
-    };
-    Some(((weighted + weight / 2) / weight) as i64)
 }
 
 #[cfg(test)]

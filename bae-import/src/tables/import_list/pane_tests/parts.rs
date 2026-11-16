@@ -206,8 +206,8 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
     assert_eq!(files.files.len(), 7);
 }
 
-/// A folder whose audio files disagree is summarized by each fact they
-/// disagree on, as the scan's own summary of the files states it.
+/// The pane summarizes a folder whose audio files disagree by naming each
+/// fact they disagree on, with the values in the order the files show them.
 #[tokio::test]
 async fn the_pane_summarizes_audio_files_that_disagree() {
     use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
@@ -256,9 +256,18 @@ async fn the_pane_summarizes_audio_files_that_disagree() {
         .expect("the scanned candidate has a pane")
         .resolve();
 
-    let summary = candidate.files.source_audio_summary();
-    assert!(matches!(summary, Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })));
-    assert_eq!(detail.files.source_audio, summary);
+    use bae_records::source_audio::{SourceAudioDifference, SourceAudioSummary};
+    assert_eq!(
+        detail.files.source_audio,
+        Some(SourceAudioSummary::Mixed {
+            differences: vec![
+                SourceAudioDifference::Codec {
+                    codecs: vec!["FLAC".to_string(), "MP3".to_string()]
+                },
+                SourceAudioDifference::SampleRate { sample_rates_hz: vec![44_100, 48_000] },
+            ],
+        })
+    );
 }
 
 /// The pane says which library albums hold the linked release: the album

@@ -202,12 +202,9 @@ fn scanner_recognizes_cue_alac_pair() {
     let bound = candidate.files.bound_sheets();
     assert_eq!(bound.len(), 1, "the sheet binds to the .m4a it names");
     assert_eq!(bound[0].sheet.tracks.len(), 3, "three tracks in the CUE sheet");
-    let summary = candidate.files.source_audio_summary().expect("source audio");
-    let bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
-        panic!("expected uniform source audio")
-    };
-    assert_eq!(descriptor.layout, bae_records::source_audio::SourceAudioLayout::Cue);
-    assert_eq!(descriptor.format.codec, "ALAC");
+    assert_eq!(bound[0].audio_files.len(), 1, "the sheet carves the one .m4a");
+    let audio = bound[0].audio_files[0].1.source_audio.as_ref().expect("source audio");
+    assert_eq!(audio.format.codec, "ALAC");
 }
 
 // ─────────────────────────────── Import CUE+ALAC ────────────────────────────

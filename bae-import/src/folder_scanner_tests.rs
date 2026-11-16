@@ -685,20 +685,34 @@ pub(super) fn make_cue_content(flac_filename: &str, title: &str) -> String {
     )
 }
 
-pub(super) fn assert_uniform_source_audio(
+/// Asserts that the scan read every audio file of `files` as `codec`, and
+/// laid each out as `layout`: as a CUE image a carving sheet slices, or as a
+/// file of its own.
+pub(super) fn assert_audio_layout_and_codec(
     files: &CategorizedFiles,
     layout: bae_records::source_audio::SourceAudioLayout,
     codec: &str,
 ) {
-    let summary = files.source_audio_summary().expect("candidate has source audio");
-    match summary {
-        bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } => {
-            assert_eq!(descriptor.layout, layout);
-            assert_eq!(descriptor.format.codec, codec);
-        }
-        bae_records::source_audio::SourceAudioSummary::Mixed { differences } => {
-            panic!("expected uniform source audio, got {differences:?}")
-        }
+    let carved: Vec<String> = files
+        .carving_sheets()
+        .into_iter()
+        .flat_map(|sheet| sheet.audio_files)
+        .map(|(_, audio)| audio.relative_path.clone())
+        .collect();
+    let audio: Vec<_> = files.audio().collect();
+    assert!(!audio.is_empty(), "candidate has audio");
+    for file in audio {
+        let read = file
+            .source_audio
+            .as_ref()
+            .unwrap_or_else(|| panic!("the scan read no audio format of {}", file.relative_path));
+        assert_eq!(read.format.codec, codec, "the codec of {}", file.relative_path);
+        let file_layout = if carved.contains(&file.relative_path) {
+            bae_records::source_audio::SourceAudioLayout::Cue
+        } else {
+            bae_records::source_audio::SourceAudioLayout::File
+        };
+        assert_eq!(file_layout, layout, "the layout of {}", file.relative_path);
     }
 }
 

@@ -139,6 +139,7 @@ fn one_track(
             has_others: false,
             count: 0,
             total_size: 0,
+            source_audio: None,
         },
         records: Vec::new(),
         has_records: false,

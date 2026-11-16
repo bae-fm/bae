@@ -186,8 +186,8 @@ fn performs_works_sql(release: &str) -> String {
 /// The release `release` (an SQL expression naming its id)'s files, and among
 /// them the images, the images bae can make a cover from, and the files no
 /// track plays from, each in the release's file order, with the number of
-/// files and their total size, as one JSON object for
-/// [`release_files_column`].
+/// files, their total size and the summary of their audio, as one JSON object
+/// for [`release_files_column`].
 fn release_files_json_sql(release: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
@@ -205,7 +205,8 @@ fn release_files_json_sql(release: &str) -> String {
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
               'has_others', COALESCE(SUM(listed.source_audio_layout IS NULL), 0) > 0, \
-              'count', COUNT(*), 'total_size', COALESCE(SUM(listed.size), 0)) \
+              'count', COUNT(*), 'total_size', COALESCE(SUM(listed.size), 0), \
+              'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
                        coven.size AS size, {file_json} AS file_json \
                 FROM release_files AS f \
@@ -216,6 +217,18 @@ fn release_files_json_sql(release: &str) -> String {
         covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
         others = list("listed.source_audio_layout IS NULL"),
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
+        source_audio = crate::source_audio::source_audio_summary_sql(&format!(
+            "SELECT ROW_NUMBER() OVER (ORDER BY f.original_filename COLLATE natural_order, \
+                                                f.id) AS position, \
+                    f.source_audio_layout AS layout, \
+                    f.source_audio_content_type AS content_type, \
+                    f.source_audio_sample_rate_hz AS sample_rate_hz, \
+                    f.source_audio_bits_per_sample AS bits_per_sample, \
+                    f.source_audio_bitrate_kbps AS bitrate_kbps, \
+                    f.source_audio_channels AS channels, \
+                    f.source_audio_duration_ms AS duration_ms \
+             FROM release_files AS f WHERE f.release_id = {release}"
+        )),
         release = release,
     )
 }
@@ -231,6 +244,8 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         has_others: i64,
         count: i64,
         total_size: u64,
+        #[serde(deserialize_with = "crate::source_audio::SourceAudioSummary::deserialize_stored")]
+        source_audio: Option<crate::source_audio::SourceAudioSummary>,
     }
     let stored: Stored = bae_store::read::json_column(row, column)?;
     let files = |columns: Vec<FileColumns>| {
@@ -251,6 +266,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         has_others: stored.has_others != 0,
         count: stored.count,
         total_size: stored.total_size,
+        source_audio: stored.source_audio,
     })
 }
 

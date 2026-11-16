@@ -195,6 +195,9 @@ pub struct DbReleaseFiles {
     pub has_others: bool,
     pub count: i64,
     pub total_size: u64,
+    /// What the release's audio is, summarized over the audio files its
+    /// tracklist plays (`source_audio_summary_sql`); `None` when it has none.
+    pub source_audio: Option<crate::source_audio::SourceAudioSummary>,
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

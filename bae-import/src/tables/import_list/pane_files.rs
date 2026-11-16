@@ -7,9 +7,7 @@ use super::*;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FileVersion;
 use crate::{PaneFile, PaneFileRole, PaneFiles};
-use bae_records::source_audio::{
-    SourceAudioDescriptor, SourceAudioDifference, SourceAudioLayout, SourceAudioSummary,
-};
+use bae_records::source_audio::{source_audio_summary_sql, SourceAudioSummary};
 use bae_store::SchemaFunction;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
@@ -32,13 +30,13 @@ pub(super) static SUPPORTED_COVER: SchemaFunction = SchemaFunction {
 /// The pane's files of the candidate the statement binds as `:key`, as one
 /// JSON document.
 ///
-/// An audio file plays as a CUE image when a sheet that lays out the folder's
-/// tracks (bound, on a disc, with an audio track) is bound to it. The audio
-/// summary is one format when every audio file has the same layout, codec,
-/// rate, bit depth and channels, with the bitrate a lossy format states as
-/// each file's weighed by how long it plays; otherwise it names each fact the
-/// files disagree on, its values in the order the files first show them.
-const PANE_FILES_SQL: &str = "
+/// An audio file plays as a CUE image when the scan bound it to a sheet that
+/// lays out the folder's tracks: a sheet whose binding resolved, which is on a
+/// disc and has an audio track. The audio summary is
+/// [`source_audio_summary_sql`] over the folder's audio files.
+fn pane_files_sql() -> String {
+    format!(
+        "
 WITH
 candidate AS (
     SELECT watched_folder_path, path FROM scan_candidate WHERE path = :key LIMIT 1
@@ -80,17 +78,7 @@ entries AS (
                                     THEN COALESCE(sheet_tracks.count, 0) END,
                'cover', f.role = 'artwork' AND bae_supported_cover(f.relative_path)) AS json
     FROM f LEFT JOIN sheet_tracks ON sheet_tracks.relative_path = f.relative_path
-),
-audio AS (
-    SELECT f.position,
-           CASE WHEN carved.relative_path IS NULL THEN 'file' ELSE 'cue' END AS layout,
-           f.audio_content_type AS content_type, f.audio_sample_rate_hz AS rate,
-           f.audio_bits_per_sample AS bits, f.audio_bitrate_kbps AS kbps,
-           f.audio_channels AS channels, f.audio_duration_ms AS ms
-    FROM f LEFT JOIN carved ON carved.relative_path = f.relative_path
-    WHERE f.role = 'audio'
-),
-rated AS (SELECT kbps, ms FROM audio WHERE kbps IS NOT NULL)
+)
 SELECT json_object(
     'files', json((SELECT json_group_array(json(json) ORDER BY position) FROM entries)),
     'cover_files', json((SELECT json_group_array(json(json) ORDER BY position)
@@ -101,34 +89,20 @@ SELECT json_object(
                     JOIN candidate
                         ON unit.watched_folder_path = candidate.watched_folder_path
                        AND unit.candidate_path = candidate.path),
-    'source_audio', CASE WHEN EXISTS (SELECT 1 FROM audio) THEN json_object(
-        'uniform', (SELECT COUNT(*) FROM (SELECT DISTINCT layout, content_type, rate, bits,
-                                                          channels FROM audio)) = 1,
-        'first', json((SELECT json_object('layout', layout, 'content_type', content_type,
-                                          'sample_rate_hz', rate, 'bits_per_sample', bits,
-                                          'channels', channels)
-                       FROM audio ORDER BY position LIMIT 1)),
-        'bitrate_kbps', (SELECT CASE WHEN COUNT(*) = 0 THEN NULL
-                                     WHEN SUM(ms) > 0 THEN (SUM(kbps * ms) + SUM(ms) / 2) / SUM(ms)
-                                     ELSE (SUM(kbps) + COUNT(*) / 2) / COUNT(*) END
-                         FROM rated),
-        'layouts', json((SELECT CASE WHEN COUNT(*) >= 2 THEN json_group_array(layout ORDER BY first) END
-                    FROM (SELECT layout, MIN(position) AS first FROM audio GROUP BY layout))),
-        'content_types', json((SELECT CASE WHEN COUNT(*) >= 2
-                                      THEN json_group_array(content_type ORDER BY first) END
-                          FROM (SELECT content_type, MIN(position) AS first FROM audio
-                                GROUP BY content_type))),
-        'sample_rates_hz', json((SELECT CASE WHEN COUNT(*) >= 2
-                                        THEN json_group_array(rate ORDER BY first) END
-                            FROM (SELECT rate, MIN(position) AS first FROM audio GROUP BY rate))),
-        'bits_per_sample', json((SELECT CASE WHEN COUNT(*) >= 2
-                                        THEN json_group_array(bits ORDER BY first) END
-                            FROM (SELECT bits, MIN(position) AS first FROM audio
-                                  WHERE bits IS NOT NULL GROUP BY bits))),
-        'channels', json((SELECT CASE WHEN COUNT(*) >= 2
-                                 THEN json_group_array(channels ORDER BY first) END
-                     FROM (SELECT channels, MIN(position) AS first FROM audio
-                           GROUP BY channels)))) END)";
+    'source_audio', {source_audio})",
+        source_audio = source_audio_summary_sql(
+            "SELECT f.position,
+                    CASE WHEN carved.relative_path IS NULL THEN 'file' ELSE 'cue' END AS layout,
+                    f.audio_content_type AS content_type,
+                    f.audio_sample_rate_hz AS sample_rate_hz,
+                    f.audio_bits_per_sample AS bits_per_sample,
+                    f.audio_bitrate_kbps AS bitrate_kbps, f.audio_channels AS channels,
+                    f.audio_duration_ms AS duration_ms
+             FROM f LEFT JOIN carved ON carved.relative_path = f.relative_path
+             WHERE f.role = 'audio'"
+        ),
+    )
+}
 
 #[derive(serde::Deserialize)]
 struct Document {
@@ -136,7 +110,8 @@ struct Document {
     cover_files: Vec<FileJson>,
     images: Vec<FileJson>,
     track_count: u32,
-    source_audio: Option<SummaryJson>,
+    #[serde(deserialize_with = "SourceAudioSummary::deserialize_stored")]
+    source_audio: Option<SourceAudioSummary>,
 }
 
 #[derive(serde::Deserialize)]
@@ -158,38 +133,9 @@ struct FileJson {
     cover: i64,
 }
 
-#[derive(serde::Deserialize)]
-struct FormatJson {
-    layout: String,
-    content_type: String,
-    sample_rate_hz: i64,
-    bits_per_sample: Option<i64>,
-    channels: i64,
-}
-
-#[derive(serde::Deserialize)]
-struct SummaryJson {
-    uniform: i64,
-    first: FormatJson,
-    bitrate_kbps: Option<i64>,
-    layouts: Option<Vec<String>>,
-    content_types: Option<Vec<String>>,
-    sample_rates_hz: Option<Vec<i64>>,
-    bits_per_sample: Option<Vec<i64>>,
-    channels: Option<Vec<i64>>,
-}
-
 /// The display name of the codec a stored content type names.
 fn codec(content_type: &str) -> String {
     ContentType::from_mime(content_type).display_name().to_string()
-}
-
-fn layout(stored: &str) -> Result<SourceAudioLayout, DbError> {
-    match stored {
-        "file" => Ok(SourceAudioLayout::File),
-        "cue" => Ok(SourceAudioLayout::Cue),
-        other => Err(DbError::unreadable("an audio file's layout", other)),
-    }
 }
 
 impl FileJson {
@@ -250,53 +196,13 @@ impl FileJson {
     }
 }
 
-impl SummaryJson {
-    fn summary(self) -> Result<SourceAudioSummary, DbError> {
-        if self.uniform != 0 {
-            return Ok(SourceAudioSummary::Uniform {
-                descriptor: SourceAudioDescriptor {
-                    layout: layout(&self.first.layout)?,
-                    format: AudioFormat {
-                        codec: codec(&self.first.content_type),
-                        sample_rate_hz: self.first.sample_rate_hz,
-                        bits_per_sample: self.first.bits_per_sample,
-                        bitrate_kbps: self.bitrate_kbps,
-                        channels: self.first.channels,
-                    },
-                },
-            });
-        }
-        let layouts = self
-            .layouts
-            .map(|layouts| layouts.iter().map(|stored| layout(stored)).collect())
-            .transpose()?
-            .map(|layouts| SourceAudioDifference::Layout { layouts });
-        let codecs = self.content_types.map(|content_types| SourceAudioDifference::Codec {
-            codecs: content_types.iter().map(|content_type| codec(content_type)).collect(),
-        });
-        let differences = [
-            layouts,
-            codecs,
-            self.sample_rates_hz
-                .map(|sample_rates_hz| SourceAudioDifference::SampleRate { sample_rates_hz }),
-            self.bits_per_sample
-                .map(|bits_per_sample| SourceAudioDifference::BitDepth { bits_per_sample }),
-            self.channels.map(|channels| SourceAudioDifference::Channels { channels }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        Ok(SourceAudioSummary::Mixed { differences })
-    }
-}
-
 /// The pane's files of the candidate `key`.
 pub(super) fn load_pane_files_on(
     sql: &SqlReadContext<'_>,
     key: &crate::CandidateKey,
 ) -> Result<PaneFiles, DbError> {
     let json: String =
-        sql.query_row(PANE_FILES_SQL, named_params! { ":key": key }, |row| row.get(0))?;
+        sql.query_row(&pane_files_sql(), named_params! { ":key": key }, |row| row.get(0))?;
     let document: Document = serde_json::from_str(&json)
         .map_err(|error| DbError::unreadable_json("the pane's files", &json, error))?;
     Ok(PaneFiles {
@@ -308,6 +214,6 @@ pub(super) fn load_pane_files_on(
             .collect::<Result<_, _>>()?,
         images: document.images.into_iter().map(FileJson::image).collect(),
         track_count: document.track_count,
-        source_audio: document.source_audio.map(SummaryJson::summary).transpose()?,
+        source_audio: document.source_audio,
     })
 }

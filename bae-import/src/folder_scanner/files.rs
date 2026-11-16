@@ -243,33 +243,6 @@ impl CategorizedFiles {
             .map(|entry| &entry.file)
     }
 
-    /// What the candidate's audio is, summarized over every audio file whose
-    /// format the scan read.
-    pub fn source_audio_summary(&self) -> Option<bae_records::source_audio::SourceAudioSummary> {
-        use bae_records::source_audio::{
-            SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary, SummarizedAudio,
-        };
-        let carved_audio: std::collections::HashSet<&str> = self
-            .carving_sheets()
-            .into_iter()
-            .flat_map(|sheet| sheet.audio_files)
-            .map(|(_, audio)| audio.relative_path.as_str())
-            .collect();
-        SourceAudioSummary::from_files(self.audio().filter_map(|file| {
-            file.source_audio.as_ref().map(|audio| SummarizedAudio {
-                descriptor: SourceAudioDescriptor {
-                    layout: if carved_audio.contains(file.relative_path.as_str()) {
-                        SourceAudioLayout::Cue
-                    } else {
-                        SourceAudioLayout::File
-                    },
-                    format: audio.format.clone(),
-                },
-                duration_ms: audio.duration_ms,
-            })
-        }))
-    }
-
     /// The release's images — the proposed cover and everything else.
     pub fn artwork(&self) -> impl Iterator<Item = &ScannedFile> {
         self.files

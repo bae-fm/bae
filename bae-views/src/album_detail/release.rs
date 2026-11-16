@@ -200,9 +200,7 @@ impl ReleaseDetail {
         let has_other_files = raw.files.has_others;
         let other_files: Vec<FileDetail> =
             raw.files.others.into_iter().map(FileDetail::from_raw).collect();
-        let source_audio = SourceAudioSummary::from_files(
-            files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
-        );
+        let source_audio = raw.files.source_audio;
 
         let file_count = raw.files.count;
         let total_size = raw.files.total_size;

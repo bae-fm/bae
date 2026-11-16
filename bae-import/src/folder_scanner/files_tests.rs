@@ -31,13 +31,13 @@ fn mp3_tag_sizes_do_not_make_uniform_audio_mixed() {
 
     let candidates = scan_valid(temp_dir.path().to_path_buf());
     let candidate = candidates.first().expect("scanner returns the album");
-    let summary =
-        candidate.files.source_audio_summary().expect("MP3 files have source-audio facts");
-
-    let bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
-        panic!("equal MP3 streams with different tag sizes must be uniform");
-    };
-    assert_eq!(descriptor.format.bitrate_kbps, Some(320));
+    let bitrates: Vec<Option<i64>> = candidate
+        .files
+        .audio()
+        .map(|file| file.source_audio.as_ref().expect("MP3 files have source-audio facts"))
+        .map(|audio| audio.format.bitrate_kbps)
+        .collect();
+    assert_eq!(bitrates, [Some(320), Some(320)], "equal MP3 streams state one bitrate");
 }
 
 #[test]
@@ -53,12 +53,9 @@ fn opus_bitrate_comes_from_audio_packets_when_the_stream_has_no_declared_rate() 
 
     let candidates = scan_valid(temp_dir.path().to_path_buf());
     let candidate = candidates.first().expect("scanner returns the album");
-    let summary = candidate.files.source_audio_summary().expect("Opus file has source-audio facts");
-
-    let bae_records::source_audio::SourceAudioSummary::Uniform { descriptor } = summary else {
-        panic!("one Opus stream must be uniform");
-    };
-    assert_eq!(descriptor.format.bitrate_kbps, Some(1));
+    let audio = candidate.files.audio().next().expect("the folder has the Opus file");
+    let read = audio.source_audio.as_ref().expect("Opus file has source-audio facts");
+    assert_eq!(read.format.bitrate_kbps, Some(1));
 }
 
 #[test]

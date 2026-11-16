@@ -116,7 +116,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
         "the sheet the user cleared describes nothing, proposal or not",
     );
     assert_eq!(cleared.track_count(), 1);
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &cleared,
         bae_records::source_audio::SourceAudioLayout::File,
         "FLAC",
@@ -360,7 +360,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
         );
         assert_eq!(files.audio().count(), 1, "{folder}: the audio keeps its role",);
         assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
-        assert_uniform_source_audio(
+        assert_audio_layout_and_codec(
             files,
             bae_records::source_audio::SourceAudioLayout::File,
             source_codec,
@@ -392,7 +392,7 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
 
         let candidates = scan_valid(root);
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
-        assert_uniform_source_audio(
+        assert_audio_layout_and_codec(
             &candidates[0].files,
             bae_records::source_audio::SourceAudioLayout::Cue,
             codec,
@@ -470,7 +470,7 @@ fn cue_flac_pair_binds_and_reports_source_audio() {
         file("Album/Album.cue", FileKind::CueFor { stem: "Album.flac", n_tracks: 8 }),
     ]);
     let c = result.candidate("Album");
-    assert_uniform_source_audio(
+    assert_audio_layout_and_codec(
         &c.files,
         bae_records::source_audio::SourceAudioLayout::Cue,
         "FLAC",

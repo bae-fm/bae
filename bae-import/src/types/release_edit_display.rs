@@ -240,9 +240,7 @@ impl ReleaseEditDisplayContext {
         }
 
         Ok(Self {
-            source_audio: SourceAudioSummary::from_files(
-                raw.files.files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
-            ),
+            source_audio: raw.files.source_audio.clone(),
             sides: ReleaseEditTrackSide::lay_out(contexts),
             files: raw.files.others.iter().map(carried_file).collect(),
         })

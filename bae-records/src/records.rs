@@ -172,11 +172,17 @@ pub const SCHEMA: bae_store::SchemaPart =
         .collations(SQL_COLLATIONS)
         .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
-/// The SQL functions `records.sql` names, the artist functions that other
-/// crates' queries call, and the album id the statement naming a release's
-/// album uses.
-const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
-    &[&ALBUM_IDENTITY, &CATALOG_RANK, &ARTIST_NAME_KEY, &ARTIST_IDENTITY];
+/// The SQL functions that `records.sql` names, the artist functions that
+/// other crates' queries call, `bae_album_id`, which computes the library
+/// album id that the query finding a release's album calls, and
+/// `bae_audio_codec`, which the audio summary statement calls.
+const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
+    &ALBUM_IDENTITY,
+    &CATALOG_RANK,
+    &ARTIST_NAME_KEY,
+    &ARTIST_IDENTITY,
+    &crate::source_audio::AUDIO_CODEC,
+];
 
 /// The collations `records.sql` names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];
