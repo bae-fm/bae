@@ -107,9 +107,6 @@ internal class MembersModel(
     var inviteEntries by mutableStateOf<List<BridgeInviteEntry>>(emptyList())
         private set
 
-    /** This device's open invites. */
-    val invites: List<BridgeInvite>
-        get() = inviteEntries.filterIsInstance<BridgeInviteEntry.Open>().map { it.invite }
     var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
 

@@ -224,14 +224,14 @@ class MembersModelTest {
     private val ana = PreviewData.person()
     private val twoPeople = BridgePeople(own = ana, others = listOf(PreviewData.person()), people = 2uL, devices = 3uL)
 
-    /** Each list of open invites the model pulls replaces the one it shows. */
+    /** Each list of invites the model pulls replaces the one it shows. */
     @Test
-    fun eachPulledListOfOpenInvitesReplacesTheShownOne() {
+    fun eachPulledListOfInvitesReplacesTheShownOne() {
         val handle = SilentMembersHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
-        assertEquals(emptyList<BridgeInvite>(), model.invites)
+        assertEquals(emptyList<BridgeInviteEntry>(), model.inviteEntries)
 
         val invite =
             BridgeInvite(
@@ -244,11 +244,11 @@ class MembersModelTest {
             )
         handle.invites.deliver(listOf(invite))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf("11"), model.invites.map { it.id })
+        assertEquals(listOf<BridgeInviteEntry>(BridgeInviteEntry.Open(invite)), model.inviteEntries)
 
         handle.invites.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(emptyList<BridgeInvite>(), model.invites)
+        assertEquals(emptyList<BridgeInviteEntry>(), model.inviteEntries)
         stop()
     }
 
@@ -271,7 +271,6 @@ class MembersModelTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(listOf<BridgeInviteEntry>(BridgeInviteEntry.Refused(refused)), model.inviteEntries)
-        assertEquals(emptyList<BridgeInvite>(), model.invites)
 
         handle.invites.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()

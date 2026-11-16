@@ -32,17 +32,6 @@ public final class MembershipStore {
     /// device's open invites, each with its request once it arrives, and the
     /// invites a sharing refusal ended, until the person dismisses them.
     public private(set) var inviteEntries: [BridgeInviteEntry] = []
-    /// This device's open invites.
-    public var invites: [BridgeInvite] {
-        inviteEntries.compactMap {
-            if case .open(let invite) = $0 {
-                invite
-            }
-            else {
-                nil
-            }
-        }
-    }
     /// The first open invite whose join request waits for a decision,
     /// other than those whose request the page closed, while the page reads
     /// it; nil while none does.

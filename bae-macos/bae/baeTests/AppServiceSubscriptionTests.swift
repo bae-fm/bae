@@ -202,19 +202,19 @@ struct SyncActivitySubscriptionTests {
 @MainActor
 @Suite("Open invites", .serialized)
 struct InvitesSubscriptionTests {
-    @Test("each pulled list of open invites reaches the membership store")
+    @Test("each pulled list of invites reaches the membership store")
     func pulledInvitesReachTheStore() async throws {
         let handle = FakeAppHandle()
         let store = MembershipStore(handle: handle)
         store.start()
         store.show()
-        #expect(store.invites.isEmpty)
+        #expect(store.inviteEntries.isEmpty)
 
         handle.deliverInvites([invite(id: "11")])
-        try await Wait.until { store.invites.map(\.id) == ["11"] }
+        try await Wait.until { store.inviteEntries.map(\.rowId) == ["11"] }
 
         handle.deliverInvites([])
-        try await Wait.until { store.invites.isEmpty }
+        try await Wait.until { store.inviteEntries.isEmpty }
     }
 
     @Test(
@@ -235,7 +235,7 @@ struct InvitesSubscriptionTests {
         handle.deliverInvites([invite(id: "11")], refused: [refused])
         try await Wait.until { store.inviteEntries.count == 2 }
 
-        #expect(store.invites.map(\.id) == ["11"])
+        #expect(store.inviteEntries.first?.rowId == "11")
         #expect(store.inviteEntries.contains { $0.refusedInvite == refused })
     }
 
@@ -255,11 +255,14 @@ struct InvitesSubscriptionTests {
                 == ["people", "requestedProfile", "adminChanges", "invites"]
         )
         handle.deliverInvites([invite(id: "11")])
-        try await Wait.until { store.invites.map(\.id) == ["11"] }
+        try await Wait.until { store.inviteEntries.map(\.rowId) == ["11"] }
 
         store.hide()
         try await Wait.until { handle.invitesCancels == 1 }
-        #expect(store.invites.isEmpty, "what the screen read goes with it")
+        #expect(
+            store.inviteEntries.isEmpty,
+            "what the screen read goes with it"
+        )
 
         store.show()
         #expect(handle.subscribed.filter { $0 == "invites" }.count == 2)
