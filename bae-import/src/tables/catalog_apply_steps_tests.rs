@@ -24,7 +24,8 @@ fn shown(id: &CatalogApplyId, tables: &ImportTables) -> CatalogApplySteps {
 async fn step_until(query: &mut StepQuery, wanted: Option<CatalogApplyStep>) {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let step = query.next().await.expect("the query stays open").expect("the query reads");
+            let step =
+                query.next_inline().await.expect("the query stays open").expect("the query reads");
             if step == wanted {
                 return;
             }
