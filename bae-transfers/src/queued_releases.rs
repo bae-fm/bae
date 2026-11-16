@@ -385,9 +385,7 @@ where
     {
         let order = tables::queue_order();
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            bae_store::list_windows::rows_before(&order, key, |seek| {
-                tables::queue_seek_count_on::<Extra>(&sql, &order, seek)
-            })
+            tables::queue_rows_before_on::<Extra>(&sql, &order, key)
         })
     }
 

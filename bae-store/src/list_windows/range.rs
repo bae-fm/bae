@@ -190,39 +190,58 @@ pub fn read_range<R, E>(
     })
 }
 
-/// How many rows the list has before the row at `key`, as `count` totals
-/// them over the seeks that read those rows: a count over index ranges, never
-/// a numbering of the list.
-pub fn rows_before<E>(
-    order: &ListOrder,
-    key: &OrderKey,
-    mut count: impl FnMut(&Seek) -> Result<u64, E>,
-) -> Result<u64, E> {
-    order.seeks_before(key).iter().map(&mut count).sum()
+/// One statement that counts the rows of `from`, a statement's FROM clause,
+/// that `filter` keeps (every row when it is `None`) and that come before the
+/// row at `key` in `order`. The statement adds one COUNT for each seek before
+/// the key, so each COUNT reads its own index range, and it returns the sum
+/// in its one column, `count`.
+pub struct RowsBefore {
+    pub statement: String,
+    seeks: Vec<Seek>,
 }
 
-/// How many rows `seek` reads in `order`: the rows of `from`, a statement's
-/// FROM clause, that `filter` keeps (every row when it is `None`) and that
-/// fall in the seek's index ranges, counted in one statement. `params` binds the named parameters `filter` names beside
-/// the seek's own. [`rows_before`] adds these counts over the seeks before a
-/// key to find the key's position.
-pub fn seek_count_on(
+impl RowsBefore {
+    pub fn new(order: &ListOrder, key: &OrderKey, from: &str, filter: Option<&str>) -> Self {
+        let seeks = order.seeks_before(key);
+        // The sum starts at 0, which is the count when no seek reads a row
+        // before the key.
+        let counts: String = seeks
+            .iter()
+            .map(|seek| {
+                let condition = order.condition(seek);
+                let condition = match filter {
+                    Some(filter) => format!("({filter}) AND ({condition})"),
+                    None => condition,
+                };
+                format!(" + (SELECT COUNT(*) {from} WHERE {condition})")
+            })
+            .collect();
+        Self { statement: format!("SELECT 0{counts} AS count"), seeks }
+    }
+
+    /// The parameters the statement's seeks name. Every seek before a key
+    /// binds the key's values under the same names, so a name bound twice
+    /// holds one value.
+    pub fn params(&self) -> Vec<(&str, &dyn rusqlite::ToSql)> {
+        self.seeks.iter().flat_map(Seek::params).collect()
+    }
+}
+
+/// How many rows of `from` that `filter` keeps come before the row at `key`
+/// in `order`, counted by one [`RowsBefore`] statement. `params` binds the
+/// named parameters `filter` names.
+pub fn rows_before_on(
     sql: &coven::SqlReadContext<'_>,
     from: &str,
     filter: Option<&str>,
     params: &[(&str, &dyn rusqlite::ToSql)],
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, crate::DbError> {
-    let condition = order.condition(seek);
-    let condition = match filter {
-        Some(filter) => format!("({filter}) AND ({condition})"),
-        None => condition,
-    };
-    let statement = format!("SELECT COUNT(*) AS count {from} WHERE {condition}");
-    let mut bound = seek.params();
+    let before = RowsBefore::new(order, key, from, filter);
+    let mut bound = before.params();
     bound.extend_from_slice(params);
-    Ok(sql.query_row(&statement, bound.as_slice(), |row| {
+    Ok(sql.query_row(&before.statement, bound.as_slice(), |row| {
         crate::read::count_column::<u64>(row, "count")
     })?)
 }

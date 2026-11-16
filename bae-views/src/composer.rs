@@ -58,7 +58,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let order = composer_order(sort);
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            rows_before(&order, key, |seek| composer_seek_count_on(&sql, &order, seek))
+            composer_rows_before_on(&sql, &order, key)
         })
     }
 
@@ -191,19 +191,19 @@ fn find_work_detail_on(
     Ok(Some(DbWorkDetail { work, child_works, releases, tracks }))
 }
 
-/// How many composers come before the rows `seek` reads.
-pub(crate) fn composer_seek_count_on(
+/// How many composers come before the row at `key`.
+pub(crate) fn composer_rows_before_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         "FROM composer_listing listing",
         None,
         &[],
         order,
-        seek,
+        key,
     )
 }
 

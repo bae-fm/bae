@@ -5,16 +5,16 @@
 //!
 //! A jump to a position reads the key of the row at that position by offset
 //! once (`key_at`), and the screen starts a chain of windows at that key.
-//! `rows_before` counts the rows before a key over index ranges, without
-//! numbering the list. The module keeps nothing about where rows sit between
-//! reads.
+//! `RowsBefore` counts the rows before a key over index ranges in one
+//! statement, without numbering the list. The module keeps nothing about
+//! where rows sit between reads.
 
 use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
 use std::cmp::Ordering;
 
 mod range;
-pub use range::{key_at, read_range, rows_before, seek_count_on, ListWindow, WindowRead};
+pub use range::{key_at, read_range, rows_before_on, ListWindow, RowsBefore, WindowRead};
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

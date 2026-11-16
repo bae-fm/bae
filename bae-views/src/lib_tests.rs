@@ -401,7 +401,7 @@ mod window_cost {
                     |sql, order, seek, limit, offset| {
                         crate::album::album_rows_on(sql, true, order, seek, limit, offset)
                     },
-                    |sql, order, seek| crate::album::album_seek_count_on(sql, true, order, seek),
+                    |sql, order, key| crate::album::album_rows_before_on(sql, true, order, key),
                 )
             } else {
                 (
@@ -409,7 +409,7 @@ mod window_cost {
                     |sql, order, seek, limit, offset| {
                         crate::album::album_rows_on(sql, false, order, seek, limit, offset)
                     },
-                    |sql, order, seek| crate::album::album_seek_count_on(sql, false, order, seek),
+                    |sql, order, key| crate::album::album_rows_before_on(sql, false, order, key),
                 )
             };
             for (name, sort) in &sorts {
@@ -437,7 +437,7 @@ mod window_cost {
                 n,
                 crate::artist::artist_order(&sort),
                 crate::artist::artist_rows_on,
-                crate::artist::artist_seek_count_on,
+                crate::artist::artist_rows_before_on,
             )
             .await;
         }
@@ -465,7 +465,7 @@ mod window_cost {
                 n,
                 crate::composer::composer_order(&sort),
                 crate::composer::composer_rows_on,
-                crate::composer::composer_seek_count_on,
+                crate::composer::composer_rows_before_on,
             )
             .await;
         }
@@ -512,8 +512,8 @@ mod window_cost {
                     let order =
                         crate::storage::storage_order(&StorageSortCriterion { field, direction });
                     let name = format!("{filter:?}_{field:?}_{direction:?}");
-                    let count = move |sql: &SqlReadContext<'_>, order: &_, seek: &_| {
-                        crate::storage::storage_seek_count_on(sql, filter, None, order, seek)
+                    let count = move |sql: &SqlReadContext<'_>, order: &_, key: &_| {
+                        crate::storage::storage_rows_before_on(sql, filter, None, order, key)
                     };
                     measure(db, "storage", &name, n, order, rows, count).await;
                 }
@@ -572,13 +572,13 @@ mod window_cost {
                     },
                     {
                         let pattern = pattern.clone();
-                        move |sql: &SqlReadContext<'_>, order: &_, seek: &_| {
-                            crate::storage::storage_seek_count_on(
+                        move |sql: &SqlReadContext<'_>, order: &_, key: &_| {
+                            crate::storage::storage_rows_before_on(
                                 sql,
                                 StorageFilter::All,
                                 Some(pattern.as_str()),
                                 order,
-                                seek,
+                                key,
                             )
                         }
                     },
@@ -667,7 +667,7 @@ mod window_cost {
             n,
             bae_transfers::tables::queue_order(),
             bae_transfers::tables::queue_window_rows_on::<bae_transfers::DownloadRequest>,
-            bae_transfers::tables::queue_seek_count_on::<bae_transfers::DownloadRequest>,
+            bae_transfers::tables::queue_rows_before_on::<bae_transfers::DownloadRequest>,
         )
         .await;
     }

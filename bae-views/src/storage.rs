@@ -116,9 +116,7 @@ impl LibraryViews {
         let pattern =
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            rows_before(&order, key, |seek| {
-                storage_seek_count_on(&sql, filter, pattern.as_deref(), &order, seek)
-            })
+            storage_rows_before_on(&sql, filter, pattern.as_deref(), &order, key)
         })
     }
 
@@ -543,14 +541,14 @@ fn process_storage_row(
 }
 
 /// How many releases of the Storage Manager list under `filter` (narrowed to
-/// the albums the search `pattern` finds, with one) come before the rows `seek`
-/// reads.
-pub(crate) fn storage_seek_count_on(
+/// the albums the search `pattern` finds, with one) come before the row at
+/// `key`.
+pub(crate) fn storage_rows_before_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let kept = format!(
@@ -562,13 +560,13 @@ pub(crate) fn storage_seek_count_on(
         Some(pattern) => vec![(":search", pattern)],
         None => Vec::new(),
     };
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         "FROM release_listing listing",
         Some(&kept),
         &search,
         order,
-        seek,
+        key,
     )
 }
 

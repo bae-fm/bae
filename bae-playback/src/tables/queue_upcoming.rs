@@ -7,7 +7,7 @@ use super::queue::context_order_column;
 use super::queue_reads::{queue_item_from_row, queue_items_sql};
 use super::*;
 use crate::QueueItem;
-use bae_store::list_windows::{key_at, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm};
+use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::{ListWindow, WindowRead};
 
 /// The upcoming tracks' order: the lane's place in the order it reads in,
@@ -116,16 +116,14 @@ pub fn subscribe_upcoming_position(
 ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
     let order = upcoming_order(shuffled);
     store.subscribe_reconfigurable(initial, move |key, sql| {
-        rows_before(&order, key, |seek| {
-            bae_store::list_windows::seek_count_on(
-                &sql,
-                "FROM playback_context c",
-                Some(&after_the_playing_track(shuffled)),
-                &[],
-                &order,
-                seek,
-            )
-        })
+        bae_store::list_windows::rows_before_on(
+            &sql,
+            "FROM playback_context c",
+            Some(&after_the_playing_track(shuffled)),
+            &[],
+            &order,
+            key,
+        )
     })
 }
 

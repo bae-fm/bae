@@ -6,7 +6,7 @@ use listing::{
     album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
 };
 pub(crate) use listing::{
-    album_browse_order, album_rows_on, album_seek_count_on, AlbumAppearanceRow,
+    album_browse_order, album_rows_before_on, album_rows_on, AlbumAppearanceRow,
 };
 
 mod listing;
@@ -200,9 +200,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let (_, order) = album_browse_order(sort, group_by_artist);
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            rows_before(&order, key, |seek| {
-                album_seek_count_on(&sql, group_by_artist, &order, seek)
-            })
+            album_rows_before_on(&sql, group_by_artist, &order, key)
         })
     }
 

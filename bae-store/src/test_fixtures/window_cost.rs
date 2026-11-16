@@ -4,7 +4,7 @@
 //! offset, then that range). The fixture also times how many rows come before a key at
 //! the middle and the end. Each time is the median of several runs.
 
-use crate::list_windows::{key_at, read_range, rows_before, Keyed, ListOrder, Seek};
+use crate::list_windows::{key_at, read_range, Keyed, ListOrder, OrderKey, Seek};
 use crate::{DbError, ListWindow, SortDirection, Store};
 use coven::SqlReadContext;
 use std::time::{Duration, Instant};
@@ -78,8 +78,8 @@ pub fn report_cost(metric: &str, value: f64, unit: &str) {
 pub type Rows<R> =
     fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>;
 
-/// Counts the rows a seek holds: what a list's live position adds up.
-pub type Count = fn(&SqlReadContext<'_>, &ListOrder, &Seek) -> Result<u64, DbError>;
+/// Counts the rows before a key: what a list's live position reads.
+pub type Count = fn(&SqlReadContext<'_>, &ListOrder, &OrderKey) -> Result<u64, DbError>;
 
 /// Read one window at each measured position of a list of `n` rows in
 /// `order`: by scrolling to it, by jumping to it, and, in the middle and at
@@ -95,7 +95,7 @@ pub async fn measure<R: Send + 'static>(
         + Send
         + Sync
         + 'static,
-    count: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek) -> Result<u64, DbError>
+    count: impl Fn(&SqlReadContext<'_>, &ListOrder, &OrderKey) -> Result<u64, DbError>
         + Clone
         + Send
         + Sync
@@ -139,10 +139,7 @@ pub async fn measure<R: Send + 'static>(
         report(list, name, "jump", at, position, n, jump);
         if at != "top" {
             let (order, count, key) = (order.clone(), count.clone(), key);
-            let place = median(db, move |sql| {
-                Ok(rows_before(&order, &key, |seek| count(sql, &order, seek))? as usize)
-            })
-            .await;
+            let place = median(db, move |sql| Ok(count(sql, &order, &key)? as usize)).await;
             report(list, name, "position", at, position, n, place);
         }
     }

@@ -1,5 +1,5 @@
 use super::*;
-use rusqlite::Connection;
+use rusqlite::{Connection, ToSql};
 
 /// Rows with ties on every term but the id, and NULLs in the terms that can
 /// hold them, so each seek of every order below has rows to find.
@@ -175,22 +175,34 @@ fn a_window_cut_by_its_limit_names_the_next_row() {
     }
 }
 
-/// `rows_before` counts the rows ahead of a key through the order's seeks,
-/// and `key_at` reads the key at a position by offset, the last row's when
-/// the position is past the end.
+/// One `RowsBefore` statement counts the rows ahead of a key through the
+/// order's seeks, a filter narrows what it counts, and `key_at` reads the
+/// key at a position by offset, the last row's when the position is past
+/// the end.
 #[test]
 fn a_position_is_counted_before_a_key_and_read_as_a_key() {
     let conn = rows();
+    let count = |before: RowsBefore, params: &[(&str, &dyn ToSql)]| {
+        let mut bound = before.params();
+        bound.extend_from_slice(params);
+        conn.query_row(&before.statement, bound.as_slice(), |row| row.get::<_, i64>(0)).unwrap()
+    };
+    let odd_ids: std::collections::HashSet<String> = conn
+        .prepare("SELECT id FROM t WHERE c = 1")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
     for order in orders() {
         let everything = listed(&conn, &order);
         for at in [0, 1, 77, 199] {
-            let count = rows_before(&order, &everything[at].1, |seek| {
-                let statement = format!("SELECT COUNT(*) FROM t WHERE {}", order.condition(seek));
-                conn.query_row(&statement, seek.params().as_slice(), |row| row.get::<_, i64>(0))
-                    .map(|count| count as u64)
-            })
-            .unwrap();
-            assert_eq!(count, at as u64, "{order:?}");
+            let key = &everything[at].1;
+            let before = RowsBefore::new(&order, key, "FROM t", None);
+            assert_eq!(count(before, &[]), at as i64, "{order:?}");
+            let odd = everything[..at].iter().filter(|(id, _)| odd_ids.contains(id)).count();
+            let before = RowsBefore::new(&order, key, "FROM t", Some("t.c = :c"));
+            assert_eq!(count(before, &[(":c", &1)]), odd as i64, "{order:?}");
         }
         let key_at = |position| {
             key_at(&order, position, &mut |seek, limit, offset| {

@@ -61,7 +61,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let order = artist_order(sort);
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            rows_before(&order, key, |seek| artist_seek_count_on(&sql, &order, seek))
+            artist_rows_before_on(&sql, &order, key)
         })
     }
 
@@ -219,20 +219,19 @@ pub(crate) fn artist_rows_on(
     })?)
 }
 
-/// How many artists come before the rows `seek` reads. `rows_before` adds
-/// these counts over the seeks before a key to get the key's position.
-pub(crate) fn artist_seek_count_on(
+/// How many artists come before the row at `key`.
+pub(crate) fn artist_rows_before_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         "FROM artist_listing listing",
         None,
         &[],
         order,
-        seek,
+        key,
     )
 }
 

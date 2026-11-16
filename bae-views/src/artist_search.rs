@@ -79,9 +79,7 @@ impl LibraryViews {
     ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
         let order = artist_search_order();
         self.store.subscribe_reconfigurable(initial, move |key, sql| match &query {
-            Some(query) => rows_before(&order, key, |seek| {
-                artist_search_seek_count_on(&sql, query, &order, seek)
-            }),
+            Some(query) => artist_search_rows_before_on(&sql, query, &order, key),
             None => Ok(0),
         })
     }
@@ -179,22 +177,22 @@ fn artist_search_count_on(
     .map_err(DbError::from)
 }
 
-/// How many of the artists `query` finds come before the rows `seek` reads.
-fn artist_search_seek_count_on(
+/// How many of the artists `query` finds come before the row at `key`.
+fn artist_search_rows_before_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
     let pattern = search_pattern(query.as_str());
     let text = query.as_str();
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         "FROM artists",
         Some(&artist_search_filter()),
         &[(":text", &text), (":pattern", &pattern)],
         order,
-        seek,
+        key,
     )
 }
 

@@ -14,22 +14,20 @@ pub(super) fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
-/// How many rows of the album grid come before the rows `seek` reads.
-/// `rows_before` adds these counts over the seeks before a key to find the
-/// key's position.
-pub(crate) fn album_seek_count_on(
+/// How many rows of the album grid come before the row at `key`.
+pub(crate) fn album_rows_before_on(
     sql: &SqlReadContext<'_>,
     group_by_artist: bool,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         album_order_tables(group_by_artist),
         None,
         &[],
         order,
-        seek,
+        key,
     )
 }
 

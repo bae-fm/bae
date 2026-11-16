@@ -5565,7 +5565,8 @@ Reads come two ways:
   more than two pages off the visible rows. Rows are drawn at the chain's start
   position plus the rows of the windows above them; a chain that starts at the
   top starts at row 0, and otherwise at a live count of the rows before its
-  first key. A list's count is its own live query delivering its row count,
+  first key: one statement that adds the COUNT of each index range before the
+  key, so SQL sums the counts. A list's count is its own live query delivering its row count,
   which sizes the scroll view, and how many distinct items the rows show: the
   album grid's albums, which grouped by artist are fewer than its rows, and the
   row count for every other list. A jump (a scrollbar drag, the end key, a reveal)

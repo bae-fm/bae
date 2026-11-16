@@ -113,9 +113,7 @@ impl LibraryViews {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
         self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            rows_before(&order, key, |seek| {
-                composer_detail_seek_count_on(&sql, &artist_id, &order, seek)
-            })
+            composer_detail_rows_before_on(&sql, &artist_id, &order, key)
         })
     }
 
@@ -244,20 +242,20 @@ fn find_composer_detail_on(
     Ok(Some(DbComposerDetail { composer, default_work_id }))
 }
 
-/// How many rows of `artist_id`'s page come before the rows `seek` reads.
-fn composer_detail_seek_count_on(
+/// How many rows of `artist_id`'s page come before the row at `key`.
+fn composer_detail_rows_before_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         "FROM composer_detail_row listing",
         Some("listing.artist_id = :artist_id"),
         &[(":artist_id", &artist_id)],
         order,
-        seek,
+        key,
     )
 }
 

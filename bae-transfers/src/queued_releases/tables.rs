@@ -18,7 +18,7 @@ use crate::release_queue::{
     QueueWait, QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp,
     ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueState,
 };
-use bae_store::list_windows::{Keyed, ListOrder, Seek, SortTerm};
+use bae_store::list_windows::{Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::column_conversion_error;
 use bae_store::DbError;
 use coven::{CovenWrite, SqlReadContext};
@@ -292,19 +292,19 @@ pub(crate) fn release_queue_row_count_on<P: QueuedPayload>(
     Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?)
 }
 
-/// How many entries of the queue come before the rows `seek` reads.
-pub fn queue_seek_count_on<P: QueuedPayload>(
+/// How many entries of the queue come before the row at `key`.
+pub fn queue_rows_before_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
-    seek: &Seek,
+    key: &OrderKey,
 ) -> Result<u64, DbError> {
-    bae_store::list_windows::seek_count_on(
+    bae_store::list_windows::rows_before_on(
         sql,
         &format!("FROM {} q", P::TABLE),
         None,
         &[],
         order,
-        seek,
+        key,
     )
 }
 

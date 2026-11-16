@@ -84,7 +84,7 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{key_at, rows_before, Keyed, ListOrder, OrderKey, Seek, SortTerm};
+use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;
 use bae_store::*;
 use bae_transfers::download_entry_sql;
