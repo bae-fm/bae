@@ -4,6 +4,7 @@ import android.content.Context
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
+import fm.bae.app.diagnosticDetail
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -12,6 +13,7 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSortCriterion
 
 internal const val BROWSER_PAGE_SIZE = 60
@@ -19,7 +21,27 @@ internal const val BROWSER_PAGE_SIZE = 60
 internal class PageError(
     val error: DisplayError,
     val onRetry: () -> Unit,
-)
+) {
+    /**
+     * The error for a list read that failed with [failure]. This app words [headline], and core's
+     * diagnostic stays behind it for the disclosure. Retry calls [onRetry] unless core says that
+     * reading again cannot fix the failure.
+     */
+    constructor(
+        headline: String,
+        failure: BridgeException,
+        errors: ErrorDisplays,
+        onRetry: () -> Unit,
+    ) : this(
+        DisplayError(
+            headline,
+            failure.diagnosticDetail,
+            // Core shows nothing for a cancellation, so the notice still offers Retry.
+            errors.display(failure)?.offersRetry != false,
+        ),
+        onRetry,
+    )
+}
 
 /** What a library list's body draws its states from: the read still running, its failure, and how much it holds. */
 internal interface BrowserPageState {

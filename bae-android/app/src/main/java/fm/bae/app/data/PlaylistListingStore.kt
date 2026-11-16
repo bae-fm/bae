@@ -5,10 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
-import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
-import fm.bae.app.diagnosticDetail
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.ScreenSubscription
 import kotlinx.coroutines.CoroutineScope
@@ -74,16 +72,6 @@ internal class PlaylistListingStore(
         deliveries?.stop()
         deliveries = null
         loading = false
-        // This app words the headline; core's diagnostic stays behind it for the disclosure.
-        error =
-            PageError(
-                DisplayError(
-                    appContext.getString(R.string.library_load_failed),
-                    value.diagnosticDetail,
-                    // A cancellation, which core shows nothing for, rules nothing out.
-                    errors.display(value)?.offersRetry != false,
-                ),
-                ::retry,
-            )
+        error = PageError(appContext.getString(R.string.library_load_failed), value, errors, ::retry)
     }
 }

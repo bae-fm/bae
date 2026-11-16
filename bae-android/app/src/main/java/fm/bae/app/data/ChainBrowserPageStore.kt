@@ -6,10 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
-import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
-import fm.bae.app.diagnosticDetail
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.ScreenSubscription
 import kotlinx.coroutines.CoroutineScope
@@ -203,17 +201,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         val hadRows = hasRows
         close()
         loading = false
-        // This app words the headline; core's diagnostic stays behind it for the disclosure.
-        error =
-            PageError(
-                DisplayError(
-                    appContext.getString(if (hadRows) loadMoreFailed else loadFailed),
-                    value.diagnosticDetail,
-                    // A cancellation, which core shows nothing for, rules nothing out.
-                    errors.display(value)?.offersRetry != false,
-                ),
-                ::retry,
-            )
+        error = PageError(appContext.getString(if (hadRows) loadMoreFailed else loadFailed), value, errors, ::retry)
     }
 
     private fun close() {
