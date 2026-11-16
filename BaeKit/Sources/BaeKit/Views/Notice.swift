@@ -341,7 +341,9 @@ extension Notice {
     /// buttons in a row under it: Details, the secondary button, the action.
     private var centered: some View {
         let onStage = look == .centeredOnStage
-        let secondaryColor = onStage ? Theme.onFillSecondary : Color.secondary
+        guard let secondaryColor = centeredSecondary else {
+            preconditionFailure("only a centred notice lays out centred")
+        }
         // Under advice the title is the line to read; a title alone stays
         // grey, like the glyph and buttons beside it.
         let hasAdvice: Bool
@@ -499,14 +501,22 @@ extension Notice {
     /// primary colour, so the colour goes on the words.
     @ViewBuilder
     private func actionLabel(_ action: ErrorAction) -> some View {
-        if look == .centered {
-            action.title.foregroundStyle(.secondary)
-        }
-        else if look == .centeredOnStage {
-            action.title.foregroundStyle(Theme.onFillSecondary)
+        if let centeredSecondary {
+            action.title.foregroundStyle(centeredSecondary)
         }
         else {
             action.title
+        }
+    }
+
+    /// The grey a centred notice draws its secondary words and its Retry
+    /// in: the screen's secondary text, or the stage's on the image viewer's
+    /// stage. `nil` for a notice that is not centred.
+    private var centeredSecondary: Color? {
+        switch look {
+        case .filled, .quiet: nil
+        case .centered: Color.secondary
+        case .centeredOnStage: Theme.onFillSecondary
         }
     }
 
@@ -519,13 +529,8 @@ extension Notice {
     private func colouredButton(_ button: some View, borderless: Bool)
         -> some View
     {
-        if look == .centered, !borderless {
-            button.foregroundStyle(.secondary).tint(.secondary)
-        }
-        else if look == .centeredOnStage {
-            button
-                .foregroundStyle(Theme.onFillSecondary)
-                .tint(Theme.onFillSecondary)
+        if let centeredSecondary, look == .centeredOnStage || !borderless {
+            button.foregroundStyle(centeredSecondary).tint(centeredSecondary)
         }
         else if borderless {
             button.foregroundStyle(Theme.accent).tint(Theme.accent)
