@@ -4,10 +4,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fm.bae.app.BaeLogger
 import fm.bae.app.playback.QueueContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueLane
+
+private val logger = BaeLogger("bae.QueueOrder")
 
 /**
  * The lanes as the sheet shows them: core's read of each, with the moves of a drag drawn over a lane
@@ -102,7 +105,12 @@ internal class QueueOrder {
      * shows core's read, unless core has not yet returned a later drag's reorder, whose moves stay.
      */
     fun reorderReturned(lane: BridgeQueueLane) {
-        val waiting = holds[lane] ?: return
+        val waiting = holds[lane]
+        if (waiting == null) {
+            // Every reorder the sheet sends holds its lane first, so a return with no hold is a bug here.
+            logger.error("reorder of a $lane row returned, but QueueOrder holds no reorder of that lane")
+            return
+        }
         if (waiting > 1) {
             holds[lane] = waiting - 1
             return
