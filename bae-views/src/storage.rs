@@ -246,6 +246,19 @@ pub struct StorageCounts {
     pub searching: bool,
 }
 
+/// The Storage Manager list's count as the list shows it: its releases,
+/// their files' total size, and whether a search narrows it.
+pub fn resolve_storage_count(counts: StorageCounts) -> crate::ListCount {
+    crate::ListCount {
+        rows: counts.rows,
+        items: counts.rows,
+        extra: crate::ListCountExtra::Storage {
+            total_size: counts.total_size,
+            searching: counts.searching,
+        },
+    }
+}
+
 /// One delivery of a Storage Manager window as the list shows it.
 pub fn resolve_storage_window(read: WindowRead<DbStorageRow>) -> crate::ListWindowValue {
     crate::ListWindowValue::of(read, |rows| {

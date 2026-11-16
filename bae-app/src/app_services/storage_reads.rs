@@ -29,16 +29,10 @@ impl AppServices {
         search: &str,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         self.inner.manager.values_until_closed(
-            self.inner.views.subscribe_storage_count(filter, search).process(|counts| {
-                Ok(bae_views::ListCount {
-                    rows: counts.rows,
-                    items: counts.rows,
-                    extra: bae_views::ListCountExtra::Storage {
-                        total_size: counts.total_size,
-                        searching: counts.searching,
-                    },
-                })
-            }),
+            self.inner
+                .views
+                .subscribe_storage_count(filter, search)
+                .process(|counts| Ok(bae_views::storage::resolve_storage_count(counts))),
         )
     }
 
