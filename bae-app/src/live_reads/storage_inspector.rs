@@ -17,3 +17,14 @@ pub fn subscribe_storage_inspector(
 ) -> bae_library::LiveDetail<StorageInspector> {
     detail_read(library, library_views.subscribe_storage_inspector(None), |inspector| inspector)
 }
+
+/// The release file the subscription is set to, as the Storage Manager
+/// inspector's file details show it, read by its id as it changes; none
+/// while the library holds no such file. Another file is a new id on the
+/// same read.
+pub fn subscribe_storage_file(
+    library: &LibraryManager,
+    library_views: &LibraryViews,
+) -> bae_library::LiveDetail<bae_views::album_detail::FileDetail> {
+    detail_read(library, library_views.subscribe_storage_file(None), |file| file)
+}

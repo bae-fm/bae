@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// The selected release's transfers and files, read for it in core, and the
-/// details of the file selected among them. Detail observation lives here so
-/// list rows depend only on their summary projection.
+/// details of the file selected among them, read for that file by its id.
+/// Detail observation lives here so list rows depend only on their summary
+/// projection.
 struct StorageContentsInspector: View {
     @Environment(Library.self)
     private var library
@@ -30,6 +31,13 @@ struct StorageContentsInspector: View {
     /// selected, and again once the inspector moves to another release.
     @State
     private var selectedFileId: String?
+    /// The read of the selected file, moved as the selection changes.
+    @State
+    private var fileReader: DetailReader<BridgeFile>?
+    /// The selected file as last read; `nil` while none is selected, until
+    /// its read answers, and while the library holds no such file.
+    @State
+    private var selectedFile: BridgeFile?
 
     var body: some View {
         Group {
@@ -39,6 +47,7 @@ struct StorageContentsInspector: View {
                     look: .centered,
                     action: error.retryAction {
                         reader?.retry()
+                        fileReader?.retry()
                     }
                 )
             }
@@ -46,11 +55,9 @@ struct StorageContentsInspector: View {
                 VStack(spacing: 0) {
                     StorageTransferControls(items: inspector.transfers)
                     fileList(inspector.files)
-                    if let selected = inspector.files.first(where: {
-                        $0.file.id == selectedFileId
-                    }) {
+                    if let selectedFile {
                         Divider()
-                        StorageFileDetails(file: selected.file) {
+                        StorageFileDetails(file: selectedFile) {
                             selectedFileId = nil
                         }
                     }
@@ -62,12 +69,19 @@ struct StorageContentsInspector: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { showRelease(releaseId) }
+        .onAppear {
+            showRelease(releaseId)
+            showFile(selectedFileId)
+        }
         .onChange(of: releaseId) { _, newId in
             selectedFileId = nil
             showRelease(newId)
         }
-        .onDisappear { reader?.close() }
+        .onChange(of: selectedFileId) { _, newId in showFile(newId) }
+        .onDisappear {
+            reader?.close()
+            fileReader?.close()
+        }
     }
 
     private func fileList(_ rows: [BridgeStorageInspectorFile]) -> some View {
@@ -107,5 +121,28 @@ struct StorageContentsInspector: View {
             )
         self.reader = reader
         reader.show(releaseId)
+    }
+
+    /// Read the file `fileId` names for its details, or end the read when no
+    /// file is selected.
+    private func showFile(_ fileId: String?) {
+        guard let fileId else {
+            fileReader?.close()
+            selectedFile = nil
+            return
+        }
+        // Another file's value shows nothing of this one.
+        if fileId != fileReader?.id {
+            selectedFile = nil
+        }
+        let fileReader =
+            fileReader
+            ?? DetailReader(
+                open: library.storageFile,
+                onValue: { _, value in selectedFile = value },
+                onError: { _, error in self.error = DisplayError(error) }
+            )
+        self.fileReader = fileReader
+        fileReader.show(fileId)
     }
 }

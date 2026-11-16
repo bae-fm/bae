@@ -82,6 +82,9 @@ public final class Library: Sendable, Observable {
     /// queue, read in core.
     public let storageInspector:
         @Sendable () -> DetailQuery<BridgeStorageInspector>
+    /// Open the Storage Manager inspector's live read of one release file,
+    /// by its id, which its file details show.
+    public let storageFile: @Sendable () -> DetailQuery<BridgeFile>
     /// Open the Storage sheet's live read of a release's files, in the order
     /// its file table sorts by, read in core.
     public let releaseFiles: @Sendable () -> ReleaseFilesQuery
@@ -194,6 +197,9 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable () -> DetailQuery<BridgeStorageInspector> = {
                 fatalError("Library storage inspector is not installed")
             },
+        storageFile: @escaping @Sendable () -> DetailQuery<BridgeFile> = {
+            fatalError("Library storage file is not installed")
+        },
         releaseFiles: @escaping @Sendable () -> ReleaseFilesQuery = {
             fatalError("Library release files are not installed")
         },
@@ -237,6 +243,7 @@ public final class Library: Sendable, Observable {
         self.storageHoldsAll = storageHoldsAll
         self.storageQueues = storageQueues
         self.storageInspector = storageInspector
+        self.storageFile = storageFile
         self.releaseFiles = releaseFiles
         self.coverGallery = coverGallery
         self.resolveToTrackIds = resolveToTrackIds
@@ -304,6 +311,7 @@ extension Library {
                 storageInspector: {
                     DetailQuery(handle.subscribeStorageInspector())
                 },
+                storageFile: { DetailQuery(handle.subscribeStorageFile()) },
                 releaseFiles: {
                     ReleaseFilesQuery(handle.subscribeReleaseFiles())
                 },
@@ -647,6 +655,17 @@ extension KeyedDetailQuery where Id == String, Value == BridgeWorkDetail {
     extension KeyedDetailQuery
     where Id == String, Value == BridgeStorageInspector {
         init(_ subscription: StorageInspectorSubscription) {
+            self.init(
+                setId: { try subscription.setId(id: $0) },
+                values: PulledValues(subscription) {
+                    DetailDelivery(id: $0.id, value: $0.value)
+                }
+            )
+        }
+    }
+
+    extension KeyedDetailQuery where Id == String, Value == BridgeFile {
+        init(_ subscription: StorageFileSubscription) {
             self.init(
                 setId: { try subscription.setId(id: $0) },
                 values: PulledValues(subscription) {

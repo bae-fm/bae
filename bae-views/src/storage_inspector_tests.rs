@@ -2,6 +2,9 @@
 
 use super::*;
 use crate::album_detail::FilePin;
+use bae_records::test_fixtures::aggregate_ordering::{
+    insert_files_out_of_natural_order, release_detail_db,
+};
 use bae_records::test_fixtures::*;
 use bae_store::test_fixtures::*;
 use bae_transfers::{DownloadRequest, ReleaseQueueEntries};
@@ -192,4 +195,26 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
         panic!("only RELEASE_A's download is queued: {:?}", read.transfers);
     };
     assert_eq!(operation.op.release_id, RELEASE_A);
+}
+
+/// The inspector's file details read the one file they show by its id, and
+/// read nothing for an id the library holds no file for.
+#[tokio::test]
+async fn the_file_details_read_the_file_by_its_id() {
+    let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
+    insert_files_out_of_natural_order(&db, tmp.path()).await;
+    let cover = bae_util::test_ids::test_uuid("ordering-file-1");
+
+    let mut live = crate::LibraryViews::new(db.clone()).subscribe_storage_file(Some(cover.clone()));
+    let read = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(read.map(|file| file.original_filename), Some("cover.jpg".to_string()));
+
+    live.requests().set(Some("no-such-file".to_string())).expect("the query is open");
+    let read = loop {
+        let event = live.next().await.expect("the query stays open");
+        if event.request.as_deref() == Some("no-such-file") {
+            break event.result.unwrap();
+        }
+    };
+    assert_eq!(read, None, "the library holds no such file");
 }

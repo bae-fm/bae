@@ -352,6 +352,7 @@ task_types = [
     "StorageQueuesSubscription",
     "StorageSelectionSubscription",
     "StorageInspectorSubscription",
+    "StorageFileSubscription",
     "StorageSetupFinishingSubscription",
     "SubsonicSubscription",
     "SyncActivitySubscription",

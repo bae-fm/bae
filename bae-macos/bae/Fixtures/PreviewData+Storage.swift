@@ -464,25 +464,11 @@ extension PreviewData {
                 (row.id, storageReleaseDetail(for: row))
             }
         )
-        let inspectors = Dictionary(
-            uniqueKeysWithValues: rows.map { row in
-                let (audioFile, imageFile) = storageReleaseFiles(for: row)
-                return (
-                    row.id,
-                    storageInspector(
-                        files: [audioFile, imageFile],
-                        download: downloads.first {
-                            $0.releaseId == row.release.id
-                        },
-                        output: outputs.first {
-                            $0.releaseId == row.release.id
-                        },
-                        upload: uploads.first {
-                            $0.releaseId == row.release.id
-                        }
-                    )
-                )
-            }
+        let inspectors = storageInspectors(
+            rows: rows,
+            downloads: downloads,
+            outputs: outputs,
+            uploads: uploads
         )
         let queues = storageQueues(
             downloads: downloads,
@@ -512,6 +498,43 @@ extension PreviewData {
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }
+            },
+            storageFile: {
+                .fixed(answers: answers) { fileId in
+                    inspectors.values.lazy.flatMap(\.files)
+                        .first { $0.file.id == fileId }?
+                        .file
+                }
+            }
+        )
+    }
+
+    /// Each row's release as the inspector shows it, with its entry in
+    /// `downloads`, `outputs` and `uploads`, by release id.
+    private static func storageInspectors(
+        rows: [BridgeStorageRow],
+        downloads: [BridgeDownloadOp],
+        outputs: [BridgeOutputOp],
+        uploads: [PreviewReleaseUpload]
+    ) -> [String: BridgeStorageInspector] {
+        Dictionary(
+            uniqueKeysWithValues: rows.map { row in
+                let (audioFile, imageFile) = storageReleaseFiles(for: row)
+                return (
+                    row.id,
+                    storageInspector(
+                        files: [audioFile, imageFile],
+                        download: downloads.first {
+                            $0.releaseId == row.release.id
+                        },
+                        output: outputs.first {
+                            $0.releaseId == row.release.id
+                        },
+                        upload: uploads.first {
+                            $0.releaseId == row.release.id
+                        }
+                    )
+                )
             }
         )
     }

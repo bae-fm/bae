@@ -200,6 +200,7 @@ extension StorageQueuesSubscription: PulledSubscription {}
     extension SubsonicSubscription: PulledSubscription {}
     extension LibraryStatusSubscription: PulledSubscription {}
     extension StorageInspectorSubscription: PulledSubscription {}
+    extension StorageFileSubscription: PulledSubscription {}
     extension ImportCandidateSubscription: PulledSubscription {}
     extension InvalidCandidateSubscription: PulledSubscription {}
     extension ReleaseFilesSubscription: PulledSubscription {}

@@ -5600,8 +5600,9 @@ Reads come two ways:
   on, a selected release only while the list holds it: a release that finishes
   uploading out of the Local list, no longer matches the filter, or is deleted
   leaves the inspector and the actions' targets as it leaves the list, including
-  while an action's confirmation or folder prompt is open. The inspector reads
-  its release live by id: the release's files, each beside its upload while one
+  while an action's confirmation or folder prompt is open. The details of the
+  file selected in the inspector are a live read of that file by its id. The
+  inspector reads its release live by id: the release's files, each beside its upload while one
   waits (whether it is being sent, and what it waits for with the error behind
   that while this process holds it; how far it has got arrives apart, by file;
   and while the release waits in or runs through the download queue, whether the

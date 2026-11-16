@@ -158,7 +158,32 @@ impl LibraryViews {
             })
             .process(|rows| Ok(rows.map(StorageInspector::read)))
     }
+
+    /// Follow the release file `initial` names, or none, as the inspector's
+    /// file details show it; none while no such file exists. Another file is a
+    /// new request on the same query.
+    pub fn subscribe_storage_file(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<FileDetail>, bae_store::DbError>
+    {
+        self.store
+            .subscribe_reconfigurable(initial, |file_id, sql| {
+                let Some(file_id) = file_id else {
+                    return Ok(None);
+                };
+                Ok(sql.query_row(STORAGE_FILE, params![file_id], row_to_file).optional()?)
+            })
+            .process(|row| Ok(row.map(FileDetail::from_raw)))
+    }
 }
+
+/// One release file, by its id.
+const STORAGE_FILE: &str = concat!(
+    "SELECT ",
+    bae_records::release_file_columns!(),
+    " FROM release_files AS f WHERE f.id = ?1"
+);
 
 /// Where this device's pin of each file of the release `?1` stands while the
 /// download queue pins the release without having failed (kept, downloading,

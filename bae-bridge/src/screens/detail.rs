@@ -133,6 +133,18 @@ detail_subscription! {
     value: crate::types::BridgeStorageInspector,
 }
 
+impl DetailValue for crate::types::BridgeFile {
+    type Core = bae_views::album_detail::FileDetail;
+}
+
+#[cfg(desktop)]
+detail_subscription! {
+    object: StorageFileSubscription,
+    built by storage_file,
+    snapshot: BridgeStorageFileSnapshot,
+    value: crate::types::BridgeFile,
+}
+
 #[cfg(desktop)]
 detail_subscription! {
     object: InvalidCandidateSubscription,

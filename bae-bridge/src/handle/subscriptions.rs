@@ -243,6 +243,12 @@ impl AppHandle {
         )
     }
 
+    /// The Storage Manager inspector's read of one release file, for its
+    /// file details, showing nothing until `set_id`.
+    pub fn subscribe_storage_file(&self) -> Arc<crate::StorageFileSubscription> {
+        crate::screens::storage_file(self.services.subscribe_storage_file(), self.runtime.clone())
+    }
+
     /// The covers a library release's picker shows, showing nothing until
     /// `set_request` names a release.
     pub fn subscribe_cover_gallery(&self) -> Arc<crate::CoverGallerySubscription> {
