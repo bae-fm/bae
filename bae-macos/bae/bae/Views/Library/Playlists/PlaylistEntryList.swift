@@ -250,13 +250,12 @@ private struct PlaylistEntryRow: View {
         .onHover { hovering = $0 }
         .onTapGesture(count: 2, perform: play)
         .macContextMenu {
-            MacMenuItem("Play") { play() }
-            MacMenuItem("Play next") { playNext() }
-            MacMenuItem("Add to queue") { addToQueue() }
-            if let remove {
-                MacMenuDivider()
-                MacMenuItem("Remove from playlist") { remove() }
-            }
+            PlaylistEntryMenu(
+                play: play,
+                playNext: playNext,
+                addToQueue: addToQueue,
+                remove: remove
+            )
         }
     }
 }

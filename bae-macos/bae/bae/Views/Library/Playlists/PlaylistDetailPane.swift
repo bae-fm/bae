@@ -116,11 +116,10 @@ struct PlaylistDetailPane: View {
             Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
             if summary.yours {
                 MacMoreMenu {
-                    MacMenuItem("Edit playlist…") {
-                        editing = EditPlaylistSheetState(summary)
-                    }
-                    MacMenuDivider()
-                    MacMenuItem("Delete playlist…") { deleting = summary }
+                    PlaylistOptionsMenu(
+                        onEdit: { editing = EditPlaylistSheetState(summary) },
+                        onDelete: { deleting = summary }
+                    )
                 }
             }
         }

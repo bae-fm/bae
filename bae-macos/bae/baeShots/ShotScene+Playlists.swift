@@ -46,9 +46,7 @@ extension ShotScene {
                         window
                         MacMenuInPlace(
                             {
-                                MacMenuItem("Edit playlist…") {}
-                                MacMenuDivider()
-                                MacMenuItem("Delete playlist…") {}
+                                PlaylistOptionsMenu(onEdit: {}, onDelete: {})
                             },
                             highlighted: 0
                         )
@@ -102,11 +100,12 @@ extension ShotScene {
                         window
                         MacMenuInPlace(
                             {
-                                MacMenuItem("Play") {}
-                                MacMenuItem("Play next") {}
-                                MacMenuItem("Add to queue") {}
-                                MacMenuDivider()
-                                MacMenuItem("Remove from playlist") {}
+                                PlaylistEntryMenu(
+                                    play: {},
+                                    playNext: {},
+                                    addToQueue: {},
+                                    remove: {}
+                                )
                             },
                             highlighted: 4
                         )
