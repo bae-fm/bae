@@ -1,5 +1,8 @@
 import BaeKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger.bae("MacNowPlayingBarContainer")
 
 /// Reads the stores for `MacNowPlayingBar`, so the bar re-evaluates when what it
 /// shows changes: a playback value (core sends one only when it changed), the
@@ -68,6 +71,11 @@ struct MacNowPlayingBarContainer: View {
                     try await playback.setVolume(level)
                 }
                 catch {
+                    // Every way playback can fail to store a volume is a bug.
+                    let detail = String(reflecting: error)
+                    logger.error("setting the volume failed: \(detail)")
+                    CoreBugReporter()
+                        .report(operation: "set the volume", detail: detail)
                     uiStore.showError(error)
                 }
             },
