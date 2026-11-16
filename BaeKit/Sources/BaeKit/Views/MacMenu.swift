@@ -55,7 +55,12 @@
     /// An item that does something when picked. `checked` draws the mark a
     /// pop-up puts on its chosen item and a menu on an option that is on.
     public struct MacMenuItem: MacMenuPart {
+        /// What the item says, and what accessibility reads when the item
+        /// draws an image in its place.
         public let title: String
+        /// What the menu draws in place of the title, such as a rating's
+        /// stars; `nil` draws the title.
+        public let image: AnyView?
         public let isChecked: Bool
         public let isDisabled: Bool
         public let action: () -> Void
@@ -83,8 +88,24 @@
             action: @escaping () -> Void
         ) {
             self.title = title
+            self.image = nil
             self.isChecked = checked
             self.isDisabled = disabled
+            self.action = action
+        }
+
+        /// An item the menu draws as `image`, with a localized title that
+        /// accessibility reads.
+        public init(
+            _ title: LocalizedStringResource,
+            image: some View,
+            checked: Bool = false,
+            action: @escaping () -> Void
+        ) {
+            self.title = String(localized: title)
+            self.image = AnyView(image)
+            self.isChecked = checked
+            self.isDisabled = false
             self.action = action
         }
 

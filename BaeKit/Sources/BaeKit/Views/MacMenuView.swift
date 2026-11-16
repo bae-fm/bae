@@ -136,6 +136,7 @@
                 row(
                     index,
                     title: item.title,
+                    image: item.image,
                     checked: item.isChecked,
                     disabled: item.isDisabled,
                     submenu: false
@@ -155,6 +156,7 @@
         private func row(
             _ index: Int,
             title: String,
+            image: AnyView? = nil,
             checked: Bool,
             disabled: Bool,
             submenu: Bool,
@@ -169,8 +171,13 @@
                     }
                 }
                 .frame(width: MacMenuMetrics.markWidth)
-                Text(verbatim: title)
-                    .lineLimit(1)
+                if let image {
+                    image
+                }
+                else {
+                    Text(verbatim: title)
+                        .lineLimit(1)
+                }
                 if submenu {
                     Spacer(minLength: ThemeSpace.edge)
                     if let accessory {

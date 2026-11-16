@@ -1,7 +1,8 @@
 import BaeKit
+import SwiftUI
 
-/// A track menu's Rate submenu: the five star counts from five down to one
-/// with the person's own checked, then Clear rating.
+/// A track menu's Rate submenu: the five ratings from five stars down to one,
+/// each drawn as the stars, with the person's own checked, then Clear rating.
 struct TrackRateMenu: MacMenuPart {
     /// The stars the person gave the track, if they did.
     let stars: BridgeStars?
@@ -13,7 +14,8 @@ struct TrackRateMenu: MacMenuPart {
             .map { choice in
                 .item(
                     MacMenuItem(
-                        verbatim: String(repeating: "★", count: choice.number),
+                        "\(choice.number) of 5 stars",
+                        image: Stars(value: choice.number, size: 11),
                         checked: choice == stars
                     ) { onRate(choice) }
                 )
