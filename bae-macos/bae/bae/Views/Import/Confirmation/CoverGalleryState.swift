@@ -33,9 +33,8 @@ final class CoverGalleryState {
     private var fetch = BridgeCoverFetch.notFetched
     /// Whose covers the picker shows.
     private let owner: BridgeCoverGalleryOwner
-    private var query: CoverGalleryQuery?
-    private var values:
-        ScreenSubscription<PulledValues<BridgeCoverGallerySnapshot>>?
+    /// The picker's live read while the picker is open.
+    private var following: Following?
     private var refreshTask: Task<Void, Never>?
     private let refreshCovers: () async throws -> Void
 
@@ -58,14 +57,16 @@ final class CoverGalleryState {
 
     /// Follow the owner's picker, then look the catalogs up again.
     func open(query: CoverGalleryQuery) async {
-        if self.query == nil {
-            self.query = query
-            values = ScreenSubscription(
-                query.values,
-                onValue: { [weak self] in self?.receive($0) },
-                onError: { [weak self] in
-                    self?.readFailure = DisplayError($0)
-                }
+        if following == nil {
+            following = Following(
+                query: query,
+                values: ScreenSubscription(
+                    query.values,
+                    onValue: { [weak self] in self?.receive($0) },
+                    onError: { [weak self] in
+                        self?.readFailure = DisplayError($0)
+                    }
+                )
             )
         }
         show()
@@ -79,15 +80,14 @@ final class CoverGalleryState {
 
     func cancel() {
         refreshTask?.cancel()
-        values?.stop()
-        values = nil
-        query = nil
+        following?.values.stop()
+        following = nil
     }
 
     private func show() {
-        guard let query else { return }
+        guard let following else { return }
         do {
-            try query.setRequest(owner, filter.bridge, focusedCover)
+            try following.query.setRequest(owner, filter.bridge, focusedCover)
         }
         catch {
             readFailure = DisplayError(error)
@@ -126,4 +126,11 @@ final class CoverGalleryState {
         }
         isRefreshing = false
     }
+}
+
+/// A cover picker's live read: the query whose request the owner, filter and
+/// focused cover set, and the subscription that receives the query's values.
+private struct Following {
+    let query: CoverGalleryQuery
+    let values: ScreenSubscription<PulledValues<BridgeCoverGallerySnapshot>>
 }
