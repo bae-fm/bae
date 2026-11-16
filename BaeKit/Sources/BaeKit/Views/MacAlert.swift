@@ -204,9 +204,8 @@
                 .frame(height: 28)
                 .background(accent.buttonColor, in: shape)
                 .overlay {
-                    if configuration.isPressed {
-                        shape.fill(Theme.pressed)
-                    }
+                    shape.fill(Theme.pressed)
+                        .opacity(configuration.isPressed ? 1 : 0)
                 }
                 .contentShape(shape)
                 .opacity(isEnabled ? 1 : ThemeOpacity.off)
