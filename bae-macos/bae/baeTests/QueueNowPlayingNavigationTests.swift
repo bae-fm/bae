@@ -73,4 +73,35 @@ struct QueueNowPlayingNavigationTests {
             #expect(ui.showQueue)
         }
     }
+
+    /// Core's value that removes the playing track can arrive after the view
+    /// drew Go to Now Playing enabled and before the person chooses it.
+    @MainActor
+    @Test(
+        "going to a track the library no longer holds says something went wrong"
+    )
+    func goingToARemovedTrackSaysSomethingWentWrong() {
+        let ui = UiStore()
+        ui.navigateToImport()
+        let store = PlaybackStore()
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: "playing-track",
+                        durationMs: 180_000
+                    ),
+                    display: .removed
+                )
+            )
+        )
+
+        NowPlayingNavigationAction(playbackStore: store, uiStore: ui).perform()
+
+        #expect(ui.activeSection != .library)
+        #expect(
+            ui.lastError?.line
+                == localizedCoreString("core.error.category.internal")
+        )
+    }
 }
