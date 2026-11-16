@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -51,8 +51,11 @@ internal class PlaylistEntryActions(
     val onAddToPlaylist: ((trackId: String) -> Unit)?,
     /** Take the entry named by its position id out of the playlist. */
     val onRemove: (positionId: String) -> Unit,
-    /** Write the entries in [order], each named by its position id; [onReturned] runs when the write returns. */
-    val onReorder: (order: List<String>, onReturned: () -> Unit) -> Unit,
+    /**
+     * Move the entry named by its position id to the place [to] among the entries, where core changes the
+     * order; [onReturned] runs when the write returns.
+     */
+    val onMove: (positionId: String, to: Int, onReturned: () -> Unit) -> Unit,
 )
 
 /**
@@ -62,12 +65,17 @@ internal class PlaylistEntryActions(
  */
 internal class PlaylistReorder(
     private val entries: List<BridgePlaylistEntryRow>,
-    private val write: (order: List<String>, onReturned: () -> Unit) -> Unit,
+    private val write: (positionId: String, to: Int, onReturned: () -> Unit) -> Unit,
     private val held: MutableState<List<String>?>,
 ) {
-    private var draggedId by mutableStateOf<String?>(null)
-    private var startIndex by mutableStateOf(0)
-    private var offset by mutableFloatStateOf(0f)
+    /** The entry a drag holds: its position id, the place it was drawn at, and how far it has moved. */
+    private data class Drag(
+        val positionId: String,
+        val startIndex: Int,
+        val offset: Float,
+    )
+
+    private var dragging by mutableStateOf<Drag?>(null)
 
     /** The height of one entry's row, measured from the rows drawn. */
     var rowHeight by mutableFloatStateOf(0f)
@@ -79,83 +87,77 @@ internal class PlaylistReorder(
             return order.mapNotNull { byId[it] }
         }
 
-    private val target: Int
-        get() =
-            if (draggedId == null || rowHeight <= 0f) {
-                startIndex
-            } else {
-                (startIndex + offset / rowHeight).roundToInt().coerceIn(0, ordered.lastIndex)
-            }
+    /** The place [dragging]'s entry would land if let go now. */
+    private fun Drag.target(): Int =
+        if (rowHeight <= 0f) {
+            startIndex
+        } else {
+            (startIndex + offset / rowHeight).roundToInt().coerceIn(0, ordered.lastIndex)
+        }
 
     /** The entries as drawn: the dragged one already in the place it would land. */
     val shown: List<BridgePlaylistEntryRow>
         get() {
-            val id = draggedId ?: return ordered
+            val dragged = dragging ?: return ordered
             val moved = ordered.toMutableList()
-            val index = moved.indexOfFirst { it.positionId == id }
-            if (index < 0) return ordered
-            moved.add(target, moved.removeAt(index))
+            moved.add(dragged.target(), moved.removeAt(dragged.startIndex))
             return moved
         }
 
     /** How far the dragged entry's row is drawn from the slot it is in, so it follows the finger. */
     fun liftOffset(positionId: String): Float {
-        if (positionId != draggedId) return 0f
-        return (startIndex - target) * rowHeight + offset
+        val dragged = dragging?.takeIf { it.positionId == positionId } ?: return 0f
+        return (dragged.startIndex - dragged.target()) * rowHeight + dragged.offset
     }
 
-    fun isDragged(positionId: String): Boolean = positionId == draggedId
+    fun isDragged(positionId: String): Boolean = positionId == dragging?.positionId
 
-    /** Whether the entry [positionId] names has a place [by] away (-1 above it, 1 below it) to move to. */
-    fun canMove(
-        positionId: String,
-        by: Int,
-    ): Boolean {
-        val to = ordered.indexOfFirst { it.positionId == positionId } + by
-        return ordered.any { it.positionId == positionId } && to in ordered.indices
-    }
-
-    /** Move the entry [positionId] names [by] places and write the order, as a screen reader's moves do. */
+    /**
+     * Move the entry [positionId], drawn at [index], [by] places (-1 up, 1 down) and write the move, as a
+     * screen reader's moves do.
+     */
     fun move(
         positionId: String,
+        index: Int,
         by: Int,
     ) {
-        if (!canMove(positionId, by)) return
+        hold(positionId, index, index + by)
+    }
+
+    /** Draw the entry [positionId] moved from [from] to [to] until the move's write returns. */
+    private fun hold(
+        positionId: String,
+        from: Int,
+        to: Int,
+    ) {
         val order = ordered.map { it.positionId }.toMutableList()
-        val from = order.indexOf(positionId)
-        order.add(from + by, order.removeAt(from))
-        hold(order)
-    }
-
-    /** Draw [order] until its write returns. */
-    private fun hold(order: List<String>) {
+        order.add(to, order.removeAt(from))
         held.value = order
-        write(order) { held.value = null }
+        write(positionId, to) { held.value = null }
     }
 
-    fun start(positionId: String) {
-        draggedId = positionId
-        startIndex = ordered.indexOfFirst { it.positionId == positionId }
-        offset = 0f
+    /** A drag took hold of the entry [positionId], drawn at [index]. */
+    fun start(
+        positionId: String,
+        index: Int,
+    ) {
+        dragging = Drag(positionId, index, 0f)
     }
 
     fun drag(by: Float) {
-        offset += by
+        dragging = dragging?.let { it.copy(offset = it.offset + by) }
     }
 
-    /** Let go: write the new order when the entry moved. */
+    /** Let go: write the move when the entry moved. */
     fun finish() {
-        if (draggedId == null) return
-        val order = shown.map { it.positionId }
-        val moved = target != startIndex
-        draggedId = null
-        offset = 0f
-        if (moved) hold(order)
+        val dragged = dragging ?: return
+        val to = dragged.target()
+        dragging = null
+        if (to != dragged.startIndex) hold(dragged.positionId, dragged.startIndex, to)
     }
 
     fun cancel() {
-        draggedId = null
-        offset = 0f
+        dragging = null
     }
 }
 
@@ -166,12 +168,12 @@ internal class PlaylistReorder(
 @Composable
 internal fun rememberPlaylistReorder(
     detail: BridgePlaylistDetail,
-    write: (order: List<String>, onReturned: () -> Unit) -> Unit,
+    write: (positionId: String, to: Int, onReturned: () -> Unit) -> Unit,
 ): PlaylistReorder {
     val held = remember { mutableStateOf<List<String>?>(null) }
     val latestWrite by rememberUpdatedState(write)
     return remember(detail.entries) {
-        PlaylistReorder(detail.entries, { order, failed -> latestWrite(order, failed) }, held)
+        PlaylistReorder(detail.entries, { positionId, to, returned -> latestWrite(positionId, to, returned) }, held)
     }
 }
 
@@ -186,14 +188,15 @@ internal fun LazyListScope.playlistEntries(
     context: Context,
 ) {
     val yours = detail.summary.yours
-    items(reorder.shown, key = { it.positionId }) { entry ->
-        PlaylistEntry(entry, yours, actions, reorder, context)
+    itemsIndexed(reorder.shown, key = { _, entry -> entry.positionId }) { index, entry ->
+        PlaylistEntry(entry, index, yours, actions, reorder, context)
     }
 }
 
 @Composable
 private fun LazyItemScope.PlaylistEntry(
     entry: BridgePlaylistEntryRow,
+    index: Int,
     yours: Boolean,
     actions: PlaylistEntryActions,
     reorder: PlaylistReorder,
@@ -221,7 +224,7 @@ private fun LazyItemScope.PlaylistEntry(
                         Modifier
                     },
                 ).then(
-                    if (yours) Modifier.ownerReorder(latestReorder, entry.positionId, moveUp, moveDown) else Modifier,
+                    if (yours) Modifier.ownerReorder(latestReorder, entry, index, moveUp, moveDown) else Modifier,
                 ).padding(end = ENTRY_MENU_END_PADDING),
     ) {
         Box(modifier = Modifier.weight(1f)) {
@@ -248,19 +251,20 @@ private fun LazyItemScope.PlaylistEntry(
  */
 private fun Modifier.ownerReorder(
     reorder: PlaylistReorder,
-    positionId: String,
+    entry: BridgePlaylistEntryRow,
+    index: Int,
     moveUp: String,
     moveDown: String,
 ): Modifier =
     semantics {
         customActions =
             listOfNotNull(
-                entryMoveAction(reorder, positionId, -1, moveUp),
-                entryMoveAction(reorder, positionId, 1, moveDown),
+                entryMoveAction(reorder, entry, index, -1, moveUp).takeIf { entry.canMoveUp },
+                entryMoveAction(reorder, entry, index, 1, moveDown).takeIf { entry.canMoveDown },
             )
-    }.pointerInput(positionId) {
+    }.pointerInput(entry.positionId, index) {
         detectDragGesturesAfterLongPress(
-            onDragStart = { reorder.start(positionId) },
+            onDragStart = { reorder.start(entry.positionId, index) },
             onDrag = { change, amount ->
                 change.consume()
                 reorder.drag(amount.y)
@@ -270,20 +274,17 @@ private fun Modifier.ownerReorder(
         )
     }
 
-/** The screen reader action that moves an entry [by] places, when there is a place to move it to. */
+/** The screen reader action that moves an entry, drawn at [index], [by] places. */
 private fun entryMoveAction(
     reorder: PlaylistReorder,
-    positionId: String,
+    entry: BridgePlaylistEntryRow,
+    index: Int,
     by: Int,
     label: String,
-): CustomAccessibilityAction? =
-    if (reorder.canMove(positionId, by)) {
-        CustomAccessibilityAction(label) {
-            reorder.move(positionId, by)
-            true
-        }
-    } else {
-        null
+): CustomAccessibilityAction =
+    CustomAccessibilityAction(label) {
+        reorder.move(entry.positionId, index, by)
+        true
     }
 
 private val LIFT_SHADOW = 6.dp

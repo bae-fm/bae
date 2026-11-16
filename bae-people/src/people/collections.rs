@@ -146,27 +146,38 @@ impl People {
         .await
     }
 
-    /// Renumbers the playlist's entries from 0 in `order`; entries `order`
-    /// does not name follow, in the order they were in.
-    pub async fn reorder_playlist(
+    /// Moves the entry `position` to the place `to` among the playlist's
+    /// entries, counted from 0, or to the end when `to` is past it, and
+    /// renumbers every entry from 0 in the order that leaves. Fails as
+    /// missing when the playlist holds no such entry.
+    pub async fn move_playlist_entry(
         &self,
         playlist: uuid::Uuid,
-        order: Vec<uuid::Uuid>,
+        position: uuid::Uuid,
+        to: u64,
     ) -> Result<(), CollectionError> {
+        let to = i64::try_from(to).unwrap_or(i64::MAX);
         self.change_playlist(playlist, move |sql| {
-            let current: Vec<String> = sql.query("SELECT position_id FROM playlist_entries WHERE playlist_id = ? ORDER BY position", [playlist.to_string()], |row| row.get(0))?;
-            let named: Vec<String> = order.iter().map(ToString::to_string).collect();
-            let mut renumbered: Vec<&String> = Vec::with_capacity(current.len());
-            for position in named.iter().chain(&current) {
-                if current.contains(position) && !renumbered.contains(&position) {
-                    renumbered.push(position);
-                }
-            }
-            for (index, position) in renumbered.into_iter().enumerate() {
-                sql.execute("UPDATE playlist_entries SET position = ? WHERE playlist_id = ? AND position_id = ?", params![index as i64, playlist.to_string(), position])?;
-            }
-            Ok(Ok(()))
-        }).await
+            let changed = sql.execute(
+                "WITH others AS ( \
+                     SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place \
+                     FROM playlist_entries WHERE playlist_id = ?1 AND position_id <> ?2), \
+                 placed AS ( \
+                     SELECT position_id, CASE WHEN place >= ?3 THEN place + 1 ELSE place END \
+                            AS place FROM others \
+                     UNION ALL \
+                     SELECT position_id, MIN(?3, (SELECT COUNT(*) FROM others)) \
+                     FROM playlist_entries WHERE playlist_id = ?1 AND position_id = ?2) \
+                 UPDATE playlist_entries SET position = placed.place FROM placed \
+                 WHERE playlist_entries.playlist_id = ?1 \
+                   AND playlist_entries.position_id = placed.position_id \
+                   AND EXISTS (SELECT 1 FROM playlist_entries \
+                               WHERE playlist_id = ?1 AND position_id = ?2)",
+                params![playlist.to_string(), position.to_string(), to],
+            )?;
+            Ok(if changed > 0 { Ok(()) } else { Err(CollectionError::Missing) })
+        })
+        .await
     }
 
     async fn change_playlist(

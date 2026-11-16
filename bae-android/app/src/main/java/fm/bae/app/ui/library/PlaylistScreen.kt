@@ -147,10 +147,10 @@ internal fun PlaylistPage(
                         session.appHandle.removePlaylistEntry(playlistId, positionId)
                     }
                 },
-                onReorder = { order, onReturned ->
-                    session.messages.perform("reorder playlist $playlistId") {
+                onMove = { positionId, to, onReturned ->
+                    session.messages.perform("move $positionId to $to in playlist $playlistId") {
                         try {
-                            session.appHandle.reorderPlaylist(playlistId, order)
+                            session.appHandle.movePlaylistEntry(playlistId, positionId, to.toULong())
                         } finally {
                             onReturned()
                         }
@@ -171,7 +171,7 @@ internal fun PlaylistContent(
 ) {
     val context = LocalContext.current
     val summary = detail.summary
-    val reorder = rememberPlaylistReorder(detail, actions.onReorder)
+    val reorder = rememberPlaylistReorder(detail, actions.onMove)
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Row(

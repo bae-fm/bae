@@ -61,14 +61,17 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
         entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>()
     };
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, b, c]);
-    // A reorder that names some entries puts them first, in its order, and
-    // the rest follow as they were; one that names an entry twice or one the
-    // playlist lacks renumbers by the first mention.
-    people.reorder_playlist(id, vec![b, a]).await.unwrap();
+    // A move puts the entry at its place among the others, counted from 0,
+    // or at the end past them; one naming an entry the playlist lacks is
+    // refused and moves nothing.
+    people.move_playlist_entry(id, b, 0).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![b, a, c]);
-    people.reorder_playlist(id, vec![a, a, uuid::Uuid::nil(), c]).await.unwrap();
+    people.move_playlist_entry(id, b, 9).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
-    people.reorder_playlist(id, vec![c, b, a]).await.unwrap();
+    assert!(people.move_playlist_entry(id, uuid::Uuid::nil(), 0).await.is_err());
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
+    people.move_playlist_entry(id, c, 0).await.unwrap();
+    people.move_playlist_entry(id, b, 1).await.unwrap();
     let entries = people.playlist_entries(id).await.unwrap();
     assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);
     assert_eq!(entries[0].track_id, first);
@@ -337,14 +340,22 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     .await
     .unwrap();
     assert_eq!(grown.summary.track_count.count, 3);
-    let order: Vec<_> = grown.entries.iter().rev().map(|entry| entry.position_id).collect();
-    people.reorder_playlist(id, order.clone()).await.unwrap();
+    let mut order: Vec<_> = grown.entries.iter().map(|entry| entry.position_id).collect();
+    order.rotate_right(1);
+    people.move_playlist_entry(id, appended, 0).await.unwrap();
     let reordered = detail_matching(&mut detail, |detail| {
         detail.as_ref().is_some_and(|detail| detail.entries[0].position_id == appended)
     })
     .await
     .unwrap();
     assert_eq!(reordered.entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), order);
+    let moves: Vec<_> =
+        reordered.entries.iter().map(|entry| (entry.can_move_up, entry.can_move_down)).collect();
+    assert_eq!(
+        moves,
+        vec![(false, true), (true, true), (true, false)],
+        "each entry says whether one comes before it and after it"
+    );
 
     people.delete_playlist(id).await.unwrap();
     detail_matching(&mut detail, |detail| detail.is_none()).await;

@@ -212,6 +212,8 @@ object BridgeFixtures {
     fun playlistEntry(
         positionId: String,
         title: String,
+        canMoveUp: Boolean = false,
+        canMoveDown: Boolean = false,
     ): BridgePlaylistEntryRow =
         BridgePlaylistEntryRow(
             positionId = positionId,
@@ -223,6 +225,8 @@ object BridgeFixtures {
             releaseId = "rel-1",
             durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
             cover = null,
+            canMoveUp = canMoveUp,
+            canMoveDown = canMoveDown,
         )
 
     fun playlistDetail(

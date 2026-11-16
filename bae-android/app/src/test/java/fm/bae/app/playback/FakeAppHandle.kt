@@ -805,11 +805,12 @@ internal open class FakeAppHandle(
         unfaked("renameProfile")
     }
 
-    override suspend fun reorderPlaylist(
+    override suspend fun movePlaylistEntry(
         playlist: String,
-        order: List<String>,
+        position: String,
+        to: ULong,
     ) {
-        unfaked("reorderPlaylist")
+        unfaked("movePlaylistEntry")
     }
 
     override suspend fun setAvatar(bytes: ByteArray?) {

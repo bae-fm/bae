@@ -5,16 +5,16 @@ import SwiftUI
 /// playlist. The playlist's owner moves an entry by dragging its row: the row
 /// stays in place and dims, a copy follows the pointer, and a line over the
 /// gap marks where the entry goes when the owner lets go; letting go writes
-/// the new order.
+/// the move.
 struct PlaylistEntryList: View {
     let detail: BridgePlaylistDetail
     let play: (BridgePlaylistEntryRow) -> Void
     let playNext: (BridgePlaylistEntryRow) -> Void
     let addToQueue: (BridgePlaylistEntryRow) -> Void
     let remove: (BridgePlaylistEntryRow) -> Void
-    /// Write the entries in `order`, each named by its position id, returning
-    /// when the write returns.
-    let reorder: (_ order: [String]) async -> Void
+    /// Move the entry `positionId` to the place `to` among the entries, where
+    /// core changes the order, returning when the write returns.
+    let move: (_ positionId: String, _ to: Int) async -> Void
 
     @State
     private var drag: PlaylistEntryDrag?
@@ -47,7 +47,10 @@ struct PlaylistEntryList: View {
                     addToQueue: { addToQueue(entry) },
                     remove: canChange ? { remove(entry) } : nil
                 )
-                .opacity(drag?.index == index ? Self.draggedRowOpacity : 1)
+                .opacity(
+                    drag?.entry.positionId == entry.positionId
+                        ? Self.draggedRowOpacity : 1
+                )
                 .background(
                     GeometryReader { proxy in
                         Color.clear.preference(
@@ -57,7 +60,7 @@ struct PlaylistEntryList: View {
                     }
                 )
                 .gesture(
-                    dragGesture(index: index, entries: entries),
+                    dragGesture(entry, index: index, count: entries.count),
                     including: canChange ? .all : .subviews
                 )
             }
@@ -65,9 +68,9 @@ struct PlaylistEntryList: View {
         .coordinateSpace(name: Self.space)
         .onPreferenceChange(PlaylistEntryHeightKey.self) { rowHeight = $0 }
         .overlay(alignment: .topLeading) {
-            if let drag, rowHeight > 0, drag.index < entries.count {
+            if let drag, rowHeight > 0 {
                 insertLine(drag: drag, count: entries.count)
-                floatingCopy(entries[drag.index], drag: drag)
+                floatingCopy(drag)
             }
         }
     }
@@ -84,9 +87,11 @@ struct PlaylistEntryList: View {
         return held.compactMap { byId[$0] }
     }
 
+    /// The drag of `entry`, drawn at `index` among `count` rows.
     private func dragGesture(
+        _ entry: BridgePlaylistEntryRow,
         index: Int,
-        entries: [BridgePlaylistEntryRow]
+        count: Int
     ) -> some Gesture {
         DragGesture(
             minimumDistance: ThemeSpace.inline,
@@ -96,6 +101,7 @@ struct PlaylistEntryList: View {
             guard rowHeight > 0 else { return }
             if drag == nil {
                 drag = PlaylistEntryDrag(
+                    entry: entry,
                     index: index,
                     grab: value.startLocation.y - CGFloat(index) * rowHeight,
                     pointerY: value.location.y
@@ -106,16 +112,13 @@ struct PlaylistEntryList: View {
         .onEnded { _ in
             guard let finished = drag else { return }
             drag = nil
-            let target = finished.target(
-                rowHeight: rowHeight,
-                count: entries.count
-            )
+            let target = finished.target(rowHeight: rowHeight, count: count)
             guard target != finished.index else { return }
-            var order = entries.map(\.positionId)
+            var order = shown.map(\.positionId)
             order.insert(order.remove(at: finished.index), at: target)
             held = order
             Task {
-                await reorder(order)
+                await move(finished.entry.positionId, target)
                 held = nil
             }
         }
@@ -138,13 +141,10 @@ struct PlaylistEntryList: View {
     }
 
     /// The dragged entry's row drawn at the pointer.
-    private func floatingCopy(
-        _ entry: BridgePlaylistEntryRow,
-        drag: PlaylistEntryDrag
-    ) -> some View {
+    private func floatingCopy(_ drag: PlaylistEntryDrag) -> some View {
         PlaylistEntryRow(
             number: drag.index + 1,
-            entry: entry,
+            entry: drag.entry,
             play: {},
             playNext: {},
             addToQueue: {},
@@ -165,9 +165,10 @@ struct PlaylistEntryList: View {
     }
 }
 
-/// The entry being dragged: which row it is, where in the row the pointer
-/// took hold, and where the pointer is, in the list's own space.
+/// The entry being dragged, the place its row was drawn at, where in the row
+/// the pointer took hold, and where the pointer is, in the list's own space.
 private struct PlaylistEntryDrag {
+    let entry: BridgePlaylistEntryRow
     let index: Int
     let grab: CGFloat
     var pointerY: CGFloat

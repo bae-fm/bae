@@ -52,7 +52,7 @@ struct PlaylistDetailPane: View {
                         playNext: { queue.addNext([$0.trackId]) },
                         addToQueue: { queue.addToQueue([$0.trackId]) },
                         remove: { removeEntry($0, from: detail.summary) },
-                        reorder: { await reorder($0, in: detail.summary) }
+                        move: { await move($0, to: $1, in: detail.summary) }
                     )
                 }
                 // A selected playlist's read is local: nothing shows until it
@@ -183,14 +183,19 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Write `order` as `playlist`'s entries, and show the error when the
-    /// write fails.
-    private func reorder(
-        _ order: [String],
+    /// Move the entry `positionId` to the place `to` among `playlist`'s
+    /// entries, and show the error when the write fails.
+    private func move(
+        _ positionId: String,
+        to: Int,
         in playlist: BridgePlaylistSummary
     ) async {
         do {
-            try await library.playlistWrites.reorder(playlist.id, order)
+            try await library.playlistWrites.moveEntry(
+                playlist.id,
+                positionId,
+                UInt64(to)
+            )
         }
         catch {
             uiStore.showError(error)

@@ -22,7 +22,9 @@ import uniffi.bae_bridge.BridgeSharing
 class PlaylistBoardShots : BoardShot() {
     private val entries =
         listOf("Harbor Lights", "Copper Sky", "Night Ferry", "Small Hours", "Paper Lanterns", "Slow Morning")
-            .mapIndexed { index, title -> BridgeFixtures.playlistEntry("position-$index", title) }
+            .mapIndexed { index, title ->
+                BridgeFixtures.playlistEntry("position-$index", title, canMoveUp = index > 0, canMoveDown = index < 5)
+            }
 
     private val detail =
         BridgeFixtures.playlistDetail(
@@ -39,7 +41,7 @@ class PlaylistBoardShots : BoardShot() {
             onAddToQueue = {},
             onAddToPlaylist = {},
             onRemove = {},
-            onReorder = { _, _ -> },
+            onMove = { _, _, _ -> },
         )
 
     @Composable

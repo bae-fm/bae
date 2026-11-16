@@ -279,6 +279,10 @@ pub struct BridgePlaylistEntryRow {
     pub duration_clock: BridgeDurationClock,
     /// The cover of the release the track is on; `None` when it has none.
     pub cover: Option<BridgeImageRef>,
+    /// Whether an entry comes before this one, so it can move up.
+    pub can_move_up: bool,
+    /// Whether an entry comes after this one, so it can move down.
+    pub can_move_down: bool,
 }
 impl BridgePlaylistEntryRow {
     fn from_core(value: bae_views::playlists::PlaylistEntryRow) -> Self {
@@ -292,6 +296,8 @@ impl BridgePlaylistEntryRow {
             release_id,
             duration_ms,
             cover,
+            can_move_up,
+            can_move_down,
         } = value;
         Self {
             position_id: position_id.to_string(),
@@ -303,6 +309,8 @@ impl BridgePlaylistEntryRow {
             release_id,
             duration_clock: BridgeDurationClock::of_length(duration_ms),
             cover: cover.map(BridgeImageRef::from_core),
+            can_move_up,
+            can_move_down,
         }
     }
 }

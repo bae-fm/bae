@@ -2,7 +2,7 @@ import Foundation
 
 /// The writes that make a playlist and change one, as this device's person:
 /// make it, add to it, rename it, choose who sees it, take an entry out,
-/// reorder it, delete it.
+/// move an entry, delete it.
 public struct PlaylistWrites: Sendable {
     /// Make a playlist holding `trackIds` in order, and return its id. A
     /// failed write leaves no playlist.
@@ -24,10 +24,11 @@ public struct PlaylistWrites: Sendable {
     public let removeEntry:
         @Sendable (_ playlistId: String, _ positionId: String) async throws
             -> Void
-    /// Put a playlist's entries in `order`, each named by its position id.
-    public let reorder:
-        @Sendable (_ playlistId: String, _ order: [String]) async throws
-            -> Void
+    /// Move the entry `positionId` to the place `to` among a playlist's
+    /// entries, counted from 0, or to the end past them.
+    public let moveEntry:
+        @Sendable (_ playlistId: String, _ positionId: String, _ to: UInt64)
+            async throws -> Void
     /// Delete a playlist, on every device. Its tracks stay in the library.
     public let delete: @Sendable (_ playlistId: String) async throws -> Void
 
@@ -48,8 +49,10 @@ public struct PlaylistWrites: Sendable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        reorder:
-            @escaping @Sendable (String, [String]) async throws -> Void = {
+        moveEntry:
+            @escaping @Sendable (String, String, UInt64) async throws -> Void =
+            {
+                _,
                 _,
                 _ in throw StubError.notImplemented
             },
@@ -61,7 +64,7 @@ public struct PlaylistWrites: Sendable {
         self.append = append
         self.edit = edit
         self.removeEntry = removeEntry
-        self.reorder = reorder
+        self.moveEntry = moveEntry
         self.delete = delete
     }
 }
@@ -97,8 +100,12 @@ public struct PlaylistWrites: Sendable {
                         position: $1
                     )
                 },
-                reorder: {
-                    try await handle.reorderPlaylist(playlist: $0, order: $1)
+                moveEntry: {
+                    try await handle.movePlaylistEntry(
+                        playlist: $0,
+                        position: $1,
+                        to: $2
+                    )
                 },
                 delete: { try await handle.deletePlaylist(id: $0) }
             )

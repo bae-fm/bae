@@ -18,7 +18,7 @@ forward! { async this => {
     fn append_playlist_entry(playlist: String, track: String) -> String { Ok(this.services.append_playlist_entry(playlist.parse().map_err(BridgeError::config)?,track).await?.to_string()) }
     fn append_playlist_entries(playlist: String, track_ids: Vec<String>) -> () { Ok(this.services.append_playlist_entries(playlist.parse().map_err(BridgeError::config)?,track_ids).await?) }
     fn remove_playlist_entry(playlist: String, position: String) -> () { Ok(this.services.remove_playlist_entry(playlist.parse().map_err(BridgeError::config)?,position.parse().map_err(BridgeError::config)?).await?) }
-    fn reorder_playlist(playlist: String, order: Vec<String>) -> () { Ok(this.services.reorder_playlist(playlist.parse().map_err(BridgeError::config)?,order.into_iter().map(|id| id.parse().map_err(BridgeError::config)).collect::<Result<_,_>>()?).await?) }
+    fn move_playlist_entry(playlist: String, position: String, to: u64) -> () { Ok(this.services.move_playlist_entry(playlist.parse().map_err(BridgeError::config)?,position.parse().map_err(BridgeError::config)?,to).await?) }
     fn library_name() -> String { Ok(this.services.library_name().await?) }
 } }
 

@@ -3010,7 +3010,7 @@ them.
 household, each playlist on its own. Its entries are rows keyed by the playlist
 and a *position id*, a fresh id per entry, so the same track can sit in a
 playlist twice. Each entry also has a position number that orders it: an
-append takes the next number, and a reorder renumbers every entry from 0.
+append takes the next number, and a move renumbers every entry from 0.
 Playlists list by name, and profiles list by name too. A name a person gives
 a library, a profile, a playlist or another printed name of an artist is kept
 without its leading and trailing spaces, and a blank one is refused; core
@@ -3064,11 +3064,13 @@ neither and leaves the dialog open with its error. A track's menu on a playlist'
 next and Add to queue to everyone, and *Remove from playlist* to the owner. The
 owner reorders the entries by dragging a row: on macOS a line marks where the
 row goes when the owner lets go, and on Android a held row lifts and the rows
-between make room. Letting go writes the new order. On Android a screen reader
-also offers *Move up* and *Move down* on each of the owner's rows that has a
-place to move to, and each writes the new order as a drag does. The row stays
-where the person let it go until the write returns; then the page draws the
-entries as stored, so a write that fails puts the row back.
+between make room. Letting go writes a move: the row's position id and the
+place it goes, counted from 0. On Android a screen reader also offers *Move up*
+and *Move down* on each of the owner's rows, each a move of one place, except
+*Move up* on the first entry and *Move down* on the last, which the page's
+query marks on each row. The row stays where the person let it go until the
+write returns; then the page draws the entries as stored, so a write that fails
+puts the row back.
 
 On Android a track's menu, on an album's page and on a playlist's, offers *Add
 to playlist…* when the person can make playlists: a sheet of their own playlists
@@ -3076,10 +3078,10 @@ under *New playlist…*, which adds the track to the end of the one chosen or
 makes a new one holding it.
 
 Ben adds a track to his party playlist, which holds seven entries: the new
-entry takes position 7. He drags it to the top: the reorder names the entries
-in their new order and each takes its place in it, from 0. A reorder that
-names only some entries puts them first, in its order, and the rest follow as
-they were.
+entry takes position 7. He drags it to the top: the move names the entry and
+place 0, and core puts it there in one write, renumbering the other entries
+from 1 in the order they were in. A move to a place past the last entry puts the
+entry last, and a move of an entry the playlist no longer holds fails.
 
 ### 5.4 Profiles
 

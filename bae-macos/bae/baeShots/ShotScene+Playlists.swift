@@ -267,7 +267,9 @@ extension ShotScene {
                         albumTitle: entry.album,
                         releaseId: "release-\(index)",
                         durationClock: entry.clock,
-                        cover: nil
+                        cover: nil,
+                        canMoveUp: index > 0,
+                        canMoveDown: index < boardEntries.count - 1
                     )
                 }
         )

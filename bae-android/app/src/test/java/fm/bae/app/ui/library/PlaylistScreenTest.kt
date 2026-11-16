@@ -39,13 +39,14 @@ class PlaylistScreenTest {
     private class PlayingHandle : FakeAppHandle() {
         val played = mutableListOf<Played>()
         val removed = mutableListOf<String>()
-        val reordered = mutableListOf<List<String>>()
+        val moved = mutableListOf<Pair<String, ULong>>()
 
-        override suspend fun reorderPlaylist(
+        override suspend fun movePlaylistEntry(
             playlist: String,
-            order: List<String>,
+            position: String,
+            to: ULong,
         ) {
-            reordered += order
+            moved += position to to
         }
 
         override suspend fun removePlaylistEntry(
@@ -74,8 +75,8 @@ class PlaylistScreenTest {
                 BridgeFixtures.playlistSummary(id = "playlist-1", name = "Late night"),
                 entries =
                     listOf(
-                        BridgeFixtures.playlistEntry("position-1", "Harbor Lights"),
-                        BridgeFixtures.playlistEntry("position-2", "Copper Sky"),
+                        BridgeFixtures.playlistEntry("position-1", "Harbor Lights", canMoveDown = true),
+                        BridgeFixtures.playlistEntry("position-2", "Copper Sky", canMoveUp = true),
                     ),
             )
         compose.setContent {
@@ -144,8 +145,8 @@ class PlaylistScreenTest {
                 .config[SemanticsActions.CustomActions]
                 .single()
         compose.runOnUiThread { down.action() }
-        compose.waitUntil(HANG_GUARD_MS) { handle.reordered.isNotEmpty() }
+        compose.waitUntil(HANG_GUARD_MS) { handle.moved.isNotEmpty() }
 
-        assertEquals(listOf(listOf("position-2", "position-1")), handle.reordered)
+        assertEquals(listOf("position-1" to 1uL), handle.moved)
     }
 }

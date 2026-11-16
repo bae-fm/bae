@@ -24,7 +24,7 @@ impl AppServices {
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(manager, append_playlist_entries => append_playlist_entries(playlist: uuid::Uuid, tracks: Vec<String>) -> Result<(), CollectionError>);
     delegate_async!(people, remove_playlist_entry => remove_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid) -> Result<(), CollectionError>);
-    delegate_async!(people, reorder_playlist => reorder_playlist(playlist: uuid::Uuid, order: Vec<uuid::Uuid>) -> Result<(), CollectionError>);
+    delegate_async!(people, move_playlist_entry => move_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid, to: u64) -> Result<(), CollectionError>);
 }
 
 /// Why a playlist play has no outcome to tell.
