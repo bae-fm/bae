@@ -48,12 +48,7 @@ async fn a_language_change_reorders_the_window_a_list_shows() {
         "Swedish puts them after z, and the window that was showing follows"
     );
     test_records(&db).set_sort_language("sv").await.unwrap();
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(300), live.next_inline())
-            .await
-            .is_err(),
-        "the language it already has writes nothing"
-    );
+    assert!(!live.is_marked_for_rerun(), "the language it already has writes nothing");
 }
 
 #[tokio::test]
