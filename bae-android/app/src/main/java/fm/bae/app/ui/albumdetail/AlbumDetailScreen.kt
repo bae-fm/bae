@@ -67,6 +67,7 @@ import fm.bae.app.ui.library.rememberTrackPlaylistAdd
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.yearText
+import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
@@ -118,7 +119,7 @@ fun AlbumDetailScreen(
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     val deletion =
-        rememberPageDeletion(session, "delete album $albumId", rememberScreenScope(), onDeleted = onBack) {
+        rememberPageDeletion<BridgeAlbum>(session, "delete album $albumId", rememberScreenScope(), onBack) {
             session.appHandle.deleteAlbum(albumId)
         }
     val adding = rememberTrackPlaylistAdd(session)
@@ -136,7 +137,7 @@ fun AlbumDetailScreen(
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
         actions = { if (detail != null) AlbumBarActions(session, detail, selectedReleaseId, deletion) },
     ) {
-        PageDeletionShown(deletion) { onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
+        PageDeletionShown(deletion) { _, onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
         TrackPlaylistAddShown(session, adding)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail

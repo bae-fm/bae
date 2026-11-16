@@ -43,6 +43,7 @@ import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaylistDetail
+import uniffi.bae_bridge.BridgePlaylistSummary
 
 private val HEADER_PICTURE_SIZE = 96.dp
 
@@ -65,7 +66,7 @@ internal fun PlaylistScreen(
     val loadError = query.error?.let(LocalContext.current::displayError)
     val scope = rememberScreenScope()
     val deletion =
-        rememberPageDeletion(session, "delete playlist $playlistId", scope, onDeleted = onBack) {
+        rememberPageDeletion<BridgePlaylistSummary>(session, "delete playlist $playlistId", scope, onBack) {
             session.appHandle.deletePlaylist(playlistId)
         }
     var editing by remember { mutableStateOf(false) }
@@ -75,12 +76,12 @@ internal fun PlaylistScreen(
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
         actions = {
             if (detail?.summary?.yours == true) {
-                PlaylistOptionsMenu(onEdit = { editing = true }, onDelete = deletion::ask)
+                PlaylistOptionsMenu(onEdit = { editing = true }, onDelete = { deletion.ask(detail.summary) })
             }
         },
     ) {
-        PageDeletionShown(deletion) { onConfirm, onDismiss ->
-            DeletePlaylistDialog(name = detail?.summary?.name.orEmpty(), onConfirm = onConfirm, onDismiss = onDismiss)
+        PageDeletionShown(deletion) { playlist, onConfirm, onDismiss ->
+            DeletePlaylistDialog(name = playlist.name, onConfirm = onConfirm, onDismiss = onDismiss)
         }
         if (editing && detail != null) {
             EditPlaylistDialog(session = session, playlist = detail.summary, onDismiss = { editing = false })

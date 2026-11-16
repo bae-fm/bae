@@ -9,9 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
@@ -23,9 +21,9 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
- * Deleting what a page shows asks first; Delete deletes it and leaves the
- * page, Cancel deletes nothing, and a failed delete stays on the page saying
- * why.
+ * Deleting what a page shows asks first, naming what the page asked about;
+ * Delete deletes it and leaves the page, Cancel deletes nothing, and a failed
+ * delete stays on the page saying why.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -36,12 +34,12 @@ class PageDeletionTest {
         var left = 0
         val deletion = deletion(call) { left++ }
 
-        deletion.ask()
-        assertTrue(deletion.confirming)
+        deletion.ask("Late night")
+        assertEquals("Late night", deletion.confirming)
         deletion.confirm()
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertFalse(deletion.confirming)
+        assertNull(deletion.confirming)
         assertEquals(1, call.deletes)
         assertEquals(1, left)
         assertNull(deletion.error)
@@ -53,11 +51,11 @@ class PageDeletionTest {
         var left = 0
         val deletion = deletion(call) { left++ }
 
-        deletion.ask()
+        deletion.ask("Late night")
         deletion.dismiss()
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertFalse(deletion.confirming)
+        assertNull(deletion.confirming)
         assertEquals(0, call.deletes)
         assertEquals(0, left)
     }
@@ -68,7 +66,7 @@ class PageDeletionTest {
         var left = 0
         val deletion = deletion(call) { left++ }
 
-        deletion.ask()
+        deletion.ask("Late night")
         deletion.confirm()
         shadowOf(Looper.getMainLooper()).idle()
 
@@ -80,8 +78,8 @@ class PageDeletionTest {
     private fun deletion(
         call: Deleting,
         onDeleted: () -> Unit,
-    ) = PageDeletion(
-        operation = "delete album album-id",
+    ) = PageDeletion<String>(
+        operation = "delete playlist playlist-id",
         errors = TestErrorDisplays,
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         delete = call::delete,
