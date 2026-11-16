@@ -41,6 +41,7 @@ import fm.bae.app.ui.components.rememberPageDeletion
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.runTrackQueueCommand
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistSummary
@@ -136,14 +137,10 @@ internal fun PlaylistPage(
                     }
                 },
                 onPlayNext = { trackId ->
-                    session.messages.perform("addNext $trackId") {
-                        session.playback.onTracksAdded(session.appHandle.addNext(listOf(trackId)).toInt())
-                    }
+                    session.runTrackQueueCommand(trackId, "addNext", session.appHandle::addNext)
                 },
                 onAddToQueue = { trackId ->
-                    session.messages.perform("addToQueue $trackId") {
-                        session.playback.onTracksAdded(session.appHandle.addToQueue(listOf(trackId)).toInt())
-                    }
+                    session.runTrackQueueCommand(trackId, "addToQueue", session.appHandle::addToQueue)
                 },
                 onAddToPlaylist = if (addToPlaylist.offered) addToPlaylist::ask else null,
                 onRemove = { positionId ->

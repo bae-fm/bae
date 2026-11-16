@@ -66,6 +66,7 @@ import fm.bae.app.ui.library.TrackPlaylistAddShown
 import fm.bae.app.ui.library.rememberTrackPlaylistAdd
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.app.ui.runTrackQueueCommand
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -274,16 +275,6 @@ private fun buildAlbumDetailCallbacks(
         }
     }
 
-    fun runTrackTransportCommand(
-        trackId: String,
-        operation: String,
-        command: suspend (List<String>) -> UInt,
-    ) {
-        session.messages.perform("$operation $trackId") {
-            session.playback.onTracksAdded(command(listOf(trackId)).toInt())
-        }
-    }
-
     return AlbumDetailCallbacks(
         onSelectRelease = onSelectRelease,
         onSelectWork = onSelectWork,
@@ -316,10 +307,10 @@ private fun buildAlbumDetailCallbacks(
             runReleaseTransportCommand("addReleaseToQueue", session.appHandle::addReleaseToQueue)
         },
         onPlayTrackNext = { trackId ->
-            runTrackTransportCommand(trackId, "addNext", session.appHandle::addNext)
+            session.runTrackQueueCommand(trackId, "addNext", session.appHandle::addNext)
         },
         onAddTrackToQueue = { trackId ->
-            runTrackTransportCommand(trackId, "addToQueue", session.appHandle::addToQueue)
+            session.runTrackQueueCommand(trackId, "addToQueue", session.appHandle::addToQueue)
         },
         onRateAlbum = { stars ->
             session.messages.perform("setRating album ${release.albumId}") {
