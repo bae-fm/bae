@@ -203,7 +203,10 @@ internal class LibraryQueryStores(
     library: Library,
     scope: CoroutineScope,
 ) {
-    /** The album page's read: another release of the same album keeps the page drawn until it arrives. */
+    /**
+     * The album page's read. When the page moves to another release of the same album, this store
+     * keeps the last album detail until the new release's detail arrives.
+     */
     val album =
         DetailQueryStore<BridgeAlbumDetailRequest, BridgeAlbumDetail>(scope, library::albumDetail) { a, b ->
             a.albumId == b.albumId

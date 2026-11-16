@@ -529,8 +529,8 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
 /// A search says whether it found anything of any kind, so no app screen
 /// tests the album, track, artist, composer and work lists to show that
 /// nothing matched: a track title, an album title and an artist's name each
-/// count, and a query that matches none does not. It also counts each
-/// section's rows.
+/// count, and a query that matches none does not. A search also counts the
+/// rows in each section.
 #[tokio::test]
 async fn a_search_says_whether_it_found_anything() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

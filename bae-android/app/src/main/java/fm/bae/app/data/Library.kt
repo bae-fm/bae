@@ -123,8 +123,8 @@ class Library(
         )
 
     /**
-     * A detail view's live reads, each moved to every item its view shows in place. The album
-     * page's read names the album and the release chosen on its page.
+     * Each detail view keeps one live read, and the view sets that read's id to each item it
+     * shows. The album page's read takes the album and the release the person chose on the page.
      */
     internal fun albumDetail(): DetailRead<BridgeAlbumDetailRequest, BridgeAlbumDetail> =
         handle.subscribeAlbumDetail().let { read ->

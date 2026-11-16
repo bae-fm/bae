@@ -122,7 +122,8 @@ fun AlbumDetailScreen(
         }
     val adding = rememberTrackPlaylistAdd(session)
     val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
-    // The page's one read follows the release chosen on it, and ends when the page leaves the album.
+    // The page activates the album query again with each release the person picks, and deactivates
+    // it when the page closes or shows another album.
     LaunchedEffect(request, session) { session.libraryQueries.album.activate(request) }
     DisposableEffect(albumId, session) {
         onDispose { session.libraryQueries.album.deactivate(request) }

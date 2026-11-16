@@ -1,6 +1,6 @@
-//! The album page's detail read: every release in one statement, the
-//! release its request chose or the primary one, and the album's absence once
-//! it is deleted.
+//! These tests check that the album page's detail read reads every release in
+//! one statement, shows the release its request chose or the primary one, and
+//! returns no album after the test deletes the album.
 
 use super::*;
 use bae_records::test_fixtures::live_query::*;
@@ -100,7 +100,7 @@ async fn album_detail_subscription_delivers_absence_after_deletion() {
 
     let deleted = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
-        .expect("deleting the album's one release wakes album detail")
+        .expect("deleting the album's one release reruns the album detail query")
         .expect("the query stays open")
         .result
         .unwrap();

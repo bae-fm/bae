@@ -16,7 +16,7 @@ import uniffi.bae_bridge.BridgeFormerDeviceState
 /**
  * A person's removed and replaced devices behind a card row that expands them
  * into rows of the same card, closed at first. They no longer have access, so
- * they offer no actions. [count] is how many there are, as the member's read counts them.
+ * they offer no actions. [count] is the number of former devices that the member's query counts.
  */
 @Composable
 internal fun FormerDevices(

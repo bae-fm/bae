@@ -138,9 +138,9 @@ impl Records {
 
     /// The tracks from `anchor_id` to `target_id`, both included, in the
     /// order their release lists them: what a shift-click on `target_id`
-    /// picks after a pick of `anchor_id`. The target alone when the anchor is
-    /// no track of the target's release, and none when the library lacks the
-    /// target.
+    /// picks after a pick of `anchor_id`. The function returns only the
+    /// target when the anchor is not a track of the target's release, and an
+    /// empty list when the library holds no track `target_id`.
     pub async fn track_ids_between(
         &self,
         anchor_id: String,

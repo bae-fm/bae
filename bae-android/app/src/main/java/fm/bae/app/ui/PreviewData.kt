@@ -136,7 +136,7 @@ object PreviewData {
             tracks = tracks,
             totalDuration = null,
             showsTime = false,
-            // Where core starts a second column: after half the tracks, rounded up, past eight.
+            // When a group has more than eight tracks, core starts a second column after half of them, rounded up.
             secondColumnStart = if (tracks.size > 8) ((tracks.size + 1) / 2).toUInt() else null,
         )
 

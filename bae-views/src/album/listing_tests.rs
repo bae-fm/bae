@@ -91,8 +91,8 @@ async fn counts_of(db: &Store, group_by_artist: bool) -> AlbumCounts {
         .unwrap()
 }
 
-/// The grid's count says whether the grid groups its rows by artist, so the
-/// grid lays them out from the read that counts them, even while it has none.
+/// The grid's count reports whether the grid groups its rows by artist, so the
+/// grid can choose its layout from the count before any rows arrive.
 #[tokio::test]
 async fn the_grid_count_says_whether_the_grid_groups() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

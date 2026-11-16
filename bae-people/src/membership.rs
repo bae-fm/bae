@@ -70,7 +70,8 @@ pub struct MembershipMember {
     pub former_devices: Vec<FormerDevice>,
     /// How many devices can sync for them.
     pub active_device_count: u32,
-    /// How many of their devices were removed or replaced.
+    /// How many of their devices lost access because someone removed them or
+    /// a newer device replaced them.
     pub former_device_count: u32,
 }
 

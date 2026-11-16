@@ -724,9 +724,10 @@
     }
 
     extension BridgeAlbumDetail {
-        /// This album as core's read answers a request that chose
-        /// `chosenReleaseId`: the chosen release while the album holds it,
-        /// else the primary release, which a fixture lists first.
+        /// Returns this album with the release that core shows when a request
+        /// chooses `chosenReleaseId`. That is the chosen release if the album
+        /// holds it, otherwise the primary release, which a fixture lists
+        /// first.
         func showing(chosenReleaseId: String?) -> BridgeAlbumDetail {
             var detail = self
             let index = releases.firstIndex { $0.id == chosenReleaseId } ?? 0

@@ -302,7 +302,8 @@ forward! { async this => {
 
     /// The tracks from `anchor_id` to `target_id`, both included, in the
     /// order their release lists them: what a shift-click on the album page
-    /// picks. The target alone when the anchor is no track of its release.
+    /// picks. When the anchor is not a track of the target's release, the
+    /// method returns only the target.
     fn track_ids_between(anchor_id: String, target_id: String) -> Vec<String> {
         this.services.track_ids_between(anchor_id, target_id).await.map_err(BridgeError::from)
     }

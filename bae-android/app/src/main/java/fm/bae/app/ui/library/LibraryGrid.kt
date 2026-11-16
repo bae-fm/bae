@@ -61,9 +61,10 @@ internal fun AndroidAlbumGridContainer(
 
 /**
  * The album grid, taking its rows by index so the screenshot scenes can render
- * it without a live session. [grouped], as the grid's count says, groups it by
- * artist under [sections]: each group opens with the artist's header, pinned
- * at the top while its albums scroll by.
+ * it without a live session. When [grouped] is true, which the grid's count
+ * query reports, the grid groups its albums by artist under [sections]: each
+ * group opens with the artist's header, which stays at the top while the
+ * group's albums scroll past it.
  */
 @Composable
 internal fun AndroidAlbumGrid(

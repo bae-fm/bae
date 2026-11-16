@@ -7,8 +7,9 @@ use super::*;
 /// The detail view's album as it changes, read for the album and chosen
 /// release the subscription is set to: its rows, with each release's pin
 /// marker, download-queue entry and storage transition, and whether the
-/// library syncs — the state it is resolved against. Another album or release
-/// is a new request on the same read.
+/// library syncs. `resolve_album_detail_projection` resolves the rows against
+/// that state. When the view shows another album or release, it sends a new
+/// request to the same read.
 pub fn subscribe_album_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,

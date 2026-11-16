@@ -103,8 +103,8 @@ struct SearchView: View {
         .padding(ThemeSpace.related)
     }
 
-    /// The composers and works the search found, each section omitted when
-    /// it found none.
+    /// Shows the composers and works the search found. The view leaves out a
+    /// section when the search found none of its rows.
     @ViewBuilder
     private func writingSections(_ results: SearchResults) -> some View {
         resultsSection(
@@ -135,8 +135,8 @@ struct SearchView: View {
         }
     }
 
-    /// A header and a row per item, omitted when the search's `count` of the
-    /// section's rows is zero.
+    /// Draws a header and a row per item, and draws nothing when the search's
+    /// `count` of the section's rows is zero.
     @ViewBuilder
     private func resultsSection<Item, ID: Hashable, Row: View>(
         _ title: LocalizedStringKey,
