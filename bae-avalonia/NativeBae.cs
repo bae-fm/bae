@@ -114,5 +114,5 @@ internal static class NativeBae
     /// <summary>The number of libraries registered on this device, read by the
     /// core from bae's directory on the host's runtime.</summary>
     internal static async Task<int> LibraryCount(BridgeHost host) =>
-        (await host.ListLibraries()).Length;
+        (await host.ListLibraries()).Libraries.Length;
 }

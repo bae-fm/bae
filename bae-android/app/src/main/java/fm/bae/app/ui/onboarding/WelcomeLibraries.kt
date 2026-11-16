@@ -136,7 +136,7 @@ internal class WelcomeLibrariesCore(
             scope: CoroutineScope,
             bugs: BugReports,
         ) = WelcomeLibrariesCore(
-            listLibraries = { host.listLibraries() },
+            listLibraries = { host.listLibraries().libraries },
             libraryStanding = { host.libraryStanding(it) },
             unsentBeforeRemoval = { libraryId, onOpening ->
                 LibraryOpenProgress(host, scope, bugs).use { progress ->

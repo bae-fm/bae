@@ -1,6 +1,6 @@
 //! Process registrations and the runtime used before a library is open.
 use crate::handle::AppHandle;
-use crate::{BridgeAppDir, BridgeDiagnostics, BridgeError, BridgeLibrary, BridgeOpenError};
+use crate::{BridgeAppDir, BridgeDiagnostics, BridgeError, BridgeOpenError};
 use bae_app::{bootstrap, BootstrapError, OpenFailure};
 use bae_diagnostics::{AppStartFailureKind, Diagnostics, DiagnosticsError, TelemetryEvent};
 use std::sync::{Arc, Mutex};
@@ -446,11 +446,13 @@ impl BridgeHost {
             .await
     }
 
-    pub async fn list_libraries(self: Arc<Self>) -> Result<Vec<BridgeLibrary>, BridgeError> {
+    pub async fn list_libraries(
+        self: Arc<Self>,
+    ) -> Result<crate::BridgeLibraryListing, BridgeError> {
         self.operations
             .clone()
             .run("BridgeHost.list_libraries", move || async move {
-                BridgeLibrary::list_from_core(
+                crate::BridgeLibraryListing::from_core(
                     self.app_dir.discover_libraries(&self.coven, &self.diagnostics).await?,
                 )
             })

@@ -77,7 +77,7 @@ fn a_blank_creator_name_creates_nothing() {
         .err()
         .expect("a blank name is refused");
     assert!(matches!(error, crate::BridgeError::Diagnostic { .. }), "{error:?}");
-    assert!(caller.block_on(host.list_libraries()).unwrap().is_empty());
+    assert!(caller.block_on(host.list_libraries()).unwrap().libraries.is_empty());
     assert!(setup.written().is_empty());
 }
 

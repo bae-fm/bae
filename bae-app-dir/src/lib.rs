@@ -170,14 +170,15 @@ impl AppDir {
     }
 
     /// The libraries registered on this device, the active one first, then by
-    /// name (a library whose name can't be read last), each with whether it opens: the stores `coven`, this
-    /// directory's installation, lists. A bug coven's listing or a library's
-    /// settings read carries back is reported to `bugs`, the crash reporter.
+    /// name (a library whose name can't be read last), each with whether it
+    /// opens: the stores `coven`, this directory's installation, lists. A bug
+    /// coven's listing or a library's settings read carries back is reported
+    /// to `bugs`, the crash reporter.
     pub async fn discover_libraries(
         &self,
         coven: &coven::Coven,
         bugs: &dyn coven::task::BugSink,
-    ) -> Result<Vec<LibraryInfo>, AppDirError> {
+    ) -> Result<LibraryListing, AppDirError> {
         let active_id = self.active_library_id()?;
         let mut libraries = Vec::new();
         let listed = coven.stores().await.map_err(|error| coven::task::reported(bugs, error))?;
@@ -230,7 +231,7 @@ impl AppDir {
                 .cmp(&a.is_active)
                 .then_with(|| (a.name.is_none(), &a.name).cmp(&(b.name.is_none(), &b.name)))
         });
-        Ok(libraries)
+        Ok(LibraryListing::of(libraries))
     }
 
     /// The library this device last opened, as its pointer names it.
@@ -244,6 +245,47 @@ impl AppDir {
             AppDirError::Invalid(format!("{}: {error}", pointer_path.display()))
         })?;
         Ok(Some(parsed.to_string()))
+    }
+}
+
+/// The libraries registered on this device, in the order they are listed,
+/// and what the library switcher does with them.
+#[derive(Clone, Debug)]
+pub struct LibraryListing {
+    pub libraries: Vec<LibraryInfo>,
+    /// Whether the device lists more than one library, whatever each one's
+    /// state: the apps then show the library switcher.
+    pub shows_switcher: bool,
+    /// The libraries the switcher's next and previous commands open, when
+    /// the active library opens and another listed library opens too.
+    pub active_neighbors: Option<LibraryNeighbors>,
+}
+
+/// The ids of the libraries that open after and before the active one,
+/// among the listed libraries that open, in the listing's order and wrapping
+/// at its ends.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LibraryNeighbors {
+    pub next_id: String,
+    pub previous_id: String,
+}
+
+impl LibraryListing {
+    /// The listing of `libraries`, in their order.
+    fn of(libraries: Vec<LibraryInfo>) -> Self {
+        let openable: Vec<&LibraryInfo> = libraries
+            .iter()
+            .filter(|library| matches!(library.state, LibraryState::Openable(_)))
+            .collect();
+        let active = openable.iter().position(|library| library.is_active);
+        let active_neighbors = match active {
+            Some(active) if openable.len() > 1 => Some(LibraryNeighbors {
+                next_id: openable[(active + 1) % openable.len()].id.clone(),
+                previous_id: openable[(active + openable.len() - 1) % openable.len()].id.clone(),
+            }),
+            Some(_) | None => None,
+        };
+        Self { shows_switcher: libraries.len() > 1, active_neighbors, libraries }
     }
 }
 

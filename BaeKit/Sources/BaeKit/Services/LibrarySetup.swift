@@ -95,7 +95,7 @@ public final class LibrarySetup: Sendable, Observable {
         -> LibrarySetup
     {
         LibrarySetup(
-            listLibraries: { try await host.listLibraries() },
+            listLibraries: { try await host.listLibraries().libraries },
             libraryStanding: {
                 try await host.libraryStanding(libraryId: $0)
             },

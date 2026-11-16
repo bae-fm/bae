@@ -54,9 +54,6 @@ private fun library(
     path = "/libraries/$id",
     state = state,
     isActive = false,
-    hasOtherLibraries = false,
-    nextOpenableId = null,
-    previousOpenableId = null,
 )
 
 private val synced =

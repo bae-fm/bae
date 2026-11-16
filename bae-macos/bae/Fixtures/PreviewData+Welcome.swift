@@ -24,20 +24,14 @@ extension PreviewData {
                     profile: nil
                 )
             ),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
         BridgeLibrary(
             id: "lib-02",
             name: "Local Library",
             path: "/Users/preview/Music/bae/Local Library",
             state: .openable(storage: nil),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
         BridgeLibrary(
             id: "lib-03",
@@ -49,10 +43,7 @@ extension PreviewData {
                     detail: "storage.json: expected value at line 1"
                 )
             ),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
         BridgeLibrary(
             id: "lib-04",
@@ -62,10 +53,7 @@ extension PreviewData {
                 by: .restore,
                 lineKey: "core.error.replacement_unfinished.restore"
             ),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
         BridgeLibrary(
             id: "lib-05",
@@ -74,10 +62,7 @@ extension PreviewData {
             state: .deletionUnfinished(
                 lineKey: "core.error.deletion_unfinished"
             ),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
         BridgeLibrary(
             id: "6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
@@ -85,10 +70,7 @@ extension PreviewData {
             path:
                 "/Users/preview/Music/bae/6f1c2a9e-4b7d-4e2a-9c3f-2d8e5b1a7c40",
             state: .nameUnreadable,
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         ),
     ]
 
@@ -107,10 +89,7 @@ extension PreviewData {
                 )
             )
         ),
-        isActive: false,
-        hasOtherLibraries: false,
-        nextOpenableId: nil,
-        previousOpenableId: nil
+        isActive: false
     )
 
     /// What a Dropbox library last stood at when this Mac closed it: synced

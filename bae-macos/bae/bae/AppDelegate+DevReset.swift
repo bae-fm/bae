@@ -19,7 +19,7 @@
                         deviceName: services.deviceName,
                         setup: steps.setup
                     )
-                    libraries = try await services.host.listLibraries()
+                    show(try await services.host.listLibraries())
                     openLocalLibrary(id: libraryId)
                 }
                 catch {

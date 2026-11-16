@@ -67,7 +67,7 @@ private struct LibraryCount: View {
         }
         .task {
             do {
-                read = .listed(try await host.listLibraries())
+                read = .listed(try await host.listLibraries().libraries)
             }
             catch {
                 logger.error(

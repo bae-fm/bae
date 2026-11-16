@@ -44,6 +44,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryClosing
+import uniffi.bae_bridge.BridgeLibraryListing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
@@ -67,7 +68,7 @@ sealed interface LibraryListing {
     data object Unlisted : LibraryListing
 
     data class Listed(
-        val libraries: List<BridgeLibrary>,
+        val listing: BridgeLibraryListing,
     ) : LibraryListing
 
     /** The last listing failed, so which libraries there are isn't known. */
@@ -85,8 +86,8 @@ internal class DiscoveredLibraries {
     private val state = MutableStateFlow<LibraryListing>(LibraryListing.Unlisted)
     val libraries: StateFlow<LibraryListing> = state.asStateFlow()
 
-    fun replaceAll(libraries: List<BridgeLibrary>) {
-        state.value = LibraryListing.Listed(libraries)
+    fun replaceAll(listing: BridgeLibraryListing) {
+        state.value = LibraryListing.Listed(listing)
     }
 
     fun fail(error: DisplayError) {
@@ -311,8 +312,8 @@ object AppSessionHolder {
     fun currentSession(): OpenLibrary? = current
 
     /**
-     * List [host]'s local libraries, publish the result to [libraries], and
-     * return it. A failed listing is published as failed and thrown, so callers
+     * List [host]'s local libraries, publish the listing to [libraries], and
+     * return its libraries. A failed listing is published as failed and thrown, so callers
      * can surface it rather than mistaking a failed listing for an empty device.
      */
     private suspend fun listLibraries(
@@ -333,7 +334,7 @@ object AppSessionHolder {
                 throw e
             }
         discovered.replaceAll(result)
-        return result
+        return result.libraries
     }
 
     /** List this device's libraries again, after the last listing failed. */

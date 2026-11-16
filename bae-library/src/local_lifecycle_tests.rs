@@ -602,7 +602,8 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         .app_dir
         .discover_libraries(&home.installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert!(
         listed.iter().any(|library| library.id == id.to_string()
             && matches!(library.state, bae_app_dir::LibraryState::Unreadable(_))),
@@ -693,7 +694,8 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
         .app_dir
         .discover_libraries(&home.installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert!(
         matches!(
             listed.as_slice(),

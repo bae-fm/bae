@@ -660,9 +660,6 @@ extension PreviewData {
         name: "Odile’s records",
         path: "/Users/preview/Music/bae/Odile’s records",
         state: .openable(storage: nil),
-        isActive: false,
-        hasOtherLibraries: false,
-        nextOpenableId: nil,
-        previousOpenableId: nil
+        isActive: false
     )
 }

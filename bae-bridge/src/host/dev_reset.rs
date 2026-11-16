@@ -47,7 +47,8 @@ impl BridgeHost {
         tracing::info!("dev reset: finishing earlier unfinished removals");
         self.finish_removals_now(steps).await?;
 
-        let libraries = self.app_dir.discover_libraries(&self.coven, &self.diagnostics).await?;
+        let libraries =
+            self.app_dir.discover_libraries(&self.coven, &self.diagnostics).await?.libraries;
         let total = libraries.len() as u64;
         let mut removed = std::collections::HashSet::new();
         for (done, library) in libraries.iter().enumerate() {

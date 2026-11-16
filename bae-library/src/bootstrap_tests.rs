@@ -537,7 +537,8 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].id, store.to_string());
     assert_eq!(libraries[0].name.as_deref(), Some("Household"));
@@ -570,7 +571,8 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert!(
         matches!(
             libraries[..],
@@ -628,7 +630,8 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert!(
         matches!(
             libraries[..],
@@ -666,7 +669,8 @@ async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert!(
         matches!(
             libraries[..],
@@ -782,6 +786,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
         .unwrap()
+        .libraries
         .is_empty());
     assert_eq!(app_dir.active_library_id().unwrap(), None);
     assert!(UnfinishedRemoval::find(

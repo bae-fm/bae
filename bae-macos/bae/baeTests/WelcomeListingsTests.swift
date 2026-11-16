@@ -83,10 +83,7 @@ struct WelcomeListingsTests {
             name: "Library",
             path: "/libraries/library-1",
             state: .openable(storage: nil),
-            isActive: false,
-            hasOtherLibraries: false,
-            nextOpenableId: nil,
-            previousOpenableId: nil
+            isActive: false
         )
         let listings = WelcomeListings()
         await listings.load(from: setup)

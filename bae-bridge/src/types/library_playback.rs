@@ -178,18 +178,33 @@ pub struct BridgeLibrary {
     pub path: String,
     pub state: BridgeLibraryState,
     pub is_active: bool,
-    /// Whether this device's list holds a library besides this one: one that
-    /// opens, or one that offers to finish a reset, a restore or a removal.
-    /// The apps show the library switcher when this is true.
-    pub has_other_libraries: bool,
-    /// On the active library, when another listed library opens: the id of
-    /// the next library that opens after it in the list, wrapping to the
-    /// first. `None` on every other library.
-    pub next_openable_id: Option<String>,
-    /// On the active library, when another listed library opens: the id of
-    /// the library that opens before it in the list, wrapping to the last.
-    /// `None` on every other library.
-    pub previous_openable_id: Option<String>,
+}
+
+/// The libraries registered on this device, in the order they are listed,
+/// and what the library switcher does with them. Mirrors `LibraryListing`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLibraryListing {
+    pub libraries: Vec<BridgeLibrary>,
+    /// Whether the device lists more than one library, whatever each one's
+    /// state: the apps then show the library switcher.
+    pub shows_switcher: bool,
+    /// The libraries the switcher's next and previous commands open, when
+    /// the active library opens and another listed library opens too.
+    pub active_neighbors: Option<BridgeLibraryNeighbors>,
+}
+
+/// The ids of the libraries that open after and before the active one,
+/// wrapping at the listing's ends. Mirrors `LibraryNeighbors`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeLibraryNeighbors {
+    pub next_id: String,
+    pub previous_id: String,
+}
+
+mirror_struct! {
+    BridgeLibraryNeighbors = bae_app_dir::LibraryNeighbors,
+    from_core: pub(crate) fn,
+    fields: { next_id, previous_id },
 }
 
 /// Whether a library on this device opens, and where it is stored. Mirrors

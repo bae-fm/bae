@@ -23,7 +23,8 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert_eq!(
         libraries
             .iter()
@@ -51,7 +52,8 @@ async fn discovery_lists_a_store_whose_name_cant_be_read() {
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     assert_eq!(libraries.len(), 2);
     assert_eq!(libraries[0].id, named.to_string());
     assert_eq!(libraries[0].name.as_deref(), Some("Named"));
@@ -80,7 +82,8 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
-        .unwrap();
+        .unwrap()
+        .libraries;
     let state = |name: &str| {
         &libraries
             .iter()
@@ -170,4 +173,61 @@ fn a_panicking_store_listing_is_a_bug_not_a_configuration() {
         source: "permission denied".into(),
     };
     assert_eq!(AppDirError::from(coven::StoreListError::from(unreadable)).category(), C::Config);
+}
+
+fn listed(id: &str, active: bool, openable: bool) -> LibraryInfo {
+    LibraryInfo {
+        id: id.into(),
+        name: Some(id.into()),
+        path: format!("/libraries/{id}").into(),
+        is_active: active,
+        state: if openable { LibraryState::Openable(None) } else { LibraryState::NameUnreadable },
+    }
+}
+
+fn neighbors(next: &str, previous: &str) -> Option<LibraryNeighbors> {
+    Some(LibraryNeighbors { next_id: next.into(), previous_id: previous.into() })
+}
+
+/// The listing names the libraries before and after the active one among
+/// those that open, wrapping at the ends and skipping the ones that don't
+/// open.
+#[test]
+fn the_listing_names_the_active_librarys_neighbors_that_open() {
+    let listing = LibraryListing::of(vec![
+        listed("a", true, true),
+        listed("b", false, false),
+        listed("c", false, true),
+        listed("d", false, true),
+    ]);
+    assert_eq!(listing.active_neighbors, neighbors("c", "d"));
+    let listing = LibraryListing::of(vec![
+        listed("a", false, true),
+        listed("b", false, true),
+        listed("c", true, true),
+    ]);
+    assert_eq!(listing.active_neighbors, neighbors("a", "b"));
+}
+
+/// The switcher shows when the device lists a second library, whether or
+/// not it opens.
+#[test]
+fn the_switcher_shows_for_any_second_library() {
+    assert!(!LibraryListing::of(vec![listed("a", true, true)]).shows_switcher);
+    assert!(
+        LibraryListing::of(vec![listed("a", true, true), listed("b", false, false)]).shows_switcher
+    );
+}
+
+/// With no other library that opens, or an active library that doesn't
+/// open, the listing names no neighbor.
+#[test]
+fn no_neighbor_is_named_without_another_library_that_opens() {
+    for libraries in [
+        vec![listed("a", true, true), listed("b", false, false)],
+        vec![listed("a", true, false), listed("b", false, true), listed("c", false, true)],
+        vec![listed("a", false, true), listed("b", false, true)],
+    ] {
+        assert_eq!(LibraryListing::of(libraries).active_neighbors, None);
+    }
 }

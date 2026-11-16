@@ -18,38 +18,22 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
     ]
 }
 
-impl BridgeLibrary {
-    /// Converts core's libraries in core's order and puts on the active one
-    /// the ids of the next and previous libraries that open.
-    pub(crate) fn list_from_core(
-        infos: Vec<bae_app_dir::LibraryInfo>,
-    ) -> Result<Vec<Self>, BridgeError> {
-        let mut libraries =
-            infos.into_iter().map(Self::from_core_info).collect::<Result<Vec<_>, _>>()?;
-        let several = libraries.len() > 1;
-        for library in &mut libraries {
-            library.has_other_libraries = several;
-        }
-        let openable: Vec<usize> = libraries
-            .iter()
-            .enumerate()
-            .filter(|(_, library)| {
-                matches!(library.state, crate::types::BridgeLibraryState::Openable { .. })
-            })
-            .map(|(index, _)| index)
-            .collect();
-        let active = openable.iter().position(|&index| libraries[index].is_active);
-        if let (Some(active), true) = (active, openable.len() > 1) {
-            let next = libraries[openable[(active + 1) % openable.len()]].id.clone();
-            let previous =
-                libraries[openable[(active + openable.len() - 1) % openable.len()]].id.clone();
-            let library = &mut libraries[openable[active]];
-            library.next_openable_id = Some(next);
-            library.previous_openable_id = Some(previous);
-        }
-        Ok(libraries)
+impl crate::BridgeLibraryListing {
+    /// Converts core's listing, its libraries in core's order.
+    pub(crate) fn from_core(listing: bae_app_dir::LibraryListing) -> Result<Self, BridgeError> {
+        let bae_app_dir::LibraryListing { libraries, shows_switcher, active_neighbors } = listing;
+        Ok(Self {
+            libraries: libraries
+                .into_iter()
+                .map(BridgeLibrary::from_core_info)
+                .collect::<Result<_, _>>()?,
+            shows_switcher,
+            active_neighbors: active_neighbors.map(crate::BridgeLibraryNeighbors::from_core),
+        })
     }
+}
 
+impl BridgeLibrary {
     pub(crate) fn from_core_info(info: bae_app_dir::LibraryInfo) -> Result<Self, BridgeError> {
         let bae_app_dir::LibraryInfo { id, name, path, is_active, state } = info;
         let path = path
@@ -63,9 +47,6 @@ impl BridgeLibrary {
             name,
             path,
             is_active,
-            has_other_libraries: false,
-            next_openable_id: None,
-            previous_openable_id: None,
             state: match state {
                 bae_app_dir::LibraryState::Openable(storage) => {
                     crate::types::BridgeLibraryState::Openable {

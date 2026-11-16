@@ -26,10 +26,10 @@ import os.log
 private func discoverInitialLibraries(
     host: BridgeHost,
     environment: [String: String]
-) async throws -> [BridgeLibrary] {
-    var libraries = try await host.listLibraries()
+) async throws -> BridgeLibraryListing {
+    var listing = try await host.listLibraries()
     #if DEBUG
-        if libraries.isEmpty,
+        if listing.libraries.isEmpty,
             AppRuntime.createsLibraryForUITesting(environment: environment)
         {
             // Opened and closed so the fixture can be written into it when the
@@ -42,10 +42,10 @@ private func discoverInitialLibraries(
             )
             let app = try created.open(restorePlayback: false)
             try app.closeLibrary(closing: nil)
-            libraries = try await host.listLibraries()
+            listing = try await host.listLibraries()
         }
     #endif
-    return libraries
+    return listing
 }
 
 @MainActor
@@ -88,9 +88,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Presents the welcome sheet over an open library.
     var showAddLibrarySheet: Bool = false
     /// Every library on this device, for the File → Open Library submenu.
-    var libraries: [BridgeLibrary] = [] {
+    private(set) var libraries: [BridgeLibrary] = [] {
         didSet { openLibraryMenu.show(libraries) }
     }
+    /// The libraries Previous Library and Next Library open, as the last
+    /// listing named them; nil when no other library opens.
+    private var libraryNeighbors: BridgeLibraryNeighbors?
     /// The Rename Library sheet's state while it is open.
     var renameLibrarySheet: RenameLibrarySheetState?
     /// The shared open sequence; each open ends in an `Outcome` this delegate
@@ -256,9 +259,11 @@ extension AppDelegate {
         Task {
             await removals.loadUnfinished()
             do {
-                libraries = try await discoverInitialLibraries(
-                    host: host,
-                    environment: baeAppProcessEnvironment
+                show(
+                    try await discoverInitialLibraries(
+                        host: host,
+                        environment: baeAppProcessEnvironment
+                    )
                 )
             }
             catch {
@@ -731,7 +736,7 @@ extension AppDelegate {
         reloadSlot.replace(
             "listLibraries",
             work: { try await host.listLibraries() },
-            onSuccess: { self.libraries = $0 },
+            onSuccess: { self.show($0) },
             onError: {
                 baeAppLogger.error(
                     "Failed to list libraries: \(String(reflecting: $0))"
@@ -740,17 +745,26 @@ extension AppDelegate {
         )
     }
 
-    /// Open the next library that opens when `offset` is positive, and the
-    /// previous one otherwise. Core puts both ids on the active library and
-    /// wraps at the ends of the list.
+    /// Show `listing` as this Mac's libraries.
+    func show(_ listing: BridgeLibraryListing) {
+        libraries = listing.libraries
+        libraryNeighbors = listing.activeNeighbors
+    }
+
+    /// Open the library after the active one that opens when `offset` is
+    /// positive, and the one before it otherwise; core names both in the
+    /// listing and wraps at the ends.
     func switchLibrary(byOffset offset: Int) {
-        guard let active = libraries.first(where: \.isActive),
-            let id = offset > 0
-                ? active.nextOpenableId : active.previousOpenableId
-        else {
+        guard let libraryNeighbors else {
+            baeAppLogger.debug(
+                "No other library opens, so there is no library to switch to"
+            )
             return
         }
-        openLocalLibrary(id: id)
+        openLocalLibrary(
+            id: offset > 0
+                ? libraryNeighbors.nextId : libraryNeighbors.previousId
+        )
     }
 
     /// Rename a library, showing a failure in the open sheet.

@@ -62,13 +62,13 @@ internal fun SettingsLibrarySwitcher(
         }
 
         is LibraryListing.Listed -> {
-            if (listing.libraries.any { it.hasOtherLibraries }) {
+            if (listing.listing.showsSwitcher) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
                     verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                 ) {
                     LibrarySwitcher(
-                        libraries = listing.libraries,
+                        libraries = listing.listing.libraries,
                         onSwitchLibrary = onSwitchLibrary,
                     )
                 }

@@ -5,8 +5,8 @@ import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeJoinControl
-import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryClosing
+import uniffi.bae_bridge.BridgeLibraryListing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
@@ -53,7 +53,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         unfaked("flushDiagnostics")
     }
 
-    override suspend fun listLibraries(): List<BridgeLibrary> = unfaked("listLibraries")
+    override suspend fun listLibraries(): BridgeLibraryListing = unfaked("listLibraries")
 
     override suspend fun libraryStanding(libraryId: String): BridgeLibraryStanding = unfaked("libraryStanding")
 
