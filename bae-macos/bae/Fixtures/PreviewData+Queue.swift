@@ -68,6 +68,13 @@ final class PreviewQueueList: @unchecked Sendable {
         for window in windows { deliver(to: window) }
     }
 
+    /// Fail every open window's read with `error`, as a later read of a live
+    /// list fails.
+    func failWindows(_ error: any Error) {
+        let windows = lock.withLock { open.filter { !$0.stopped } }
+        for window in windows { window.feed.fail(error) }
+    }
+
     private static func key(_ place: Int) -> [BridgeSortValue] {
         [.integer(value: Int64(place))]
     }

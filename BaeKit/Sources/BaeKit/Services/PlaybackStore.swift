@@ -29,20 +29,14 @@ public class PlaybackStore {
     /// Whether shuffle is on, which holds with nothing playing: the next play
     /// starts shuffled.
     public private(set) var shuffled = false
-    /// The context's tracks after the playing one, as a list read in windows
-    /// with a count of its own; `nil` until `showUpcoming` has opened it, and
-    /// again once no context plays.
-    private var upcoming: PaginatedList<BridgeQueueEntry>?
-    /// Which order `upcoming` reads in.
-    @ObservationIgnored
-    private var upcomingShuffled = false
+    /// The context's tracks after the playing one, with the order they read
+    /// in and why a later read failed; `nil` until `showUpcoming` has opened
+    /// them, and again once no context plays.
+    private var upcoming: OpenUpcoming?
     /// Which `showUpcoming` call is the latest, so one a later call has
     /// replaced does not open a list.
     @ObservationIgnored
     private var upcomingOpening = 0
-    /// A later read of `upcoming` failed. The list shows what it has, and the
-    /// queue says it couldn't read the rest.
-    private var upcomingReadFailure: DisplayError?
 
     /// Where the playing track is, under its track id, for the native views
     /// that read it each display frame.
@@ -196,35 +190,35 @@ extension PlaybackStore {
     /// until the list is open and has answered.
     @MainActor
     public var upcomingTotal: Int {
-        upcoming?.positionCount ?? 0
+        upcoming?.list.positionCount ?? 0
     }
 
     /// The upcoming item at `index`, or `nil` when it is not read or past
     /// the end.
     @MainActor
     public func upcomingItem(at index: Int) -> BridgeQueueEntry? {
-        upcoming?.row(at: index)
+        upcoming?.list.row(at: index)
     }
 
     /// Names the open upcoming list, which changes when a new one replaces it
     /// and so restarts the rows' holds; `nil` while none is open.
     @MainActor
     public var upcomingEpoch: LoadEpoch? {
-        upcoming?.loadEpoch
+        upcoming?.list.loadEpoch
     }
 
     /// Hold the upcoming item at `index` for as long as the call runs, so the
     /// list reads the window around it.
     @MainActor
     public func holdUpcoming(at index: Int) async {
-        await upcoming?.holdPage(containing: index)
+        await upcoming?.list.holdPage(containing: index)
     }
 
     /// Why the upcoming list could not be read, when it could not: its first
     /// read failing, or a later one.
     @MainActor
     public var upcomingFailure: DisplayError? {
-        upcomingReadFailure ?? upcoming?.initialLoadError
+        upcoming?.readFailure ?? upcoming?.list.initialLoadError
     }
 
     /// Open the upcoming list in the order the lane reads in now, while a
@@ -236,7 +230,7 @@ extension PlaybackStore {
         guard queueContext != nil else {
             return
         }
-        if upcoming != nil, upcomingShuffled == shuffled {
+        if upcoming?.shuffled == shuffled {
             return
         }
         upcomingOpening += 1
@@ -248,7 +242,7 @@ extension PlaybackStore {
                 logger.warning(
                     "upcoming queue read failed: \(String(reflecting: error))"
                 )
-                self?.upcomingReadFailure = DisplayError(error)
+                self?.upcoming?.readFailure = DisplayError(error)
             }
         )
         await list.loadInitial()
@@ -256,9 +250,8 @@ extension PlaybackStore {
             list.cancel()
             return
         }
-        upcoming?.cancel()
-        upcoming = list
-        upcomingShuffled = order
+        upcoming?.list.cancel()
+        upcoming = OpenUpcoming(list: list, shuffled: order)
     }
 
     /// Open the upcoming list again after a failure.
@@ -272,10 +265,20 @@ extension PlaybackStore {
     @MainActor
     private func closeUpcoming() {
         upcomingOpening += 1
-        upcoming?.cancel()
+        upcoming?.list.cancel()
         upcoming = nil
-        upcomingReadFailure = nil
     }
+}
+
+/// The upcoming list `showUpcoming` opened: the context's tracks after the
+/// playing one, read in windows with a count of their own.
+private struct OpenUpcoming {
+    let list: PaginatedList<BridgeQueueEntry>
+    /// Whether `list` reads the tracks shuffled.
+    let shuffled: Bool
+    /// Why a later read of `list` failed. The list shows what it has, and
+    /// the queue says it couldn't read the rest.
+    var readFailure: DisplayError?
 }
 
 // ── NowPlaying ─────────────────────────────────────────────────────────

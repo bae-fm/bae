@@ -234,6 +234,37 @@ struct PlaybackStoreUpcomingFailureTests {
         #expect(store.upcomingFailure == nil)
         #expect(store.upcomingTotal == 3)
     }
+
+    @MainActor
+    @Test("the list a shuffle flip opens drops the old list's read failure")
+    func shuffleFlipDropsTheOldFailure() async throws {
+        let opened = OpenedLists()
+        let queue = opened.queue()
+        let store = PlaybackStore()
+        store.applyQueueSnapshot(contextSnapshot())
+        let first = Task { @MainActor in await store.showUpcoming(queue: queue)
+        }
+        try await Wait.until { opened.openedOrders.count == 1 }
+        opened.latest.show((0..<5).map { queueEntry("e\($0)") })
+        await first.value
+        opened.latest.failWindows(
+            BridgeError.Diagnostic(
+                category: .database,
+                detail: "database is locked"
+            )
+        )
+        try await Wait.until {
+            store.upcomingFailure?.detail == "database is locked"
+        }
+
+        store.applyQueueSnapshot(contextSnapshot(shuffled: true))
+        let second = Task { @MainActor in await store.showUpcoming(queue: queue)
+        }
+        try await Wait.until { opened.openedOrders.count == 2 }
+        opened.latest.show((0..<5).map { queueEntry("s\($0)") })
+        await second.value
+        #expect(store.upcomingFailure == nil)
+    }
 }
 
 @Suite("PlaybackStore loading transition")
