@@ -195,6 +195,9 @@ extension PreviewData {
                     albumTitle: "Album Title 1",
                 )
             },
+        childWorkCount: 2,
+        releaseCount: 3,
+        trackCount: 4,
     )
 
     // MARK: - Artists

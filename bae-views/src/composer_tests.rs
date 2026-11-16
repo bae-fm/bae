@@ -60,6 +60,7 @@ async fn work_detail_lists_child_works_with_their_representative_release() {
         .expect("work detail");
 
     assert_eq!(detail.child_works.len(), 1);
+    assert_eq!(detail.child_work_count, 1);
     assert_eq!(detail.child_works[0].work.id, WORK_CHILD_A);
     assert_eq!(detail.child_works[0].representative_release_id.as_deref(), Some(RELEASE_A));
 }
@@ -842,6 +843,11 @@ async fn a_works_page_lists_its_albums_by_title_without_case_each_album_whole() 
     assert_eq!(
         detail.tracks.iter().map(|track| track.track.release_id.as_str()).collect::<Vec<_>>(),
         in_order
+    );
+    assert_eq!(
+        (detail.child_work_count, detail.release_count, detail.track_count),
+        (0, 4, 4),
+        "the page counts each section's rows"
     );
 }
 

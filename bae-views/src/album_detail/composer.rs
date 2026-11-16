@@ -52,6 +52,13 @@ pub struct WorkDetail {
     pub child_works: Vec<DbWorkSummary>,
     pub releases: Vec<WorkReleaseSummary>,
     pub tracks: Vec<DbWorkTrackSummary>,
+    /// How many child works the page lists, which decides whether it shows
+    /// their section.
+    pub child_work_count: u64,
+    /// How many releases the page lists.
+    pub release_count: u64,
+    /// How many recordings the page lists.
+    pub track_count: u64,
 }
 
 /// One child of a work as a media browser lists it: its parts, then the

@@ -200,6 +200,9 @@ extension LibraryView {
                         albumTitle: "Album Title 1",
                     )
                 },
+            childWorkCount: 0,
+            releaseCount: 3,
+            trackCount: 4,
         )
     }
 }

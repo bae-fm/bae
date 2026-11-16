@@ -670,7 +670,8 @@ the lists are (§9.2), and opens the first work it lists.
 that perform it, then their tracks that do. Releases go in the order the
 work's cover is picked by: by album title, compared without case, two albums
 sharing a title by id, each album's releases together in its order. Tracks go
-by their release in that order, then by place.
+by their release in that order, then by place. The page's read counts each
+section's rows, and the page leaves out a section whose count is zero.
 
 ### 2.5 Catalog records
 

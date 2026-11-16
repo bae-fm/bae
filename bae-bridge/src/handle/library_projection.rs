@@ -725,6 +725,9 @@ mirror_struct! {
         child_works: (each BridgeWorkSummary),
         releases: (each BridgeWorkReleaseSummary),
         tracks: (each BridgeWorkTrackSummary),
+        child_work_count,
+        release_count,
+        track_count,
     },
 }
 

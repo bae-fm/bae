@@ -235,6 +235,9 @@ fn work_detail_of(raw: DbWorkDetail) -> WorkDetail {
         child_works: raw.child_works,
         releases: raw.releases.into_iter().map(WorkReleaseSummary::from_raw).collect(),
         tracks: raw.tracks,
+        child_work_count: raw.child_work_count,
+        release_count: raw.release_count,
+        track_count: raw.track_count,
     }
 }
 
@@ -298,7 +301,31 @@ fn find_work_detail_on(
             })
         },
     )?;
-    Ok(Some(DbWorkDetail { work, child_works, releases, tracks }))
+    // Each count reads the rows its section's statement above reads.
+    let (child_work_count, release_count, track_count): (i64, i64, i64) = sql.query_row(
+        "SELECT (SELECT COUNT(*) FROM work_parts wp
+                 JOIN works w ON w.id = wp.child_work_id
+                 WHERE wp.parent_work_id = ?1),
+                (SELECT COUNT(DISTINCT t.release_id) FROM track_works tw
+                 JOIN tracks t ON t.id = tw.track_id
+                 WHERE tw.work_id = ?1),
+                (SELECT COUNT(*) FROM track_works tw
+                 JOIN tracks t ON t.id = tw.track_id
+                 JOIN releases r ON r.id = t.release_id
+                 JOIN albums a ON a.id = r.album_id
+                 WHERE tw.work_id = ?1)",
+        params![work_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )?;
+    Ok(Some(DbWorkDetail {
+        work,
+        child_works,
+        releases,
+        tracks,
+        child_work_count: child_work_count as u64,
+        release_count: release_count as u64,
+        track_count: track_count as u64,
+    }))
 }
 
 /// How many composers come before the row at `key`.

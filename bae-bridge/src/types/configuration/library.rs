@@ -181,6 +181,13 @@ pub struct BridgeWorkDetail {
     pub child_works: Vec<BridgeWorkSummary>,
     pub releases: Vec<BridgeWorkReleaseSummary>,
     pub tracks: Vec<BridgeWorkTrackSummary>,
+    /// How many child works the page lists; it shows their section when
+    /// there are any.
+    pub child_work_count: u64,
+    /// How many releases the page lists.
+    pub release_count: u64,
+    /// How many recordings the page lists.
+    pub track_count: u64,
 }
 
 /// One child of a work as a media browser lists it: its parts, then the

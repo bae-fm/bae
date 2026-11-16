@@ -13,7 +13,7 @@ struct WorkDetailView: View {
             Text(detail.work.title)
                 .themeText(.title)
                 .lineLimit(2)
-            if !detail.childWorks.isEmpty {
+            if detail.childWorkCount > 0 {
                 SectionHeader(title: String(localized: "Works"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.childWorks, id: \.workId) { work in
@@ -27,7 +27,7 @@ struct WorkDetailView: View {
                     }
                 }
             }
-            if !detail.releases.isEmpty {
+            if detail.releaseCount > 0 {
                 SectionHeader(title: String(localized: "Releases"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.releases, id: \.releaseId) { release in
@@ -43,7 +43,7 @@ struct WorkDetailView: View {
                     }
                 }
             }
-            if !detail.tracks.isEmpty {
+            if detail.trackCount > 0 {
                 SectionHeader(title: String(localized: "Recordings"))
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.tracks, id: \.trackId) { track in

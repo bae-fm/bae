@@ -207,6 +207,12 @@ pub struct DbWorkDetail {
     pub child_works: Vec<DbWorkSummary>,
     pub releases: Vec<DbWorkReleaseSummary>,
     pub tracks: Vec<DbWorkTrackSummary>,
+    /// How many rows `child_works` holds.
+    pub child_work_count: u64,
+    /// How many rows `releases` holds.
+    pub release_count: u64,
+    /// How many rows `tracks` holds.
+    pub track_count: u64,
 }
 
 /// One child of a work as a media browser lists it, as its row read it: a

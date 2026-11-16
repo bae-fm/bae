@@ -583,6 +583,9 @@ fn work_detail_conversion_preserves_work_release_rows() {
             cover: None,
         }],
         tracks: Vec::new(),
+        child_work_count: 0,
+        release_count: 1,
+        track_count: 0,
     };
 
     let bridge = super::BridgeWorkDetail::from_core(detail);
