@@ -594,14 +594,11 @@ extension PeopleAndDevicesPage {
     // MARK: - Actions
 
     /// The first invite whose request waits for a decision, other than
-    /// those whose sheet the person closed. The read answers for the closed
-    /// invites a moment after one closes, so the one just closed is not
-    /// shown meanwhile.
+    /// those whose sheet the person closed, as the query last returned it.
+    /// When the person closes a sheet, the page passes its invite to the
+    /// query, and the sheet stays until the query returns without it.
     private var requestShown: BridgeInvite? {
         store.waitingRequest.shown?.value
-            .flatMap {
-                closedRequests.contains($0.id) ? nil : $0
-            }
     }
 
     /// Open an invite from its row: its request to decide, or its code.

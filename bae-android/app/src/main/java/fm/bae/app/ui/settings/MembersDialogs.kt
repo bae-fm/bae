@@ -168,10 +168,10 @@ private fun InviteDialogsShown(
             }
         }
     LaunchedEffect(model, dialogs.closedRequests) { model.waitingRequest.show(dialogs.closedRequests) }
-    // The read answers for the closed invites a moment after one closes, so the one just closed is not shown meanwhile.
+    // When the person closes the dialog, the screen passes its invite to the query, and the dialog stays until the
+    // query returns without it.
     model.waitingRequest.shown
         ?.value
-        ?.takeIf { it.id !in dialogs.closedRequests }
         ?.let { invite ->
             JoinRequestDialog(
                 invite = invite,
