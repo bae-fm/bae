@@ -22,7 +22,7 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.RowIcon
-import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgeMember
@@ -73,7 +73,7 @@ internal fun AndroidSettingsPeople(
     selfIsAdmin: Boolean,
     requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
-    adminChanges: List<BridgeAdminChange>,
+    adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
     offline: Boolean,
@@ -108,7 +108,7 @@ internal fun PeopleHome(
     selfIsAdmin: Boolean,
     requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
-    adminChanges: List<BridgeAdminChange>,
+    adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
     inviteCallbacks: InviteCallbacks,
     offline: Boolean,
@@ -127,7 +127,7 @@ internal fun PeopleHome(
             ),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        if (adminChanges.isNotEmpty()) {
+        if (adminChanges?.any == true) {
             item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         }
         item { AndroidSection(text = stringResource(R.string.members_you)) }

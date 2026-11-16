@@ -22,10 +22,9 @@ struct AdminChangesSection: View {
     private var error: DisplayError?
 
     var body: some View {
-        let changes = store.adminChanges(at: place)
-        if !changes.isEmpty {
+        if let changes = store.adminChanges(at: place), changes.any {
             Section("Changes from this Mac") {
-                ForEach(changes, id: \.operation) { change in
+                ForEach(changes.changes, id: \.operation) { change in
                     AdminChangeRow(
                         change: change,
                         busy: task != nil,

@@ -549,7 +549,7 @@ impl AppServices {
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<bae_library::DeviceRemoval, bae_library::LibraryError>);
     delegate_async!(manager, confirm_device_cut_off => confirm_device_cut_off(device: coven::DeviceId) -> Result<bae_library::DeviceCutOff, bae_library::LibraryError>);
     delegate_lib!(membership, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> ());
-    delegate_values!(subscribe_admin_changes => subscribe_admin_changes(place: bae_people::admin_change::AdminChangePlace) -> Vec<bae_people::admin_change::AdminChange>);
+    delegate_values!(subscribe_admin_changes => subscribe_admin_changes(place: bae_people::admin_change::AdminChangePlace) -> bae_people::admin_change::AdminChanges);
     delegate_lib!(membership, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> ());
     delegate_lib!(membership, invite_person => invite_person(role: coven::MemberRole, access: coven::InviteAccess, lifetime: coven::InviteLifetime) -> coven::InviteId);
     /// This device's open invites, each with the pending record of its

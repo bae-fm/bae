@@ -3,7 +3,7 @@ package fm.bae.app.playback
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.AdminChangesSubscription
-import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceStorage
@@ -100,13 +100,13 @@ internal class FakeSyncActivitySubscription : SyncActivitySubscription(NoHandle)
 
 /** Admin changes a test hands the app a list at a time: each pull waits for the next. */
 internal class FakeAdminChangesSubscription : AdminChangesSubscription(NoHandle) {
-    private val values = Channel<List<BridgeAdminChange>>(Channel.UNLIMITED)
+    private val values = Channel<BridgeAdminChanges>(Channel.UNLIMITED)
 
-    fun deliver(changes: List<BridgeAdminChange>) {
+    fun deliver(changes: BridgeAdminChanges) {
         values.trySend(changes)
     }
 
-    override suspend fun next(): List<BridgeAdminChange> = values.receive()
+    override suspend fun next(): BridgeAdminChanges = values.receive()
 
     override suspend fun cancel() {
         values.close(BridgeException.Cancelled())

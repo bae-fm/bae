@@ -21,6 +21,7 @@ import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAdminChangePlace.Library
 import uniffi.bae_bridge.BridgeAdminChangePlace.People
 import uniffi.bae_bridge.BridgeAdminChangeState
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
@@ -294,12 +295,7 @@ class MembersModelTest {
         val stop = model.subscribe()
         model.adminChanges.show(BridgeAdminChangePlace.People)
         assertEquals(listOf<BridgeAdminChangePlace>(BridgeAdminChangePlace.People), handle.adminChangePlaces)
-        assertEquals(
-            emptyList<BridgeAdminChange>(),
-            model.adminChanges.shown
-                .at(People)
-                .orEmpty(),
-        )
+        assertEquals(null, model.adminChangesAt(People))
 
         val waiting =
             BridgeAdminChange(
@@ -307,29 +303,14 @@ class MembersModelTest {
                 change = BridgeAdminChangeKind.RemoveDevice(device = 4uL, name = "Tablet"),
                 state = BridgeAdminChangeState.Waiting,
             )
-        handle.adminChanges.deliver(listOf(waiting))
+        handle.adminChanges.deliver(BridgeAdminChanges(listOf(waiting), any = true))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(
-            listOf(waiting),
-            model.adminChanges.shown
-                .at(People)
-                .orEmpty(),
-        )
-        assertEquals(
-            emptyList<BridgeAdminChange>(),
-            model.adminChanges.shown
-                .at(Library)
-                .orEmpty(),
-        )
+        assertEquals(BridgeAdminChanges(listOf(waiting), any = true), model.adminChangesAt(People))
+        assertEquals(null, model.adminChangesAt(Library))
 
-        handle.adminChanges.deliver(emptyList())
+        handle.adminChanges.deliver(BridgeAdminChanges(emptyList(), any = false))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(
-            emptyList<BridgeAdminChange>(),
-            model.adminChanges.shown
-                .at(People)
-                .orEmpty(),
-        )
+        assertEquals(BridgeAdminChanges(emptyList(), any = false), model.adminChangesAt(People))
         stop()
     }
 

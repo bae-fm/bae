@@ -54,7 +54,7 @@ private fun Library(
     sync = sync,
     peopleAndDevices = "2 people · 3 devices",
     hasStorage = true,
-    adminChanges = emptyList(),
+    adminChanges = null,
     onDismissChange = {},
     onBack = {},
     onRename = {},

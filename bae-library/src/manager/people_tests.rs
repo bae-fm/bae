@@ -144,20 +144,22 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         let manager = laptop.manager();
         let mut changes =
             manager.subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::Library);
-        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, |changes| {
+            !changes.any && changes.changes.is_empty()
+        })
+        .await;
 
         manager
             .membership
             .rename_store(bae_store::EnteredName::parse("Home").unwrap().as_str())
             .await
             .unwrap();
-        let waiting =
-            crate::followed::query_matching(&mut changes, |changes| !changes.is_empty()).await;
+        let waiting = crate::followed::query_matching(&mut changes, |changes| changes.any).await;
         let [AdminChange {
             operation,
             change: AdminChangeKind::RenameLibrary { name },
             state: AdminChangeState::Waiting,
-        }] = waiting.as_slice()
+        }] = waiting.changes.as_slice()
         else {
             panic!("one waiting rename: {waiting:?}");
         };
@@ -165,20 +167,23 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         // A rename shows with the library's name, not on People and devices.
         let mut people =
             manager.subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
-        assert!(people.next_inline().await.unwrap().unwrap().is_empty());
+        assert!(!people.next_inline().await.unwrap().unwrap().any);
         let operation = *operation;
         assert_eq!(manager.store.store_name().await.unwrap(), "Two Devices");
         assert!(manager.membership.acknowledge_admin_change(operation).await.is_err());
 
         laptop.store().start_sync().await.unwrap();
         crate::followed::query_matching(&mut changes, |changes| {
-            changes.len() == 1 && changes[0].state == AdminChangeState::Done
+            changes.changes.len() == 1 && changes.changes[0].state == AdminChangeState::Done
         })
         .await;
         assert_eq!(manager.store.store_name().await.unwrap(), "Home");
 
         manager.membership.acknowledge_admin_change(operation).await.unwrap();
-        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, |changes| {
+            !changes.any && changes.changes.is_empty()
+        })
+        .await;
         let listed = laptop
             .store()
             .query_texts_for_test("SELECT kind FROM coven_operations WHERE kind = 'RenameStore'")
@@ -240,14 +245,14 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
 
         laptop.store().start_sync().await.unwrap();
         let stopped = crate::followed::query_matching(&mut changes, |changes| {
-            changes.iter().any(|change| change.state != AdminChangeState::Waiting)
+            changes.changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
         let [AdminChange {
             change: AdminChangeKind::RemoveDevice { device, name },
             state: AdminChangeState::Stopped(coven::DeviceStop::Removed(coven::Removal::Device)),
             ..
-        }] = stopped.as_slice()
+        }] = stopped.changes.as_slice()
         else {
             panic!("one removal, stopped by the laptop's own: {stopped:?}");
         };
@@ -268,16 +273,18 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
         let mut changes = laptop
             .manager()
             .subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
-        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, |changes| {
+            !changes.any && changes.changes.is_empty()
+        })
+        .await;
         let unknown = coven::DeviceId(u64::MAX);
         laptop.membership().remove_device(unknown).await.unwrap();
-        let waiting =
-            crate::followed::query_matching(&mut changes, |changes| !changes.is_empty()).await;
+        let waiting = crate::followed::query_matching(&mut changes, |changes| changes.any).await;
         let [AdminChange {
             change: AdminChangeKind::RemoveDevice { device, name: None },
             state: AdminChangeState::Waiting,
             ..
-        }] = waiting.as_slice()
+        }] = waiting.changes.as_slice()
         else {
             panic!("one waiting removal of an unnamed device: {waiting:?}");
         };
@@ -285,7 +292,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
 
         laptop.store().start_sync().await.unwrap();
         let refused = crate::followed::query_matching(&mut changes, |changes| {
-            changes.iter().any(|change| change.state != AdminChangeState::Waiting)
+            changes.changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
         let [AdminChange {
@@ -294,7 +301,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
                     coven::EntryTarget::Device(gone),
                 )),
             ..
-        }] = refused.as_slice()
+        }] = refused.changes.as_slice()
         else {
             panic!("one removal refused as gone: {refused:?}");
         };

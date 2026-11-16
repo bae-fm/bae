@@ -370,7 +370,7 @@ final class SilentRequestedProfile: RequestedProfileSubscription,
 final class SilentAdminChanges: AdminChangesSubscription,
     @unchecked Sendable
 {
-    private let values = PullQueue<[BridgeAdminChange]>()
+    private let values = PullQueue<BridgeAdminChanges>()
 
     init() {
         super.init(noHandle: AdminChangesSubscription.NoHandle())
@@ -380,7 +380,7 @@ final class SilentAdminChanges: AdminChangesSubscription,
         super.init(unsafeFromHandle: handle)
     }
 
-    override func next() async throws -> [BridgeAdminChange] {
+    override func next() async throws -> BridgeAdminChanges {
         try await values.next()
     }
 

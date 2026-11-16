@@ -77,7 +77,7 @@ fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
 /// Each place's statement returns the changes of its own kinds, and every
 /// place's statement returns a change whose operation coven lists with a kind
 /// no place shows, so that reading that change fails wherever the person
-/// looks.
+/// looks. Whether a place has a change comes from the same rows.
 #[test]
 fn every_place_returns_a_change_of_a_kind_no_place_shows() {
     use crate::admin_change::AdminChangePlace;
@@ -117,4 +117,15 @@ fn every_place_returns_a_change_of_a_kind_no_place_shows() {
     assert_eq!(read(AdminChangePlace::Library), [1, 4]);
     assert_eq!(read(AdminChangePlace::Person(ana)), [2, 4]);
     assert_eq!(read(AdminChangePlace::People), [3, 4]);
+    let any = |place: AdminChangePlace, member: Option<coven::MemberId>| -> bool {
+        let sql = super::admin_operations::any_admin_change_sql(&place);
+        connection
+            .query_row(&sql, rusqlite::params_from_iter(member.iter()), |row| row.get(0))
+            .unwrap()
+    };
+    assert!(any(AdminChangePlace::Library, None));
+    connection.execute_batch("DELETE FROM admin_operations WHERE operation <> 2").unwrap();
+    assert!(!any(AdminChangePlace::Library, None), "no change shows with the library's name");
+    assert!(!any(AdminChangePlace::People, None), "no change shows on People and devices");
+    assert!(any(AdminChangePlace::Person(ana), Some(ana)));
 }

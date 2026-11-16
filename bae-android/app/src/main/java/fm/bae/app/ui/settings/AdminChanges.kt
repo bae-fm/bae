@@ -19,6 +19,7 @@ import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
 import uniffi.bae_bridge.BridgeAdminChangeState
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeMemberRole
 
 /**
@@ -29,17 +30,17 @@ import uniffi.bae_bridge.BridgeMemberRole
  */
 @Composable
 internal fun AdminChangesList(
-    changes: List<BridgeAdminChange>,
+    changes: BridgeAdminChanges?,
     onDismiss: (BridgeAdminChange) -> Unit,
 ) {
-    if (changes.isEmpty()) return
+    if (changes?.any != true) return
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         AndroidSection(text = stringResource(R.string.admin_changes_title))
         AndroidCard {
-            changes.forEach { change -> AdminChangeRow(change = change, onDismiss = { onDismiss(change) }) }
+            changes.changes.forEach { change -> AdminChangeRow(change = change, onDismiss = { onDismiss(change) }) }
         }
     }
 }

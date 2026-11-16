@@ -7,6 +7,21 @@ pub struct BridgeAdminChange {
     pub change: BridgeAdminChangeKind,
     pub state: BridgeAdminChangeState,
 }
+/// The admin changes that show in one place, and whether the place has any,
+/// which the read's statement answers.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeAdminChanges {
+    pub changes: Vec<BridgeAdminChange>,
+    pub any: bool,
+}
+impl BridgeAdminChanges {
+    pub(crate) fn from_core(value: bae_people::admin_change::AdminChanges) -> Self {
+        Self {
+            changes: value.changes.into_iter().map(BridgeAdminChange::from_core).collect(),
+            any: value.any,
+        }
+    }
+}
 /// What an admin change changes. A person without a profile has no name, nor
 /// does a device this device hasn't read yet.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

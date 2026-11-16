@@ -129,7 +129,7 @@ impl LibraryManager {
     pub fn subscribe_admin_changes(
         &self,
         place: bae_people::admin_change::AdminChangePlace,
-    ) -> coven::LiveQuery<Vec<bae_people::admin_change::AdminChange>, bae_store::DbError> {
+    ) -> coven::LiveQuery<bae_people::admin_change::AdminChanges, bae_store::DbError> {
         self.membership.subscribe_admin_changes(place)
     }
 

@@ -26,7 +26,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.ButtonKind
 import uniffi.bae_bridge.BridgeActiveDevice
-import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
@@ -37,7 +37,7 @@ internal fun AndroidSettingsPerson(
     member: BridgeMember,
     selfIsAdmin: Boolean,
     name: String,
-    adminChanges: List<BridgeAdminChange>,
+    adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
     error: DisplayError?,
     onBack: () -> Unit,
@@ -75,7 +75,7 @@ internal fun PersonPage(
     member: BridgeMember,
     selfIsAdmin: Boolean,
     name: String,
-    adminChanges: List<BridgeAdminChange>,
+    adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
 ) {
     LazyColumn(
@@ -83,7 +83,7 @@ internal fun PersonPage(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        if (adminChanges.isNotEmpty()) {
+        if (adminChanges?.any == true) {
             item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         }
         item {

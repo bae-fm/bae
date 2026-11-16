@@ -13,6 +13,7 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
 import uniffi.bae_bridge.BridgeAdminChangeState
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
 import uniffi.bae_bridge.BridgeHistorySharing
@@ -47,7 +48,7 @@ internal fun PeoplePageScene(
     selfIsAdmin = selfIsAdmin,
     requested = null,
     invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
-    adminChanges = emptyList(),
+    adminChanges = null,
     callbacks = memberCallbacks(),
     inviteCallbacks = InviteCallbacks({}, {}),
     offline = offline,
@@ -65,7 +66,8 @@ internal fun PersonPageScene(
     member = person.membership,
     selfIsAdmin = true,
     name = checkNotNull(person.profile).name,
-    adminChanges = adminChanges,
+    // Core answers whether there is a change; this fixture states it.
+    adminChanges = BridgeAdminChanges(adminChanges, any = adminChanges.isNotEmpty()),
     callbacks = memberCallbacks(),
     error = null,
     onBack = {},

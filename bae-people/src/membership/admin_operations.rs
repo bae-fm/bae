@@ -6,6 +6,7 @@
 use super::*;
 use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
+    AdminChanges,
 };
 use rusqlite::OptionalExtension;
 
@@ -47,6 +48,12 @@ fn admin_changes_sql(place: &AdminChangePlace) -> String {
     )
 }
 
+/// Whether any change shows in `place`, as [`admin_changes_sql`] returns
+/// them.
+pub(super) fn any_admin_change_sql(place: &AdminChangePlace) -> String {
+    format!("SELECT EXISTS (SELECT 1 {ADMIN_CHANGES_FROM} WHERE {shown})", shown = shown_in(place))
+}
+
 /// The condition, over [`ADMIN_CHANGES_FROM`], that keeps the changes that
 /// show in `place`: those of the kinds the place shows, and every change
 /// whose operation coven lists with a kind no place shows, so that the row
@@ -65,91 +72,103 @@ pub(super) fn shown_in(place: &AdminChangePlace) -> String {
 fn admin_changes_on(
     sql: &impl coven::SqlRead,
     place: &AdminChangePlace,
-) -> rusqlite::Result<Vec<AdminChange>> {
-    let statement = admin_changes_sql(place);
+) -> rusqlite::Result<AdminChanges> {
     let member = match place {
         AdminChangePlace::Person(member) => Some(*member),
         AdminChangePlace::Library | AdminChangePlace::People => None,
     };
-    sql.query(&statement, rusqlite::params_from_iter(member.iter()), |row| {
-        let operation = coven::OperationId(row.get(0)?);
-        let member = || {
-            row.get::<_, Option<coven::MemberId>>(3)?.ok_or_else(|| {
-                bae_store::read::column_conversion_error(row, 3, "a member change names no member")
-            })
-        };
-        let change = match row.get::<_, coven::OperationKind>(1)? {
-            coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
-                name: row.get::<_, Option<String>>(6)?.ok_or_else(|| {
-                    bae_store::read::column_conversion_error(row, 6, "a rename names no name")
-                })?,
-            },
-            coven::OperationKind::SetRole => AdminChangeKind::SetRole {
-                member: member()?,
-                person: row.get(7)?,
-                role: match row.get::<_, Option<String>>(5)?.as_deref() {
-                    Some("admin") => coven::MemberRole::Admin,
-                    Some("member") => coven::MemberRole::Member,
-                    other => {
-                        return Err(bae_store::read::column_conversion_error(
-                            row,
-                            5,
-                            format!("a role {other:?}"),
-                        ))
-                    }
-                },
-            },
-            coven::OperationKind::RemoveMember => {
-                AdminChangeKind::RemovePerson { member: member()?, person: row.get(7)? }
-            }
-            coven::OperationKind::Invite | coven::OperationKind::ReplaceMemberKeys => {
-                AdminChangeKind::Approve {
-                    member: member()?,
-                    person: match row.get::<_, Option<String>>(6)? {
-                        Some(invitee) => Some(invitee),
-                        None => row.get(7)?,
-                    },
+    let changes = sql.query(
+        &admin_changes_sql(place),
+        rusqlite::params_from_iter(member.iter()),
+        admin_change_row,
+    )?;
+    let any = sql.query_row(
+        &any_admin_change_sql(place),
+        rusqlite::params_from_iter(member.iter()),
+        |row| row.get(0),
+    )?;
+    Ok(AdminChanges { changes, any })
+}
+
+/// One change as [`admin_changes_sql`] reads it.
+fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
+    let operation = coven::OperationId(row.get(0)?);
+    let member = || {
+        row.get::<_, Option<coven::MemberId>>(3)?.ok_or_else(|| {
+            bae_store::read::column_conversion_error(row, 3, "a member change names no member")
+        })
+    };
+    let change = match row.get::<_, coven::OperationKind>(1)? {
+        coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
+            name: row.get::<_, Option<String>>(6)?.ok_or_else(|| {
+                bae_store::read::column_conversion_error(row, 6, "a rename names no name")
+            })?,
+        },
+        coven::OperationKind::SetRole => AdminChangeKind::SetRole {
+            member: member()?,
+            person: row.get(7)?,
+            role: match row.get::<_, Option<String>>(5)?.as_deref() {
+                Some("admin") => coven::MemberRole::Admin,
+                Some("member") => coven::MemberRole::Member,
+                other => {
+                    return Err(bae_store::read::column_conversion_error(
+                        row,
+                        5,
+                        format!("a role {other:?}"),
+                    ))
                 }
-            }
-            coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
-                device: row.get::<_, Option<coven::DeviceId>>(4)?.ok_or_else(|| {
-                    bae_store::read::column_conversion_error(row, 4, "a removal names no device")
-                })?,
-                // coven journals the removal of a device this device
-                // hasn't read, which it lists only once it has.
-                name: row.get(8)?,
             },
-            other => {
-                return Err(bae_store::read::column_conversion_error(
-                    row,
-                    1,
-                    format!("an admin change of kind {other:?}"),
-                ))
+        },
+        coven::OperationKind::RemoveMember => {
+            AdminChangeKind::RemovePerson { member: member()?, person: row.get(7)? }
+        }
+        coven::OperationKind::Invite | coven::OperationKind::ReplaceMemberKeys => {
+            AdminChangeKind::Approve {
+                member: member()?,
+                person: match row.get::<_, Option<String>>(6)? {
+                    Some(invitee) => Some(invitee),
+                    None => row.get(7)?,
+                },
             }
-        };
-        let state = match row.get::<_, Option<coven::OperationOutcome>>(2)? {
-            None => AdminChangeState::Waiting,
-            Some(coven::OperationOutcome::Landed(_) | coven::OperationOutcome::Satisfied) => {
-                AdminChangeState::Done
-            }
-            Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
-            Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-            // Only storage setup is cancelled or undone, and only an invite's
-            // grant is refused sharing, never an admin change.
-            Some(
-                outcome @ (coven::OperationOutcome::Cancelled
-                | coven::OperationOutcome::Undone(_)
-                | coven::OperationOutcome::SharingRefused { .. }),
-            ) => {
-                return Err(bae_store::read::column_conversion_error(
-                    row,
-                    2,
-                    format!("an admin change that ended {outcome:?}"),
-                ))
-            }
-        };
-        Ok(AdminChange { operation, change, state })
-    })
+        }
+        coven::OperationKind::RemoveDevice => AdminChangeKind::RemoveDevice {
+            device: row.get::<_, Option<coven::DeviceId>>(4)?.ok_or_else(|| {
+                bae_store::read::column_conversion_error(row, 4, "a removal names no device")
+            })?,
+            // coven journals the removal of a device this device
+            // hasn't read, which it lists only once it has.
+            name: row.get(8)?,
+        },
+        other => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                1,
+                format!("an admin change of kind {other:?}"),
+            ))
+        }
+    };
+    let state = match row.get::<_, Option<coven::OperationOutcome>>(2)? {
+        None => AdminChangeState::Waiting,
+        Some(coven::OperationOutcome::Landed(_) | coven::OperationOutcome::Satisfied) => {
+            AdminChangeState::Done
+        }
+        Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+        Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+        // Only storage setup is cancelled or undone, and only an invite's
+        // grant is refused sharing, never an admin change.
+        Some(
+            outcome @ (coven::OperationOutcome::Cancelled
+            | coven::OperationOutcome::Undone(_)
+            | coven::OperationOutcome::SharingRefused { .. }),
+        ) => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                2,
+                format!("an admin change that ended {outcome:?}"),
+            ))
+        }
+    };
+    Ok(AdminChange { operation, change, state })
 }
 
 /// Record what the change journaled as `operation` changes, in its write.
@@ -205,7 +224,7 @@ impl Membership {
     pub fn subscribe_admin_changes(
         &self,
         place: AdminChangePlace,
-    ) -> coven::LiveQuery<Vec<AdminChange>, bae_store::DbError> {
+    ) -> coven::LiveQuery<AdminChanges, bae_store::DbError> {
         self.store.subscribe(move |sql| Ok(admin_changes_on(&sql, &place)?))
     }
 

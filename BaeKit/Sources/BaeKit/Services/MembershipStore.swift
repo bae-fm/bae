@@ -44,11 +44,11 @@ public final class MembershipStore {
     /// The admin changes this device asked for that show with the library's
     /// name, each until the person dismisses its outcome.
     private let libraryAdminChanges =
-        KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]>()
+        KeyedRead<BridgeAdminChangePlace, BridgeAdminChanges>()
     /// The admin changes that show on the page of People and devices that is
     /// open: People, or one person's page.
     private let pageAdminChanges =
-        KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]>()
+        KeyedRead<BridgeAdminChangePlace, BridgeAdminChanges>()
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
     /// Where the pairing `followAddDevice` follows is, nil until it reports.
@@ -66,7 +66,7 @@ public final class MembershipStore {
     private let subscribeWaitingRequest: Subscribe<Set<String>, BridgeInvite?>
     /// Starts the subscription to the admin changes that show in the place.
     private let subscribeAdminChanges:
-        Subscribe<BridgeAdminChangePlace, [BridgeAdminChange]>
+        Subscribe<BridgeAdminChangePlace, BridgeAdminChanges>
     /// Starts the subscription to the open invite with the id.
     private let subscribeInvite: Subscribe<String, BridgeInvite?>
     /// Starts the pull of a pairing's status, handing each value to the
@@ -150,7 +150,7 @@ public final class MembershipStore {
         subscribeWaitingRequest:
             @escaping Subscribe<Set<String>, BridgeInvite?>,
         subscribeAdminChanges:
-            @escaping Subscribe<BridgeAdminChangePlace, [BridgeAdminChange]>,
+            @escaping Subscribe<BridgeAdminChangePlace, BridgeAdminChanges>,
         subscribeInvite: @escaping Subscribe<String, BridgeInvite?>,
         followAddDeviceStatus:
             @escaping @MainActor (
@@ -332,17 +332,17 @@ extension MembershipStore {
     /// read, or the read of the page of People and devices that is open.
     private func adminChangesRead(
         _ place: BridgeAdminChangePlace
-    ) -> KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]> {
+    ) -> KeyedRead<BridgeAdminChangePlace, BridgeAdminChanges> {
         place == .library ? libraryAdminChanges : pageAdminChanges
     }
 
     /// The admin changes that show in `place` as its read returned them;
-    /// none before the read returns.
+    /// nil before the read returns.
     public func adminChanges(
         at place: BridgeAdminChangePlace
-    ) -> [BridgeAdminChange] {
+    ) -> BridgeAdminChanges? {
         guard let shown = adminChangesRead(place).shown, shown.key == place
-        else { return [] }
+        else { return nil }
         return shown.value
     }
 
@@ -393,7 +393,15 @@ extension MembershipStore {
                 },
                 subscribeWaitingRequest: { _, _, _ in NSObject() },
                 subscribeAdminChanges: { _, place, apply in
-                    apply(adminChanges[place] ?? [])
+                    // Core answers whether there is a change; the stub
+                    // states it for its fixture.
+                    let changes = adminChanges[place] ?? []
+                    apply(
+                        BridgeAdminChanges(
+                            changes: changes,
+                            any: !changes.isEmpty
+                        )
+                    )
                     return NSObject()
                 },
                 subscribeInvite: { _, inviteId, apply in

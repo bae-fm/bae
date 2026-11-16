@@ -36,6 +36,7 @@ import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangePlace
+import uniffi.bae_bridge.BridgeAdminChanges
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
@@ -92,7 +93,7 @@ internal fun AndroidSettingsLibrary(
     sync: SyncRowSummary,
     peopleAndDevices: String?,
     hasStorage: Boolean,
-    adminChanges: List<BridgeAdminChange>,
+    adminChanges: BridgeAdminChanges?,
     onDismissChange: (BridgeAdminChange) -> Unit,
     onBack: () -> Unit,
     onRename: () -> Unit,

@@ -11,6 +11,15 @@ pub struct AdminChange {
     pub state: AdminChangeState,
 }
 
+/// The admin changes that show in one place, and whether the place has any.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AdminChanges {
+    pub changes: Vec<AdminChange>,
+    /// Whether the place has a change, which the read's own statement
+    /// answers, so a screen draws the place's section from it.
+    pub any: bool,
+}
+
 /// What an admin change changes. A person is named by their profile, which
 /// they may not have made; a device keeps its name after its removal, and
 /// one this device hasn't read yet has no name here.

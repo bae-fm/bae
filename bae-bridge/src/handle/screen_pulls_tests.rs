@@ -71,7 +71,8 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     assert!(pull_until(&handle, || Box::pin(waiting.clone().next()), |_| true).is_none());
     let changes =
         handle.subscribe_admin_changes(crate::types::BridgeAdminChangePlace::People).unwrap();
-    assert!(pull_until(&handle, || Box::pin(changes.clone().next()), |_| true).is_empty());
+    let none = pull_until(&handle, || Box::pin(changes.clone().next()), |_| true);
+    assert!(!none.any && none.changes.is_empty(), "{none:?}");
 
     let name = handle.subscribe_library_name();
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);

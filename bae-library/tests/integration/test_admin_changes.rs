@@ -56,20 +56,20 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
             .manager()
             .subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
         let done = bae_library::followed::query_matching(&mut changes, |changes| {
-            changes.iter().any(|change| change.state == AdminChangeState::Done)
+            changes.changes.iter().any(|change| change.state == AdminChangeState::Done)
         })
         .await;
         let [AdminChange {
             operation,
             change: AdminChangeKind::Approve { member, person },
             state: AdminChangeState::Done,
-        }] = done.as_slice()
+        }] = done.changes.as_slice()
         else {
             panic!("one approval, done: {done:?}");
         };
         assert_eq!((*member, person.as_deref()), (invite.member, Some("Rowan")));
         library.membership().acknowledge_admin_change(*operation).await.unwrap();
-        bae_library::followed::query_matching(&mut changes, Vec::is_empty).await;
+        bae_library::followed::query_matching(&mut changes, |changes| !changes.any).await;
         guest.close().await.unwrap();
         library.manager().close().await.unwrap();
     });

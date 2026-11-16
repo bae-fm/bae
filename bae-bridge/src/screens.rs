@@ -377,11 +377,8 @@ pulled_read! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:
-        LiveValues<Vec<bae_people::admin_change::AdminChange>>
-            => Vec<crate::types::BridgeAdminChange>,
-    converted by |changes: Vec<bae_people::admin_change::AdminChange>| {
-        changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
-    },
+        LiveValues<bae_people::admin_change::AdminChanges> => crate::types::BridgeAdminChanges,
+    converted by crate::types::BridgeAdminChanges::from_core,
     built by admin_changes
 }
 

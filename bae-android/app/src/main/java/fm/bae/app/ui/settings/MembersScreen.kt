@@ -40,6 +40,7 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangePlace
+import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteEntry
@@ -106,15 +107,15 @@ internal class MembersModel(
      * its outcome.
      */
     val adminChanges =
-        KeyedRead<BridgeAdminChangePlace, List<BridgeAdminChange>>(
+        KeyedRead<BridgeAdminChangePlace, BridgeAdminChanges>(
             scope,
             "the library's admin changes",
             { place -> appHandle.subscribeAdminChanges(place).let { pulled(it::next, it::cancel) } },
             ::showReadError,
         )
 
-    /** The admin changes the read returned for [place]; none while it has returned none for [place]. */
-    fun adminChangesAt(place: BridgeAdminChangePlace): List<BridgeAdminChange> = adminChanges.shown.at(place).orEmpty()
+    /** The admin changes the read returned for [place]; null while it has returned none for [place]. */
+    fun adminChangesAt(place: BridgeAdminChangePlace): BridgeAdminChanges? = adminChanges.shown.at(place)
 
     /**
      * The first open invite whose join request waits for a decision, other than those of the invites whose dialog the
