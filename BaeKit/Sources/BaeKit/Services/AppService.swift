@@ -67,6 +67,7 @@ public struct AppServiceComponents {
         public let nowPlaying: NowPlaying
         public let manualQueueEntryIds: [String]
         public let settings: PlaybackSettings?
+        public let failure: BridgePlaybackErrorReason?
     }
 #endif
 
@@ -264,13 +265,6 @@ open class AppService: @unchecked Sendable, Observable {
         showError(displayed)
     }
 
-    /// Route a playback failure. It is not a Swift `Error`, so it needs its own
-    /// door; it drops on a nil line for the same reason.
-    public func showError(_ reason: BridgePlaybackErrorReason) {
-        guard let displayed = DisplayError(reason) else { return }
-        showError(displayed)
-    }
-
     /// Route a display error to the platform's error surface. The macOS
     /// subclass overrides this to route through its global alert (`UiStore`).
     open func showError(_ error: DisplayError) {
@@ -285,11 +279,6 @@ open class AppService: @unchecked Sendable, Observable {
             applyPlayback: { [weak self] values in
                 guard let self else { return }
                 playbackValues.apply(values)
-                // A playback failure has no screen of its own: it shows
-                // wherever the person is, once.
-                if let reason = playbackValues.failureToShow(values) {
-                    showError(reason)
-                }
                 mediaControlService.applyValues(
                     values,
                     appHandle: appHandle

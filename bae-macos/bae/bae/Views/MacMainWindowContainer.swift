@@ -24,6 +24,10 @@ struct MacMainWindowContainer: View {
     var previewAudio
     @Environment(UiStore.self)
     var uiStore
+    @Environment(PlaybackStore.self)
+    var playbackStore
+    @Environment(Playback.self)
+    var playback
     @Environment(LibraryBrowseSession.self)
     var session
     @State
@@ -176,6 +180,13 @@ struct MacMainWindowContainer: View {
         // edit, in this window and in popovers alike.
         .background(FieldClickAwayMonitor())
         .errorAlert(uiStore)
+        .playbackFailureAlert(playbackStore) {
+            let playback = playback
+            Task {
+                do { try await playback.dismissFailure() }
+                catch { uiStore.showError(error) }
+            }
+        }
         .fileImporter(
             isPresented: Binding(
                 get: { uiStore.isImportFolderPickerPresented },

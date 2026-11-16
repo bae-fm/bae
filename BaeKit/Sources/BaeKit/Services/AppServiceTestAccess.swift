@@ -13,7 +13,8 @@
             AppServiceTestState(
                 nowPlaying: playbackStore.nowPlaying,
                 manualQueueEntryIds: playbackStore.manualQueue.map(\.entryId),
-                settings: playbackStore.settings
+                settings: playbackStore.settings,
+                failure: playbackStore.failure
             )
         }
 

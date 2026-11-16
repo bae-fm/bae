@@ -300,23 +300,10 @@ pub struct BridgePlaybackValues {
     pub remote: BridgeRemotePlayback,
     pub preview: BridgePreviewState,
     pub media_control: BridgeMediaControlPlayback,
-    /// Why playback last failed, until it next plays; `None` since then.
-    pub failure: Option<BridgePlaybackFailure>,
-}
-
-/// Why playback last failed. `number` counts this run of playback's
-/// failures, so a screen shows each failure once: one whose number it has
-/// already shown is the same failure read again.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgePlaybackFailure {
-    pub number: u64,
-    pub reason: super::BridgePlaybackErrorReason,
-}
-
-mirror_struct! {
-    BridgePlaybackFailure = bae_playback::PlaybackFailure,
-    from_core: fn,
-    fields: { number, reason: (super::BridgePlaybackErrorReason) },
+    /// Why playback last failed, which the failure notice shows; `None` once
+    /// playback plays again or the person dismisses the notice
+    /// (`dismiss_playback_failure`).
+    pub failure: Option<super::BridgePlaybackErrorReason>,
 }
 
 /// Where playback is, for a surface that moves the position on itself: the
@@ -455,7 +442,7 @@ impl BridgePlaybackValues {
             remote: BridgeRemotePlayback::from_core(playback.remote),
             preview: BridgePreviewState::from_core(playback.preview),
             media_control,
-            failure: failure.map(BridgePlaybackFailure::from_core),
+            failure: failure.map(super::BridgePlaybackErrorReason::from_core),
         }
     }
 }

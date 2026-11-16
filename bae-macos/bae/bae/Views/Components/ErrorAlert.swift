@@ -22,6 +22,24 @@ extension View {
         )
     }
 
+    /// The shared alert's shape for why playback last failed, which shows
+    /// while playback's values carry a failure, wherever the person is. A
+    /// later failure replaces the one shown. Any button calls `dismiss`, which
+    /// asks core to clear the failure; the alert closes when the values no
+    /// longer carry one.
+    func playbackFailureAlert(
+        _ playbackStore: PlaybackStore,
+        dismiss: @escaping @MainActor () -> Void
+    ) -> some View {
+        errorAlert(
+            "Error",
+            error: Binding(
+                get: { playbackStore.failure.flatMap { DisplayError($0) } },
+                set: { if $0 == nil { dismiss() } }
+            )
+        )
+    }
+
     /// An alert titled `title` for whichever failure `error` holds, shaped like
     /// the shared one: core's line, the concrete fault under it, and "Copy
     /// details" for the whole chain. Dismissing it clears `error`.

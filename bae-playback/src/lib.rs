@@ -76,9 +76,7 @@ pub use context::ContextSource;
 pub use error::read_failure_reason;
 pub use error::PlaybackError;
 pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
-pub use now_playing::{
-    NowPlayingTrack, NowPlayingValues, PlaybackFailure, PlayingTrack, TrackDisplay,
-};
+pub use now_playing::{NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay};
 pub use progress::{
     AnchorFold, MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions,
     PlaybackPositionsWatch, PlaybackProgress, PlaybackProgressFeed, PlaybackTimeline,

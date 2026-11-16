@@ -12,38 +12,39 @@ import Testing
 @MainActor
 @Suite("Playback failure display", .serialized)
 struct PlaybackFailureDisplayTests {
-    @Test("a playback failure reaches uiStore once, however often it is read")
-    func playbackFailureReachesUiStoreOnce() async throws {
+    @Test(
+        "the failure alert holds the failure the values carry, the latest one, until they carry none"
+    )
+    func playbackFailureFollowsTheValues() async throws {
         let handle = FakeAppHandle()
-        let uiStore = UiStore()
-        let appService = makeAppService(handle: handle, uiStore: uiStore)
+        let appService = makeAppService(handle: handle)
         appService.startCommonSubscriptions()
-        let failed = BridgePlaybackFailure(number: 1, reason: .syncDisconnected)
-
-        handle.deliverPlayback(playbackValues(state: .stopped, failure: failed))
-        try await Wait.until { appService.hasDisplayedErrorForTesting }
-        uiStore.lastError = nil
-
-        // The same failure read again with a volume change shows nothing;
-        // the next failure, alike in all but its number, shows.
-        var louder = playbackValues(state: .stopped, failure: failed)
-        louder.volume = 0.5
-        handle.deliverPlayback(louder)
-        try await Wait.until {
-            appService.stateForTesting.settings?.volume == 0.5
-        }
-        #expect(!appService.hasDisplayedErrorForTesting)
 
         handle.deliverPlayback(
-            playbackValues(
-                state: .stopped,
-                failure: BridgePlaybackFailure(
-                    number: 2,
-                    reason: .syncDisconnected
-                )
-            )
+            playbackValues(state: .stopped, failure: .syncDisconnected)
         )
-        try await Wait.until { appService.hasDisplayedErrorForTesting }
+        try await Wait.until {
+            if case .syncDisconnected = appService.stateForTesting.failure {
+                return true
+            }
+            return false
+        }
+
+        // A later failure replaces the one shown.
+        handle.deliverPlayback(
+            playbackValues(state: .stopped, failure: .originalMissing)
+        )
+        try await Wait.until {
+            if case .originalMissing = appService.stateForTesting.failure {
+                return true
+            }
+            return false
+        }
+
+        // Values that carry no failure, as after a dismiss, end it.
+        handle.deliverPlayback(playbackValues(state: .stopped))
+        try await Wait.until { appService.stateForTesting.failure == nil }
+        #expect(!appService.hasDisplayedErrorForTesting)
     }
 }
 
@@ -412,7 +413,7 @@ private func playing(trackId: String) -> BridgePlaybackValueState {
 
 private func playbackValues(
     state: BridgePlaybackValueState,
-    failure: BridgePlaybackFailure? = nil
+    failure: BridgePlaybackErrorReason? = nil
 ) -> BridgePlaybackValues {
     BridgePlaybackValues(
         state: state,

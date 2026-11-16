@@ -16,9 +16,9 @@ use crate::renderer::picker::{kind_column, kind_from_column};
 use crate::renderer::CastReceiver;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
-    LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackFailure,
-    PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
+    LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackPauseBoundary,
+    PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
+    PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
 
 /// The `playback_now` row, as playback writes it.
@@ -70,7 +70,7 @@ pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbEr
 
 impl PlaybackNowRow {
     /// Write `change` into the row. A state that plays clears the last
-    /// failure; a failure counts up the row's failures.
+    /// failure, and a failure writes over the one the row holds.
     pub async fn apply(&self, change: &PlaybackChange) -> Result<(), DbError> {
         let change = change.clone();
         self.store.call(move |sql| apply_on(sql, &change).map_err(DbError::from)).await
@@ -98,13 +98,7 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                 ],
             )?;
             if matches!(state, PlaybackState::Playing { .. }) {
-                sql.execute(
-                    "UPDATE playback_now \
-                     SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-                         failure_device = NULL, failure_device_state = NULL \
-                     WHERE failure IS NOT NULL",
-                    [],
-                )?;
+                sql.execute(CLEAR_FAILURE, [])?;
             }
         }
         PlaybackChange::Volume(volume) => {
@@ -168,7 +162,7 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             let columns = FailureColumns::of(reason);
             sql.execute(
                 "UPDATE playback_now SET failure = ?, failure_problem = ?, failure_detail = ?, \
-                     failure_device = ?, failure_device_state = ?, failures = failures + 1",
+                     failure_device = ?, failure_device_state = ?",
                 params![
                     columns.failure,
                     columns.problem,
@@ -180,6 +174,18 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
         }
     }
     Ok(())
+}
+
+/// Clears the row's failure, which ends the failure notice.
+const CLEAR_FAILURE: &str = "UPDATE playback_now \
+     SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
+         failure_device = NULL, failure_device_state = NULL \
+     WHERE failure IS NOT NULL";
+
+/// The person dismissed the failure notice: clear the failure the row holds,
+/// so the notice shows again only for a later failure.
+pub async fn dismiss_playback_failure(store: &Store) -> Result<(), DbError> {
+    store.call(|sql| sql.execute(CLEAR_FAILURE, []).map(drop).map_err(DbError::from)).await
 }
 
 /// Reset the row to what playback starts with: stopped, on this device's
@@ -199,7 +205,7 @@ pub(super) fn reset_playback_now_on(
              remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-             failure_device = NULL, failure_device_state = NULL, failures = 0",
+             failure_device = NULL, failure_device_state = NULL",
         [],
     )?;
     if !keep_level {
@@ -428,7 +434,7 @@ fn preview_from_row(row: &Row<'_>) -> rusqlite::Result<PreviewState> {
     })
 }
 
-fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> {
+fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReason>> {
     let failure: Option<String> = row.get("failure")?;
     let Some(failure) = failure else {
         return Ok(None);
@@ -465,8 +471,7 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
         "renderer" => diagnostic(PlaybackDiagnostic::Renderer)?,
         other => return Err(unknown(row, "failure", other)),
     };
-    let number: i64 = row.get("failures")?;
-    Ok(Some(PlaybackFailure { number: number as u64, reason }))
+    Ok(Some(reason))
 }
 
 /// The row as the screens show it, with the queue's repeat mode and the

@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -376,6 +377,19 @@ private fun LibraryOpenScreen(
         session.messages.messages.collect { message ->
             showMessage(snackbarHostState, message, retryLabel)
         }
+    }
+    // A playback failure has no screen of its own: its snackbar shows wherever the person is while playback's
+    // values carry it, and a later failure replaces it. The snackbar's end, by the person or its timeout, dismisses
+    // the failure.
+    val playbackFailure by session.playbackFailure.collectAsState()
+    LaunchedEffect(session, playbackFailure, snackbarHostState) {
+        val error = playbackFailure?.let { session.errors.display(it) } ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = error.line,
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+        session.dismissPlaybackFailure()
     }
     // The Resume shortcut plays the queue that opening the library restored paused.
     LaunchedEffect(session, shortcutAction) {

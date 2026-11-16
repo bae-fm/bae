@@ -1805,7 +1805,6 @@ frozen = [
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "pick", count = 1, finding = "tests each kept sample against the files coven is uploading with `any`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::rates", shape = "group", count = 1, finding = "returns each file's rate from the samples it kept, in a `HashMap`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::record", shape = "group", count = 1, finding = "keeps a sample window for each file coven is uploading (`entry`)" },
-    { path = "bae-playback/src/tables/now.rs", item = "playback_now.failures", shape = "reset-counter", count = 1, finding = "`playback_now.failures` is counted up and reset, so a live query reads again (found by the audit: forced rerun)" },
     { path = "bae-playback/src/tables/queue.rs", item = "PlaybackQueueTables::front", shape = "keyed-statement", count = 1, finding = "reads the next context track keyed by the queue row the first statement returned" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "filter", count = 1, finding = "`album_id_for_records` filters with `filter_map` (found by the check)" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "pick", count = 2, finding = "`album_id_for_records` picks with `find_map` (found by the check)" },

@@ -5,7 +5,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
 import uniffi.bae_bridge.BridgeNowPlayingTrack
-import uniffi.bae_bridge.BridgePlaybackFailure
+import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValueState
@@ -21,7 +21,7 @@ internal fun playbackValues(
     volume: Float = 1f,
     isMuted: Boolean = false,
     repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
-    failure: BridgePlaybackFailure? = null,
+    failure: BridgePlaybackErrorReason? = null,
 ): BridgePlaybackValues =
     BridgePlaybackValues(
         state = state,

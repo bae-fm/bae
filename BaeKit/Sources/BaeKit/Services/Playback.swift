@@ -59,6 +59,9 @@ public final class Playback: Sendable, Observable {
     /// back off the config mirror.
     public let setShowRemainingTime:
         @Sendable (_ enabled: Bool) async throws -> Void
+    /// Clear the failure the playback values carry, as the person dismissed
+    /// the alert that shows it.
+    public let dismissFailure: @Sendable () async throws -> Void
 
     public init(
         pause: @escaping @Sendable () -> Void = {},
@@ -98,7 +101,8 @@ public final class Playback: Sendable, Observable {
         setShowRemainingTime: @escaping @Sendable (Bool) async throws -> Void =
             {
                 _ in
-            }
+            },
+        dismissFailure: @escaping @Sendable () async throws -> Void = {}
     ) {
         self.pause = pause
         self.resume = resume
@@ -118,6 +122,7 @@ public final class Playback: Sendable, Observable {
         self.setPauseBetweenSides = setPauseBetweenSides
         self.setSidePauseCountdown = setSidePauseCountdown
         self.setShowRemainingTime = setShowRemainingTime
+        self.dismissFailure = dismissFailure
     }
 
     /// Transport over `handle`. A play's outcome or failure that has a line
@@ -183,7 +188,8 @@ public final class Playback: Sendable, Observable {
             },
             setShowRemainingTime: {
                 try await handle.setShowRemainingTime(enabled: $0)
-            }
+            },
+            dismissFailure: { try await handle.dismissPlaybackFailure() }
         )
     }
 

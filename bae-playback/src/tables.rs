@@ -24,7 +24,7 @@ pub use now::now_playing;
 pub(crate) use now::remote_receiver_from_row;
 pub use now::subscribe_now_playing;
 pub(super) use now::SCHEMA as NOW_SCHEMA;
-pub use now::{playback_level, PlaybackNowRow};
+pub use now::{dismiss_playback_failure, playback_level, PlaybackNowRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::fail_queue_writes_for_test;
 #[cfg(any(test, feature = "test-utils"))]

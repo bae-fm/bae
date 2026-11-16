@@ -1,5 +1,5 @@
 //! The `playback_now` row: what each change writes, what the screens' read
-//! makes of it, and how failures count.
+//! makes of it, and what clears a failure.
 
 use super::*;
 use crate::renderer::RendererKind;
@@ -126,24 +126,42 @@ async fn each_change_reads_back_as_written() {
         PlaybackErrorReason::renderer("LOAD refused"),
     ] {
         row.apply(&PlaybackChange::Failed(reason.clone())).await.unwrap();
-        assert_eq!(now(&db).await.failure.map(|failure| failure.reason), Some(reason));
+        assert_eq!(now(&db).await.failure, Some(reason));
     }
 }
 
-/// Each failure counts up, so two alike are two values; playing again
-/// clears the failure and keeps the count.
+/// A failure shows until the person dismisses it, and a failure after the
+/// dismiss shows again, even one alike.
 #[tokio::test]
-async fn failures_count_up_and_playing_clears_the_last_one() {
-    let (db, _tmp, tracks) = release_db(1).await;
+async fn a_dismissed_failure_clears_and_the_next_one_shows() {
+    let (db, _tmp, _tracks) = release_db(1).await;
     let row = PlaybackNowRow::new(db.clone());
     let failed = PlaybackChange::Failed(PlaybackErrorReason::OriginalMissing);
 
     row.apply(&failed).await.unwrap();
-    let first = now(&db).await.failure.expect("a failure");
+    assert_eq!(now(&db).await.failure, Some(PlaybackErrorReason::OriginalMissing));
+
+    dismiss_playback_failure(&db).await.unwrap();
+    assert_eq!(now(&db).await.failure, None, "the dismiss clears it");
+
     row.apply(&failed).await.unwrap();
-    let second = now(&db).await.failure.expect("a failure");
-    assert_eq!((first.number, second.number), (1, 2));
-    assert_eq!(first.reason, second.reason);
+    assert_eq!(
+        now(&db).await.failure,
+        Some(PlaybackErrorReason::OriginalMissing),
+        "the next failure shows"
+    );
+}
+
+/// A later failure replaces the one the row holds, and a pause leaves the
+/// failure while playing again clears it.
+#[tokio::test]
+async fn a_later_failure_replaces_the_last_and_playing_clears_it() {
+    let (db, _tmp, tracks) = release_db(1).await;
+    let row = PlaybackNowRow::new(db.clone());
+
+    row.apply(&PlaybackChange::Failed(PlaybackErrorReason::OriginalMissing)).await.unwrap();
+    row.apply(&PlaybackChange::Failed(PlaybackErrorReason::SyncDisconnected)).await.unwrap();
+    assert_eq!(now(&db).await.failure, Some(PlaybackErrorReason::SyncDisconnected));
 
     row.apply(&PlaybackChange::State(PlaybackState::Paused {
         track: PlayingTrack { track_id: tracks[0].clone(), duration_ms: None },
@@ -159,9 +177,6 @@ async fn failures_count_up_and_playing_clears_the_last_one() {
     .await
     .unwrap();
     assert_eq!(now(&db).await.failure, None, "playing clears it");
-
-    row.apply(&failed).await.unwrap();
-    assert_eq!(now(&db).await.failure.map(|failure| failure.number), Some(3));
 }
 
 /// A row naming a track the library no longer holds reads as nothing to

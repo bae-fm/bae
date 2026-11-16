@@ -88,7 +88,7 @@ pub enum PlaybackChange {
     Remote(RemotePlayback),
     Preview(PreviewState),
     /// Playback or a preview failed; the row holds why until playback next
-    /// plays.
+    /// plays or the person dismisses the failure notice.
     Failed(crate::PlaybackErrorReason),
 }
 

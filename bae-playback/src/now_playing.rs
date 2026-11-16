@@ -38,14 +38,7 @@ pub struct NowPlayingTrack {
 pub struct NowPlayingValues {
     pub playback: crate::PlaybackValues<NowPlayingTrack>,
     pub repeat_mode: crate::RepeatMode,
-    /// `None` once playback plays again after its last failure.
-    pub failure: Option<PlaybackFailure>,
-}
-
-/// Why playback last failed, with how many failures this run of playback
-/// has had, so a surface tells one failure from the next one alike.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaybackFailure {
-    pub number: u64,
-    pub reason: crate::PlaybackErrorReason,
+    /// Why playback last failed; `None` once playback plays again or the
+    /// person dismisses the failure notice.
+    pub failure: Option<crate::PlaybackErrorReason>,
 }

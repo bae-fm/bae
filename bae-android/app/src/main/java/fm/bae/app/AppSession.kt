@@ -13,7 +13,6 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
-import fm.bae.app.data.PlaybackFailureNotices
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -32,6 +31,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -42,6 +43,7 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryClosing
+import uniffi.bae_bridge.BridgePlaybackErrorReason
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -123,7 +125,13 @@ class OpenLibrary internal constructor(
      */
     private val shownScreens = MutableStateFlow(0)
     private val screenSubscriptions = mutableListOf<ScreenSubscription<*>>()
-    private val playbackFailures = PlaybackFailureNotices()
+    private val _playbackFailure = MutableStateFlow<BridgePlaybackErrorReason?>(null)
+
+    /**
+     * Why playback last failed, which the app's snackbar shows wherever the person is; null once playback plays
+     * again or the person dismisses the snackbar ([dismissPlaybackFailure]).
+     */
+    val playbackFailure: StateFlow<BridgePlaybackErrorReason?> = _playbackFailure.asStateFlow()
 
     /** The fast streams' feeds, which stop with [screenSubscriptions]. */
     private val streamFeeds = mutableListOf<LatestFeed>()
@@ -242,10 +250,7 @@ class OpenLibrary internal constructor(
             onValue = { value ->
                 playback.applyValues(value)
                 stores.cast.applyStatus(value.remote)?.let(::announceCastEnded)
-                // A playback failure has no screen of its own: a snackbar wherever the person is, once.
-                playbackFailures.toShow(value)?.let { reason ->
-                    messages.show(runtime.errors.display(reason))
-                }
+                _playbackFailure.value = value.failure
             },
             onError = { error ->
                 subscriptionFailed("playback", error)?.let(playback.readFailures::failValues)
@@ -273,6 +278,14 @@ class OpenLibrary internal constructor(
         val shown = runtime.errors.display(error)
         if (shown == null) logger.debug("the $subscription subscription was cancelled; its value stays")
         return shown
+    }
+
+    /**
+     * The person dismissed the playback failure's snackbar: core clears the failure, and [playbackFailure] holds
+     * none once the values say so. A failed dismiss shows as a snackbar with Retry.
+     */
+    fun dismissPlaybackFailure() {
+        messages.perform("dismissPlaybackFailure") { appHandle.dismissPlaybackFailure() }
     }
 
     /** A cast whose link was lost while the picker is closed: told wherever the person is. */

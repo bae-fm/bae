@@ -125,6 +125,7 @@ internal open class FakeAppHandle(
 ) : EditionFakeAppHandle() {
     var pauseCount = 0
     var resumeCount = 0
+    var playbackFailureDismissals = 0
 
     val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
     val playTracksCalls = mutableListOf<Pair<List<String>, UInt>>()
@@ -376,6 +377,10 @@ internal open class FakeAppHandle(
 
     override fun cancelSidePauseCountdown() {
         unfaked("cancelSidePauseCountdown")
+    }
+
+    override suspend fun dismissPlaybackFailure() {
+        playbackFailureDismissals++
     }
 
     override suspend fun clearCache(): Unit = unfaked("clearCache")

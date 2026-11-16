@@ -47,12 +47,12 @@ CREATE TABLE IF NOT EXISTS playback_now (
     preview_start_sample INTEGER CHECK (preview_start_sample >= 0),
     preview_end_sample   INTEGER CHECK (preview_end_sample >= 0),
     preview_duration_ms  INTEGER CHECK (preview_duration_ms >= 0),
-    -- Why playback last failed, until it next plays: a reason the person can
-    -- act on, the other device a release's audio is on (by its name, and
-    -- whether it is still in the library, removed, or replaced), or bae's own
-    -- or the renderer's failure with its untranslated detail. Each failure
-    -- counts up `failures`, so two alike in a row are two values a screen
-    -- tells apart.
+    -- Why playback last failed, until it next plays or the person dismisses
+    -- the failure notice: a reason the person can act on, the other device a
+    -- release's audio is on (by its name, and whether it is still in the
+    -- library, removed, or replaced), or bae's own or the renderer's failure
+    -- with its untranslated detail. A later failure writes over an earlier
+    -- one.
     failure         TEXT CHECK (failure IN (
         'sync_disconnected', 'on_other_device', 'original_missing',
         'audio_output', 'internal', 'renderer')),
@@ -61,7 +61,6 @@ CREATE TABLE IF NOT EXISTS playback_now (
     failure_detail  TEXT,
     failure_device       TEXT,
     failure_device_state TEXT CHECK (failure_device_state IN ('active', 'removed', 'replaced')),
-    failures        INTEGER NOT NULL CHECK (failures >= 0),
     CHECK ((state = 'stopped') = (track_id IS NULL)),
     CHECK ((state = 'loading') = (prepared IS NOT NULL)),
     CHECK (duration_ms IS NULL OR state IN ('playing', 'paused') OR prepared = 1),
@@ -87,5 +86,5 @@ CREATE TABLE IF NOT EXISTS playback_now (
         AND (failure IS 'on_other_device') = (failure_device_state IS NOT NULL))
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview, failures)
-VALUES (1, 'stopped', 1.0, 0, 'local', 'idle', 0);
+INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview)
+VALUES (1, 'stopped', 1.0, 0, 'local', 'idle');

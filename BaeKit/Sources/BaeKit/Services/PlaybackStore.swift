@@ -19,6 +19,9 @@ public class PlaybackStore {
     /// The volume, mute and repeat mode; `nil` until core's first playback
     /// value says them.
     public var settings: PlaybackSettings?
+    /// Why playback last failed, which the failure alert shows; `nil` once
+    /// playback plays again or the person dismisses the alert.
+    public internal(set) var failure: BridgePlaybackErrorReason?
     /// The manual lane ("Up next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
     /// What's playing from, or `nil`. Its tracks are the `upcoming` list.

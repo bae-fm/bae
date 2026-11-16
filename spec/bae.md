@@ -5614,14 +5614,18 @@ a media key never starts a paused preview. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
 phase, volume, mute, where playback is going (a receiver by its id, name,
-kind, model, address and whether it takes a volume), the preview, and why playback last failed, numbered,
-until it next plays. Starting playback with the library resets the row to stopped, keeping
+kind, model, address and whether it takes a volume), the preview, and why playback last failed,
+until it next plays or the person dismisses the failure notice. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a
 live query of that row joined with the playing track's display and the
 queue's repeat mode, a value after each change; while the row names a track
 the library no longer holds, until playback moves off it, no value is sent.
-A failure shows once wherever the person is: a value reading a failure whose
-number was shown shows nothing.
+The failure notice shows wherever the person is while the row holds a failure:
+an alert on macOS, a snackbar on Android. Playback writes a second failure
+over the first while the notice shows, and the notice shows the latest. When
+the notice ends (the person presses the alert's button or the snackbar's
+dismiss, or the snackbar times out), bae clears the row's failure, so a later
+failure shows again, even one alike.
 A write of that row that fails is a playback failure too, an internal one: it
 is reported to the crash reporter, written to the row as the failure when that
 write works, and told to the app after the change it could not write. Playback
@@ -6381,7 +6385,7 @@ membership's (`membership.sql`).
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |
-| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, last failure and the count of failures (§9.4) |
+| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, and the last failure (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
 | `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 

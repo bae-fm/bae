@@ -2,9 +2,6 @@
 final class PlaybackValueHandler {
     private let playbackStore: PlaybackStore
     private let castStore: CastStore
-    /// The number of the last failure shown, so a value that reads it again
-    /// shows nothing.
-    private var shownFailure: UInt64?
 
     init(
         playbackStore: PlaybackStore,
@@ -16,6 +13,7 @@ final class PlaybackValueHandler {
 
     func apply(_ values: BridgePlaybackValues) {
         playbackStore.settings = PlaybackSettings(values)
+        playbackStore.failure = values.failure
         castStore.applyStatus(values.remote)
         applyPlaybackState(values.state)
     }
@@ -33,16 +31,6 @@ final class PlaybackValueHandler {
         case .paused(let track, let reason):
             playbackStore.pause(track: track, reason: reason)
         }
-    }
-
-    /// Why playback failed, the first time a value carries that failure.
-    func failureToShow(
-        _ values: BridgePlaybackValues
-    ) -> BridgePlaybackErrorReason? {
-        guard let failure = values.failure, failure.number != shownFailure
-        else { return nil }
-        shownFailure = failure.number
-        return failure.reason
     }
 
     func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
