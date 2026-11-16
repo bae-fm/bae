@@ -3,8 +3,8 @@ import Foundation
 
 /// The read behind the one selected import candidate, whose key changes on the
 /// same live query as the selection changes. Several selected candidates, or
-/// none, read nothing here: the pane that shows when several candidates are
-/// selected reads core's selection summary instead.
+/// none, read nothing here: the pane that shows when the person selects several
+/// candidates reads core's selection summary instead.
 @MainActor
 final class ImportSelectionObservation {
     private let open: () -> KeyedDetailQuery<BridgeImportCandidateDetail, Data>

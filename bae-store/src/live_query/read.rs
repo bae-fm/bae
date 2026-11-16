@@ -1,8 +1,8 @@
 //! A [`LiveRead`] holds a live query whose request the caller can change
 //! without opening another query, and it resolves each read into the value its
-//! screen takes. Nothing runs between pulls:
-//! each [`next`](LiveRead::next) reads the query until a value that answers the
-//! request last set resolves.
+//! screen takes. Nothing runs between calls to [`next`](LiveRead::next): each
+//! call reads the query until it gets a value for the request the caller set
+//! last.
 
 use super::{CancellableLiveQuery, LiveQueryError};
 use std::collections::BTreeSet;

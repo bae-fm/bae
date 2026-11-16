@@ -1,7 +1,6 @@
-//! One coven live query, held so it can be reconfigured and cancelled;
-//! [`LiveRead`], one whose request the caller changes on the same query and
-//! whose reads resolve into what a screen takes; and [`LiveValues`], one a
-//! surface only pulls values from.
+//! This module holds a coven live query that a caller can change and cancel;
+//! [`LiveRead`], which turns the query's rows into the values a screen draws;
+//! and [`LiveValues`], which a surface only reads values from.
 //!
 //! A subscription hands a UI a stream of values and takes back requests for
 //! different ones. Three things make that work: the query, the handle that
