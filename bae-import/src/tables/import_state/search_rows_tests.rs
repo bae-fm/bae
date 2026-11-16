@@ -645,9 +645,9 @@ async fn search_answer_pairs_rows_across_both_catalogs_answers() {
     );
 }
 
-/// Picking a MusicBrainz release reads its documents' Discogs album, and the
-/// pick's write groups the list again with it: the two albums' cards become
-/// one, though no row pairs their releases.
+/// When a person picks a MusicBrainz release, bae stores the Discogs album
+/// its documents link and groups the list again: the two albums' cards
+/// become one, though no row pairs their releases.
 #[tokio::test]
 async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
     let (tables, key, _tmp) = scanned().await;

@@ -400,7 +400,7 @@ impl<'a> Items<'a> {
     /// The two sources each run of Found reads: the list's rows, and the
     /// members under their headers, each member in its header's place. A run
     /// reads a header's members only while the list does not fold the header,
-    /// or while the header is the group being opened. The function returns
+    /// or while the header is the group the person is opening. The function returns
     /// `None` for Done and Skipped, which hold no group.
     fn run_sources(&self) -> Option<(&'static str, &'static str)> {
         if self.tab != TriageTab::Pending {

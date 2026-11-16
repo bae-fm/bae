@@ -9,8 +9,8 @@ use bae_store::read::count_column;
 use bae_store::DbError;
 
 /// Each transfer line's batch in bytes, as one read finds it. Coven does not
-/// rerun this query when bytes move; it reruns when a batch grows, a
-/// release's files are stored or pinned, or a file starts or ends its upload.
+/// rerun this query when bytes move; it reruns when a batch grows, bae
+/// stores or pins a release's files, or a file starts or ends its upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityBytes {
     pub uploads: Option<UploadBytes>,

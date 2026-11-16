@@ -52,8 +52,9 @@ async fn found(db: &Store, text: &str) -> WindowRead<DbArtistSearchRow> {
 }
 
 /// Each window answers with its slice of what the text finds, and the count
-/// is of everything found, a query of its own. A different text opens
-/// different queries. An empty text returns no rows and a count of zero.
+/// is a separate query that counts every artist the text finds. A different
+/// text opens different queries. An empty text returns no rows and a count of
+/// zero.
 #[tokio::test]
 async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     let (db, _tmp) = seeded().await;
@@ -157,7 +158,7 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
     // delivers nothing new; the middle one delivers the artist.
     let middle = tokio::time::timeout(HANG_GUARD, windows[1].next())
         .await
-        .expect("a new artist the text finds reruns the window")
+        .expect("coven reruns the window for a new artist the text finds")
         .expect("the query stays open")
         .result
         .unwrap();

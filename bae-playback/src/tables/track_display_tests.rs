@@ -136,10 +136,11 @@ const INFO_SECOND_DISC: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b13";
 const INFO_SIDE_C: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b15";
 const INFO_GONE: &str = "e1a5c9b6-7f83-4a0c-9b42-5d6e7f8a9b14";
 
-/// The query returns each requested track's side facts in the order of the
-/// ids, as one list across releases: it letters a record's sides, and a pause
-/// at each is a side's; it numbers a CD's discs, and a pause there is a
-/// disc's; and it skips a track the library does not hold.
+/// The query returns each requested track's medium, side, label and pause
+/// boundary in the order of the ids, as one list across releases: it labels
+/// each vinyl side with a letter and marks the pause at the side's end as a
+/// side pause, it labels each CD with its disc number and marks the pause at
+/// its end as a disc pause, and it skips a track the library does not hold.
 #[tokio::test]
 async fn track_infos_follow_the_ids_asked_across_releases_and_leave_out_the_missing() {
     use bae_types::mediums::ReleaseMedium;

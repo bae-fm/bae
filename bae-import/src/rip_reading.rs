@@ -115,17 +115,18 @@ struct RipArtifacts<'a> {
     audio: Vec<&'a AudioFormat>,
 }
 
-/// Read the artifacts. Every log whose table of contents reads is a disc ID
-/// and the proof of a CD rip — the most accurate disc ID, since EAC and XLD
-/// put the disc's sector offsets in it directly. Without one the proof is an
-/// AccurateRip report or a sheet a CD ripper wrote. `read` reads the audio's
-/// rate whatever proves a rip, and hashes the sheets unless the rate rules a
-/// CD out and nothing proves one — every sheet except one beside a log that
-/// read, which describes the disc that log already hashed. A folder holding
-/// one rip per disc yields one disc ID per disc; `read` keeps a disc it
-/// hashed twice once. A document `read` cannot read fails the reading, as
-/// does a log or sheet `read` cannot hash to a disc; a log that reads but
-/// holds no table of contents states no disc, and `read` skips that log and
+/// Read the artifacts. Each log whose table of contents `read` parses gives
+/// a Disc ID and proves a CD rip — the most accurate Disc ID, since EAC and
+/// XLD put the disc's sector offsets in it directly. Without one the proof is
+/// an AccurateRip report or a sheet a CD ripper wrote. `read` reads the
+/// audio's rate whatever proves a rip, and hashes the sheets unless the rate
+/// rules a CD out and nothing proves one: every sheet except one beside a log
+/// whose table of contents `read` parsed, because `read` already hashed that
+/// disc from the log. A folder holding one rip per disc yields one Disc ID
+/// per disc; when two files hash to the same Disc ID, `read` keeps that Disc
+/// ID once. A document `read` cannot read fails the reading, as does a log
+/// or sheet `read` cannot hash to a disc. When `read` parses a log and finds
+/// no table of contents, it gets no Disc ID from that log, skips the log and
 /// logs a warning. `read` opens each document in a place of `lease`, one
 /// after the other.
 fn read(artifacts: RipArtifacts<'_>, lease: &FileLease) -> Result<RipReading, ImportError> {

@@ -253,7 +253,7 @@ const SIDED_TRACKS: [&str; 5] = [
 /// A release holding a CD, then a record of two sides, then a record of one:
 /// the CD is a numbered disc, the detail letters the records' sides A to C
 /// across both records, each group adds up its own tracks' lengths, and a
-/// credit over the record sides names their letters.
+/// credit on the first record's two tracks lists their positions, A1 and B1.
 #[tokio::test]
 async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
     use bae_types::mediums::{ReleaseMedium, TrackSide};

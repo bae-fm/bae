@@ -167,9 +167,9 @@ fn insert_candidate(
     insert_candidate_row(sql, watched_folder_path, generation, kind, source_kind, candidate)?;
     let path = candidate.key();
     use crate::tables::import_state::ensure_candidate_state;
-    // File rows first: the file-tag reading references them, and
-    // `ensure_candidate_state` builds the blank draft from the units stored
-    // with them.
+    // Insert the file rows first, because the file-tag reading references
+    // them and `ensure_candidate_state` builds the blank draft from the units
+    // stored with them.
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
     ensure_candidate_state(sql, &path, &candidate.path, &candidate.files, file_metadata)?;
     // The reading belongs to the scan row, so a seed always stores it, while

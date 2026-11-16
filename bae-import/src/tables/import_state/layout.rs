@@ -59,7 +59,7 @@ pub(super) struct ListLayout {
 
 impl ListLayout {
     /// Where each release of `list` sits in `groups`, the cards the grouping
-    /// rules made from it. Every row is listed as `listing`. The layout
+    /// rules made from it. The layout lists every row as `listing`. The layout
     /// numbers the rows in the order their first records appear in the list.
     pub(super) fn of(
         list: &[MetadataResult],

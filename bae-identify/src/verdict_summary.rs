@@ -1,5 +1,5 @@
-//! This module names the check of the found release against the folder that
-//! failed, which the pane shows beside Import and under the release in Find
+//! This module names the check that the found release failed against the
+//! folder, which the pane shows beside Import and under the release in Find
 //! online. For tests, it also works out which check a stored verdict's
 //! release failed and whether the verdict picks its one release without
 //! asking.

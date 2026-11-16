@@ -256,7 +256,7 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     tables.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
     let outcome = bae_identify::RunOutcome::of(&state).unwrap();
     // The run's rows hold the cards that `reference_cards_of` builds from the
-    // run's outcome, checked against the text its signals read.
+    // run's outcome and the text in its signals.
     let text = bae_identify::CandidateText::of(&signals.text_pool, &[], signals.barcode.codes());
     let expected = bae_identify::PublishedRun {
         cards: bae_identify::view::reference_cards_of(&outcome, &text),

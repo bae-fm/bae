@@ -257,7 +257,8 @@ struct RowJson {
     matches: bool,
     position: String,
     /// The length the track's source lists. The statement sets it only when
-    /// `bae_lengths_disagree` finds it apart from the audio's own length.
+    /// `bae_lengths_disagree` finds that it differs too much from the audio's
+    /// own length.
     listed_ms: Option<u64>,
     kind: Option<String>,
     audio: Option<AudioJson>,
@@ -470,7 +471,9 @@ fn carried_role(role: &str) -> Result<MappingRole, ImportError> {
         "damaged_image" => Ok(MappingRole::DamagedImage),
         "other" => Ok(MappingRole::Other),
         other => Err(ImportError::Internal {
-            detail: format!("the statement returned an unknown role {other} for a carried file"),
+            detail: format!(
+                "the statement returned an unknown role {other} for a file that is not audio"
+            ),
         }),
     }
 }
@@ -499,7 +502,10 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         "refused_timing" => SheetBound::RefusedTiming,
         "refused_codec" => SheetBound::RefusedCodec {
             codec: sheet.codec.ok_or_else(|| {
-                internal(format!("{} is refused for its codec but names no codec", sheet.sheet_id))
+                internal(format!(
+                    "the sheet {} has the binding refused_codec but names no codec",
+                    sheet.sheet_id
+                ))
             })?,
         },
         other => {

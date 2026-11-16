@@ -131,9 +131,9 @@ pub fn pending_reason_category(reason: &coven::PendingReason) -> C {
         R::Storage { failure, .. } => storage_category(*failure),
         R::NoStorage => C::Config,
         R::UpdateRequired(_) | R::Refused(_) => C::SyncUpdateRequired,
-        // The library removed this device, or refused it after it joined;
-        // only removing the library from this device fixes either (coven
-        // §13.2).
+        // An admin removed this device or its person from the library, or
+        // refused the device after it joined; only removing the library from
+        // this device fixes either (coven §13.2).
         R::Removed(_) => C::DeviceRemoved,
         R::KeyUnavailable { .. }
         | R::WritesRefused { .. }
@@ -184,8 +184,8 @@ pub fn sync_category(error: &coven::SyncError) -> C {
         // the person's state, as a refused code is in a bootstrap.
         E::Code(_) => C::Config,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
-        // The library removed this device, or never admitted it (coven
-        // §13.2).
+        // An admin removed this device or its person from the library, or no
+        // admin admitted the device (coven §13.2).
         E::Removed(_) => C::DeviceRemoved,
         // Another copy uses this device's id: only a reset answers it.
         E::DeviceIdInUse(_) => C::DeviceResetRequired,

@@ -358,8 +358,9 @@ impl PreviewPlayer {
         }
 
         // The new stream plays from the target, so the player sends the
-        // position. A paused preview fires no tick to carry the position, and
-        // a playing one's listener ticks on from here.
+        // position. A paused preview's listener sends no progress update with
+        // the position, and a playing preview's listener keeps sending
+        // updates from the new position.
         emit_progress(&self.progress_tx, PlaybackProgress::preview_seeked(timeline, position));
     }
 

@@ -239,8 +239,8 @@ impl ActivityBarsWatch {
 
     /// The bars once the first read has said what each batch holds, then
     /// the bars after each change of the read or a transfer. `next` returns a
-    /// failed read's error. `None` once the read or a watch has ended with
-    /// its store.
+    /// failed read's error, and returns `None` once the read or a transfer
+    /// watch stops because its store closed.
     pub async fn next(&mut self) -> Option<Result<ActivityBars, DbError>> {
         loop {
             tokio::select! {

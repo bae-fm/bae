@@ -1,4 +1,5 @@
-//! The release sheet decisions' declaration. Both tables sync:
+//! These tests check how the release sheet decisions part declares its
+//! tables. Both tables sync:
 //! `release_sheet_discs` is keyed by the sheet file, and
 //! `release_sheet_bindings` by the sheet file and the `FILE` reference.
 

@@ -4,7 +4,7 @@
 //! pressing, the picker offers every claimed release's own images first (in
 //! claim order, then position), then the albums' images, each image once
 //! however many releases offer it, and only the images a catalog stated when
-//! any is stated.
+//! a catalog states any.
 //! A MusicBrainz release group a kept statement joins to a claimed release
 //! offers its front image after that release's own album images.
 //!

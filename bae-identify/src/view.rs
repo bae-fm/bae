@@ -250,8 +250,8 @@ pub enum IdentifyStateView {
         /// verdict picks none of its releases.
         folder_check: Option<super::FolderCheck>,
         /// The release the verdict picks on its own, without asking the
-        /// person, which the settle reads in full: the lead of its one
-        /// pressing. `None` when it picks none.
+        /// person, which the step that ends the run reads in full: the lead
+        /// of its one pressing. `None` when it picks none.
         unattended_pick: Option<String>,
         /// Whether the offered rows are several pressings of one album,
         /// which the folder can be linked to with its pressing unknown.

@@ -191,10 +191,10 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
-/// The playlists read counts each playlist's summary in SQL from its
-/// entries: how many, their total time, a grid of the first four different
-/// releases when its entries are on that many, else its first entry's cover;
-/// and Add to playlist lists only the person's own.
+/// The playlists query computes each playlist's summary in SQL from its
+/// entries: it counts them, adds up their time, and picks the covers of the
+/// first four different releases when its entries are on that many, else its
+/// first entry's cover; and Add to playlist lists only the person's own.
 #[tokio::test]
 async fn a_playlists_summary_comes_counted_with_its_row() {
     use bae_views::playlists::PlaylistCover;

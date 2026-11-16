@@ -18,10 +18,10 @@ use crate::CandidateAction;
 /// even Skip. Once the import starts writing the release, it offers nothing,
 /// because the write finishes whatever the person asks. While an identify run
 /// is in progress, the release offers only Cancel and Skip, and Import once
-/// the run reads its pick, until the person asks for the import. bae does not
-/// offer identifying again after a finished answer, which would fail the
-/// same way, and the list shows a stored lookup as it stood, so only a
-/// release with no stored lookup offers Identify. Regrouping comes before any
+/// the run reads its pick, until the person asks for the import. Identifying
+/// again after a finished answer would fail the same way, so bae does not
+/// offer it, and the list shows a stored lookup unchanged, so only a release
+/// with no stored lookup offers Identify. Regrouping comes before any
 /// of that: a release that is imported, or has work running for it, offers
 /// neither Separate nor Combine; any other release offers Separate when a
 /// grouping reads it, even one that cannot be worked on as it stands, and

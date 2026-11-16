@@ -345,7 +345,7 @@ where
     }
 
     /// Follow one window of the queue's entries, a range of entries in the
-    /// order they were queued, each joined with its release. Coven reruns the
+    /// order the person queued them, each joined with its release. Coven reruns the
     /// query only when a write changes a row inside the range.
     pub fn subscribe_window(
         &self,

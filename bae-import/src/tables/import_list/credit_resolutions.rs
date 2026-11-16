@@ -21,9 +21,9 @@ use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
 /// SQLite copies a WITH name's whole definition at every place that names it,
 /// and a statement holding more than `SQLITE_LIMIT_EXPR_DEPTH` (1000) cursors
 /// in all stops with "VIEWs and/or subqueries nested too deep" (as
-/// `cards_sql` explains). So each name below is named once, the statement
-/// collects the artists holding a catalog id into one JSON column, and the
-/// four tries of a credit's ids are columns of one row.
+/// `cards_sql` explains). So the statement names each WITH name below only
+/// once, collects the artists holding a catalog id into one JSON column, and
+/// puts the four tries of a credit's ids in columns of one row.
 const CREDIT_RESOLUTIONS: &str = "
 WITH
 raw AS (
@@ -50,9 +50,9 @@ credit AS (
 -- The ids a credit is tried by: as it is (0); with the other catalog's Various
 -- Artists id beside the one it names (1); and each by its MusicBrainz id alone
 -- (2, 3); the statement uses these tries when the ids name different
--- artists. With each try, the shown artists holding its Discogs id and its
--- MusicBrainz id, or named by the id either derives, as JSON arrays in id
--- order.
+-- artists. For each try, the statement collects the shown artists holding
+-- its Discogs id and its MusicBrainz id, or named by the id either derives,
+-- into JSON arrays in id order.
 stage AS (
     SELECT t.*,
            CASE WHEN t.dg IS NULL THEN '[]' ELSE (

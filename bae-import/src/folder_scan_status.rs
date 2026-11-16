@@ -76,10 +76,10 @@ pub struct FolderScanProgress {
 }
 
 impl FolderScanProgress {
-    /// Each watched folder as the coordinator's memory says it stands. When
-    /// the coordinator holds a failure that the store would not take, that
-    /// failure is the folder's status, on the volume the failing pass found
-    /// it on. Otherwise the status is the outcome the folder's generation
+    /// Builds each watched folder's scan status from the stored scans and
+    /// the coordinator's in-memory state. When the coordinator holds a
+    /// failure that it could not write to the table, that failure is the
+    /// folder's status, on the volume the failing pass found it on. Otherwise the status is the outcome the folder's generation
     /// stored; a generation with no outcome shows Scanning while a pass reads
     /// the folder, and otherwise the generation ended without storing one. A
     /// folder that has no stored scan and no held failure shows Not scanned:

@@ -97,8 +97,8 @@ fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiError
     match error {
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        // The library removed this device, or never admitted it (coven
-        // §13.2).
+        // An admin removed this device or its person from the library, or no
+        // admin admitted the device (coven §13.2).
         coven::SyncFailure::Removed(_) => C::DeviceRemoved,
         coven::SyncFailure::Storage(error) => bae_diagnostics::storage_error_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,

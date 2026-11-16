@@ -790,9 +790,9 @@ fn a_media_edit_from_another_device_sorts_its_release() {
 }
 
 /// The Storage Manager's selection query returns which of the requested
-/// releases the list contains, whether it holds all of a set, and the one
-/// release it holds when only one: the apps read these and never search the
-/// rows.
+/// releases the list contains, whether the list holds all of a set, and the
+/// one release the list holds when the list holds only one of them: the apps
+/// read these and never search the rows.
 #[tokio::test]
 async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;

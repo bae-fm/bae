@@ -21,8 +21,8 @@ impl LibraryManager {
         ))
     }
 
-    /// `file_id`'s bytes, `size` long, read into a buffer from the start,
-    /// against which bae logs a failed read. The read holds one place of the
+    /// `file_id`'s bytes, `size` long, read into a buffer from the start. bae
+    /// logs a failed read with `file_id`. The read holds one place of the
     /// budget of open files until the caller drops the buffer.
     pub async fn open_release_file_stream(
         &self,

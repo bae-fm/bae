@@ -2,9 +2,10 @@
 //! whether Found has groups, and what the view narrows by; the tab counts and
 //! Found's filter entries, which COUNT queries over the placement return; and
 //! how many items the list holds and how many its filters keep (a search
-//! counts the rows its index finds). Also the reads a surface makes of a list
-//! on its own: where a candidate would be revealed, and the first one being
-//! identified.
+//! counts the rows its index finds). The module also holds the reads a
+//! surface makes of a list on its own: where the list would place a
+//! candidate once the app reveals it, and which candidate bae identifies
+//! first.
 
 use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::views::tab_of;

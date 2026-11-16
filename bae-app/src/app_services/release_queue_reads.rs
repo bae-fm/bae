@@ -9,9 +9,10 @@ use bae_library::LibraryError;
 
 impl AppServices {
     /// One window of the download queue as the Downloads pane draws it: a
-    /// range of entries in the order they were queued, each joined with its
-    /// release. Coven reruns the window's query when a write adds, removes,
-    /// starts or fails an entry in the range, or changes a release it shows.
+    /// range of entries in the order the person queued them, each joined with
+    /// its release. Coven reruns the window's query when a write adds,
+    /// removes, starts or fails an entry in the range, or changes a release
+    /// it shows.
     pub fn subscribe_download_window(
         &self,
         window: bae_store::ListWindow,

@@ -337,7 +337,7 @@ fn a_copy_that_finds_its_id_in_use_says_so() {
     assert!(detail.contains("another installation uses this device's id"), "{detail}");
 }
 
-/// The app resets only a copy that found its id in use right away, and the
+/// The app resets right away only a copy that found its id in use, and the
 /// snapshot reports the unsent edits and files that the reset discards.
 #[test]
 fn only_a_copy_behind_another_installation_resets_at_once() {

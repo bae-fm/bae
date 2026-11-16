@@ -512,8 +512,9 @@ impl FileColumns {
     }
 }
 
-/// The release file `columns` describe. When a column holds a value that is
-/// not a file fact, file_of returns that column's name and the reason.
+/// Build the release file that `columns` describe. When a column holds a
+/// value that file_of cannot read, file_of returns that column's name and the
+/// reason.
 pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, String)> {
     let layout = columns
         .source_audio_layout

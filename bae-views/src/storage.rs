@@ -481,8 +481,8 @@ pub(crate) fn storage_selected_query(filter: StorageFilter, searching: bool) -> 
 }
 
 /// How many releases the Storage Manager list under `filter` holds and their
-/// files' total size. When `pattern` is given, the count and size cover only
-/// the releases whose album the search pattern finds.
+/// files' total size. When the caller passes `pattern`, the count and size
+/// cover only the releases whose album the search pattern finds.
 pub(crate) fn storage_counts_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,

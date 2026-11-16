@@ -22,8 +22,8 @@ use crate::{CandidateAction, CandidateKey};
 /// place in [`CandidateAction::ALL`]. Each command runs row by row over the
 /// rows that offer it, so the selection offers it when any row does. Combine
 /// is one command over the whole selection: the selection offers Combine for
-/// two or more rows and enables it only when every row can be combined. A
-/// row that cannot be combined shows the reason, and Combine stays in the
+/// two or more rows and enables it only when Combine can merge every row. A
+/// row that Combine cannot merge shows the reason, and Combine stays in the
 /// offers.
 pub(super) fn selection(
     sql: &SqlReadContext<'_>,
@@ -154,7 +154,7 @@ pub(super) fn selected(
 impl ImportTables {
     /// The rows the list `list` has selected, in the order it shows them:
     /// what a bulk action runs over. When the caller names a command in
-    /// `acting`, only the rows that offer it.
+    /// `acting`, the method returns only the rows that offer it.
     pub async fn load_import_list_selected(
         &self,
         list: ImportListId,

@@ -149,8 +149,8 @@ impl FileBuffers {
 
     /// The places the fills of the playing and preloaded tracks open their
     /// files in. This method takes them in one wait the first time playback
-    /// prepares a track after nothing played. Waits only while other work
-    /// holds the budget, and holds no place of it while it waits.
+    /// prepares a track after nothing played. The method waits only while
+    /// other work holds the budget, and holds no place of it while it waits.
     async fn lease(&mut self) -> Result<FileLease, PlaybackError> {
         if let Some(lease) = &self.lease {
             return Ok(lease.clone());

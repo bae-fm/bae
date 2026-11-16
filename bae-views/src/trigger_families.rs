@@ -1,6 +1,6 @@
-//! The families of triggers the library views keep their listing tables
-//! with. Each function drops one view's triggers from a closed library file,
-//! so a test can time a write without them.
+//! The library views keep their listing tables up to date with these
+//! families of triggers. Each function drops one view's triggers from a
+//! closed library file, so a test can time a write without them.
 
 use bae_store::test_fixtures::planted_damage::drop_triggers_of;
 use std::path::Path;

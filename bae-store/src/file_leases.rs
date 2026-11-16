@@ -7,9 +7,9 @@ use coven::{FileBudget, FileLease, LeaseTooLarge};
 /// which the store hands to work that opens the person's files on threads
 /// and in services of its own. A piece of work takes every place it will
 /// hold at once, in one wait (`lease`), and opens each file in one of them.
-/// It calls a lease only while holding no place of the budget, and a wait
-/// inside its lease is only ever for a place one of its own files gives
-/// back.
+/// A piece of work calls a lease only while it holds no place of the budget,
+/// and a wait inside its lease is only ever for a place one of its own files
+/// gives back.
 #[derive(Clone)]
 pub struct FileLeases {
     files: FileBudget,

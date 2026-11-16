@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- release, which is in no row.
     pressing            INTEGER CHECK (pressing >= 0),
     -- The card the release is on: the list place of the card's first release.
-    -- Cards that rank equal are ordered by it. NULL where `pressing` is.
+    -- The list orders cards that rank equal by `card`. `card` is NULL where
+    -- `pressing` is NULL.
     card                INTEGER CHECK (card >= 0),
     -- Where this release stands among the records of its row, 0 for the row's
     -- lead, which a pick reads the draft from. NULL where `card` is.

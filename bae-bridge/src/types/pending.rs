@@ -157,8 +157,8 @@ impl BridgePendingReason {
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,
             R::Paused => K::Paused,
-            // The library removed this device, or never admitted it (coven
-            // §13.2).
+            // An admin removed this device or its person from the library, or
+            // no admin admitted the device (coven §13.2).
             R::Removed(_) => K::Removed,
             R::MemberKeysReplaced { .. } => K::MemberKeysReplaced,
         };

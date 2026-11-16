@@ -15,7 +15,8 @@
 //! [`bae_catalogs::album_links`]).
 //!
 //! bae stores the search as rows (`import_candidate_search` and the tables
-//! beside it), and each answer writes the list's layout again.
+//! beside it), and bae rewrites the list's cards each time a provider
+//! answers.
 //! `CandidateSearch` holds what a read of those rows returns, and its cards
 //! are the ones the rows state. The driver that runs the lookups is
 //! [`crate::ImportServiceHandle::start_candidate_search`].

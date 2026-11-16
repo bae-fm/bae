@@ -11,7 +11,7 @@ use super::*;
 /// it was found at; the state lives while a watched folder covers one of
 /// those folders. When a state holds no draft row and this device did not
 /// import its files, the function writes one: the draft that the files' own
-/// tags describe when `file_metadata` holds that reading, and otherwise the
+/// tags describe when `file_metadata` holds those tags, and otherwise the
 /// blank draft that the folder's stored audio units make. A state that holds
 /// a draft keeps it.
 pub(crate) fn ensure_candidate_state(

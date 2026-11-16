@@ -273,9 +273,9 @@ impl AppServices {
 
 #[cfg(desktop)]
 impl AppServices {
-    /// Follow the covers that the cover picker shows for the library release
-    /// this subscription names. To show another release or source, set a new
-    /// request on the same read.
+    /// Return a live read of the covers that the cover picker shows for the
+    /// library release this subscription names, updated as they change. To
+    /// show another release or source, set a new request on the same read.
     pub fn subscribe_cover_gallery(&self) -> crate::live_reads::LiveCoverGallery {
         crate::live_reads::follow_request(
             &self.inner.manager,

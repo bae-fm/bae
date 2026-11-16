@@ -3,8 +3,8 @@
 //! holds, where a key sits in it, the watched folders, whether Found has
 //! groups, and what the view narrows by, Found's filter entries, and what the
 //! selection holds and offers. coven reruns each when a write changes what it
-//! read, so a scan's rows rerun the count and the windows whose ranges hold
-//! them, and nothing else. Beside them, the reads a surface makes once: the
+//! read, so when a scan writes rows, coven reruns the count and the windows
+//! whose ranges hold those rows, and nothing else. Beside them, the reads a surface makes once: the
 //! key at a position.
 
 use super::summary::closed;

@@ -71,8 +71,8 @@ const WINDOW_COLUMNS: &str = "watched_folder_path, item, key, group_folder, disp
                               shown_title, shown_artists, pending_state, own_date";
 
 /// Each row's key is a tuple of ascending terms, and comparing two keys gives
-/// the list's order: no term can be NULL, a descending number is negated, and
-/// a group leads its members.
+/// the list's order: no term can be NULL, the key negates a descending
+/// number, and a group leads its members.
 struct Order {
     name: &'static str,
     key: &'static str,
@@ -129,9 +129,10 @@ async fn found_count(db: &Store, kept: &str, params: Vec<Value>) -> i64 {
     .unwrap()
 }
 
-/// Times Found's windows in `order`, each read by the range between the keys
-/// of the rows at its ends and once by offset, at the top, middle and end of
-/// the list, and the count, and fails when one takes longer than its limit.
+/// Times Found's windows in `order` and the list's count. The function reads
+/// each window at the top, middle and end of the list twice: once by the
+/// range between the keys of the rows at its ends, and once by offset. The
+/// function fails when a read takes longer than its limit.
 /// Returns the first window's candidate keys, to check against what the list
 /// reads.
 async fn found_windows(db: &Store, order: &'static Order, n: u64, size: &str) -> Vec<Vec<u8>> {
@@ -208,9 +209,9 @@ async fn found_windows(db: &Store, order: &'static Order, n: u64, size: &str) ->
     first
 }
 
-/// The tab counts, Found's filter entries and its groups' entry counts, as
-/// `GROUP BY` over what each release is placed as. Each read fails when it
-/// takes longer than its limit.
+/// Times the tab counts, Found's filter entries and its groups' entry
+/// counts, each read as a `GROUP BY` over the placement row of each release.
+/// The function fails when a read takes longer than its limit.
 async fn counts(db: &Store, size: &str) {
     let tabs = plain_cost(
         db,

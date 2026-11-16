@@ -74,8 +74,8 @@ WHERE blank_cover_file IS NOT NULL;
 
 -- Deleting a folder's `local_release_origin` row writes the folder's blank
 -- draft from its scanned files, so the folder is back in Found. The import
--- deleted the folder's draft, and no other bae write runs when the release
--- goes, so this trigger writes it. A state the scan holds no audio units for
+-- deleted the folder's draft, and no other bae write runs when bae deletes
+-- the release, so this trigger writes it. A state the scan holds no audio units for
 -- has no blank draft in the views above: the scan writes that state's draft
 -- when it reads the folder's files.
 CREATE TRIGGER IF NOT EXISTS local_release_origin_gone_seeds_blank_draft

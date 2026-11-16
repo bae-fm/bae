@@ -702,8 +702,8 @@ async fn a_stored_wav_is_served_as_audio_wav() {
 /// A stream request takes its places of the budget when it opens the track's
 /// files: with the only place of a budget of one held, the request waits, and
 /// the router answers it once the test drops the held place, for the original
-/// bytes and for a transcode alike. The places are back once each response
-/// has ended.
+/// bytes and for a transcode alike. Each request returns its places to the
+/// budget once its response has ended.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_stream_request_holds_its_places_until_its_response_ends() {
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);

@@ -239,9 +239,9 @@ pub(super) fn store_outcome(
     // reads none of them.
     delete_ledger(sql, owner)?;
     super::match_rows::delete_verdict_match_entries(sql, owner)?;
-    // store_outcome lays out the rows against the text the owner's signals
-    // and choices hold now, in this write, so it never stores a row the text
-    // has not checked.
+    // store_outcome checks each row against the text the owner's signals and
+    // choices hold now, in this write, so it never stores a row it has not
+    // checked.
     let layout = match (outcome.findings(), outcome.track_count()) {
         (Some(findings), Some(track_count)) => {
             let text = verdict_text_on(sql, owner, outcome.ledger())?;

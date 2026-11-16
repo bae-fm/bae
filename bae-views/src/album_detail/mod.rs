@@ -120,10 +120,10 @@ pub fn storage_state(stored: bool, pinned: bool) -> ReleaseStorageState {
 /// download queue.
 ///
 /// This enum is beside the SQL that decides the storage actions, because two
-/// of the rules it encodes are properties of *that* gate rather than of any
-/// one app's control:
-/// `Unpin` appears exactly when the release is pinned, and `Pin` exactly when a
-/// release in storage is not and the library syncs, to pin from.
+/// of the rules it encodes are properties of *that* SQL query rather than of
+/// any one app's control: `Unpin` appears exactly when the release is
+/// pinned, and `Pin` exactly when a release in storage is not and the library
+/// syncs, to pin from.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReleaseDownloadStatus {
     /// Kept offline, and no download in flight.
@@ -174,7 +174,7 @@ pub fn release_move_to_this_device_status(
 ///
 /// **Available means exactly "core offers Pin".** Deriving it from `pinned` alone
 /// would repeat the check the storage actions query already makes,
-/// and would disagree with it the moment its gate changes. `Unpin` is not
+/// and would disagree with it the moment that query changes. `Unpin` is not
 /// consulted for the same reason in reverse: it appears exactly when `pinned`, so
 /// `pinned` already says it. `MoveToThisDevice` / `Upload` are desktop transitions
 /// this control has nothing to do with.
