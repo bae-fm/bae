@@ -100,12 +100,7 @@ async fn put_files(records: &bae_records::Records, originals: &Path, start: u64,
                 if !original.exists() {
                     std::fs::File::create_new(&original).unwrap().set_len(shaped.size).unwrap();
                 }
-                let place = if shaped.queued_to_upload {
-                    coven::Place::Cloud
-                } else {
-                    coven::Place::DeviceOnly
-                };
-                (shaped.file, original, place)
+                (shaped.file, original, shaped.place)
             })
             .collect();
         records.insert_files_placed_for_test(files).await.unwrap();

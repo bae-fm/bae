@@ -420,12 +420,11 @@ fn insert_chunk(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Identi
 }
 
 /// A file of the shaped library: the row, how large its original is, and
-/// whether the seed places it in the cloud, with its upload queued, or keeps
-/// it on this device only.
+/// where the seed places it. A file in the cloud has its upload queued.
 pub struct ShapedFile {
     pub file: crate::NewReleaseFile,
     pub size: u64,
-    pub queued_to_upload: bool,
+    pub place: coven::Place,
 }
 
 /// Whether the files of album `i`'s first release are one audio file per
@@ -445,7 +444,11 @@ pub fn files_of(start: u64, end: u64) -> Vec<ShapedFile> {
     for i in start..end {
         for r in 0..release_count(i) {
             let release = release_id(i, r);
-            let queued = mix(i * 4 + r, 30).is_multiple_of(20);
+            let place = if mix(i * 4 + r, 30).is_multiple_of(20) {
+                coven::Place::Cloud
+            } else {
+                coven::Place::DeviceOnly
+            };
             let per_track = r == 0 && has_file_per_track(i);
             let audio = if per_track { track_count(i) } else { 1 };
             let kinds = (0..audio)
@@ -466,7 +469,7 @@ pub fn files_of(start: u64, end: u64) -> Vec<ShapedFile> {
                         created_at: at(i),
                     },
                     size,
-                    queued_to_upload: queued,
+                    place,
                 });
             }
         }
