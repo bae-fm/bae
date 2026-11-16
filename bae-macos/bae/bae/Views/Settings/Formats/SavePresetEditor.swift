@@ -29,6 +29,11 @@ struct SavePresetEditor: View {
     /// field still holds it.
     @State
     private var refusedName: String?
+    /// The write of the last name the person committed, while it runs. A new
+    /// commit and the sheet's close cancel it, so a reply to an older name
+    /// never marks the name the field holds now.
+    @State
+    private var renaming: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -51,6 +56,7 @@ struct SavePresetEditor: View {
         .task(id: preset.name) {
             nameDraft = preset.name
         }
+        .onDisappear { renaming?.cancel() }
     }
 
     private var nameValid: Bool {
@@ -182,12 +188,18 @@ struct SavePresetEditor: View {
         guard nameValid, nameDraft != preset.name else { return }
         var changed = preset
         changed.name = nameDraft
-        Task {
+        renaming?.cancel()
+        renaming = Task {
             do {
-                switch try await rename(changed) {
+                let written = try await rename(changed)
+                try Task.checkCancellation()
+                switch written {
                 case .saved: refusedName = nil
                 case .nameTaken: refusedName = changed.name
                 }
+            }
+            catch is CancellationError {
+                return
             }
             catch {
                 uiStore.showError(error)
