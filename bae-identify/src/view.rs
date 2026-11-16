@@ -246,13 +246,9 @@ pub enum IdentifyStateView {
         /// Each row's badges, keyed by release id.
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
-        /// The check against the folder the found release failed: why the
-        /// verdict picks none of its releases.
-        folder_check: Option<super::FolderCheck>,
-        /// The release the verdict picks on its own, without asking the
-        /// person, which the step that ends the run reads in full: the lead
-        /// of its one pressing. `None` when it picks none.
-        unattended_pick: Option<String>,
+        /// Whether the verdict picks a release on its own, which the step
+        /// that ends the run reads in full, or why it picks none.
+        decision: FoundDecision,
         /// Whether the offered rows are several pressings of one album,
         /// which the folder can be linked to with its pressing unknown.
         offers_shared_album: bool,
@@ -318,13 +314,39 @@ pub struct VerdictCards {
     /// The album whose pressings the offered rows are; `None` when they are
     /// not pressings of one album.
     pub shared_album: Option<crate::SharedAlbum>,
-    /// The check against the folder the found release failed: why a found
-    /// verdict picks none of its releases. `None` for every other shape.
-    pub folder_check: Option<super::FolderCheck>,
-    /// The release a found verdict picks on its own, without asking the
-    /// person: the lead of its one pressing. `None` when it picks none, and
-    /// for every other shape.
-    pub unattended_pick: Option<String>,
+    /// What a found verdict decides; `None` for every other shape.
+    pub decision: Option<FoundDecision>,
+}
+
+/// What a found verdict decides about its releases, as the view
+/// `import_candidate_verdict_decision` works it out from the verdict's rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FoundDecision {
+    /// The verdict picks the release this names on its own, without asking
+    /// the person: the lead of its one pressing.
+    Picks(String),
+    /// The verdict picks none of its releases, with the check against the
+    /// folder the found release failed when that check is why.
+    Declined(Option<super::FolderCheck>),
+}
+
+impl FoundDecision {
+    /// The check against the folder the found release failed, when that is
+    /// why the verdict picks none.
+    pub fn folder_check(&self) -> Option<&super::FolderCheck> {
+        match self {
+            Self::Picks(_) => None,
+            Self::Declined(check) => check.as_ref(),
+        }
+    }
+
+    /// The release the verdict picks on its own; `None` when it picks none.
+    pub fn pick(&self) -> Option<&str> {
+        match self {
+            Self::Picks(lead) => Some(lead),
+            Self::Declined(_) => None,
+        }
+    }
 }
 
 /// A verdict's releases judged against the folder's text, and the album

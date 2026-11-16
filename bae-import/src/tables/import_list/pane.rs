@@ -246,19 +246,16 @@ impl CandidateDetailRows {
         let lookup_choices =
             current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
-        let mut verdict_folder_check = None;
-        let mut resumed_identify_state = bae_identify::IdentifyStateView::Idle;
-        let identify = current.as_ref().and_then(|state| state.identify.as_ref());
-        if let Some(identify) = identify {
-            verdict_folder_check = cards.folder_check.clone();
-            // The verdict write stores each row's judgement against the
-            // candidate's own text, so the rows are already in their new
-            // order after the person discounts a catalog number.
-            resumed_identify_state = bae_identify::IdentifyStateView::of(
-                bae_identify::RunOutcome::Answered(identify.verdict.clone()),
-                cards,
-            );
-        }
+        // The verdict write stores each row's judgement against the
+        // candidate's own text, so the rows are already in their new order
+        // after the person discounts a catalog number.
+        let stored_verdict =
+            current.as_ref().and_then(|state| state.identify.as_ref()).map(|identify| {
+                bae_identify::IdentifyStateView::of(
+                    bae_identify::RunOutcome::Answered(identify.verdict.clone()),
+                    cards,
+                )
+            });
         let stage = match stage {
             StageRows::Imported(release) => ProjectedStage::Imported {
                 release,
@@ -305,9 +302,7 @@ impl CandidateDetailRows {
             source_error,
             actionable,
             skipped,
-            resumed_identify_state,
-            verdict_stored: identify.is_some(),
-            verdict_folder_check,
+            stored_verdict,
             signals,
             standing,
             listed,

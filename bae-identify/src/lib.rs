@@ -52,6 +52,7 @@ pub use verdict_summary::FolderCheck;
 pub use verdict_summary::{VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
-    IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings, LookupView, ProviderCell,
-    PublishedRun, RowAgreements, RunOutcome, SearchStepView, SignalValueRow, VerdictCards,
+    FoundDecision, IdentifyRunView, IdentifyStateView, IsrcStepView, JudgedFindings, LookupView,
+    ProviderCell, PublishedRun, RowAgreements, RunOutcome, SearchStepView, SignalValueRow,
+    VerdictCards,
 };

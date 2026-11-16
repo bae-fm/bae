@@ -220,9 +220,9 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .unwrap()
         .expect("the candidate reads back");
     assert!(
-        matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Found { .. }),
+        matches!(detail.stored_verdict, Some(bae_identify::IdentifyStateView::Found { .. })),
         "a found verdict resumes as Found, got {:?}",
-        detail.resumed_identify_state
+        detail.stored_verdict
     );
     assert_eq!(
         detail.signals.expect("the stored signals read back").origin,
@@ -245,9 +245,8 @@ async fn the_detail_resumes_the_stored_verdict() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let bae_identify::IdentifyStateView::Found { groups, .. } = &detail.resumed_identify_state
-    else {
-        panic!("expected the stored Found, got {:?}", detail.resumed_identify_state);
+    let Some(bae_identify::IdentifyStateView::Found { groups, .. }) = &detail.stored_verdict else {
+        panic!("expected the stored Found, got {:?}", detail.stored_verdict);
     };
     assert_eq!(
         groups
@@ -294,8 +293,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         .unwrap()
         .expect("the scanned candidate reads back");
 
-    let bae_identify::IdentifyStateView::Found { run: Some(run), .. } =
-        detail.resumed_identify_state
+    let Some(bae_identify::IdentifyStateView::Found { run: Some(run), .. }) = detail.stored_verdict
     else {
         panic!("a stored Found resumes with the ledger its run recorded");
     };
@@ -332,8 +330,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .unwrap()
         .expect("the scanned candidate still reads back");
 
-    assert!(matches!(detail.resumed_identify_state, bae_identify::IdentifyStateView::Idle));
-    assert!(!detail.verdict_stored);
+    assert_eq!(detail.stored_verdict, None);
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which

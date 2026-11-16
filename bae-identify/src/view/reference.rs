@@ -65,8 +65,7 @@ pub fn reference_cards(
         groups: cards,
         agreements,
         narrowed_out_count,
-        folder_check: None,
-        unattended_pick: None,
+        decision: None,
     }
 }
 
@@ -84,15 +83,16 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         RunOutcome::Answered(_) => return VerdictCards::default(),
     };
     let mut cards = reference_cards(findings.clone(), ledger, text, track_count);
-    // For a found verdict, fill in the check it failed and the release it
-    // picks, as VerdictSummary works them out.
+    // For a found verdict, fill in what it decides, as VerdictSummary works
+    // it out.
     if let RunOutcome::Answered(verdict @ TerminalVerdict::Found { findings, .. }) = outcome {
         let summary = crate::VerdictSummary::of(verdict, false);
-        cards.folder_check = summary.folder_check();
-        cards.unattended_pick = summary
-            .picks_unattended()
-            .then(|| findings.matches.first().map(|lead| lead.release_id.clone()))
-            .flatten();
+        cards.decision = Some(if summary.picks_unattended() {
+            let lead = findings.matches.first().expect("a verdict that picks has a lead");
+            super::FoundDecision::Picks(lead.release_id.clone())
+        } else {
+            super::FoundDecision::Declined(summary.folder_check())
+        });
     }
     cards
 }

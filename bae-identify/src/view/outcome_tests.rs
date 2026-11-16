@@ -79,9 +79,10 @@ fn every_failure_of_a_run_with_no_ledger_has_a_line() {
     assert_eq!(failure_lines, failures);
 }
 
-/// The view states the check and the pick its cards stored; it does not
-/// judge the findings again. A found verdict whose one release fits the
-/// folder shows no pick when its cards state none.
+/// The view states the decision its cards stored; it does not judge the
+/// findings again. A found verdict whose one release fits the folder shows
+/// the check its cards state, and a pick of another release when they state
+/// that.
 #[test]
 fn a_found_view_states_what_its_cards_stored_without_judging_its_findings() {
     let verdict = TerminalVerdict::Found {
@@ -96,23 +97,16 @@ fn a_found_view_states_what_its_cards_stored_without_judging_its_findings() {
         track_count: 13,
         ledger: None,
     };
-    let stored = VerdictCards {
-        folder_check: Some(crate::FolderCheck::SourceTracksUnknown),
-        unattended_pick: Some("stored-pick".to_string()),
-        ..VerdictCards::default()
-    };
-    let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
-        IdentifyStateView::of(RunOutcome::Answered(verdict.clone()), stored)
-    else {
-        panic!("a found verdict");
-    };
-    assert_eq!(folder_check, Some(crate::FolderCheck::SourceTracksUnknown));
-    assert_eq!(unattended_pick.as_deref(), Some("stored-pick"));
-
-    let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
-        IdentifyStateView::of(RunOutcome::Answered(verdict), VerdictCards::default())
-    else {
-        panic!("a found verdict");
-    };
-    assert_eq!((folder_check, unattended_pick), (None, None));
+    for stored in [
+        crate::FoundDecision::Declined(Some(crate::FolderCheck::SourceTracksUnknown)),
+        crate::FoundDecision::Picks("stored-pick".to_string()),
+    ] {
+        let cards = VerdictCards { decision: Some(stored.clone()), ..VerdictCards::default() };
+        let IdentifyStateView::Found { decision, .. } =
+            IdentifyStateView::of(RunOutcome::Answered(verdict.clone()), cards)
+        else {
+            panic!("a found verdict");
+        };
+        assert_eq!(decision, stored);
+    }
 }

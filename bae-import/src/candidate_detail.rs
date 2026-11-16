@@ -28,16 +28,11 @@ pub struct ImportCandidateDetailProjection {
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
-    /// The identify state that bae rebuilds from the stored verdict, with the
-    /// cards its rows hold: what a row shows when no run is running.
-    pub resumed_identify_state: IdentifyStateView,
-    /// Whether the tables hold a verdict for the candidate's current file
-    /// shape.
-    pub verdict_stored: bool,
-    /// The check against the folder the stored verdict's found release
-    /// failed, as the view `import_candidate_verdict_decision` computes it
-    /// from the verdict's rows.
-    pub verdict_folder_check: Option<bae_identify::FolderCheck>,
+    /// The identify state that bae rebuilds from the verdict the tables hold
+    /// for the candidate's current file shape, with the cards and the
+    /// decision its rows hold: what a row shows when no run is running.
+    /// `None` when the tables hold no verdict for that shape.
+    pub stored_verdict: Option<IdentifyStateView>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
     /// What is running for the candidate, from its standing.
@@ -152,9 +147,7 @@ impl ImportCandidateDetailProjection {
             source_error,
             actionable,
             skipped,
-            resumed_identify_state,
-            verdict_stored,
-            verdict_folder_check,
+            stored_verdict,
             signals,
             standing: facts,
             listed,
@@ -165,6 +158,12 @@ impl ImportCandidateDetailProjection {
         let file_evidence = signals.as_ref().map(crate::file_evidence).unwrap_or_default();
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(listed.actions, facts, listed.standing);
+        // The check against the folder the stored verdict's found release
+        // failed, as the view `import_candidate_verdict_decision` computes it.
+        let verdict_folder_check = match &stored_verdict {
+            Some(IdentifyStateView::Found { decision, .. }) => decision.folder_check().cloned(),
+            _ => None,
+        };
         let (import_status, pane_placement, stage) = match stage {
             ProjectedStage::Imported { release, images } => (
                 import_status_of(Some(&release), source_error.as_ref(), None),
@@ -172,7 +171,7 @@ impl ImportCandidateDetailProjection {
                 CandidateStage::Imported { release, images },
             ),
             ProjectedStage::Drafting(draft) => {
-                let session = draft.session_or_initial(verdict_stored);
+                let session = draft.session_or_initial(stored_verdict.is_some());
                 let DraftProjection {
                     metadata_provenance,
                     release_link,
@@ -260,7 +259,8 @@ impl ImportCandidateDetailProjection {
             candidate,
             actionable,
             skipped,
-            resumed_identify_state,
+            // A candidate with no stored verdict shows no run.
+            resumed_identify_state: stored_verdict.unwrap_or(IdentifyStateView::Idle),
             placement: pane_placement,
             live,
             import_status,
@@ -280,8 +280,8 @@ pub enum CandidatePanePlacement {
     /// In Pending.
     Pending {
         /// The check against the folder the candidate's found release did
-        /// not pass, stated beside its Import: the release's
-        /// [`ImportCandidateDetailProjection::verdict_folder_check`].
+        /// not pass, stated beside its Import: the one its
+        /// [`ImportCandidateDetailProjection::stored_verdict`] decides on.
         folder_check: Option<bae_identify::FolderCheck>,
         /// Every catalog the linked release is described in, in the order
         /// surfaces list catalogs. Empty for a candidate linked to no release.

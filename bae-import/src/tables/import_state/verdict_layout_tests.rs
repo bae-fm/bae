@@ -489,11 +489,7 @@ async fn verdict_cards_statement_states_the_folder_check_and_the_pick() {
             &bae_identify::RunOutcome::Answered(verdict),
             &bae_identify::CandidateText::of(&[], &[], &[]),
         );
-        assert_eq!(
-            (read.folder_check, read.unattended_pick),
-            (expected.folder_check, expected.unattended_pick),
-            "{name}"
-        );
+        assert_eq!(read.decision, expected.decision, "{name}");
     }
 }
 
@@ -505,14 +501,16 @@ async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check()
     let picked = found(vec![listing("fits", Some(Listed { count: 11 }))], vec![0], None, 11);
     let (db, hash) = stored_with_text(&picked, Vec::new()).await;
     let cards = stored_cards(&db, &hash, &picked).await;
-    assert_eq!((cards.folder_check, cards.unattended_pick), (None, Some("fits".to_string())));
+    assert_eq!(cards.decision, Some(bae_identify::FoundDecision::Picks("fits".to_string())));
 
     let unchecked = found(vec![listing("a", Some(Nothing))], vec![0], None, 11);
     let (db, hash) = stored_with_text(&unchecked, Vec::new()).await;
     let cards = stored_cards(&db, &hash, &unchecked).await;
     assert_eq!(
-        (cards.folder_check, cards.unattended_pick),
-        (Some(bae_identify::FolderCheck::SourceTracksUnknown), None)
+        cards.decision,
+        Some(bae_identify::FoundDecision::Declined(Some(
+            bae_identify::FolderCheck::SourceTracksUnknown
+        )))
     );
 
     let ruled_out = found(
@@ -524,12 +522,11 @@ async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check()
     let (db, hash) = stored_with_text(&ruled_out, Vec::new()).await;
     let cards = stored_cards(&db, &hash, &ruled_out).await;
     assert_eq!(
-        (cards.folder_check, cards.unattended_pick),
-        (
-            Some(bae_identify::FolderCheck::MediumDisagrees {
+        cards.decision,
+        Some(bae_identify::FoundDecision::Declined(Some(
+            bae_identify::FolderCheck::MediumDisagrees {
                 folder: bae_identify::MediumConflict::CdRip
-            }),
-            None
-        )
+            }
+        )))
     );
 }

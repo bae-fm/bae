@@ -285,8 +285,7 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements,
             narrowed_out_count,
-            folder_check,
-            unattended_pick,
+            decision,
             offers_shared_album,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -298,8 +297,8 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements: automation_agreements(agreements),
             narrowed_out_count,
-            folder_check: folder_check.map(AutomationFolderCheck::from_core),
-            unattended_pick,
+            folder_check: decision.folder_check().cloned().map(AutomationFolderCheck::from_core),
+            unattended_pick: decision.pick().map(str::to_string),
             offers_shared_album,
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {

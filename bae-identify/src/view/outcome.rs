@@ -111,8 +111,10 @@ impl IdentifyStateView {
                     track_count,
                     agreements: cards.agreements,
                     narrowed_out_count: cards.narrowed_out_count,
-                    folder_check: cards.folder_check,
-                    unattended_pick: cards.unattended_pick,
+                    decision: cards.decision.expect(
+                        "a found verdict's rows hold its decision, which the view \
+                         import_candidate_verdict_decision gives every found verdict",
+                    ),
                     offers_shared_album: cards.shared_album.is_some(),
                 }
             }

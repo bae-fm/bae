@@ -704,12 +704,12 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         ledger: None,
     };
     let judged = |verdict: TerminalVerdict| {
-        let IdentifyStateView::Found { folder_check, unattended_pick, .. } =
+        let IdentifyStateView::Found { decision, .. } =
             crate::view::reference_resume(verdict, None, &crate::LookupChoices::default())
         else {
             panic!("a found verdict resumes found");
         };
-        (unattended_pick, folder_check)
+        (decision.pick().map(str::to_string), decision.folder_check().cloned())
     };
     assert_eq!(
         judged(lone(bae_catalogs::search::SourceTracks::Nothing)),

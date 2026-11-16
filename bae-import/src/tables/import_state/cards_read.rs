@@ -324,14 +324,13 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                           FROM import_candidate_match AS found \
                           WHERE {found} AND found.listing = 'offered') \
           SELECT json_object('cards', json(listed_cards.json), \
-            'folder_check', (SELECT decision.folder_check \
-                             FROM import_candidate_verdict_decision AS decision \
-                             WHERE decision.content_hash IS {verdict}.content_hash \
-                               AND decision.identify_run IS {verdict}.identify_run), \
-            'unattended_pick', (SELECT decision.unattended_pick \
-                                FROM import_candidate_verdict_decision AS decision \
-                                WHERE decision.content_hash IS {verdict}.content_hash \
-                                  AND decision.identify_run IS {verdict}.identify_run), \
+            'decision', json((SELECT json_object('folder_check', decision.folder_check, \
+                                                 'unattended_pick', decision.unattended_pick) \
+                              FROM import_candidate_verdict_decision AS decision \
+                              WHERE decision.content_hash IS {verdict}.content_hash \
+                                AND decision.identify_run IS {verdict}.identify_run \
+                                AND (decision.declined IS NOT NULL \
+                                     OR decision.unattended_pick IS NOT NULL))), \
             'narrowed_out_count', (SELECT COUNT(DISTINCT found.pressing) \
                                    FROM import_candidate_match AS found \
                                    WHERE {found} AND found.listing = 'narrowed_out'), \
@@ -384,9 +383,33 @@ pub(super) struct StoredVerdictCards {
     narrowed_out_count: u32,
     /// The offered rows when they are several pressings of one album.
     shared_album: Option<StoredSharedAlbum>,
+    /// What a found verdict decides; NULL for every other shape, whose
+    /// decision row declines nothing and picks nothing.
+    decision: Option<StoredDecision>,
+}
+
+/// A found verdict's row of `import_candidate_verdict_decision`: the release
+/// it picks, or the check against the folder it failed when that is why it
+/// picks none. Never both.
+#[derive(serde::Deserialize)]
+struct StoredDecision {
     /// 'cd_rip', 'not_cd_audio' or 'source_tracks_unknown'.
     folder_check: Option<String>,
     unattended_pick: Option<String>,
+}
+
+impl StoredDecision {
+    fn decision(self) -> Result<bae_identify::FoundDecision, DbError> {
+        match (self.unattended_pick, self.folder_check) {
+            (Some(lead), None) => Ok(bae_identify::FoundDecision::Picks(lead)),
+            (None, check) => Ok(bae_identify::FoundDecision::Declined(
+                check.as_deref().map(folder_check_of).transpose()?,
+            )),
+            (Some(lead), Some(check)) => {
+                Err(DbError::unreadable("a verdict's decision", (lead, check)))
+            }
+        }
+    }
 }
 
 /// The offered rows of one album: each row's lead release in the cards' order,
@@ -430,14 +453,9 @@ impl StoredSharedAlbum {
 /// The cards of a verdict that [`verdict_cards_sql`] answered, with each
 /// row's agreements and notes.
 pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
-    let StoredVerdictCards {
-        cards,
-        narrowed_out_count,
-        shared_album,
-        folder_check,
-        unattended_pick,
-    } = serde_json::from_str(json)
-        .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
+    let StoredVerdictCards { cards, narrowed_out_count, shared_album, decision } =
+        serde_json::from_str(json)
+            .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
     let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
     for card in &cards {
         let rows = card
@@ -477,8 +495,7 @@ pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
         agreements,
         narrowed_out_count,
         shared_album: shared_album.map(StoredSharedAlbum::shared_album).transpose()?,
-        folder_check: folder_check.as_deref().map(folder_check_of).transpose()?,
-        unattended_pick,
+        decision: decision.map(StoredDecision::decision).transpose()?,
     })
 }
 
