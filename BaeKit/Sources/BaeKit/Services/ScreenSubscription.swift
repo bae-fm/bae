@@ -148,6 +148,7 @@ extension AdminChangesSubscription: PulledSubscription {}
 extension AddDeviceStatusSubscription: PulledSubscription {}
 extension PeopleSubscription: PulledSubscription {}
 extension PersonSubscription: PulledSubscription {}
+extension OpenInviteSubscription: PulledSubscription {}
 extension PlaylistsSubscription: PulledSubscription {}
 extension PlaylistDetailSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
