@@ -20,28 +20,46 @@ pub(super) enum AdminTarget {
     Approval(coven::MemberId, Option<String>),
 }
 
+/// The operation kinds some place shows. A change whose operation coven lists
+/// with another kind is no admin change bae makes.
+const PLACED_KINDS: &str =
+    "'RenameStore', 'SetRole', 'RemoveMember', 'RemoveDevice', 'Invite', 'ReplaceMemberKeys'";
+
+/// Each admin change this device asked for, with its operation as coven
+/// lists it. `coven_operations` lists a change's operation until the write
+/// that deletes the change's row acknowledges it.
+pub(super) const ADMIN_CHANGES_FROM: &str = "FROM admin_operations AS a \
+     JOIN coven_operations AS o ON o.operation = a.operation";
+
 /// The changes that show in `place`, each with its operation as coven lists
-/// it, the person's profile name and the device's name, in the order they
-/// were asked for. `coven_operations` lists a change's operation until the
-/// write that deletes the change's row acknowledges it.
+/// it, the person's profile name and the device's name, in the order this
+/// device asked for them.
 fn admin_changes_sql(place: &AdminChangePlace) -> String {
-    let shown = match place {
+    format!(
+        "SELECT a.operation, o.kind, o.outcome, \
+                a.member, a.device, a.role, a.name, p.name, d.name \
+         {ADMIN_CHANGES_FROM} \
+         LEFT JOIN people AS p ON p.id = a.member \
+         LEFT JOIN coven_devices AS d ON d.device = a.device \
+         WHERE {shown} \
+         ORDER BY a.operation",
+        shown = shown_in(place),
+    )
+}
+
+/// The condition, over [`ADMIN_CHANGES_FROM`], that keeps the changes that
+/// show in `place`: those of the kinds the place shows, and every change
+/// whose operation coven lists with a kind no place shows, so that the row
+/// reader fails the read in every place.
+pub(super) fn shown_in(place: &AdminChangePlace) -> String {
+    let kinds = match place {
         AdminChangePlace::Library => "o.kind = 'RenameStore'",
         AdminChangePlace::Person(_) => "o.kind = 'SetRole' AND a.member = ?1",
         AdminChangePlace::People => {
             "o.kind IN ('RemoveMember', 'RemoveDevice', 'Invite', 'ReplaceMemberKeys')"
         }
     };
-    format!(
-        "SELECT a.operation, o.kind, o.outcome, \
-                a.member, a.device, a.role, a.name, p.name, d.name \
-         FROM admin_operations AS a \
-         JOIN coven_operations AS o ON o.operation = a.operation \
-         LEFT JOIN people AS p ON p.id = a.member \
-         LEFT JOIN coven_devices AS d ON d.device = a.device \
-         WHERE {shown} \
-         ORDER BY a.operation"
-    )
+    format!("(o.kind NOT IN ({PLACED_KINDS}) OR ({kinds}))")
 }
 
 fn admin_changes_on(

@@ -73,3 +73,48 @@ fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
     assert!(!by_member.can_remove);
     assert!(!by_member.active_devices[0].can_remove);
 }
+
+/// Each place's statement returns the changes of its own kinds, and every
+/// place's statement returns a change whose operation coven lists with a kind
+/// no place shows, so that reading that change fails wherever the person
+/// looks.
+#[test]
+fn every_place_returns_a_change_of_a_kind_no_place_shows() {
+    use crate::admin_change::AdminChangePlace;
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE admin_operations (operation INTEGER, member TEXT, device TEXT, \
+                 role TEXT, name TEXT); \
+             CREATE TABLE coven_operations (operation INTEGER, kind TEXT, outcome TEXT); \
+             INSERT INTO admin_operations (operation, member) VALUES \
+                 (1, NULL), (2, 'ana'), (3, NULL), (4, NULL); \
+             INSERT INTO coven_operations (operation, kind) VALUES \
+                 (1, 'RenameStore'), (2, 'SetRole'), (3, 'RemoveDevice'), (4, 'CreateStore');",
+        )
+        .unwrap();
+    let ana: coven::MemberId = "00000000-0000-4000-8000-000000000001".parse().unwrap();
+    connection
+        .execute("UPDATE admin_operations SET member = ?1 WHERE operation = 2", [ana])
+        .unwrap();
+    let read = |place: AdminChangePlace| -> Vec<i64> {
+        let member = match &place {
+            AdminChangePlace::Person(member) => Some(*member),
+            AdminChangePlace::Library | AdminChangePlace::People => None,
+        };
+        let sql = format!(
+            "SELECT a.operation {} WHERE {} ORDER BY a.operation",
+            super::admin_operations::ADMIN_CHANGES_FROM,
+            super::admin_operations::shown_in(&place)
+        );
+        let mut statement = connection.prepare(&sql).unwrap();
+        statement
+            .query_map(rusqlite::params_from_iter(member.iter()), |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    };
+    assert_eq!(read(AdminChangePlace::Library), [1, 4]);
+    assert_eq!(read(AdminChangePlace::Person(ana)), [2, 4]);
+    assert_eq!(read(AdminChangePlace::People), [3, 4]);
+}
