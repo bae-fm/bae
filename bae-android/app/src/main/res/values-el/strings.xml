@@ -116,7 +116,7 @@
     <string name="playlist_edit_menu">Επεξεργασία λίστας αναπαραγωγής…</string>
     <string name="playlist_edit_title">Επεξεργασία λίστας αναπαραγωγής</string>
     <string name="playlist_delete_menu">Διαγραφή λίστας αναπαραγωγής…</string>
-    <string name="playlist_delete_title">Διαγραφή του «%1$s»;</string>
+    <string name="playlist_delete_title">Διαγραφή του %1$s;</string>
     <string name="playlist_delete_message">Διαγράφεται από κάθε συσκευή. Τα κομμάτια της παραμένουν στη βιβλιοθήκη.</string>
     <string name="playlist_delete_confirm">Διαγραφή</string>
     <string name="playlist_options">Επιλογές λίστας αναπαραγωγής</string>

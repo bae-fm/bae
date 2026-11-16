@@ -132606,7 +132606,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαγραφή του «%@»;"
+            "value" : "Διαγραφή του %@;"
           }
         },
         "en" : {
@@ -168128,7 +168128,7 @@
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar a lista de reprodução"
+            "value" : "Adicionar à lista de reprodução"
           }
         },
         "ro" : {

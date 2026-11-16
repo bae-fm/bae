@@ -110,8 +110,8 @@
     <string name="playlist_move_up">Mover para cima</string>
     <string name="playlist_move_down">Mover para baixo</string>
     <string name="playlist_remove_entry">Remover da lista de reprodução</string>
-    <string name="playlist_add_entry">Adicionar a lista de reprodução…</string>
-    <string name="playlist_add_title">Adicionar a lista de reprodução</string>
+    <string name="playlist_add_entry">Adicionar à lista de reprodução…</string>
+    <string name="playlist_add_title">Adicionar à lista de reprodução</string>
     <string name="playlist_new_row">Nova lista de reprodução…</string>
     <string name="playlist_edit_menu">Editar lista de reprodução…</string>
     <string name="playlist_edit_title">Editar lista de reprodução</string>
@@ -525,7 +525,7 @@
     <string name="file_kind_cue_sheet">Ficheiro CUE</string>
     <string name="file_kind_rip_log">Registo de extração</string>
     <string name="file_kind_accuraterip_report">Relatório do AccurateRip</string>
-    <string name="file_kind_playlist">Playlist</string>
+    <string name="file_kind_playlist">Lista de reprodução</string>
     <string name="file_kind_text">Texto</string>
     <string name="file_kind_pdf">Documento PDF</string>
     <string name="album_files">Ficheiros</string>

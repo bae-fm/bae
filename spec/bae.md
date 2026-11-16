@@ -4399,8 +4399,8 @@ playback for the few seconds the reset takes, and calls coven's reset, showing
 the reset's steps on the screen a reset shows. The reset registers this copy as
 a new device of the same member and replaces nothing, so the other
 installation keeps its id and keeps syncing. When the library opens again the
-app shows one notice: "Another copy of this device was ahead of this one, so
-bae reset this copy from the cloud.", then "bae did not keep N edits that had
+app shows one notice: "Another installation of this device had newer changes,
+so bae reset this device’s copy from the cloud.", then "bae did not keep N edits that had
 not synced." when N is above zero, then "bae did not keep M files that had not
 uploaded." when M is above zero, each with its own plural forms in every
 language. The counts come from the snapshot. With none unsent, no notice shows. A reset
