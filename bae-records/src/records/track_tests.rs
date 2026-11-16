@@ -15,9 +15,9 @@ async fn filter_existing_track_ids_merges_chunks() {
     assert_eq!(existing, expected_existing);
 }
 
-/// A picked set comes back in the order its release lists the tracks,
-/// whatever order the picks arrived in, with a repeated pick once and an id the
-/// library lacks left out.
+/// `track_ids_in_release_order` returns the picked ids in the order their
+/// release lists them, whatever order the picks came in, keeps one copy of a
+/// repeated id and drops an id the library does not have.
 #[tokio::test]
 async fn track_ids_in_release_order_follow_the_release_not_the_picks() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;

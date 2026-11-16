@@ -29,8 +29,8 @@ mod artist_sql;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_NAME_KEY};
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
-// Only the desktop's import offers a cover or states its track table, so
-// only it states them in SQL.
+// Only the desktop's import pane offers a cover or shows its track table, so
+// only desktop builds register the SQL functions that compute them.
 #[cfg(desktop)]
 mod catalog_group_url;
 #[cfg(desktop)]
@@ -168,8 +168,8 @@ pub const SCHEMA: bae_store::SchemaPart =
         .collations(SQL_COLLATIONS)
         .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
-/// The SQL functions `records.sql` names, and the artist functions reads of other
-/// crates use.
+/// The SQL functions `records.sql` names, and the artist functions that other
+/// crates' queries call.
 #[cfg(desktop)]
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &CATALOG_RANK,

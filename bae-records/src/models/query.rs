@@ -150,8 +150,8 @@ pub struct DbPerformedWork {
     pub composer_names: Option<String>,
 }
 
-/// Where a track sits on its release, as playback decides a pause between
-/// sides by it.
+/// Where a track sits on its release. Playback reads it to decide whether to
+/// pause between sides.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbTrackPlace {
     pub track_id: String,
@@ -162,7 +162,7 @@ pub struct DbTrackPlace {
     pub side: std::num::NonZeroU8,
     /// The medium's carrier, where the source states one.
     pub carrier: Option<bae_types::pressing::Medium>,
-    /// The side or disc the track reads as on its release.
+    /// The side or disc the release shows the track on.
     pub on: bae_types::mediums::TrackSide,
 }
 
@@ -178,16 +178,16 @@ pub struct DbCreditRow {
     pub tracks: Vec<bae_types::mediums::TrackPosition>,
 }
 
-/// A release's files as its screens list them: all of them, and the lists
-/// among them that the release's pages show beside, with their count and
-/// sizes added up.
+/// A release's files as its screens list them: all of them, and the images,
+/// covers and other files that the release's pages list separately, with
+/// their count and total size.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseFiles {
     /// Every file, in the release's file order.
     pub files: Vec<DbFile>,
     /// The files that are images.
     pub images: Vec<DbFile>,
-    /// The images a cover can be made from.
+    /// The images bae can make a cover from.
     pub covers: Vec<DbFile>,
     /// The files no track plays from.
     pub others: Vec<DbFile>,

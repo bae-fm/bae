@@ -74,9 +74,9 @@ impl People {
         Ok(playlist)
     }
 
-    /// Sets a playlist's name and who sees it in one write, so it is never
-    /// seen, or left, with one changed and not the other. A blank name is
-    /// refused before anything is written.
+    /// Sets a playlist's name and who sees it in one write, so no reader ever
+    /// sees the playlist with only one of the two changed. edit_playlist
+    /// refuses a blank name before it writes anything.
     pub async fn edit_playlist(
         &self,
         id: uuid::Uuid,
@@ -265,8 +265,8 @@ pub(super) fn album_ratings_sql() -> String {
 
 /// The stars this device's person gave the track `track_alias`, an
 /// expression for a statement over `tracks`: NULL for a track they did not
-/// rate, and for every track while they have no profile, found through
-/// `ratings`' key on the person and the track.
+/// rate, and for every track while they have no profile. SQLite finds the
+/// rating through `ratings`' key on the person and the track.
 pub fn own_track_stars_sql(track_alias: &str) -> String {
     format!(
         "(SELECT r.stars FROM ratings AS r WHERE r.track_id = {track_alias}.id \

@@ -9,7 +9,7 @@ pub enum ImageWriteRefusal {
     #[error("the {image_type:?} image of {subject_id} changed after planning")]
     Superseded { image_type: LibraryImageType, subject_id: String },
     /// No cover or artist image references the file any more: another write
-    /// replaced or deleted it after the file was named.
+    /// replaced or deleted it after the caller passed the file.
     #[error("no cover or artist image references the file {file} any more")]
     NoLongerReferenced { file: coven::FileId },
 }
@@ -79,11 +79,12 @@ impl Records {
             .await
     }
 
-    /// Give up the cover or artist image whose file `file` can't upload: its
-    /// row is deleted, which leaves the file with no reference, so coven
-    /// retires its upload and sends this device's held writes (coven §17.4).
-    /// Refused, with nothing written, when no image references `file`: the
-    /// image changed meanwhile.
+    /// Give up the cover or artist image whose file `file` can't upload. This
+    /// function deletes the image's row, so no row references the file; coven
+    /// then stops the file's upload and sends this device's held writes
+    /// (coven §17.4). When no image references `file`, the function writes
+    /// nothing and returns NoLongerReferenced, because the image changed after
+    /// the caller passed the file.
     pub async fn give_up_image_file(&self, file: coven::FileId) -> Result<(), ImageWriteError> {
         self.store
             .write(move |sql| {

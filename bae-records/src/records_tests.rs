@@ -73,8 +73,8 @@ async fn release_records_are_read_in_catalog_order() {
         ]
     );
 
-    // One list for each id asked, in the order asked, an empty one for a
-    // release no catalog describes.
+    // The read returns one list for each id, in the order asked, and an empty
+    // list for a release that no catalog describes.
     let lists = db
         .read(|sql| {
             crate::records::read::get_releases_records_on(

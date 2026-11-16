@@ -20,7 +20,7 @@ pub fn find_album_by_id_on(
     .map_err(DbError::from)
 }
 
-/// The credit line the album `album_id` prints.
+/// Build the credit line of the album `album_id` from its credits.
 pub fn album_credit_line_on(
     sql: &impl coven::SqlRead,
     album_id: &str,
@@ -253,9 +253,9 @@ pub fn records_column(
     records.iter().map(|record| record_of(row, column, record)).collect()
 }
 
-/// Each of the releases `?1` names, a JSON array of release ids, as one row
-/// in the array's order (`json_each` walks it so) holding its records, as
-/// [`records_column`] reads them.
+/// Returns one row for each release id in the JSON array `?1`, in the
+/// array's order, holding that release's records as [`records_column`] reads
+/// them.
 pub fn releases_records_in_order_sql() -> String {
     format!("SELECT {} AS records FROM json_each(?1) r", release_records_json_sql("r.value"))
 }
@@ -434,9 +434,8 @@ pub(super) fn source_audio_layout_value<I: rusqlite::RowIndex>(
     }
 }
 
-/// The columns of a release file, by the names the `release_files` row, its
-/// size and whether it is stored read under (`release_file_columns!()`),
-/// whether a row reads them or a JSON object spells them.
+/// The columns of one release file, under the names `release_file_columns!()`
+/// gives them, read from a row or from a JSON object.
 #[derive(serde::Deserialize)]
 pub(super) struct FileColumns {
     id: String,
@@ -513,8 +512,8 @@ impl FileColumns {
     }
 }
 
-/// The release file `columns` describe; a value that names no file fact is
-/// the column it sits in and why.
+/// The release file `columns` describe. When a column holds a value that is
+/// not a file fact, file_of returns that column's name and the reason.
 pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, String)> {
     let layout = columns
         .source_audio_layout

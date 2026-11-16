@@ -33,9 +33,8 @@ async fn a_playlists_entries_read_in_order_without_a_sort() {
     );
 }
 
-/// The album's ratings are found by the album's index, and one person's
-/// stars for a track by the ratings' key, neither by a scan of
-/// every rating.
+/// SQLite finds the album's ratings through the album's index and a person's
+/// track stars through the ratings' key, without scanning every rating.
 #[tokio::test]
 async fn ratings_are_found_by_index() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -54,6 +53,6 @@ async fn ratings_are_found_by_index() {
     .await;
     assert!(
         tracks.iter().any(|step| step.contains("SEARCH r USING")),
-        "a person's track stars are not found by the ratings' keys: {tracks:?}"
+        "SQLite does not use the ratings' key to find a person's track stars: {tracks:?}"
     );
 }

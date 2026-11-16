@@ -61,7 +61,7 @@ impl Records {
         self.store.read(move |sql| find_album_by_id_on(&sql, &album_id)).await
     }
 
-    /// The credit line the album `album_id` prints.
+    /// Build the credit line of the album `album_id` from its credits.
     pub async fn album_credit_line(
         &self,
         album_id: &str,

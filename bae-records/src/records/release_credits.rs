@@ -55,15 +55,16 @@ impl CreditPart<'_> {
 }
 
 /// The credits the detail of the release `release_expr` (an SQL expression naming
-/// its id) lists, as a JSON array of rows for [`credit_rows_column`]. The credits
-/// are ordered as the release lists them: the release's, in the order the
-/// catalog stated them; then for each track in playing order, its own
-/// credits, then the credits in a role other than a writing one of the works
-/// it performs, each work in the order the track performs it. An artist
-/// holds a role (with its qualifiers) over the tracks its credits sit on, all
-/// of them for a credit of the release; artists holding a role over the same
-/// tracks are one row, in the order of their first credit, and rows go in the
-/// order of their first credit. A row covering every track has no tracks.
+/// its id) lists, as a JSON array of rows for [`credit_rows_column`]. The
+/// statement orders the credits as the release lists them: the release's, in
+/// the order the catalog stated them; then for each track in playing order,
+/// its own credits, then the credits in a role other than a writing one of
+/// the works it performs, each work in the order the track performs it. An
+/// artist holds a role (with its qualifiers) over the tracks its credits sit
+/// on, all of them for a credit of the release; artists holding a role over
+/// the same tracks are one row, in the order of their first credit, and rows
+/// go in the order of their first credit. A row whose role covers every track
+/// lists no tracks.
 pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
     let release = CreditPart {
         table: "release_artist_roles",

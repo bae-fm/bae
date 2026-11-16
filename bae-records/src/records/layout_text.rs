@@ -39,7 +39,9 @@ pub(crate) static MEDIUM_IS_SIDED: SchemaFunction = SchemaFunction {
             .as_deref()
             .map(|key| {
                 bae_types::pressing::Medium::from_key(key).ok_or_else(|| {
-                    rusqlite::Error::UserFunctionError(format!("unknown carrier {key}").into())
+                    rusqlite::Error::UserFunctionError(
+                        format!("bae has no medium with the carrier key {key}").into(),
+                    )
                 })
             })
             .transpose()?

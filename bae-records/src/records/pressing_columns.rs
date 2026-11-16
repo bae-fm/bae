@@ -155,9 +155,10 @@ pub fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<Pre
     .map_err(|detail| column_conversion_error(row, column("region").as_str(), detail))
 }
 
-/// The facts the key columns of a record state, for a record read from JSON
-/// instead of a row: the columns [`read_facts_without_media`] reads. The
-/// error names the value no vocabulary names.
+/// Builds a record's facts, except its media, from its key columns' values,
+/// for a record read from JSON instead of a row: the columns
+/// [`read_facts_without_media`] reads. The error names the value no
+/// vocabulary names.
 pub fn facts_without_media_of(
     country: Option<String>,
     region: Option<String>,

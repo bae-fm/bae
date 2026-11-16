@@ -6,9 +6,9 @@
 //! played side by side (a record, a cassette) is on a lettered side, the
 //! letters counting the sides of the release's sided mediums in order; a
 //! track on another medium is on a numbered disc when the release holds more
-//! than one medium, and plain otherwise. [`bae_types::mediums::track_position`]
-//! states the same rule over decoded rows, which the release editor reads
-//! by.
+//! than one medium, and only a number otherwise.
+//! [`bae_types::mediums::track_position`] states the same rule over decoded
+//! rows; the release editor uses it to place a draft's tracks.
 
 use super::query::*;
 use super::read::*;
@@ -83,8 +83,8 @@ pub(super) fn placed_tracks_ctes(release: &str, extra_columns: &str) -> String {
     )
 }
 
-/// The place a `placed` row's columns name: how a track reads on its
-/// release.
+/// The place a `placed` row's columns name: the track's side or disc and its
+/// number on the release.
 pub(super) fn track_position_of(
     kind: &str,
     ordinal: u32,

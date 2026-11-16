@@ -333,12 +333,12 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
                   AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
                       <> json_extract(new.value, '$[1]'))";
 
-/// One statement answers every check: the checks go in as one JSON array,
-/// each matched by plain equality on the index its kind of record has — its
-/// pressing on `idx_release_records_catalog_key`, its album on
-/// `idx_release_records_catalog_album` — and one row comes back for each
-/// check, in check order, holding its albums as a JSON array, those holding
-/// its pressing first, then by age.
+/// One statement answers every check: the caller passes the checks as one
+/// JSON array, and the statement matches each by plain equality on the index
+/// its kind of record has — its pressing on `idx_release_records_catalog_key`,
+/// its album on `idx_release_records_catalog_album`. The statement returns
+/// one row per check, in check order. Each row has the check's albums as a
+/// JSON array: albums that contain the pressing first, then the oldest first.
 pub fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],

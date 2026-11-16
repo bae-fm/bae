@@ -112,9 +112,9 @@ impl Records {
     }
 
     /// The tracks of `track_ids` the library holds, each once, in the order
-    /// their release lists them: by release, then stored position, id. What
-    /// an action on a picked set of tracks acts on, whatever order they were
-    /// picked in; an id the library lacks is left out.
+    /// their release lists them: by release, then stored position, id. An
+    /// action on tracks the person picked uses this order, whatever order the
+    /// person picked them in. The query leaves out an id the library lacks.
     pub async fn track_ids_in_release_order(
         &self,
         track_ids: Vec<String>,

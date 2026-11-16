@@ -40,11 +40,11 @@ async fn a_file_on_no_one_device_names_no_other_device() {
     );
 }
 
-/// The places the statements put tracks in are the rule
-/// [`bae_types::mediums::track_position`] states over decoded rows: a CD of
-/// a release of several mediums is a numbered disc, the sides of records and
-/// cassettes are lettered across the release's sided mediums, and a release
-/// of one medium is plain.
+/// The track statements place each track where
+/// [`bae_types::mediums::track_position`] places it over decoded rows: a CD
+/// among several mediums gets a disc number, a record's or cassette's sides
+/// get letters across the release's sided mediums, and a release of one
+/// medium shows only track numbers.
 #[tokio::test]
 async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     use crate::test_fixtures::library::RecordsFixture;

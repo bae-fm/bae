@@ -10,7 +10,8 @@ use super::release_credits::{credit_rows_column, release_credits_json_sql};
 use super::release_tracks::{total_duration_sql, track_groups_column, track_groups_json_sql};
 use super::*;
 
-/// What a track's stars are when no one's are asked for: none.
+/// The stars expression to pass when the caller wants no person's stars:
+/// NULL.
 pub const NO_STARS: &str = "NULL";
 
 /// The releases a read of their detail covers.
@@ -54,13 +55,13 @@ pub fn release_detail_rows_on<X>(
         .next())
 }
 
-/// The rows of the detail of each release of `set`, in one statement: each
-/// release a row whose columns hold its tracks in groups (each with the stars
-/// `my_stars` gives it, an SQL expression over the track `track`, or
+/// The rows of the detail of each release of `set`, in one statement. Each
+/// release is one row whose columns hold its tracks in groups (each with the
+/// stars `my_stars` gives it, an SQL expression over the track `track`, or
 /// [`NO_STARS`]), its credits, its files, records and the other device its
-/// audio is on, and whether it is pinned, stored, or queued to upload. Beside
-/// each, `extra_columns`, further columns of the release `rel` that `extra`
-/// reads.
+/// audio is on, and whether it is pinned, stored, or queued to upload. Each
+/// row also holds `extra_columns`, further columns of the release `rel`,
+/// which `extra` reads.
 pub fn release_details_on<X>(
     sql: &impl coven::SqlRead,
     set: ReleaseSet<'_>,
@@ -183,9 +184,10 @@ fn performs_works_sql(release: &str) -> String {
 }
 
 /// The release `release` (an SQL expression naming its id)'s files, and among
-/// them the images, the images a cover can be made from, and the files no
-/// track plays from, each in the release's file order, and the files counted
-/// and their sizes added, as one JSON object for [`release_files_column`].
+/// them the images, the images bae can make a cover from, and the files no
+/// track plays from, each in the release's file order, with the number of
+/// files and their total size, as one JSON object for
+/// [`release_files_column`].
 fn release_files_json_sql(release: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()

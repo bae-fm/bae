@@ -201,8 +201,8 @@ pub enum ProfileError {
     Missing,
     #[error("a person's name cannot be empty")]
     EmptyName,
-    /// No profile references the avatar file any more: another avatar
-    /// replaced it, or it was cleared, after the file was named.
+    /// No profile references the avatar file any more: after the caller
+    /// passed the file, another avatar replaced it or the person cleared it.
     #[error("no profile references the avatar file {0} any more")]
     AvatarChanged(coven::FileId),
     #[error("this person already has a profile; rename it to change the name")]

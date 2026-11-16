@@ -61,8 +61,8 @@ macro_rules! release_moves {
     };
 }
 
-/// The name of a release file whose original a pending record of the
-/// release's moves says failed as `$failure`, found by the original's path.
+/// The name of the release file whose original path matches a pending record
+/// of one of the release's moves that says the original failed as `$failure`.
 macro_rules! original_named {
     ($failure:literal) => {
         concat!(

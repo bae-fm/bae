@@ -7,8 +7,9 @@ use bae_store::SchemaFunction;
 /// `bae_release_group_cover`: the Cover Art Archive's front image of the
 /// MusicBrainz release group named by its argument, as the JSON object of the
 /// columns a stored cover holds (`url`, `label`, `source`, `standing`,
-/// `copies`). One definition of where that image lives, for statements that
-/// offer the cover of an album a kept statement joins to a release.
+/// `copies`). Statements that offer the cover of an album a kept statement
+/// links to a release call this function, so bae builds the Cover Art Archive
+/// address in one place.
 pub(crate) static RELEASE_GROUP_COVER: SchemaFunction = SchemaFunction {
     name: "bae_release_group_cover",
     arguments: 1,

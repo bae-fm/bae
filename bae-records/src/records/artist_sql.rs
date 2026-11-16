@@ -1,13 +1,14 @@
-//! The SQL functions that state an artist credit's name and catalog identity
-//! the way writes decide them, for reads that apply the same rule in SQL.
+//! SQL functions that compute an artist credit's name key and catalog id with
+//! the rules the write code uses, for reads that apply the same rule in SQL.
 
 use rusqlite::types::Value;
 
 use bae_store::SchemaFunction;
 
-/// `bae_artist_name_key(name)`: the folded name an artist is found by
-/// (`bae_types::text_match::artist_name_key`); NULL stays NULL. Part of the
-/// schema once an index or trigger uses it: what it folds must not change.
+/// `bae_artist_name_key(name)`: the folded name that lookups match an artist
+/// on (`bae_types::text_match::artist_name_key`); NULL stays NULL. Once an
+/// index or trigger uses this function, it is part of the schema: what it
+/// folds must not change.
 pub(crate) static ARTIST_NAME_KEY: SchemaFunction = SchemaFunction {
     name: "bae_artist_name_key",
     arguments: 1,
@@ -20,9 +21,9 @@ pub(crate) static ARTIST_NAME_KEY: SchemaFunction = SchemaFunction {
     },
 };
 
-/// `bae_artist_identity(musicbrainz_id, discogs_id)`: the id the artist a
-/// catalog names takes (`crate::identity::artist_id`), preferring MusicBrainz;
-/// NULL when neither id is given.
+/// `bae_artist_identity(musicbrainz_id, discogs_id)`: the bae artist id
+/// derived from the MusicBrainz id, else from the Discogs id
+/// (`crate::identity::artist_id`); NULL when neither id is given.
 pub(crate) static ARTIST_IDENTITY: SchemaFunction = SchemaFunction {
     name: "bae_artist_identity",
     arguments: 2,

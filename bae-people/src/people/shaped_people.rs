@@ -1,8 +1,10 @@
-//! The people of a library with the shape of a real one, and what they made
-//! of its albums: three profiles, each rating a tenth of the albums, and 200
-//! playlists of the first member, of 10 to 500 entries, and a last one of
-//! 10,000. Set-based, as the bulk fixtures of the lists are; every playlist
-//! entry names the first track of an album the library holds.
+//! This module fills a library sized like a real one with three people,
+//! their ratings and their playlists: three profiles, each rating a tenth of
+//! the albums, and 200 playlists of the first member, of 10 to 500 entries,
+//! and a last one of 10,000. `insert_on` writes each person's ratings and
+//! each playlist's entries with one SQL statement, as the lists' bulk
+//! fixtures do; every playlist entry names the first track of an album the
+//! library holds.
 
 use coven::CovenWrite;
 
@@ -21,8 +23,8 @@ pub fn playlist_id(n: u64) -> String {
     format!("00000000-0004-4000-8000-{n:012x}")
 }
 
-/// The profiles, and the ratings of albums `start..end` and, when `start`
-/// is 0, the playlists. `first_track_id_sql` names album `i`'s first
+/// Inserts the ratings of albums `start..end`, and when `start` is 0 also the
+/// profiles and the playlists. `first_track_id_sql` names album `i`'s first
 /// track as an SQL expression over `i`, `album_id_sql` the album.
 pub fn insert_on(
     sql: &CovenWrite<'_>,

@@ -7,8 +7,8 @@ async fn count(db: &bae_store::Store, sql: &'static str) -> i64 {
         .unwrap()
 }
 
-/// 2,000 albums hold the shape the module describes: its box sets, its
-/// compilations, its works and its merges.
+/// insert_on writes 2,000 albums with the box sets, compilations, works and
+/// merges the module describes.
 #[tokio::test]
 async fn two_thousand_albums_have_the_shape() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -17,7 +17,7 @@ async fn two_thousand_albums_have_the_shape() {
     assert_eq!(row_count(&db, "albums").await, 2_000);
     let (releases, tracks) = (row_count(&db, "releases").await, row_count(&db, "tracks").await);
     assert!((2_200..=2_450).contains(&releases), "{releases} releases");
-    // 12 tracks a release, 40 box sets of 120 tracks and 4 of 600.
+    // Each release has 12 tracks, 40 box sets have 120 and 4 have 600.
     assert!((30_000..=38_000).contains(&tracks), "{tracks} tracks");
     assert_eq!(
         count(&db, "SELECT COUNT(*) FROM releases WHERE id IN (SELECT release_id FROM tracks GROUP BY release_id HAVING COUNT(*) = 600)").await,

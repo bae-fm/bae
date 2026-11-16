@@ -89,8 +89,8 @@ fn mix(i: u64, salt: u64) -> u64 {
     x ^ (x >> 31)
 }
 
-/// A draw from `0..pool` that favours the low numbers: the more, the higher
-/// `skew`.
+/// A draw from `0..pool` that favours the low numbers: the higher `skew` is,
+/// the more often it picks a low number.
 fn skewed(key: u64, salt: u64, pool: u64, skew: i32) -> u64 {
     let unit = (mix(key, salt) >> 11) as f64 / (1u64 << 53) as f64;
     ((pool as f64 * unit.powi(skew)) as u64).min(pool - 1)
@@ -411,8 +411,8 @@ fn insert_chunk(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Identi
 }
 
 /// A file of the shaped library: the row, how large its original is, and
-/// whether it is put in the cloud (its upload queued) or kept on this device
-/// only.
+/// whether the seed places it in the cloud, with its upload queued, or keeps
+/// it on this device only.
 pub struct ShapedFile {
     pub file: crate::NewReleaseFile,
     pub size: u64,
@@ -427,8 +427,8 @@ pub fn has_file_per_track(i: u64) -> bool {
 }
 
 /// The files of albums `start..end`: for each release its audio, a cover
-/// image and a document. One release in twenty is put in the cloud, its
-/// uploads queued; the others stay on this device only.
+/// image and a document. The seed places one release in twenty in the cloud
+/// and queues its uploads; the others stay on this device only.
 pub fn files_of(start: u64, end: u64) -> Vec<ShapedFile> {
     use crate::{NewReleaseFile, ReleaseFileRole};
     use bae_util::content_type::ContentType;
