@@ -114,8 +114,6 @@ final class SeekBarNSView: NSView {
         elapsedField.translatesAutoresizingMaskIntoConstraints = false
 
         slider = SeekSlider()
-        slider.minValue = 0
-        slider.maxValue = 1
         slider.isContinuous = true
         slider.setAccessibilityLabel(String(localized: "Position"))
         slider.translatesAutoresizingMaskIntoConstraints = false

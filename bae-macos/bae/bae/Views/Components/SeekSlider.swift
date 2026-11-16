@@ -3,7 +3,9 @@ import BaeKit
 
 /// NSSlider subclass that reports drag start/end and jumps to the clicked
 /// position. `mouseDown` blocks until the user releases, so `isDragging` is
-/// accurate. Used by `SeekBarNSView`.
+/// accurate. Used by `SeekBarNSView`. Its value is the fill core sends, from
+/// 0 to 1, or where the person drags it to, so the cell draws the value as
+/// it is.
 class SeekSlider: NSSlider {
     var accent: NSColor = .controlAccentColor {
         didSet { needsDisplay = true }
@@ -25,6 +27,17 @@ class SeekSlider: NSSlider {
         set {}
     }
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        minValue = 0
+        maxValue = 1
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
+
     override func mouseDown(with event: NSEvent) {
         // Disabled while the track's length is unknown: there is no position for
         // a click to seek to.
@@ -40,9 +53,9 @@ class SeekSlider: NSSlider {
             if !knobRect.contains(point) {
                 let barRect = cell.barRect(flipped: isFlipped)
                 if barRect.width > 0 {
+                    // A click past either end of the bar seeks to that end.
                     let ratio = Double((point.x - barRect.minX) / barRect.width)
-                    let value = ratio * (maxValue - minValue) + minValue
-                    doubleValue = max(minValue, min(maxValue, value))
+                    doubleValue = max(0, min(1, ratio))
                 }
             }
         }
@@ -73,9 +86,6 @@ final class SlimSeekSliderCell: NSSliderCell {
         bar.origin.y = rect.midY - trackHeight / 2
         bar.size.height = trackHeight
 
-        let span = maxValue - minValue
-        let fraction =
-            span > 0 ? min(max((doubleValue - minValue) / span, 0), 1) : 0
         guard let slider = controlView as? SeekSlider else {
             preconditionFailure("SlimSeekSliderCell belongs to SeekSlider")
         }
@@ -89,7 +99,7 @@ final class SlimSeekSliderCell: NSSliderCell {
         )
         ProgressTrackDrawing.drawFill(
             in: bar,
-            fraction: fraction,
+            fraction: doubleValue,
             accent: slider.accent
         )
     }

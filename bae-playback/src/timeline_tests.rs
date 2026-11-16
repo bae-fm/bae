@@ -44,6 +44,16 @@ fn progress_starts_after_pregap() {
     assert_eq!(t.progress(at(12_000)), 1.0);
 }
 
+/// Decoded audio can run past the declared end. The track's time holds at
+/// its length there, so the fill holds at 1.0 and never passes it: the views
+/// draw the fill as core sends it.
+#[test]
+fn progress_holds_at_one_past_the_declared_end() {
+    let t = timeline(10_000, 2000);
+    assert_eq!(t.progress(at(12_001)), 1.0);
+    assert_eq!(t.progress(at(40_000)), 1.0);
+}
+
 #[test]
 fn progress_zero_duration() {
     assert_eq!(timeline(0, 0).progress(at(0)), 0.0);

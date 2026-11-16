@@ -125,15 +125,19 @@ impl TrackTimeline {
         StreamPosition::from_millis(u64::try_from(ms.max(0)).unwrap_or(u64::MAX))
     }
 
-    /// The seek bar's fill (0.0–1.0) at `position`: zero through the pregap,
-    /// one at the track's end. Zero throughout when the length is unknown or
-    /// zero, since there is no end to fill toward.
+    /// The seek bar's fill, from 0 to 1, at `position`: zero through the
+    /// pregap, one at the track's end and past it, where the track's time
+    /// holds at its length. Zero throughout when the length is unknown or
+    /// zero, since there is no end to fill toward. The views draw the fill as
+    /// it comes, so a fill outside 0 to 1 is a bug here.
     pub fn progress(self, position: StreamPosition) -> f64 {
         let Some(duration_ms) = self.duration_ms().filter(|ms| *ms > 0) else {
             return 0.0;
         };
         let time = self.track_time(position).as_millis();
-        (time.max(0) as f64 / duration_ms as f64).clamp(0.0, 1.0)
+        let fill = time.max(0) as f64 / duration_ms as f64;
+        debug_assert!((0.0..=1.0).contains(&fill), "the seek bar's fill {fill} is outside 0 to 1");
+        fill
     }
 
     /// The stream position a seek bar fill points at — the inverse of

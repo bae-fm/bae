@@ -41,15 +41,15 @@ enum ProgressTrackDrawing {
     }
 
     /// An accent fill to `fraction` of the track, never narrower than its
-    /// height; none at zero.
+    /// height; none at zero. The fill draws `fraction` as it comes, with no
+    /// clamping: a fraction outside 0 to 1 is a bug in the code that made it.
     static func drawFill(in bar: NSRect, fraction: Double, accent: NSColor) {
         let radius = bar.height / 2
-        let clamped = CGFloat(min(max(fraction, 0), 1))
-        guard clamped > 0 else {
+        guard fraction > 0 else {
             return
         }
         var fill = bar
-        fill.size.width = max(bar.width * clamped, bar.height)
+        fill.size.width = max(bar.width * CGFloat(fraction), bar.height)
         let fillPath = NSBezierPath(
             roundedRect: fill,
             xRadius: radius,

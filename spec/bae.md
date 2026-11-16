@@ -5711,14 +5711,16 @@ that it started at a seek; playback wrote each line before that one before it
 applied the seek. A paused load, such as a restore, starts no line at a seek.
 The queue is a live subscription of its own. The playing track's position
 reaches an app only in a `KeyedValueStream` (§10.2), under the track's id: the
-track-relative position, how far through the track's length it is, and the
-length. While the track plays here, playback sends a new position each time
+track-relative position, how far through the track's length it is as a
+fraction from 0 to 1, and the length. Past the stored length the fraction
+stays at 1, since the position holds at the length there. While the track plays here, playback sends a new position each time
 the output has played 8 ms of audio, one display frame at 120 Hz, and at most
 one for each buffer the output takes from playback. While it plays on a
 receiver, playback works out where the receiver has reached from its last
 status every 8 ms. While playback is paused or loading, it sends the position
 once. The native view draws the latest position each display frame, with no
-arithmetic of its own. A preview's position reaches an app the same way, in a
+arithmetic of its own, and draws the fraction as it comes, with no clamping.
+A preview's position reaches an app the same way, in a
 `KeyedValueStream` too. So do the parts of the playing track its buffer holds (§7.6), as
 fractions of its length under its id. When playback accepts a seek the person
 made, it reports the target as the track's or the preview's position before it
