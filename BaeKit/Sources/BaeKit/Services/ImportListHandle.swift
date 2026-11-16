@@ -17,24 +17,24 @@ import Foundation
     }
 
     extension BridgeListRows {
-        /// The items of an import list's window; none for any other list's.
+        /// The items of an import list's window.
         fileprivate var importItems: [BridgeImportListItem] {
-            if case .import(let items, _) = self {
-                items
+            guard case .import(let items, _) = self else {
+                preconditionFailure(
+                    "the import list delivered rows of another list"
+                )
             }
-            else {
-                []
-            }
+            return items
         }
 
         /// The header of the group an import list's window starts inside.
         fileprivate var importLeadingHeader: BridgeImportListItem? {
-            if case .import(_, let header) = self {
-                header
+            guard case .import(_, let header) = self else {
+                preconditionFailure(
+                    "the import list delivered rows of another list"
+                )
             }
-            else {
-                nil
-            }
+            return header
         }
     }
 
