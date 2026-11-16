@@ -41,12 +41,13 @@ pub struct DbReleaseDetail {
     pub release_number: i64,
 }
 
-/// A track as the release editor reads its audio: the track, how many audio
-/// formats it stores, and its formats' segments in segment order, each with
-/// the file it names.
+/// A track as the release editor reads its audio: the track, its place on the
+/// release, how many audio formats it stores, and its formats' segments in
+/// segment order, each with the file it names.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditTrack {
     pub track: DbTrack,
+    pub position: bae_types::mediums::TrackPosition,
     pub audio_format_count: i64,
     pub segments: Vec<DbReleaseEditSegment>,
 }

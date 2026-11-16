@@ -174,8 +174,6 @@ pub enum ReleaseEditLoadError {
     MissingMainSegment { track_id: String },
     #[error("track '{track_id}' has more than one stored main audio segment")]
     MultipleMainSegments { track_id: String },
-    #[error("track '{track_id}' is in none of the release's track groups")]
-    MissingTrackPlace { track_id: String },
     #[error("track '{track_id}' references missing source file '{file_id}'")]
     MissingSourceFile { track_id: String, file_id: String },
     #[error("track '{track_id}' source file '{file_id}' has no stored audio layout")]
@@ -218,23 +216,13 @@ impl ReleaseEditDisplayContext {
                 file_id: main.file_id.clone(),
             })?;
             let source = ReleaseEditTrackSource { file_id: main.file_id, name: file.name, layout };
-            let (side, position) = raw
-                .track_groups
-                .iter()
-                .find_map(|group| {
-                    let track = group.tracks.iter().find(|track| track.id == track_id)?;
-                    Some((group.side.clone(), track.position.text()))
-                })
-                .ok_or_else(|| ReleaseEditLoadError::MissingTrackPlace {
-                    track_id: track_id.clone(),
-                })?;
             contexts.push((
-                side,
+                entry.position.side(),
                 ReleaseEditTrackContext {
                     track_id,
                     source,
                     duration_ms: entry.track.duration_ms,
-                    position_text: position,
+                    position_text: entry.position.text(),
                 },
             ));
         }

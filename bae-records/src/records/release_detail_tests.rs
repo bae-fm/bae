@@ -58,7 +58,7 @@ fn a_read_names_the_device_coven_registers_under_its_id() {
     });
 }
 
-/// The track statements place each track where
+/// The track statements, the release editor's among them, place each track where
 /// [`bae_types::mediums::track_position`] places it over decoded rows: a CD
 /// among several mediums gets a disc number, a record's or cassette's sides
 /// get letters across the release's sided mediums, and a release of one
@@ -168,6 +168,16 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     let sides: Vec<_> = places.iter().map(|place| place.on.clone()).collect();
     let expected_sides: Vec<_> = expected.iter().map(|(_, position)| position.side()).collect();
     assert_eq!(sides, expected_sides);
+    #[cfg(desktop)]
+    {
+        let edited = db
+            .read(move |sql| super::release::release_edit_tracks_on(&sql, release))
+            .await
+            .unwrap();
+        let edited: Vec<_> =
+            edited.into_iter().map(|track| (track.track.id, track.position)).collect();
+        assert_eq!(edited, expected);
+    }
 }
 
 /// Reads `release`'s detail from `store` and returns the other device it

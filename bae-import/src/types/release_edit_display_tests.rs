@@ -150,7 +150,15 @@ fn one_track(
         cover_version: None,
         release_number: 1,
     };
-    (raw, vec![bae_records::DbReleaseEditTrack { track, audio_format_count: 1, segments }])
+    (
+        raw,
+        vec![bae_records::DbReleaseEditTrack {
+            track,
+            position: TrackPosition::Flat { number: 1 },
+            audio_format_count: 1,
+            segments,
+        }],
+    )
 }
 
 /// A segment of `role` over the stored file `file_id`.
