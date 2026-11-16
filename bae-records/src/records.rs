@@ -43,6 +43,8 @@ mod album;
 pub use album::PrimaryReleaseError;
 mod artist_sql;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_NAME_KEY};
+mod album_identity;
+pub(crate) use album_identity::ALBUM_IDENTITY;
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
 mod artist;
@@ -170,10 +172,11 @@ pub const SCHEMA: bae_store::SchemaPart =
         .collations(SQL_COLLATIONS)
         .synced(crate::synced::synced_tables, crate::synced::namespaces);
 
-/// The SQL functions `records.sql` names, and the artist functions that other
-/// crates' queries call.
+/// The SQL functions `records.sql` names, the artist functions that other
+/// crates' queries call, and the album id the statement naming a release's
+/// album uses.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] =
-    &[&CATALOG_RANK, &ARTIST_NAME_KEY, &ARTIST_IDENTITY];
+    &[&ALBUM_IDENTITY, &CATALOG_RANK, &ARTIST_NAME_KEY, &ARTIST_IDENTITY];
 
 /// The collations `records.sql` names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];

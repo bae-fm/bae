@@ -57,7 +57,13 @@ pub fn album_id_for_records(records: &[ReleaseRecord]) -> Option<String> {
     [Catalog::MusicBrainz, Catalog::Discogs]
         .into_iter()
         .find_map(|catalog| groups.iter().find(|group| group.catalog == catalog))
-        .map(|group| id_for(&format!("{} album {}", group.catalog.as_str(), group.key)))
+        .map(|group| album_id(group.catalog, &group.key))
+}
+
+/// The album of the group `key` names in `catalog`, its release group or
+/// master.
+pub fn album_id(catalog: Catalog, key: &str) -> String {
+    id_for(&format!("{} album {key}", catalog.as_str()))
 }
 
 /// A release's record in one catalog.

@@ -95,7 +95,6 @@ mod standing_rows;
 mod verdict_layout;
 mod verdict_rows;
 
-pub(super) use album_pick_rows::load_album_pick_on;
 pub(super) use candidate_rows::CandidateRows;
 pub(super) use cards_read::load_verdict_cards_on;
 pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};

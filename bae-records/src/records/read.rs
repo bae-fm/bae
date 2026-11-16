@@ -121,6 +121,12 @@ pub(super) struct CreditJson {
     join: Option<String>,
 }
 
+/// The line the credits a JSON column of
+/// [`super::query::album_credits_json_sql`] holds print.
+pub fn credit_line_of_json(json: &str) -> Result<bae_types::credits::CreditLine, DbError> {
+    Ok(crate::credits::library_line(&credits_from_json(json)?))
+}
+
 /// The credits a JSON column of [`super::query::album_credits_json_sql`] or
 /// [`super::query::track_credits_json_sql`] holds, in list order.
 pub(super) fn credits_from_json(json: &str) -> Result<Vec<LibraryCredit>, DbError> {

@@ -249,68 +249,101 @@ pub(super) fn set_records_on(
 }
 
 /// The library album `records` file a release under, leaving out the
-/// releases `excluding`. The applied record — the list's first — decides,
-/// then each other record in order: the first that names an album
-/// the library holds names it, by a copy of its pressing, else by its album
-/// (MusicBrainz release group, Discogs master). Library albums are the
-/// curator's: two albums the records name stay two, and the applied record's
-/// wins over a partner's. Where one record names several, its group's own
-/// album is it if the library holds it, else the oldest.
+/// releases `excluding`, as [`album_records_name_sql`] names it.
 pub fn album_records_name_on(
     sql: &impl coven::SqlRead,
     records: &[bae_catalogs::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
+    use bae_catalogs::records::ReleaseRecord;
+    let records = serde_json::Value::from(
+        records
+            .iter()
+            .map(|record| match record {
+                ReleaseRecord::Pressing { release, album_key } => {
+                    serde_json::json!([
+                        release.catalog.as_str(),
+                        "pressing",
+                        release.key,
+                        album_key
+                    ])
+                }
+                ReleaseRecord::Album { album } => {
+                    serde_json::json!([album.catalog.as_str(), "album", album.key, null])
+                }
+            })
+            .collect::<Vec<_>>(),
+    )
+    .to_string();
     let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
-    for record in records {
-        let pressing = record.release_ref();
-        let album = record.album_ref();
-        let own = crate::identity::album_id_for_records(std::slice::from_ref(record));
-        let named: Option<String> = sql
-            .query_row(
-                ALBUM_NAMED_BY_RECORD,
-                rusqlite::named_params! {
-                    ":pressing_catalog": pressing.as_ref().map(|r| r.catalog.as_str()),
-                    ":pressing_key": pressing.as_ref().map(|r| r.key.as_str()),
-                    ":album_catalog": album.as_ref().map(|r| r.catalog.as_str()),
-                    ":album_key": album.as_ref().map(|r| r.key.as_str()),
-                    ":own": own,
-                    ":excluding": excluding,
-                },
-                |row| row.get(0),
-            )
-            .optional()?;
-        if named.is_some() {
-            return Ok(named);
-        }
-    }
-    Ok(None)
+    Ok(sql
+        .query_row(
+            &album_records_name_sql(
+                "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
+                 FROM json_each(:records)",
+                ":excluding",
+            ),
+            rusqlite::named_params! { ":records": records, ":excluding": excluding },
+            |row| row.get(0),
+        )
+        .optional()?)
 }
 
-/// The album one record names in the library, as [`album_records_name_on`]
-/// reads it: an album holding a copy of the record's pressing (a pressing
-/// record naming the same release, on `idx_release_records_catalog_key`)
-/// when one does, else one holding another release of its album (a record
-/// naming the same release group or master, on
-/// `idx_release_records_catalog_album`), records of `:excluding` releases
-/// aside; among those, the record's own group album first, then the oldest
-/// (ties by id), so the answer is one album.
-const ALBUM_NAMED_BY_RECORD: &str = "SELECT a.id FROM ( \
-         SELECT r.album_id, 0 AS match_rank FROM release_records rr \
-         JOIN releases r ON r.id = rr.release_id \
-         WHERE rr.catalog = :pressing_catalog AND rr.kind = 'pressing' \
-           AND rr.key = :pressing_key \
-           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
-         UNION ALL \
-         SELECT r.album_id, 1 AS match_rank FROM release_records rr \
-         JOIN releases r ON r.id = rr.release_id \
-         WHERE rr.catalog = :album_catalog \
-           AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) = :album_key \
-           AND rr.release_id NOT IN (SELECT value FROM json_each(:excluding)) \
-     ) AS named \
-     JOIN albums a ON a.id = named.album_id \
-     ORDER BY named.match_rank, a.id IS :own DESC, a.created_at, a.id \
-     LIMIT 1";
+/// The statement naming the library album the records `records` selects file
+/// a release under, as one row holding the album's id, or no row for none.
+/// `records` selects each record as `(position, catalog, kind, key,
+/// album_key)`: `kind` 'pressing' or 'album', `key` the pressing's or the
+/// album's, and `album_key` the album a pressing record files it under, NULL
+/// for none. `excluding` is an SQL expression for a JSON array of the
+/// releases whose records count for nothing.
+///
+/// The applied record — the first, at the lowest `position` — decides, then
+/// each other record in order: the first that names an album the library
+/// holds names it, by a copy of its pressing (a pressing record naming the
+/// same release, on `idx_release_records_catalog_key`), else by its album (a
+/// record naming the same release group or master, on
+/// `idx_release_records_catalog_album`). Library albums are the curator's:
+/// two albums the records name stay two, and the applied record's wins over a
+/// partner's. Where one record names several, its group's own album
+/// ([`crate::identity::album_id`]) is it if the library holds it, else the
+/// oldest (ties by id), so the answer is one album.
+pub fn album_records_name_sql(records: &str, excluding: &str) -> String {
+    format!(
+        "WITH named_records (position, catalog, kind, key, album_key) AS ({records}), \
+         refs AS ( \
+             SELECT position, \
+                    CASE WHEN kind = 'pressing' THEN catalog END AS pressing_catalog, \
+                    CASE WHEN kind = 'pressing' THEN key END AS pressing_key, \
+                    CASE WHEN kind = 'album' OR album_key IS NOT NULL THEN catalog END \
+                        AS album_catalog, \
+                    CASE WHEN kind = 'album' THEN key ELSE album_key END AS album_key \
+             FROM named_records), \
+         owned AS ( \
+             SELECT *, \
+                    CASE WHEN album_catalog IN ('musicbrainz', 'discogs') \
+                         THEN bae_album_id(album_catalog, album_key) END AS own \
+             FROM refs) \
+         SELECT a.id FROM ( \
+             SELECT o.position, o.own, r.album_id, 0 AS match_rank FROM owned AS o \
+             JOIN release_records rr \
+                 ON rr.catalog = o.pressing_catalog AND rr.kind = 'pressing' \
+                AND rr.key = o.pressing_key \
+             JOIN releases r ON r.id = rr.release_id \
+             WHERE rr.release_id NOT IN (SELECT value FROM json_each({excluding})) \
+             UNION ALL \
+             SELECT o.position, o.own, r.album_id, 1 AS match_rank FROM owned AS o \
+             JOIN release_records rr \
+                 ON rr.catalog = o.album_catalog \
+                AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
+                    = o.album_key \
+             JOIN releases r ON r.id = rr.release_id \
+             WHERE rr.release_id NOT IN (SELECT value FROM json_each({excluding})) \
+         ) AS named \
+         JOIN albums a ON a.id = named.album_id \
+         ORDER BY named.position, named.match_rank, a.id IS named.own DESC, a.created_at, a.id \
+         LIMIT 1"
+    )
+}
 
 /// Where an album stands beside one of its releases, as
 /// [`Records::album_beside_release`] reads it.

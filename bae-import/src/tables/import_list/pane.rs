@@ -11,16 +11,14 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::stored_cover_choice;
 use crate::tables::import_state::{
-    load_album_pick_on, load_current_state_on, load_pane_rows_on, load_standing_on,
-    load_verdict_cards_on,
+    load_current_state_on, load_pane_rows_on, load_standing_on, load_verdict_cards_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{claimed_records_on, offered_covers_on};
+use crate::tables::source_releases::{claimed_records_on, claimed_records_sql, offered_covers_on};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
-use bae_records::records::read::album_credit_line_on;
 use bae_records::records::release_records::{
-    album_records_name_on, library_status_of, library_status_sql,
+    album_records_name_sql, library_status_of, library_status_sql,
 };
 
 #[derive(Clone, PartialEq)]
@@ -163,7 +161,7 @@ fn draft_rows_on(
         None => Vec::new(),
     };
     let picked_library_status = picked_library_status_on(sql, &candidate.key())?;
-    let album = candidate_album_on(sql, content_hash, &records)?;
+    let album = candidate_album_on(sql, &candidate.key())?;
     let cover = pane_rows
         .cover
         .as_ref()
@@ -183,35 +181,66 @@ fn draft_rows_on(
     })
 }
 
-/// The album an import of the candidate `content_hash`, linked to what
-/// `records` describe, files under: the one picked, else the one its records
-/// name, else a new one.
+/// The content hash of the candidate a statement binds as `:key`.
+const CANDIDATE_HASH: &str =
+    "(SELECT scan.content_hash FROM scan_candidate AS scan WHERE scan.path = :key)";
+
+/// The album an import of the candidate `key` files under, read in one
+/// statement: the one picked, else the one its link's records name, else a
+/// new one.
 fn candidate_album_on(
     sql: &SqlReadContext<'_>,
-    content_hash: &str,
-    records: &[bae_catalogs::records::ReleaseRecord],
+    key: &crate::CandidateKey,
 ) -> Result<crate::DraftAlbum, DbError> {
-    use crate::{AlbumPick, DraftAlbum};
-    let title = |album_id: &str| -> Result<String, DbError> {
-        sql.query_row("SELECT title FROM albums WHERE id = ?", params![album_id], |row| row.get(0))
-            .map_err(DbError::from)
+    use crate::DraftAlbum;
+    let named = album_records_name_sql(
+        &format!(
+            "SELECT key, value ->> 'catalog', value ->> 'kind', value ->> 'key', \
+                    value ->> 'album' \
+             FROM json_each(({claimed}))",
+            claimed = claimed_records_sql(CANDIDATE_HASH),
+        ),
+        "'[]'",
+    );
+    let (kind, album_id, title, credits): (String, Option<String>, Option<String>, String) = sql
+        .query_row(
+            &format!(
+                "WITH pick AS (SELECT album_id FROM import_candidate_album_pick \
+                               WHERE content_hash = {CANDIDATE_HASH}), \
+                 choice (kind, album_id) AS ( \
+                     SELECT CASE WHEN album_id IS NULL THEN 'picked_new' ELSE 'picked' END, \
+                            album_id \
+                     FROM pick \
+                     UNION ALL \
+                     SELECT 'named', named.id FROM ({named}) AS named \
+                     WHERE NOT EXISTS (SELECT 1 FROM pick)) \
+                 SELECT COALESCE(choice.kind, 'new'), a.id, a.title, {credits} \
+                 FROM (SELECT 1) LEFT JOIN choice LEFT JOIN albums AS a ON a.id = choice.album_id",
+                credits = bae_records::records::query::album_credits_json_sql(),
+            ),
+            named_params! { ":key": key },
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )?;
+    let album = |kind: &str| -> Result<(String, String, bae_types::credits::CreditLine), DbError> {
+        match (album_id.clone(), title.clone()) {
+            (Some(album_id), Some(title)) => {
+                Ok((album_id, title, bae_records::records::read::credit_line_of_json(&credits)?))
+            }
+            _ => Err(DbError::unreadable(format!("the {kind} album of {key}"), None::<String>)),
+        }
     };
-    let artist_line = |album_id: &str| album_credit_line_on(sql, album_id);
-    Ok(match load_album_pick_on(sql, content_hash)? {
-        AlbumPick::Album { album_id } => DraftAlbum::Picked {
-            title: title(&album_id)?,
-            artist_line: artist_line(&album_id)?,
-            album_id,
-        },
-        AlbumPick::New => DraftAlbum::PickedNew,
-        AlbumPick::Records => match album_records_name_on(sql, records, &[])? {
-            Some(album_id) => DraftAlbum::Named {
-                title: title(&album_id)?,
-                artist_line: artist_line(&album_id)?,
-                album_id,
-            },
-            None => DraftAlbum::New,
-        },
+    Ok(match kind.as_str() {
+        "new" => DraftAlbum::New,
+        "picked_new" => DraftAlbum::PickedNew,
+        "named" => {
+            let (album_id, title, artist_line) = album("named")?;
+            DraftAlbum::Named { album_id, title, artist_line }
+        }
+        "picked" => {
+            let (album_id, title, artist_line) = album("picked")?;
+            DraftAlbum::Picked { album_id, title, artist_line }
+        }
+        other => return Err(DbError::unreadable("the kind of a candidate's album", other)),
     })
 }
 
