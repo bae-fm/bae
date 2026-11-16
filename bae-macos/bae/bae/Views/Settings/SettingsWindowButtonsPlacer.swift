@@ -1,5 +1,8 @@
 import AppKit
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("SettingsWindowButtonsPlacer")
 
 extension View {
     /// Moves the window's close, minimise and zoom buttons to where the boards
@@ -27,6 +30,16 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
         private static let inset = CGPoint(x: 20, y: 20)
 
         private var updates: NSObjectProtocol?
+        private var reportedMissing = false
+
+        private static func name(of kind: NSWindow.ButtonType) -> String {
+            switch kind {
+            case .closeButton: "close"
+            case .miniaturizeButton: "minimise"
+            case .zoomButton: "zoom"
+            default: "button \(kind.rawValue)"
+            }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -59,8 +72,26 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
             let kinds: [NSWindow.ButtonType] = [
                 .closeButton, .miniaturizeButton, .zoomButton,
             ]
-            let buttons = kinds.compactMap { window.standardWindowButton($0) }
-            guard let first = buttons.first, let bar = first.superview else {
+            let found = kinds.map { ($0, window.standardWindowButton($0)) }
+            let buttons = found.compactMap(\.1)
+            guard buttons.count == kinds.count, let first = buttons.first,
+                let bar = first.superview
+            else {
+                // The window updates many times a second; one warning says
+                // it.
+                if !reportedMissing {
+                    reportedMissing = true
+                    let missing = found.filter { $0.1 == nil }
+                        .map { Self.name(of: $0.0) }
+                    logger.warning(
+                        """
+                        Settings window \(window.title, privacy: .public) \
+                        leaves its buttons where they are: missing \
+                        \(missing.joined(separator: ", "), privacy: .public), \
+                        or the buttons are in no view
+                        """
+                    )
+                }
                 return
             }
             let frame = first.convert(first.bounds, to: nil)
