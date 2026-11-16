@@ -209,7 +209,7 @@ fn release_files_json_sql(release: &str) -> String {
           FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
                        coven.size AS size, {file_json} AS file_json \
                 FROM release_files AS f \
-                LEFT JOIN coven_files AS coven ON coven.id = f.file \
+                JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
         files = list("1"),
         images = list("listed.content_type GLOB 'image/*'"),
