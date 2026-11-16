@@ -103,6 +103,7 @@ import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
+import uniffi.bae_bridge.SessionUpNextSubscription
 import uniffi.bae_bridge.StorageQueuesSubscription
 import uniffi.bae_bridge.StorageSelectionSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
@@ -191,6 +192,8 @@ internal open class FakeAppHandle(
     override fun subscribeCastReceivers(): CastReceiversSubscription = FakeCastReceiversSubscription()
 
     override fun subscribeQueue(): QueueSubscription = FakeQueueSubscription()
+
+    override fun subscribeSessionUpNext(limit: UInt): SessionUpNextSubscription = FakeSessionUpNextSubscription()
 
     /** The playback values the handle answers, which a test delivers to. */
     val playbackValues = FakePlaybackValuesSubscription()

@@ -95,6 +95,7 @@ class GetStateCurrentIndexTest {
         player.onQueueValue(
             BridgeQueueSnapshot(manual = manual, context = null, shuffled = false, hasNext = true, hasPrevious = false),
         )
+        player.onSessionUpNext(manual)
         player.applyPlaybackState(
             playingState(
                 trackId = "cur",

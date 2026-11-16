@@ -8,6 +8,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
+import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRequestedProfile
 import uniffi.bae_bridge.DownloadCountsSubscription
@@ -18,6 +19,7 @@ import uniffi.bae_bridge.PeopleSubscription
 import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
+import uniffi.bae_bridge.SessionUpNextSubscription
 import uniffi.bae_bridge.UnmeteredOnlySubscription
 import uniffi.bae_bridge.UploadsPausedSubscription
 
@@ -122,6 +124,17 @@ internal class FakeQueueSubscription : QueueSubscription(NoHandle) {
     private val pulls = PullChannel<BridgeQueueSnapshot>()
 
     override suspend fun next(): BridgeQueueSnapshot = pulls.next()
+
+    override suspend fun cancel() = pulls.cancel()
+
+    override fun close() = pulls.cancel()
+}
+
+/** A session up-next list nothing delivers: each pull waits until cancelled. */
+internal class FakeSessionUpNextSubscription : SessionUpNextSubscription(NoHandle) {
+    private val pulls = PullChannel<List<BridgeQueueEntry>>()
+
+    override suspend fun next(): List<BridgeQueueEntry> = pulls.next()
 
     override suspend fun cancel() = pulls.cancel()
 

@@ -1,7 +1,8 @@
 //! The queue screens' reads of the playback queue tables: the queue value,
-//! with Up Next whole and what the context lane plays from. The
-//! `queue_upcoming` module reads the context lane's upcoming tracks as a
-//! list for the queue screens.
+//! with Up Next whole and what the context lane plays from, and the head of
+//! what plays next as a system media session lists it. The `queue_upcoming`
+//! module reads the context lane's upcoming tracks as a list for the queue
+//! screens.
 
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
@@ -18,6 +19,51 @@ pub fn subscribe_queue_value(
 /// The queue as its screens show it now.
 pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, DbError> {
     store.read(|sql| queue_value_on(&sql)).await
+}
+
+/// Follow the tracks after the playing one as a system media session lists
+/// them: Up Next, then the context lane's upcoming tracks in the order it
+/// reads in, at most `limit` in all, in one statement. Each lane is read from
+/// its start through its order's index, so coven reruns it for a write among
+/// the rows it read.
+pub fn subscribe_session_up_next(
+    store: &Store,
+    limit: u64,
+) -> coven::LiveQuery<Vec<QueueItem>, bae_store::DbError> {
+    store.subscribe(move |sql| session_up_next_on(&sql, limit))
+}
+
+/// The rows of the session's up-next list, at most `?1`: Up Next, then the
+/// lane's rows past its cursor in the order it reads in. Each part takes at
+/// most `?1` rows by walking its position index from where it starts, with
+/// one branch for each of the lane's orders, of which the queue's `shuffled`
+/// gives the other no cursor and so no rows. The parts are joined in order
+/// and cut to `?1`, then numbered for the track join to keep their order.
+pub(super) const SESSION_UP_NEXT_ROWS: &str = "\
+    SELECT entry, lane_track, ROW_NUMBER() OVER (ORDER BY lane, place) AS position \
+    FROM ( \
+        SELECT * FROM ( \
+            SELECT 'm' || entry AS entry, track_id AS lane_track, 0 AS lane, \
+                   position AS place \
+            FROM playback_manual ORDER BY position LIMIT ?1) \
+        UNION ALL \
+        SELECT * FROM ( \
+            SELECT 'c' || entry, track_id, 1, ordered FROM playback_context \
+            WHERE ordered > (SELECT ordered_cursor FROM playback_queue WHERE shuffled = 0) \
+            ORDER BY ordered LIMIT ?1) \
+        UNION ALL \
+        SELECT * FROM ( \
+            SELECT 'c' || entry, track_id, 1, shuffled FROM playback_context \
+            WHERE shuffled > (SELECT shuffled_cursor FROM playback_queue WHERE shuffled = 1) \
+            ORDER BY shuffled LIMIT ?1) \
+        ORDER BY lane, place LIMIT ?1)";
+
+fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueItem>, DbError> {
+    Ok(sql.query(
+        &queue_items_sql(SESSION_UP_NEXT_ROWS),
+        [i64::try_from(limit).unwrap_or(i64::MAX)],
+        queue_item_from_row,
+    )?)
 }
 
 /// The statement that reads the rows `rows` picks — a `SELECT entry,

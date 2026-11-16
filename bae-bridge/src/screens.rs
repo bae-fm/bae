@@ -276,6 +276,17 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// The tracks after the playing one as the system media session lists
+    /// them.
+    SessionUpNextSubscription:
+        LiveValues<Vec<bae_playback::QueueItem>> => Vec<crate::types::BridgeQueueEntry>,
+    converted by |items: Vec<bae_playback::QueueItem>| {
+        items.into_iter().map(crate::types::BridgeQueueEntry::from_core).collect()
+    },
+    built by session_up_next
+}
+
+pulled_read! {
     /// How many downloads are in each phase, and whether the queue is paused.
     DownloadCountsSubscription:
         LiveValues<bae_transfers::ReleaseQueueCounts> => crate::types::BridgeDownloadCounts,

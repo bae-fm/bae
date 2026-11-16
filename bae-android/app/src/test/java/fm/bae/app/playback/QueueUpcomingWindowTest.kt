@@ -26,105 +26,133 @@ import uniffi.bae_bridge.BridgeQueueSnapshot
 @Config(sdk = [35])
 class QueueUpcomingWindowTest {
     @Test
-    fun aContextOpensTheListAndThePlaylistReadsItsHeadWhileTheScreenReadsWhereItHolds() {
+    fun theListOpensOnlyWhileTheScreenShowsItAndReadsWhereItHolds() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 500)
-
-        assertEquals("the playlist's head opens the list once", listOf(false), feed.opened)
-        assertEquals(
-            500,
-            player.queue.value.context
-                ?.upcomingTotal,
-        )
-        assertNotNull(itemAt(player, 0))
-        assertNull("the playlist does not read rows far down", itemAt(player, 300))
+        assertEquals("nothing reads the tail while no screen shows it", emptyList<Boolean>(), feed.opened)
+        assertNull(itemAt(player, 0))
 
         player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(listOf(false), feed.opened)
+            assertEquals(
+                500,
+                player.queue.value.context
+                    ?.upcomingTotal,
+            )
+            assertNotNull(itemAt(player, 0))
+            assertNull("rows far down are not read until held", itemAt(player, 300))
+
             val release = player.upcoming.hold(300)
             shadowOf(Looper.getMainLooper()).idle()
             assertNotNull("the screen reads around the row it holds", itemAt(player, 300))
-            assertEquals("the screen opens the list a second time", listOf(false, false), feed.opened)
             release()
         }
+        assertEquals(
+            "closing the screen closes the list",
+            0,
+            player.queue.value.context
+                ?.upcomingTotal,
+        )
     }
 
     @Test
     fun theListsCountAndRowsAreCoresAtEachDelivery() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 500)
-        assertEquals("e0", itemAt(player, 0))
+        player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("e0", itemAt(player, 0))
 
-        feed.show((0 until 300).map { upcomingEntry("f$it") })
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("f0", itemAt(player, 0))
-        assertEquals(
-            300,
-            player.queue.value.context
-                ?.upcomingTotal,
-        )
-        assertEquals("a change opens no list", listOf(false), feed.opened)
+            feed.show((0 until 300).map { upcomingEntry("f$it") })
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("f0", itemAt(player, 0))
+            assertEquals(
+                300,
+                player.queue.value.context
+                    ?.upcomingTotal,
+            )
+            assertEquals("a change opens no list", listOf(false), feed.opened)
+        }
     }
 
     @Test
     fun aQueueWithNoContextEndsTheListAndEmptiesTheLane() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 5)
+        player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
 
-        player.onQueueValue(
-            BridgeQueueSnapshot(
-                manual = emptyList(),
-                context = null,
-                shuffled = false,
-                hasNext = false,
-                hasPrevious = false,
-            ),
-        )
-        assertNull(player.queue.value.context)
+            player.onQueueValue(
+                BridgeQueueSnapshot(
+                    manual = emptyList(),
+                    context = null,
+                    shuffled = false,
+                    hasNext = false,
+                    hasPrevious = false,
+                ),
+            )
+            assertNull(player.queue.value.context)
 
-        player.onQueueValue(queueValue(shuffled = false))
-        feed.show(listOf(upcomingEntry("n0")))
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("a new context opens the list again", listOf(false, false), feed.opened)
-        assertEquals("n0", itemAt(player, 0))
+            player.onQueueValue(queueValue(shuffled = false))
+            feed.show(listOf(upcomingEntry("n0")))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("a new context opens the list again", listOf(false, false), feed.opened)
+            assertEquals("n0", itemAt(player, 0))
+        }
     }
 
     @Test
     fun aShuffleFlipOpensTheListInTheOtherOrder() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 5)
+        player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
 
-        player.onQueueValue(queueValue(shuffled = true))
-        shadowOf(Looper.getMainLooper()).idle()
+            player.onQueueValue(queueValue(shuffled = true))
+            shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(listOf(false, true), feed.opened)
-        assertTrue(player.queue.value.shuffled)
+            assertEquals(listOf(false, true), feed.opened)
+            assertTrue(player.queue.value.shuffled)
+        }
     }
 
     @Test
     fun aShuffleFlipKeepsTheOldOrdersRowsUntilTheNewOrderAnswers() {
         val feed = UpcomingFeed()
         val player = playing(feed, total = 5)
+        player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
 
-        feed.holdNewReads = true
-        player.onQueueValue(queueValue(shuffled = true))
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf(false, true), feed.opened)
-        assertEquals("the old order's rows stay until the read for the new order returns its rows", "e0", itemAt(player, 0))
-        assertEquals(
-            5,
-            player.queue.value.context
-                ?.upcomingTotal,
-        )
+            feed.holdNewReads = true
+            player.onQueueValue(queueValue(shuffled = true))
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(listOf(false, true), feed.opened)
+            assertEquals(
+                "the old order's rows stay until the read for the new order returns its rows",
+                "e0",
+                itemAt(player, 0),
+            )
+            assertEquals(
+                5,
+                player.queue.value.context
+                    ?.upcomingTotal,
+            )
 
-        feed.show((0 until 3).map { upcomingEntry("s$it") })
-        feed.answerHeld()
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("the new order's rows replace the old ones once its read returns them", "s0", itemAt(player, 0))
-        assertEquals(
-            3,
-            player.queue.value.context
-                ?.upcomingTotal,
-        )
+            feed.show((0 until 3).map { upcomingEntry("s$it") })
+            feed.answerHeld()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(
+                "the new order's rows replace the old ones once its read returns them",
+                "s0",
+                itemAt(player, 0),
+            )
+            assertEquals(
+                3,
+                player.queue.value.context
+                    ?.upcomingTotal,
+            )
+        }
     }
 
     @Test
@@ -145,25 +173,6 @@ class QueueUpcomingWindowTest {
             assertNull(player.upcoming.failure.value)
             assertEquals("Retry opens the list again", opened + 1, feed.opened.size)
         }
-    }
-
-    @Test
-    fun aFailedReadOfThePlaylistsHeadIsShownAndRetryOpensItAgain() {
-        val feed = UpcomingFeed()
-        val player = playing(feed, total = 500)
-        assertNull(player.upcomingFailure.value)
-
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.Database, "database is locked")
-        feed.fail(failure)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertNull("the screen does not read the tail", player.upcoming.failure.value)
-        assertEquals("the head's failure reaches the screen", failure, player.upcomingFailure.value)
-
-        val opened = feed.opened.size
-        player.retryUpcoming()
-        shadowOf(Looper.getMainLooper()).idle()
-        assertNull(player.upcomingFailure.value)
-        assertEquals("Retry opens the head again", opened + 1, feed.opened.size)
     }
 
     /** A player playing a context whose upcoming list shows [total] rows. */

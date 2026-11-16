@@ -60,9 +60,8 @@ class SeekToMediaItemTest {
     }
 
     @Test
-    fun seekingAcrossTheManualAndContextLanesResolvesTheFlatIndex() {
-        val feed = UpcomingFeed()
-        val (player, handle) = player(feed)
+    fun seekingPastUpNextSkipsToTheContextEntry() {
+        val (player, handle) = player()
         playing(
             player,
             manual = listOf(entry("m")),
@@ -72,8 +71,8 @@ class SeekToMediaItemTest {
                     sourceTitle = null,
                 ),
         )
-        // The context's tracks reach the playlist through the upcoming read.
-        feed.show(listOf(entry("c")))
+        // The session's list reads Up Next, then the context's tracks, in one read.
+        player.onSessionUpNext(listOf(entry("m"), entry("c")))
         shadowOf(Looper.getMainLooper()).idle()
 
         // Playlist is [cur, track-m, track-c]; index 2 is the context entry.
@@ -120,10 +119,11 @@ class SeekToMediaItemTest {
                 hasPrevious = false,
             ),
         )
+        player.onSessionUpNext(manual)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    private fun player(feed: UpcomingFeed = UpcomingFeed()): Pair<BaeCorePlayer, SkipRecordingHandle> {
+    private fun player(): Pair<BaeCorePlayer, SkipRecordingHandle> {
         val handle = SkipRecordingHandle()
         val player =
             BaeCorePlayer(
@@ -132,7 +132,6 @@ class SeekToMediaItemTest {
                 system = PlaybackSystem(RuntimeEnvironment.getApplication(), AudioFocus(RuntimeEnvironment.getApplication()), { false }),
                 creditLineText = ::plainCreditText,
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-                queueUpcomingSource = feed.source,
             )
         return player to handle
     }

@@ -4770,9 +4770,14 @@ When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
 with *Details* and *Retry*, which reads them again. Turning shuffle on or off
 opens the list in the other order, and the new list shows no failure of the old
-one. On Android, when bae cannot read the first tracks of the system's playlist
-(the notification, the lock screen and Android Auto), the queue shows that
-failure under its rows too, and *Retry* reads them again as well.
+one.
+
+On Android, the system's playlist (the notification, the lock screen and
+Android Auto) is the current track, then one live query's rows: Up Next, then
+the tracks after the current one in the order what's playing from reads in, at
+most 100 in all, each part read from its start through its order. When that
+read fails, the queue screen shows its error in place of the rows until the
+read answers again.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
 one reorder, however many rows the held row passed. While it is held, the Mac

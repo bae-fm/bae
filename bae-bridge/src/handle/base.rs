@@ -19,6 +19,19 @@ impl AppHandle {
         crate::screens::queue(self.services.subscribe_queue_values(), self.runtime.clone())
     }
 
+    /// The tracks after the playing one as the system media session lists
+    /// them: Up Next, then the context lane's in the order it reads in, at
+    /// most `limit` in all, now and after each change.
+    pub fn subscribe_session_up_next(
+        &self,
+        limit: u32,
+    ) -> std::sync::Arc<crate::SessionUpNextSubscription> {
+        crate::screens::session_up_next(
+            self.services.subscribe_session_up_next(u64::from(limit)),
+            self.runtime.clone(),
+        )
+    }
+
     /// What playback is doing, apart from where it is in what it plays: the
     /// first value at once, then one after each change.
     pub fn subscribe_playback_values(&self) -> std::sync::Arc<crate::PlaybackValuesSubscription> {

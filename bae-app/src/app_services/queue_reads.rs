@@ -14,6 +14,18 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_queue_value())
     }
 
+    /// The tracks after the playing one as a system media session lists them:
+    /// Up Next, then the context lane's in the order it reads in, at most
+    /// `limit` in all. The first value at once, then one after each write that
+    /// changes them.
+    pub fn subscribe_session_up_next(
+        &self,
+        limit: u64,
+    ) -> bae_store::live_query::LiveValues<Vec<bae_playback::QueueItem>> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(manager.subscribe_session_up_next(limit))
+    }
+
     /// One window of the tracks after the playing one, a range of the context
     /// lane's position order, or of its shuffled order when `shuffled` is
     /// true. Coven reruns it when a write adds, removes or moves a track in

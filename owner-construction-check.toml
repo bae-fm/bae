@@ -346,6 +346,7 @@ task_types = [
     "PlaylistDetailSubscription",
     "PlaylistsSubscription",
     "QueueSubscription",
+    "SessionUpNextSubscription",
     "ReleaseDetailSubscription",
     "ReleaseFilesSubscription",
     "SavePresetSubscription",

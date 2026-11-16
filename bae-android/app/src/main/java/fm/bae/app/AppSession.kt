@@ -19,6 +19,7 @@ import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
+import fm.bae.app.playback.SESSION_UP_NEXT_LIMIT
 import fm.bae.app.widget.NowPlayingWidget
 import fm.bae.fastvalues.LatestFeed
 import fm.bae.fastvalues.feed
@@ -198,6 +199,7 @@ class OpenLibrary internal constructor(
                 onError = { error -> subscriptionFailed("cast receivers", error) },
             )
         screenSubscriptions += queue(scope)
+        screenSubscriptions += sessionUpNext(scope)
     }
 
     /** The downloads and uploads: the download counts, whether files wait for Wi-Fi, and their fast transfers. */
@@ -232,6 +234,17 @@ class OpenLibrary internal constructor(
                 playback.onQueueValue(value)
             },
             onError = { error -> subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue) },
+        )
+
+    /** The tracks the system media session lists after the current one, in one read. */
+    private fun sessionUpNext(scope: CoroutineScope) =
+        ScreenSubscription(
+            appHandle.subscribeSessionUpNext(SESSION_UP_NEXT_LIMIT.toUInt()).let { pulled(it::next, it::cancel) },
+            scope,
+            onValue = playback::onSessionUpNext,
+            onError = { error ->
+                subscriptionFailed("session up next", error)?.let(playback.readFailures::failSessionUpNext)
+            },
         )
 
     /** What playback is doing, which also says when playback failed. */

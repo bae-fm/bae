@@ -15,7 +15,8 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeQueueSnapshot
 
 /**
- * A failed read of playback values or of the queue stands in for what they
+ * A failed read of playback values or of the queue (its value or the
+ * session's up-next list) stands in for what they
  * last showed until the next value arrives, so the now-playing surfaces and
  * the queue never show the last value as current.
  */
@@ -43,17 +44,32 @@ class PlaybackReadFailureTest {
         player.readFailures.failQueue(failure)
         assertEquals(failure, player.readFailures.queue.value)
 
-        player.onQueueValue(
-            BridgeQueueSnapshot(
-                manual = emptyList(),
-                context = null,
-                shuffled = false,
-                hasNext = false,
-                hasPrevious = false,
-            ),
-        )
+        player.onQueueValue(emptyQueue())
         assertNull(player.readFailures.queue.value)
     }
+
+    @Test
+    fun aFailedSessionUpNextReadShowsOnTheQueueUntilItsOwnNextValue() {
+        val player = player()
+
+        player.readFailures.failSessionUpNext(failure)
+        assertEquals(failure, player.readFailures.queue.value)
+
+        player.onQueueValue(emptyQueue())
+        assertEquals("the queue value's read does not answer for it", failure, player.readFailures.queue.value)
+
+        player.onSessionUpNext(emptyList())
+        assertNull(player.readFailures.queue.value)
+    }
+
+    private fun emptyQueue() =
+        BridgeQueueSnapshot(
+            manual = emptyList(),
+            context = null,
+            shuffled = false,
+            hasNext = false,
+            hasPrevious = false,
+        )
 
     private fun player() =
         BaeCorePlayer(

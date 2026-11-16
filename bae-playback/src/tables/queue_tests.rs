@@ -423,6 +423,28 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
     }
 }
 
+/// The session's up-next list walks Up Next's position index from its start
+/// and each order's place index from the cursor, so it sorts only the rows
+/// each part took, never the lane.
+#[tokio::test]
+async fn the_session_up_next_list_is_planned_on_the_indexes() {
+    let (db, _tmp, _tracks) = release_db(3).await;
+    let rows = plan(
+        &db,
+        super::queue_reads::SESSION_UP_NEXT_ROWS,
+        vec![rusqlite::types::Value::Integer(100)],
+    )
+    .await;
+    for walk in [
+        "SCAN playback_manual USING INDEX sqlite_autoindex_playback_manual_1",
+        "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
+        "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
+    ] {
+        assert!(rows.contains(walk), "{walk}: {rows}");
+    }
+    assert!(!rows.contains("SCAN playback_context"), "{rows}");
+}
+
 /// A context row is named by its entry, as an Up Next row is, and no entry
 /// number names a row of either lane twice: a new play numbers its rows on
 /// from the ones before it, so an id a screen still holds from the last play

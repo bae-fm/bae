@@ -30,6 +30,15 @@ impl LibraryManager {
         bae_playback::tables::subscribe_queue_value(&self.store)
     }
 
+    /// Follow the tracks after the playing one as a system media session
+    /// lists them: Up Next, then the context lane's, at most `limit` in all.
+    pub fn subscribe_session_up_next(
+        &self,
+        limit: u64,
+    ) -> coven::LiveQuery<Vec<bae_playback::QueueItem>, bae_store::DbError> {
+        bae_playback::tables::subscribe_session_up_next(&self.store, limit)
+    }
+
     /// Follow one window of the upcoming tracks, a range of the order the
     /// context lane reads in (`shuffled` picks which).
     pub fn subscribe_upcoming_window(
