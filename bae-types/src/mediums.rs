@@ -203,11 +203,6 @@ pub fn track_position(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackPos
     TrackPosition::Flat { number }
 }
 
-/// The side or disc `place` is on, on a release holding `mediums`.
-pub fn track_side(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackSide {
-    track_position(place, mediums).side()
-}
-
 #[cfg(test)]
 #[path = "mediums_tests.rs"]
 mod tests;

@@ -34,7 +34,6 @@ fn the_discs_of_a_multi_disc_release_read_by_disc() {
         track_position(&place(2, 1, 3), &mediums),
         TrackPosition::Disc { disc: 2, number: 3 }
     );
-    assert_eq!(track_side(&place(2, 1, 3), &mediums), TrackSide::Disc { disc: 2 });
 }
 
 /// One medium with no sides to letter reads its numbers alone, whatever its

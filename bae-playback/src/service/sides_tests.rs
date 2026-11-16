@@ -72,11 +72,12 @@ fn side_pause_prompt_carries_its_countdown() {
 }
 
 /// What playback reads of a track on a release of `mediums`, its place given
-/// as (medium, side).
+/// as (medium, side), and on the side or disc `on`.
 fn info_on(
     track_id: &str,
     mediums: &bae_records::DbReleaseMediums,
     (medium, side): (u16, u8),
+    on: bae_types::mediums::TrackSide,
 ) -> PlaybackTrackInfo {
     let place = bae_types::mediums::TrackPlace {
         medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
@@ -89,7 +90,7 @@ fn info_on(
         medium: place.medium,
         side: place.side,
         carrier: mediums.0[usize::from(medium) - 1].medium.carrier,
-        on: bae_types::mediums::track_side(&place, &mediums.mediums()),
+        on,
     })
 }
 
@@ -117,9 +118,10 @@ fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbR
 fn a_cd_release_pauses_at_disc_changes_only() {
     let cd = bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
     let mediums = release_of(&[cd, cd]);
-    let first = info_on("first", &mediums, (1, 1));
-    let second = info_on("second", &mediums, (1, 1));
-    let third = info_on("third", &mediums, (2, 1));
+    let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
+    let first = info_on("first", &mediums, (1, 1), disc(1));
+    let second = info_on("second", &mediums, (1, 1), disc(1));
+    let third = info_on("third", &mediums, (2, 1), disc(2));
     assert_eq!(side_boundary_between(&first, &second), None);
     let boundary = side_boundary_between(&second, &third).expect("disc 1 ends");
     assert_eq!(boundary.kind, PlaybackPauseBoundary::Disc);
@@ -134,11 +136,14 @@ fn a_two_record_release_pauses_at_each_side() {
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
     let mediums = release_of(&[record, record]);
-    let places = [(1, 1), (1, 2), (2, 1), (2, 2)];
+    let places = [((1, 1), "A"), ((1, 2), "B"), ((2, 1), "C"), ((2, 2), "D")];
     let infos: Vec<_> = places
         .iter()
         .enumerate()
-        .map(|(index, place)| info_on(&format!("track-{index}"), &mediums, *place))
+        .map(|(index, (place, letter))| {
+            let on = bae_types::mediums::TrackSide::Sided { side_letter: letter.to_string() };
+            info_on(&format!("track-{index}"), &mediums, *place, on)
+        })
         .collect();
     let labels: Vec<_> = infos
         .windows(2)
@@ -156,8 +161,9 @@ fn a_two_record_release_pauses_at_each_side() {
 fn a_medium_of_no_carrier_never_pauses() {
     let unstated = bae_types::mediums::ReleaseMedium::one_sided(None);
     let mediums = release_of(&[unstated, unstated]);
-    let first = info_on("first", &mediums, (1, 1));
-    let second = info_on("second", &mediums, (2, 1));
+    let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
+    let first = info_on("first", &mediums, (1, 1), disc(1));
+    let second = info_on("second", &mediums, (2, 1), disc(2));
     assert_eq!(first.side, None);
     assert_eq!(side_boundary_between(&first, &second), None);
 }
