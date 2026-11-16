@@ -315,7 +315,8 @@ fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
 
 /// What the row's storage state shows: where its release's files are, from the
 /// listing's `storage_order`, with the transition, the download queue entry
-/// and the failed move's file that go with it.
+/// and the file whose original failed the release's move, as its
+/// `release_storage` row names it from the move's pending record.
 fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::StorageRowStatus> {
     use crate::album_detail::{StoragePlace, StorageRowStatus};
     let column = row.as_ref().column_index("storage_order")?;
@@ -335,7 +336,7 @@ fn storage_status(row: &Row<'_>) -> rusqlite::Result<crate::album_detail::Storag
         }
     };
     let download = bae_transfers::download_entry_column(row)?;
-    let failed_move_file = bae_records::records::queued_uploads::changed_original_in_row(row)?;
+    let failed_move_file = row.get("failed_move_file")?;
     StorageRowStatus::of(place, download, failed_move_file)
         .map_err(|reason| bae_store::read::column_conversion_error(row, column, reason))
 }
@@ -387,6 +388,7 @@ fn storage_row_columns(extra: &str) -> String {
          storage.stored AS remote, \
          storage.file_count, \
          storage.total_size, \
+         storage.failed_move_file, \
          {RELEASE_STORAGE_PINNED} AS pinned, \
          listing.storage_order, \
          listing.created_at AS date_added, \

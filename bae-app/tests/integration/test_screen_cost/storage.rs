@@ -29,7 +29,12 @@ const STORAGE: &str = "\
             JOIN coven_upload_queue queued ON queued.file = f.file \
             WHERE f.release_id = r.id) AS queued_count, \
         EXISTS (SELECT 1 FROM release_files f JOIN coven_moves moves ON moves.file = f.file \
-            WHERE f.release_id = r.id AND moves.state = 'failed') AS move_failed, \
+            JOIN coven_pending pending ON pending.move = moves.move \
+            JOIN coven_user_files original \
+                ON original.file = f.file AND original.path = pending.original_path \
+            WHERE f.release_id = r.id AND pending.reason_kind = 'original' \
+            AND json_extract(CAST(pending.record AS TEXT), \
+                '$.reason.Original.failure') = 'Changed') AS move_failed, \
         EXISTS (SELECT 1 FROM download_queue dq \
             WHERE dq.release_id = r.id AND dq.state <> 'failed') AS download_queued, \
         EXISTS (SELECT 1 FROM download_queue dq \

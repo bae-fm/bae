@@ -75,6 +75,7 @@ fn a_waiting_download_shows_by_what_it_does_and_a_failed_one_its_error() {
 #[test]
 fn a_download_place_without_its_entry_is_refused() {
     assert!(StorageRowStatus::of(StoragePlace::Pinning, None, None).is_err());
+    assert!(StorageRowStatus::of(StoragePlace::Failed, None, None).is_err());
     assert!(StorageRowStatus::of(StoragePlace::Failed, queued(DownloadKind::Pin), None).is_err());
     assert!(
         StorageRowStatus::of(StoragePlace::Pinning, failed(DownloadKind::Pin, "x"), None).is_err()
@@ -82,7 +83,7 @@ fn a_download_place_without_its_entry_is_refused() {
 }
 
 /// A failed move shows the file whose original changed; a failed download
-/// reads first when both failed; a failure place with neither is refused.
+/// reads first when both failed.
 #[test]
 fn a_failed_move_names_the_file_that_changed() {
     assert_eq!(
@@ -97,5 +98,4 @@ fn a_failed_move_names_the_file_that_changed() {
         ),
         Ok(StorageRowStatus::DownloadFailed { error: "offline".to_string() })
     );
-    assert!(StorageRowStatus::of(StoragePlace::Failed, None, None).is_err());
 }

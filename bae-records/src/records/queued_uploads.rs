@@ -47,41 +47,26 @@ macro_rules! release_upload_count_columns {
 /// many of a release's files wait and how many are being sent.
 pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
-/// The name of the release file whose original path matches a pending record
-/// of one of the release's moves that says the original failed as `$failure`.
-macro_rules! original_named {
-    ($failure:literal) => {
-        concat!(
-            "CASE WHEN storage.queued_count > 0 OR storage.move_failed = 1 THEN \
-                 (SELECT f.original_filename FROM release_files AS f \
-                  JOIN coven_user_files AS original ON original.file = f.file \
-                  WHERE f.release_id = storage.release_id AND original.path IN ( \
-                      SELECT pending.original_path FROM coven_pending AS pending \
-                      WHERE pending.reason_kind = 'original' \
-                        AND json_extract(CAST(pending.record AS TEXT), \
-                                         '$.reason.Original.failure') = '",
-            $failure,
-            "' AND pending.move IN (",
-            release_moves!("storage.release_id"),
-            ")) ORDER BY f.id LIMIT 1) END"
-        )
-    };
-}
-
 /// The columns a release's upload reads beside `release_storage storage`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: its counts
-/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the names of the release's files
-/// whose original a move of the release waits for or failed on, as the
+/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and while its files wait, the name of the
+/// release file whose original a move of the release waits for, as the
 /// move's pending record names the original by its path. How far the files
 /// being sent have got is the release's transfer.
 pub const RELEASE_UPLOAD_COLUMNS: &str = concat!(
     release_upload_count_columns!(),
-    ", ",
-    original_named!("Missing"),
-    " AS upload_missing_original, ",
-    original_named!("Changed"),
-    " AS upload_changed_original"
+    ", CASE WHEN storage.queued_count > 0 THEN \
+         (SELECT f.original_filename FROM release_files AS f \
+          JOIN coven_user_files AS original ON original.file = f.file \
+          WHERE f.release_id = storage.release_id AND original.path IN ( \
+              SELECT pending.original_path FROM coven_pending AS pending \
+              WHERE pending.reason_kind = 'original' \
+                AND json_extract(CAST(pending.record AS TEXT), \
+                                 '$.reason.Original.failure') = 'Missing' \
+                AND pending.move IN (",
+    release_moves!("storage.release_id"),
+    ")) ORDER BY f.id LIMIT 1) END AS upload_missing_original"
 );
 
 /// The columns the upload queue's hold reads: whether uploads are paused, how
@@ -143,12 +128,6 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
     };
     let missing = if sending > 0 { None } else { row.get("upload_missing_original")? };
     Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
-}
-
-/// The name of the release file whose original changed and failed the
-/// release's move, as [`RELEASE_UPLOAD_COLUMNS`] read it.
-pub fn changed_original_in_row(row: &Row<'_>) -> rusqlite::Result<Option<String>> {
-    row.get("upload_changed_original")
 }
 
 /// What of the release `release_id` waits in this device's upload queue;

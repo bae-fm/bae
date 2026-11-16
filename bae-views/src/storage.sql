@@ -13,8 +13,8 @@
 -- files' count and total size, `stored`, `pinned_count` and
 -- `queued_count`, copied from its `release_storage` row; `download_queued`, 1 while this
 -- device's download queue holds it waiting or downloading; `download_failed`,
--- 1 while that queue holds it failed; `move_failed`, copied from its
--- `release_storage` row; and `storage_order`, where it sorts by
+-- 1 while that queue holds it failed; `move_failed`, 1 while its
+-- `release_storage` row names a file whose original failed a move; and `storage_order`, where it sorts by
 -- storage, worked out from those in the same write: a failed download or move
 -- first (0), uploading (1), pinning (2) while the download queue brings its files
 -- to this device, local (3), pinned (4), in the cloud only (5).
@@ -112,7 +112,7 @@ BEGIN
                    WHERE download.release_id = r.id AND download.state IN ('queued', 'active')),
            EXISTS (SELECT 1 FROM download_queue download
                    WHERE download.release_id = r.id AND download.state = 'failed'),
-           storage.move_failed
+           storage.failed_move_file IS NOT NULL
     FROM releases r
     JOIN release_storage storage ON storage.release_id = r.id
     JOIN album_listing album ON album.album_id = r.album_id
@@ -231,12 +231,12 @@ BEGIN
         WHERE r.id = NEW.release_id);
 END;
 
-CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count, move_failed ON release_storage
+CREATE TRIGGER IF NOT EXISTS release_listing_storage_changed AFTER UPDATE OF file_count, total_size, stored, pinned_count, queued_count, failed_move_file ON release_storage
 BEGIN
     UPDATE release_listing SET file_count = NEW.file_count, total_size = NEW.total_size,
         stored = NEW.stored, pinned_count = NEW.pinned_count,
         queued_count = NEW.queued_count,
-        move_failed = NEW.move_failed
+        move_failed = NEW.failed_move_file IS NOT NULL
     WHERE release_id = NEW.release_id;
 END;
 

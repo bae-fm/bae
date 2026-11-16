@@ -106,7 +106,7 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
          ({offered} AND {stored} AND {pinned}) AS can_unpin, \
          ({offered} AND {stored}) AS can_move_to_this_device, \
          {transitioning} AS transitioning, \
-         ({transitioning} OR COALESCE(storage.move_failed = 1, 0)) AS cancel_only",
+         ({transitioning} OR COALESCE(storage.failed_move_file IS NOT NULL, 0)) AS cancel_only",
         transitioning = transitioning_sql(release),
     )
 }

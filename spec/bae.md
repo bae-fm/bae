@@ -2337,7 +2337,8 @@ at a local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 Where a file is changes in coven's own record of it, with no change to a row
 of bae's, so the release's storage row (`release_storage`) follows coven's `coven_files`, which also
-gives each file's size, and `coven_moves`, which lists the files of a failed move (Appendix B).
+gives each file's size, and the pending record of a failed move in `coven_pending`, which names the
+original that changed; `coven_moves` says which of the release's files are in that move (Appendix B).
 
 A release's cover is bound (§4.1), so it reaches other devices with the
 release, local or not: the write that imports the release, or sets its cover,
@@ -2526,8 +2527,9 @@ file list, the file whose original is missing or changed, or whose download
 failed. No rate shows beside a row, nor how many entries wait ahead of it or
 what holds the queue back: a row's storage is its state and at most the one
 change on its way. A move fails when a file's original changed before its upload
-(coven lists the failed move's files in `coven_moves` until it is cancelled,
-and the release's row names the original); the release stays on this
+(coven keeps the move's pending record, which names that original, until the
+move is cancelled, and the release's row takes both the failure and the file
+it names from that record); the release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
 the move.
 
@@ -6375,7 +6377,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and the name of the file whose original failed a move of it, from the move's pending record, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 
 What the library lists, bae-views' part, kept by its triggers:
