@@ -47,20 +47,6 @@ macro_rules! release_upload_count_columns {
 /// many of a release's files wait and how many are being sent.
 pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 
-/// The moves of the files of the release whose `release_storage` row is
-/// `storage` that wait in this device's upload queue, and its failed moves.
-macro_rules! release_moves {
-    () => {
-        "SELECT upload.move FROM release_files AS f \
-         JOIN coven_uploads AS upload ON upload.file = f.file \
-         WHERE f.release_id = storage.release_id \
-         UNION \
-         SELECT moves.move FROM release_files AS f \
-         JOIN coven_moves AS moves ON moves.file = f.file \
-         WHERE f.release_id = storage.release_id AND moves.state = 'failed'"
-    };
-}
-
 /// The name of the release file whose original path matches a pending record
 /// of one of the release's moves that says the original failed as `$failure`.
 macro_rules! original_named {
@@ -76,7 +62,7 @@ macro_rules! original_named {
                                          '$.reason.Original.failure') = '",
             $failure,
             "' AND pending.move IN (",
-            release_moves!(),
+            release_moves!("storage.release_id"),
             ")) ORDER BY f.id LIMIT 1) END"
         )
     };

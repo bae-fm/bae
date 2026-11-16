@@ -2,18 +2,10 @@
 //! person, or retired after a failure, every file of the release together.
 use super::*;
 
-/// The moves this device is making of a release's files that can be
-/// cancelled: the move each file's upload belongs to, from coven's upload
-/// queue, and a failed move, whose files wait for no upload and which coven
-/// lists in `coven_moves` until it is cancelled. A release's files are staged
-/// or moved in one write, so they share one move.
-const RELEASE_MOVES: &str = "SELECT u.move FROM coven_uploads AS u \
-     JOIN release_files AS f ON f.file = u.file \
-     WHERE f.release_id = ?1 AND u.move IS NOT NULL \
-     UNION \
-     SELECT m.move FROM coven_moves AS m \
-     JOIN release_files AS f ON f.file = m.file \
-     WHERE f.release_id = ?1 AND m.state = 'failed'";
+/// The moves this device is making of the release `?1`'s files, moving or
+/// failed, each of which can be cancelled. A release's files are staged or
+/// moved in one write, so they share one move.
+const RELEASE_MOVES: &str = release_moves!("?1");
 
 impl Records {
     /// Cancel each move this device is making of these releases' files to

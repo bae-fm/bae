@@ -23,6 +23,21 @@ macro_rules! release_file_columns {
     };
 }
 
+/// The moves this device is making of the files of the release `$release`
+/// (an SQL literal naming its id) to the cloud, each once: `coven_moves`
+/// lists each file of each move that is still moving or has failed. A macro
+/// so a caller's `concat!` can build its statement from it.
+macro_rules! release_moves {
+    ($release:literal) => {
+        concat!(
+            "SELECT DISTINCT moves.move FROM coven_moves AS moves \
+             JOIN release_files AS f ON f.file = moves.file \
+             WHERE f.release_id = ",
+            $release
+        )
+    };
+}
+
 mod album;
 pub use album::PrimaryReleaseError;
 mod artist_sql;
