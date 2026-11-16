@@ -247,10 +247,8 @@ pub fn records_column(
     row: &Row,
     column: &str,
 ) -> rusqlite::Result<Vec<bae_catalogs::records::ReleaseRecord>> {
-    let text: String = row.get(column)?;
-    let records: Vec<serde_json::Value> =
-        serde_json::from_str(&text).map_err(|error| column_conversion_error(row, column, error))?;
-    records.iter().map(|record| record_of(row, column, record)).collect()
+    let records: Vec<StoredRecord> = bae_store::read::json_column(row, column)?;
+    records.into_iter().map(|record| record_of(row, column, record)).collect()
 }
 
 /// Returns one row for each release id in the JSON array `?1`, in the
@@ -287,27 +285,34 @@ pub fn get_releases_records_on(
     )?)
 }
 
-/// One record of a `records` column's JSON array.
+/// One record as [`release_records_json_sql`] writes it into its array.
+#[derive(serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum StoredRecord {
+    Pressing { catalog: String, key: String, album_key: Option<String> },
+    Album { catalog: String, key: String },
+}
+
+/// The record `record` stores, read from `column` of `row`: a catalog name
+/// bae doesn't know fails as a conversion error of that column.
 fn record_of(
     row: &Row,
     column: &str,
-    record: &serde_json::Value,
+    record: StoredRecord,
 ) -> rusqlite::Result<bae_catalogs::records::ReleaseRecord> {
-    let text = |field: &str| record[field].as_str().map(str::to_string);
-    let unreadable = |reason: String| column_conversion_error(row, column, reason);
-    let catalog = text("catalog")
-        .ok_or_else(|| unreadable("a record has no catalog".to_string()))?
-        .parse()
-        .map_err(unreadable)?;
-    let key = text("key").ok_or_else(|| unreadable("a record has no key".to_string()))?;
-    let identity = bae_catalogs::records::MetadataRef::new(catalog, key);
-    match record["kind"].as_str() {
-        Some("pressing") => {
-            Ok(bae_catalogs::records::ReleaseRecord::new(&identity, text("album_key")))
+    let identity = |catalog: String, key: String| -> rusqlite::Result<_> {
+        let catalog: bae_catalogs::catalog::Catalog =
+            catalog.parse().map_err(|reason| column_conversion_error(row, column, reason))?;
+        Ok(bae_catalogs::records::MetadataRef::new(catalog, key))
+    };
+    Ok(match record {
+        StoredRecord::Pressing { catalog, key, album_key } => {
+            bae_catalogs::records::ReleaseRecord::new(&identity(catalog, key)?, album_key)
         }
-        Some("album") => Ok(bae_catalogs::records::ReleaseRecord::album(&identity)),
-        kind => Err(unreadable(format!("unknown record kind: {kind:?}"))),
-    }
+        StoredRecord::Album { catalog, key } => {
+            bae_catalogs::records::ReleaseRecord::album(&identity(catalog, key)?)
+        }
+    })
 }
 
 // ─── Entity row readers ──────────────────────────────────────────────────────

@@ -283,22 +283,23 @@ pub fn album_ratings_on(
 ) -> rusqlite::Result<AlbumRatings> {
     sql.query_row(&album_ratings_sql(), [album_id], |row| {
         let stars_of = |value: i64| crate::collections::stars_from_sql(value);
-        let others: String = row.get("others")?;
-        let others: Vec<serde_json::Value> = serde_json::from_str(&others)
-            .map_err(|error| bae_store::read::column_conversion_error(row, "others", error))?;
+        let others: Vec<StoredRating> = bae_store::read::json_column(row, "others")?;
         Ok(AlbumRatings {
             can_rate: row.get("can_rate")?,
             shown: row.get("shown")?,
             mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
             others: others
-                .iter()
-                .map(|other| {
-                    Ok(OtherRating {
-                        name: other["name"].as_str().unwrap_or_default().to_string(),
-                        stars: stars_of(other["stars"].as_i64().unwrap_or_default())?,
-                    })
-                })
+                .into_iter()
+                .map(|other| Ok(OtherRating { name: other.name, stars: stars_of(other.stars)? }))
                 .collect::<rusqlite::Result<_>>()?,
         })
     })
+}
+
+/// One other person's rating as [`album_ratings_sql`] writes it into its
+/// `others` array.
+#[derive(serde::Deserialize)]
+struct StoredRating {
+    name: String,
+    stars: i64,
 }

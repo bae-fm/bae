@@ -40,6 +40,18 @@ where
         .map_err(|error| column_conversion_error(row, column, format!("{text:?}: {error}")))
 }
 
+/// [`json_column`] for a nullable column: `None` when it holds NULL.
+pub fn optional_json_column<T, I>(row: &Row, column: I) -> rusqlite::Result<Option<T>>
+where
+    T: serde::de::DeserializeOwned,
+    I: rusqlite::RowIndex + Copy,
+{
+    match row.get_ref(column)? {
+        rusqlite::types::ValueRef::Null => Ok(None),
+        _ => json_column(row, column).map(Some),
+    }
+}
+
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
 /// column-conversion error rather than panicking on the parse.
 pub fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {

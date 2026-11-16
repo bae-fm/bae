@@ -38,6 +38,9 @@ bae-util = { workspace = true }
 coven = { workspace = true }
 chrono = { workspace = true }
 rusqlite = { workspace = true }
+# A playlist's covers come back as JSON columns, which serde reads into typed
+# rows.
+serde = { workspace = true, features = ["derive"] }
 # The id sets a live read binds as one JSON list.
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }

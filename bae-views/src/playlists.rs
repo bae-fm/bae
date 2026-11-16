@@ -153,29 +153,29 @@ fn uuid_column(row: &Row, index: usize) -> rusqlite::Result<uuid::Uuid> {
     uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, index, error))
 }
 
-/// The covers a playlist's summary names, as JSON objects of a release and
-/// its cover's version.
-fn cover_of(object: &serde_json::Value) -> Option<ImageRef> {
-    let release = object["release_id"].as_str()?;
-    cover_ref(release, object["cover_version"].as_str().map(str::to_string))
+/// A cover a playlist's summary names, as [`playlists_sql`] writes it: a
+/// release and its cover's version, NULL for a release with no cover.
+#[derive(serde::Deserialize)]
+struct StoredCover {
+    release_id: String,
+    cover_version: Option<String>,
 }
 
-fn json_column(row: &Row, index: usize) -> rusqlite::Result<Option<serde_json::Value>> {
-    row.get::<_, Option<String>>(index)?
-        .map(|text| {
-            serde_json::from_str(&text).map_err(|error| column_conversion_error(row, index, error))
-        })
-        .transpose()
+impl StoredCover {
+    fn image(self) -> Option<ImageRef> {
+        cover_ref(&self.release_id, self.cover_version)
+    }
 }
 
 /// A playlist as [`playlists_sql`] reads it.
 fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistSummary> {
-    let cover = match json_column(row, 9)? {
-        Some(grid) => {
-            let mut covers = grid.as_array().into_iter().flatten().map(cover_of);
-            PlaylistCover::Grid(std::array::from_fn(|_| covers.next().flatten()))
-        }
-        None => PlaylistCover::Single(json_column(row, 10)?.as_ref().and_then(cover_of)),
+    let grid: Option<[StoredCover; COVER_GRID]> = bae_store::read::optional_json_column(row, 9)?;
+    let cover = match grid {
+        Some(grid) => PlaylistCover::Grid(grid.map(StoredCover::image)),
+        None => PlaylistCover::Single(
+            bae_store::read::optional_json_column::<StoredCover, _>(row, 10)?
+                .and_then(StoredCover::image),
+        ),
     };
     Ok(PlaylistSummary {
         id: uuid_column(row, 0)?,

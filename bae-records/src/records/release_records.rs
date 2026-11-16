@@ -396,31 +396,30 @@ pub fn check_releases_in_library_on(
         "#,
         params![checks_json],
         |row| {
-            let text: String = row.get("albums")?;
-            let albums: Vec<serde_json::Value> = serde_json::from_str(&text)
-                .map_err(|error| column_conversion_error(row, "albums", error))?;
-            let unreadable = |reason: &str| column_conversion_error(row, "albums", reason);
+            let albums: Vec<StoredAlbumMatch> = bae_store::read::json_column(row, "albums")?;
             Ok(LibraryStatus {
                 release_id: row.get("release_id")?,
                 albums: albums
-                    .iter()
-                    .map(|album| {
-                        Ok(crate::LibraryAlbumMatch {
-                            album_id: album["album_id"]
-                                .as_str()
-                                .ok_or_else(|| unreadable("an album has no id"))?
-                                .to_string(),
-                            album_title: album["album_title"]
-                                .as_str()
-                                .ok_or_else(|| unreadable("an album has no title"))?
-                                .to_string(),
-                            holds_release: album["holds_release"].as_i64() != Some(0),
-                        })
+                    .into_iter()
+                    .map(|album| crate::LibraryAlbumMatch {
+                        album_id: album.album_id,
+                        album_title: album.album_title,
+                        holds_release: album.holds_release != 0,
                     })
-                    .collect::<rusqlite::Result<Vec<_>>>()?,
+                    .collect(),
             })
         },
     )?)
+}
+
+/// One album match as the library check's statement writes it into its
+/// `albums` array: `holds_release` is 1 for an album that holds the release
+/// itself and 0 for one that holds only another release of its album.
+#[derive(serde::Deserialize)]
+struct StoredAlbumMatch {
+    album_id: String,
+    album_title: String,
+    holds_release: i64,
 }
 
 #[cfg(test)]
