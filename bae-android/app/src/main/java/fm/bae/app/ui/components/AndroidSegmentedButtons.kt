@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import fm.bae.app.ui.BaeTheme
@@ -20,7 +21,8 @@ import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * Material's single-choice segmented buttons, full width, the [selected] one checked. [label] names the choice over
- * them, in the secondary text, as a form does; a choice a screen names itself passes none.
+ * them, in the secondary text, as a form does, and TalkBack reads the buttons alone, as the boards do; a screen whose
+ * board reads the choice's name draws that name itself and passes none.
  */
 @Composable
 internal fun AndroidSegmentedButtons(
@@ -31,12 +33,13 @@ internal fun AndroidSegmentedButtons(
     label: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        // The column draws the label above the buttons, so TalkBack reads it before them.
+        // The column draws the label above the buttons, and TalkBack skips it.
         label?.let {
             Text(
                 text = it,
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clearAndSetSemantics {},
             )
         }
         val edge = BaeTheme.colors.hairlineStrong

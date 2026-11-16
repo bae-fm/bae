@@ -1,6 +1,10 @@
 package fm.bae.app.ui.downloads
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -9,6 +13,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidSegmentedButtons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,8 +28,8 @@ internal fun setDownloadConcurrency(
     }
 }
 
-/** The concurrency picker, offering 1 up to [limit], with [value] selected and each tap reported
- *  through [onSelect]. */
+/** The concurrency picker under its heading, which TalkBack reads, offering 1 up to [limit], with [value] selected
+ *  and each tap reported through [onSelect]. */
 @Composable
 internal fun DownloadConcurrencySelector(
     value: UInt,
@@ -33,11 +38,19 @@ internal fun DownloadConcurrencySelector(
 ) {
     val options = (1u..limit).toList()
     val context = LocalContext.current
-    AndroidSegmentedButtons(
-        options = options.map { context.countText(it) },
-        selected = options.indexOf(value),
-        onSelect = { onSelect(options[it]) },
+    Column(
         modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        label = stringResource(R.string.pins_at_once),
-    )
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        Text(
+            text = stringResource(R.string.pins_at_once),
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        AndroidSegmentedButtons(
+            options = options.map { context.countText(it) },
+            selected = options.indexOf(value),
+            onSelect = { onSelect(options[it]) },
+        )
+    }
 }
