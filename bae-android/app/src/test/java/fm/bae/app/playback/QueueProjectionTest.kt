@@ -96,14 +96,17 @@ class QueueProjectionTest {
         )
 
         feed.show(listOf(entry("c1"), entry("c2")))
-        shadowOf(Looper.getMainLooper()).idle()
+        // The context lane's tracks are read while the queue screen shows them.
+        player.showUpcoming().use {
+            shadowOf(Looper.getMainLooper()).idle()
 
-        val projection = player.queue.value
-        assertEquals(listOf(entry("m")), projection.manual)
-        assertEquals(mapOf(0 to entry("c1"), 1 to entry("c2")), projection.context?.upcoming)
-        assertEquals(2, projection.context?.upcomingTotal)
-        assertEquals(BridgePlaybackSourceKind.RELEASE, projection.context?.kind)
-        assertEquals(false, projection.shuffled)
+            val projection = player.queue.value
+            assertEquals(listOf(entry("m")), projection.manual)
+            assertEquals(mapOf(0 to entry("c1"), 1 to entry("c2")), projection.context?.upcoming)
+            assertEquals(2, projection.context?.upcomingTotal)
+            assertEquals(BridgePlaybackSourceKind.RELEASE, projection.context?.kind)
+            assertEquals(false, projection.shuffled)
+        }
     }
 
     @Test
