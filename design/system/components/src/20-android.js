@@ -118,7 +118,7 @@
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
   }
 
-  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states), the digits shown as typed. The box where the next digit goes is outlined in the accent while the field is `focused`. `state`: normal, focused, error. What's wrong goes under the boxes, in red.
+  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states). The field outlines the box for the next digit in the accent while the field is `focused`, and shows each digit as the person types it. `state`: normal, focused, error. What's wrong goes under the boxes, in red.
   function AndroidPinField(props) {
     var state = props.state || 'normal';
     var n = props.digits || 4;

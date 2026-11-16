@@ -2,7 +2,7 @@ import type * as React from 'react';
 
 // ---- macOS ----
 
-/** The Settings window: the pane list on the left, the pane on the right. title heads the pane; back names the pane a Back button returns to. status puts a short status beside statusPane in the pane list, in statusTone. A MacSheet with overlay inside covers the whole window. The window is 600 tall; a pane taller than that runs under its bottom edge, and scroll (px) draws it scrolled that far, the heading staying. */
+/** The Settings window: the pane list on the left, the pane on the right. title heads the pane; back names the pane a Back button returns to. status puts a short status beside statusPane in the pane list, in statusTone. A MacSheet with overlay inside covers the whole window. The window is 600 pt tall; a pane taller than that runs under its bottom edge, and scroll (px) draws it scrolled that far, and the heading stays in place. */
 export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Import' | 'Formats' | 'Casting' | 'Subsonic' | 'Automation' | 'About'; title?: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; scroll?: number; children?: React.ReactNode }
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
@@ -42,7 +42,7 @@ export declare function MacInfoTip(props: { label?: string }): React.ReactElemen
 export declare function MacFileNameField(props: { label?: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 /** A port number: a field five digits wide, digits only, its label hidden. What's wrong with it goes on the row's second line. */
-/** A PIN as one box per digit (digits, from core); value is what is typed so far. error is shown under the boxes when state is error. */
+/** A PIN as one box per digit (digits, from core); value is what the person has typed so far. The field shows error under the boxes when state is error. */
 export interface MacPinFieldProps { digits?: number; value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off'; error?: string }
 export declare function MacPinField(props: MacPinFieldProps): React.ReactElement;
 export declare function MacPortField(props: { value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off' }): React.ReactElement;
@@ -110,7 +110,7 @@ export declare function MacNote(props: MacNoteProps): React.ReactElement;
 
 // ---- Android ----
 
-/** A screen: the top bar with Back and the title, then the content. Without title, no top bar. An AndroidDialog or AndroidSheet among the children is drawn last, over the whole screen. */
+/** A screen: the top bar with Back and the title, then the content. A screen without a title has no top bar. The screen draws an AndroidDialog or AndroidSheet among its children last, over the whole screen. */
 export interface AndroidScreenProps { title?: string; back?: boolean; keyboard?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidScreen(props: AndroidScreenProps): React.ReactElement;
 
@@ -161,7 +161,7 @@ export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
-/** A PIN as one box per digit (digits, from core); value is what is typed so far. error is shown under the boxes when state is error. */
+/** A PIN as one box per digit (digits, from core); value is what the person has typed so far. The field shows error under the boxes when state is error. */
 export interface AndroidPinFieldProps { digits?: number; value?: string; label?: string; state?: 'normal' | 'focused' | 'error'; error?: string }
 export declare function AndroidPinField(props: AndroidPinFieldProps): React.ReactElement;
 export interface AndroidTextFieldProps { label: string; value?: string; placeholder?: string; code?: boolean; secret?: boolean; state?: 'normal' | 'focused' | 'error'; helper?: string; error?: string }
