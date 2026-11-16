@@ -7,6 +7,8 @@ extension AlbumDetailView {
     func rate(_ target: BridgeRatingTarget, _ stars: BridgeStars?) {
         let library = library
         let uiStore = uiStore
+        // Nothing keeps or cancels this task: a rating the person gave is
+        // stored even when they leave the page at once.
         Task {
             do {
                 try await library.setRating(target, stars)
