@@ -344,9 +344,9 @@ where
         self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
     }
 
-    /// Follow one window of the queue's entries, a range of the order
-    /// queued, each beside its release, as its pane draws them: coven reruns
-    /// it for a write inside the range alone.
+    /// Follow one window of the queue's entries, a range of entries in the
+    /// order they were queued, each joined with its release. Coven reruns the
+    /// query only when a write changes a row inside the range.
     pub fn subscribe_window(
         &self,
         initial: bae_store::ListWindow,
@@ -370,14 +370,14 @@ where
         )
     }
 
-    /// Follow how many entries the queue holds. Its own query, never beside
-    /// a window's rows.
+    /// Follow how many entries the queue holds. The count runs as a separate
+    /// query from the windows' rows.
     pub fn subscribe_row_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
         self.store.subscribe(|sql| tables::release_queue_row_count_on::<Extra>(&sql))
     }
 
     /// Follow how many entries come before the row at `initial`, a count
-    /// over index ranges that moves in place with the key.
+    /// over index ranges; the caller changes the key on the same query.
     pub fn subscribe_position(
         &self,
         initial: bae_store::list_windows::OrderKey,

@@ -78,8 +78,8 @@ pub enum HeldImageKind {
 /// An image whose upload can't finish and so holds every later write of this
 /// device: coven sends a write that sets a cover, artist image or avatar only
 /// with its file stored (coven §17.4), and no write after it before then.
-/// The way out is a write that leaves the file with no reference, which ends
-/// the hold (coven §17.4, "Later writes"): giving up the image.
+/// A write that removes the image's reference to the file ends the hold
+/// (coven §17.4, "Later writes").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeldImage {
     /// The coven file the row of the image references.
@@ -95,8 +95,9 @@ pub struct PendingItem {
     /// The subject of the coven record this is, for finding the item of a
     /// record.
     pub record_subject: coven::PendingSubject,
-    /// For the upload of a cover, artist image or avatar: the image holding
-    /// this device's writes until it is stored. `None` for every other record.
+    /// For the upload of a cover, artist image or avatar: the image whose
+    /// upload coven waits for before it sends this device's later writes.
+    /// `None` for every other record.
     pub held_image: Option<HeldImage>,
 }
 

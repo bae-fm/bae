@@ -370,8 +370,8 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
 ) -> Result<bool, DbError> {
     let placeholders =
         (1..=2 + P::COLUMNS.len()).map(|at| format!("?{at}")).collect::<Vec<_>>().join(", ");
-    // The release's files and their size are read here, in the statement that
-    // queues it: the row keeps them once the release is gone.
+    // The statement that queues the release also counts its files and adds up
+    // their size, so the row keeps both after the library deletes the release.
     let insert = format!(
         "INSERT INTO {table} ({columns}, file_count, total_size, state) \
          SELECT {placeholders}, COUNT(rf.id), COALESCE(SUM(file.size), 0), 'queued' \
@@ -677,8 +677,8 @@ pub mod worker_moves {
 /// The download queue at the sizes the lists' window costs are measured at.
 #[cfg(any(test, feature = "test-utils"))]
 pub mod bulk {
-    /// Drop the triggers keeping the transfer queues' tables from a closed
-    /// library file, to time a write without them.
+    /// Drop every trigger the transfers SQL creates from the closed library
+    /// file under `directory`, so a test can time a write without them.
     pub fn drop_queue_triggers(directory: &std::path::Path) {
         bae_store::test_fixtures::planted_damage::drop_triggers_of(
             directory,
@@ -708,9 +708,9 @@ pub mod bulk {
         Ok(())
     }
 
-    /// The download queue of a library of `start..end` albums: every hundredth
-    /// album's release, named by `release_id_sql`, queued to pin, every fifth
-    /// of those failed. Set-based, as [`queue_downloads_on`].
+    /// Queues every hundredth release of `start..end`, named by
+    /// `release_id_sql`, to pin and marks every fifth of those failed, in one
+    /// SQL statement, as [`queue_downloads_on`] does.
     pub fn queue_shaped_downloads_on(
         sql: &CovenWrite<'_>,
         start: u64,
@@ -729,8 +729,8 @@ pub mod bulk {
         Ok(())
     }
 
-    /// The output queue: the first `count` releases of `start..end` (those
-    /// numbered below `count`), named by `release_id_sql`, queued to export.
+    /// Queues the releases of `start..end` numbered below `count`, named by
+    /// `release_id_sql`, to export.
     pub fn queue_shaped_outputs_on(
         sql: &CovenWrite<'_>,
         start: u64,

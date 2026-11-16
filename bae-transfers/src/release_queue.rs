@@ -38,10 +38,11 @@ pub struct ReleaseQueueEntry<Extra> {
 pub struct ReleaseQueueOp<Extra, Progress> {
     pub release_id: String,
     pub created_at: i64,
-    /// How many files the release had when it was queued.
+    /// How many files the release had when the person queued it.
     pub file_count: u64,
-    /// Their total size in bytes when it was queued. The queue keeps both, so a
-    /// row still says what it moves once the library no longer has the release.
+    /// The files' total size in bytes when the person queued the release. The
+    /// queue keeps both, so a row still shows the file count and size after
+    /// the library removes the release.
     pub total_size: u64,
     pub payload: Extra,
     pub state: ReleaseQueueState<Progress>,

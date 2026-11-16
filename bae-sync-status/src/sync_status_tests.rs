@@ -322,8 +322,8 @@ fn another_copy_of_this_device_is_answered_by_a_reset() {
     );
 }
 
-/// A copy that finds another installation using its device id is answered by
-/// a reset too, and its failure line names that cause.
+/// When a copy finds another installation using its device id, the status
+/// asks for a reset too, and its failure line names that cause.
 #[test]
 fn a_copy_that_finds_its_id_in_use_says_so() {
     let state = coven::SyncState::NeedsReset {
@@ -337,8 +337,8 @@ fn a_copy_that_finds_its_id_in_use_says_so() {
     assert!(detail.contains("another installation uses this device's id"), "{detail}");
 }
 
-/// Only a copy that found its id in use is reset at once, and the snapshot
-/// carries what it will not keep.
+/// The app resets only a copy that found its id in use right away, and the
+/// snapshot reports the unsent edits and files that the reset discards.
 #[test]
 fn only_a_copy_behind_another_installation_resets_at_once() {
     let unsent = coven::UnsentWork { writes: 2, files: 1 };

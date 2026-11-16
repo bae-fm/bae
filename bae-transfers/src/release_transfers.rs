@@ -15,7 +15,8 @@ pub enum ReleaseTransferChange<Progress> {
         progress: Progress,
     },
     /// The release's entry is no longer active. `end` is how its transfer
-    /// ended, named where it ended; `None` when the reader works the removal
+    /// ended, as the code that ended the transfer passed it to
+    /// [`ReleaseTransfers::remove`]; `None` when the reader works the removal
     /// out from two reads of a table, which say a release left and not why.
     Removed {
         release_id: String,

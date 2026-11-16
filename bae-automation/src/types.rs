@@ -799,9 +799,10 @@ pub struct AutomationQueuedRelease {
 pub struct AutomationOutputOp {
     pub release_id: String,
     pub target_dir: String,
-    /// How many files the release had when it was queued.
+    /// How many files the release had when the person queued it.
     pub file_count: u64,
-    /// Their total size in bytes when it was queued.
+    /// The total size in bytes of the release's files when the person queued
+    /// it.
     pub total_size: u64,
     /// `None` once the library no longer has the release.
     pub release: Option<AutomationQueuedRelease>,

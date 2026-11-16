@@ -16,11 +16,11 @@ INSERT OR IGNORE INTO release_queues (queue, paused) VALUES ('download', 0), ('o
 CREATE TABLE IF NOT EXISTS download_queue (
     position   INTEGER PRIMARY KEY,
     release_id TEXT NOT NULL UNIQUE,
-    -- When it was queued, in milliseconds since the epoch.
+    -- When the person queued the release, in milliseconds since the epoch.
     created_at INTEGER NOT NULL,
-    -- How many files the release had and their total size in bytes when it
-    -- was queued, read in the statement that queues it. The row keeps both
-    -- after the release leaves the library, and its files with it.
+    -- The number of the release's files and their total size in bytes, which
+    -- the statement that queues the release reads. The row keeps both after
+    -- the release and its files leave the library.
     file_count INTEGER NOT NULL CHECK (file_count >= 0),
     total_size INTEGER NOT NULL CHECK (total_size >= 0),
     state      TEXT NOT NULL CHECK (state IN ('queued', 'active', 'failed')),

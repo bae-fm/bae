@@ -67,7 +67,9 @@ pub struct SyncStatusSnapshot {
 fn removal_text(removal: coven::Removal) -> &'static str {
     match removal {
         coven::Removal::Device => "an admin removed this device from the library",
-        coven::Removal::Member => "this device's member was removed from the library or left it",
+        coven::Removal::Member => {
+            "an admin removed this device's person from the library, or the person left it"
+        }
         coven::Removal::NeverAdmitted => "the library refused this device's admission",
     }
 }
@@ -79,10 +81,12 @@ fn reset_text(reason: coven::ResetReason) -> &'static str {
             "a reset or restore registered another installation in this one's place"
         }
         coven::ResetReason::DeviceIdInUse => {
-            "another installation uses this device's id, and this copy is the one behind"
+            "another installation uses this device's id, and this copy lacks the other \
+             installation's newer changes"
         }
         coven::ResetReason::MemberKeysReplaced { .. } => {
-            "the member's keys were replaced with a pair this device does not hold"
+            "another of the person's devices replaced their keys, and this device does not \
+             hold the new ones"
         }
     }
 }
@@ -93,7 +97,8 @@ fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiError
     match error {
         coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
         coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-        // Removed from the library, or never admitted to it (coven §13.2).
+        // The library removed this device, or never admitted it (coven
+        // §13.2).
         coven::SyncFailure::Removed(_) => C::DeviceRemoved,
         coven::SyncFailure::Storage(error) => bae_diagnostics::storage_error_category(error),
         coven::SyncFailure::Operation(_) | coven::SyncFailure::Other(_) => C::Internal,
@@ -253,9 +258,9 @@ impl SyncStatusSnapshot {
     }
 
     /// What this copy will not keep when it resets: set while another
-    /// installation uses this device's id and this copy is the one behind,
-    /// which the app answers by resetting at once without asking. The work
-    /// is the edits and files this copy never sent.
+    /// installation uses this device's id and this copy lacks the other
+    /// installation's newer changes, and the app then resets it right away
+    /// without asking. The work is the edits and files this copy never sent.
     pub fn copy_behind(&self) -> Option<coven::UnsentWork> {
         match self.coven.state {
             coven::SyncState::NeedsReset { reason: coven::ResetReason::DeviceIdInUse, unsent } => {
@@ -346,8 +351,8 @@ impl SyncStatusSnapshot {
     fn failure_recorded(&self) -> bool {
         use coven::{LastPass as S, PendingReason as R, StatusFailure as F};
         use PendingSubjectName as N;
-        // A device that stopped for good has a record of why, beside its
-        // state, when its pending records hold one.
+        // A removed device, or one whose keys another device replaced, shows
+        // its failure from its pending record when it has one.
         match &self.coven.state {
             coven::SyncState::Removed { .. } => {
                 return self.pending.iter().any(|item| matches!(item.wait.reason, R::Removed(_)))

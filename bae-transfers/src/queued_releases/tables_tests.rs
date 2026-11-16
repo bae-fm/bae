@@ -275,9 +275,9 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
     assert_eq!(queue.total.queued, 2);
 }
 
-/// A row keeps how many files its release had and their size from when it
-/// was queued, so it still says what it moves once the library no longer
-/// has the release.
+/// A row keeps the file count and total size its release had when the person
+/// queued it, so the queue still shows them after the library deletes the
+/// release.
 #[tokio::test]
 async fn an_entry_keeps_its_files_and_size_after_its_release_is_gone() {
     use bae_records::test_fixtures::storage_listing::{insert_file, write_library, RELEASE_EARLY};
@@ -427,9 +427,10 @@ async fn the_queue_reads_are_planned_on_their_keys() {
     assert!(!pane.contains("TEMP B-TREE"), "{pane}");
 }
 
-/// A pane's window holds the entries of its range in the order queued; the
-/// queue's length is a query of its own, a key at a position is the entry
-/// there, and the position of a key counts the entries before it.
+/// A pane's window holds the entries of its range in the order queued; a
+/// separate query counts the queue's entries, `key_at` returns the key of the
+/// entry at a position, and the position of a key counts the entries before
+/// it.
 #[tokio::test]
 async fn a_window_reads_its_range_and_the_queue_length_its_own() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
