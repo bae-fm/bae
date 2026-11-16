@@ -1,15 +1,12 @@
 package fm.bae.app.playback
 
 import androidx.media3.common.MediaItem
-import fm.bae.app.data.LiveQueryEvent
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListCount
@@ -42,62 +39,15 @@ internal object BrowsePaging {
         pageSize: Int,
     ): ULong = page.toULong() * pageSize.toULong()
 
-    fun paginate(
-        items: List<MediaItem>,
+    /** The page asked for of the root's [categories], a list the app fixes, not rows a read returned. */
+    fun categoryPage(
+        categories: List<MediaItem>,
         page: Int,
         pageSize: Int,
     ): List<MediaItem> {
         val start = offsetOf(page, pageSize)
-        if (start >= items.size.toULong()) return emptyList()
-        return items.drop(start.toInt()).take(pageSize)
-    }
-}
-
-internal class FixedProjection<Value : Any>(
-    scope: CoroutineScope,
-    flow: Flow<LiveQueryEvent<Value>>,
-    private val onChanged: (Value) -> Unit,
-    private val onError: (BridgeException) -> Unit,
-) {
-    private val lock = Any()
-    private val ready = CompletableDeferred<Unit>()
-    private var latest: LiveQueryEvent<Value>? = null
-    private var initial = true
-    private var closed = false
-    private val job =
-        scope.launch {
-            flow.collect { event ->
-                val notify =
-                    synchronized(lock) {
-                        if (closed) return@collect
-                        latest = event
-                        ready.complete(Unit)
-                        (!initial).also { initial = false }
-                    }
-                when (event) {
-                    is LiveQueryEvent.Value -> if (notify) onChanged(event.value)
-                    is LiveQueryEvent.Error -> onError(event.error)
-                }
-            }
-        }
-
-    suspend fun value(): Value {
-        ready.await()
-        return synchronized(lock) {
-            when (val event = latest ?: throw treeClosedError()) {
-                is LiveQueryEvent.Value -> event.value
-                is LiveQueryEvent.Error -> throw event.error
-            }
-        }
-    }
-
-    suspend fun close() {
-        synchronized(lock) {
-            if (closed) return
-            closed = true
-            ready.complete(Unit)
-        }
-        job.cancelAndJoin()
+        if (start >= categories.size.toULong()) return emptyList()
+        return categories.drop(start.toInt()).take(pageSize)
     }
 }
 

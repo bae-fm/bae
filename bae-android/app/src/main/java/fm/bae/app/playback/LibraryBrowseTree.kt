@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
-import fm.bae.app.MissingMainRelease
 import fm.bae.app.data.Library
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.pullEach
@@ -18,14 +17,11 @@ import kotlinx.coroutines.runBlocking
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumAppearance
-import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeException.Diagnostic
 import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
@@ -41,11 +37,6 @@ internal data class BrowseLabels(
     val library: String,
     val albums: String,
     val composers: String,
-)
-
-internal data class BrowsePage(
-    val items: List<MediaItem>,
-    val totalCount: Int,
 )
 
 private class ParentInterest
@@ -104,8 +95,6 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val nodes: BrowseNodeFactory,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
-    /** Reports a bug found while answering a controller; the controller is answered with an error. */
-    private val reportBug: (operation: String, error: Throwable) -> Unit,
 ) {
     private val library = Library(handle)
 
@@ -159,7 +148,6 @@ internal class LibraryBrowseTree<Owner : Any>(
         get() = nodes.browsable(BrowseId.Root, labels().library, null, MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
     private val lock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
-    private val fixedParents = mutableMapOf<String, FixedProjection<BrowsePage>>()
 
     /** The live count of the children of each retained parent whose pages are each read once, by its media id. */
     private val childCounts = mutableMapOf<String, ChildCount>()
@@ -189,7 +177,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
             BrowseId.Root -> {
                 val names = labels()
-                BrowsePaging.paginate(
+                BrowsePaging.categoryPage(
                     listOf(
                         nodes.browsable(BrowseId.Albums, names.albums, null, MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
                         nodes.browsable(
@@ -221,7 +209,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                BrowsePaging.paginate(fixedParent(parentId).value().items, page, pageSize)
+                pageAt(page, pageSize) { offset ->
+                    reportingFailure(onQueryError) {
+                        handle.readAlbumTrackPage(id.albumId, offset.toULong(), pageSize.toULong())
+                    }.map(nodes::browseTrack)
+                }
             }
 
             is BrowseId.Work -> {
@@ -337,21 +329,11 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                fixedParent(parentId).value()
+                childCount(parentId) { library.albumTrackCount(id.albumId) }.awaitAnswer()
             }
 
             is BrowseId.Work -> {
-                synchronized(lock) {
-                    check(!closed)
-                    childCounts.getOrPut(parentId) {
-                        ChildCount(
-                            scope,
-                            library.workChildCount(id.workId),
-                            onChanged = { count -> notifyParent(parentId, count) },
-                            onError = onQueryError,
-                        )
-                    }
-                }.awaitAnswer()
+                childCount(parentId) { library.workChildCount(id.workId) }.awaitAnswer()
             }
 
             else -> {
@@ -436,24 +418,22 @@ internal class LibraryBrowseTree<Owner : Any>(
             synchronized(lock) {
                 if (closed) return
                 closed = true
-                val state = Triple(albums to composers, fixedParents.values.toList(), searchesByOwner.values.toList())
+                val state = Pair(albums to composers, searchesByOwner.values.toList())
                 pages += composerPages.values
                 counts += childCounts.values
-                childCounts.clear()
                 albums = null
                 composers = null
-                fixedParents.clear()
                 composerPages.clear()
+                childCounts.clear()
                 searchesByOwner.clear()
                 parentsByOwner.clear()
                 state
             }
         state.first.first?.close()
         state.first.second?.close()
-        state.second.forEach { it.close() }
         pages.forEach { it.close() }
         counts.forEach { it.close() }
-        state.third.forEach { it.close() }
+        state.second.forEach { it.close() }
     }
 
     private fun albumProjection(): ListProjection<BridgeAlbumAppearance, BridgeAlbum> =
@@ -496,14 +476,21 @@ internal class LibraryBrowseTree<Owner : Any>(
             ).also { composerPages[parentId] = it }
         }
 
-    private fun fixedParent(parentId: String): FixedProjection<BrowsePage> =
+    /** The live count of [parentId]'s children, which [open] reads, opened on first use. */
+    private fun childCount(
+        parentId: String,
+        open: () -> PulledSubscription<BridgeListCount>,
+    ): ChildCount =
         synchronized(lock) {
-            fixedParents[parentId] ?: FixedProjection(
-                scope,
-                parentFlow(library, nodes, reportBug, parentId),
-                onChanged = { notifyParent(parentId, it.totalCount) },
-                onError = onQueryError,
-            ).also { fixedParents[parentId] = it }
+            check(!closed)
+            childCounts.getOrPut(parentId) {
+                ChildCount(
+                    scope,
+                    open(),
+                    onChanged = { count -> notifyParent(parentId, count) },
+                    onError = onQueryError,
+                )
+            }
         }
 
     private suspend fun closeParentIfUnused(parentId: String) {
@@ -516,8 +503,8 @@ internal class LibraryBrowseTree<Owner : Any>(
             BrowseId.Albums -> synchronized(lock) { albums.also { albums = null } }?.close()
             BrowseId.Composers -> synchronized(lock) { composers.also { composers = null } }?.close()
             is BrowseId.Composer -> synchronized(lock) { composerPages.remove(parentId) }?.close()
-            is BrowseId.Work -> synchronized(lock) { childCounts.remove(parentId) }?.close()
-            else -> synchronized(lock) { fixedParents.remove(parentId) }?.close()
+            is BrowseId.Album, is BrowseId.Work -> synchronized(lock) { childCounts.remove(parentId) }?.close()
+            BrowseId.Root, is BrowseId.Track, null -> Unit
         }
     }
 
@@ -551,16 +538,6 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 }
 
-/** Report an album with no main release among its releases as a bug; what the controller is answered with. */
-internal fun missingMainRelease(
-    detail: BridgeAlbumDetail,
-    reportBug: (operation: String, error: Throwable) -> Unit,
-): BridgeException {
-    val bug = MissingMainRelease(detail)
-    reportBug("browse album ${detail.album.id}", bug)
-    return browseDiagnostic(bug.message.orEmpty())
-}
-
 internal fun windowEvicted(): BrowseUnavailable = BrowseUnavailable.Superseded("browse window replaced")
 
 internal fun treeClosedError(): BrowseUnavailable = BrowseUnavailable.LibraryClosed()
@@ -568,8 +545,6 @@ internal fun treeClosedError(): BrowseUnavailable = BrowseUnavailable.LibraryClo
 private fun parentInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superseded("parent interest ended")
 
 private fun searchInterestEnded(): BrowseUnavailable = BrowseUnavailable.Superseded("search interest ended")
-
-private fun browseDiagnostic(message: String): BridgeException = Diagnostic(BridgeErrorCategory.Internal, message)
 
 /** The items [read] answers for the page's offset, none when the offset is past what an int holds. */
 private suspend fun <Item> pageAt(

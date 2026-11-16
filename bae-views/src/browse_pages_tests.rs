@@ -1,11 +1,11 @@
-//! The pages a media browser reads of a work's children, each read once at
-//! its offset, and the live count of them, over libraries written through
-//! the records domain's own writes.
+//! The pages a media browser reads of an album's tracks and of a work's
+//! children, each read once at its offset, and the live count of each list,
+//! over libraries written through the records domain's own writes.
 
 use crate::album_detail::WorkChild;
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
-use bae_records::test_fixtures::test_records;
+use bae_records::test_fixtures::{delete_release, test_records};
 use bae_store::test_fixtures::temp_db;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -85,4 +85,48 @@ async fn a_works_children_are_its_parts_then_its_releases_paged_and_counted_in_s
         .await;
     let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
     assert_eq!(counted, 5);
+}
+
+const PAGED_ALBUM: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c51";
+const MAIN_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c52";
+const OTHER_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c53";
+
+/// What a page of the album's tracks names: each track's id.
+async fn album_tracks(views: &LibraryViews, offset: u64, limit: u64) -> Vec<String> {
+    let page = views.album_track_page(PAGED_ALBUM, offset, limit).await.unwrap();
+    page.into_iter().map(|track| track.id).collect()
+}
+
+/// An album's tracks are its main release's, in playing order, never another
+/// release's. Each page is read at its offset, and the count of the tracks is
+/// a live query that follows the album to the release that becomes its main
+/// one when the first is deleted.
+#[tokio::test]
+async fn an_albums_tracks_are_its_main_releases_paged_and_counted_in_sql() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let (first, second, third) = (
+        "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c54",
+        "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c55",
+        "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c56",
+    );
+    RecordsFixture::new()
+        .artist(COMPOSER, "Composer Name")
+        .album(PAGED_ALBUM, "Paged Album", Some(2026), &[COMPOSER])
+        .release(PAGED_ALBUM, MAIN_RELEASE)
+        .tracks(MAIN_RELEASE, &[(first, "First"), (second, "Second"), (third, "Third")])
+        .release(PAGED_ALBUM, OTHER_RELEASE)
+        .tracks(OTHER_RELEASE, &[("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c57", "Other")])
+        .write(&test_records(&db))
+        .await;
+    let views = LibraryViews::new(db.clone());
+
+    assert_eq!(album_tracks(&views, 0, 2).await, [first, second]);
+    assert_eq!(album_tracks(&views, 2, 2).await, [third]);
+    assert!(album_tracks(&views, 4, 2).await.is_empty());
+
+    let mut count = views.subscribe_album_track_count(PAGED_ALBUM);
+    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+    delete_release(&test_records(&db), MAIN_RELEASE).await;
+    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
+    assert_eq!(counted, 1);
 }

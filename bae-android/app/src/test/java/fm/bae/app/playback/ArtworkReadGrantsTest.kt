@@ -123,7 +123,6 @@ class ArtworkReadGrantsTest {
                 FakeAppHandle(),
                 { BrowseLabels("Library", "Albums", "Composers") },
                 BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
-                reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },
             ),
             grants,
             CoroutineScope(Dispatchers.Unconfined),

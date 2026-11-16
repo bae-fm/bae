@@ -80,6 +80,24 @@ forward! { async this => {
             .collect())
     }
 
+    /// One page of the tracks of the album `album_id`, read once: at most
+    /// `limit` of its main release's tracks starting `offset` in, in playing
+    /// order.
+    fn read_album_track_page(
+        album_id: String,
+        offset: u64,
+        limit: u64,
+    ) -> Vec<crate::types::BridgeBrowseTrack> {
+        Ok(this
+            .services
+            .album_track_page(&album_id, offset, limit)
+            .await
+            .map_err(BridgeError::from)?
+            .into_iter()
+            .map(crate::types::BridgeBrowseTrack::from_core)
+            .collect())
+    }
+
     /// One page of the children of the work `work_id`, read once: at most
     /// `limit` of them starting `offset` in, its parts and then the releases
     /// that perform it.

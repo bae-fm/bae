@@ -423,7 +423,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
 
 /// What a track hit shows: the track, its release's album, its credit line and
 /// its release's cover version.
-static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+pub(crate) static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     format!(
         "SELECT t.id, t.title, t.duration_ms, t.release_id, \
                 r.album_id, a.title as album_title, {} as artist_name, \
@@ -436,7 +436,7 @@ static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(
     )
 });
 
-fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
+pub(crate) fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
     Ok(DbTrackSearchResult {
         id: row.get("id")?,
         title: row.get("title")?,

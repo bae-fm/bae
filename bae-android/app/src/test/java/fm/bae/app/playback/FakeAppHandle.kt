@@ -122,6 +122,7 @@ internal open class FakeAppHandle(
     private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
     private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
     private val workChildren: Map<String, List<BridgeWorkChild>> = emptyMap(),
+    private val albumTracks: Map<String, List<BridgeBrowseTrack>> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
@@ -316,6 +317,22 @@ internal open class FakeAppHandle(
                 initialSearchError(query)?.let(count::fail) ?: count.emit(searchResults(query).albums.size)
             }
         }
+
+    /** The album track counts the handle opened, oldest first, each answering its album's first count when it opens. */
+    val albumTrackCounts = mutableListOf<FakeCountSubscription>()
+
+    override fun subscribeAlbumTrackCount(albumId: String): ListCountSubscription =
+        FakeCountSubscription(albumId).also { count ->
+            albumTrackCounts += count
+            count.emit(albumTracks[albumId].orEmpty().size)
+        }
+
+    /** Returns the album's tracks from [offset], at most [limit], as the database would. */
+    override suspend fun readAlbumTrackPage(
+        albumId: String,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeBrowseTrack> = albumTracks[albumId].orEmpty().drop(offset.toInt()).take(limit.toInt())
 
     /** The work child counts the handle opened, oldest first, each answering its work's first count when it opens. */
     val workChildCounts = mutableListOf<FakeCountSubscription>()

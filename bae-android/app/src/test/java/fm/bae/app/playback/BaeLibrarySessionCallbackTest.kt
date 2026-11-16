@@ -196,7 +196,6 @@ class BaeLibrarySessionCallbackTest {
             { BrowseLabels("Library", "Albums", "Composers") },
             BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
             onChildrenChanged = changed,
-            reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },
         )
 
     private fun grants() = ArtworkReadGrants(RuntimeEnvironment.getApplication())

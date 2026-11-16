@@ -149,6 +149,18 @@ impl AppHandle {
         )
     }
 
+    /// Read live how many tracks the album `album_id` has: the tracks
+    /// `read_album_track_page` pages through.
+    pub fn subscribe_album_track_count(
+        &self,
+        album_id: String,
+    ) -> Arc<crate::ListCountSubscription> {
+        crate::screens::list_count(
+            self.services.subscribe_album_track_count(&album_id),
+            self.runtime.clone(),
+        )
+    }
+
     /// Read live how many children the work `work_id` has: the rows
     /// `read_work_child_page` pages through.
     pub fn subscribe_work_child_count(&self, work_id: String) -> Arc<crate::ListCountSubscription> {

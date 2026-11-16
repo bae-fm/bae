@@ -2,12 +2,7 @@ package fm.bae.app.data
 
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.map
-import fm.bae.screensubscription.pullEach
 import fm.bae.screensubscription.pulled
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -19,7 +14,6 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeList
@@ -34,22 +28,6 @@ import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.LibrarySearchSubscription
-
-internal sealed interface LiveQueryEvent<out Value> {
-    data class Value<Value>(
-        val value: Value,
-    ) : LiveQueryEvent<Value>
-
-    data class Error(
-        val error: BridgeException,
-    ) : LiveQueryEvent<Nothing>
-
-    fun <Mapped> mapValue(transform: (Value) -> Mapped): LiveQueryEvent<Mapped> =
-        when (this) {
-            is LiveQueryEvent.Value -> LiveQueryEvent.Value(transform(value))
-            is LiveQueryEvent.Error -> this
-        }
-}
 
 /**
  * One value a detail read delivered: the id it was read for, and that item's detail, or none once
@@ -82,37 +60,10 @@ private class BridgeDetailRead<Value>(
     override fun release() = free()
 }
 
-/** One item's detail as it changes: each value, and each failure as an event rather than the end. */
-internal typealias DetailEvents<Value> = Flow<LiveQueryEvent<Value?>>
-
-/**
- * One item's detail as a flow over a read of its own, opened when collection starts and released
- * when it stops. Errors are events; a cancelled read ends the flow.
- */
-private fun <Value> detailFlow(
-    open: () -> DetailRead<Value>,
-    id: String,
-): DetailEvents<Value> =
-    callbackFlow {
-        val read = open()
-        read.setId(id)
-        launch {
-            read.pullEach(
-                onValue = { if (it.id == id) send(LiveQueryEvent.Value(it.value)) },
-                onError = { send(LiveQueryEvent.Error(it)) },
-            )
-        }
-        // The reader's pending read is cancelled with this flow; releasing the
-        // read then ends it in core.
-        awaitClose(read::release)
-    }
-
 /**
  * Narrow projection of [AppHandleInterface] for library browse and detail live queries.
- * Each flow stays subscribed after an error and can deliver later values; the
- * error is an event rather than flow termination. Image bytes are not here —
- * every image in the app resolves through [fm.bae.app.data.ImageStore], which
- * owns their caching too.
+ * Image bytes are not here: every image in the app resolves through
+ * [fm.bae.app.data.ImageStore], which owns their caching too.
  * Mirrors the macOS `Library` domain service.
  */
 class Library(
@@ -229,13 +180,6 @@ class Library(
         return pulled(read::next, read::cancel)
     }
 
-    /**
-     * One album's detail as a flow, for a surface that holds many items' details at once (Android
-     * Auto's browse tree): each item is its own row whose data changes on its own, so each keeps
-     * its own read for as long as the flow is collected.
-     */
-    internal fun albumDetails(id: String): DetailEvents<BridgeAlbumDetail> = detailFlow(::albumDetail, id)
-
     /** The composer list under one sort. */
     internal fun composerList(sortCriterion: BridgeComposerSortCriterion): ListReads<BridgeComposerSummary> =
         listReads(BridgeList.Composers(listOf(sortCriterion))) { rows ->
@@ -269,6 +213,13 @@ class Library(
      */
     internal fun searchAlbumCount(query: String): PulledSubscription<BridgeListCount> =
         handle.subscribeSearchAlbumCount(query).let { pulled(it::next, it::cancel) }
+
+    /**
+     * How many tracks the album [albumId] has, read live: the tracks
+     * [AppHandleInterface.readAlbumTrackPage] pages through.
+     */
+    internal fun albumTrackCount(albumId: String): PulledSubscription<BridgeListCount> =
+        handle.subscribeAlbumTrackCount(albumId).let { pulled(it::next, it::cancel) }
 
     /**
      * How many children the work [workId] has, read live: the rows

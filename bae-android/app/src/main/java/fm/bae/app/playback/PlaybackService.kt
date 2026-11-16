@@ -81,7 +81,6 @@ class PlaybackService(
                 onChildrenChanged = { parentId, count ->
                     mediaSession?.notifyChildrenChanged(parentId, count, null)
                 },
-                reportBug = open.bugs::reportShownInPlace,
             )
         val grants = ArtworkReadGrants(this)
         val callback =

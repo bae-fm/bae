@@ -184,6 +184,15 @@ impl AppServices {
         list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
     }
 
+    /// How many tracks the album `album_id` has, which a media browser pages
+    /// through by offset.
+    pub fn subscribe_album_track_count(
+        &self,
+        album_id: &str,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        list_rows(&self.inner.manager, self.inner.views.subscribe_album_track_count(album_id))
+    }
+
     /// How many children the work `work_id` has, which a media browser pages
     /// through by offset.
     pub fn subscribe_work_child_count(

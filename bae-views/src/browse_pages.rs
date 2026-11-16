@@ -1,13 +1,65 @@
 //! The lists a media browser, such as Android Auto, reads a page at a time:
-//! a work's children. A browser names each page by its offset, so each page
-//! is one plain read at that offset, and each list's count is a live query
-//! of its own, which tells the browser when to read the list again.
+//! an album's tracks and a work's children. A browser names each page by its
+//! offset, so each page is one plain read at that offset, and each list's
+//! count is a live query of its own, which tells the browser when to read the
+//! list again.
 
 use super::*;
-use crate::album_detail::{WorkChild, WorkReleaseSummary};
+use crate::album::{track_hit_row, TRACK_HIT_SELECT};
+use crate::album_detail::{TrackSearchResult, WorkChild, WorkReleaseSummary};
 use crate::composer::{row_to_work_release_summary, work_release_columns, work_summary_columns};
 
 impl LibraryViews {
+    /// The tracks of the album `album_id` from `offset`, at most `limit`, read
+    /// once: its main release's tracks, in playing order. An album that
+    /// doesn't exist has none.
+    pub async fn album_track_page(
+        &self,
+        album_id: &str,
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<TrackSearchResult>, DbError> {
+        let album_id = album_id.to_string();
+        let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+        self.store
+            .read(move |sql| {
+                Ok(sql.query(
+                    &format!(
+                        "{select} WHERE a.id = ?1 AND r.id = {main}
+                         ORDER BY t.position LIMIT ?2 OFFSET ?3",
+                        select = TRACK_HIT_SELECT.as_str(),
+                        main = album_primary_release_sql(),
+                    ),
+                    params![album_id, limit, offset],
+                    track_hit_row,
+                )?)
+            })
+            .process(|rows| Ok(rows.into_iter().map(TrackSearchResult::from_raw).collect()))
+            .await
+    }
+
+    /// Follow how many tracks the album `album_id` has: the tracks
+    /// [`Self::album_track_page`] pages through.
+    pub fn subscribe_album_track_count(
+        &self,
+        album_id: &str,
+    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+        let album_id = album_id.to_string();
+        self.store.subscribe(move |sql| {
+            Ok(sql.query_row(
+                &format!(
+                    "SELECT COUNT(*) AS count FROM albums a
+                     JOIN tracks t ON t.release_id = {main}
+                     WHERE a.id = ?1",
+                    main = album_primary_release_sql(),
+                ),
+                params![album_id],
+                |row| count_column::<u64>(row, "count"),
+            )?)
+        })
+    }
+
     /// The children of the work `work_id` from `offset`, at most `limit`, read
     /// once: its parts, then the releases that perform it, in the order
     /// [`work_children_sql`] gives.

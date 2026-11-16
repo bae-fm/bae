@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -26,20 +25,6 @@ class LibraryLiveFlowTest {
 
     @After
     fun tearDown() = Dispatchers.resetMain()
-
-    @Test
-    fun an_items_flow_reads_it_until_collection_stops() =
-        runBlocking {
-            val detail = BridgeFixtures.albumDetail(BridgeFixtures.album("album-1"))
-            val handle = FakeAppHandle(albumDetails = mapOf("album-1" to detail))
-
-            val event = Library(handle).albumDetails("album-1").first()
-
-            assertEquals(detail, (event as LiveQueryEvent.Value).value)
-            val read = handle.albumDetailSubscriptions.single().read
-            assertEquals(listOf("album-1"), read.requestedIds)
-            assertTrue("the read ends with the collection", read.cancelled)
-        }
 
     @Test
     fun a_detail_pane_moves_its_one_read_while_it_shows_and_closes_it_when_it_goes() =

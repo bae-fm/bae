@@ -6,7 +6,6 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.HANG_GUARD
 import fm.bae.app.HANG_GUARD_MS
-import fm.bae.app.MissingMainRelease
 import fm.bae.app.plainCreditText
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.Dispatchers
@@ -39,8 +38,6 @@ import java.util.concurrent.TimeUnit
 class LibraryBrowseTreeTest {
     private val labels = BrowseLabels(library = "Library", albums = "Albums", composers = "Composers")
 
-    private val bugs = mutableListOf<Pair<String, Throwable>>()
-
     private fun tree(
         handle: FakeAppHandle,
         onChildrenChanged: (String, Int) -> Unit = { _, _ -> },
@@ -50,46 +47,40 @@ class LibraryBrowseTreeTest {
             labels = { labels },
             nodes = BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
             onChildrenChanged = onChildrenChanged,
-            reportBug = { operation, error -> bugs += operation to error },
         )
 
-    /** An album's children are its main release's tracks, never another release's. */
+    /** An album's children are the page of its tracks the database read returns at the page's offset. */
     @Test
-    fun anAlbumsChildrenAreItsMainReleasesTracks() =
+    fun anAlbumsChildrenAreThePageTheReadReturns() =
         runBlocking {
-            val album = BridgeFixtures.album(id = "album-1", primaryReleaseId = "rel-main", releaseIds = listOf("rel-main", "rel-other"))
-            val other =
-                PreviewData.release(
-                    id = "rel-other",
-                    albumId = "album-1",
-                    trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-other")))),
-                )
-            val main =
-                PreviewData.release(
-                    id = "rel-main",
-                    albumId = "album-1",
-                    trackGroups = listOf(PreviewData.trackGroup(listOf(PreviewData.track("trk-main")))),
-                )
-            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, listOf(main, other)))))
+            val tracks = List(3) { BridgeFixtures.browseTrack(id = "trk-$it", releaseId = "rel-main") }
+            val tree = tree(FakeAppHandle(albumTracks = mapOf("album-1" to tracks)))
+            val album = BrowseId.Album("album-1").mediaId
 
-            val children = tree.children(BrowseId.Album("album-1").mediaId, 0, 20)!!
-
-            assertEquals(listOf(BrowseId.Track("rel-main", "trk-main").mediaId), children.map { it.mediaId })
+            assertEquals(
+                listOf(BrowseId.Track("rel-main", "trk-0").mediaId, BrowseId.Track("rel-main", "trk-1").mediaId),
+                tree.children(album, 0, 2)!!.map { it.mediaId },
+            )
+            assertEquals(listOf(BrowseId.Track("rel-main", "trk-2").mediaId), tree.children(album, 1, 2)!!.map { it.mediaId })
             tree.close()
         }
 
-    /** An album with no releases has no main release, so the tree reports a bug and throws an error. */
+    /** An album's live track count tells the controller each time it changes, but not at its first answer. */
     @Test
-    fun anAlbumWithNoReleasesIsReportedAndAnError() =
+    fun anAlbumsTrackCountTellsTheControllerEachChange() =
         runBlocking {
-            val album = BridgeFixtures.album(id = "album-1", releaseIds = emptyList())
-            val tree = tree(FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(album, emptyList()))))
+            val handle = FakeAppHandle(albumTracks = mapOf("album-1" to listOf(BridgeFixtures.browseTrack())))
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parent, count -> notifications += parent to count }
+            val album = BrowseId.Album("album-1").mediaId
 
-            assertThrows(BridgeException::class.java) {
-                runBlocking { tree.children(BrowseId.Album("album-1").mediaId, 0, 20) }
-            }
-            assertTrue(bugs.single().second is MissingMainRelease)
+            tree.subscribeParent(Any(), album)
+            assertTrue(notifications.isEmpty())
+            handle.albumTrackCounts.single().emit(2)
+
+            assertEquals(listOf(album to 2), notifications)
             tree.close()
+            assertTrue(handle.albumTrackCounts.single().cancelled)
         }
 
     /** A work's children are the page the database read returns at the page's offset: its parts, then its releases as their albums. */

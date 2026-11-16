@@ -9,8 +9,6 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeRelease
-import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeWorkChild
 import uniffi.bae_bridge.BridgeWorkSummary
 
@@ -93,21 +91,7 @@ internal class BrowseNodeFactory(
             is BridgeWorkChild.Release -> album(child.release.albumId, child.release.albumTitle, child.release.cover)
         }
 
-    /** A playable track node, carrying its release and track ids so the player
-     *  starts the release at that track. */
-    fun track(
-        release: BridgeRelease,
-        track: BridgeTrack,
-    ): MediaItem =
-        playable(
-            BrowseId.Track(release.id, track.id),
-            track.title,
-            track.artistLine,
-            track.durationMs,
-            release.cover,
-        )
-
-    /** A playable track node for a track read alone, as [track] builds one from a release's rows. */
+    /** A playable track node, carrying its release and track ids so the player starts the release at that track. */
     fun browseTrack(track: BridgeBrowseTrack): MediaItem =
         playable(
             BrowseId.Track(track.releaseId, track.id),

@@ -5,6 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
+import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeCacheLimit
 import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -263,6 +264,19 @@ object BridgeFixtures {
             linkedReleaseCount = 1L,
             representativeReleaseId = "rel-1",
             representativeCover = null,
+        )
+
+    fun browseTrack(
+        id: String = "trk-1",
+        releaseId: String = "rel-1",
+    ): BridgeBrowseTrack =
+        BridgeBrowseTrack(
+            id = id,
+            title = "Track Title",
+            durationMs = 180_000uL,
+            releaseId = releaseId,
+            artistLine = BridgeCreditLine(names = emptyList()),
+            cover = null,
         )
 
     fun workRelease(
