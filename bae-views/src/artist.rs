@@ -182,13 +182,12 @@ fn find_artist_detail_on(
         &artist.artist.id,
         &crate::sort_key_sql("credit_name.name"),
     )?;
-    // How many rows each section above lists.
+    // How many rows each section above lists, counted over the rows that
+    // section's statement reads.
     let (credit_name_count, album_count) = sql.query_row(
         &format!(
             "SELECT {credit_names} AS credit_name_count, \
-                    (SELECT COUNT(*) FROM album_artist_link link \
-                     JOIN albums a ON a.id = link.album_id \
-                     WHERE link.artist_id = ?1) AS album_count",
+                    (SELECT COUNT(*) FROM ({albums_query})) AS album_count",
             credit_names = bae_records::records::artist_credit_names::credit_name_count_sql("?1"),
         ),
         params![artist_id],

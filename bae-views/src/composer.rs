@@ -255,21 +255,17 @@ fn find_work_detail_on(
     let Some(work) = work else {
         return Ok(None);
     };
-    let child_works = sql.query(
-        &work_summary_query(
-            Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?"),
-            Some(&{
-                let parts = WorkPartOrder::over("wp", "w");
-                format!("ORDER BY {}, {}", parts.place, parts.title)
-            }),
-        ),
-        params![work.work.id],
-        row_to_work_summary,
-    )?;
-    let releases = work_release_rows(sql, &work.work.id)?;
-    let tracks = sql.query(
-        &format!(
-            "SELECT tw.id AS track_work_id, tw.work_id,
+    // Each section's statement reads the work keyed `?1`.
+    let child_works_query = work_summary_query(
+        Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?1"),
+        Some(&{
+            let parts = WorkPartOrder::over("wp", "w");
+            format!("ORDER BY {}, {}", parts.place, parts.title)
+        }),
+    );
+    let releases_query = work_releases_query();
+    let tracks_query = format!(
+        "SELECT tw.id AS track_work_id, tw.work_id,
                 tw.position, tw.source AS link_source, tw.created_at,
                 t.id AS track_id, t.release_id AS track_release_id,
                 t.title AS track_title, t.medium_id AS track_medium_id, t.side AS track_side,
@@ -281,39 +277,33 @@ fn find_work_detail_on(
                 a.is_compilation AS album_is_compilation,
                 a.created_at AS album_created_at
          {WORK_RELEASES_FROM}
-         WHERE tw.work_id = ?
+         WHERE tw.work_id = ?1
          ORDER BY {releases}, t.position, tw.position",
-            releases = work_release_order("a", "r"),
-        ),
-        params![work.work.id],
-        |row| {
-            Ok(DbWorkTrackSummary {
-                link: DbTrackWork {
-                    id: row.get("track_work_id")?,
-                    track_id: row.get("track_id")?,
-                    work_id: row.get("work_id")?,
-                    position: row.get("position")?,
-                    source: parsed_column(row, "link_source")?,
-                    created_at: rfc3339_column(row, "created_at")?,
-                },
-                track: row_to_track_with_prefix(row, "track_")?,
-                album: row_to_album_with_prefix(row, "album_")?,
-            })
-        },
-    )?;
-    // Each count reads the rows its section's statement above reads.
+        releases = work_release_order("a", "r"),
+    );
+    let child_works = sql.query(&child_works_query, params![work_id], row_to_work_summary)?;
+    let releases = sql.query(&releases_query, params![work_id], row_to_work_release_summary)?;
+    let tracks = sql.query(&tracks_query, params![work_id], |row| {
+        Ok(DbWorkTrackSummary {
+            link: DbTrackWork {
+                id: row.get("track_work_id")?,
+                track_id: row.get("track_id")?,
+                work_id: row.get("work_id")?,
+                position: row.get("position")?,
+                source: parsed_column(row, "link_source")?,
+                created_at: rfc3339_column(row, "created_at")?,
+            },
+            track: row_to_track_with_prefix(row, "track_")?,
+            album: row_to_album_with_prefix(row, "album_")?,
+        })
+    })?;
+    // Each count counts the rows of its section's statement above.
     let (child_work_count, release_count, track_count): (i64, i64, i64) = sql.query_row(
-        "SELECT (SELECT COUNT(*) FROM work_parts wp
-                 JOIN works w ON w.id = wp.child_work_id
-                 WHERE wp.parent_work_id = ?1),
-                (SELECT COUNT(DISTINCT t.release_id) FROM track_works tw
-                 JOIN tracks t ON t.id = tw.track_id
-                 WHERE tw.work_id = ?1),
-                (SELECT COUNT(*) FROM track_works tw
-                 JOIN tracks t ON t.id = tw.track_id
-                 JOIN releases r ON r.id = t.release_id
-                 JOIN albums a ON a.id = r.album_id
-                 WHERE tw.work_id = ?1)",
+        &format!(
+            "SELECT (SELECT COUNT(*) FROM ({child_works_query})),
+                    (SELECT COUNT(*) FROM ({releases_query})),
+                    (SELECT COUNT(*) FROM ({tracks_query}))"
+        ),
         params![work_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
@@ -570,24 +560,18 @@ fn work_release_columns() -> String {
     )
 }
 
-fn work_release_rows(
-    sql: &SqlReadContext<'_>,
-    work_id: &str,
-) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
-    sql.query(
-        &format!(
-            "SELECT DISTINCT {columns}
+/// The releases holding a recording of the work keyed `?1`, in
+/// [`work_release_order`], as [`row_to_work_release_summary`] reads them.
+fn work_releases_query() -> String {
+    format!(
+        "SELECT DISTINCT {columns}
          {WORK_RELEASES_FROM}
          JOIN release_number_in_album number ON number.release_id = r.id
-         WHERE tw.work_id = ?
+         WHERE tw.work_id = ?1
          ORDER BY {order}",
-            columns = work_release_columns(),
-            order = work_release_order("a", "r"),
-        ),
-        params![work_id],
-        row_to_work_release_summary,
+        columns = work_release_columns(),
+        order = work_release_order("a", "r"),
     )
-    .map_err(DbError::from)
 }
 
 fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {

@@ -305,13 +305,17 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
         library = library.album(album, title, year, credits).release(album, release);
     }
     library.write(&test_records(&db)).await;
+    test_records(&db)
+        .add_artist_credit_name(ARTIST_A, &bae_store::EnteredName::parse("Artist Alias").unwrap())
+        .await
+        .unwrap();
 
     let detail = LibraryViews::new(db.clone()).find_artist_detail(ARTIST_A).await.unwrap();
     let detail = detail.expect("artist-a has album links and must resolve");
 
     assert_eq!(detail.artist.artist.id, ARTIST_A);
     assert_eq!(detail.artist.album_count, 5);
-    assert_eq!((detail.album_count, detail.credit_name_count), (5, 0), "the page counts its rows");
+    assert_eq!((detail.album_count, detail.credit_name_count), (5, 1), "the page counts its rows");
 
     let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
     assert_eq!(

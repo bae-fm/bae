@@ -128,20 +128,25 @@ pub fn credit_names_json_sql(artist_id: &str, order_key: &str) -> String {
                                               'key', credit_name.name_key, \
                                               'name', credit_name.name) \
                                   ORDER BY {order_key}, credit_name.name_key) \
-          FROM artist_shown_as shown \
-          JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
-          WHERE shown.shown_artist_id = {artist_id})"
+          {from})",
+        from = credit_names_from_sql(artist_id),
     )
 }
 
 /// How many other printed names [`credit_names_json_sql`] lists for the
 /// artist `artist_id` (an SQL expression).
 pub fn credit_name_count_sql(artist_id: &str) -> String {
+    format!("(SELECT COUNT(*) {})", credit_names_from_sql(artist_id))
+}
+
+/// The rows of the other printed names of the artist `artist_id` (an SQL
+/// expression), as `credit_name`: the `FROM` and `WHERE` clauses that the
+/// list and its count share.
+fn credit_names_from_sql(artist_id: &str) -> String {
     format!(
-        "(SELECT COUNT(*) \
-          FROM artist_shown_as shown \
-          JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
-          WHERE shown.shown_artist_id = {artist_id})"
+        "FROM artist_shown_as shown \
+         JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
+         WHERE shown.shown_artist_id = {artist_id}"
     )
 }
 

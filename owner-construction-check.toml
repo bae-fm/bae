@@ -1840,7 +1840,6 @@ frozen = [
     { path = "bae-views/src/album_detail/mod.rs", item = "ReleaseName::of", shape = "length-branch", count = 1, finding = "describes an unnamed release by its year and media only when its media counts are not empty (`is_empty`)" },
     { path = "bae-views/src/album_detail/release.rs", item = "ReleaseDetail::from_raw", shape = "filter", count = 1, finding = "drops the pressing year when it equals the album's (`filter`)" },
     { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
-    { path = "bae-views/src/composer.rs", item = "find_work_detail_on", shape = "keyed-statement", count = 3, finding = "reads the work's child works, releases and tracks keyed by the work and releases the first statements returned" },
 ]
 allowed = [
     { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
