@@ -3047,7 +3047,7 @@ track.
 A playlist's owner changes it from its page; no one else sees these controls.
 The page's options menu (the ⋯ button after Shuffle on macOS, the bar's menu on
 Android) offers *Edit playlist…*, which changes its name and who sees it, and
-*Delete playlist…*, which asks first ("bae deletes this playlist from every
+*Delete playlist…*, which asks first ("bae will delete this playlist from every
 device. Its tracks stay in the library.") and then deletes it on every device. Saving
 an edit writes the name and who sees it in one write, so a failure changes
 neither and leaves the dialog open with its error. A track's menu on a playlist's page offers Play
