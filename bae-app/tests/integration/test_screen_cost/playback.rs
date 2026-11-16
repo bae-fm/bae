@@ -74,9 +74,10 @@ async fn upcoming(db: &Store, size: u64) {
         &ListShape {
             metric: "playback/upcoming",
             select: &format!("c.entry, c.track_id, c.ordered, {TRACK_DISPLAY}"),
-            source: "FROM playback_context c JOIN tracks t ON t.id = c.track_id \
-                     JOIN releases r ON r.id = t.release_id JOIN albums a ON a.id = r.album_id \
-                     WHERE c.ordered > -1",
+            source: &format!(
+                "FROM playback_context c JOIN tracks t ON t.id = c.track_id {TRACK_JOINS} \
+                 WHERE c.ordered > -1"
+            ),
             key: "c.ordered",
             tie: "c.entry",
             descending: false,
