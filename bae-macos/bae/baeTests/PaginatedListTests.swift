@@ -10,11 +10,32 @@ import Testing
 /// the list opened.
 private final class ProbeList: @unchecked Sendable {
     final class Window: @unchecked Sendable {
-        fileprivate let feed = Feed<ListWindowDelivery<BridgeAlbum>>()
+        private let feed = Feed<ListWindowDelivery<BridgeAlbum>>()
         fileprivate(set) var request: BridgeListWindow
         fileprivate(set) var stopped = false
+        private let lock = NSLock()
+        private var emits = 0
+        private var pulls = 0
 
         init(_ request: BridgeListWindow) { self.request = request }
+
+        /// Whether the list has taken every value this window answered: it
+        /// asks for one more than the window gave.
+        var drained: Bool { lock.withLock { pulls > emits } }
+
+        fileprivate func emit(_ value: ListWindowDelivery<BridgeAlbum>) {
+            lock.withLock { emits += 1 }
+            feed.emit(value)
+        }
+
+        fileprivate func pull() async throws -> ListWindowDelivery<BridgeAlbum>
+        {
+            lock.withLock { pulls += 1 }
+            Wait.happened()
+            return try await feed.next()
+        }
+
+        fileprivate func fail(_ error: any Error) { feed.fail(error) }
     }
 
     private let lock = NSLock()
@@ -46,7 +67,7 @@ private final class ProbeList: @unchecked Sendable {
     /// Fail every open window's read with `error`.
     func failWindows(_ error: any Error) {
         for window in windows where !window.stopped {
-            window.feed.fail(error)
+            window.fail(error)
         }
     }
 
@@ -116,12 +137,12 @@ private final class ProbeList: @unchecked Sendable {
     }
 
     func deliver(to window: Window) {
-        window.feed.emit(delivery(of: window.request))
+        window.emit(delivery(of: window.request))
     }
 
     /// Deliver `value` to `window` unchanged, whatever rows the list holds.
     func deliver(_ value: ListWindowDelivery<BridgeAlbum>, to window: Window) {
-        window.feed.emit(value)
+        window.emit(value)
     }
 
     var queries: BridgeListQueries<BridgeAlbum> {
@@ -136,7 +157,7 @@ private final class ProbeList: @unchecked Sendable {
                         deliver(to: window)
                     },
                     values: PulledValues(
-                        read: { try await window.feed.next() },
+                        read: { try await window.pull() },
                         cancel: { window.stopped = true }
                     )
                 )
@@ -467,8 +488,7 @@ struct PaginatedListTests {
             ),
             to: first
         )
-        // Give the list time to read the value.
-        for _ in 0..<20 { await Task.yield() }
+        try await Wait.until { first.drained }
 
         #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
     }
