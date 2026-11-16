@@ -78,30 +78,29 @@ struct AccessibilityTree: Sendable {
     /// order. The window itself is not one.
     let nodes: [Node]
 
-    /// The tree of `window`. The accessibility API places a window by its
-    /// top-left from the top of the main display.
+    /// The tree of `window`.
     @MainActor
     static func read(of window: NSWindow, subject: String) throws -> Self {
+        let listed = try listedWindow(window, subject: subject)
+        var reader = Reader(origin: listed.origin)
+        reader.add(children: Reader.children(of: listed.element), parent: nil)
+        return Self(nodes: reader.nodes)
+    }
+
+    /// The element the accessibility API lists for `window`, and the
+    /// window's top-left in the API's coordinates: points from the top-left
+    /// of the main display.
+    @MainActor
+    private static func listedWindow(
+        _ window: NSWindow,
+        subject: String
+    ) throws -> (element: AXUIElement, origin: CGPoint) {
         guard let main = NSScreen.screens.first else {
             throw ReadError.noScreen(subject)
         }
         let frame = window.frame
-        return try read(
-            windowAt: CGPoint(x: frame.minX, y: main.frame.maxY - frame.maxY),
-            size: frame.size,
-            subject: subject
-        )
-    }
-
-    /// The tree of the window whose frame, in the accessibility API's
-    /// coordinates (points from the top-left of the main display), is
-    /// `origin` and `size`.
-    @MainActor
-    static func read(
-        windowAt origin: CGPoint,
-        size: CGSize,
-        subject: String
-    ) throws -> Self {
+        let origin = CGPoint(x: frame.minX, y: main.frame.maxY - frame.maxY)
+        let size = frame.size
         let application = AXUIElementCreateApplication(getpid())
         AXUIElementSetMessagingTimeout(application, 10)
         var windows: CFTypeRef?
@@ -127,16 +126,14 @@ struct AccessibilityTree: Sendable {
                 && abs(frame.height - size.height) <= 1
         }
         let holding = there.first { !Reader.children(of: $0).isEmpty }
-        guard let window = holding ?? there.first else {
+        guard let element = holding ?? there.first else {
             throw ReadError.windowNotListed(
                 subject,
                 wanted: CGRect(origin: origin, size: size),
                 listed: list.compactMap(Reader.frame(of:))
             )
         }
-        var reader = Reader(origin: origin)
-        reader.add(children: Reader.children(of: window), parent: nil)
-        return Self(nodes: reader.nodes)
+        return (element, origin)
     }
 
     private struct Reader {
@@ -227,7 +224,7 @@ struct AccessibilityTree: Sendable {
             return result
         }
 
-        private static func string(
+        static func string(
             _ element: AXUIElement,
             _ name: String
         ) -> String? {
@@ -297,6 +294,26 @@ struct AccessibilityTree: Sendable {
                 alpha: c[3]
             )
         }
+    }
+}
+
+extension AccessibilityTree {
+    /// The elements of `window`'s tree whose role is one of `roles`, each
+    /// before the ones it holds: what a test presses or sets through the
+    /// accessibility API, as an assistive client does.
+    @MainActor
+    static func elements(
+        of window: NSWindow,
+        roles: Set<String>,
+        subject: String
+    ) throws -> [AXUIElement] {
+        func walk(_ element: AXUIElement) -> [AXUIElement] {
+            let role = Reader.string(element, kAXRoleAttribute)
+            let own = role.map(roles.contains) == true ? [element] : []
+            return own + Reader.children(of: element).flatMap(walk)
+        }
+        let listed = try listedWindow(window, subject: subject)
+        return Reader.children(of: listed.element).flatMap(walk)
     }
 }
 
