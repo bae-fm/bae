@@ -22,6 +22,7 @@ check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {
 whole rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
 whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
 whole coven-builder-boundary *.rs,scripts/coven-builder-boundary.py python3 scripts/coven-builder-boundary.py
+whole frozen-shrinks owner-construction-check.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
