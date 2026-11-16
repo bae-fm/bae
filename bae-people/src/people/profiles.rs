@@ -7,21 +7,28 @@ use crate::membership::{member_columns, member_row};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
 use bae_records::records::name_sort::sort_key_sql;
 
-/// The columns [`profile_row`] reads of the `people` row `p`: its own, and
-/// its avatar's version; [`PROFILE_COLUMN_COUNT`] of them.
+/// The columns [`profile_row`] reads of the `people` row `p` and the
+/// `coven_files` row `avatar` of its avatar ([`PROFILES`]): its own, then
+/// the avatar's file and version; [`PROFILE_COLUMN_COUNT`] of them.
 fn profile_columns() -> String {
     format!(
-        "p.id, p.name, p.private_circle, p.history_sharing, p.avatar_id, {avatar_version}",
-        avatar_version = bae_store::file_version_sql("p.avatar_id"),
+        "p.id, p.name, p.private_circle, p.history_sharing, avatar.id, {avatar_version}",
+        avatar_version = bae_store::file_version_sql("avatar.id"),
     )
 }
+
+/// Each `people` row `p` with the `coven_files` row `avatar` of the avatar
+/// file it references, none for a profile with no avatar. An avatar's
+/// reference always names a record in `coven_files`, which coven deletes only
+/// with the last reference (coven 17.2).
+const PROFILES: &str = "people AS p LEFT JOIN coven_files AS avatar ON avatar.id = p.avatar_id";
 
 /// How many columns [`profile_columns`] names.
 const PROFILE_COLUMN_COUNT: usize = 6;
 
 /// The profile of the person `?`.
 fn profile_sql() -> String {
-    format!("SELECT {} FROM people AS p WHERE p.id = ?", profile_columns())
+    format!("SELECT {} FROM {PROFILES} WHERE p.id = ?", profile_columns())
 }
 
 impl People {
@@ -526,19 +533,12 @@ fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
     })
 }
 
-/// The avatar the columns from `at` read: its file, then its version. The
-/// avatar's reference is bound, so a row naming a file finds it in
-/// `coven_files` and so has a version; one without is a broken store.
+/// The avatar the columns from `at` read: the file of its `coven_files` row,
+/// then that file's version, both NULL for a profile with no avatar.
 fn avatar_columns(row: &Row<'_>, at: usize) -> rusqlite::Result<Option<Avatar>> {
-    match (row.get::<_, Option<coven::FileId>>(at)?, row.get::<_, Option<String>>(at + 1)?) {
-        (Some(file), Some(version)) => Ok(Some(Avatar { file, version })),
-        (None, None) => Ok(None),
-        (file, _) => Err(rusqlite::Error::FromSqlConversionFailure(
-            at,
-            rusqlite::types::Type::Null,
-            format!("the avatar file {file:?} has no record in coven_files").into(),
-        )),
-    }
+    row.get::<_, Option<coven::FileId>>(at)?
+        .map(|file| Ok(Avatar { file, version: row.get(at + 1)? }))
+        .transpose()
 }
 
 /// The circles named `?1` this device's member is in, each with whether
@@ -553,7 +553,7 @@ const PRIVATE_CIRCLE_SQL: &str = "SELECT c.circle, \
 fn people_sql(narrowing: &str) -> String {
     format!(
         "SELECT {profile}, {member} \
-         FROM coven_members AS m LEFT JOIN people AS p ON p.id = m.member \
+         FROM coven_members AS m LEFT JOIN ({PROFILES}) ON p.id = m.member \
          WHERE NOT m.removed{narrowing} ORDER BY m.member",
         profile = profile_columns(),
         member = member_columns!(),
@@ -606,7 +606,7 @@ fn people_on(
 /// Every profile, by name in the device's language, then id.
 fn profiles_sql() -> String {
     format!(
-        "SELECT {} FROM people AS p ORDER BY {}, p.id",
+        "SELECT {} FROM {PROFILES} ORDER BY {}, p.id",
         profile_columns(),
         sort_key_sql("p.name")
     )
