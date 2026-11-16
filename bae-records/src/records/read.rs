@@ -251,13 +251,6 @@ pub fn records_column(
     records.into_iter().map(|record| record_of(row, column, record)).collect()
 }
 
-/// Returns one row for each release id in the JSON array `?1`, in the
-/// array's order, holding that release's records as [`records_column`] reads
-/// them.
-pub fn releases_records_in_order_sql() -> String {
-    format!("SELECT {} AS records FROM json_each(?1) r", release_records_json_sql("r.value"))
-}
-
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
 pub fn get_release_records_on(
@@ -267,20 +260,6 @@ pub fn get_release_records_on(
     Ok(sql.query_row(
         &format!("SELECT {} AS records", release_records_json_sql("?1")),
         params![release_id],
-        |row| records_column(row, "records"),
-    )?)
-}
-
-/// Every catalog's description of each of `release_ids`, in one statement:
-/// one list for each id, in the ids' order, each in the order surfaces list
-/// catalogs; empty for a release no catalog describes.
-pub fn get_releases_records_on(
-    sql: &impl coven::SqlRead,
-    release_ids: &[String],
-) -> Result<Vec<Vec<bae_catalogs::records::ReleaseRecord>>, DbError> {
-    Ok(sql.query(
-        &releases_records_in_order_sql(),
-        params![serde_json::json!(release_ids).to_string()],
         |row| records_column(row, "records"),
     )?)
 }
