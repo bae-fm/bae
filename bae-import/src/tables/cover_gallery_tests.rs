@@ -93,7 +93,7 @@ type Gallery = coven::ReconfigurableLiveQuery<
 >;
 
 fn request(filter: CoverFilter) -> CoverGalleryRequest {
-    CoverGalleryRequest { release_id: RELEASE_ID.to_string(), filter }
+    CoverGalleryRequest { owner: CoverGalleryOwner::Release(RELEASE_ID.to_string()), filter }
 }
 
 /// The first gallery a read gives for `asked` that `accept` takes, failing

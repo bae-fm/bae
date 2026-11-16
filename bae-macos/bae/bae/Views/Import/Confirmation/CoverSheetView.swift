@@ -1,11 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// Shows the covers that core reads for a library release under the source
-/// the person picks, and the catalog lookup whose covers core stores.
-/// Scanned candidate paths never enter this picker.
+/// Shows the covers that core reads for a library release's or a
+/// candidate's picker under the source the person picks, and the catalog
+/// lookup whose covers core stores.
 struct CoverSheetView: View {
-    let releaseId: String
+    let owner: BridgeCoverGalleryOwner
+    /// The cover the owner has now, which the sheet can't pick again; `nil`
+    /// where the gallery shows the saved cover itself.
+    let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the sheet.
     let lightboxLoad: LightboxImageLoad
     let initialLayout: ArtworkBrowserState.Layout
@@ -16,12 +19,13 @@ struct CoverSheetView: View {
     @State
     private var state = CoverPickerState()
     @State
-    private var covers: LibraryCoverState
+    private var covers: CoverGalleryState
     @Environment(Library.self)
     private var library
 
     init(
-        releaseId: String,
+        owner: BridgeCoverGalleryOwner,
+        selectedCover: BridgeCoverSelection? = nil,
         lightboxLoad: LightboxImageLoad,
         initialLayout: ArtworkBrowserState.Layout = .grid,
         onFindRelease: (() -> Void)? = nil,
@@ -29,14 +33,18 @@ struct CoverSheetView: View {
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
         onDone: @escaping () -> Void
     ) {
-        self.releaseId = releaseId
+        self.owner = owner
+        self.selectedCover = selectedCover
         self.lightboxLoad = lightboxLoad
         self.initialLayout = initialLayout
         self.onFindRelease = onFindRelease
         self.onSelect = onSelect
         self.onDone = onDone
         _covers = State(
-            initialValue: LibraryCoverState(refresh: refreshCovers)
+            initialValue: CoverGalleryState(
+                owner: owner,
+                refresh: refreshCovers
+            )
         )
     }
 
@@ -47,7 +55,7 @@ struct CoverSheetView: View {
             content: covers.content,
             remoteItems: covers.lookup,
             filter: $covers.filter,
-            selectedCover: nil,
+            selectedCover: selectedCover,
             lightboxLoad: lightboxLoad,
             initialLayout: initialLayout,
             isSaving: state.isSaving,
@@ -67,11 +75,8 @@ struct CoverSheetView: View {
             },
             onDone: onDone
         )
-        .task(id: releaseId) {
-            await covers.open(
-                releaseId: releaseId,
-                query: library.coverGallery()
-            )
+        .task {
+            await covers.open(query: library.coverGallery())
         }
         .onDisappear {
             state.cancel()

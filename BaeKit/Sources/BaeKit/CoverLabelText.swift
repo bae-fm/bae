@@ -1,12 +1,5 @@
 import Foundation
 
-extension BridgeRemoteCover {
-    /// What the picker calls this image; see `coverLabelText`.
-    public var labelText: String {
-        coverLabelText(sourceName: sourceName, label: label)
-    }
-}
-
 /// What the picker calls a catalog's image, worded from the `Core` messages:
 /// "Cover Art Archive", "Cover Art Archive (album)" for the album's release
 /// group, or the parts of a gallery entry (service, catalog reference,

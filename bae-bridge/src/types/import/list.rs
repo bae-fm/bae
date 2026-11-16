@@ -251,10 +251,6 @@ pub enum BridgeCandidateStage {
 /// A candidate's draft and what goes with it, as its pane draws them.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateDraftPane {
-    /// The covers the picker offers from the catalogs: what the applied
-    /// release offered, stored with the draft. Empty for a draft read from
-    /// the files' tags, typed in, or linked to an album.
-    pub remote_covers: Vec<BridgeRemoteCover>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<BridgeLibraryStatus>,
     /// The library album an import of it files under.

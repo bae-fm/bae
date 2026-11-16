@@ -1,13 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// Holds the gallery that core's live query returns for the chosen source,
-/// and the status of the catalog cover lookup. A lookup, or a change to the
-/// release's files or saved cover, writes the library, so the query delivers
-/// a new value. Changing `filter` sets the query's request.
+/// Holds the gallery that core's live query returns for a library release's
+/// or a candidate's picker under the chosen source, and the status of the
+/// catalog cover lookup. A lookup, or a change to the covers the picker can
+/// show, writes the library, so the query delivers a new value. Changing
+/// `filter` sets the query's request.
 @MainActor
 @Observable
-final class LibraryCoverState {
+final class CoverGalleryState {
     var filter = ArtworkBrowserState.Filter.all {
         didSet {
             guard filter != oldValue else { return }
@@ -21,14 +22,19 @@ final class LibraryCoverState {
     /// Why the live read failed.
     private(set) var readFailure: DisplayError?
     private var fetch = BridgeCoverFetch.notFetched
-    private var releaseId: String?
+    /// Whose covers the picker shows.
+    private let owner: BridgeCoverGalleryOwner
     private var query: CoverGalleryQuery?
     private var values:
         ScreenSubscription<PulledValues<BridgeCoverGallerySnapshot>>?
     private var refreshTask: Task<Void, Never>?
     private let refreshCovers: () async throws -> Void
 
-    init(refresh: @escaping () async throws -> Void) {
+    init(
+        owner: BridgeCoverGalleryOwner,
+        refresh: @escaping () async throws -> Void
+    ) {
+        self.owner = owner
         refreshCovers = refresh
     }
 
@@ -41,9 +47,8 @@ final class LibraryCoverState {
         return .linked(items)
     }
 
-    /// Follow `releaseId`'s picker, then look the catalogs up again.
-    func open(releaseId: String, query: CoverGalleryQuery) async {
-        self.releaseId = releaseId
+    /// Follow the owner's picker, then look the catalogs up again.
+    func open(query: CoverGalleryQuery) async {
         if self.query == nil {
             self.query = query
             values = ScreenSubscription(
@@ -71,9 +76,9 @@ final class LibraryCoverState {
     }
 
     private func show() {
-        guard let releaseId, let query else { return }
+        guard let query else { return }
         do {
-            try query.setRequest(releaseId, filter.bridge)
+            try query.setRequest(owner, filter.bridge)
         }
         catch {
             readFailure = DisplayError(error)
@@ -82,7 +87,7 @@ final class LibraryCoverState {
 
     /// Take a value only while it answers the request shown now.
     private func receive(_ snapshot: BridgeCoverGallerySnapshot) {
-        guard let request = snapshot.request, request.releaseId == releaseId,
+        guard let request = snapshot.request, request.owner == owner,
             request.filter == filter.bridge, let gallery = snapshot.gallery
         else { return }
         content = CoverGalleryContent(gallery)

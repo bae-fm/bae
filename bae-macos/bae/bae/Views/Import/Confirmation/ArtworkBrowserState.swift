@@ -29,19 +29,6 @@ struct ArtworkBrowserState {
             case .musicBrainz: .catalog(catalog: .musicBrainz)
             }
         }
-
-        func includes(_ item: CoverItem) -> Bool {
-            switch (self, item.selection) {
-            case (.all, _): true
-            case (.releaseFiles, .releaseImage),
-                (.releaseFiles, .embeddedCover):
-                true
-            case (.discogs, .remoteCover(let cover)): cover.source == .discogs
-            case (.musicBrainz, .remoteCover(let cover)):
-                cover.source == .musicBrainz
-            default: false
-            }
-        }
     }
 
     var layout: Layout
@@ -64,11 +51,9 @@ struct ArtworkBrowserState {
     }
 }
 
-/// What the cover gallery draws: the saved cover, each source's covers with
-/// the number of covers the source holds under the filter, and the number in
-/// all of them. A source the filter hides is `nil`. Core fills it for a
-/// library release; a candidate's is filtered here until its list moves to
-/// core too.
+/// What the cover gallery draws, as core's read returns it: the saved cover,
+/// each source's covers with the number of covers the source holds under the
+/// filter, and the number in all of them. A source the filter hides is `nil`.
 struct CoverGalleryContent: Equatable {
     struct Section: Equatable {
         var items: [CoverItem]
@@ -93,7 +78,7 @@ struct CoverGalleryContent: Equatable {
             + (files?.items ?? [])
     }
 
-    /// A library release's gallery as core read it.
+    /// A picker's gallery as core read it.
     init(_ gallery: BridgeCoverGallery) {
         func section(_ source: BridgeCoverSectionSource) -> Section? {
             gallery.sections.first { $0.source == source }
@@ -108,24 +93,6 @@ struct CoverGalleryContent: Equatable {
         remote = section(.remote)
         files = section(.releaseFiles)
         total = Int(gallery.total)
-    }
-
-    /// A candidate's remote and folder covers, filtered by `filter`.
-    init(
-        remote: [CoverItem],
-        files: [CoverItem],
-        filter: ArtworkBrowserState.Filter
-    ) {
-        let shownRemote = remote.filter(filter.includes)
-        let shownFiles = files.filter(filter.includes)
-        current = nil
-        self.remote =
-            filter == .releaseFiles
-            ? nil : Section(items: shownRemote, count: shownRemote.count)
-        self.files =
-            filter == .all || filter == .releaseFiles
-            ? Section(items: shownFiles, count: shownFiles.count) : nil
-        total = shownRemote.count + shownFiles.count
     }
 
     private init(

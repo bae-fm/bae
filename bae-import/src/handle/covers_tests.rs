@@ -1,6 +1,7 @@
 //! The covers the picker offers: those the catalogs show for the candidate's
 //! picked releases or album as stored, none for a draft read from the tags or
-//! an unlinked candidate, and a library release's from its records.
+//! an unlinked candidate, what a fetch stored for the candidate's link, the
+//! folder's images, and a library release's from its records.
 
 use super::*;
 use crate::handle::tests::*;
@@ -24,17 +25,59 @@ async fn picked_with_front(
     (handle, tmp, key, hash)
 }
 
-/// The addresses of the covers the pane offers the picker, in order.
-async fn offered(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Vec<String> {
-    pane(handle, key)
-        .await
-        .draft()
-        .unwrap()
-        .remote_covers
-        .clone()
-        .into_iter()
-        .map(|cover| cover.image.url)
+/// The gallery the picker of the candidate at `key` shows under `filter` now.
+async fn candidate_gallery(
+    handle: &ImportServiceHandle,
+    key: &crate::CandidateKey,
+    filter: crate::CoverFilter,
+) -> crate::CoverGallery {
+    let asked = crate::CoverGalleryRequest {
+        owner: crate::CoverGalleryOwner::Candidate(key.clone()),
+        filter,
+    };
+    let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
+    loop {
+        let event = live.next_inline().await.expect("the read runs");
+        if event.request.as_ref() == Some(&asked) {
+            break event.result.unwrap().expect("the live query answers the request");
+        }
+    }
+}
+
+/// Each section the gallery shows: its source, its count and its covers'
+/// names, a catalog's cover by its address.
+fn sections(gallery: &crate::CoverGallery) -> Vec<(crate::CoverSectionSource, u32, Vec<String>)> {
+    gallery
+        .sections
+        .iter()
+        .map(|section| {
+            let names = section
+                .items
+                .iter()
+                .map(|item| match (&item.label, &item.image) {
+                    (crate::GalleryLabel::File(name), _) => name.clone(),
+                    (_, crate::CoverImageSource::Remote { image }) => image.url.clone(),
+                    other => panic!("a candidate's gallery holds {other:?}"),
+                })
+                .collect();
+            (section.source, section.count, names)
+        })
         .collect()
+}
+
+/// The addresses of the catalogs' covers the candidate's picker offers, in
+/// order.
+async fn offered(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Vec<String> {
+    let gallery = candidate_gallery(
+        handle,
+        key,
+        crate::CoverFilter::Catalog(bae_catalogs::catalog::Catalog::MusicBrainz),
+    )
+    .await;
+    match sections(&gallery).as_slice() {
+        [(crate::CoverSectionSource::Remote, _, urls)] => urls.clone(),
+        other => panic!("a catalog's filter shows the remote section alone, not {other:?}"),
+    }
 }
 
 fn front_of(release_id: &str) -> String {
@@ -122,17 +165,80 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
     let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
-    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
+    handle.refresh_candidate_covers(&key).await.unwrap();
+    let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     shut_down(handle).await;
-    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery.fetch, crate::CoverFetch::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_file_tags() {
     let (handle, _tmp, key, _) = pane_fixture().await;
-    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
+    handle.refresh_candidate_covers(&key).await.unwrap();
+    let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     shut_down(handle).await;
-    assert_eq!(gallery, RemoteCoverGallery::Unlinked);
+    assert_eq!(gallery.fetch, crate::CoverFetch::Unlinked);
+}
+
+/// The candidate's picker counts what each source shows: the folder's image
+/// under all and the release's files, and no catalog cover for a candidate
+/// linked to nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_candidates_picker_counts_what_each_source_shows() {
+    use crate::CoverSectionSource::{ReleaseFiles, Remote};
+    let (handle, _tmp, key, _) = pane_fixture().await;
+    let all = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
+    let files = candidate_gallery(&handle, &key, crate::CoverFilter::ReleaseFiles).await;
+    let discogs = candidate_gallery(
+        &handle,
+        &key,
+        crate::CoverFilter::Catalog(bae_catalogs::catalog::Catalog::Discogs),
+    )
+    .await;
+    shut_down(handle).await;
+    assert_eq!(all.fetch, crate::CoverFetch::NotFetched);
+    assert_eq!(all.current, None);
+    assert_eq!(
+        (sections(&all), all.total),
+        (vec![(Remote, 0, vec![]), (ReleaseFiles, 1, vec!["cover.jpg".to_string()])], 1)
+    );
+    assert_eq!(
+        (sections(&files), files.total),
+        (vec![(ReleaseFiles, 1, vec!["cover.jpg".to_string()])], 1)
+    );
+    assert_eq!((sections(&discogs), discogs.total), (vec![(Remote, 0, vec![])], 0));
+}
+
+/// A fetch's covers stand in for what the pressing offered while the
+/// candidate keeps the link they were fetched for; once the link changes,
+/// the picker shows no fetch until the next one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_fetch_shows_while_the_link_it_was_fetched_for_stands() {
+    let (handle, _tmp, key, hash) = picked_with_front("fetched-release").await;
+    let tables = handle.services.tables.clone();
+    let link = tables.candidate_cover_link(&hash).await.unwrap();
+    assert!(link.is_some(), "the pick linked the candidate");
+    let fetched = bae_catalogs::remote_image::RemoteCover {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(
+            "https://images.example/fetched.jpg".to_string(),
+        ),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
+        source: bae_catalogs::catalog::Catalog::MusicBrainz,
+        standing: bae_catalogs::remote_image::CoverStanding::Stated,
+    };
+    tables.replace_candidate_covers(&hash, link, Some(vec![fetched])).await.unwrap();
+    assert_eq!(offered(&handle, &key).await, ["https://images.example/fetched.jpg".to_string()]);
+    assert_eq!(
+        candidate_gallery(&handle, &key, crate::CoverFilter::All).await.fetch,
+        crate::CoverFetch::Linked
+    );
+
+    handle.unlink_candidate_release(key.clone()).await.unwrap();
+
+    let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
+    shut_down(handle).await;
+    assert_eq!(gallery.fetch, crate::CoverFetch::NotFetched);
+    assert_eq!(sections(&gallery)[0], (crate::CoverSectionSource::Remote, 0, vec![]));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -144,7 +250,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let handle = parts.start().await.unwrap();
     handle.refresh_release_covers(&release.id).await.unwrap();
     let asked = crate::CoverGalleryRequest {
-        release_id: release.id.clone(),
+        owner: crate::CoverGalleryOwner::Release(release.id.clone()),
         filter: crate::CoverFilter::All,
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
@@ -181,7 +287,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let handle = parts.start().await.unwrap();
     let result = handle.refresh_release_covers(&release.id).await;
     let asked = crate::CoverGalleryRequest {
-        release_id: release.id.clone(),
+        owner: crate::CoverGalleryOwner::Release(release.id.clone()),
         filter: crate::CoverFilter::All,
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
@@ -227,7 +333,9 @@ async fn linked_cover_gallery_can_be_empty() {
         )
         .await
         .unwrap();
-    let gallery = handle.fetch_candidate_covers(&key).await.unwrap();
+    handle.refresh_candidate_covers(&key).await.unwrap();
+    let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     shut_down(handle).await;
-    assert_eq!(gallery, RemoteCoverGallery::Linked(vec![]));
+    assert_eq!(gallery.fetch, crate::CoverFetch::Linked);
+    assert_eq!(sections(&gallery)[0], (crate::CoverSectionSource::Remote, 0, vec![]));
 }

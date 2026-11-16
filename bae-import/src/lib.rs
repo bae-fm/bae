@@ -259,7 +259,7 @@ pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
     CandidateStanding, DocumentRefusal, GroupedSearchResults, ImportCandidateSnapshot,
-    ImportServiceHandle, ImportStart, RemoteCoverGallery,
+    ImportServiceHandle, ImportStart,
 };
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;
@@ -300,8 +300,8 @@ pub use session::{
 pub use tables::SCHEMA_PARTS;
 #[cfg(desktop)]
 pub use tables::{
-    CoverFetch, CoverFilter, CoverGallery, CoverGalleryRequest, CoverGallerySnapshot, CoverSection,
-    CoverSectionSource, GalleryCover, GalleryLabel,
+    CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
+    CoverGallerySnapshot, CoverSection, CoverSectionSource, GalleryCover, GalleryLabel,
 };
 
 /// The schema this crate's tests open their stores on: records' and release

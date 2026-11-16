@@ -1,8 +1,8 @@
 import BaeKit
 import Foundation
 
-/// A selectable candidate image or a persisted release file, retaining the
-/// source's identity for both previewing and saving.
+/// A cover the picker shows, as core's gallery read returns it, with the text
+/// that names it: what the lightbox previews and what saving it selects.
 struct CoverItem: LightboxImage {
     static func == (lhs: CoverItem, rhs: CoverItem) -> Bool {
         lhs.id == rhs.id
@@ -18,18 +18,8 @@ struct CoverItem: LightboxImage {
         return .currentCover
     }
 
-    var selection: BridgeCoverSelection? {
-        switch content {
-        case .candidate(let choice): choice.selection
-        case .library(let cover): cover.selection
-        }
-    }
-    var image: ImageContent {
-        switch content {
-        case .candidate(let choice): choice.imageContent
-        case .library(let cover): ImageContent(bridge: cover.image)
-        }
-    }
+    var selection: BridgeCoverSelection? { cover.selection }
+    var image: ImageContent { ImageContent(bridge: cover.image) }
 
     var sourceLabel: String {
         switch selection {
@@ -42,26 +32,13 @@ struct CoverItem: LightboxImage {
         }
     }
 
-    enum Content {
-        case candidate(BridgeCoverChoice)
-        case library(BridgeGalleryCover)
-    }
-
-    let content: Content
+    let cover: BridgeGalleryCover
     let label: String
 
-    init(
-        coverChoice: BridgeCoverChoice,
-        label: String
-    ) {
-        content = .candidate(coverChoice)
-        self.label = label
-    }
-
-    /// Makes an item for a cover in a library release's picker, labeled with
-    /// the text for core's label.
+    /// Makes an item for a cover in a picker, labeled with the text for
+    /// core's label.
     init(gallery cover: BridgeGalleryCover) {
-        content = .library(cover)
+        self.cover = cover
         label =
             switch cover.label {
             case .current: String(localized: "Cover")
@@ -86,18 +63,6 @@ enum RemoteCoverItems: Equatable {
     case unlinked
     case linked([CoverItem])
     case failed([CoverItem], failure: DisplayError?)
-
-    init(_ gallery: BridgeRemoteCoverGallery) {
-        switch gallery {
-        case .unlinked: self = .unlinked
-        case .linked(let covers):
-            self = .linked(
-                covers.map {
-                    CoverItem(coverChoice: $0.coverChoice, label: $0.labelText)
-                }
-            )
-        }
-    }
 
     var items: [CoverItem] {
         switch self {

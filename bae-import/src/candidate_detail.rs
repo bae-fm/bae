@@ -13,7 +13,6 @@ use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::{FileEvidence, ImportFailure, ImportedRelease};
 use crate::CandidateSession;
 use crate::TriageTab;
-use bae_catalogs::remote_image::RemoteCover;
 use bae_identify::signals::Signals;
 use bae_identify::IdentifyStateView;
 use bae_records::LibraryStatus;
@@ -95,9 +94,6 @@ pub struct DraftProjection {
     /// The cover this candidate commits with: its selection, the picked
     /// release's default, or the folder's default image.
     pub cover: Option<CoverChoice>,
-    /// The covers the picker offers from the catalogs: what the applied
-    /// release offered, stored with the draft when it was applied.
-    pub remote_covers: Vec<RemoteCover>,
     /// What this candidate's identification asks about, as the person left it.
     pub lookup_choices: bae_identify::LookupChoices,
     /// The last import of this candidate that failed.
@@ -242,7 +238,6 @@ impl ImportCandidateDetailProjection {
                     artist_resolutions,
                     mapping,
                     cover,
-                    remote_covers,
                     lookup_choices,
                     failure,
                     session: _,
@@ -300,7 +295,6 @@ impl ImportCandidateDetailProjection {
                         metadata_author,
                         mapping,
                         cover,
-                        remote_covers,
                         lookup_choices,
                         failure,
                         session,
@@ -467,7 +461,6 @@ pub struct CandidateDraftPane {
     pub metadata_author: crate::MetadataAuthor,
     pub mapping: MappingTable,
     pub cover: Option<CoverChoice>,
-    pub remote_covers: Vec<RemoteCover>,
     /// What this candidate's identification asks about: the signals its runs
     /// leave out and the catalog numbers they look up. A control that changes
     /// one sends the whole value back, computed from this.

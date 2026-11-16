@@ -1,7 +1,8 @@
 //! What each part of the pane reads for one candidate, through the domains'
 //! own writes: the folder's counts and audio, the library albums that hold
 //! the linked release, the album an import files under, the failures the
-//! pane says in lines of their own, and the covers the picker offers.
+//! pane says in lines of their own, and the covers the candidate's picker
+//! offers.
 
 use super::*;
 use bae_catalogs::catalog::Catalog;
@@ -452,33 +453,50 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
     assert_eq!(failure_lines, failures);
 }
 
-/// The picker offers the covers the linked release states, each with its
-/// downscaled copies smallest first; the picker does not offer the group's
-/// front, which nothing states, beside a stated one.
+/// The candidate's picker offers the covers the linked release states, each
+/// with its downscaled copies smallest first; the picker does not offer the
+/// group's front, which nothing states, beside a stated one.
 #[tokio::test]
-async fn the_pane_offers_the_covers_the_linked_release_states() {
+async fn the_picker_offers_the_covers_the_linked_release_states() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = linked(&db, &root).await;
-
-    let covers = pane_draft(&db, &candidate).await.remote_covers;
+    let asked = crate::CoverGalleryRequest {
+        owner: crate::CoverGalleryOwner::Candidate(candidate.key()),
+        filter: crate::CoverFilter::Catalog(Catalog::MusicBrainz),
+    };
+    let mut live =
+        crate::tables::ImportTables::new(db.clone()).subscribe_cover_gallery(Some(asked.clone()));
+    let gallery = loop {
+        let event = live.next_inline().await.expect("the read runs");
+        if event.request.as_ref() == Some(&asked) {
+            break event.result.unwrap().expect("the live query answers the request");
+        }
+    };
 
     let front = "https://coverartarchive.org/release/mb-linked/front";
+    let image = bae_catalogs::remote_image::RemoteImageSet {
+        url: front.to_string(),
+        downscaled: [250, 500, 1200]
+            .into_iter()
+            .map(|max_edge| bae_catalogs::remote_image::DownscaledCopy {
+                url: format!("{front}-{max_edge}"),
+                max_edge,
+            })
+            .collect(),
+    };
     assert_eq!(
-        covers,
-        vec![bae_catalogs::remote_image::RemoteCover {
-            image: bae_catalogs::remote_image::RemoteImageSet {
-                url: front.to_string(),
-                downscaled: [250, 500, 1200]
-                    .into_iter()
-                    .map(|max_edge| bae_catalogs::remote_image::DownscaledCopy {
-                        url: format!("{front}-{max_edge}"),
-                        max_edge,
-                    })
-                    .collect(),
-            },
-            label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
-            source: Catalog::MusicBrainz,
-            standing: bae_catalogs::remote_image::CoverStanding::Stated,
+        gallery.sections,
+        vec![crate::CoverSection {
+            source: crate::CoverSectionSource::Remote,
+            items: vec![crate::GalleryCover {
+                selection: Some(crate::CoverSelection::Remote(image.clone(), Catalog::MusicBrainz)),
+                image: crate::CoverImageSource::Remote { image },
+                label: crate::GalleryLabel::Remote {
+                    label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
+                    source: Catalog::MusicBrainz,
+                },
+            }],
+            count: 1,
         }]
     );
 }

@@ -296,7 +296,7 @@ extension AlbumDetailView {
         uiStore.presentModal {
             CoverPickerFrame {
                 CoverSheetView(
-                    releaseId: selectedReleaseId,
+                    owner: .release(releaseId: selectedReleaseId),
                     lightboxLoad: lightboxLoad,
                     onFindRelease: {
                         uiStore.dismissModal()

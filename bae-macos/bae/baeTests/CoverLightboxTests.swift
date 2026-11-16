@@ -38,11 +38,7 @@ struct CoverLightboxTests {
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
-                content: CoverGalleryContent(
-                    remote: [front, booklet],
-                    files: [file],
-                    filter: .all
-                ),
+                content: content(remote: [front, booklet], files: [file]),
                 remoteItems: .linked([front, booklet]),
                 filter: .constant(.all),
                 selectedCover: front.selection,
@@ -101,11 +97,7 @@ struct CoverLightboxTests {
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
-                content: CoverGalleryContent(
-                    remote: [front, booklet],
-                    files: [],
-                    filter: .all
-                ),
+                content: content(remote: [front, booklet], files: []),
                 remoteItems: .linked([front, booklet]),
                 filter: .constant(.all),
                 selectedCover: front.selection,
@@ -214,13 +206,40 @@ struct CoverLightboxTests {
         }
     }
 
+    /// The gallery core reads with the `remote` and `files` covers, under
+    /// all sources.
+    private func content(
+        remote: [CoverItem],
+        files: [CoverItem]
+    ) -> CoverGalleryContent {
+        CoverGalleryContent(
+            BridgeCoverGallery(
+                current: nil,
+                fetch: .linked,
+                sections: [
+                    BridgeCoverSection(
+                        source: .remote,
+                        items: remote.map(\.cover),
+                        count: UInt32(remote.count)
+                    ),
+                    BridgeCoverSection(
+                        source: .releaseFiles,
+                        items: files.map(\.cover),
+                        count: UInt32(files.count)
+                    ),
+                ],
+                total: UInt32(remote.count + files.count)
+            )
+        )
+    }
+
     private func releaseFile(_ file: BridgeFileVersion) -> CoverItem {
         CoverItem(
-            coverChoice: BridgeCoverChoice(
+            gallery: BridgeGalleryCover(
                 selection: .releaseImage(fileId: "scan-file"),
-                image: .local(file: file)
-            ),
-            label: "scans/booklet.png"
+                image: .local(file: file),
+                label: .file(name: "scans/booklet.png")
+            )
         )
     }
 
@@ -235,16 +254,24 @@ struct CoverLightboxTests {
             ]
         )
         return CoverItem(
-            coverChoice: BridgeCoverChoice(
+            gallery: BridgeGalleryCover(
                 selection: .remoteCover(
                     selection: BridgeRemoteCoverSelection(
                         image: image,
                         source: .discogs
                     )
                 ),
-                image: .remote(image: image)
-            ),
-            label: name
+                image: .remote(image: image),
+                label: .remote(
+                    sourceName: "Discogs",
+                    label: .gallery(
+                        reference: nil,
+                        position: 1,
+                        types: [],
+                        comment: name
+                    )
+                )
+            )
         )
     }
 }

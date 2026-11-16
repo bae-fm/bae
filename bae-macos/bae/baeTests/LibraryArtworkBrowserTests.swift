@@ -224,35 +224,6 @@ struct LibraryArtworkBrowserTests {
 }
 
 extension LibraryArtworkBrowserTests {
-    @Test(
-        "The release-file filter retains library files and excludes provider artwork"
-    )
-    func releaseFileFilter() {
-        let file = CoverItem(
-            gallery: BridgeGalleryCover(
-                selection: .releaseImage(fileId: "booklet-file"),
-                image: .releaseImage(
-                    releaseId: "release",
-                    source: .releaseFile(fileId: "booklet-file")
-                ),
-                label: .file(name: "booklet.png")
-            )
-        )
-        let remote = CoverItem(
-            coverChoice: remote("Back", source: .discogs).coverChoice,
-            label: "Back"
-        )
-        let content = CoverGalleryContent(
-            remote: [remote],
-            files: [file],
-            filter: .releaseFiles
-        )
-        #expect(content.items == [file])
-        #expect(content.files?.items == [file])
-        #expect(content.remote == nil)
-        #expect(content.total == 1)
-    }
-
     /// What the lightbox says of each state is the `artwork-lightbox-fetching`,
     /// `-unlinked`, `-none-found` and `-lookup-failed` shots'. The grid is
     /// laid out behind it with its saving spinner in every state, so a
@@ -324,7 +295,7 @@ extension LibraryArtworkBrowserTests {
         return try await SnapshotTestSupport.withHostedWindow(
             AnyView(
                 CoverSheetView(
-                    releaseId: releaseId,
+                    owner: .release(releaseId: releaseId),
                     lightboxLoad: lightbox,
                     initialLayout: layout,
                     refreshCovers: calls.lookup,
@@ -444,11 +415,11 @@ extension CoverGalleryQuery {
             .makeStream()
         let pulls = FixedPulls(stream.makeAsyncIterator())
         return CoverGalleryQuery(
-            setRequest: { releaseId, filter in
+            setRequest: { owner, filter in
                 continuation.yield(
                     BridgeCoverGallerySnapshot(
                         request: BridgeCoverGalleryRequest(
-                            releaseId: releaseId,
+                            owner: owner,
                             filter: filter
                         ),
                         gallery: gallery

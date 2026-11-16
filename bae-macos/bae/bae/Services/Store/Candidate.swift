@@ -443,12 +443,6 @@ struct Candidate: Equatable, Identifiable {
         return images
     }
 
-    /// The covers the picker offers from the catalogs: what the applied
-    /// release offered, stored with the draft.
-    var remoteCovers: [BridgeRemoteCover] {
-        draft?.remoteCovers ?? []
-    }
-
     /// The candidate's editable metadata draft.
     var edit: BridgeRawReleaseEdit? {
         draft?.metadataDraft

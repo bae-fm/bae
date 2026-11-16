@@ -34,9 +34,18 @@ struct CoverPickerEmptyStateTests {
         return try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 content: CoverGalleryContent(
-                    remote: remoteItems.items,
-                    files: [],
-                    filter: .all
+                    BridgeCoverGallery(
+                        current: nil,
+                        fetch: .notFetched,
+                        sections: [
+                            BridgeCoverSection(
+                                source: .remote,
+                                items: [],
+                                count: 0
+                            )
+                        ],
+                        total: 0
+                    )
                 ),
                 remoteItems: remoteItems,
                 filter: .constant(.all),
@@ -58,27 +67,17 @@ struct CoverPickerEmptyStateTests {
         }
     }
 
-    /// An unlinked candidate has no lookup to refresh, and its release files
-    /// stay in the browser beside the offer to find its release. Pressing
-    /// Find release… runs `onFindRelease` itself; where the button sits is
-    /// no longer tested.
-    @Test(
-        "An unlinked candidate offers identification while retaining release files"
-    )
-    func identifyFromPicker() throws {
+    /// A lookup nothing is linked to has nothing to refresh; one that found
+    /// nothing, or failed, can be asked again. Which files show beside the
+    /// offer to find the release is core's read
+    /// (`a_candidates_picker_counts_what_each_source_shows`).
+    @Test("Only a linked lookup can be refreshed")
+    func refreshOnlyALinkedLookup() {
         #expect(!RemoteCoverItems.unlinked.canRefresh)
-        let images = PreviewData.bridgeCandidateFiles.coverFiles
-        let files = images.compactMap { file in
-            file.coverChoice.map {
-                CoverItem(coverChoice: $0, label: file.file.name)
-            }
-        }
-        try #require(!files.isEmpty && files.count == images.count)
-        let content = CoverGalleryContent(
-            remote: RemoteCoverItems.unlinked.items,
-            files: files,
-            filter: .all
+        #expect(RemoteCoverItems.linked([]).canRefresh)
+        #expect(
+            RemoteCoverItems.failed([], failure: DisplayError(line: "failed"))
+                .canRefresh
         )
-        #expect(content.files?.items == files)
     }
 }

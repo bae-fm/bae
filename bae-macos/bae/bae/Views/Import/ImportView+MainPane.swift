@@ -225,24 +225,24 @@ extension ImportView {
 
     private func presentCoverPicker(for candidate: Candidate) {
         let key = candidate.key
+        // One for as long as the sheet is up: the modal's view is built
+        // again with each update of the window.
+        let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
             CoverPickerFrame {
-                CoverPickerView(
-                    remoteCoverArts: candidate.remoteCovers,
-                    localArtwork: candidate.files.coverFiles,
-                    selectedCover: candidate.cover,
-                    fetchRemoteCovers: {
-                        try await releaseEditor.fetchCandidateCovers(key)
-                    },
+                CoverSheetView(
+                    owner: .candidate(candidateKey: key),
+                    selectedCover: candidate.cover?.selection,
+                    lightboxLoad: lightboxLoad,
                     onFindRelease: {
                         uiStore.dismissModal()
                         movePane(.findOnline, for: candidate)
                     },
+                    refreshCovers: {
+                        try await releaseEditor.refreshCandidateCovers(key)
+                    },
                     onSelect: { selection in
-                        try await importer.setCandidateCover(
-                            key,
-                            selection.selection
-                        )
+                        try await importer.setCandidateCover(key, selection)
                     },
                     onDone: { uiStore.dismissModal() },
                 )

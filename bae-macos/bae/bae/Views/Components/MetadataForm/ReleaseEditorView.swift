@@ -182,7 +182,7 @@ struct ReleaseEditorView: View {
         uiStore.presentModal {
             CoverPickerFrame {
                 CoverSheetView(
-                    releaseId: session.releaseId,
+                    owner: .release(releaseId: session.releaseId),
                     lightboxLoad: lightboxLoad,
                     onFindRelease: {
                         uiStore.dismissModal()

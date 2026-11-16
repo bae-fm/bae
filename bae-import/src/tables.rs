@@ -39,8 +39,8 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
 ];
 
 pub use cover_gallery::{
-    CoverFetch, CoverFilter, CoverGallery, CoverGalleryRequest, CoverGallerySnapshot, CoverSection,
-    CoverSectionSource, GalleryCover, GalleryLabel,
+    CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
+    CoverGallerySnapshot, CoverSection, CoverSectionSource, GalleryCover, GalleryLabel,
 };
 pub(crate) use folder_scans::DbCandidateFileTagSnapshot;
 pub use folder_scans::{FinishedScan, FolderRereadRefusal, ScanEntryMoved, ScanItemWrite};

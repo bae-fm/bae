@@ -37,7 +37,7 @@ struct CoverPickerTests {
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
             CoverSheetView(
-                releaseId: release.id,
+                owner: .release(releaseId: release.id),
                 lightboxLoad: LightboxImageLoad(),
                 refreshCovers: {},
                 onSelect: { await recorder.select($0) },
@@ -178,26 +178,39 @@ struct CoverPickerTests {
         )
     }
 
-    /// Which sections show is the browser's filter's; each tile names its
-    /// source. How the sections look is the `cover-picker-wide` shot's.
+    /// Each tile names its source. How the sections look is the
+    /// `cover-picker-wide` shot's.
     @MainActor
     @Test("Import cover picker labels external sources and release files")
     func sourceSections() throws {
-        let content = CoverGalleryContent(remote: [], files: [], filter: .all)
-        #expect(content.remote != nil)
-        #expect(content.files != nil)
-
-        let remote = try #require(
-            RemoteCoverItems(.linked(covers: PreviewData.remoteCovers))
-                .items.first
-        )
-        #expect(remote.sourceLabel == bridgeCatalogName(catalog: .musicBrainz))
-        let file = try #require(
-            PreviewData.bridgeCandidateFiles.coverFiles.first?.coverChoice
+        let remote = try #require(PreviewData.remoteCovers.first)
+        let remoteItem = CoverItem(
+            gallery: BridgeGalleryCover(
+                selection: remote.coverChoice.selection,
+                image: remote.coverChoice.image,
+                label: .remote(
+                    sourceName: remote.sourceName,
+                    label: remote.label
+                )
+            )
         )
         #expect(
-            CoverItem(coverChoice: file, label: "front.png").sourceLabel
-                == String(localized: "Release files")
+            remoteItem.sourceLabel == bridgeCatalogName(catalog: .musicBrainz)
         )
+        let coverFile = try #require(
+            PreviewData.bridgeCandidateFiles.coverFiles.first
+        )
+        guard case .artwork(let file?) = coverFile.role else {
+            Issue.record("a cover file carries its cover choice")
+            return
+        }
+        let fileItem = CoverItem(
+            gallery: BridgeGalleryCover(
+                selection: file.selection,
+                image: file.image,
+                label: .file(name: "front.png")
+            )
+        )
+        #expect(fileItem.sourceLabel == String(localized: "Release files"))
     }
 }

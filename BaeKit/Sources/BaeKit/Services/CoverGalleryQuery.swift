@@ -1,17 +1,20 @@
 import Foundation
 
-/// Reads a library release's cover picker through one live query.
-/// `setRequest` changes the release and source the query reads, and each
-/// value carries the request it answers.
+/// Reads a library release's or a candidate's cover picker through one live
+/// query. `setRequest` changes whose covers and which source the query reads,
+/// and each value carries the request it answers.
 public struct CoverGalleryQuery: Sendable {
     public let setRequest:
-        @Sendable (_ releaseId: String, _ filter: BridgeCoverFilter) throws ->
+        @Sendable (
+            _ owner: BridgeCoverGalleryOwner, _ filter: BridgeCoverFilter
+        ) throws ->
             Void
     public let values: PulledValues<BridgeCoverGallerySnapshot>
 
     public init(
         setRequest:
-            @escaping @Sendable (String, BridgeCoverFilter) throws -> Void,
+            @escaping @Sendable (BridgeCoverGalleryOwner, BridgeCoverFilter)
+            throws -> Void,
         values: PulledValues<BridgeCoverGallerySnapshot>
     ) {
         self.setRequest = setRequest
@@ -22,7 +25,7 @@ public struct CoverGalleryQuery: Sendable {
         init(_ subscription: CoverGallerySubscription) {
             self.init(
                 setRequest: {
-                    try subscription.setRequest(releaseId: $0, filter: $1)
+                    try subscription.setRequest(owner: $0, filter: $1)
                 },
                 values: PulledValues(subscription)
             )

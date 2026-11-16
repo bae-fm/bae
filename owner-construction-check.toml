@@ -1577,13 +1577,19 @@ tables = [
 ]
 
 [[database.domains]]
-name = "release cover gallery"
+name = "cover gallery"
 owner = "ImportTables"
 homes = [
     "bae-import/src/tables/cover_gallery.rs",
     "bae-import/src/tables/cover_gallery.sql",
+    "bae-import/src/tables/cover_gallery/",
 ]
-tables = ["release_cover_fetch", "release_cover_entry"]
+tables = [
+    "release_cover_fetch",
+    "release_cover_entry",
+    "candidate_cover_fetch",
+    "candidate_cover_entry",
+]
 
 [[database.domains]]
 name = "catalog apply steps"

@@ -120,7 +120,6 @@ private func detail(
     name: String,
     skipped: Bool = false,
     cover: BridgeCoverChoice? = nil,
-    remoteCovers: [BridgeRemoteCover] = [],
     presentation: BridgeMetadataPresentation = .draft
 ) -> BridgeImportCandidateDetail {
     BridgeImportCandidateDetail(
@@ -147,7 +146,6 @@ private func detail(
         signals: nil,
         stage: .drafting(
             draft: BridgeCandidateDraftPane(
-                remoteCovers: remoteCovers,
                 pickedLibraryStatus: nil,
                 album: .new,
                 metadataDraft: MappingFixtures.albumEdit,
@@ -277,10 +275,11 @@ struct ImportStoreSidebarCoverTests {
         let localArtwork = try #require(
             PreviewData.bridgeCandidateFiles.coverFiles.last
         )
-        let choices = [
-            remoteCover.coverChoice,
-            try #require(localArtwork.coverChoice),
-        ]
+        guard case .artwork(let localChoice?) = localArtwork.role else {
+            Issue.record("a cover file carries its cover choice")
+            return
+        }
+        let choices = [remoteCover.coverChoice, localChoice]
         for choice in choices {
             let row = identifiedRow(
                 path,

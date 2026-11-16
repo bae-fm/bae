@@ -15,9 +15,7 @@ use crate::tables::import_state::{
     load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate, SCANNED_HASH,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{
-    claimed_records_of_json, claimed_records_sql, offered_covers_of_json, offered_covers_sql,
-};
+use crate::tables::source_releases::{claimed_records_of_json, claimed_records_sql};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
 use bae_records::records::release_records::{
@@ -55,7 +53,6 @@ enum StageRows {
 struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     mapping: super::mapping_rows::MappingRows,
-    cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<bae_records::ResolvedCredit>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
@@ -148,7 +145,7 @@ fn imported_on(
 }
 
 /// The draft of the release the scan stores at `key` and what its pane draws
-/// beside it: the linked releases' records and covers, the album an import
+/// beside it: the linked releases' records, its cover, the album an import
 /// files under, and what the library holds for the draft's credits. Each
 /// statement binds only `key` and reads the candidate's content hash from
 /// the scan's row itself.
@@ -167,15 +164,12 @@ fn draft_rows_on(
     // describe it, an album names its own.
     let records =
         claimed_records_of_json(&while_current_on(sql, key, &claimed_records_sql(SCANNED_HASH))?)?;
-    let cover_options =
-        offered_covers_of_json(&while_current_on(sql, key, &offered_covers_sql(SCANNED_HASH))?)?;
     let picked_library_status = picked_library_status_on(sql, key)?;
     let album = candidate_album_on(sql, key)?;
     let cover = candidate_cover_choice_on(sql, key)?;
     Ok(DraftRows {
         pane_rows,
         mapping,
-        cover_options,
         artist_resolutions,
         records,
         picked_library_status,
@@ -187,7 +181,7 @@ fn draft_rows_on(
 /// The JSON array that the statement `array` returns for the release the
 /// scan stores at `key`, while the candidate's state is the one its scanned
 /// files hold (its edit revision is the scan's), and `[]` otherwise: the
-/// pane shows a link's records and covers only for the current state.
+/// pane shows a link's records only for the current state.
 fn while_current_on(
     sql: &SqlReadContext<'_>,
     key: &crate::CandidateKey,
@@ -293,7 +287,6 @@ impl CandidateDetailRows {
                 let DraftRows {
                     pane_rows,
                     mapping,
-                    cover_options,
                     artist_resolutions,
                     records,
                     picked_library_status,
@@ -318,7 +311,6 @@ impl CandidateDetailRows {
                     artist_resolutions,
                     mapping,
                     cover,
-                    remote_covers: cover_options,
                     lookup_choices,
                     failure: pane_rows.failure,
                     session: pane_rows.session,

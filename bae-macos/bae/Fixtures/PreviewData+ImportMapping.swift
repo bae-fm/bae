@@ -362,7 +362,6 @@ extension PreviewData {
         folder: BridgeFolderCandidate,
         metadataProvenance: BridgeMetadataProvenance? = nil,
         releaseLink: BridgeReleaseLink? = nil,
-        remoteCovers: [BridgeRemoteCover] = [],
         edit: BridgeRawReleaseEdit = blankDraftValues,
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
@@ -391,7 +390,6 @@ extension PreviewData {
                 signals: nil,
                 stage: .drafting(
                     draft: BridgeCandidateDraftPane(
-                        remoteCovers: remoteCovers,
                         pickedLibraryStatus: nil,
                         album: .new,
                         metadataDraft: edit,

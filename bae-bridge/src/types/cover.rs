@@ -1,20 +1,4 @@
-/// A missing external identity is distinct from a linked release with no art.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeRemoteCoverGallery {
-    Unlinked,
-    Linked { covers: Vec<super::BridgeRemoteCover> },
-}
-
-mirror_enum! {
-    BridgeRemoteCoverGallery = bae_import::RemoteCoverGallery,
-    from_core: pub(crate) fn,
-    variants: {
-        Unlinked,
-        Linked(covers: (each super::BridgeRemoteCover)),
-    },
-}
-
-/// Which of the library cover picker's sources a read shows.
+/// Which of the cover picker's sources a read shows.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverFilter {
     All,
@@ -32,15 +16,16 @@ mirror_enum! {
     variants: { All, ReleaseFiles, Catalog(catalog: (super::BridgeCatalog)) },
 }
 
-/// What this device knows of a library release's catalog covers.
+/// What this device knows of the catalog covers of the release or candidate
+/// a picker shows.
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeCoverFetch {
     /// No fetch has stored an answer yet.
     NotFetched,
-    /// The release names no catalog release, so there is nothing to offer.
+    /// It names no catalog release, so there is nothing to offer.
     Unlinked,
-    /// The release names a catalog release, and the last fetch stored the
-    /// covers its catalogs offered, which can be none.
+    /// It names a catalog release, and the last fetch stored the covers its
+    /// catalogs offered, which can be none.
     Linked,
 }
 
@@ -68,7 +53,7 @@ mirror_enum! {
 pub enum BridgeCoverItemLabel {
     /// The cover the release has now.
     Current,
-    /// An image file of the release, by its name in the release.
+    /// An image file of the release or the folder, by its name there.
     File { name: String },
     /// A cover a catalog offers: the service that serves it, and what it shows.
     Remote { source_name: String, label: super::BridgeCoverLabel },
@@ -91,7 +76,7 @@ pub struct BridgeCoverSection {
     pub count: u32,
 }
 
-/// A library release's cover picker under one filter: its saved cover, the
+/// A cover picker under one filter: a library release's saved cover, the
 /// sections the filter shows, and the number of covers in all of them.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGallery {
@@ -139,10 +124,39 @@ impl BridgeGalleryCover {
     }
 }
 
-/// The library release whose picker to read, and the source it shows.
+/// Whose covers a picker shows.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeCoverGalleryOwner {
+    /// A library release.
+    Release { release_id: String },
+    /// The release the scan stores at this key, before it is imported.
+    Candidate { candidate_key: Vec<u8> },
+}
+
+impl BridgeCoverGalleryOwner {
+    pub(crate) fn from_core(owner: bae_import::CoverGalleryOwner) -> Self {
+        match owner {
+            bae_import::CoverGalleryOwner::Release(release_id) => Self::Release { release_id },
+            bae_import::CoverGalleryOwner::Candidate(key) => {
+                Self::Candidate { candidate_key: key.into() }
+            }
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_import::CoverGalleryOwner {
+        match self {
+            Self::Release { release_id } => bae_import::CoverGalleryOwner::Release(release_id),
+            Self::Candidate { candidate_key } => {
+                bae_import::CoverGalleryOwner::Candidate(candidate_key.into())
+            }
+        }
+    }
+}
+
+/// Whose picker to read, and the source it shows.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGalleryRequest {
-    pub release_id: String,
+    pub owner: BridgeCoverGalleryOwner,
     pub filter: BridgeCoverFilter,
 }
 

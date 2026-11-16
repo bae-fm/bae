@@ -1,11 +1,12 @@
 import BaeKit
 import Foundation
 
-/// Release-level mutations and the remote-cover fetch the editor needs.
+/// Release-level mutations and the cover lookups the editor needs.
 /// Covers cover changes, pinning, deleting a release or a whole album,
 /// primary-release selection, opening a release edit session (whose own
 /// commands write each change, apply a catalog, pick its album and save),
-/// reading one of a release's documents, and the remote-cover gallery fetch.
+/// reading one of a release's documents, and the lookups of the covers the
+/// catalogs offer a release's or a candidate's picker.
 @MainActor
 final class ReleaseEditor: Observable {
     let changeCover:
@@ -32,10 +33,10 @@ final class ReleaseEditor: Observable {
     let readReleaseDocument:
         @Sendable (_ releaseId: String, _ fileId: String) async throws ->
             String
-    /// The artwork the candidate's links offer.
-    let fetchCandidateCovers:
-        @Sendable (_ candidateKey: Data) async throws ->
-            BridgeRemoteCoverGallery
+    /// Look up what the catalogs the candidate links to offer its cover
+    /// picker, which core stores for the open picker's live read.
+    let refreshCandidateCovers:
+        @Sendable (_ candidateKey: Data) async throws -> Void
     /// Look up what the catalogs offer the release's cover picker, which core
     /// stores for the open picker's live read.
     let refreshReleaseCovers:
@@ -76,11 +77,8 @@ final class ReleaseEditor: Observable {
                 _,
                 _ in throw StubError.notImplemented
             },
-        fetchCandidateCovers:
-            @escaping @Sendable (Data) async throws ->
-            BridgeRemoteCoverGallery = {
-                _ in throw StubError.notImplemented
-            },
+        refreshCandidateCovers:
+            @escaping @Sendable (Data) async throws -> Void = { _ in },
         refreshReleaseCovers:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         catalogApply: @escaping @Sendable () -> (any CatalogApplySource)? = {
@@ -95,7 +93,7 @@ final class ReleaseEditor: Observable {
         self.setPrimaryRelease = setPrimaryRelease
         self.openReleaseEdit = openReleaseEdit
         self.readReleaseDocument = readReleaseDocument
-        self.fetchCandidateCovers = fetchCandidateCovers
+        self.refreshCandidateCovers = refreshCandidateCovers
         self.refreshReleaseCovers = refreshReleaseCovers
         self.catalogApply = catalogApply
     }
@@ -126,8 +124,8 @@ final class ReleaseEditor: Observable {
             readReleaseDocument: {
                 try await handle.readReleaseDocument(releaseId: $0, fileId: $1)
             },
-            fetchCandidateCovers: {
-                try await handle.fetchCandidateCovers(candidateKey: $0)
+            refreshCandidateCovers: {
+                try await handle.refreshCandidateCovers(candidateKey: $0)
             },
             refreshReleaseCovers: {
                 try await handle.refreshReleaseCovers(releaseId: $0)

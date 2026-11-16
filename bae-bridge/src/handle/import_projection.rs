@@ -705,7 +705,6 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_author,
             mapping,
             cover,
-            remote_covers,
             // Changed through `edit_candidate_lookup_choices`; nothing on the
             // pane reads it back.
             lookup_choices: _,
@@ -713,10 +712,6 @@ impl crate::types::BridgeCandidateDraftPane {
             session,
         } = draft;
         Self {
-            remote_covers: remote_covers
-                .into_iter()
-                .map(crate::types::BridgeRemoteCover::from_core)
-                .collect(),
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),
             album: crate::types::BridgeDraftAlbum::from_core(album),

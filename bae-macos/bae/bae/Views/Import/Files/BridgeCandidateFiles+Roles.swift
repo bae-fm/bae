@@ -5,16 +5,6 @@ import Foundation
 /// role and the sheet↔audio binding cross the bridge as typed values: nothing
 /// here decides a file's job, and nothing infers a pairing from a filename.
 
-extension BridgeCandidateFile {
-    /// Core's cover action; nil for files the cover decoder does not support.
-    var coverChoice: BridgeCoverChoice? {
-        switch role {
-        case .artwork(let choice): return choice
-        default: return nil
-        }
-    }
-}
-
 extension BridgeSheetBindingOption {
     /// Why this file can't back the sheet, in the user's language; nil when it
     /// can. Core decides both the refusal and its wording — the picker only

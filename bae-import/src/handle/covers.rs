@@ -1,21 +1,12 @@
 //! The covers the picker offers a candidate or a library release, and the
-//! provider images it draws them from. The handle fetches a candidate's
-//! gallery and returns it, and stores a library release's gallery in the
-//! release's cover tables, which `ImportTables::subscribe_cover_gallery`
-//! follows.
+//! provider images it draws them from. The handle fetches what the catalogs
+//! offer a candidate or a library release and stores it in the cover
+//! tables, which `ImportTables::subscribe_cover_gallery` follows.
 
 use super::*;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::remote_image::RemoteCover;
-
-/// Whether an owner names an external release, and the artwork it offers.
-/// An empty linked gallery is not an unidentified release.
-#[derive(Debug, Clone, PartialEq)]
-pub enum RemoteCoverGallery {
-    Unlinked,
-    Linked(Vec<RemoteCover>),
-}
 
 impl ImportServiceHandle {
     /// Bytes of provider art for a slot `pixels` wide on its longer side: the
@@ -56,28 +47,36 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Fetch the artwork the candidate's links offer, when its picker opens.
-    pub async fn fetch_candidate_covers(
+    /// Fetch what the catalogs of the candidate's link offer its picker and
+    /// store it in place of the last fetch's, beside the link it was fetched
+    /// for. A fetch that fails stores nothing, so the picker keeps showing
+    /// the covers it had.
+    pub async fn refresh_candidate_covers(
         &self,
         key: &crate::CandidateKey,
-    ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        self.candidate_covers(key).await
+    ) -> Result<(), crate::ImportError> {
+        let candidate = self.require_release_candidate(key).await?;
+        let hash = candidate.files.content_hash();
+        // The link is read before the covers are fetched for it, so a link
+        // that changes during the fetch leaves the stored covers under the
+        // old link, where the picker of the new one does not show them.
+        let link = self.services.tables.candidate_cover_link(&hash).await?;
+        let covers = self.candidate_covers(key, &hash).await?;
+        self.services.tables.replace_candidate_covers(&hash, link, covers).await?;
+        Ok(())
     }
 
     /// Fetch what the catalogs offer the library release's picker and store
     /// it in place of the last fetch's. A fetch that fails stores nothing, so
     /// the picker keeps showing the covers it had.
     pub async fn refresh_release_covers(&self, release_id: &str) -> Result<(), crate::ImportError> {
-        let covers = match self.release_covers(release_id).await? {
-            RemoteCoverGallery::Unlinked => None,
-            RemoteCoverGallery::Linked(covers) => Some(covers),
-        };
+        let covers = self.release_covers(release_id).await?;
         self.services.tables.replace_release_covers(release_id, covers).await?;
         Ok(())
     }
 
-    /// The live read of the covers a library release's picker shows; see
-    /// `ImportTables::subscribe_cover_gallery`.
+    /// The live read of the covers a candidate's or a library release's
+    /// picker shows; see `ImportTables::subscribe_cover_gallery`.
     pub fn subscribe_cover_gallery(
         &self,
         initial: Option<crate::CoverGalleryRequest>,
@@ -89,23 +88,19 @@ impl ImportServiceHandle {
         self.services.tables.subscribe_cover_gallery(initial)
     }
 
+    /// The covers the catalogs the candidate links to offer, or `None` when
+    /// it links to none. A linked candidate can be offered no cover.
     async fn candidate_covers(
         &self,
         key: &crate::CandidateKey,
-    ) -> Result<RemoteCoverGallery, crate::ImportError> {
-        let candidate = self.require_release_candidate(key).await?;
-        let state = self
-            .services
-            .tables
-            .load_import_candidate_state(&candidate.files.content_hash())
-            .await?;
+        content_hash: &str,
+    ) -> Result<Option<Vec<RemoteCover>>, crate::ImportError> {
+        let state = self.services.tables.load_import_candidate_state(content_hash).await?;
         let link = match state.and_then(|state| state.release_link) {
-            None => return Ok(RemoteCoverGallery::Unlinked),
+            None => return Ok(None),
             // An album's artwork is what each catalog shows for the album.
             Some(crate::ReleaseLink::Album(album)) => {
-                return Ok(RemoteCoverGallery::Linked(
-                    self.records_gallery(&album.records()).await?,
-                ));
+                return Ok(Some(self.records_gallery(&album.records()).await?));
             }
             Some(crate::ReleaseLink::Pressing(pressing)) => pressing,
         };
@@ -125,21 +120,21 @@ impl ImportServiceHandle {
         }
         let (primary, partners) =
             claimed_releases.split_first().expect("a pick claims at least its primary");
-        Ok(RemoteCoverGallery::Linked(
-            self.services.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?,
-        ))
+        Ok(Some(self.services.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?))
     }
 
+    /// The covers the catalogs the release's records name offer, or `None`
+    /// when it has no records. A linked release can be offered no cover.
     async fn release_covers(
         &self,
         release_id: &str,
-    ) -> Result<RemoteCoverGallery, crate::ImportError> {
+    ) -> Result<Option<Vec<RemoteCover>>, crate::ImportError> {
         let records = self.services.records.get_release_records(release_id).await?;
 
         if records.is_empty() {
-            return Ok(RemoteCoverGallery::Unlinked);
+            return Ok(None);
         }
-        Ok(RemoteCoverGallery::Linked(self.records_gallery(&records).await?))
+        Ok(Some(self.records_gallery(&records).await?))
     }
 
     /// Every image the lookup catalogs among `records` show for what each

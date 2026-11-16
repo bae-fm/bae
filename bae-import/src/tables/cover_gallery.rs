@@ -1,9 +1,11 @@
-//! The covers a library release's picker offers, as one query reads them from
-//! the library's tables: the release's saved cover, the covers its catalogs
-//! offered when this device last fetched them, and its image files, filtered
-//! by source, each section with its count and the whole with its total. Its
-//! tables are `cover_gallery.sql`; fetching writes them, and a refetch
-//! replaces them.
+//! The covers a cover picker offers, as one query reads them from the
+//! library's tables, filtered by source, each section with its count and the
+//! whole with its total. A library release's picker offers its saved cover,
+//! the covers its catalogs offered when this device last fetched them, and its
+//! image files; its tables are `cover_gallery.sql`. A candidate's picker
+//! offers the covers its link's catalogs offered, and the folder's images a
+//! cover can be (`cover_gallery/candidate.rs`). Fetching writes the tables,
+//! and a refetch replaces what they hold.
 
 use super::*;
 use crate::{CoverImageSource, CoverSelection};
@@ -11,8 +13,12 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::{CoverLabel, RemoteCover};
 
 /// The cover gallery's part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("cover_gallery.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
+    include_str!("cover_gallery.sql"),
+    include_str!("cover_gallery/candidate.sql"),
+]);
+
+mod candidate;
 
 /// Which of the picker's sources a read shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,16 +40,28 @@ impl CoverFilter {
     }
 }
 
-/// What this device knows of the release's catalog covers.
+/// What this device knows of the catalog covers of the release or
+/// candidate a picker shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoverFetch {
     /// No fetch has stored an answer yet.
     NotFetched,
-    /// The release names no catalog release, so there is nothing to offer.
+    /// It names no catalog release, so there is nothing to offer.
     Unlinked,
-    /// The release names a catalog release, and the last fetch stored the
-    /// covers its catalogs offered, which can be none.
+    /// It names a catalog release, and the last fetch stored the covers its
+    /// catalogs offered, which can be none.
     Linked,
+}
+
+impl CoverFetch {
+    /// The fetch a stored `linked` column says was made, or none.
+    fn of_column(linked: Option<bool>) -> Self {
+        match linked {
+            None => Self::NotFetched,
+            Some(false) => Self::Unlinked,
+            Some(true) => Self::Linked,
+        }
+    }
 }
 
 /// Which part of the picker a section is.
@@ -58,7 +76,7 @@ pub enum CoverSectionSource {
 pub enum GalleryLabel {
     /// The cover the release has now.
     Current,
-    /// An image file of the release, by its name in the release.
+    /// An image file of the release or the folder, by its name there.
     File(String),
     /// A cover a catalog offers.
     Remote { label: CoverLabel, source: Catalog },
@@ -81,7 +99,7 @@ pub struct CoverSection {
     pub count: u32,
 }
 
-/// A library release's cover picker: its saved cover, the sections the filter
+/// A cover picker: a library release's saved cover, the sections the filter
 /// shows, and the number of covers in all of them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGallery {
@@ -138,10 +156,19 @@ fn release_image(release_id: &str, source: bae_records::GallerySource) -> CoverI
     CoverImageSource::ReleaseImage { release_id: release_id.to_string(), source }
 }
 
-/// The release whose covers a picker shows, and the source it shows them from.
+/// Whose covers a picker shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CoverGalleryOwner {
+    /// A library release, by its id.
+    Release(String),
+    /// The release the scan stores at this key, before it is imported.
+    Candidate(crate::CandidateKey),
+}
+
+/// Whose covers a picker shows, and the source it shows them from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGalleryRequest {
-    pub release_id: String,
+    pub owner: CoverGalleryOwner,
     pub filter: CoverFilter,
 }
 
@@ -158,7 +185,38 @@ fn cover_gallery_on(
     sql: &impl coven::SqlRead,
     request: &CoverGalleryRequest,
 ) -> Result<CoverGallery, DbError> {
-    let release_id = request.release_id.as_str();
+    match &request.owner {
+        CoverGalleryOwner::Release(release_id) => {
+            release_gallery_on(sql, release_id, request.filter)
+        }
+        CoverGalleryOwner::Candidate(key) => {
+            candidate::candidate_gallery_on(sql, key, request.filter)
+        }
+    }
+}
+
+/// The section of the covers the catalogs offered, each selecting itself.
+fn remote_section(covers: Vec<RemoteCover>, count: u32) -> CoverSection {
+    CoverSection {
+        source: CoverSectionSource::Remote,
+        items: covers
+            .into_iter()
+            .map(|cover| GalleryCover {
+                selection: Some(CoverSelection::Remote(cover.image.clone(), cover.source)),
+                image: CoverImageSource::Remote { image: cover.image },
+                label: GalleryLabel::Remote { label: cover.label, source: cover.source },
+            })
+            .collect(),
+        count,
+    }
+}
+
+/// The covers `release_id`'s picker offers under `filter`, as one read.
+fn release_gallery_on(
+    sql: &impl coven::SqlRead,
+    release_id: &str,
+    filter: CoverFilter,
+) -> Result<CoverGallery, DbError> {
     let (
         version,
         fetched,
@@ -169,7 +227,7 @@ fn cover_gallery_on(
         files_count,
         files_json,
         total,
-    ) = sql.query_row(&gallery_sql(), params![release_id, request.filter.column()], |row| {
+    ) = sql.query_row(&gallery_sql(), params![release_id, filter.column()], |row| {
         Ok((
             row.get::<_, Option<String>>(0)?,
             row.get::<_, Option<bool>>(1)?,
@@ -188,18 +246,7 @@ fn cover_gallery_on(
         .map_err(|error| DbError::unreadable_json("a release's cover files", &files_json, error))?;
     let mut sections = Vec::new();
     if shows_remote {
-        sections.push(CoverSection {
-            source: CoverSectionSource::Remote,
-            items: remote
-                .into_iter()
-                .map(|cover| GalleryCover {
-                    selection: Some(CoverSelection::Remote(cover.image.clone(), cover.source)),
-                    image: CoverImageSource::Remote { image: cover.image },
-                    label: GalleryLabel::Remote { label: cover.label, source: cover.source },
-                })
-                .collect(),
-            count: remote_count,
-        });
+        sections.push(remote_section(remote, remote_count));
     }
     if shows_files {
         sections.push(CoverSection {
@@ -224,21 +271,18 @@ fn cover_gallery_on(
             image: release_image(release_id, bae_records::GallerySource::Cover(image)),
             label: GalleryLabel::Current,
         }),
-        fetch: match fetched {
-            None => CoverFetch::NotFetched,
-            Some(false) => CoverFetch::Unlinked,
-            Some(true) => CoverFetch::Linked,
-        },
+        fetch: CoverFetch::of_column(fetched),
         sections,
         total,
     })
 }
 
 impl ImportTables {
-    /// Follow the covers that the picker shows for the release and source
-    /// `initial` names, or nothing. A new request changes the release or
-    /// source on the same query, and coven reruns the query when a write
-    /// changes the fetched covers, the release's files or its saved cover.
+    /// Follow the covers that the picker shows for the release or candidate
+    /// and the source `initial` names, or nothing. A new request changes them
+    /// on the same query, and coven reruns the query when a write changes
+    /// the fetched covers, a release's files or saved cover, or a
+    /// candidate's link, draft or folder.
     pub fn subscribe_cover_gallery(
         &self,
         initial: Option<CoverGalleryRequest>,

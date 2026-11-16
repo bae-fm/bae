@@ -578,13 +578,25 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
     let edit = detail.draft().unwrap().metadata_draft.clone();
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.album_title, "Album");
+    let asked = crate::CoverGalleryRequest {
+        owner: crate::CoverGalleryOwner::Candidate(crate::CandidateKey::folder(&dir)),
+        filter: crate::CoverFilter::Catalog(bae_catalogs::catalog::Catalog::MusicBrainz),
+    };
+    let mut gallery = fixture.import.subscribe_cover_gallery(Some(asked.clone()));
+    let gallery = loop {
+        let event = gallery.next_inline().await.expect("the read runs");
+        if event.request.as_ref() == Some(&asked) {
+            break event.result.unwrap().expect("the live query answers the request");
+        }
+    };
     assert_eq!(
-        detail
-            .draft()
-            .unwrap()
-            .remote_covers
+        gallery.sections[0]
+            .items
             .iter()
-            .map(|cover| cover.image.url.as_str())
+            .map(|cover| match &cover.image {
+                crate::CoverImageSource::Remote { image } => image.url.clone(),
+                other => panic!("a catalog's filter shows {other:?}"),
+            })
             .collect::<Vec<_>>(),
         vec![format!("{}/release-group/rg-offline-1/front", bae_catalogs::remote_image::ARCHIVE)],
         "the pressing states no front image of its own, so the album's is the \

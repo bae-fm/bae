@@ -429,7 +429,6 @@ extension MappingFixtures {
             signals: nil,
             stage: .drafting(
                 draft: BridgeCandidateDraftPane(
-                    remoteCovers: [],
                     pickedLibraryStatus: nil,
                     album: .new,
                     metadataDraft: edit,

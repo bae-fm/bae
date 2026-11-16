@@ -48,7 +48,7 @@ impl AppServices {
     delegate_async!(import, import_mark_folder_scan_alert_shown => mark_folder_scan_alert_shown(watched_folder_path: &std::path::Path, kind: bae_import::FolderScanAlertKind, detail: String) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: bae_import::CandidateKey, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: bae_import::CandidateKey, sheet_file_id: String, disc: bae_import::folder_scanner::SheetDisc) -> Result<(), bae_import::ImportError>);
-    delegate_async!(import, import_fetch_candidate_covers => fetch_candidate_covers(candidate_key: &bae_import::CandidateKey) -> Result<bae_import::RemoteCoverGallery, bae_import::ImportError>);
+    delegate_async!(import, import_refresh_candidate_covers => refresh_candidate_covers(candidate_key: &bae_import::CandidateKey) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_refresh_release_covers => refresh_release_covers(release_id: &str) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: bae_catalogs::remote_image::RemoteImageSet, pixels: Option<u32>) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &bae_import::CandidateKey, cover: bae_import::CoverSelection) -> Result<(), bae_import::ImportError>);
@@ -277,8 +277,9 @@ impl AppServices {
 #[cfg(desktop)]
 impl AppServices {
     /// Return a live read of the covers that the cover picker shows for the
-    /// library release this subscription names, updated as they change. To
-    /// show another release or source, set a new request on the same read.
+    /// library release or candidate this subscription names, updated as
+    /// they change. To show another release, candidate or source, set a new
+    /// request on the same read.
     pub fn subscribe_cover_gallery(&self) -> crate::live_reads::LiveCoverGallery {
         crate::live_reads::follow_request(
             &self.inner.manager,

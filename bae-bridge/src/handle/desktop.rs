@@ -688,16 +688,14 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// Fetch the covers that the catalogs the candidate links to offer.
-        fn fetch_candidate_covers(
-            candidate_key: Vec<u8>,
-        ) -> crate::types::BridgeRemoteCoverGallery {
-            let covers = this
-                .services
-                .import_fetch_candidate_covers(&candidate_key.into())
+        /// Fetch what the catalogs the candidate links to offer its cover
+        /// picker and store it in place of the last fetch's. `cover_gallery`
+        /// reads it.
+        fn refresh_candidate_covers(candidate_key: Vec<u8>) -> () {
+            this.services
+                .import_refresh_candidate_covers(&candidate_key.into())
                 .await
-                .map_err(BridgeError::from)?;
-            Ok(crate::types::BridgeRemoteCoverGallery::from_core(covers))
+                .map_err(BridgeError::from)
         }
 
         /// Fetch what the catalogs offer the library release's cover picker
