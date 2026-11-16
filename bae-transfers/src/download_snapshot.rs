@@ -37,7 +37,7 @@ impl DownloadTransferProgress {
         Ok(Self {
             bytes_done,
             bytes_total,
-            fraction: bytes_done as f64 / bytes_total as f64,
+            fraction: bae_types::progress::share_done(bytes_done, bytes_total),
             throughput_bps: None,
         })
     }
@@ -122,7 +122,7 @@ impl MoveToThisDeviceTransferProgress {
             file_bytes_total: progress.total,
             bytes_done,
             bytes_total: all,
-            fraction: if all == 0 { 0.0 } else { bytes_done as f64 / all as f64 },
+            fraction: bae_types::progress::share_done(bytes_done, all),
         }
     }
 }

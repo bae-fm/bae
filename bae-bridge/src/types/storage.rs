@@ -270,29 +270,22 @@ pub struct BridgeStorageSetupProgress {
 }
 
 impl BridgeStorageSetupProgress {
-    pub(crate) fn new(step: BridgeStorageSetupStep, done: u64, total: u64) -> Self {
-        let fraction = if total > 1 { crate::types::step_fraction(done, total) } else { None };
-        Self { key: step.key().to_string(), step, done, total, fraction }
-    }
-
     pub(crate) fn from_core(value: coven::Progress<coven::StorageSetupStep>) -> Self {
         use coven::StorageSetupStep as Step;
-        Self::new(
-            match value.step {
-                Step::CheckingLocation => BridgeStorageSetupStep::CheckingLocation,
-                Step::DetectingSettings => BridgeStorageSetupStep::DetectingSettings,
-                Step::PreparingZone => BridgeStorageSetupStep::PreparingZone,
-                Step::ReadingAccount => BridgeStorageSetupStep::ReadingAccount,
-                Step::Connecting => BridgeStorageSetupStep::Connecting,
-                Step::CreatingStore => BridgeStorageSetupStep::CreatingStore,
-                Step::Loading(step) => BridgeStorageSetupStep::Loading {
-                    step: crate::types::BridgeLoadStep::from_core(step),
-                },
-                Step::RecordingAccess => BridgeStorageSetupStep::RecordingAccess,
+        let fraction = bae_library::storage_setup_share(&value);
+        let step = match value.step {
+            Step::CheckingLocation => BridgeStorageSetupStep::CheckingLocation,
+            Step::DetectingSettings => BridgeStorageSetupStep::DetectingSettings,
+            Step::PreparingZone => BridgeStorageSetupStep::PreparingZone,
+            Step::ReadingAccount => BridgeStorageSetupStep::ReadingAccount,
+            Step::Connecting => BridgeStorageSetupStep::Connecting,
+            Step::CreatingStore => BridgeStorageSetupStep::CreatingStore,
+            Step::Loading(step) => BridgeStorageSetupStep::Loading {
+                step: crate::types::BridgeLoadStep::from_core(step),
             },
-            value.done,
-            value.total,
-        )
+            Step::RecordingAccess => BridgeStorageSetupStep::RecordingAccess,
+        };
+        Self { key: step.key().to_string(), step, done: value.done, total: value.total, fraction }
     }
 }
 

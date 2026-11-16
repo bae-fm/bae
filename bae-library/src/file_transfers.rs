@@ -8,10 +8,7 @@ use std::collections::BTreeMap;
 /// The share of a file's object moved so far, from 0 to 1. An object coven
 /// reports no size for has moved none of it.
 pub(crate) fn fraction(progress: coven::TransferProgress) -> f64 {
-    if progress.bytes_total == 0 {
-        return 0.0;
-    }
-    progress.bytes_transferred as f64 / progress.bytes_total as f64
+    bae_types::progress::share_done(progress.bytes_transferred, progress.bytes_total)
 }
 
 /// Apply what a transfer watch told to `held`, the progress of each file in

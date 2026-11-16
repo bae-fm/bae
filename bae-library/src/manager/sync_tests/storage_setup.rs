@@ -165,3 +165,23 @@ async fn a_dropped_setup_call_cancels_its_setup() {
     assert_eq!(outcomes, vec![Some(coven::OperationOutcome::Cancelled)]);
     assert!(!manager.is_sync_configured().await.unwrap());
 }
+
+/// A storage setup's loading step fills its bar to the share of its units
+/// done. Every other step is one unit, so its bar has no share and moves
+/// without a count.
+#[test]
+fn only_a_loading_step_of_storage_setup_has_a_share() {
+    let progress = |step, done, total| coven::Progress { step, done, total };
+    assert_eq!(
+        crate::storage_setup_share(&progress(
+            coven::StorageSetupStep::Loading(coven::LoadStep::Reading),
+            2,
+            4
+        )),
+        Some(0.5)
+    );
+    assert_eq!(
+        crate::storage_setup_share(&progress(coven::StorageSetupStep::Connecting, 0, 1)),
+        None
+    );
+}

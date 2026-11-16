@@ -10,11 +10,8 @@ impl UploadBar {
     /// The share of the bar's bytes done, from 0 to 1, which the bar fills
     /// to. A bar of no bytes has done none of them.
     pub fn fraction(self) -> f64 {
-        if self.bytes_total == 0 {
-            return 0.0;
-        }
         assert!(self.bytes_done <= self.bytes_total, "an upload bar's bytes done pass its total");
-        self.bytes_done as f64 / self.bytes_total as f64
+        bae_types::progress::share_done(self.bytes_done, self.bytes_total)
     }
 }
 

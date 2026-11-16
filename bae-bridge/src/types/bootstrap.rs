@@ -153,7 +153,7 @@ impl BridgeOpenProgress {
             key: step.key().to_string(),
             done,
             total,
-            fraction: step_fraction(done, total),
+            fraction: bae_types::progress::step_share(done, total),
         }
     }
 
@@ -226,17 +226,9 @@ impl BridgeSetupProgress {
             key: step.key().to_string(),
             done,
             total,
-            fraction: step_fraction(done, total),
+            fraction: bae_types::progress::step_share(done, total),
         }
     }
-}
-
-/// The share of a step's units done that its bar fills to: `None` for a step
-/// of no units, which counts nothing. A step's total can grow while it runs,
-/// so the units done can pass a total read before it grew; the bar is full
-/// then.
-pub(crate) fn step_fraction(done: u64, total: u64) -> Option<f64> {
-    (total > 0).then(|| done.min(total) as f64 / total as f64)
 }
 
 /// A step of loading a library from storage onto this device, in the order
@@ -374,7 +366,7 @@ impl BridgeLoadProgress {
             step,
             done,
             total,
-            fraction: step_fraction(done, total),
+            fraction: bae_types::progress::step_share(done, total),
         }
     }
 
@@ -643,44 +635,5 @@ impl BridgeCopyReset {
             notice: bae_sync_status::CopyResetNotice::of(unsent)
                 .map(BridgeCopyResetNotice::from_core),
         }
-    }
-}
-
-#[cfg(test)]
-mod step_fraction_tests {
-    use super::*;
-
-    /// A step's bar fills to the share of its units done, and a step of no
-    /// units counts nothing, so its bar moves without a count.
-    #[test]
-    fn a_step_fills_to_its_units_done_or_counts_nothing() {
-        assert_eq!(BridgeOpenProgress::new(BridgeOpenStep::Migrating, 1, 4).fraction, Some(0.25));
-        assert_eq!(BridgeOpenProgress::new(BridgeOpenStep::Migrating, 0, 0).fraction, None);
-        assert_eq!(BridgeSetupProgress::new(BridgeSetupStep::CreatingLibrary, 0, 0).fraction, None);
-        assert_eq!(
-            crate::types::BridgeSelectionActionProgress::new(0, 0).fraction,
-            None,
-            "an action that has not counted its rows counts nothing"
-        );
-        assert_eq!(crate::types::BridgeSelectionActionProgress::new(1, 2).fraction, Some(0.5));
-    }
-
-    /// A loading step's total can grow behind the units done: the bar is
-    /// full until the total catches up.
-    #[test]
-    fn units_done_past_a_total_fill_the_bar() {
-        assert_eq!(BridgeLoadProgress::new(BridgeLoadStep::Reading, 9, 8).fraction, Some(1.0));
-    }
-
-    /// A storage setup's step of one unit moves without a count; loading's
-    /// counted steps fill.
-    #[test]
-    fn a_storage_setup_step_of_one_unit_counts_nothing() {
-        let step = crate::types::BridgeStorageSetupStep::Connecting;
-        assert_eq!(
-            crate::types::BridgeStorageSetupProgress::new(step.clone(), 0, 1).fraction,
-            None
-        );
-        assert_eq!(crate::types::BridgeStorageSetupProgress::new(step, 2, 4).fraction, Some(0.5));
     }
 }

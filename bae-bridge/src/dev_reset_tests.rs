@@ -104,11 +104,11 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             step(Step::ConnectingStorage, 0, 0),
             // Coven's own steps follow, on the same stream, until it fails.
             Some(BridgeFastValue::StorageSetupProgress {
-                progress: crate::types::BridgeStorageSetupProgress::new(
-                    crate::types::BridgeStorageSetupStep::CheckingLocation,
-                    0,
-                    1
-                )
+                progress: crate::types::BridgeStorageSetupProgress::from_core(coven::Progress {
+                    step: coven::StorageSetupStep::CheckingLocation,
+                    done: 0,
+                    total: 1,
+                })
             }),
             None,
         ]

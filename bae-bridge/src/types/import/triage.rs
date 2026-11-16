@@ -451,7 +451,7 @@ pub struct BridgeSelectionActionProgress {
 
 impl BridgeSelectionActionProgress {
     pub(crate) fn new(completed: u64, total: u64) -> Self {
-        Self { completed, total, fraction: crate::types::step_fraction(completed, total) }
+        Self { completed, total, fraction: bae_types::progress::step_share(completed, total) }
     }
 }
 

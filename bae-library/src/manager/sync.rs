@@ -13,6 +13,18 @@ pub fn storage_setup_finishing(step: &coven::StorageSetupStep) -> bool {
     )
 }
 
+/// The share a storage setup's bar fills to while it runs `progress`'s
+/// step: a loading step's share of its units done, or `None` for every other
+/// step, which is one unit, so its bar moves without a count.
+pub fn storage_setup_share(progress: &coven::Progress<coven::StorageSetupStep>) -> Option<f64> {
+    match progress.step {
+        coven::StorageSetupStep::Loading(_) => {
+            bae_types::progress::step_share(progress.done, progress.total)
+        }
+        _ => None,
+    }
+}
+
 impl LibraryManager {
     pub async fn is_sync_configured(&self) -> Result<bool, LibraryError> {
         Ok(self.store.storage_config().await?.is_some())

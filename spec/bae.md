@@ -5657,9 +5657,9 @@ first step that fails stops it. The apps read these steps from the stream
 like an open's, never from a callback, and show the step's name over a bar:
 counted where the step is counted, moving without a count where it is not,
 never a bare spinner. Core decides which with each step it sends: the share of
-the step's units done, or none for a step of no units (and, for a storage
-setup, for a step of one unit), and the apps fill the bar to it or move it
-without a count.
+the step's units done, or none for a step of no units and for each step of
+a storage setup other than loading, which is one unit; the apps fill the bar
+to it or move it without a count.
 
 A restore, a join and a device reset load the library from storage, and say
 where they stand state by state: a new installation's database opening, then

@@ -566,15 +566,17 @@ fn produced_keys() -> Vec<String> {
     // BridgeStorageSetupProgress — each step carries a key; a loading
     // step's is the load step's, covered above.
     for step in [
-        BridgeStorageSetupStep::CheckingLocation,
-        BridgeStorageSetupStep::DetectingSettings,
-        BridgeStorageSetupStep::PreparingZone,
-        BridgeStorageSetupStep::ReadingAccount,
-        BridgeStorageSetupStep::Connecting,
-        BridgeStorageSetupStep::CreatingStore,
-        BridgeStorageSetupStep::RecordingAccess,
+        coven::StorageSetupStep::CheckingLocation,
+        coven::StorageSetupStep::DetectingSettings,
+        coven::StorageSetupStep::PreparingZone,
+        coven::StorageSetupStep::ReadingAccount,
+        coven::StorageSetupStep::Connecting,
+        coven::StorageSetupStep::CreatingStore,
+        coven::StorageSetupStep::RecordingAccess,
     ] {
-        keys.push(BridgeStorageSetupProgress::new(step, 0, 0).key);
+        keys.push(
+            BridgeStorageSetupProgress::from_core(coven::Progress { step, done: 0, total: 1 }).key,
+        );
     }
     // BridgeClosingProgress — each step carries a key.
     for step in [
