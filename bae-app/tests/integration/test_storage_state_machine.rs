@@ -168,7 +168,6 @@ async fn test_manage_refused_without_cloud_storage() {
         !mgr.manager().is_sync_ready().await.unwrap(),
         "precondition: no storage / sync loop not running"
     );
-    assert!(!mgr.store().syncs().await.unwrap(), "precondition: the library does not sync");
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = crate::create_local_release(
         mgr.manager(),

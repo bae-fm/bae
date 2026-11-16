@@ -602,8 +602,6 @@ impl AppServices {
     delegate_async!(manager, cancel_output => cancel_output(release_id: &str) -> Result<(), bae_library::LibraryError>);
 
     #[cfg(any(test, feature = "test-utils"))]
-    delegate_lib!(store, syncs => syncs() -> bool);
-    #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, bae_library::LibraryError>);
 
     delegate_async!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
