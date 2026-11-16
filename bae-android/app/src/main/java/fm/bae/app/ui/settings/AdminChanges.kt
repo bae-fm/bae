@@ -18,19 +18,8 @@ import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
-import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeMemberRole
-
-/** The admin changes a read answered, with the place it read them for. */
-internal data class ShownAdminChanges(
-    val place: BridgeAdminChangePlace,
-    val changes: List<BridgeAdminChange>,
-)
-
-/** The changes the read answered for [place]: none before it answers, or while it answers for another place. */
-internal fun ShownAdminChanges?.at(place: BridgeAdminChangePlace): List<BridgeAdminChange> =
-    this?.takeIf { it.place == place }?.changes.orEmpty()
 
 /**
  * The admin changes this phone asked for that show in one place: renaming the library, changing a role, removing a

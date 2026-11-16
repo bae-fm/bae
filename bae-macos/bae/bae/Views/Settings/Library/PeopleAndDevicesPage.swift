@@ -314,8 +314,8 @@ struct PeopleAndDevicesPage: View {
     /// falls back to the first page.
     private var shown: Subpage {
         if case .person(let memberId) = subpage,
-            let read = store.shownPerson, read.memberId == memberId,
-            read.person == nil
+            let read = store.person.shown, read.key == memberId,
+            read.value == nil
         {
             return .people
         }
@@ -351,9 +351,9 @@ struct PeopleAndDevicesPage: View {
     /// Returns the person whose page is open when the store's shown person
     /// has the member id this page holds.
     private func person(_ memberId: String) -> BridgePerson? {
-        guard let shown = store.shownPerson, shown.memberId == memberId
+        guard let shown = store.person.shown, shown.key == memberId
         else { return nil }
-        return shown.person
+        return shown.value
     }
 
     private var selfPerson: BridgePerson? {
@@ -598,9 +598,10 @@ extension PeopleAndDevicesPage {
     /// invites a moment after one closes, so the one just closed is not
     /// shown meanwhile.
     private var requestShown: BridgeInvite? {
-        store.waitingRequest.flatMap {
-            closedRequests.contains($0.id) ? nil : $0
-        }
+        store.waitingRequest.shown?.value
+            .flatMap {
+                closedRequests.contains($0.id) ? nil : $0
+            }
     }
 
     /// Open an invite from its row: its request to decide, or its code.

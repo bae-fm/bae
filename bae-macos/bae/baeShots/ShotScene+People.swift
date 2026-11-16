@@ -361,7 +361,7 @@ extension ShotScene {
                 .environment(membership)
             )
         ) {
-            membership.people != nil && membership.shownPerson != nil
+            membership.people != nil && membership.person.shown != nil
         }
     }
 
@@ -458,7 +458,8 @@ extension ShotScene {
             } ?? framed
         return ShotStage(content) {
             if case .person = subpage {
-                return membership.people != nil && membership.shownPerson != nil
+                return membership.people != nil
+                    && membership.person.shown != nil
             }
             return membership.people != nil
         }

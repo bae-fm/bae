@@ -289,13 +289,19 @@ struct InvitesSubscriptionTests {
 
         store.showWaitingRequest(closed: [])
         handle.waitingRequestReads.last?.read.values.deliver(invite(id: "11"))
-        try await Wait.until { store.waitingRequest?.id == "11" }
+        try await Wait.until { store.waitingRequest.shown?.value?.id == "11" }
 
         store.showWaitingRequest(closed: ["11"])
         #expect(handle.waitingRequestReads.map(\.closed) == [[], ["11"]])
-        #expect(store.waitingRequest?.id == "11", "kept until the read answers")
+        #expect(
+            store.waitingRequest.shown?.value?.id == "11",
+            "kept until the read answers"
+        )
         handle.waitingRequestReads.last?.read.values.deliver(nil)
-        try await Wait.until { store.waitingRequest == nil }
+        try await Wait.until {
+            store.waitingRequest.shown?.key == ["11"]
+                && store.waitingRequest.shown?.value == nil
+        }
     }
 
     @Test("an invite's sheet reads its invite by id, and none once it ends")
@@ -308,16 +314,16 @@ struct InvitesSubscriptionTests {
         store.showInvite("11")
         #expect(handle.inviteReads.map(\.inviteId) == ["11"])
         handle.inviteReads.last?.read.values.deliver(invite(id: "11"))
-        try await Wait.until { store.shownInvite?.invite?.id == "11" }
+        try await Wait.until { store.invite.shown?.value?.id == "11" }
 
         handle.inviteReads.last?.read.values.deliver(nil)
         try await Wait.until {
-            store.shownInvite?.inviteId == "11"
-                && store.shownInvite?.invite == nil
+            store.invite.shown?.key == "11"
+                && store.invite.shown?.value == nil
         }
 
         store.hideInvite()
-        #expect(store.shownInvite == nil)
+        #expect(store.invite.shown == nil)
     }
 
     private func invite(id: String) -> BridgeInvite {

@@ -29,11 +29,11 @@ struct InviteCodeSheet: View {
 
     /// The invite as its read last answered, once it has answered for this
     /// sheet's invite.
-    private var read: ShownInvite? {
-        store.shownInvite.flatMap { $0.inviteId == inviteId ? $0 : nil }
+    private var read: Shown<String, BridgeInvite?>? {
+        store.invite.shown.flatMap { $0.key == inviteId ? $0 : nil }
     }
 
-    private var invite: BridgeInvite? { read?.invite }
+    private var invite: BridgeInvite? { read?.value }
 
     var body: some View {
         // A stack, not a group: it is on screen before the read answers, so

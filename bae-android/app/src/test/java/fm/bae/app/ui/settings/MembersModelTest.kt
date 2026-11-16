@@ -18,6 +18,8 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
 import uniffi.bae_bridge.BridgeAdminChangePlace
+import uniffi.bae_bridge.BridgeAdminChangePlace.Library
+import uniffi.bae_bridge.BridgeAdminChangePlace.People
 import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -28,6 +30,7 @@ import uniffi.bae_bridge.BridgeInviteShown
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePeople
+import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeRefusedInvite
@@ -126,24 +129,24 @@ class MembersModelTest {
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
-        model.watchPerson("member-2")
+        model.person.show("member-2")
         assertEquals(listOf("member-2"), handle.persons.map { it.first })
         handle.persons
             .last()
             .second.pulls
             .deliver(ana)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PersonRead.Loaded("member-2", ana), model.person)
+        assertEquals(Shown("member-2", ana), model.person.shown)
 
         handle.persons
             .last()
             .second.pulls
             .deliver(null)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(PersonRead.Loaded("member-2", null), model.person)
+        assertEquals(Shown<String, BridgePerson?>("member-2", null), model.person.shown)
 
-        model.stopWatchingPerson()
-        assertEquals(PersonRead.Loading, model.person)
+        model.person.hide()
+        assertEquals(null, model.person.shown)
     }
 
     /**
@@ -166,23 +169,23 @@ class MembersModelTest {
                 held = null,
             )
 
-        model.watchWaitingRequest(emptySet())
+        model.waitingRequest.show(emptySet())
         handle.waitingRequests
             .last()
             .second.pulls
             .deliver(request)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(request, model.waitingRequest)
+        assertEquals(request, model.waitingRequest.shown?.value)
 
-        model.watchWaitingRequest(setOf("11"))
+        model.waitingRequest.show(setOf("11"))
         assertEquals(listOf(emptyList(), listOf("11")), handle.waitingRequests.map { it.first })
-        assertEquals("the last request stays until the new read answers", request, model.waitingRequest)
+        assertEquals("the last request stays until the new read answers", request, model.waitingRequest.shown?.value)
         handle.waitingRequests
             .last()
             .second.pulls
             .deliver(null)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(null, model.waitingRequest)
+        assertEquals(Shown<Set<String>, BridgeInvite?>(setOf("11"), null), model.waitingRequest.shown)
         stop()
     }
 
@@ -202,24 +205,24 @@ class MembersModelTest {
                 held = null,
             )
 
-        model.watchInvite("11")
+        model.invite.show("11")
         assertEquals(listOf("11"), handle.inviteReads.map { it.first })
         handle.inviteReads
             .last()
             .second.pulls
             .deliver(invite)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(ShownInvite("11", invite), model.shownInvite)
+        assertEquals(Shown("11", invite), model.invite.shown)
 
         handle.inviteReads
             .last()
             .second.pulls
             .deliver(null)
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(ShownInvite("11", null), model.shownInvite)
+        assertEquals(Shown<String, BridgeInvite?>("11", null), model.invite.shown)
 
-        model.stopWatchingInvite()
-        assertEquals(null, model.shownInvite)
+        model.invite.hide()
+        assertEquals(null, model.invite.shown)
     }
 
     private val ana = PreviewData.person()
@@ -289,9 +292,14 @@ class MembersModelTest {
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
-        model.watchAdminChanges(BridgeAdminChangePlace.People)
+        model.adminChanges.show(BridgeAdminChangePlace.People)
         assertEquals(listOf<BridgeAdminChangePlace>(BridgeAdminChangePlace.People), handle.adminChangePlaces)
-        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.People))
+        assertEquals(
+            emptyList<BridgeAdminChange>(),
+            model.adminChanges.shown
+                .at(People)
+                .orEmpty(),
+        )
 
         val waiting =
             BridgeAdminChange(
@@ -301,12 +309,27 @@ class MembersModelTest {
             )
         handle.adminChanges.deliver(listOf(waiting))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf(waiting), model.adminChanges.at(BridgeAdminChangePlace.People))
-        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.Library))
+        assertEquals(
+            listOf(waiting),
+            model.adminChanges.shown
+                .at(People)
+                .orEmpty(),
+        )
+        assertEquals(
+            emptyList<BridgeAdminChange>(),
+            model.adminChanges.shown
+                .at(Library)
+                .orEmpty(),
+        )
 
         handle.adminChanges.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.People))
+        assertEquals(
+            emptyList<BridgeAdminChange>(),
+            model.adminChanges.shown
+                .at(People)
+                .orEmpty(),
+        )
         stop()
     }
 

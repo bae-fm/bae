@@ -56,22 +56,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
 
-/** The read of one person for their page: running, or answered, with no person once they have left the library. */
-internal sealed interface PersonRead {
-    data object Loading : PersonRead
-
-    data class Loaded(
-        val memberId: String,
-        val person: BridgePerson?,
-    ) : PersonRead
-}
-
-/** The invite whose dialog shows, by the id it was asked for: no invite once it has ended. */
-internal data class ShownInvite(
-    val inviteId: String,
-    val invite: BridgeInvite?,
-)
-
 /** The read of the library's people: running, answered, or failed with what to show. */
 internal sealed interface PeopleRead {
     data object Loading : PeopleRead
@@ -115,44 +99,57 @@ internal class MembersModel(
     var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
         private set
 
-    /**
-     * The admin changes this device asked for that show in the place the page reads, each until the person dismisses
-     * its outcome; null while no page reads them.
-     */
-    var adminChanges by mutableStateOf<ShownAdminChanges?>(null)
-        private set
     var error by mutableStateOf<DisplayError?>(null)
 
     /**
-     * The first open invite whose join request waits for a decision, other than those whose dialog the person closed;
-     * null while none does.
+     * The admin changes this device asked for that show in the place the page reads, each until the person dismisses
+     * its outcome.
      */
-    var waitingRequest by mutableStateOf<BridgeInvite?>(null)
-        private set
+    val adminChanges =
+        KeyedRead<BridgeAdminChangePlace, List<BridgeAdminChange>>(
+            scope,
+            "the library's admin changes",
+            { place -> appHandle.subscribeAdminChanges(place).let { pulled(it::next, it::cancel) } },
+            ::showReadError,
+        )
 
-    /** The open invite whose dialog shows, once its read answers; null while no invite's dialog shows. */
-    var shownInvite by mutableStateOf<ShownInvite?>(null)
-        private set
+    /** The admin changes the read returned for [place]; none while it has returned none for [place]. */
+    fun adminChangesAt(place: BridgeAdminChangePlace): List<BridgeAdminChange> = adminChanges.shown.at(place).orEmpty()
 
     /**
-     * The person whose page is open, once the person subscription answers; Loading while no page of a person is
-     * open.
+     * The first open invite whose join request waits for a decision, other than those of the invites whose dialog the
+     * person closed: no invite while none waits.
      */
-    var person by mutableStateOf<PersonRead>(PersonRead.Loading)
-        private set
+    val waitingRequest =
+        KeyedRead<Set<String>, BridgeInvite?>(
+            scope,
+            "the waiting join request",
+            { closed -> appHandle.subscribeWaitingJoinRequest(closed.toList()).let { pulled(it::next, it::cancel) } },
+            ::showReadError,
+        )
+
+    /** The open invite whose dialog shows, by its id: no invite once it has ended. */
+    val invite =
+        KeyedRead<String, BridgeInvite?>(
+            scope,
+            "an invite",
+            { inviteId -> appHandle.subscribeInvite(inviteId).let { pulled(it::next, it::cancel) } },
+            ::showReadError,
+        )
+
+    /** The person whose page is open, by their member id: no person once they have left the library. */
+    val person =
+        KeyedRead<String, BridgePerson?>(
+            scope,
+            "a person",
+            { memberId -> appHandle.subscribePerson(memberId).let { pulled(it::next, it::cancel) } },
+            ::showReadError,
+        )
 
     private var peopleSubscription: ScreenSubscription<BridgePeople>? = null
-    private var personSubscription: ScreenSubscription<BridgePerson?>? = null
-    private var waitingRequestSubscription: ScreenSubscription<BridgeInvite?>? = null
-    private var inviteSubscription: ScreenSubscription<BridgeInvite?>? = null
-    private var adminChangesSubscription: ScreenSubscription<List<BridgeAdminChange>>? = null
 
     /** Which subscription a people callback belongs to; the model ignores a callback from a replaced subscription. */
     private var peopleGeneration = 0
-    private var personGeneration = 0
-    private var waitingRequestGeneration = 0
-    private var inviteGeneration = 0
-    private var adminChangesGeneration = 0
 
     /** Follow the library's people, replacing any subscription already running; a failed read shows Retry. */
     fun watchPeople() {
@@ -179,140 +176,8 @@ internal class MembersModel(
         peopleSubscription = null
     }
 
-    /** Follow the person with member id [memberId] for their page, replacing any subscription already running. */
-    fun watchPerson(memberId: String) {
-        stopWatchingPerson()
-        person = PersonRead.Loading
-        val generation = personGeneration
-        val read =
-            try {
-                appHandle.subscribePerson(memberId)
-            } catch (e: BridgeException) {
-                logger.error("reading a person failed", e)
-                error = errors.display(e)
-                return
-            }
-        personSubscription =
-            ScreenSubscription(
-                read.let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value ->
-                    if (generation == personGeneration) person = PersonRead.Loaded(memberId, value)
-                },
-                onError = { error ->
-                    logger.error("reading a person failed", error)
-                    if (generation == personGeneration) this@MembersModel.error = errors.display(error)
-                },
-            )
-    }
-
-    fun stopWatchingPerson() {
-        personGeneration++
-        personSubscription?.stop()
-        personSubscription = null
-        person = PersonRead.Loading
-    }
-
-    /**
-     * Follow the first waiting join request other than those of the invites in [closed], replacing the read of an
-     * earlier [closed]. The last request read stays until the new read answers.
-     */
-    fun watchWaitingRequest(closed: Set<String>) {
-        waitingRequestGeneration++
-        waitingRequestSubscription?.stop()
-        waitingRequestSubscription = null
-        val generation = waitingRequestGeneration
-        val read =
-            try {
-                appHandle.subscribeWaitingJoinRequest(closed.toList())
-            } catch (e: BridgeException) {
-                logger.error("reading the waiting join request failed", e)
-                error = errors.display(e)
-                return
-            }
-        waitingRequestSubscription =
-            ScreenSubscription(
-                read.let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value -> if (generation == waitingRequestGeneration) waitingRequest = value },
-                onError = { error ->
-                    logger.error("reading the waiting join request failed", error)
-                    if (generation == waitingRequestGeneration) this@MembersModel.error = errors.display(error)
-                },
-            )
-    }
-
-    /** Follow the admin changes that show in [place] for its page, replacing any read of another place. */
-    fun watchAdminChanges(place: BridgeAdminChangePlace) {
-        stopWatchingAdminChanges()
-        val generation = adminChangesGeneration
-        val read =
-            try {
-                appHandle.subscribeAdminChanges(place)
-            } catch (e: BridgeException) {
-                logger.error("reading the library's admin changes failed", e)
-                error = errors.display(e)
-                return
-            }
-        adminChangesSubscription =
-            ScreenSubscription(
-                read.let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value ->
-                    if (generation == adminChangesGeneration) adminChanges = ShownAdminChanges(place, value)
-                },
-                onError = { error ->
-                    logger.error("reading the library's admin changes failed", error)
-                    if (generation == adminChangesGeneration) this@MembersModel.error = errors.display(error)
-                },
-            )
-    }
-
-    fun stopWatchingAdminChanges() {
-        adminChangesGeneration++
-        adminChangesSubscription?.stop()
-        adminChangesSubscription = null
-        adminChanges = null
-    }
-
-    /** Follow the open invite with id [inviteId] for its dialog, replacing any read of another invite. */
-    fun watchInvite(inviteId: String) {
-        stopWatchingInvite()
-        val generation = inviteGeneration
-        val read =
-            try {
-                appHandle.subscribeInvite(inviteId)
-            } catch (e: BridgeException) {
-                logger.error("reading an invite failed", e)
-                error = errors.display(e)
-                return
-            }
-        inviteSubscription =
-            ScreenSubscription(
-                read.let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value ->
-                    if (generation == inviteGeneration) shownInvite = ShownInvite(inviteId, value)
-                },
-                onError = { error ->
-                    logger.error("reading an invite failed", error)
-                    if (generation == inviteGeneration) this@MembersModel.error = errors.display(error)
-                },
-            )
-    }
-
-    fun stopWatchingInvite() {
-        inviteGeneration++
-        inviteSubscription?.stop()
-        inviteSubscription = null
-        shownInvite = null
-    }
-
-    private fun stopWatchingWaitingRequest() {
-        waitingRequestGeneration++
-        waitingRequestSubscription?.stop()
-        waitingRequestSubscription = null
-        waitingRequest = null
+    private fun showReadError(error: BridgeException) {
+        this.error = errors.display(error)
     }
 
     /** Subscribe to the people again after a failed read, showing the spinner while it runs. */
@@ -363,12 +228,12 @@ internal class MembersModel(
         return {
             members.stop()
             stopWatchingPeople()
-            stopWatchingPerson()
-            stopWatchingWaitingRequest()
-            stopWatchingInvite()
+            person.hide()
+            waitingRequest.hide()
+            invite.hide()
             open.stop()
             requested.stop()
-            stopWatchingAdminChanges()
+            adminChanges.hide()
         }
     }
 
@@ -403,8 +268,8 @@ fun MembersScreen(
     val requested = peoplePage(pageKey)
     val shownMember = (requested as? PeoplePage.Person)?.memberId
     DisposableEffect(model, shownMember) {
-        if (shownMember != null) model.watchPerson(shownMember)
-        onDispose { model.stopWatchingPerson() }
+        if (shownMember != null) model.person.show(shownMember)
+        onDispose { model.person.hide() }
     }
     // The admin changes of the page that shows: People's, or a person's; the devices page shows none.
     val adminPlace =
@@ -414,12 +279,12 @@ fun MembersScreen(
             PeoplePage.Devices -> null
         }
     DisposableEffect(model, adminPlace) {
-        if (adminPlace != null) model.watchAdminChanges(adminPlace)
-        onDispose { model.stopWatchingAdminChanges() }
+        if (adminPlace != null) model.adminChanges.show(adminPlace)
+        onDispose { model.adminChanges.hide() }
     }
     // A person's page whose person has left the library falls back to the first page.
-    val shown = model.person as? PersonRead.Loaded
-    val left = shown != null && shown.memberId == shownMember && shown.person == null
+    val shown = model.person.shown
+    val left = shown != null && shown.key == shownMember && shown.value == null
     val page = if (left) PeoplePage.People else requested
     val goBack = { if (page == PeoplePage.People) onBack() else pageKey = PeoplePage.People.key() }
     BackHandler(enabled = page != PeoplePage.People, onBack = goBack)
@@ -459,7 +324,7 @@ private fun PeopleContent(
         )
         return
     }
-    PeopleFrame(title = pageTitle(page, model.person), error = model.error, onBack = onBack) {
+    PeopleFrame(title = pageTitle(page, model.person.shown), error = model.error, onBack = onBack) {
         // Who is in the library is a local read; nothing shows until it lands.
         if (read is PeopleRead.Failed) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -22,8 +22,9 @@ public final class MembershipStore {
     /// the others and how many people and devices there are, or nil before
     /// the first read.
     public private(set) var people: BridgePeople?
-    /// The person whose page is open, once their read arrives.
-    public private(set) var shownPerson: ShownPerson?
+    /// The person whose page is open, by their member id: no person once
+    /// they have left the library.
+    public let person = KeyedRead<String, BridgePerson?>()
     public private(set) var selfIsAdmin = false
     /// This device's person's profile, nil until they have one.
     public var selfProfile: BridgePersonProfile? { people?.own?.profile }
@@ -34,16 +35,20 @@ public final class MembershipStore {
     /// invites a sharing refusal ended, until the person dismisses them.
     public private(set) var inviteEntries: [BridgeInviteEntry] = []
     /// The first open invite whose join request waits for a decision,
-    /// other than those whose request the page closed, while the page reads
-    /// it; nil while none does.
-    public private(set) var waitingRequest: BridgeInvite?
-    /// The open invite whose sheet shows, once its read arrives.
-    public private(set) var shownInvite: ShownInvite?
-    /// The admin changes this device asked for, each until the person
-    /// dismisses its outcome, by the place that shows them, for each place a
-    /// page reads.
-    public private(set) var adminChanges:
-        [BridgeAdminChangePlace: [BridgeAdminChange]] = [:]
+    /// other than those of the invites whose request the page closed, while
+    /// the page reads it: no invite while none waits.
+    public let waitingRequest = KeyedRead<Set<String>, BridgeInvite?>()
+    /// The open invite whose sheet shows, by its id: no invite once it has
+    /// ended.
+    public let invite = KeyedRead<String, BridgeInvite?>()
+    /// The admin changes this device asked for that show with the library's
+    /// name, each until the person dismisses its outcome.
+    private let libraryAdminChanges =
+        KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]>()
+    /// The admin changes that show on the page of People and devices that is
+    /// open: People, or one person's page.
+    private let pageAdminChanges =
+        KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]>()
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
     /// Where the pairing `followAddDevice` follows is, nil until it reports.
@@ -54,23 +59,16 @@ public final class MembershipStore {
     /// Starts the people, requested profile, admin change and invite
     /// subscriptions a screen shows, returning what keeps each running.
     private let subscribeShown: @MainActor (MembershipStore) -> [AnyObject]
-    /// Starts the subscription to the person with the member id, handing
-    /// each value to the store.
-    private let subscribePerson:
-        @MainActor (MembershipStore, String) throws -> AnyObject
+    /// Starts the subscription to the person with the member id.
+    private let subscribePerson: Subscribe<String, BridgePerson?>
     /// Starts the subscription to the first waiting join request other than
-    /// those of the invites with the ids, handing each value to the store.
-    private let subscribeWaitingRequest:
-        @MainActor (MembershipStore, Set<String>) throws -> AnyObject
-    /// Starts the subscription to the admin changes that show in the place,
-    /// handing each value to the store.
+    /// those of the invites with the ids.
+    private let subscribeWaitingRequest: Subscribe<Set<String>, BridgeInvite?>
+    /// Starts the subscription to the admin changes that show in the place.
     private let subscribeAdminChanges:
-        @MainActor (MembershipStore, BridgeAdminChangePlace) throws ->
-            AnyObject
-    /// Starts the subscription to the open invite with the id, handing each
-    /// value to the store.
-    private let subscribeInvite:
-        @MainActor (MembershipStore, String) throws -> AnyObject
+        Subscribe<BridgeAdminChangePlace, [BridgeAdminChange]>
+    /// Starts the subscription to the open invite with the id.
+    private let subscribeInvite: Subscribe<String, BridgeInvite?>
     /// Starts the pull of a pairing's status, handing each value to the
     /// closure; the subscription runs until the closure it returns stops it.
     private let followAddDeviceStatus:
@@ -87,18 +85,6 @@ public final class MembershipStore {
     /// What a screen showing the people reads, while one does.
     @ObservationIgnored
     private var shownSubscriptions: [AnyObject]?
-    /// What a person's page reads, with the member id it reads.
-    @ObservationIgnored
-    private var personSubscription: (memberId: String, subscription: AnyObject)?
-    /// What the page reads of the waiting join requests, while it does.
-    @ObservationIgnored
-    private var waitingRequestSubscription: AnyObject?
-    /// What the pages read of each place's admin changes.
-    @ObservationIgnored
-    private var adminChangeReads: [BridgeAdminChangePlace: AnyObject] = [:]
-    /// What an invite's sheet reads, with the invite id it reads.
-    @ObservationIgnored
-    private var inviteSubscription: (inviteId: String, subscription: AnyObject)?
 
     public convenience init(handle: AppHandle) {
         self.init(
@@ -112,21 +98,35 @@ public final class MembershipStore {
                 )
             },
             subscribeShown: { store in Self.followShown(handle, store: store) },
-            subscribePerson: { store, memberId in
-                try Self.followPerson(handle, store: store, memberId: memberId)
-            },
-            subscribeWaitingRequest: { store, closed in
-                try Self.followWaitingRequest(
-                    handle,
+            subscribePerson: { store, memberId, apply in
+                Self.follow(
+                    try handle.subscribePerson(member: memberId),
                     store: store,
-                    closed: closed
+                    apply: apply
                 )
             },
-            subscribeAdminChanges: { store, place in
-                try Self.followAdminChanges(handle, store: store, place: place)
+            subscribeWaitingRequest: { store, closed, apply in
+                Self.follow(
+                    try handle.subscribeWaitingJoinRequest(
+                        closed: Array(closed)
+                    ),
+                    store: store,
+                    apply: apply
+                )
             },
-            subscribeInvite: { store, inviteId in
-                try Self.followInvite(handle, store: store, inviteId: inviteId)
+            subscribeAdminChanges: { store, place, apply in
+                Self.follow(
+                    try handle.subscribeAdminChanges(place: place),
+                    store: store,
+                    apply: apply
+                )
+            },
+            subscribeInvite: { store, inviteId, apply in
+                Self.follow(
+                    try handle.subscribeInvite(invite: inviteId),
+                    store: store,
+                    apply: apply
+                )
             },
             followAddDeviceStatus: { pairing, apply, fail in
                 let subscription = ScreenSubscription(
@@ -146,16 +146,12 @@ public final class MembershipStore {
     private init(
         subscribeMembers: @escaping @MainActor (MembershipStore) -> AnyObject,
         subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
-        subscribePerson:
-            @escaping @MainActor (MembershipStore, String) throws -> AnyObject,
+        subscribePerson: @escaping Subscribe<String, BridgePerson?>,
         subscribeWaitingRequest:
-            @escaping @MainActor (MembershipStore, Set<String>) throws ->
-            AnyObject,
+            @escaping Subscribe<Set<String>, BridgeInvite?>,
         subscribeAdminChanges:
-            @escaping @MainActor (MembershipStore, BridgeAdminChangePlace)
-            throws -> AnyObject,
-        subscribeInvite:
-            @escaping @MainActor (MembershipStore, String) throws -> AnyObject,
+            @escaping Subscribe<BridgeAdminChangePlace, [BridgeAdminChange]>,
+        subscribeInvite: @escaping Subscribe<String, BridgeInvite?>,
         followAddDeviceStatus:
             @escaping @MainActor (
                 String,
@@ -189,44 +185,23 @@ public final class MembershipStore {
 
     /// Read the person with the member id `memberId` while their page shows.
     public func showPerson(_ memberId: String) {
-        guard personSubscription?.memberId != memberId else { return }
-        hidePerson()
-        do {
-            personSubscription = (
-                memberId, try subscribePerson(self, memberId)
-            )
-        }
-        catch {
-            fail(error)
-        }
+        show(person, memberId, subscribePerson)
     }
 
     /// End what `showPerson` reads, once no person's page shows.
     public func hidePerson() {
-        personSubscription = nil
-        shownPerson = nil
+        person.hide()
     }
 
     /// Read the first waiting join request other than those of the invites
-    /// in `closed`, replacing the read of an earlier `closed`. The last
-    /// request read stays until the new read answers.
+    /// in `closed`, replacing the read of an earlier `closed`.
     public func showWaitingRequest(closed: Set<String>) {
-        waitingRequestSubscription = nil
-        do {
-            waitingRequestSubscription = try subscribeWaitingRequest(
-                self,
-                closed
-            )
-        }
-        catch {
-            fail(error)
-        }
+        show(waitingRequest, closed, subscribeWaitingRequest)
     }
 
     /// End what `showWaitingRequest` reads, once the page closes.
     public func hideWaitingRequest() {
-        waitingRequestSubscription = nil
-        waitingRequest = nil
+        waitingRequest.hide()
     }
 
     /// End what `show` reads, once no screen shows it. What it read goes
@@ -240,8 +215,8 @@ public final class MembershipStore {
         people = nil
         requestedProfile = nil
         inviteEntries = []
-        adminChangeReads = [:]
-        adminChanges = [:]
+        libraryAdminChanges.hide()
+        pageAdminChanges.hide()
         error = nil
     }
 
@@ -288,6 +263,21 @@ public final class MembershipStore {
         holding.finish()
     }
 
+    /// Start `read` of `key` through `subscribe`, showing a read that could
+    /// not start as the store's error.
+    private func show<Key, Value>(
+        _ read: KeyedRead<Key, Value>,
+        _ key: Key,
+        _ subscribe: Subscribe<Key, Value>
+    ) {
+        do {
+            try read.show(key) { apply in try subscribe(self, key, apply) }
+        }
+        catch {
+            fail(error)
+        }
+    }
+
     private func fail(_ error: any Error) {
         logger.error("membership read failed: \(String(reflecting: error))")
         self.error = DisplayError(error)
@@ -324,109 +314,57 @@ extension MembershipStore {
         ]
     }
 
-    /// The subscription to the admin changes that show in `place`, which
-    /// hands each value to `store`.
-    private static func followAdminChanges(
-        _ handle: AppHandle,
+    /// The subscription that hands each value `subscription` pulls to
+    /// `apply` and each failed read to `store`.
+    private static func follow<Subscription: PulledSubscription>(
+        _ subscription: Subscription,
         store: MembershipStore,
-        place: BridgeAdminChangePlace
-    ) throws -> AnyObject {
+        apply: @escaping @MainActor @Sendable (Subscription.Value) -> Void
+    ) -> AnyObject {
         ScreenSubscription(
-            try handle.subscribeAdminChanges(place: place),
-            onValue: { [weak store] changes in
-                store?.adminChanges[place] = changes
-            },
+            subscription,
+            onValue: apply,
             onError: { [weak store] error in store?.fail(error) }
         )
     }
 
+    /// The read of the admin changes that show in `place`: the library's own
+    /// read, or the read of the page of People and devices that is open.
+    private func adminChangesRead(
+        _ place: BridgeAdminChangePlace
+    ) -> KeyedRead<BridgeAdminChangePlace, [BridgeAdminChange]> {
+        place == .library ? libraryAdminChanges : pageAdminChanges
+    }
+
+    /// The admin changes that show in `place` as its read returned them;
+    /// none before the read returns.
+    public func adminChanges(
+        at place: BridgeAdminChangePlace
+    ) -> [BridgeAdminChange] {
+        guard let shown = adminChangesRead(place).shown, shown.key == place
+        else { return [] }
+        return shown.value
+    }
+
     /// Read the admin changes that show in `place` while its page shows them.
     public func showAdminChanges(at place: BridgeAdminChangePlace) {
-        guard adminChangeReads[place] == nil else { return }
-        do {
-            adminChangeReads[place] = try subscribeAdminChanges(self, place)
-        }
-        catch {
-            fail(error)
-        }
+        show(adminChangesRead(place), place, subscribeAdminChanges)
     }
 
     /// End the read of the admin changes that show in `place`, once its page
     /// closes.
     public func hideAdminChanges(at place: BridgeAdminChangePlace) {
-        adminChangeReads[place] = nil
-        adminChanges[place] = nil
-    }
-
-    /// The subscription to the open invite with `inviteId`, which hands each
-    /// value to `store`.
-    private static func followInvite(
-        _ handle: AppHandle,
-        store: MembershipStore,
-        inviteId: String
-    ) throws -> AnyObject {
-        ScreenSubscription(
-            try handle.subscribeInvite(invite: inviteId),
-            onValue: { [weak store] invite in
-                store?.shownInvite = ShownInvite(
-                    inviteId: inviteId,
-                    invite: invite
-                )
-            },
-            onError: { [weak store] error in store?.fail(error) }
-        )
+        adminChangesRead(place).hide()
     }
 
     /// Read the open invite with the id `inviteId` while its sheet shows.
     public func showInvite(_ inviteId: String) {
-        guard inviteSubscription?.inviteId != inviteId else { return }
-        hideInvite()
-        do {
-            inviteSubscription = (
-                inviteId, try subscribeInvite(self, inviteId)
-            )
-        }
-        catch {
-            fail(error)
-        }
+        show(invite, inviteId, subscribeInvite)
     }
 
     /// End what `showInvite` reads, once the invite's sheet closes.
     public func hideInvite() {
-        inviteSubscription = nil
-        shownInvite = nil
-    }
-
-    /// The subscription to the first waiting join request other than those
-    /// of the invites in `closed`, which hands each value to `store`.
-    private static func followWaitingRequest(
-        _ handle: AppHandle,
-        store: MembershipStore,
-        closed: Set<String>
-    ) throws -> AnyObject {
-        ScreenSubscription(
-            try handle.subscribeWaitingJoinRequest(closed: Array(closed)),
-            onValue: { [weak store] invite in store?.waitingRequest = invite },
-            onError: { [weak store] error in store?.fail(error) }
-        )
-    }
-    /// The subscription to the person with `memberId`, which hands each value
-    /// to `store`.
-    private static func followPerson(
-        _ handle: AppHandle,
-        store: MembershipStore,
-        memberId: String
-    ) throws -> AnyObject {
-        ScreenSubscription(
-            try handle.subscribePerson(member: memberId),
-            onValue: { [weak store] person in
-                store?.shownPerson = ShownPerson(
-                    memberId: memberId,
-                    person: person
-                )
-            },
-            onError: { [weak store] error in store?.fail(error) }
-        )
+        invite.hide()
     }
 
     #if DEBUG
@@ -446,24 +384,20 @@ extension MembershipStore {
             let store = MembershipStore(
                 subscribeMembers: { _ in NSObject() },
                 subscribeShown: { _ in [] },
-                subscribePerson: { store, memberId in
-                    store.shownPerson = ShownPerson(
-                        memberId: memberId,
-                        person: ([people.own].compactMap { $0 } + people.others)
+                subscribePerson: { _, memberId, apply in
+                    apply(
+                        ([people.own].compactMap { $0 } + people.others)
                             .first { $0.membership.id == memberId }
                     )
                     return NSObject()
                 },
-                subscribeWaitingRequest: { _, _ in NSObject() },
-                subscribeAdminChanges: { store, place in
-                    store.adminChanges[place] = adminChanges[place] ?? []
+                subscribeWaitingRequest: { _, _, _ in NSObject() },
+                subscribeAdminChanges: { _, place, apply in
+                    apply(adminChanges[place] ?? [])
                     return NSObject()
                 },
-                subscribeInvite: { store, inviteId in
-                    store.shownInvite = ShownInvite(
-                        inviteId: inviteId,
-                        invite: invites.first { $0.id == inviteId }
-                    )
+                subscribeInvite: { _, inviteId, apply in
+                    apply(invites.first { $0.id == inviteId })
                     return NSObject()
                 },
                 followAddDeviceStatus: { _, apply, _ in
@@ -483,19 +417,13 @@ extension MembershipStore {
     #endif
 }
 
-/// The person a person's page shows, with the member id it asked for: no
-/// person once they have left the library.
-public struct ShownPerson {
-    public let memberId: String
-    public let person: BridgePerson?
-}
-
-/// The invite an invite's sheet shows, with the invite id it asked for: no
-/// invite once it has ended.
-public struct ShownInvite {
-    public let inviteId: String
-    public let invite: BridgeInvite?
-}
+/// Starts the subscription of a read by key: it hands each value it pulls
+/// to the closure and each failed read to the store, and returns what keeps
+/// it running.
+typealias Subscribe<Key, Value> =
+    @MainActor (
+        MembershipStore, Key, @escaping @MainActor @Sendable (Value) -> Void
+    ) throws -> AnyObject
 
 extension BridgeInviteEntry {
     /// What identifies the row among People's invites.

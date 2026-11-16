@@ -22,7 +22,7 @@ struct AdminChangesSection: View {
     private var error: DisplayError?
 
     var body: some View {
-        let changes = store.adminChanges[place] ?? []
+        let changes = store.adminChanges(at: place)
         if !changes.isEmpty {
             Section("Changes from this Mac") {
                 ForEach(changes, id: \.operation) { change in

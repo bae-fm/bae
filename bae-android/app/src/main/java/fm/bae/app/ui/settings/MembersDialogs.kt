@@ -148,13 +148,13 @@ private fun InviteDialogsShown(
     }
     val shownId = dialogs.shownInvite
     DisposableEffect(model, shownId) {
-        if (shownId != null) model.watchInvite(shownId)
-        onDispose { model.stopWatchingInvite() }
+        if (shownId != null) model.invite.show(shownId)
+        onDispose { model.invite.hide() }
     }
-    model.shownInvite
-        ?.takeIf { it.inviteId == shownId }
+    model.invite.shown
+        ?.takeIf { it.key == shownId }
         ?.let { read ->
-            val invite = read.invite
+            val invite = read.value
             if (invite == null) {
                 // An ended invite has nothing left to show: its read answers none.
                 LaunchedEffect(read) { dialogs.shownInvite = null }
@@ -167,9 +167,10 @@ private fun InviteDialogsShown(
                 )
             }
         }
-    LaunchedEffect(model, dialogs.closedRequests) { model.watchWaitingRequest(dialogs.closedRequests) }
+    LaunchedEffect(model, dialogs.closedRequests) { model.waitingRequest.show(dialogs.closedRequests) }
     // The read answers for the closed invites a moment after one closes, so the one just closed is not shown meanwhile.
-    model.waitingRequest
+    model.waitingRequest.shown
+        ?.value
         ?.takeIf { it.id !in dialogs.closedRequests }
         ?.let { invite ->
             JoinRequestDialog(

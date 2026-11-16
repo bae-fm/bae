@@ -16,6 +16,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScreen
 import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgePeople
+import uniffi.bae_bridge.BridgePerson
 
 // The pages of People and devices as the screen shows them once it has read the people.
 
@@ -44,7 +45,8 @@ internal fun LoadedPeoplePage(
                 selfIsAdmin = model.selfIsAdmin,
                 requested = model.requestedProfile,
                 invites = model.inviteEntries,
-                adminChanges = model.adminChanges.at(BridgeAdminChangePlace.People),
+                adminChanges =
+                    model.adminChangesAt(BridgeAdminChangePlace.People),
                 callbacks = callbacks,
                 inviteCallbacks = inviteCallbacks(session, model, dialogs),
                 offline = offline,
@@ -55,7 +57,7 @@ internal fun LoadedPeoplePage(
         }
 
         is PeoplePage.Person -> {
-            val shown = (model.person as? PersonRead.Loaded)?.takeIf { it.memberId == page.memberId }?.person
+            val shown = model.person.shown.at(page.memberId)
             if (shown == null) {
                 PeopleFrame(title = stringResource(R.string.members_unnamed), error = model.error, onBack = onBack) {}
             } else {
@@ -63,7 +65,8 @@ internal fun LoadedPeoplePage(
                     member = shown.membership,
                     selfIsAdmin = model.selfIsAdmin,
                     name = shown.profile?.name ?: stringResource(R.string.members_unnamed),
-                    adminChanges = model.adminChanges.at(BridgeAdminChangePlace.Person(page.memberId)),
+                    adminChanges =
+                        model.adminChangesAt(BridgeAdminChangePlace.Person(page.memberId)),
                     callbacks = callbacks,
                     error = model.error,
                     onBack = onBack,
@@ -113,7 +116,7 @@ internal fun PeopleFrame(
 @Composable
 internal fun pageTitle(
     page: PeoplePage,
-    person: PersonRead,
+    person: Shown<String, BridgePerson?>?,
 ): String =
     when (page) {
         PeoplePage.People -> {
@@ -125,9 +128,8 @@ internal fun pageTitle(
         }
 
         is PeoplePage.Person -> {
-            (person as? PersonRead.Loaded)
-                ?.takeIf { it.memberId == page.memberId }
-                ?.person
+            person
+                .at(page.memberId)
                 ?.profile
                 ?.name ?: stringResource(R.string.members_unnamed)
         }
