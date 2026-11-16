@@ -156,8 +156,8 @@ impl PlaybackQueue {
     /// Move the entry `id` to `position` among `lane`'s rows as the screens
     /// show them, or to the lane's end when `position` is past the last row.
     /// Returns whether the entry moved: `false` when the entry is not in
-    /// `lane`, so the caller can count the anomaly; this function logs the
-    /// mismatch.
+    /// `lane`, so the caller can count the anomaly;
+    /// `PlaybackQueueTables::reorder` logs the mismatch.
     pub async fn reorder(
         &mut self,
         id: QueueEntryId,

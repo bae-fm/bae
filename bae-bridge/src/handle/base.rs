@@ -449,10 +449,11 @@ forward! { sync this => {
 impl AppHandle {
     /// Move the entry `entry_id` to `position` among `lane`'s rows as the
     /// screens show them (for the context lane, the rows after its playing
-    /// track), or to the lane's end past them, and answer whether it moved:
-    /// `false` when the entry is no longer queued in `lane`, so nothing
-    /// moved. Core finds the row the entry then sits before. The lane's list
-    /// shows the move when it arrives.
+    /// track), or to the lane's end when `position` is past the last row, and
+    /// answer whether it moved: `false` when the entry is no longer queued in
+    /// `lane`, so nothing moved. Core finds the row the entry then sits
+    /// before. The lane's list shows the new order when its live query runs
+    /// again after the write.
     ///
     /// The move is sent before the call first waits, so moves sent one after
     /// another, as a drag sends its steps, reach the queue in that order.

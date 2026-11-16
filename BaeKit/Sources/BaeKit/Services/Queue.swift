@@ -16,7 +16,8 @@ public final class Queue: Sendable, Observable {
     /// Drop the context lane. The playing track keeps playing.
     public let clearPlayingFrom: @Sendable () async throws -> Void
     /// Move `entryId` to `position` among the rows `lane` shows, or to the
-    /// lane's end past them; core finds the row it then sits before. Answers
+    /// lane's end when `position` is past the last row; core finds the row it
+    /// then sits before. Answers
     /// whether it moved: `false` when the entry is no longer in `lane` and
     /// core moved nothing.
     public let reorderEntry:
