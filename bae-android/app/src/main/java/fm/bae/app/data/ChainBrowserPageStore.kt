@@ -51,11 +51,9 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     /** The headline for the first read failing, naming what this list holds. */
     @StringRes private val loadFailed: Int = R.string.library_load_failed,
 ) : BrowserPageState {
-    /** How many distinct items the list's rows show, as its count says; null until the count answers. */
-    var itemCount by mutableStateOf<Int?>(null)
-        private set
-    override var totalCount by mutableStateOf(0)
-        private set
+    /** The list's count from its last value; null until the count delivers after [activate] opened the list. */
+    private var count by mutableStateOf<BridgeListCount?>(null)
+    override val totalCount: Int get() = count?.rows?.toInt() ?: 0
     override var loading by mutableStateOf(true)
         private set
     override var error by mutableStateOf<PageError?>(null)
@@ -73,7 +71,6 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     private var chain: ListChain<Row>? = null
     private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
     private var sectionDeliveries: ScreenSubscription<List<BridgeLibraryBrowseSection>>? = null
-    private var countAnswered = false
     private var jump: Job? = null
 
     /** The row at [index], or null when no window holds it. */
@@ -87,12 +84,10 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     fun activate(parameter: Parameter) {
         if (active && this.parameter == parameter) return
         close()
-        totalCount = 0
-        itemCount = null
+        count = null
         sections = emptyList()
         loading = true
         error = null
-        countAnswered = false
         this.parameter = parameter
         active = true
         generation++
@@ -129,8 +124,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     fun deactivate() {
         active = false
         close()
-        totalCount = 0
-        itemCount = null
+        count = null
         sections = emptyList()
     }
 
@@ -177,7 +171,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
                 if (current != generation || !active) return@launch
                 jump = null
                 // A position past the list's end has the last row's key, which sits at the last position.
-                val known = if (countAnswered) maxOf(totalCount - 1, 0) else position
+                val known = count?.let { maxOf(it.rows.toInt() - 1, 0) } ?: position
                 chain.restart(key, minOf(position, known))
             }
     }
@@ -187,15 +181,13 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         openedGeneration: Int,
     ) {
         if (openedGeneration != generation || !active) return
-        totalCount = count.rows.toInt()
-        itemCount = count.items.toInt()
-        countAnswered = true
+        this.count = count
         changed(openedGeneration)
     }
 
     private fun changed(openedGeneration: Int) {
         if (openedGeneration != generation || !active) return
-        if (countAnswered && chain?.hasAnswered == true) {
+        if (count != null && chain?.hasAnswered == true) {
             loading = false
             error = null
         }
