@@ -16,7 +16,7 @@ body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
 <div class="bae-mac" style="width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: 13px var(--font-sans)">
-<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="danger" title="Key refused" subtitle="S3 storage does not accept this access key."></x-import></sc-if>
+<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.MacNotice" quiet="{{yes}}" tone="danger" title="Could not use this key" subtitle="S3 storage does not accept this access key."></x-import></sc-if>
 <x-import component-from-global-scope="Bae.MacTextField" label="Access key ID" label-width="120" value="{{keyId}}" state="{{idState}}"></x-import>
 <x-import component-from-global-scope="Bae.MacTextField" label="Secret access key" label-width="120" value="{{secret}}" secret="{{yes}}" state="{{secretState}}"></x-import>
 </div>

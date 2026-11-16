@@ -3265,7 +3265,7 @@ isn't offered. When that read fails the removal fails to the person, changing
 nothing, and they retry it. Coven refuses a device the
 history doesn't have removed yet, which the removal on this device may not have
 reached; the app then says the removal hasn't reached this device yet and asks
-to **Try again** after the next sync, or **Not yet**. While a request to one of
+to **Try again** after the next sync, or **Cancel**. While a request to one of
 the accounts runs, coven changes nothing and the app says this device is still
 syncing with the cloud, with the same two buttons. Another person's device
 removed by an admin gets only **OK**: its person does the step.
@@ -3760,13 +3760,13 @@ storage.* over Access key ID and Secret access key, with **Cancel** and
 sheet draws the same two fields. **Save** calls coven's one call for a new S3
 key, which checks the key with S3 storage and replaces the one the library uses;
 while it checks, the sheet says *Checking the key…* in place of the fields, with
-only **Cancel**. A key S3 storage refuses keeps the typed text and says *Key
-refused* / *S3 storage does not accept this access key.* above the fields. After
-a save the sheet closes, the page shows the new key's id, and a line the person
-can dismiss says *Saved the new S3 key.* / *Delete the old key, AKIA4EXAMPLEOLD,
-in your S3 provider's console.*, naming the old key's id. bae never deletes the
-old key and keeps no record of its id once the person dismisses the line or the
-page closes ([coven
+only **Cancel**. A key S3 storage refuses keeps the typed text and says *Could
+not use this key* / *S3 storage does not accept this access key.* above the
+fields. After a save the sheet closes, the page shows the new key's id, and a
+line the person can dismiss says *Saved the new S3 key.* / *Delete the old key,
+AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming the old key's id. bae
+never deletes the old key and keeps no record of its id once the person
+dismisses the line or the page closes ([coven
 §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
 The words for the place are always "S3 storage", never "bucket".
 
@@ -4100,8 +4100,8 @@ storage* where the line names the place the library is kept.
     count: *Syncing resumes when this Mac reconnects.* / *Your changes stay here
     until then.*
   - New restore code, after another of the person's devices made a new
-    restore code, naming that device: *You made it on your iPhone.* / *Your
-    changes stay on this Mac until you scan the new code.*, with *Scan restore
+    restore code, naming that device: *You made the new code on your iPhone.* /
+    *Your changes stay on this Mac until you scan it.*, with *Scan restore
     code…*. Sync stays stopped until the
     person scans the code, and the device takes on the new keys in place.
   - Update needed: *Another device uses a newer bae.* / *Update this one to

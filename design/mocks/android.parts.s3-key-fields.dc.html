@@ -18,7 +18,7 @@ body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
 <div style="width: 100%; display: flex; flex-direction: column; gap: 12px; font-family: var(--font-android)">
-<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidNotice" quiet="{{yes}}" tone="danger" title="Key refused" subtitle="S3 storage does not accept this access key."></x-import></sc-if>
+<sc-if value="{{refused}}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="Bae.AndroidNotice" quiet="{{yes}}" tone="danger" title="Could not use this key" subtitle="S3 storage does not accept this access key."></x-import></sc-if>
 <x-import component-from-global-scope="Bae.AndroidTextField" label="Access key ID" value="{{keyId}}" state="{{idState}}"></x-import>
 <x-import component-from-global-scope="Bae.AndroidTextField" label="Secret access key" value="{{secret}}" state="{{secretState}}"></x-import>
 </div>
