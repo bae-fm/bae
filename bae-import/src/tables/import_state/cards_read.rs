@@ -379,9 +379,9 @@ pub(crate) fn load_verdict_cards_on(
     json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
 }
 
-/// The cards of the verdict stored for the release the scan stores at
-/// `key`, read by the key alone: the verdict of its current state, when that
-/// verdict found or failed and so holds findings; no cards for any other.
+/// Returns the cards of the verdict of the current state of the release the
+/// scan stores at `key`, in one statement that binds only the key. Returns no
+/// cards unless that verdict holds findings.
 pub(crate) fn load_candidate_verdict_cards_on(
     sql: &impl coven::SqlRead,
     key: &crate::CandidateKey,
