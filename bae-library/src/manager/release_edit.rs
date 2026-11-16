@@ -293,12 +293,6 @@ impl LibraryManager {
         pick: bae_import::AlbumPick,
     ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
         let release_id = session.release_id();
-        if let bae_import::AlbumPick::Album { album_id } = &pick {
-            self.records
-                .find_album_by_id(album_id)
-                .await?
-                .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
-        }
         let work = {
             let mut work = session.work.lock().await;
             let mut picked = work.clone();

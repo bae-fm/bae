@@ -67,15 +67,15 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         manager.set_release_edit_album(&session, album_pick(&picked)).await.unwrap().album,
         picked_album
     );
+    let refused = manager
+        .set_release_edit_album(
+            &session,
+            bae_import::AlbumPick::Album { album_id: "no-such-album".to_string() },
+        )
+        .await;
     assert!(
-        manager
-            .set_release_edit_album(
-                &session,
-                bae_import::AlbumPick::Album { album_id: "no-such-album".to_string() },
-            )
-            .await
-            .is_err(),
-        "the session refuses an album the library does not hold"
+        matches!(refused, Err(crate::LibraryError::AlbumMissing { .. })),
+        "the session refuses an album the library does not hold: {refused:?}"
     );
     let applied = manager
         .apply_release_edit_catalog(
