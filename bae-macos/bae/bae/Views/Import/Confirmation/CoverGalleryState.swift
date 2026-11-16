@@ -5,13 +5,22 @@ import SwiftUI
 /// or a candidate's picker under the chosen source, and the status of the
 /// catalog cover lookup. A lookup, or a change to the covers the picker can
 /// show, writes the library, so the query delivers a new value. Changing
-/// `filter` sets the query's request.
+/// `filter` or `focusedCover` sets the query's request, and the query says
+/// which cover it focuses and where that cover sits.
 @MainActor
 @Observable
 final class CoverGalleryState {
     var filter = ArtworkBrowserState.Filter.all {
         didSet {
             guard filter != oldValue else { return }
+            show()
+        }
+    }
+    /// The cover the person focused last; none until they focus one, when
+    /// the query focuses the owner's own cover.
+    var focusedCover: BridgeCoverKey? {
+        didSet {
+            guard focusedCover != oldValue else { return }
             show()
         }
     }
@@ -78,7 +87,7 @@ final class CoverGalleryState {
     private func show() {
         guard let query else { return }
         do {
-            try query.setRequest(owner, filter.bridge)
+            try query.setRequest(owner, filter.bridge, focusedCover)
         }
         catch {
             readFailure = DisplayError(error)
@@ -88,7 +97,8 @@ final class CoverGalleryState {
     /// Take a value only while it answers the request shown now.
     private func receive(_ snapshot: BridgeCoverGallerySnapshot) {
         guard let request = snapshot.request, request.owner == owner,
-            request.filter == filter.bridge, let gallery = snapshot.gallery
+            request.filter == filter.bridge, request.focus == focusedCover,
+            let gallery = snapshot.gallery
         else { return }
         content = CoverGalleryContent(gallery)
         fetch = gallery.fetch

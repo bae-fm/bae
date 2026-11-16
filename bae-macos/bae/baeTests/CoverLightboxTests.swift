@@ -37,15 +37,20 @@ struct CoverLightboxTests {
         let moved = opening == .thumbnail ? file : booklet
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
-            CoverGalleryView(
-                content: content(remote: [front, booklet], files: [file]),
-                remoteItems: .linked([front, booklet]),
-                filter: .constant(.all),
-                selectedCover: front.selection,
-                lightboxLoad: lightbox,
-                onSelect: { selected = $0 },
-                onDone: { dismissed = true }
-            )
+            FocusingCoverGallery(
+                gallery: gallery(remote: [front, booklet], files: [file])
+            ) { content, focusedCover in
+                CoverGalleryView(
+                    content: content,
+                    remoteItems: .linked([front, booklet]),
+                    filter: .constant(.all),
+                    focusedCover: focusedCover,
+                    selectedCover: front.selection,
+                    lightboxLoad: lightbox,
+                    onSelect: { selected = $0 },
+                    onDone: { dismissed = true }
+                )
+            }
             .environment(images)
             .frame(width: size.width, height: size.height),
             size: size
@@ -96,15 +101,20 @@ struct CoverLightboxTests {
         var selected: CoverItem?
         let size = NSSize(width: 960, height: 700)
         try await SnapshotTestSupport.withHostedWindow(
-            CoverGalleryView(
-                content: content(remote: [front, booklet], files: []),
-                remoteItems: .linked([front, booklet]),
-                filter: .constant(.all),
-                selectedCover: front.selection,
-                lightboxLoad: LightboxImageLoad(),
-                onSelect: { selected = $0 },
-                onDone: {}
-            )
+            FocusingCoverGallery(
+                gallery: gallery(remote: [front, booklet], files: [])
+            ) { content, focusedCover in
+                CoverGalleryView(
+                    content: content,
+                    remoteItems: .linked([front, booklet]),
+                    filter: .constant(.all),
+                    focusedCover: focusedCover,
+                    selectedCover: front.selection,
+                    lightboxLoad: LightboxImageLoad(),
+                    onSelect: { selected = $0 },
+                    onDone: {}
+                )
+            }
             .environment(images)
             .frame(width: size.width, height: size.height),
             size: size
@@ -167,13 +177,18 @@ struct CoverLightboxTests {
             await recorder.read(Read(url: image.url, pixels: pixels))
             return bytes
         })
-        let cursor = try #require(Cursor(items: [item, remote("Back")]))
+        let back = remote("Back")
         let size = NSSize(width: 800, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
             LightboxView(
-                cursor: cursor,
+                place: LightboxPlace(
+                    items: [item, back],
+                    current: item,
+                    previous: back.id,
+                    next: back.id
+                ),
                 load: LightboxImageLoad(),
-                onUpdate: { _ in },
+                onSelect: { _ in },
                 onDismiss: {}
             )
             .environment(images)
@@ -205,37 +220,39 @@ struct CoverLightboxTests {
             Wait.happened()
         }
     }
+}
 
+extension CoverLightboxTests {
     /// The gallery core reads with the `remote` and `files` covers, under
     /// all sources.
-    private func content(
+    private func gallery(
         remote: [CoverItem],
         files: [CoverItem]
-    ) -> CoverGalleryContent {
-        CoverGalleryContent(
-            BridgeCoverGallery(
-                current: nil,
-                fetch: .linked,
-                sections: [
-                    BridgeCoverSection(
-                        source: .remote,
-                        items: remote.map(\.cover),
-                        count: UInt32(remote.count)
-                    ),
-                    BridgeCoverSection(
-                        source: .releaseFiles,
-                        items: files.map(\.cover),
-                        count: UInt32(files.count)
-                    ),
-                ],
-                total: UInt32(remote.count + files.count)
-            )
+    ) -> BridgeCoverGallery {
+        BridgeCoverGallery(
+            current: nil,
+            fetch: .linked,
+            sections: [
+                BridgeCoverSection(
+                    source: .remote,
+                    items: remote.map(\.cover),
+                    count: UInt32(remote.count)
+                ),
+                BridgeCoverSection(
+                    source: .releaseFiles,
+                    items: files.map(\.cover),
+                    count: UInt32(files.count)
+                ),
+            ],
+            total: UInt32(remote.count + files.count),
+            focus: nil
         )
     }
 
     private func releaseFile(_ file: BridgeFileVersion) -> CoverItem {
         CoverItem(
             gallery: BridgeGalleryCover(
+                key: .file(fileId: "scan-file"),
                 selection: .releaseImage(fileId: "scan-file"),
                 image: .local(file: file),
                 label: .file(name: "scans/booklet.png")
@@ -255,6 +272,7 @@ struct CoverLightboxTests {
         )
         return CoverItem(
             gallery: BridgeGalleryCover(
+                key: .remote(url: image.url),
                 selection: .remoteCover(
                     selection: BridgeRemoteCoverSelection(
                         image: image,

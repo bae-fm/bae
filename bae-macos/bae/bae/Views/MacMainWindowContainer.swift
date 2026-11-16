@@ -93,9 +93,9 @@ struct MacMainWindowContainer: View {
             // Lightbox overlay
             if let cursor = uiStore.lightbox {
                 LightboxView(
-                    cursor: cursor,
+                    place: cursor.place,
                     load: lightboxLoad,
-                    onUpdate: { uiStore.lightbox = $0 },
+                    onSelect: { uiStore.lightbox?.select(id: $0) },
                     onDismiss: { uiStore.lightbox = nil },
                 )
                 .transition(.opacity)

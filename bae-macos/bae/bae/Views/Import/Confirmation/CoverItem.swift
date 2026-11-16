@@ -8,15 +8,7 @@ struct CoverItem: LightboxImage {
         lhs.id == rhs.id
     }
 
-    enum Identity: Hashable {
-        case selection(BridgeCoverSelection)
-        case currentCover
-    }
-
-    var id: Identity {
-        if let selection { return .selection(selection) }
-        return .currentCover
-    }
+    var id: BridgeCoverKey { cover.key }
 
     var selection: BridgeCoverSelection? { cover.selection }
     var image: ImageContent { ImageContent(bridge: cover.image) }

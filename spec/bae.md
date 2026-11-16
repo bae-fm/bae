@@ -2071,13 +2071,20 @@ the source the person chose (all, the release's files, or one catalog): a
 library release's saved cover, shown under all; the covers its catalogs
 offered when this device last fetched them; and the images a cover can be
 made from, the release's files or the folder's images in a format bae can
-store. Each source comes with its count and the whole with its total, so "N
-of M" and the section counts come from that read. Opening the picker, and its
+store. Each source comes with its count and the whole with its total, so the
+section counts come from that read. The same read says which cover the
+picker's preview and its lightbox focus: the one the person last moved to,
+while the source shows it; otherwise the release's saved cover or the
+candidate's chosen cover, while the source shows that; otherwise its first
+cover. The read also says where the focused cover sits among them all, for
+the preview's "N of M", and which covers come before and after it, for the
+arrows of the preview and the lightbox, wrapping around the ends; a picker
+that shows no cover focuses none. Opening the picker, and its
 Refresh, fetch the catalogs' covers and store them, replacing what the last
 fetch stored on this device (§A.8); that write, a change to the release's
 files or saved cover, or the candidate's folder, draft or link, from this or
-another device, and the person's choice of another source each reach the
-open picker as a new value. A candidate's fetch is stored with the link it
+another device, and the person's choice of another source or another cover
+each reach the open picker as a new value. A candidate's fetch is stored with the link it
 was fetched for, and its picker shows the fetch only while the candidate
 keeps that link; until then it offers what the pressing its draft was read
 from offers (above). A fetch that fails stores nothing, so the covers stored

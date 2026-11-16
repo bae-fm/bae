@@ -2,9 +2,8 @@ import Foundation
 
 /// A validated cursor over a non-empty list of identifiable items. The cursor
 /// always points to a real item; mutations preserve that invariant. Views read
-/// `current`, `items`, `canCycle`, `isCurrent(_:)` and call `goToNext()`,
-/// `goToPrevious()`, `select(id:)` — they never read or write a raw integer
-/// index outside the type itself.
+/// `current`, `items`, `canCycle` and a lightbox's `place`, and call
+/// `select(id:)`.
 struct Cursor<Item: Identifiable & Equatable>: Equatable {
     let items: [Item]
     private(set) var index: Int
@@ -34,27 +33,31 @@ struct Cursor<Item: Identifiable & Equatable>: Equatable {
         items.count > 1
     }
 
-    mutating func goToNext() {
-        guard canCycle else {
-            return
-        }
-        index = (index + 1) % items.count
-    }
-
-    mutating func goToPrevious() {
-        guard canCycle else {
-            return
-        }
-        index = (index - 1 + items.count) % items.count
-    }
-
     mutating func select(id: Item.ID) {
         if let i = items.firstIndex(where: { $0.id == id }) {
             index = i
         }
     }
 
-    func isCurrent(_ item: Item) -> Bool {
-        item.id == current.id
+}
+
+extension Cursor where Item: LightboxImage {
+    /// The lightbox's place at the cursor: the items before and after the
+    /// current one, wrapping around the ends, and none for a lone item.
+    var place: LightboxPlace<Item> {
+        guard canCycle else {
+            return LightboxPlace(
+                items: items,
+                current: current,
+                previous: nil,
+                next: nil
+            )
+        }
+        return LightboxPlace(
+            items: items,
+            current: current,
+            previous: items[(index - 1 + items.count) % items.count].id,
+            next: items[(index + 1) % items.count].id
+        )
     }
 }

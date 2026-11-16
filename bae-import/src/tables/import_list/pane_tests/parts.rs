@@ -463,6 +463,7 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
     let asked = crate::CoverGalleryRequest {
         owner: crate::CoverGalleryOwner::Candidate(candidate.key()),
         filter: crate::CoverFilter::Catalog(Catalog::MusicBrainz),
+        focus: None,
     };
     let mut live =
         crate::tables::ImportTables::new(db.clone()).subscribe_cover_gallery(Some(asked.clone()));
@@ -489,6 +490,7 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
         vec![crate::CoverSection {
             source: crate::CoverSectionSource::Remote,
             items: vec![crate::GalleryCover {
+                key: crate::CoverKey::Remote(front.to_string()),
                 selection: Some(crate::CoverSelection::Remote(image.clone(), Catalog::MusicBrainz)),
                 image: crate::CoverImageSource::Remote { image },
                 label: crate::GalleryLabel::Remote {

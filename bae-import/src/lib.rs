@@ -301,7 +301,8 @@ pub use tables::SCHEMA_PARTS;
 #[cfg(desktop)]
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
-    CoverGallerySnapshot, CoverSection, CoverSectionSource, GalleryCover, GalleryLabel,
+    CoverGallerySnapshot, CoverKey, CoverSection, CoverSectionSource, GalleryCover, GalleryFocus,
+    GalleryLabel,
 };
 
 /// The schema this crate's tests open their stores on: records' and release

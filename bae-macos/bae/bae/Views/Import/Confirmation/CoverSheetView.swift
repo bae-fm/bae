@@ -55,6 +55,7 @@ struct CoverSheetView: View {
             content: covers.content,
             remoteItems: covers.lookup,
             filter: $covers.filter,
+            focusedCover: $covers.focusedCover,
             selectedCover: selectedCover,
             lightboxLoad: lightboxLoad,
             initialLayout: initialLayout,

@@ -2,8 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// Shared cover browser. Preview focus is separate from the saved selection.
-/// The view draws the content and filter that its caller passes in, and
-/// counts nothing. The filter's owner reads the content for that filter.
+/// The view draws the content, filter and focused cover that its caller
+/// passes in, and counts or finds nothing. Their owner reads the content for
+/// that filter and focus, and the content says which cover is focused and
+/// where it sits.
 struct CoverGalleryView: View {
     let content: CoverGalleryContent
     /// The state of the catalog lookup. The view draws remote covers from
@@ -11,6 +13,10 @@ struct CoverGalleryView: View {
     let remoteItems: RemoteCoverItems
     @Binding
     var filter: ArtworkBrowserState.Filter
+    /// The cover the person focused last, which the content focuses while it
+    /// shows it.
+    @Binding
+    var focusedCover: BridgeCoverKey?
     let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the gallery.
     let lightboxLoad: LightboxImageLoad
@@ -120,13 +126,13 @@ struct CoverGalleryView: View {
                 .opacity(isSaving ? 1 : 0)
                 .accessibilityHidden(!isSaving)
                 Button("Use this cover") {
-                    if let cursor = browser.cursor { onSelect(cursor.current) }
+                    if let focus = content.focus { onSelect(focus.cover) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(
-                    browser.cursor?.current.selection == nil
-                        || browser.cursor?.current.selection == selectedCover
+                    content.focus?.cover.selection == nil
+                        || content.focus?.cover.selection == selectedCover
                         || isSaving
                 )
             }
@@ -141,12 +147,7 @@ struct CoverGalleryView: View {
             .disabled(browser.layout == .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
-            .onAppear {
-                browser.layout = initialLayout
-                rebuild()
-            }
-            .onChange(of: content) { _, _ in rebuild() }
-            .onChange(of: content.current?.image) { _, _ in rebuild() }
+            .onAppear { browser.layout = initialLayout }
             // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
             // closes back to it. The code never clears the preview's focus
@@ -158,12 +159,12 @@ struct CoverGalleryView: View {
             }
             .onKeyPress(.leftArrow) {
                 guard browser.layout == .grid else { return .ignored }
-                browser.cursor?.goToPrevious()
+                focus(content.focus?.previous)
                 return .handled
             }
             .onKeyPress(.rightArrow) {
                 guard browser.layout == .grid else { return .ignored }
-                browser.cursor?.goToNext()
+                focus(content.focus?.next)
                 return .handled
             }
     }
@@ -172,11 +173,16 @@ struct CoverGalleryView: View {
     private var lightboxOverlay: some View {
         if browser.layout == .lightbox {
             VStack(spacing: 0) {
-                if let cursor = browser.cursor {
+                if let focus = content.focus {
                     LightboxView(
-                        cursor: cursor,
+                        place: LightboxPlace(
+                            items: content.items,
+                            current: focus.cover,
+                            previous: focus.previous,
+                            next: focus.next
+                        ),
                         load: lightboxLoad,
-                        onUpdate: { browser.cursor = $0 },
+                        onSelect: { focusedCover = $0 },
                         onDismiss: {
                             if initialLayout == .lightbox {
                                 onDone()
@@ -213,17 +219,20 @@ struct CoverGalleryView: View {
             // The lightbox lays its own backdrop over the window; only
             // the empty state needs the page behind it.
             .background {
-                if browser.cursor == nil { Rectangle().fill(Theme.background) }
+                if content.focus == nil {
+                    Rectangle().fill(Theme.background)
+                }
             }
         }
     }
 
     private var gridPreviewShown: Bool {
-        browser.layout == .grid && browser.cursor != nil
+        browser.layout == .grid && content.focus != nil
     }
 
-    private func rebuild() {
-        browser.update(content: content, selectedCover: selectedCover)
+    /// Focus the cover `key` names, if any.
+    private func focus(_ key: BridgeCoverKey?) {
+        if let key { focusedCover = key }
     }
 
     private func showGrid() {
@@ -233,7 +242,7 @@ struct CoverGalleryView: View {
     @ViewBuilder
     private var lightboxStatus: some View {
         VStack(spacing: ThemeSpace.related) {
-            if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
+            if content.focus != nil || !remoteItems.isLoading { remoteStatus }
             if let error {
                 Notice(error: error)
             }
@@ -289,7 +298,7 @@ extension CoverGalleryView {
 
     private func tile(for item: CoverItem) -> some View {
         Button {
-            browser.cursor?.select(id: item.id)
+            focusedCover = item.id
         } label: {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 ImageView(
@@ -305,7 +314,7 @@ extension CoverGalleryView {
                 .overlay {
                     RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(
-                            browser.cursor?.current.id == item.id
+                            content.focus?.cover.id == item.id
                                 ? Color.accentColor : .clear,
                             lineWidth: 2
                         )
@@ -320,13 +329,13 @@ extension CoverGalleryView {
         .help(item.label)
         .accessibilityLabel(item.label)
         .accessibilityAddTraits(
-            browser.cursor?.current.id == item.id ? .isSelected : []
+            content.focus?.cover.id == item.id ? .isSelected : []
         )
         .disabled(isSaving)
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
-                    browser.cursor?.select(id: item.id)
+                    focusedCover = item.id
                     browser.layout = .lightbox
                 }
         )
@@ -362,13 +371,13 @@ extension CoverGalleryView {
 
     @ViewBuilder
     private var preview: some View {
-        if let cursor = browser.cursor {
+        if let focus = content.focus {
             VStack(spacing: ThemeSpace.compact) {
                 Button {
                     browser.layout = .lightbox
                 } label: {
                     ImageView(
-                        content: cursor.current.image,
+                        content: focus.cover.image,
                         contentMode: .fit,
                         pointSize: 800
                     )
@@ -386,32 +395,32 @@ extension CoverGalleryView {
                 .focusEffectDisabled()
                 .focused($previewFocused)
                 .disabled(isSaving)
-                Text(verbatim: cursor.current.label)
+                Text(verbatim: focus.cover.label)
                     .themeText(.heading)
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: cursor.current.sourceLabel)
+                Text(verbatim: focus.cover.sourceLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                 HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
                     Button {
-                        browser.cursor?.goToPrevious()
+                        self.focus(focus.previous)
                     } label: {
                         Image(systemName: "chevron.backward")
                     }
                     .accessibilityLabel(Text("Previous image"))
-                    Text("\(cursor.index + 1) of \(content.total)")
+                    Text("\(focus.position + 1) of \(content.total)")
                         .monospacedDigit().foregroundStyle(.secondary)
                     Button {
-                        browser.cursor?.goToNext()
+                        self.focus(focus.next)
                     } label: {
                         Image(systemName: "chevron.forward")
                     }
                     .accessibilityLabel(Text("Next image"))
                 }
                 .buttonStyle(.accentBorderless)
-                .disabled(!cursor.canCycle || isSaving)
+                .disabled(focus.next == nil || isSaving)
             }
         }
         else {

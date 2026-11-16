@@ -73,6 +73,7 @@ struct CoverPickerTests {
     private func gallery(of release: BridgeRelease) -> BridgeCoverGallery {
         let files = release.coverFiles.map {
             BridgeGalleryCover(
+                key: .file(fileId: $0.id),
                 selection: .releaseImage(fileId: $0.id),
                 image: .releaseImage(
                     releaseId: release.id,
@@ -92,7 +93,8 @@ struct CoverPickerTests {
                     count: UInt32(files.count)
                 ),
             ],
-            total: UInt32(files.count)
+            total: UInt32(files.count),
+            focus: nil
         )
     }
 
@@ -186,6 +188,7 @@ struct CoverPickerTests {
         let remote = try #require(PreviewData.remoteCovers.first)
         let remoteItem = CoverItem(
             gallery: BridgeGalleryCover(
+                key: .remote(url: "front"),
                 selection: remote.coverChoice.selection,
                 image: remote.coverChoice.image,
                 label: .remote(
@@ -206,6 +209,7 @@ struct CoverPickerTests {
         }
         let fileItem = CoverItem(
             gallery: BridgeGalleryCover(
+                key: .file(fileId: "front.png"),
                 selection: file.selection,
                 image: file.image,
                 label: .file(name: "front.png")

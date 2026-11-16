@@ -59,10 +59,38 @@ pub enum BridgeCoverItemLabel {
     Remote { source_name: String, label: super::BridgeCoverLabel },
 }
 
-/// One cover the picker shows: what saving it selects (none for the saved
-/// cover), where its image comes from, and its label.
+/// What names one cover of a picker: the saved cover, a catalog's image by
+/// its address, or an image file by its id.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeCoverKey {
+    Saved,
+    Remote { url: String },
+    File { file_id: String },
+}
+
+impl BridgeCoverKey {
+    pub(crate) fn from_core(key: bae_import::CoverKey) -> Self {
+        match key {
+            bae_import::CoverKey::Saved => Self::Saved,
+            bae_import::CoverKey::Remote(url) => Self::Remote { url },
+            bae_import::CoverKey::File(file_id) => Self::File { file_id },
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_import::CoverKey {
+        match self {
+            Self::Saved => bae_import::CoverKey::Saved,
+            Self::Remote { url } => bae_import::CoverKey::Remote(url),
+            Self::File { file_id } => bae_import::CoverKey::File(file_id),
+        }
+    }
+}
+
+/// One cover the picker shows: its key, what saving it selects (none for the
+/// saved cover), where its image comes from, and its label.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryCover {
+    pub key: BridgeCoverKey,
     pub selection: Option<super::BridgeCoverSelection>,
     pub image: super::BridgeCoverImageSource,
     pub label: BridgeCoverItemLabel,
@@ -76,14 +104,27 @@ pub struct BridgeCoverSection {
     pub count: u32,
 }
 
+/// The cover a picker focuses: the cover, where it sits among the covers in
+/// the order the picker walks them, and the covers before and after it,
+/// wrapping around the ends; a picker of one cover has none before or after.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeGalleryFocus {
+    pub cover: BridgeGalleryCover,
+    pub position: u32,
+    pub previous: Option<BridgeCoverKey>,
+    pub next: Option<BridgeCoverKey>,
+}
+
 /// A cover picker under one filter: a library release's saved cover, the
-/// sections the filter shows, and the number of covers in all of them.
+/// sections the filter shows, the number of covers in all of them, and the
+/// cover it focuses, none while it shows no cover.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGallery {
     pub current: Option<BridgeGalleryCover>,
     pub fetch: BridgeCoverFetch,
     pub sections: Vec<BridgeCoverSection>,
     pub total: u32,
+    pub focus: Option<BridgeGalleryFocus>,
 }
 
 impl BridgeCoverGallery {
@@ -101,6 +142,12 @@ impl BridgeCoverGallery {
                 })
                 .collect(),
             total: gallery.total,
+            focus: gallery.focus.map(|focus| BridgeGalleryFocus {
+                cover: BridgeGalleryCover::from_core(focus.cover),
+                position: focus.position,
+                previous: focus.previous.map(BridgeCoverKey::from_core),
+                next: focus.next.map(BridgeCoverKey::from_core),
+            }),
         }
     }
 }
@@ -108,6 +155,7 @@ impl BridgeCoverGallery {
 impl BridgeGalleryCover {
     fn from_core(cover: bae_import::GalleryCover) -> Self {
         Self {
+            key: BridgeCoverKey::from_core(cover.key),
             selection: cover.selection.map(super::BridgeCoverSelection::from_core),
             image: super::BridgeCoverImageSource::from_core(cover.image),
             label: match cover.label {
@@ -153,11 +201,13 @@ impl BridgeCoverGalleryOwner {
     }
 }
 
-/// Whose picker to read, and the source it shows.
+/// Whose picker to read, the source it shows, and the cover the person
+/// focused last.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGalleryRequest {
     pub owner: BridgeCoverGalleryOwner,
     pub filter: BridgeCoverFilter,
+    pub focus: Option<BridgeCoverKey>,
 }
 
 /// One value the read delivered: the request it answered, and the picker's

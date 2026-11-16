@@ -93,7 +93,11 @@ type Gallery = coven::ReconfigurableLiveQuery<
 >;
 
 fn request(filter: CoverFilter) -> CoverGalleryRequest {
-    CoverGalleryRequest { owner: CoverGalleryOwner::Release(RELEASE_ID.to_string()), filter }
+    CoverGalleryRequest {
+        owner: CoverGalleryOwner::Release(RELEASE_ID.to_string()),
+        filter,
+        focus: None,
+    }
 }
 
 /// The first gallery a read gives for `asked` that `accept` takes, failing
@@ -301,4 +305,102 @@ async fn another_source_is_a_new_request_on_the_same_read() {
 
     let after = gallery_until(&mut gallery, &discogs, |_| true).await;
     assert_eq!(counts(&after), [(CoverSectionSource::Remote, 2, 2)]);
+}
+
+/// The gallery `filter` shows now, focused on the cover `focus` names.
+async fn read_focused(
+    tables: &ImportTables,
+    filter: CoverFilter,
+    focus: Option<CoverKey>,
+) -> CoverGallery {
+    let asked = CoverGalleryRequest { focus, ..request(filter) };
+    let mut gallery = tables.subscribe_cover_gallery(Some(asked.clone()));
+    gallery_until(&mut gallery, &asked, |_| true).await
+}
+
+/// Where the gallery's focus is: its cover's key, its place, and the covers
+/// before and after it.
+fn focus_of(gallery: &CoverGallery) -> (CoverKey, u32, Option<CoverKey>, Option<CoverKey>) {
+    let focus = gallery.focus.clone().expect("a gallery with covers focuses one");
+    (focus.cover.key, focus.position, focus.previous, focus.next)
+}
+
+fn remote_key(url: &str) -> CoverKey {
+    CoverKey::Remote(url.to_string())
+}
+
+fn file_key(name: &str) -> CoverKey {
+    CoverKey::File(bae_util::test_ids::test_uuid(name))
+}
+
+/// With nothing asked, a release's picker focuses its saved cover; the
+/// covers before and after it wrap around the ends of the walk.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_focuses_its_saved_cover_unless_asked() {
+    let (tables, _db, _temp, _files) = seeded().await;
+    let gallery = read_focused(&tables, CoverFilter::All, None).await;
+    assert_eq!(
+        focus_of(&gallery),
+        (
+            CoverKey::Saved,
+            0,
+            Some(file_key("file-back")),
+            Some(remote_key("https://caa.example/front"))
+        )
+    );
+}
+
+/// The cover asked for is focused where the walk holds it: after the saved
+/// cover and the catalog covers before it.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_cover_asked_for_is_focused_where_it_sits() {
+    let (tables, _db, _temp, _files) = seeded().await;
+    let gallery =
+        read_focused(&tables, CoverFilter::All, Some(remote_key("https://discogs.example/1")))
+            .await;
+    assert_eq!(
+        focus_of(&gallery),
+        (
+            remote_key("https://discogs.example/1"),
+            2,
+            Some(remote_key("https://caa.example/front")),
+            Some(remote_key("https://discogs.example/2"))
+        )
+    );
+    let file = read_focused(&tables, CoverFilter::All, Some(file_key("file-art"))).await;
+    assert_eq!(focus_of(&file).0, file_key("file-art"));
+    assert_eq!(focus_of(&file).1, 4);
+}
+
+/// A cover the source hides is not focused: the picker focuses its first
+/// cover instead, and a lone cover has none before or after it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_hidden_cover_leaves_the_focus_on_the_first() {
+    let (tables, _db, _temp, _files) = seeded().await;
+    let discogs = read_focused(
+        &tables,
+        CoverFilter::Catalog(Catalog::Discogs),
+        Some(remote_key("https://caa.example/front")),
+    )
+    .await;
+    assert_eq!(
+        focus_of(&discogs),
+        (
+            remote_key("https://discogs.example/1"),
+            0,
+            Some(remote_key("https://discogs.example/2")),
+            Some(remote_key("https://discogs.example/2"))
+        )
+    );
+    let archive = read_focused(&tables, CoverFilter::Catalog(Catalog::MusicBrainz), None).await;
+    assert_eq!(focus_of(&archive), (remote_key("https://caa.example/front"), 0, None, None));
+}
+
+/// A picker that shows no cover focuses none.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_empty_picker_focuses_nothing() {
+    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
+    let gallery =
+        read_focused(&ImportTables::new(db), CoverFilter::All, Some(CoverKey::Saved)).await;
+    assert_eq!(gallery.focus, None);
 }

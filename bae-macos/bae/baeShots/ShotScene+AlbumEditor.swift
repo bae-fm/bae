@@ -138,6 +138,7 @@ extension ShotScene {
                     content: content,
                     remoteItems: .linked(content.remote?.items ?? []),
                     filter: .constant(.all),
+                    focusedCover: .constant(nil),
                     selectedCover: nil,
                     lightboxLoad: LightboxImageLoad(),
                     onRefresh: {},

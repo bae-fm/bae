@@ -65,7 +65,8 @@ async fn offered_covers(db: &Store, content_hash: &str) -> Vec<RemoteCover> {
         })
         .await
         .unwrap();
-    offered_covers_of_json(&json).unwrap()
+    let rows: Vec<OfferedCover> = serde_json::from_str(&json).unwrap();
+    rows.into_iter().map(|row| row.cover().unwrap()).collect()
 }
 
 async fn offered(db: &Store, content_hash: &str) -> Vec<(String, CoverStanding)> {

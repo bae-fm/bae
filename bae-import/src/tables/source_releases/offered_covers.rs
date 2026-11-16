@@ -64,8 +64,9 @@ WHERE (stated OR NOT EXISTS (SELECT 1 FROM firsts WHERE stated))
     .replace(":hash", hash)
 }
 
+/// One cover of an [`offered_covers_sql`] column, as the statement writes it.
 #[derive(serde::Deserialize)]
-struct CoverColumns {
+pub(crate) struct OfferedCover {
     url: String,
     label: bae_catalogs::remote_image::CoverLabel,
     source: String,
@@ -73,21 +74,17 @@ struct CoverColumns {
     copies: Vec<bae_catalogs::remote_image::DownscaledCopy>,
 }
 
-/// The covers an [`offered_covers_sql`] column holds.
-pub(crate) fn offered_covers_of_json(json: &str) -> Result<Vec<RemoteCover>, DbError> {
-    let rows: Vec<CoverColumns> = serde_json::from_str(json)
-        .map_err(|error| DbError::unreadable("the offered covers statement", (json, error)))?;
-    rows.into_iter()
-        .map(|row| {
-            Ok(RemoteCover {
-                image: RemoteImageSet::stored(row.url, row.copies),
-                label: row.label,
-                source: catalog_column(&row.source)?,
-                standing: CoverStanding::from_column(&row.standing)
-                    .ok_or_else(|| DbError::unreadable("a cover's standing", &row.standing))?,
-            })
+impl OfferedCover {
+    /// The cover the statement wrote.
+    pub(crate) fn cover(self) -> Result<RemoteCover, DbError> {
+        Ok(RemoteCover {
+            image: RemoteImageSet::stored(self.url, self.copies),
+            label: self.label,
+            source: catalog_column(&self.source)?,
+            standing: CoverStanding::from_column(&self.standing)
+                .ok_or_else(|| DbError::unreadable("a cover's standing", &self.standing))?,
         })
-        .collect()
+    }
 }
 
 #[cfg(test)]

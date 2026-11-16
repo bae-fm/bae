@@ -31,9 +31,21 @@ async fn candidate_gallery(
     key: &crate::CandidateKey,
     filter: crate::CoverFilter,
 ) -> crate::CoverGallery {
+    focused_gallery(handle, key, filter, None).await
+}
+
+/// The gallery the picker of the candidate at `key` shows under `filter`
+/// now, asked to focus the cover `focus` names.
+async fn focused_gallery(
+    handle: &ImportServiceHandle,
+    key: &crate::CandidateKey,
+    filter: crate::CoverFilter,
+    focus: Option<crate::CoverKey>,
+) -> crate::CoverGallery {
     let asked = crate::CoverGalleryRequest {
         owner: crate::CoverGalleryOwner::Candidate(key.clone()),
         filter,
+        focus,
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
     loop {
@@ -241,6 +253,46 @@ async fn a_fetch_shows_while_the_link_it_was_fetched_for_stands() {
     assert_eq!(sections(&gallery)[0], (crate::CoverSectionSource::Remote, 0, vec![]));
 }
 
+/// A candidate's picker focuses the cover its draft chose, after the
+/// catalogs' covers, unless the request names another cover it shows.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_candidates_picker_focuses_its_chosen_cover_unless_asked() {
+    use crate::CoverKey::{File, Remote};
+    let (handle, _tmp, key, hash) = picked_with_front("focused-release").await;
+    let tables = handle.services.tables.clone();
+    let link = tables.candidate_cover_link(&hash).await.unwrap();
+    let cover = |url: &str| bae_catalogs::remote_image::RemoteCover {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(url.to_string()),
+        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
+        source: bae_catalogs::catalog::Catalog::MusicBrainz,
+        standing: bae_catalogs::remote_image::CoverStanding::Stated,
+    };
+    let (front, back) = ("https://images.example/front.jpg", "https://images.example/back.jpg");
+    tables
+        .replace_candidate_covers(&hash, link, Some(vec![cover(front), cover(back)]))
+        .await
+        .unwrap();
+
+    let own = focused_gallery(&handle, &key, crate::CoverFilter::All, None).await;
+    let asked =
+        focused_gallery(&handle, &key, crate::CoverFilter::All, Some(Remote(back.to_string())))
+            .await;
+    shut_down(handle).await;
+
+    let own = own.focus.expect("the picker shows covers");
+    assert_eq!(
+        (own.cover.key, own.position, own.previous, own.next),
+        (
+            File("cover.jpg".to_string()),
+            2,
+            Some(Remote(back.to_string())),
+            Some(Remote(front.to_string()))
+        )
+    );
+    let asked = asked.focus.expect("the picker shows covers");
+    assert_eq!((asked.cover.key, asked.position), (Remote(back.to_string()), 1));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_library_release() {
     let (parts, records, _tmp) = setup_test_import().await;
@@ -252,6 +304,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let asked = crate::CoverGalleryRequest {
         owner: crate::CoverGalleryOwner::Release(release.id.clone()),
         filter: crate::CoverFilter::All,
+        focus: None,
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
     let gallery = loop {
@@ -289,6 +342,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let asked = crate::CoverGalleryRequest {
         owner: crate::CoverGalleryOwner::Release(release.id.clone()),
         filter: crate::CoverFilter::All,
+        focus: None,
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
     let gallery = loop {

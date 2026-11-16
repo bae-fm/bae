@@ -34,14 +34,9 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            var content = CoverGalleryContent(boardCoverGallery())
-            if !linked {
-                content.remote = CoverGalleryContent.Section(
-                    items: [],
-                    count: 0
-                )
-                content.total = content.items.count
-            }
+            let content = CoverGalleryContent(
+                linked ? boardCoverGallery() : boardCoverGallery(remotes: [])
+            )
             // The board's sheet: 1100 by 820, centred in the window with
             // no dimming behind it.
             let sheet = CoverGalleryView(
@@ -49,6 +44,7 @@ extension ShotScene {
                 remoteItems: linked
                     ? .linked(content.remote?.items ?? []) : .unlinked,
                 filter: .constant(.all),
+                focusedCover: .constant(nil),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 onRefresh: {},
@@ -87,7 +83,7 @@ extension ShotScene {
     }
 
     /// What core reads for the board's release: its cover, two Discogs
-    /// covers and the image files in its folder.
+    /// covers and the image files in its folder, focused on its cover.
     static func boardCoverGallery(
         remotes remoteCovers: [BoardRemoteCover] = [
             BoardRemoteCover(name: "front", position: 1, type: .front),
@@ -102,6 +98,7 @@ extension ShotScene {
         }
         return BridgeCoverGallery(
             current: BridgeGalleryCover(
+                key: .saved,
                 selection: nil,
                 image: .releaseImage(
                     releaseId: releaseId,
@@ -128,8 +125,10 @@ extension ShotScene {
                     count: UInt32(files.count)
                 ),
             ],
-            total: UInt32(1 + remotes.count + files.count)
+            total: UInt32(1 + remotes.count + files.count),
+            focus: nil
         )
+        .focused(on: nil)
     }
 
     /// The gallery entry core reads for `cover`, a Discogs cover.
@@ -141,6 +140,7 @@ extension ShotScene {
             downscaled: []
         )
         return BridgeGalleryCover(
+            key: .remote(url: image.url),
             selection: .remoteCover(
                 selection: BridgeRemoteCoverSelection(
                     image: image,
@@ -167,6 +167,7 @@ extension ShotScene {
         releaseId: String
     ) -> BridgeGalleryCover {
         BridgeGalleryCover(
+            key: .file(fileId: name),
             selection: .releaseImage(fileId: name),
             image: .releaseImage(
                 releaseId: releaseId,

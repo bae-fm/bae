@@ -45,19 +45,21 @@ struct LibraryArtworkBrowserTests {
         )
     }
 
-    /// Space opens the image the grid's cursor is on, the release's cover, in
-    /// the lightbox, and Escape brings the grid back with the keyboard on it,
+    /// Space opens the image the grid focuses, the release's cover, in the
+    /// lightbox, and Escape brings the grid back with the keyboard on it,
     /// without looking the covers up again; Return then saves the image the
-    /// cursor moved to.
+    /// right arrow focused.
     @Test("Library artwork saves the image picked in the grid")
     func gridSavesThePick() async throws {
         let art = remote("Booklet", source: .discogs)
+        let delivered = DeliveredFocuses()
         var lookups = 0
         var saved: BridgeCoverSelection?
         var dismissed = false
         try await withLibraryBrowser(
             layout: .grid,
             gallery: gallery(remote: [art]),
+            delivered: delivered,
             calls: SheetCalls(
                 lookup: {
                     lookups += 1
@@ -70,7 +72,9 @@ struct LibraryArtworkBrowserTests {
                 }
             ),
             body: { window, host, lightbox in
-                try await Wait.until { lookups > 0 }
+                // Space needs the preview, which shows once the first read
+                // arrives; the lookup can end before that read.
+                try await Wait.until { lookups > 0 && delivered.count > 0 }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
                 try await Wait.until { lightbox.ended() }
@@ -79,6 +83,13 @@ struct LibraryArtworkBrowserTests {
                 try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)
                 try HostedInput.keyDown(.rightArrow, in: window)
+                // The arrow asks core to focus the next cover; Return waits
+                // for the read that answers.
+                try await Wait.until {
+                    delivered.delivered(
+                        .remote(url: "https://images.example/Booklet.png")
+                    )
+                }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.return, in: host)
                 try await Wait.until { dismissed }
@@ -86,73 +97,6 @@ struct LibraryArtworkBrowserTests {
                 #expect(lookups == 1, "looked up \(lookups) times")
             }
         )
-    }
-
-    /// Browse all images, in the lightbox, switches the browser to its grid
-    /// with the image shown still the cursor's; where that button sits is no
-    /// longer tested.
-    @Test("Browsing all images from the lightbox keeps the image shown")
-    func browsingAllKeepsTheCursor() {
-        let cover = savedCover()
-        let booklet = CoverItem(
-            gallery: galleryCover(remote("Booklet", source: .discogs))
-        )
-        var browser = ArtworkBrowserState(layout: .lightbox)
-        browser.update(
-            content: CoverGalleryContent(
-                gallery(remote: [remote("Booklet", source: .discogs)])
-            ),
-            selectedCover: nil
-        )
-        browser.cursor?.select(id: booklet.id)
-        browser.layout = .grid
-        #expect(browser.cursor?.current.id == booklet.id)
-        #expect(browser.cursor?.items.first == cover)
-    }
-
-    /// Core reads the gallery again for each source and gives the browser new
-    /// content. The cursor stays on its cover when the new content holds that
-    /// cover, and otherwise moves to the first.
-    @Test("Arriving artwork preserves selection across the sources")
-    func arrivalsAndFilters() throws {
-        let discogs = remote("Booklet", source: .discogs)
-        let archive = remote("Back", source: .musicBrainz)
-        let cover = savedCover()
-        var browser = ArtworkBrowserState(layout: .lightbox)
-        browser.update(
-            content: CoverGalleryContent(gallery(remote: [])),
-            selectedCover: nil
-        )
-        #expect(browser.cursor?.current.id == cover.id)
-        browser.update(
-            content: CoverGalleryContent(gallery(remote: [discogs, archive])),
-            selectedCover: nil
-        )
-        #expect(browser.cursor?.current.id == cover.id)
-        let archiveItem = CoverItem(gallery: galleryCover(archive))
-        browser.cursor?.select(id: archiveItem.id)
-        browser.layout = .grid
-        browser.update(
-            content: CoverGalleryContent(
-                gallery(remote: [archive], current: nil, filter: .musicBrainz)
-            ),
-            selectedCover: nil
-        )
-        #expect(browser.cursor?.items == [archiveItem])
-        browser.layout = .lightbox
-        browser.update(
-            content: CoverGalleryContent(gallery(remote: [discogs, archive])),
-            selectedCover: nil
-        )
-        #expect(browser.cursor?.current.id == archiveItem.id)
-        browser.update(
-            content: CoverGalleryContent(
-                gallery(remote: [], current: nil, filter: .releaseFiles)
-            ),
-            selectedCover: nil
-        )
-        #expect(browser.cursor == nil)
-        #expect(cover.selection == nil)
     }
 
     /// The empty lightbox offers to find the release (the
@@ -167,6 +111,7 @@ struct LibraryArtworkBrowserTests {
                 content: .empty,
                 remoteItems: .unlinked,
                 filter: .constant(.all),
+                focusedCover: .constant(nil),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
@@ -203,11 +148,15 @@ struct LibraryArtworkBrowserTests {
         let lightbox = LightboxImageLoad()
         func view(_ version: String) throws -> some View {
             let cover = savedCover(version: version)
-            let cursor = try #require(Cursor(items: [cover]))
             return LightboxView(
-                cursor: cursor,
+                place: LightboxPlace(
+                    items: [cover],
+                    current: cover,
+                    previous: nil,
+                    next: nil
+                ),
                 load: lightbox,
-                onUpdate: { _ in },
+                onSelect: { _ in },
                 onDismiss: {}
             )
             .environment(images).frame(width: size.width, height: size.height)
@@ -253,6 +202,7 @@ extension LibraryArtworkBrowserTests {
                 content: .empty,
                 remoteItems: remoteItems,
                 filter: .constant(.all),
+                focusedCover: .constant(nil),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 initialLayout: .lightbox,
@@ -275,6 +225,7 @@ extension LibraryArtworkBrowserTests {
     private func withLibraryBrowser<Value>(
         layout: ArtworkBrowserState.Layout,
         gallery: BridgeCoverGallery,
+        delivered: DeliveredFocuses? = nil,
         calls: SheetCalls,
         body:
             (NSWindow, NSHostingView<AnyView>, LightboxImageLoad) async throws
@@ -303,7 +254,11 @@ extension LibraryArtworkBrowserTests {
                     onDone: calls.onDone
                 )
                 .environment(images)
-                .environment(Library(coverGallery: { .fixed(gallery) }))
+                .environment(
+                    Library(coverGallery: {
+                        .fixed(gallery, delivered: delivered)
+                    })
+                )
                 .frame(width: size.width, height: size.height)
             ),
             size: size
@@ -361,6 +316,7 @@ extension LibraryArtworkBrowserTests {
         -> BridgeGalleryCover
     {
         BridgeGalleryCover(
+            key: .saved,
             selection: nil,
             image: .releaseImage(
                 releaseId: "release",
@@ -378,7 +334,13 @@ extension LibraryArtworkBrowserTests {
 
     private func galleryCover(_ cover: BridgeRemoteCover) -> BridgeGalleryCover
     {
-        BridgeGalleryCover(
+        let url =
+            switch cover.coverChoice.image {
+            case .remote(let image): image.url
+            default: preconditionFailure("a catalog's cover draws its image")
+            }
+        return BridgeGalleryCover(
+            key: .remote(url: url),
             selection: cover.coverChoice.selection,
             image: cover.coverChoice.image,
             label: .remote(sourceName: cover.sourceName, label: cover.label)
@@ -403,34 +365,66 @@ extension LibraryArtworkBrowserTests {
                     count: UInt32(covers.count)
                 )
             ],
-            total: UInt32(covers.count + (saved == nil ? 0 : 1))
+            total: UInt32(covers.count + (saved == nil ? 0 : 1)),
+            focus: nil
         )
     }
 }
 
 /// A picker's live read that answers each request with `gallery`.
 extension CoverGalleryQuery {
-    static func fixed(_ gallery: BridgeCoverGallery) -> CoverGalleryQuery {
+    /// `delivered`, when given, records the focus each value answers.
+    static func fixed(
+        _ gallery: BridgeCoverGallery,
+        delivered: DeliveredFocuses? = nil
+    ) -> CoverGalleryQuery {
         let (stream, continuation) = AsyncStream<BridgeCoverGallerySnapshot>
             .makeStream()
         let pulls = FixedPulls(stream.makeAsyncIterator())
         return CoverGalleryQuery(
-            setRequest: { owner, filter in
+            setRequest: { owner, filter, focus in
                 continuation.yield(
                     BridgeCoverGallerySnapshot(
                         request: BridgeCoverGalleryRequest(
                             owner: owner,
-                            filter: filter
+                            filter: filter,
+                            focus: focus
                         ),
-                        gallery: gallery
+                        gallery: gallery.focused(on: focus)
                     )
                 )
             },
             values: PulledValues(
-                read: { try await pulls.next() },
+                read: {
+                    let snapshot = try await pulls.next()
+                    delivered?.record(snapshot.request?.focus)
+                    return snapshot
+                },
                 cancel: { continuation.finish() }
             )
         )
+    }
+}
+
+/// The focus each value of a fixed query answered, in the order the query
+/// delivered them.
+final class DeliveredFocuses: @unchecked Sendable {
+    private let lock = NSLock()
+    private var focuses: [BridgeCoverKey?] = []
+
+    func record(_ focus: BridgeCoverKey?) {
+        lock.withLock { focuses.append(focus) }
+        Wait.happened()
+    }
+
+    /// How many values the query has delivered.
+    var count: Int {
+        lock.withLock { focuses.count }
+    }
+
+    /// Whether the query has delivered a value that focuses `key`.
+    func delivered(_ key: BridgeCoverKey) -> Bool {
+        lock.withLock { focuses.contains(key) }
     }
 }
 

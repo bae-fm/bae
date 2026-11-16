@@ -1,6 +1,7 @@
 //! The covers a cover picker offers, as one query reads them from the
 //! library's tables, filtered by source, each section with its count and the
-//! whole with its total. A library release's picker offers its saved cover,
+//! whole with its total, and the cover the picker focuses with where it sits
+//! among them. A library release's picker offers its saved cover,
 //! the covers its catalogs offered when this device last fetched them, and its
 //! image files; its tables are `cover_gallery.sql`. A candidate's picker
 //! offers the covers its link's catalogs offered, and the folder's images a
@@ -19,6 +20,7 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
 ]);
 
 mod candidate;
+mod walk;
 
 /// Which of the picker's sources a read shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,10 +84,20 @@ pub enum GalleryLabel {
     Remote { label: CoverLabel, source: Catalog },
 }
 
-/// One cover the picker shows: what saving it selects (none for the saved
-/// cover), where its image comes from, and its label.
+/// What names one cover of a picker: the saved cover, a catalog's image by
+/// its address, or an image file by its id.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CoverKey {
+    Saved,
+    Remote(String),
+    File(String),
+}
+
+/// One cover the picker shows: its key, what saving it selects (none for the
+/// saved cover), where its image comes from, and its label.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GalleryCover {
+    pub key: CoverKey,
     pub selection: Option<CoverSelection>,
     pub image: CoverImageSource,
     pub label: GalleryLabel,
@@ -99,61 +111,66 @@ pub struct CoverSection {
     pub count: u32,
 }
 
+/// The cover a picker focuses: the cover, where it sits among the covers in
+/// the order the picker walks them (the saved cover, then each section's), and
+/// the covers before and after it, wrapping around the ends. A picker of one
+/// cover has none before or after it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GalleryFocus {
+    pub cover: GalleryCover,
+    pub position: u32,
+    pub previous: Option<CoverKey>,
+    pub next: Option<CoverKey>,
+}
+
 /// A cover picker: a library release's saved cover, the sections the filter
-/// shows, and the number of covers in all of them.
+/// shows, the number of covers in all of them, and the cover it focuses,
+/// which none is while it shows no cover.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGallery {
     pub current: Option<GalleryCover>,
     pub fetch: CoverFetch,
     pub sections: Vec<CoverSection>,
     pub total: u32,
+    pub focus: Option<GalleryFocus>,
 }
 
-/// The release's gallery under one filter: one row. The query returns the
-/// saved cover only under all; remote covers under all or their catalog;
-/// image files under all or the release's files.
-const GALLERY: &str = "\
-SELECT cover_version, fetched, shows_remote, remote_count, remote_covers, \
-       shows_files, files_count, files, \
-       (cover_version IS NOT NULL) + remote_count + files_count \
-FROM (SELECT \
-        CASE WHEN ?2 = 'all' THEN {cover_version} END AS cover_version, \
-        (SELECT fetch.linked FROM release_cover_fetch AS fetch \
-          WHERE fetch.release_id = ?1) AS fetched, \
-        ?2 NOT IN ('release_files') AS shows_remote, \
-        (SELECT COUNT(*) FROM release_cover_entry AS entry \
-          WHERE entry.release_id = ?1 AND (?2 = 'all' OR entry.source = ?2)) AS remote_count, \
-        (SELECT json_group_array(json(entry.cover) ORDER BY entry.position) \
-           FROM release_cover_entry AS entry \
-          WHERE entry.release_id = ?1 AND (?2 = 'all' OR entry.source = ?2)) AS remote_covers, \
-        ?2 IN ('all', 'release_files') AS shows_files, \
-        (SELECT COUNT(*) FROM release_files AS file \
-          WHERE file.release_id = ?1 AND ?2 IN ('all', 'release_files') \
-            AND file.content_type IN ({cover_types})) AS files_count, \
-        (SELECT json_group_array(json_object('id', file.id, 'name', file.original_filename) \
-                                 ORDER BY file.original_filename COLLATE natural_order, file.id) \
-           FROM release_files AS file \
-          WHERE file.release_id = ?1 AND ?2 IN ('all', 'release_files') \
-            AND file.content_type IN ({cover_types})) AS files)";
-
-#[derive(serde::Deserialize)]
-struct FileJson {
-    id: String,
-    name: String,
-}
-
-fn gallery_sql() -> String {
+/// The release's gallery under one filter, as the statement that binds the
+/// release as `:release` reads it: its saved cover only under all, catalog
+/// covers under all or their catalog, image files under all or the release's
+/// files, each file in name order. The release focuses its saved cover
+/// unless the request names another.
+fn release_gallery_sql() -> String {
     let cover_types: Vec<String> = bae_util::content_type::ContentType::SUPPORTED_COVERS
         .iter()
         .map(|content_type| format!("'{}'", content_type.as_str()))
         .collect();
-    GALLERY
-        .replace("{cover_version}", &bae_records::records::files::cover_version_sql("?1"))
-        .replace("{cover_types}", &cover_types.join(", "))
-}
-
-fn release_image(release_id: &str, source: bae_records::GallerySource) -> CoverImageSource {
-    CoverImageSource::ReleaseImage { release_id: release_id.to_string(), source }
+    format!(
+        "
+WITH items (rank, pos, kind, key, preferred, item) AS (
+    SELECT 0, 0, 'saved', NULL, 1, json_object('kind', 'saved', 'version', version)
+    FROM (SELECT {cover_version} AS version)
+    WHERE :filter = 'all' AND version IS NOT NULL
+    UNION ALL
+    SELECT 1, entry.position, 'remote', json_extract(entry.cover, '$.image.url'), 0,
+           json_object('kind', 'remote', 'cover', json(entry.cover))
+    FROM release_cover_entry AS entry
+    WHERE entry.release_id = :release AND :filter IN ('all', entry.source)
+    UNION ALL
+    SELECT 2, ROW_NUMBER() OVER (ORDER BY file.original_filename COLLATE natural_order, file.id),
+           'file', file.id, 0,
+           json_object('kind', 'release_file', 'id', file.id, 'name', file.original_filename)
+    FROM release_files AS file
+    WHERE file.release_id = :release AND :filter IN ('all', 'release_files')
+      AND file.content_type IN ({cover_types})
+){walk}",
+        cover_version = bae_records::records::files::cover_version_sql(":release"),
+        cover_types = cover_types.join(", "),
+        walk = walk::walk_sql(
+            "(SELECT fetch.linked FROM release_cover_fetch AS fetch \
+              WHERE fetch.release_id = :release)"
+        ),
+    )
 }
 
 /// Whose covers a picker shows.
@@ -165,11 +182,14 @@ pub enum CoverGalleryOwner {
     Candidate(crate::CandidateKey),
 }
 
-/// Whose covers a picker shows, and the source it shows them from.
+/// Whose covers a picker shows, the source it shows them from, and the cover
+/// it focuses: the one `focus` names when it shows it, else its own (a
+/// release's saved cover, a candidate's chosen cover), else its first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGalleryRequest {
     pub owner: CoverGalleryOwner,
     pub filter: CoverFilter,
+    pub focus: Option<CoverKey>,
 }
 
 /// What a read of a picker delivered: the request it answered, and its
@@ -185,96 +205,35 @@ fn cover_gallery_on(
     sql: &impl coven::SqlRead,
     request: &CoverGalleryRequest,
 ) -> Result<CoverGallery, DbError> {
+    let (focus_kind, focus_key) = request.focus.as_ref().map(CoverKey::columns).unzip();
+    let focus_key = focus_key.flatten();
+    let filter = request.filter.column();
     match &request.owner {
-        CoverGalleryOwner::Release(release_id) => {
-            release_gallery_on(sql, release_id, request.filter)
-        }
-        CoverGalleryOwner::Candidate(key) => {
-            candidate::candidate_gallery_on(sql, key, request.filter)
-        }
+        CoverGalleryOwner::Release(release_id) => sql
+            .query_row(
+                &release_gallery_sql(),
+                named_params! {
+                    ":release": release_id,
+                    ":filter": filter,
+                    ":focus_kind": focus_kind,
+                    ":focus_key": focus_key,
+                },
+                walk::GalleryColumns::read,
+            )?
+            .gallery(Some(release_id)),
+        CoverGalleryOwner::Candidate(key) => sql
+            .query_row(
+                &candidate::candidate_gallery_sql(),
+                named_params! {
+                    ":key": key,
+                    ":filter": filter,
+                    ":focus_kind": focus_kind,
+                    ":focus_key": focus_key,
+                },
+                walk::GalleryColumns::read,
+            )?
+            .gallery(None),
     }
-}
-
-/// The section of the covers the catalogs offered, each selecting itself.
-fn remote_section(covers: Vec<RemoteCover>, count: u32) -> CoverSection {
-    CoverSection {
-        source: CoverSectionSource::Remote,
-        items: covers
-            .into_iter()
-            .map(|cover| GalleryCover {
-                selection: Some(CoverSelection::Remote(cover.image.clone(), cover.source)),
-                image: CoverImageSource::Remote { image: cover.image },
-                label: GalleryLabel::Remote { label: cover.label, source: cover.source },
-            })
-            .collect(),
-        count,
-    }
-}
-
-/// The covers `release_id`'s picker offers under `filter`, as one read.
-fn release_gallery_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-    filter: CoverFilter,
-) -> Result<CoverGallery, DbError> {
-    let (
-        version,
-        fetched,
-        shows_remote,
-        remote_count,
-        remote_json,
-        shows_files,
-        files_count,
-        files_json,
-        total,
-    ) = sql.query_row(&gallery_sql(), params![release_id, filter.column()], |row| {
-        Ok((
-            row.get::<_, Option<String>>(0)?,
-            row.get::<_, Option<bool>>(1)?,
-            row.get::<_, bool>(2)?,
-            row.get::<_, u32>(3)?,
-            row.get::<_, String>(4)?,
-            row.get::<_, bool>(5)?,
-            row.get::<_, u32>(6)?,
-            row.get::<_, String>(7)?,
-            row.get::<_, u32>(8)?,
-        ))
-    })?;
-    let remote: Vec<RemoteCover> = serde_json::from_str(&remote_json)
-        .map_err(|error| DbError::unreadable_json("a stored gallery cover", &remote_json, error))?;
-    let files: Vec<FileJson> = serde_json::from_str(&files_json)
-        .map_err(|error| DbError::unreadable_json("a release's cover files", &files_json, error))?;
-    let mut sections = Vec::new();
-    if shows_remote {
-        sections.push(remote_section(remote, remote_count));
-    }
-    if shows_files {
-        sections.push(CoverSection {
-            source: CoverSectionSource::ReleaseFiles,
-            items: files
-                .into_iter()
-                .map(|file| GalleryCover {
-                    selection: Some(CoverSelection::Local(file.id.clone())),
-                    image: release_image(
-                        release_id,
-                        bae_records::GallerySource::ReleaseFile { file_id: file.id },
-                    ),
-                    label: GalleryLabel::File(file.name),
-                })
-                .collect(),
-            count: files_count,
-        });
-    }
-    Ok(CoverGallery {
-        current: bae_records::cover_ref(release_id, version).map(|image| GalleryCover {
-            selection: None,
-            image: release_image(release_id, bae_records::GallerySource::Cover(image)),
-            label: GalleryLabel::Current,
-        }),
-        fetch: CoverFetch::of_column(fetched),
-        sections,
-        total,
-    })
 }
 
 impl ImportTables {

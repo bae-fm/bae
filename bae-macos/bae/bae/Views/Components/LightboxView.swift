@@ -27,12 +27,26 @@ struct LightboxItem: LightboxImage {
     var sourceLabel: String { String(localized: "Release files") }
 }
 
+/// Where a lightbox stands among its images: the images its strip shows, the
+/// one it shows, and the ones before and after it, which whoever shows the
+/// lightbox works out. There are none before or after a lone image.
+struct LightboxPlace<Item: LightboxImage>: Equatable {
+    let items: [Item]
+    let current: Item
+    let previous: Item.ID?
+    let next: Item.ID?
+
+    /// Whether the lightbox moves between images.
+    var canCycle: Bool { next != nil }
+}
+
 struct LightboxView<Item: LightboxImage>: View {
-    let cursor: Cursor<Item>
+    let place: LightboxPlace<Item>
     /// The current item's image as it loads, owned by whoever shows the
     /// lightbox.
     let load: LightboxImageLoad
-    let onUpdate: (Cursor<Item>) -> Void
+    /// Show the image `id` names.
+    let onSelect: (Item.ID) -> Void
     let onDismiss: () -> Void
     var onBrowseAll: (() -> Void)?
 
@@ -62,7 +76,7 @@ struct LightboxView<Item: LightboxImage>: View {
                 GeometryReader { geo in
                     ZStack {
                         imageContent
-                        if cursor.canCycle {
+                        if place.canCycle {
                             cycleNavButtons
                         }
                         closeButtonOverlay
@@ -70,12 +84,12 @@ struct LightboxView<Item: LightboxImage>: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .task(
                         id: LightboxLoadRequest(
-                            image: cursor.current.image,
+                            image: place.current.image,
                             attempt: attempt
                         )
                     ) {
                         await load.load(
-                            cursor.current.image,
+                            place.current.image,
                             from: imageStore,
                             fitting: max(geo.size.width, geo.size.height),
                             displayScale: displayScale
@@ -85,15 +99,12 @@ struct LightboxView<Item: LightboxImage>: View {
 
                 labelView
 
-                if cursor.canCycle {
+                if place.canCycle {
                     ThumbnailStrip(
-                        cursor: cursor,
+                        items: place.items,
+                        current: place.current.id,
                         centered: true,
-                        onSelect: { id in
-                            var next = cursor
-                            next.select(id: id)
-                            onUpdate(next)
-                        },
+                        onSelect: onSelect,
                         stroke: { _, isActive in
                             (
                                 isActive
@@ -131,7 +142,7 @@ struct LightboxView<Item: LightboxImage>: View {
         }
         .onAppear { focused = true }
         .onDisappear { load.close() }
-        .onChange(of: cursor.current.image) { _, _ in
+        .onChange(of: place.current.image) { _, _ in
             magnification = 1.0
         }
     }
@@ -194,24 +205,20 @@ struct LightboxView<Item: LightboxImage>: View {
 
 extension LightboxView {
     fileprivate func goPrevious() {
-        var next = cursor
-        next.goToPrevious()
-        onUpdate(next)
+        if let previous = place.previous { onSelect(previous) }
     }
 
     fileprivate func goNext() {
-        var next = cursor
-        next.goToNext()
-        onUpdate(next)
+        if let next = place.next { onSelect(next) }
     }
 
     fileprivate var labelView: some View {
         VStack(spacing: 0) {
-            Text(verbatim: cursor.current.label)
+            Text(verbatim: place.current.label)
                 .themeText(.body)
                 .foregroundStyle(Theme.onFill)
                 .lineLimit(2)
-            Text(verbatim: cursor.current.sourceLabel)
+            Text(verbatim: place.current.sourceLabel)
                 .themeText(.detail)
                 .foregroundStyle(Theme.onFillSecondary)
         }

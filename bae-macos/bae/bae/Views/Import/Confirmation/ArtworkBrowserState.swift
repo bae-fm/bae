@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// Presentation state shared by the image grid and its lightbox. Changing
-/// layout never rebuilds the selection or restarts an artwork lookup.
+/// layout never moves the focused cover or restarts an artwork lookup.
 struct ArtworkBrowserState {
     enum Layout {
         case grid, lightbox
@@ -32,47 +32,43 @@ struct ArtworkBrowserState {
     }
 
     var layout: Layout
-    var cursor: Cursor<CoverItem>?
-
-    init(layout: Layout) {
-        self.layout = layout
-    }
-
-    /// Show `content`, keeping the cover the cursor is on, else the saved
-    /// cover, else the one selected, when the new content still holds it.
-    mutating func update(
-        content: CoverGalleryContent,
-        selectedCover: BridgeCoverSelection?
-    ) {
-        let preferred =
-            cursor?.current.id ?? content.current?.id
-            ?? selectedCover.map(CoverItem.ID.selection)
-        cursor = Cursor(items: content.items, preferring: preferred)
-    }
 }
 
 /// What the cover gallery draws, as core's read returns it: the saved cover,
 /// each source's covers with the number of covers the source holds under the
-/// filter, and the number in all of them. A source the filter hides is `nil`.
+/// filter, the number in all of them, and the focused cover with where it
+/// sits. A source the filter hides is `nil`, and nothing is focused while the
+/// gallery shows no cover.
 struct CoverGalleryContent: Equatable {
     struct Section: Equatable {
         var items: [CoverItem]
         var count: Int
     }
 
+    /// The cover the gallery focuses, its place among all the gallery's
+    /// covers, and the covers before and after it.
+    struct Focus: Equatable {
+        var cover: CoverItem
+        var position: Int
+        var previous: BridgeCoverKey?
+        var next: BridgeCoverKey?
+    }
+
     var current: CoverItem?
     var remote: Section?
     var files: Section?
     var total: Int
+    var focus: Focus?
 
     static let empty = CoverGalleryContent(
         current: nil,
         remote: nil,
         files: nil,
-        total: 0
+        total: 0,
+        focus: nil
     )
 
-    /// The covers in the order the gallery's cursor walks them.
+    /// The covers in the order the lightbox's strip shows them.
     var items: [CoverItem] {
         [current].compactMap { $0 } + (remote?.items ?? [])
             + (files?.items ?? [])
@@ -93,17 +89,27 @@ struct CoverGalleryContent: Equatable {
         remote = section(.remote)
         files = section(.releaseFiles)
         total = Int(gallery.total)
+        focus = gallery.focus.map {
+            Focus(
+                cover: CoverItem(gallery: $0.cover),
+                position: Int($0.position),
+                previous: $0.previous,
+                next: $0.next
+            )
+        }
     }
 
     private init(
         current: CoverItem?,
         remote: Section?,
         files: Section?,
-        total: Int
+        total: Int,
+        focus: Focus?
     ) {
         self.current = current
         self.remote = remote
         self.files = files
         self.total = total
+        self.focus = focus
     }
 }

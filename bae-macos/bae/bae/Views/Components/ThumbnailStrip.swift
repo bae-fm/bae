@@ -7,15 +7,17 @@ enum ThumbnailStripLayout {
     static let thumbnailSize: CGFloat = 56
 }
 
-/// A horizontal strip of thumbnails over a `Cursor` that keeps the current
-/// item centered; the caller supplies each item's image view and stroke.
+/// A horizontal strip of thumbnails that keeps the current item centered; the
+/// caller supplies each item's image view and stroke.
 struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
-    let cursor: Cursor<Item>
+    let items: [Item]
+    /// The item shown now.
+    let current: Item.ID
     /// Centers a short row and scrolls to the current item on appear.
     let centered: Bool
     let onSelect: (Item.ID) -> Void
     /// Stroke (color, line width) for an item given whether it is the
-    /// cursor's current item.
+    /// current item.
     let stroke: (Item, Bool) -> (Color, CGFloat)
     @ViewBuilder
     let content: (Item) -> Content
@@ -38,7 +40,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
         ScrollViewReader { scrollProxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: ThemeSpace.compact) {
-                    ForEach(cursor.items) { item in
+                    ForEach(items) { item in
                         cell(item)
                             .id(item.id)
                     }
@@ -48,10 +50,10 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
             }
             .onAppear {
                 if centered {
-                    scrollProxy.scrollTo(cursor.current.id, anchor: .center)
+                    scrollProxy.scrollTo(current, anchor: .center)
                 }
             }
-            .onChange(of: cursor.current.id) { _, newId in
+            .onChange(of: current) { _, newId in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     scrollProxy.scrollTo(newId, anchor: .center)
                 }
@@ -60,7 +62,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
     }
 
     private func cell(_ item: Item) -> some View {
-        let (color, lineWidth) = stroke(item, cursor.isCurrent(item))
+        let (color, lineWidth) = stroke(item, item.id == current)
         return Button {
             onSelect(item.id)
         } label: {

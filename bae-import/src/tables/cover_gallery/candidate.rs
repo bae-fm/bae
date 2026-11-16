@@ -6,9 +6,8 @@
 //! refetch replaces them.
 
 use super::*;
-use crate::folder_scanner::FileVersion;
 use crate::tables::import_state::{current_at_scan_sql, SCANNED_HASH};
-use crate::tables::source_releases::{offered_covers_of_json, offered_covers_sql};
+use crate::tables::source_releases::offered_covers_sql;
 
 /// The link of the candidate whose content hash the expression `hash` names,
 /// as one JSON value: its kind, catalog and release, its partners and its
@@ -27,12 +26,12 @@ fn link_sql(hash: &str) -> String {
 }
 
 /// The gallery of the candidate the statement binds as `:key`, under the
-/// filter it binds as `:filter`: one row. The fetched covers show only while
-/// the candidate's link is the one they were fetched for; before such a
-/// fetch, the covers its draft's pressing offered show, while its state is
-/// the one its scanned files hold. Folder images show under all or the
-/// release's files.
-fn candidate_gallery_sql() -> String {
+/// filter it binds as `:filter`. The fetched covers show only while the
+/// candidate's link is the one they were fetched for; before such a fetch,
+/// the covers its draft's pressing offered show, while its state is the one
+/// its scanned files hold. Folder images show under all or the release's
+/// files. The candidate's own cover is the one its draft chose.
+pub(super) fn candidate_gallery_sql() -> String {
     format!(
         "
 WITH c AS (
@@ -42,120 +41,41 @@ fetch AS (
     SELECT f.content_hash, f.linked FROM candidate_cover_fetch AS f JOIN c USING (content_hash)
     WHERE f.link IS {link}
 ),
-fetched AS (
-    SELECT e.position, e.cover FROM candidate_cover_entry AS e JOIN fetch USING (content_hash)
-    WHERE :filter IN ('all', e.source)
+chosen (kind, key) AS (
+    SELECT CASE cover.kind WHEN 'local' THEN 'file' ELSE cover.kind END,
+           COALESCE(cover.file_id, cover.url)
+    FROM import_candidate_cover AS cover JOIN c USING (content_hash)
 ),
-offered AS (
-    SELECT o.key AS position, o.value AS cover
+listed (rank, pos, kind, key, item) AS (
+    SELECT 1, e.position, 'remote', json_extract(e.cover, '$.image.url'),
+           json_object('kind', 'remote', 'cover', json(e.cover))
+    FROM candidate_cover_entry AS e JOIN fetch USING (content_hash)
+    WHERE :filter IN ('all', e.source)
+    UNION ALL
+    SELECT 1, o.key, 'remote', o.value ->> 'url',
+           json_object('kind', 'offered', 'cover', json(o.value))
     FROM json_each(CASE WHEN EXISTS (SELECT 1 FROM fetch) THEN '[]'
                         WHEN EXISTS (SELECT 1 FROM import_candidate_state AS state WHERE {current})
                         THEN ({offered}) ELSE '[]' END) AS o
     WHERE :filter IN ('all', o.value ->> 'source')
-),
-files AS (
-    SELECT f.position, f.relative_path, f.absolute_path, f.size, f.modified_at_ns
+    UNION ALL
+    SELECT 2, f.position, 'file', f.relative_path,
+           json_object('kind', 'folder_file', 'id', f.relative_path, 'path', hex(f.absolute_path),
+                       'size', f.size, 'modified_at_ns', f.modified_at_ns)
     FROM scan_candidate_file AS f
     JOIN c ON f.watched_folder_path = c.watched_folder_path AND f.candidate_path = c.path
     WHERE :filter IN ('all', 'release_files')
       AND f.role = 'artwork' AND bae_supported_cover(f.relative_path)
-)
-SELECT (SELECT linked FROM fetch),
-       :filter <> 'release_files',
-       (SELECT json_group_array(json(cover) ORDER BY position) FROM fetched),
-       (SELECT json_group_array(json(cover) ORDER BY position) FROM offered),
-       (SELECT COUNT(*) FROM fetched) + (SELECT COUNT(*) FROM offered),
-       :filter IN ('all', 'release_files'),
-       (SELECT COUNT(*) FROM files),
-       (SELECT json_group_array(json_object('id', relative_path, 'path', hex(absolute_path),
-                                            'size', size, 'modified_at_ns', modified_at_ns)
-                                ORDER BY position)
-        FROM files)",
+),
+items (rank, pos, kind, key, preferred, item) AS (
+    SELECT rank, pos, kind, key, EXISTS (SELECT 1 FROM chosen WHERE (chosen.kind, chosen.key) = (listed.kind, listed.key)), item
+    FROM listed
+){walk}",
         link = link_sql("c.content_hash"),
         current = current_at_scan_sql("state"),
         offered = offered_covers_sql(SCANNED_HASH),
+        walk = super::walk::walk_sql("(SELECT linked FROM fetch)"),
     )
-}
-
-/// One folder image a cover can be, at the version the scan read.
-#[derive(serde::Deserialize)]
-struct FileJson {
-    id: String,
-    #[serde(deserialize_with = "path_column::from_hex")]
-    path: std::path::PathBuf,
-    size: u64,
-    modified_at_ns: i64,
-}
-
-/// The covers the picker of the candidate at `key` offers under `filter`, as
-/// one read.
-pub(super) fn candidate_gallery_on(
-    sql: &impl coven::SqlRead,
-    key: &crate::CandidateKey,
-    filter: CoverFilter,
-) -> Result<CoverGallery, DbError> {
-    let (
-        fetched,
-        shows_remote,
-        fetched_json,
-        offered_json,
-        remote_count,
-        shows_files,
-        files_count,
-        files_json,
-    ) = sql.query_row(
-        &candidate_gallery_sql(),
-        named_params! { ":key": key, ":filter": filter.column() },
-        |row| {
-            Ok((
-                row.get::<_, Option<bool>>(0)?,
-                row.get::<_, bool>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, u32>(4)?,
-                row.get::<_, bool>(5)?,
-                row.get::<_, u32>(6)?,
-                row.get::<_, String>(7)?,
-            ))
-        },
-    )?;
-    let mut remote: Vec<RemoteCover> = serde_json::from_str(&fetched_json).map_err(|error| {
-        DbError::unreadable_json("a candidate's fetched cover", &fetched_json, error)
-    })?;
-    remote.extend(offered_covers_of_json(&offered_json)?);
-    let files: Vec<FileJson> = serde_json::from_str(&files_json).map_err(|error| {
-        DbError::unreadable_json("a candidate's cover files", &files_json, error)
-    })?;
-    let mut sections = Vec::new();
-    if shows_remote {
-        sections.push(remote_section(remote, remote_count));
-    }
-    if shows_files {
-        sections.push(CoverSection {
-            source: CoverSectionSource::ReleaseFiles,
-            items: files
-                .into_iter()
-                .map(|file| GalleryCover {
-                    selection: Some(CoverSelection::Local(file.id.clone())),
-                    image: CoverImageSource::Local {
-                        file: FileVersion {
-                            path: file.path,
-                            size: file.size,
-                            modified_at_ns: file.modified_at_ns,
-                        },
-                    },
-                    label: GalleryLabel::File(file.id),
-                })
-                .collect(),
-            count: files_count,
-        });
-    }
-    Ok(CoverGallery {
-        current: None,
-        fetch: CoverFetch::of_column(fetched),
-        sections,
-        total: remote_count + files_count,
-    })
 }
 
 impl ImportTables {

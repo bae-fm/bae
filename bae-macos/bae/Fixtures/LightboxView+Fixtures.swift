@@ -23,9 +23,9 @@ extension LightboxView where Item == LightboxItem {
         return Cursor(items: [item], preferring: "front")
             .map { cursor in
                 LightboxView(
-                    cursor: cursor,
+                    place: cursor.place,
                     load: LightboxImageLoad(),
-                    onUpdate: { _ in },
+                    onSelect: { _ in },
                     onDismiss: {}
                 )
                 .environment(images)

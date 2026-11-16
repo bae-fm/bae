@@ -44,11 +44,13 @@ struct CoverPickerEmptyStateTests {
                                 count: 0
                             )
                         ],
-                        total: 0
+                        total: 0,
+                        focus: nil
                     )
                 ),
                 remoteItems: remoteItems,
                 filter: .constant(.all),
+                focusedCover: .constant(nil),
                 selectedCover: nil,
                 lightboxLoad: LightboxImageLoad(),
                 onRefresh: {},

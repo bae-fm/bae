@@ -581,6 +581,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
     let asked = crate::CoverGalleryRequest {
         owner: crate::CoverGalleryOwner::Candidate(crate::CandidateKey::folder(&dir)),
         filter: crate::CoverFilter::Catalog(bae_catalogs::catalog::Catalog::MusicBrainz),
+        focus: None,
     };
     let mut gallery = fixture.import.subscribe_cover_gallery(Some(asked.clone()));
     let gallery = loop {
