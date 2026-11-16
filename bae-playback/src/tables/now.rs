@@ -70,7 +70,7 @@ pub async fn playback_level(store: &Store) -> Result<(crate::Volume, bool), DbEr
 
 impl PlaybackNowRow {
     /// Write `change` into the row. A state that plays clears the last
-    /// failure, and a failure writes over the one the row holds.
+    /// failure, and a new failure replaces the one the row holds.
     pub async fn apply(&self, change: &PlaybackChange) -> Result<(), DbError> {
         let change = change.clone();
         self.store.call(move |sql| apply_on(sql, &change).map_err(DbError::from)).await

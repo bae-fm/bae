@@ -84,7 +84,7 @@ final class ProgressStripNSView: NSView {
         following.stop()
     }
 
-    /// The bar and label for `position`, as core sent it.
+    /// Sets the bar and label to `position`, as core sent it.
     private func setPosition(_ position: BridgeTrackPosition) {
         if bar.progress != position.progress {
             bar.progress = position.progress
@@ -99,7 +99,7 @@ final class ProgressStripNSView: NSView {
         )
     }
 
-    /// Clears everything: bar to 0, label empty.
+    /// Sets the bar to 0 and empties the label.
     private func reset() {
         bar.progress = 0
         elapsedField.show("")

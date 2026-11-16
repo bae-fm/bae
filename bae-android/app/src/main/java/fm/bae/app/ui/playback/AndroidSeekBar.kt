@@ -208,7 +208,7 @@ internal class PlaybackProgressView(
     private val following = FrameFollowing<BridgeTrackPosition>(this) { show(it) }
     private val bufferedFollowing = FrameFollowing<BridgeTrackBuffered>(this) { heldRanges.show(it?.ranges.orEmpty()) }
 
-    /** What the bar draws of a position; set by [bind]. */
+    /** What the bar draws of a position. [bind] sets it. */
     private var state: (BridgeTrackPosition?) -> SeekBarState = { SeekBarState(0.0, "", "", seekable = false) }
 
     /** What the stream last said; null while it holds nothing. */

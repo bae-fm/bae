@@ -5624,8 +5624,8 @@ The failure notice shows wherever the person is while the row holds a failure:
 an alert on macOS, a snackbar on Android. Playback writes a second failure
 over the first while the notice shows, and the notice shows the latest. When
 the notice ends (the person presses the alert's button or the snackbar's
-dismiss, or the snackbar times out), bae clears the row's failure, so a later
-failure shows again, even one alike.
+dismiss button, or the snackbar times out), bae clears the row's failure, so a
+later failure shows again, even one with the same reason as the one before it.
 A write of that row that fails is a playback failure too, an internal one: it
 is reported to the crash reporter, written to the row as the failure when that
 write works, and told to the app after the change it could not write. Playback
@@ -5644,7 +5644,7 @@ move the position on themselves, is another device-local row,
 position and whether it moves on from it at the play rate, and whether
 playback started the track's line because it applied a seek, in which case
 the line's position is the seek's target. Playback writes it only as it
-leaves the line it holds (a seek, even one that lands on the line, another
+leaves the line it holds (a seek, even one to where the line puts the track, another
 track or clip, a pause or resume, a new length, the pregap ending, or a
 position more than a second off the line), before it tells anyone else, and
 starting playback with the library resets it to no line. The app pulls a live

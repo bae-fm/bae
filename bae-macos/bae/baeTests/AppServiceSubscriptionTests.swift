@@ -13,7 +13,7 @@ import Testing
 @Suite("Playback failure display", .serialized)
 struct PlaybackFailureDisplayTests {
     @Test(
-        "the failure alert holds the failure the values carry, the latest one, until they carry none"
+        "the failure alert shows the latest failure in the playback values until the values have none"
     )
     func playbackFailureFollowsTheValues() async throws {
         let handle = FakeAppHandle()
@@ -41,7 +41,7 @@ struct PlaybackFailureDisplayTests {
             return false
         }
 
-        // Values that carry no failure, as after a dismiss, end it.
+        // Values with no failure, which core sends after a dismissal, close the alert.
         handle.deliverPlayback(playbackValues(state: .stopped))
         try await Wait.until { appService.stateForTesting.failure == nil }
         #expect(!appService.hasDisplayedErrorForTesting)

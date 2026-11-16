@@ -242,8 +242,8 @@ fn every_tabs_count_is_held_under_its_name() {
 }
 
 /// The positions' stream holds each position the output reports while the
-/// track plays, a seek's target at once, and rests where a paused track
-/// stands.
+/// track plays and a seek's target at once, and keeps a paused track's
+/// position without marking it as moving.
 #[test]
 fn the_position_stream_holds_each_position_and_rests_while_paused() {
     let values = StreamValues::new();
@@ -276,7 +276,7 @@ fn the_position_stream_holds_each_position_and_rests_while_paused() {
     }
     assert!(values.moving(b"track-1"));
 
-    assert_eq!(at(90_000, true).position_ms, 90_000, "a seek's target is held at once");
+    assert_eq!(at(90_000, true).position_ms, 90_000, "the stream holds a seek's target at once");
 
     assert_eq!(at(90_008, false).position_ms, 90_008);
     assert!(!values.moving(b"track-1"), "a paused track's position is at rest");

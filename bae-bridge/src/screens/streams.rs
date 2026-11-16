@@ -536,15 +536,15 @@ fn scan_found_held(counts: bae_import::ScanFoundCounts) -> HashMap<Vec<u8>, Brid
         .collect()
 }
 
-/// Write the playing track's position as `positions` hold it, each one the
-/// output reports. The position of a track that isn't playing stands where it
-/// is, so it is at rest.
+/// Write each position the audio output reports for the playing track. A
+/// paused or loading track's position does not change, so the stream marks it
+/// as at rest.
 fn write_track_position(writer: &StreamWriter, positions: &bae_playback::PlaybackPositions) {
     writer.reset_resting(track_position_held(positions), |_, _| !positions.playing);
 }
 
-/// The playing track's position as its stream holds it: under its track's
-/// key, or nothing.
+/// Answers what the stream holds for the playing track: its position under
+/// its track's key, or nothing while no track has a position.
 fn track_position_held(
     positions: &bae_playback::PlaybackPositions,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {

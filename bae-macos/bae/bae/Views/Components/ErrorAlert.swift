@@ -22,11 +22,11 @@ extension View {
         )
     }
 
-    /// The shared alert's shape for why playback last failed, which shows
-    /// while playback's values carry a failure, wherever the person is. A
-    /// later failure replaces the one shown. Any button calls `dismiss`, which
-    /// asks core to clear the failure; the alert closes when the values no
-    /// longer carry one.
+    /// Shows the shared Error alert for why playback last failed while
+    /// `PlaybackStore.failure` is set, on any screen. A later failure replaces
+    /// the one shown. Each button calls `dismiss`, which asks core to clear the
+    /// failure, and the alert closes when `PlaybackStore.failure` is `nil`
+    /// again.
     func playbackFailureAlert(
         _ playbackStore: PlaybackStore,
         dismiss: @escaping @MainActor () -> Void

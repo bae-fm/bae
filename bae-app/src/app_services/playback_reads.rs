@@ -19,8 +19,8 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_now_playing())
     }
 
-    /// Clear the failure playback's row holds, as the person dismissed the
-    /// failure notice that shows it.
+    /// The person dismissed the failure notice: clear the failure that the
+    /// `playback_now` row holds.
     pub async fn dismiss_playback_failure(&self) -> Result<(), bae_store::DbError> {
         bae_playback::tables::dismiss_playback_failure(&self.inner.store).await
     }

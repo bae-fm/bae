@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- the failure notice: a reason the person can act on, the other device a
     -- release's audio is on (by its name, and whether it is still in the
     -- library, removed, or replaced), or bae's own or the renderer's failure
-    -- with its untranslated detail. A later failure writes over an earlier
-    -- one.
+    -- with its untranslated detail. Playback writes a later failure over the
+    -- earlier one.
     failure         TEXT CHECK (failure IN (
         'sync_disconnected', 'on_other_device', 'original_missing',
         'audio_output', 'internal', 'renderer')),

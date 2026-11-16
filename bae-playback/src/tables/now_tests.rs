@@ -131,7 +131,7 @@ async fn each_change_reads_back_as_written() {
 }
 
 /// A failure shows until the person dismisses it, and a failure after the
-/// dismiss shows again, even one alike.
+/// dismissal shows again, even one with the same reason as the dismissed one.
 #[tokio::test]
 async fn a_dismissed_failure_clears_and_the_next_one_shows() {
     let (db, _tmp, _tracks) = release_db(1).await;
@@ -142,7 +142,7 @@ async fn a_dismissed_failure_clears_and_the_next_one_shows() {
     assert_eq!(now(&db).await.failure, Some(PlaybackErrorReason::OriginalMissing));
 
     dismiss_playback_failure(&db).await.unwrap();
-    assert_eq!(now(&db).await.failure, None, "the dismiss clears it");
+    assert_eq!(now(&db).await.failure, None, "dismissing clears the failure");
 
     row.apply(&failed).await.unwrap();
     assert_eq!(
@@ -152,8 +152,8 @@ async fn a_dismissed_failure_clears_and_the_next_one_shows() {
     );
 }
 
-/// A later failure replaces the one the row holds, and a pause leaves the
-/// failure while playing again clears it.
+/// A later failure replaces the one the row holds. A pause leaves the failure
+/// in the row, and playing again clears it.
 #[tokio::test]
 async fn a_later_failure_replaces_the_last_and_playing_clears_it() {
     let (db, _tmp, tracks) = release_db(1).await;

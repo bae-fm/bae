@@ -390,7 +390,7 @@ pub enum PlaybackProgress {
 }
 
 impl PlaybackProgress {
-    /// The playing tick at `position` of a track on `timeline`.
+    /// A position report at `position` of a track on `timeline`.
     pub(crate) fn position_update(
         timeline: TrackTimeline,
         track_id: String,

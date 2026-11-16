@@ -77,7 +77,8 @@ internal class PlaybackPositionModel {
             }
 
             else -> {
-                // A line for the pending seek's track that gets here started at a seek.
+                // The `held` case took each line for the pending seek's track that playback did
+                // not start at a seek, so this line confirms the seek.
                 if (pendingSeek?.matches(line.trackId) == true) pendingSeek = null
                 anchorPositionMs = line.positionMs
                 durationMs = line.durationMs

@@ -282,7 +282,7 @@ class OpenLibrary internal constructor(
 
     /**
      * The person dismissed the playback failure's snackbar: core clears the failure, and [playbackFailure] holds
-     * none once the values say so. A failed dismiss shows as a snackbar with Retry.
+     * none once the values say so. When dismissing fails, the app shows a snackbar with Retry.
      */
     fun dismissPlaybackFailure() {
         messages.perform("dismissPlaybackFailure") { appHandle.dismissPlaybackFailure() }

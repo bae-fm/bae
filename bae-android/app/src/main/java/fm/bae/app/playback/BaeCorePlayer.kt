@@ -392,8 +392,8 @@ class BaeCorePlayer(
      * Fold core's latest line into Media3's position: Media3 moves the position
      * on from the state's playing speed, so it is told only as playback leaves
      * the line it holds, which is when core sends one. Playback starts a new line at each seek it
-     * applies, and the line says so, so after a seek this player sent, core sends a line at the
-     * seek's target that says playback started it at a seek.
+     * applies and marks the line as started at a seek. After a seek this player sent, core sends
+     * such a line at the seek's target.
      */
     fun applyTimeline(timeline: BridgePlaybackTimeline) {
         latestLine = timeline.library

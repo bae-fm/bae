@@ -17,7 +17,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgePlaybackValueState
 
-/** The playback failure's snackbar shows the failure playback's values carry, and its dismiss goes to core. */
+/** The snackbar shows the failure that core's playback values hold, and dismissing the snackbar calls core. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class PlaybackFailurePullsTest {
@@ -47,7 +47,7 @@ class PlaybackFailurePullsTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(1, handle.playbackFailureDismissals)
 
-        // Core's values after the dismiss carry no failure, which ends the snackbar.
+        // Core's values after the dismissal hold no failure, which ends the snackbar.
         handle.playbackValues.deliver(playbackValues(stopped))
         shadowOf(Looper.getMainLooper()).idle()
         assertNull(session.playbackFailure.value)

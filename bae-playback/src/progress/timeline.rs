@@ -1,13 +1,15 @@
 //! Where playback is, for the surfaces that move the position on themselves:
-//! the operating system's media controls and Media3. Each is told a line, a
-//! position and whether it moves from there, and draws the rest of it; it is
-//! told again only when playback leaves the line it holds: a seek, another
-//! track or clip, a pause or resume, a new length, or a position that lands
-//! off where the line puts it.
+//! the operating system's media controls and Media3. The fold sends each a
+//! line: a position, and whether the position moves on from there at the play
+//! rate. The surface works out the position from the line and the time since.
+//! The fold sends a new line only when playback leaves the one it sent: a
+//! seek, another track or clip, a pause or resume, a new length, or a position
+//! more than `JUMP_THRESHOLD_MS` from where the line puts the track.
 //!
-//! This is the only place core keeps a line, because those surfaces take a
-//! position, a time and a speed through their own APIs. bae's own views draw
-//! each position the output reports (`PlaybackPositions`), with no line.
+//! The timeline module is the only place core keeps a line, because those
+//! surfaces take a position, a time and a speed through their own APIs. bae's
+//! own views draw each position the output reports (`PlaybackPositions`), with
+//! no line.
 
 use chrono::{DateTime, Utc};
 
@@ -15,9 +17,9 @@ use super::{PlaybackPositions, PlaybackValues, PreviewState};
 use crate::service::PlaybackState;
 use bae_track_audio::PreviewTarget;
 
-/// How far a position may land from where its line puts it before the line
-/// is told again: past the jitter of the positions an output reports, and
-/// short of any jump a listener would notice.
+/// How far a position may be from where its line puts the track before the
+/// fold sends a new line: more than the jitter of the positions an output
+/// reports, and less than any jump a listener would notice.
 pub const JUMP_THRESHOLD_MS: u64 = 1_000;
 
 /// The library track's line and the preview's, as last told.

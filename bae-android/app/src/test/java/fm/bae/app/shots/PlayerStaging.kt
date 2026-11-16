@@ -23,7 +23,7 @@ private const val SECONDS_PER_MINUTE = 60L
 /**
  * A playing track as a player draws it: where its line is, the seconds its clock says, which parts of it are
  * here, whether its load waits on storage. The boards give the line and the clock apart, as the design
- * system's previews do, so the clock is not worked out from the line.
+ * system's previews do, so the staging takes the clock's seconds as given and does not work them out from the line.
  */
 internal class PlayerStaging(
     progress: Double,

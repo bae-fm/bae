@@ -370,8 +370,8 @@ forward! { async this => {
         Ok(crate::types::BridgePlayOutcome::from_core(played))
     }
 
-    /// The person dismissed the failure notice: clear the failure the
-    /// playback values carry, so the notice shows again only for a later
+    /// The person dismissed the failure notice: clear the failure that the
+    /// `playback_now` row holds, so the notice shows again only for a later
     /// failure.
     fn dismiss_playback_failure() -> () {
         Ok(this.services.dismiss_playback_failure().await?)

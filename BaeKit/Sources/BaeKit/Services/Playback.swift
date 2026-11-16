@@ -59,8 +59,8 @@ public final class Playback: Sendable, Observable {
     /// back off the config mirror.
     public let setShowRemainingTime:
         @Sendable (_ enabled: Bool) async throws -> Void
-    /// Clear the failure the playback values carry, as the person dismissed
-    /// the alert that shows it.
+    /// The person dismissed the failure alert: ask core to clear the failure
+    /// that the `playback_now` row holds.
     public let dismissFailure: @Sendable () async throws -> Void
 
     public init(

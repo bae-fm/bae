@@ -378,9 +378,9 @@ private fun LibraryOpenScreen(
             showMessage(snackbarHostState, message, retryLabel)
         }
     }
-    // A playback failure has no screen of its own: its snackbar shows wherever the person is while playback's
-    // values carry it, and a later failure replaces it. The snackbar's end, by the person or its timeout, dismisses
-    // the failure.
+    // A playback failure has no screen of its own: its snackbar shows wherever the person is while the session's
+    // playbackFailure holds a failure, and a later failure replaces it. When the person closes the snackbar or it
+    // times out, the app dismisses the failure.
     val playbackFailure by session.playbackFailure.collectAsState()
     LaunchedEffect(session, playbackFailure, snackbarHostState) {
         val error = playbackFailure?.let { session.errors.display(it) } ?: return@LaunchedEffect

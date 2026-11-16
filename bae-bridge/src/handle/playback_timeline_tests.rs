@@ -3,8 +3,9 @@
 
 use bae_util::test_channels::HANG_GUARD;
 
-/// A library that has played nothing reads no line; cancelling
-/// ends the pulls.
+/// When nothing has played, the timeline's first value has no library or
+/// preview position. Cancelling the subscription makes the next pull return
+/// Cancelled.
 #[test]
 fn the_timeline_starts_with_no_line_until_cancelled() {
     let handle = super::super::tests::fresh_bridge_handle("playback-timeline");

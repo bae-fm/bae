@@ -302,7 +302,8 @@ async fn ending_remote_playback_after_a_seek_resumes_at_the_seek_target() {
 }
 
 /// The positions `rx` holds for `track_id`, in track time. A paused load sends
-/// its position as a position, never as a `Seeked`, so a `Seeked` fails.
+/// its position as a position, never as a `Seeked`, so the helper panics on a
+/// `Seeked`.
 fn shown_positions(
     rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
