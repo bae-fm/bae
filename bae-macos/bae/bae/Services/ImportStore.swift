@@ -42,37 +42,35 @@ class ImportStore {
     private(set) var folderScans = BridgeFolderScans(
         statuses: [],
         hasProblem: false,
-        activity: nil
+        activity: nil,
+        alerts: []
     )
 
-    /// The fault each watched root was last reported as having. A root that
-    /// cannot be read fails the same way on every re-scan the timer starts, so
-    /// this is what keeps one broken folder from raising one alert every time.
-    /// Rebuilt from each delivery, so a root that reads cleanly again — or
-    /// stops being watched — leaves, and its next break is news.
+    /// The scan alerts this store raised whose mark as shown has not
+    /// returned yet, each with the task that writes the mark. A delivery
+    /// made before the write commits still owes the alert, so this keeps it
+    /// from being raised twice; once the write returns, the folder scans
+    /// say whether it is still owed.
     @ObservationIgnored
-    private var reportedScanFailures: [Data: ReportedScan] = [:]
+    private var scanAlertMarks: [BridgeFolderScanAlert: Task<Void, Never>] =
+        [:]
 
-    /// Called for each watched root whose scan has newly failed or that is
-    /// newly not watched, with the folder's name, the untranslated fault or
-    /// reason, and which of the two it is. Set by whoever owns an error
-    /// surface — this store has none.
+    /// Called for each watched folder whose scan failed or that is not
+    /// watched, as the folder scans owe an alert for it. Set by whoever owns
+    /// an error surface: this store has none.
     ///
-    /// The failure arrives on the folder scans rather than as a transient
-    /// event because that is where it lives: the scan writes it to
-    /// `folder_scan_roots`, or core's scan coordinator holds one the store
-    /// would not take, and the folder scans read it back, so it is delivered
-    /// whenever the UI subscribes rather than only to whoever was already
-    /// listening. A scan that failed during launch, before any of this
-    /// existed, is in the first delivery.
+    /// The alert arrives on the folder scans rather than as a transient
+    /// event because core stores the problem and which alerts were raised,
+    /// so it is delivered whenever the UI subscribes rather than only to
+    /// whoever was already listening. A scan that failed during launch,
+    /// before any of this existed, is in the first delivery.
     @ObservationIgnored
-    var onScanFailure:
-        (
-            (
-                _ watchedFolderName: String, _ detail: String,
-                _ kind: FolderScanAlertKind
-            ) -> Void
-        )?
+    var onScanFailure: ((BridgeFolderScanAlert) -> Void)?
+
+    /// Records in core that an alert was raised, so the folder scans stop
+    /// owing it. Set with `onScanFailure`.
+    @ObservationIgnored
+    var markScanAlertShown: ((BridgeFolderScanAlert) async throws -> Void)?
 
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
@@ -80,10 +78,14 @@ class ImportStore {
         summary = next
     }
 
-    /// Take delivered folder scans.
+    /// Take delivered folder scans, and raise each alert they owe that this
+    /// store is not already marking shown.
+    @MainActor
     func applyFolderScans(_ next: BridgeFolderScans) {
         folderScans = next
-        reportNewScanFailures()
+        for alert in next.alerts where scanAlertMarks[alert] == nil {
+            raiseScanAlert(alert)
+        }
     }
 
     /// Every entry of Found's filter, in core's order, with how many of
@@ -465,28 +467,34 @@ extension ImportStore {
 }
 
 extension ImportStore {
-    private func reportNewScanFailures() {
-        var current: [Data: ReportedScan] = [:]
-        for status in folderScans.statuses {
-            let reported: ReportedScan
-            switch status.status {
-            case .failed(let detail):
-                reported = ReportedScan(kind: .failed, detail: detail)
-            case .notWatched(let reason):
-                reported = ReportedScan(kind: .notWatched, detail: reason)
-            case .scanning, .complete, .notScanned:
-                continue
+    /// Raise `alert`, and mark it shown in core. Until that write returns,
+    /// a delivery that still owes the alert does not raise it again; a
+    /// mark that fails leaves the alert owed, so the next delivery raises
+    /// it again.
+    @MainActor
+    private func raiseScanAlert(_ alert: BridgeFolderScanAlert) {
+        onScanFailure?(alert)
+        let mark = markScanAlertShown
+        scanAlertMarks[alert] = Task { @MainActor [weak self] in
+            do {
+                try await mark?(alert)
             }
-            current[status.watchedFolderPath] = reported
-            if reportedScanFailures[status.watchedFolderPath] != reported {
-                onScanFailure?(
-                    status.watchedFolderName,
-                    reported.detail,
-                    reported.kind
+            catch {
+                importStoreLogger.error(
+                    "the scan alert for \(alert.watchedFolderName) was not marked shown: \(String(describing: error))"
                 )
+                self?.reportFailure(error)
             }
+            self?.scanAlertMarks[alert] = nil
         }
-        reportedScanFailures = current
+    }
+
+    /// Wait until every scan alert mark this store started has returned.
+    @MainActor
+    func scanAlertMarksReturned() async {
+        while let mark = scanAlertMarks.values.first {
+            await mark.value
+        }
     }
 
     /// Take delivered import counts, writing each only when it moved so its
@@ -500,19 +508,4 @@ extension ImportStore {
             importsInFlight = counts.importsInFlight
         }
     }
-}
-
-/// What a root was last reported as, so the same fact raises its alert once,
-/// and a different one raises it again.
-private struct ReportedScan: Equatable {
-    let kind: FolderScanAlertKind
-    let detail: String
-}
-
-/// Which alert a watched folder's scan state raises.
-enum FolderScanAlertKind {
-    /// The folder could not be read.
-    case failed
-    /// The folder was read, and a directory in it could not be watched.
-    case notWatched
 }

@@ -75,9 +75,6 @@ pub struct ImportServiceHandle {
     /// What each library release's re-identify session asks about.
     release_lookup_choices: release_identification::ReleaseLookupChoices,
     watcher: WorkerThread<WatcherCommand>,
-    /// What the folder scan coordinator holds of each root's scan that no
-    /// table does, which the scan progress puts beside the stored scans.
-    scans_in_memory: tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
     runtime_handle: tokio::runtime::Handle,
 }
 
@@ -110,9 +107,6 @@ impl ImportServiceHandle {
     pub(super) fn new(
         worker: WorkerThread<crate::service::ImportWorkerMessage>,
         watcher: WorkerThread<WatcherCommand>,
-        scans_in_memory: tokio::sync::watch::Receiver<
-            crate::folder_scan_status::FolderScansInMemory,
-        >,
         services: crate::ImportServices,
         runtime: CandidateRuntime,
         release_reads: crate::ReleaseReads,
@@ -129,7 +123,6 @@ impl ImportServiceHandle {
             extraction,
             release_lookup_choices: Default::default(),
             watcher,
-            scans_in_memory,
             runtime_handle,
         }
     }

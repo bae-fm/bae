@@ -102,24 +102,17 @@ async fn stored_outcome(db: &Store) -> crate::StoredScanOutcome {
     scans.remove(0).last_scan.expect("a scan opened the root's generation").outcome
 }
 
-/// The folder scan coordinator over `scan`'s services, taking `command_rx`,
-/// and what it holds of each root's scan.
+/// The folder scan coordinator over `scan`'s services, taking `command_rx`.
 fn start_coordinator(
     scan: &TestScan,
     mut command_rx: tokio::sync::mpsc::UnboundedReceiver<crate::watching::WatcherCommand>,
-) -> (
-    std::thread::JoinHandle<()>,
-    tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
-) {
+) -> std::thread::JoinHandle<()> {
     let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (in_memory_tx, in_memory) =
-        tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
     let services = scan.services.services.clone();
     let folder_watcher = scan.services.folder_watcher.clone();
-    let coordinator = std::thread::spawn(move || {
-        crate::watching::run_watcher(&mut command_rx, fs_rx, services, folder_watcher, in_memory_tx)
-    });
-    (coordinator, in_memory)
+    std::thread::spawn(move || {
+        crate::watching::run_watcher(&mut command_rx, fs_rx, services, folder_watcher)
+    })
 }
 
 /// Refresh `root` through `commands` and wait for the answer.
@@ -170,7 +163,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),
     );
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (coordinator, _in_memory) = start_coordinator(&scan, command_rx);
+    let coordinator = start_coordinator(&scan, command_rx);
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     let crate::StoredScanOutcome::Failed { error } = stored_outcome(&test.db).await else {
@@ -434,8 +427,8 @@ async fn a_failure_the_store_refuses_is_reported_as_a_bug() {
     assert!(report.contains("the failed scan was refused"), "{report}");
 }
 
-/// The failure of a scan the store would not take is the root's status, from
-/// the coordinator's memory, until the root's next pass starts; the stored
+/// The failure of a scan the store would not take is the root's status, as
+/// the coordinator holds it, until the root's next pass starts; the stored
 /// scan holds no outcome meanwhile.
 #[tokio::test]
 async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
@@ -445,11 +438,9 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
     crate::tables::ImportTables::fail_failed_scan_writes_for_test(test.temp.path()).await;
     let (scan, _events) = test.scan();
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (coordinator, in_memory) = start_coordinator(&scan, command_rx);
+    let coordinator = start_coordinator(&scan, command_rx);
     let progress = || async {
-        let held = in_memory.borrow().clone();
-        let stored = test.tables().load_stored_folder_scans().await.unwrap();
-        let progress = crate::FolderScanProgress::of(stored, &held);
+        let progress = test.tables().load_folder_scan_progress().await.unwrap();
         let [status] = <[_; 1]>::try_from(progress.statuses).expect("one root is watched");
         status.status
     };
@@ -482,12 +473,10 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
     crate::tables::ImportTables::fail_first_scan_begins_for_test(test.temp.path()).await;
     let (scan, _events) = test.scan();
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
-    let (coordinator, in_memory) = start_coordinator(&scan, command_rx);
+    let coordinator = start_coordinator(&scan, command_rx);
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
-    let held = in_memory.borrow().clone();
-    let stored = test.tables().load_stored_folder_scans().await.unwrap();
-    let progress = crate::FolderScanProgress::of(stored, &held);
+    let progress = test.tables().load_folder_scan_progress().await.unwrap();
     let [status] = <[_; 1]>::try_from(progress.statuses).expect("the watched folder is listed");
     assert_eq!(status.watched_folder_path, root);
     let crate::FolderScanStatus::Failed { error } = status.status else {

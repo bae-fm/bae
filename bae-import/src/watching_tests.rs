@@ -281,9 +281,6 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// The directory the coordinator's library is stored under.
     pub(crate) library: TempDir,
-    /// What the coordinator holds of each root's scan that no table does.
-    pub(crate) scans_in_memory:
-        tokio::sync::watch::Receiver<crate::folder_scan_status::FolderScansInMemory>,
 }
 
 impl CoordinatorHarness {
@@ -339,8 +336,6 @@ impl CoordinatorHarness {
         let (scans, starter) = FakeScanStarter::new();
         let removal_backend = Arc::new(FakeRemovalBackend::default());
         let events = tokio::sync::Mutex::new(test.event_tx().every_event());
-        let (scans_in_memory_tx, scans_in_memory) =
-            tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
         let services = test.import_services(
             test.event_tx().clone(),
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
@@ -355,7 +350,6 @@ impl CoordinatorHarness {
                 services,
                 starter,
                 coordinator_removals,
-                scans_in_memory_tx,
             )
         });
         let TestService { db, temp, .. } = test;
@@ -370,7 +364,6 @@ impl CoordinatorHarness {
             events,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
             library: temp,
-            scans_in_memory,
         }
     }
 

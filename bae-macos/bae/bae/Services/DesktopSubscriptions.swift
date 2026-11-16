@@ -220,6 +220,9 @@ final class DesktopSubscriptions {
         // starting up is raised on the first delivery instead of being
         // published to nobody.
         importStore.onScanFailure = Self.scanFailureAlert(on: uiStore)
+        importStore.markScanAlertShown = { [appHandle] alert in
+            try await appHandle.markFolderScanAlertShown(alert: alert)
+        }
         importList = ImportListSlot(
             importStore: importStore,
             uiStore: uiStore,
@@ -257,20 +260,17 @@ final class DesktopSubscriptions {
     /// as its detail.
     private static func scanFailureAlert(
         on uiStore: UiStore
-    ) -> (
-        _ watchedFolderName: String, _ detail: String,
-        _ kind: FolderScanAlertKind
-    ) -> Void {
-        { [uiStore] watchedFolderName, detail, kind in
+    ) -> (BridgeFolderScanAlert) -> Void {
+        { [uiStore] alert in
             let key =
-                switch kind {
+                switch alert.kind {
                 case .failed: "ui.import.folder.scan_failed"
                 case .notWatched: "ui.import.folder.not_watched"
                 }
             uiStore.showError(
                 DisplayError(
-                    line: localizedCoreString(key, watchedFolderName),
-                    detail: detail
+                    line: localizedCoreString(key, alert.watchedFolderName),
+                    detail: alert.detail
                 )
             )
         }

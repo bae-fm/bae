@@ -165,6 +165,30 @@ pub struct BridgeFolderScans {
     /// The roots being scanned, for the filter bar's activity control;
     /// absent while no root is scanning.
     pub activity: Option<BridgeFolderScanActivity>,
+    /// Each root's problem that the app has raised no alert for, in
+    /// watched-folder order. The app raises each one and marks it shown
+    /// (`AppHandle::mark_folder_scan_alert_shown`).
+    pub alerts: Vec<BridgeFolderScanAlert>,
+}
+
+/// A watched folder's problem the app has raised no alert for. Mirrors
+/// `bae_import::FolderScanAlert`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeFolderScanAlert {
+    pub watched_folder_path: Vec<u8>,
+    pub watched_folder_name: String,
+    pub kind: BridgeFolderScanAlertKind,
+    /// The failure, or why the folder is not watched, untranslated.
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeFolderScanAlertKind {
+    /// The folder's scan failed.
+    Failed,
+    /// The folder was read in full, and a directory in it could not be
+    /// watched.
+    NotWatched,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

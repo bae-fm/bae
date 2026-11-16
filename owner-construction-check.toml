@@ -482,8 +482,6 @@ task_types = [
     "LoudnessProgress",
     "SourceStream",
     "SendHold",
-    # The folder scans' live read, built for each screen that shows them.
-    "FolderScansLive",
     # A streamed track's encoded chunks on their way to the response.
     "ChannelSink",
     # One MCP client session's server, built when the session opens.
@@ -1080,7 +1078,6 @@ OpenCalls = "LibrarySessions"
     # Stopped by its key's cancellation token.
     "ExtractionService::start",
 ]
-"bae-import/src/folder_scan_status.rs" = ["FolderScansLive::new"]
 "bae-import/src/folder_scanner/scan.rs" = [
     "ScanCancellation::child",
     "ScanCancellation::new",
@@ -1449,6 +1446,8 @@ tables = [
     "folder_scan_generation_sequence",
     "folder_scan_roots",
     "folder_scan_directory",
+    "folder_scan_held",
+    "folder_scan_alert_shown",
     "scan_candidate",
     "scan_candidate_file",
     "scan_candidate_unit",
@@ -1709,10 +1708,6 @@ frozen = [
     { path = "bae-import/src/cover_art.rs", item = "default_local_cover_file", shape = "aggregate", count = 1, finding = "picks the folder's cover among its image files with `min_by`" },
     { path = "bae-import/src/cover_art.rs", item = "default_local_cover_file", shape = "filter", count = 1, finding = "keeps the files that can be a cover (`filter`)" },
     { path = "bae-import/src/file_evidence.rs", item = "file_evidence", shape = "filter", count = 2, finding = "keeps the Disc ID and barcode signals that name a file of the candidate (`filter_map`)" },
-    { path = "bae-import/src/folder_scan_status.rs", item = "FolderScanProgress::of", shape = "filter", count = 1, finding = "keeps the folders whose scan is active (`filter_map`)" },
-    { path = "bae-import/src/folder_scan_status.rs", item = "FolderScanProgress::of", shape = "length-branch", count = 1, finding = "shows no scan activity when no folder scans (`is_empty`)" },
-    { path = "bae-import/src/folder_scan_status.rs", item = "FolderScanProgress::of", shape = "pick", count = 1, finding = "tests whether any folder's scan has a problem with `any`" },
-    { path = "bae-import/src/folder_scan_status.rs", item = "FolderScansLive::next", shape = "kept-state", count = 3, finding = "keeps whether it read the stored scans (`stored_read`), whether the coordinator runs (`coordinator_running`) and the progress it last delivered (`told`) between deliveries" },
     { path = "bae-import/src/folder_scanner/candidates.rs", item = "InvalidCandidate::cover", shape = "filter", count = 1, finding = "keeps a skipped release's image files (`filter`)" },
     { path = "bae-import/src/folder_scanner/candidates.rs", item = "InvalidCandidate::cover", shape = "pick", count = 1, finding = "finds the skipped file the cover ranking picked with `find`" },
     { path = "bae-import/src/folder_scanner/candidates.rs", item = "InvalidReason::of", shape = "aggregate", count = 1, finding = "counts a skipped release's damaged audio files with `count`" },

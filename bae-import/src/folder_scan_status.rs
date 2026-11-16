@@ -1,16 +1,17 @@
 //! Where each watched folder's scan stands: scanning, complete, failed, or
-//! read but not watched; whether the folder is on a network
-//! volume; and the walks under way, totalled for the list's chrome.
+//! read but not watched; whether the folder is on a network volume; the
+//! folders being scanned, for the list's chrome; and the problems whose alert
+//! the app has not raised yet.
 //!
-//! Two sources make it. The table holds what a scan stored: the outcome of
-//! the root's current generation, or none while that scan has stored none.
-//! How many folders a scan has found is not here: it moves with every folder
-//! the scan walks, and has a stream of its own. The folder scan coordinator holds, in
-//! memory, which roots are being read and the failure of a root's last pass
-//! that the store would not take. Neither of those can outlive the process,
-//! so a root never reads as scanning with nothing scanning it.
+//! One live query reads it all (`folder_scans/progress.sql`). It puts each
+//! folder's stored scan beside what the folder scan coordinator holds of it
+//! that no scan stores: whether a pass is reading it, and a failure the scan
+//! could not store. The coordinator writes those rows in the step that
+//! changes them, and the import service empties them as the library opens,
+//! so a folder never reads as scanning with nothing scanning it. How many
+//! folders a scan has found moves with every folder the scan walks, and has a
+//! read of its own.
 
-use bae_store::live_results::LiveResults;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -50,109 +51,48 @@ pub enum FolderScanStatus {
 /// How many folders each scan under way has stored, by its root.
 pub type ScanFoundCounts = BTreeMap<PathBuf, u64>;
 
-/// What a root shows when its current generation stored no outcome, nothing
-/// is reading it, and no failure is held for it: the pass that read it ended
-/// without storing what became of it, as one that panicked does.
-pub(crate) const SCAN_STOPPED_UNSTORED: &str = "the scan stopped before its result could be stored";
-
 /// Where each watched folder's scan stands, for the chrome around the list.
 ///
 /// Read apart from the list, by its own live query, and sent on its own
 /// subscription: a scan re-confirms every folder it walks by moving its row
 /// to the scan's generation, which moves the found count and nothing the list
-/// shows. Counted inside the list's read, each of those writes cost a
-/// whole-queue read, and a rescan of a large folder kept the list reading back
-/// to back until it finished; sent with the list, each resent its page. The
-/// found count is not read here: it has its own query and stream, so the
-/// writes that move it rerun neither this read nor reach the screen with it.
+/// shows. The found count is not read here: it has its own query and stream,
+/// so the writes that move it neither rerun this read nor reach the screen
+/// with it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every watched root, in watched-folder order.
     pub statuses: Vec<WatchedFolderScanStatus>,
     /// Whether any root's last scan failed or left it not watched.
     pub has_problem: bool,
-    /// The current walks, already filtered and totalled for the filter-bar
-    /// activity control. Absent as soon as no root is scanning.
+    /// The roots being scanned, for the filter-bar activity control. Absent
+    /// while no root is scanning.
     pub activity: Option<FolderScanActivity>,
+    /// Each root's problem that the app has raised no alert for, in
+    /// watched-folder order.
+    pub alerts: Vec<FolderScanAlert>,
 }
 
-impl FolderScanProgress {
-    /// Builds each watched folder's scan status from the stored scans and
-    /// the coordinator's in-memory state. When the coordinator holds a
-    /// failure that it could not write to the table, that failure is the
-    /// folder's status, on the volume the failing pass found it on. Otherwise the status is the outcome the folder's generation
-    /// stored; a generation with no outcome shows Scanning while a pass reads
-    /// the folder, and otherwise the generation ended without storing one. A
-    /// folder that has no stored scan and no held failure shows Not scanned:
-    /// a pass that reads it stores its generation, with its volume, as it
-    /// starts.
-    pub(crate) fn of(stored: Vec<StoredRootScan>, in_memory: &FolderScansInMemory) -> Self {
-        let statuses: Vec<WatchedFolderScanStatus> = stored
-            .into_iter()
-            .map(|root| {
-                let held = in_memory.get(&root.watched_folder_path);
-                let (status, on_network_volume) = match (held, root.last_scan) {
-                    (Some(RootScanInMemory::UnstoredFailure(failure)), _) => (
-                        FolderScanStatus::Failed { error: failure.error.clone() },
-                        failure.volume == crate::VolumeKind::Network,
-                    ),
-                    (_, None) => (FolderScanStatus::NotScanned, false),
-                    (held, Some(StoredScan { outcome, on_network_volume })) => {
-                        let status = match (held, outcome) {
-                            (_, StoredScanOutcome::Complete) => FolderScanStatus::Complete,
-                            (_, StoredScanOutcome::Failed { error }) => {
-                                FolderScanStatus::Failed { error }
-                            }
-                            (_, StoredScanOutcome::NotWatched { reason }) => {
-                                FolderScanStatus::NotWatched { reason }
-                            }
-                            (Some(RootScanInMemory::Running), StoredScanOutcome::Unfinished) => {
-                                FolderScanStatus::Scanning
-                            }
-                            (
-                                None | Some(RootScanInMemory::UnstoredFailure(_)),
-                                StoredScanOutcome::Unfinished,
-                            ) => FolderScanStatus::Failed {
-                                error: SCAN_STOPPED_UNSTORED.to_string(),
-                            },
-                        };
-                        (status, on_network_volume)
-                    }
-                };
-                WatchedFolderScanStatus {
-                    watched_folder_name: crate::WatchedFolder::from_path(
-                        root.watched_folder_path.clone(),
-                    )
-                    .name,
-                    watched_folder_path_text: coven::path_text(&root.watched_folder_path),
-                    watched_folder_path: root.watched_folder_path,
-                    status,
-                    on_network_volume,
-                }
-            })
-            .collect();
-        let folders: Vec<ActiveFolderScan> = statuses
-            .iter()
-            .filter_map(|folder| match folder.status {
-                FolderScanStatus::Scanning => Some(ActiveFolderScan {
-                    watched_folder_path: folder.watched_folder_path.clone(),
-                    watched_folder_name: folder.watched_folder_name.clone(),
-                }),
-                FolderScanStatus::NotScanned
-                | FolderScanStatus::Complete
-                | FolderScanStatus::Failed { .. }
-                | FolderScanStatus::NotWatched { .. } => None,
-            })
-            .collect();
-        let activity = (!folders.is_empty()).then_some(FolderScanActivity { folders });
-        let has_problem = statuses.iter().any(|folder| {
-            matches!(
-                folder.status,
-                FolderScanStatus::Failed { .. } | FolderScanStatus::NotWatched { .. }
-            )
-        });
-        Self { statuses, has_problem, activity }
-    }
+/// A watched folder's problem that the app has raised no alert for. The app
+/// raises one and marks it shown
+/// ([`crate::ImportServiceHandle::mark_folder_scan_alert_shown`]), and the
+/// folder's next problem is owed an alert again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FolderScanAlert {
+    pub watched_folder_path: PathBuf,
+    pub watched_folder_name: String,
+    pub kind: FolderScanAlertKind,
+    /// The failure, or why the folder is not watched, untranslated.
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderScanAlertKind {
+    /// The folder's scan failed.
+    Failed,
+    /// The folder was read in full, and a directory in it could not be
+    /// watched.
+    NotWatched,
 }
 
 /// Live folder-scan activity for the list chrome: the roots being scanned.
@@ -201,19 +141,20 @@ pub enum StoredScanOutcome {
     },
 }
 
-/// What the folder scan coordinator knows of one root's scan that no table
-/// holds. It lives in the coordinator's memory, so it ends with the process.
+/// What the folder scan coordinator holds of one root's scan that no scan
+/// stores. It writes each root's to `folder_scan_held` in the step that
+/// changes it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum RootScanInMemory {
+pub(crate) enum HeldRootScan {
     /// A whole-root pass is reading the root or is owed once the pass
     /// running ends, or a removal holds the root: its scan is not over.
     Running,
-    /// The root's last pass failed, and the store would not take the
+    /// The root's last pass failed, and its scan could not store the
     /// failure. Cleared when the root's next pass starts.
     UnstoredFailure(UnstoredScanFailure),
 }
 
-/// A pass's failure the store would not take, with the volume the pass found
+/// A pass's failure its scan could not store, with the volume the pass found
 /// the folder on: a folder whose first scan could not open its generation
 /// has no stored volume to show beside it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,100 +163,5 @@ pub(crate) struct UnstoredScanFailure {
     pub(crate) volume: crate::VolumeKind,
 }
 
-/// Every root the coordinator knows something of, by path.
-pub(crate) type FolderScansInMemory = BTreeMap<PathBuf, RootScanInMemory>;
-
-/// The stored scans and the coordinator's memory, put into one progress each
-/// time either changes it.
-///
-/// The stored scans are never older than the memory they are put with. A
-/// pass stores its outcome before the coordinator hears it ended and stops
-/// holding the root as running, so stored scans read before that memory
-/// would show a root neither running nor finished. Each progress therefore
-/// reads the stored scans afresh, after taking the memory; the stored scans'
-/// own live query only says when they change.
-pub(crate) struct FolderScansLive {
-    tables: crate::tables::ImportTables,
-    changes: LiveResults<coven::LiveQuery<Vec<StoredRootScan>, bae_store::DbError>>,
-    in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
-    /// Whether the coordinator still holds the memory's sender. Once it has
-    /// stopped, the memory says what it last said and only the table moves.
-    coordinator_running: bool,
-    /// Whether the stored scans' live query has delivered its first value.
-    stored_read: bool,
-    /// The progress last handed out, so one equal to it isn't handed out
-    /// again.
-    told: Option<FolderScanProgress>,
-}
-
-impl FolderScansLive {
-    pub(crate) fn new(
-        tables: crate::tables::ImportTables,
-        in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
-        bugs: coven::task::BugSinkRef,
-    ) -> Self {
-        Self {
-            changes: LiveResults::new(tables.subscribe_stored_folder_scans(), bugs),
-            tables,
-            in_memory,
-            coordinator_running: true,
-            stored_read: false,
-            told: None,
-        }
-    }
-
-    /// The first progress once the table has been read, then one each time
-    /// the table or the memory changes it. A failed read is handed on.
-    /// `None` once the table's query has ended with its store.
-    pub(crate) async fn next(&mut self) -> Option<Result<FolderScanProgress, bae_store::DbError>> {
-        loop {
-            tokio::select! {
-                changed = self.changes.next() => match changed? {
-                    Ok(_) => self.stored_read = true,
-                    Err(error) => return Some(Err(error)),
-                },
-                changed = self.in_memory.changed(), if self.coordinator_running => {
-                    if changed.is_err() {
-                        tracing::debug!(
-                            "the folder scan coordinator stopped; scan progress follows the table alone"
-                        );
-                        self.coordinator_running = false;
-                    }
-                }
-            }
-            if !self.stored_read {
-                continue;
-            }
-            let in_memory = self.in_memory.borrow_and_update().clone();
-            let stored = match self.tables.load_stored_folder_scans().await {
-                Ok(stored) => stored,
-                Err(error) => return Some(Err(error)),
-            };
-            let progress = FolderScanProgress::of(stored, &in_memory);
-            if self.told.as_ref() == Some(&progress) {
-                continue;
-            }
-            self.told = Some(progress.clone());
-            return Some(Ok(progress));
-        }
-    }
-}
-
-impl bae_store::live_query::LiveSource<FolderScanProgress> for FolderScansLive {
-    fn next(&mut self) -> bae_store::live_query::NextValue<'_, FolderScanProgress> {
-        Box::pin(FolderScansLive::next(self))
-    }
-}
-
-impl bae_store::live_query::IntoLiveSource<FolderScanProgress> for FolderScansLive {
-    fn into_live_source(
-        self,
-        _bugs: coven::task::BugSinkRef,
-    ) -> Box<dyn bae_store::live_query::LiveSource<FolderScanProgress>> {
-        Box::new(self)
-    }
-}
-
-#[cfg(test)]
-#[path = "folder_scan_status_tests.rs"]
-mod tests;
+/// Every root the coordinator holds something of, by path.
+pub(crate) type HeldRootScans = BTreeMap<PathBuf, HeldRootScan>;

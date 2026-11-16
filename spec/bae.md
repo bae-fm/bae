@@ -900,23 +900,26 @@ no read can list is refused whole. Each entry's write reads only that entry
 and the entries reading the same files, which it finds by their folders, so it
 costs the same however much else the watched folder holds.
 
-**How a scan's state shows.** The folder stores only how its current scan
-ended, complete, failed with the error, or not watched with the reason, and
-nothing until that scan stores it. Whether a scan is reading the folder is never stored: the coordinator
-that starts the passes holds it in memory, so it ends with the process and a
-folder never reads as scanning with nothing scanning it. A folder whose
+**How a scan's state shows.** The folder's scan stores only how its current
+scan ended, complete, failed with the error, or not watched with the reason,
+and nothing until that scan stores it. Whether a pass is reading the folder is
+the coordinator's that starts the passes: it writes that to the device-local
+table `folder_scan_held` in the step that changes it, and the library empties
+that table each time it opens, so a folder never reads as scanning with nothing
+scanning it. A folder whose
 current scan stored an outcome shows it. One whose scan stored none reads as
 scanning while a scan of all of it runs or is owed, or a removal holds it.
 A folder that no scan has opened a generation for shows Not scanned. The folder
 scans list every watched folder with its status and whether it is on a network
-volume, and say whether any folder's last scan failed or left it not watched, so
-the list's menu draws them without joining anything. How many folders the scan
+volume, say whether any folder's last scan failed or left it not watched, and
+list the folders being scanned, so the list's menu draws them without joining
+anything; one live query reads them all. How many folders the scan
 has stored moves with every folder it walks, so it is not part of that status:
 it has a stream of its own, keyed by the folder's path, which the scan
 indicator's list of folders reads each display frame. A pass whose failure the
 store won't take, a whole scan's or a changed folder's reading's, still shows as
-failed with its error: the coordinator holds that failure as the folder's status
-until the folder's next pass starts, with the volume the pass found the
+failed with its error: the coordinator writes that failure to `folder_scan_held` as the
+folder's status until the folder's next pass starts, with the volume the pass found the
 folder on, so a folder whose first scan could not even store its start shows
 too. A folder with no scan stored and no failure held has no status yet and
 is not listed; a scan stores its start, with the folder's volume, as it
@@ -926,8 +929,18 @@ earlier bug too, which was reported as it happened), or the library closing
 is not. A scan that ended with nothing stored and nothing
 held, as one that panicked while storing its failure does, shows as failed,
 saying it stopped before its result could be stored. No event carries a
-scan's state: the screen reads it from the stored outcome and the
-coordinator's memory together, the stored outcome read after the memory.
+scan's state: the screen's query reads it from the stored outcome and
+`folder_scan_held` together.
+
+On a Mac, a folder whose scan failed, or that is not watched, raises an alert
+headlined "Could not scan {folder}" or "Not watching {folder} for changes",
+with the error or the reason. The folder scans list each problem the app has
+raised no alert for. The app raises each one and records that it did in the
+device-local table `folder_scan_alert_shown`, so one problem raises one alert. A folder's problem ends
+when a new scan of the folder starts, or when the coordinator stops holding a
+failure for it, and the folder's next problem raises its alert again, even with
+the same error. The library empties that table each time it opens, so a
+problem still stored at launch raises its alert again.
 
 **What a scan reads.** A scan reads each file once. It opens a track twice:
 FFmpeg's probe, which says whether it plays, and one read of its tags, which
@@ -6508,7 +6521,8 @@ reads it again once.
 | `release_grouping`, `release_grouping_member` | folders read as one release, or kept apart, and by whom (§3.1) |
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
-| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a scan is reading the folder is never stored (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
+| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
+| `folder_scan_held`, `folder_scan_alert_shown` | what the folder scan coordinator holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |

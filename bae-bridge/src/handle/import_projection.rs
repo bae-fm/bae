@@ -508,7 +508,28 @@ mirror_struct! {
         statuses: (each crate::types::BridgeWatchedFolderScanStatus),
         has_problem,
         activity: (opt crate::types::BridgeFolderScanActivity),
+        alerts: (each crate::types::BridgeFolderScanAlert),
     },
+}
+
+mirror_enum! {
+    crate::types::BridgeFolderScanAlertKind = bae_import::FolderScanAlertKind,
+    from_core: fn,
+    into_core: pub(super) fn,
+    variants: { Failed, NotWatched },
+}
+
+impl crate::types::BridgeFolderScanAlert {
+    fn from_core(alert: bae_import::FolderScanAlert) -> Self {
+        let bae_import::FolderScanAlert { watched_folder_path, watched_folder_name, kind, detail } =
+            alert;
+        Self {
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            watched_folder_name,
+            kind: crate::types::BridgeFolderScanAlertKind::from_core(kind),
+            detail,
+        }
+    }
 }
 
 impl crate::types::BridgeImportQueueSummary {

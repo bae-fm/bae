@@ -138,16 +138,7 @@ impl ImportServiceHandle {
                 self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::Panicked(bug))
             })??;
         }
-        Ok(self.folder_scan_progress().await?.statuses)
-    }
-
-    /// Where each watched folder's scan stands now: the stored scans read
-    /// after the coordinator's memory, as [`crate::folder_scan_status`]'s live
-    /// read puts them together.
-    async fn folder_scan_progress(&self) -> Result<crate::FolderScanProgress, crate::ImportError> {
-        let in_memory = self.scans_in_memory.borrow().clone();
-        let stored = self.services.tables.load_stored_folder_scans().await?;
-        Ok(crate::FolderScanProgress::of(stored, &in_memory))
+        Ok(self.services.tables.load_folder_scan_progress().await?.statuses)
     }
 
     pub async fn refresh_watched_folder(
@@ -206,9 +197,8 @@ impl ImportServiceHandle {
         &self,
         mut accept: impl FnMut(&crate::FolderScanProgress) -> bool,
     ) -> crate::FolderScanProgress {
-        let mut scans = crate::folder_scan_status::FolderScansLive::new(
-            self.services.tables.clone(),
-            self.scans_in_memory.clone(),
+        let mut scans = bae_store::live_results::LiveResults::new(
+            self.services.tables.subscribe_folder_scan_progress(),
             self.services.diagnostics.bug_sink(),
         );
         loop {

@@ -472,46 +472,50 @@ async fn a_failed_takeover_restores_the_inner_folders() {
 }
 
 /// What the coordinator holds of `root`'s scan, once it holds `expected`.
-async fn wait_for_in_memory(
+async fn wait_for_held(
     harness: &CoordinatorHarness,
     root: &Path,
-    expected: Option<crate::folder_scan_status::RootScanInMemory>,
+    expected: Option<crate::folder_scan_status::HeldRootScan>,
 ) {
-    let mut in_memory = harness.scans_in_memory.clone();
-    tokio::time::timeout(
-        HANG_GUARD,
-        in_memory.wait_for(|held| held.get(root) == expected.as_ref()),
-    )
+    let mut held = crate::tables::ImportTables::new(harness.db.clone()).subscribe_held_root_scans();
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let now = held.next_inline().await.expect("the held scans' query stays open").unwrap();
+            if now.get(root) == expected.as_ref() {
+                return;
+            }
+        }
+    })
     .await
-    .expect("the coordinator publishes what it holds of the root")
-    .expect("the coordinator is running");
+    .expect("the coordinator writes what it holds of the root");
 }
 
 /// A root reads as running while its whole-root pass runs. A failure that
-/// pass could not store is held as the root's once it ends, published before
+/// pass could not store is held as the root's once it ends, written before
 /// whoever waited on the pass hears it ended, and the root's next pass clears
 /// it.
 #[tokio::test]
 async fn a_pass_failure_the_store_refused_is_held_until_the_next_pass() {
-    use crate::folder_scan_status::RootScanInMemory;
+    use crate::folder_scan_status::HeldRootScan;
     let harness = CoordinatorHarness::new().await;
     let root = root_path("/music");
     let refreshed = request_refresh(&harness, "/music");
     harness.scans.wait_for_count(1).await;
-    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+    wait_for_held(&harness, &root, Some(HeldRootScan::Running)).await;
 
     harness.scans.fail_unstored(0, "the disk is full");
     assert_eq!(refreshed.await.unwrap(), Ok(()));
+    let tables = crate::tables::ImportTables::new(harness.db.clone());
     assert_eq!(
-        harness.scans_in_memory.borrow().get(&root),
-        Some(&RootScanInMemory::UnstoredFailure(crate::folder_scan_status::UnstoredScanFailure {
+        tables.load_held_root_scans().await.unwrap().get(&root),
+        Some(&HeldRootScan::UnstoredFailure(crate::folder_scan_status::UnstoredScanFailure {
             error: "the disk is full".to_string(),
             volume: crate::VolumeKind::Local,
         }))
     );
 
     assert_next_pass_reads_only_a_later_change(&harness, 1).await;
-    wait_for_in_memory(&harness, &root, None).await;
+    wait_for_held(&harness, &root, None).await;
     harness.shutdown().await;
 }
 
@@ -520,7 +524,7 @@ async fn a_pass_failure_the_store_refused_is_held_until_the_next_pass() {
 /// pass ends.
 #[tokio::test]
 async fn a_root_whose_whole_pass_is_owed_reads_as_running() {
-    use crate::folder_scan_status::RootScanInMemory;
+    use crate::folder_scan_status::HeldRootScan;
     let harness = CoordinatorHarness::new().await;
     let root = rescan_and_wait(&harness, "/music").await;
     let decided = request_group_decision(&harness, &root);
@@ -528,15 +532,15 @@ async fn a_root_whose_whole_pass_is_owed_reads_as_running() {
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
     assert!(harness.scans.reading(1).is_some(), "the decision's pass runs next");
-    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+    wait_for_held(&harness, &root, Some(HeldRootScan::Running)).await;
 
     harness.scans.complete(1);
     assert!(decided.await.unwrap().is_ok());
     harness.scans.wait_for_count(3).await;
     assert_eq!(harness.scans.reading(2), None, "the owed whole-root pass runs last");
-    wait_for_in_memory(&harness, &root, Some(RootScanInMemory::Running)).await;
+    wait_for_held(&harness, &root, Some(HeldRootScan::Running)).await;
 
     harness.scans.complete(2);
-    wait_for_in_memory(&harness, &root, None).await;
+    wait_for_held(&harness, &root, None).await;
     harness.shutdown().await;
 }

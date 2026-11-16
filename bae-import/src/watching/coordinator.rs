@@ -50,14 +50,13 @@ pub(crate) enum WatcherCommand {
 
 /// The folder-watch coordinator, run on the calling thread until it is told
 /// to stop. The store is the one authority on what is watched, so events from
-/// a watch left on a removed folder match nothing. What it holds of each
-/// root's scan that no table does goes out on `in_memory`.
+/// a watch left on a removed folder match nothing. It writes what it holds
+/// of each root's scan that no scan stores to the folder scan tables.
 pub(crate) fn run_watcher(
     cmd_rx: &mut mpsc::UnboundedReceiver<WatcherCommand>,
     fs_rx: mpsc::UnboundedReceiver<WatchReport>,
     services: crate::ImportServices,
     folder_watcher: Arc<FolderWatcher>,
-    in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
 ) {
     let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
         folder_watcher.clone(),
@@ -68,7 +67,7 @@ pub(crate) fn run_watcher(
     let starter: RootScanStarter = Arc::new(move |runtime, id, path, pass, completion_tx| {
         spawn_root_pass(runtime, id, path, pass, scan.clone(), completion_tx)
     });
-    run_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend, in_memory)
+    run_watcher_with_starter(cmd_rx, fs_rx, services, starter, removal_backend)
 }
 
 pub(super) fn run_watcher_with_starter(
@@ -77,7 +76,6 @@ pub(super) fn run_watcher_with_starter(
     services: crate::ImportServices,
     starter: RootScanStarter,
     removal_backend: Arc<dyn RootRemovalBackend>,
-    in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
 ) {
     let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, clock, .. } =
         services;
@@ -98,7 +96,7 @@ pub(super) fn run_watcher_with_starter(
             diagnostics.clone(),
             scan_completions,
             removal_completions,
-            in_memory,
+            tables.clone(),
         );
         let mut coordinator = Coordinator::new(
             runtime_handle,
@@ -274,7 +272,8 @@ impl Coordinator {
                     root,
                     change,
                     RootScanCause::NetworkFolderMoved,
-                );
+                )
+                .await;
             }
             CoordinatorEvent::Tick => self.check_network_folders().await,
         }
@@ -295,11 +294,13 @@ impl Coordinator {
                     }
                 };
                 for root in roots {
-                    active_roots.request_scan(
-                        root,
-                        RootScanCause::Asked("every watched folder was asked for"),
-                        None,
-                    );
+                    active_roots
+                        .request_scan(
+                            root,
+                            RootScanCause::Asked("every watched folder was asked for"),
+                            None,
+                        )
+                        .await;
                 }
                 if completion.send(Ok(())).is_err() {
                     debug!("rescan caller dropped before the reads were asked for");
@@ -317,11 +318,9 @@ impl Coordinator {
                         return;
                     }
                 }
-                active_roots.request_scan(
-                    path,
-                    RootScanCause::Asked("a rescan was asked for"),
-                    None,
-                );
+                active_roots
+                    .request_scan(path, RootScanCause::Asked("a rescan was asked for"), None)
+                    .await;
             }
             WatcherCommand::Refresh { path, completion } => {
                 let refused = match tables.is_watched_import_folder(&path).await {
@@ -338,19 +337,22 @@ impl Coordinator {
                     }
                     return;
                 }
-                active_roots.request_scan(
-                    path,
-                    RootScanCause::Asked("the folder was refreshed"),
-                    Some(completion),
-                );
+                active_roots
+                    .request_scan(
+                        path,
+                        RootScanCause::Asked("the folder was refreshed"),
+                        Some(completion),
+                    )
+                    .await;
             }
             WatcherCommand::SetFolderReleaseDecision { target, completion } => {
                 let path = PathBuf::from(&target.0.watched_folder_path);
                 active_roots
-                    .change_folder_reading(path, FolderReadingRequest::new(target, completion));
+                    .change_folder_reading(path, FolderReadingRequest::new(target, completion))
+                    .await;
             }
             WatcherCommand::Remove { roots, parent, completion } => {
-                active_roots.remove(roots, parent, completion);
+                active_roots.remove(roots, parent, completion).await;
             }
             #[cfg(test)]
             WatcherCommand::WatchReport { report, taken } => {
@@ -527,7 +529,7 @@ async fn take_watch_report(
             }
             let affected = roots_for_watch_error(&error_paths, &roots);
             for root in affected {
-                active_roots.request_scan(root, RootScanCause::WatchError, None);
+                active_roots.request_scan(root, RootScanCause::WatchError, None).await;
             }
             return;
         }
@@ -552,7 +554,7 @@ async fn take_watch_report(
         }
     }
     for root in &whole {
-        active_roots.request_scan(root.clone(), RootScanCause::EventsDropped, None);
+        active_roots.request_scan(root.clone(), RootScanCause::EventsDropped, None).await;
     }
     let changed = changed_paths(&events);
     let affected = affected_roots(&changed, &roots);
@@ -577,24 +579,25 @@ async fn take_watch_report(
             } else {
                 RootScanCause::FsChange(summary.clone())
             },
-        );
+        )
+        .await;
     }
 }
 
 /// Ask for what `change` says `root` needs read.
-fn request_change(
+async fn request_change(
     active_roots: &mut ActiveRoots,
     root: PathBuf,
     change: RootChange,
     cause: RootScanCause,
 ) {
     match change {
-        RootChange::WholeRoot => active_roots.request_scan(root, cause, None),
+        RootChange::WholeRoot => active_roots.request_scan(root, cause, None).await,
         RootChange::Folders(folders) => {
             if folders.is_empty() {
                 debug!("a change under {} reaches nothing a scan reads: {cause}", root.display());
             }
-            active_roots.request_folders(root, folders, cause);
+            active_roots.request_folders(root, folders, cause).await;
         }
     }
 }

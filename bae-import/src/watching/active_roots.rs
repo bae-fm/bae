@@ -36,12 +36,15 @@ pub(super) struct ActiveRoots {
     next_removal_id: u64,
     /// What a removal runs under, so one that panics ends.
     diagnostics: bae_diagnostics::Diagnostics,
-    /// Each root's last pass failure that the store would not take, until
+    /// Each root's last pass failure that its scan could not store, until
     /// the root's next pass starts.
     unstored_failures: HashMap<PathBuf, crate::folder_scan_status::UnstoredScanFailure>,
-    /// What this holds of each root's scan that no table does, published
-    /// after every change for the scan progress to read.
-    in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
+    /// Where this writes what it holds of each root's scan that no scan
+    /// stores, after every change, for the scan progress to read.
+    tables: crate::tables::ImportTables,
+    /// What the last write that succeeded stored there, so a change that
+    /// leaves it as it was writes nothing.
+    written: crate::folder_scan_status::HeldRootScans,
 }
 
 /// What one root has going.
@@ -195,7 +198,7 @@ impl ActiveRoots {
     /// The roots, sending each finished scan and removal to
     /// `scan_completions` and `removal_completions`, which the coordinator's
     /// loop hands back to [`Self::finish_scan`] and [`Self::finish_removal`],
-    /// and publishing what they hold of each root's scan on `in_memory`.
+    /// and writing what they hold of each root's scan to `tables`.
     pub(super) fn new(
         runtime: tokio::runtime::Handle,
         starter: RootScanStarter,
@@ -204,7 +207,7 @@ impl ActiveRoots {
         diagnostics: bae_diagnostics::Diagnostics,
         scan_completions: mpsc::UnboundedSender<RootScanCompletion>,
         removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
-        in_memory: tokio::sync::watch::Sender<crate::folder_scan_status::FolderScansInMemory>,
+        tables: crate::tables::ImportTables,
     ) -> Self {
         Self {
             roots: HashMap::new(),
@@ -219,39 +222,44 @@ impl ActiveRoots {
             next_removal_id: 0,
             diagnostics,
             unstored_failures: HashMap::new(),
-            in_memory,
+            tables,
+            written: crate::folder_scan_status::HeldRootScans::new(),
         }
     }
 
-    /// Publish what the roots hold of each one's scan: running while a
+    /// Write what the roots hold of each one's scan: running while a
     /// whole-root pass reads it or is owed, or a removal holds it; otherwise
-    /// the last failure the store would not take. Called once at the end of
+    /// the last failure its scan could not store. Called once at the end of
     /// each change, so no reader sees the step between two of its parts; a
-    /// root a whole-root pass is starting on is published as running before
-    /// the pass starts as well ([`Self::start_pass`]).
-    fn publish(&self) {
-        use crate::folder_scan_status::RootScanInMemory;
-        let mut now = crate::folder_scan_status::FolderScansInMemory::new();
+    /// root a whole-root pass is starting on is written as running before
+    /// the pass starts as well ([`Self::start_pass`]). A write that fails is
+    /// reported, and the roots' rows stay as the last write left them.
+    async fn publish(&mut self) {
+        use crate::folder_scan_status::HeldRootScan;
+        let mut now = crate::folder_scan_status::HeldRootScans::new();
         for (path, activity) in &self.roots {
             let running = match activity {
                 RootActivity::Scanning(schedule) => schedule.whole_root || schedule.pending,
                 RootActivity::Removing(_) => true,
             };
             if running {
-                now.insert(path.clone(), RootScanInMemory::Running);
+                now.insert(path.clone(), HeldRootScan::Running);
             }
         }
         for (path, failure) in &self.unstored_failures {
             now.entry(path.clone())
-                .or_insert_with(|| RootScanInMemory::UnstoredFailure(failure.clone()));
+                .or_insert_with(|| HeldRootScan::UnstoredFailure(failure.clone()));
         }
-        self.in_memory.send_if_modified(|held| {
-            if *held == now {
-                return false;
-            }
-            *held = now;
-            true
-        });
+        if self.written == now {
+            return;
+        }
+        match self.tables.hold_root_scans(now.clone()).await {
+            Ok(()) => self.written = now,
+            Err(error) => self.diagnostics.report_failure(
+                "store what the folder scan coordinator holds of each scan",
+                &error,
+            ),
+        }
     }
 
     /// Whether a removal holds `path`.
@@ -260,7 +268,7 @@ impl ActiveRoots {
     }
 
     /// Ask for a pass over `path`, telling `waiter` when it is over.
-    pub(super) fn request_scan(
+    pub(super) async fn request_scan(
         &mut self,
         path: PathBuf,
         cause: RootScanCause,
@@ -288,14 +296,15 @@ impl ActiveRoots {
                     RootPass::WholeRoot,
                     waiter.into_iter().collect(),
                     Queued::default(),
-                );
+                )
+                .await;
             }
         }
-        self.publish();
+        self.publish().await;
     }
 
     /// Read again the folders directly under `path` that changed on disk.
-    pub(super) fn request_folders(
+    pub(super) async fn request_folders(
         &mut self,
         path: PathBuf,
         folders: BTreeSet<std::ffi::OsString>,
@@ -316,16 +325,21 @@ impl ActiveRoots {
             Some(RootActivity::Removing(_)) => {}
             None => {
                 info!("reading {folders:?} under {} again: {cause}", path.display());
-                self.start_pass(path, RootPass::Folders(folders), Vec::new(), Queued::default());
+                self.start_pass(path, RootPass::Folders(folders), Vec::new(), Queued::default())
+                    .await;
             }
         }
-        self.publish();
+        self.publish().await;
     }
 
     /// Store a person's answer for how one folder under `path` reads, as the
     /// root's next pass. A whole-root pass under way is cancelled and owed
     /// again, since it would write the folder's old reading over the new one.
-    pub(super) fn change_folder_reading(&mut self, path: PathBuf, request: FolderReadingRequest) {
+    pub(super) async fn change_folder_reading(
+        &mut self,
+        path: PathBuf,
+        request: FolderReadingRequest,
+    ) {
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
                 if schedule.whole_root {
@@ -340,10 +354,11 @@ impl ActiveRoots {
                 request.answer(Err(self.why_held(id, &path)));
             }
             None => {
-                self.start_pass(path, RootPass::Decision(request), Vec::new(), Queued::default());
+                self.start_pass(path, RootPass::Decision(request), Vec::new(), Queued::default())
+                    .await;
             }
         }
-        self.publish();
+        self.publish().await;
     }
 
     /// A pass reported itself over: answer its waiters and start what was
@@ -371,21 +386,21 @@ impl ActiveRoots {
             changed: std::mem::take(&mut schedule.changed),
         };
         if let Some(reading) = queued.readings.pop_front() {
-            self.start_pass(completion.path, RootPass::Decision(reading), Vec::new(), queued);
+            self.start_pass(completion.path, RootPass::Decision(reading), Vec::new(), queued).await;
         } else if !queued.pending && !queued.changed.is_empty() {
             let folders = std::mem::take(&mut queued.changed);
-            self.start_pass(completion.path, RootPass::Folders(folders), Vec::new(), queued);
+            self.start_pass(completion.path, RootPass::Folders(folders), Vec::new(), queued).await;
         } else if queued.pending {
             info!(
                 "folder scan of {} starting again: one was queued while it ran",
                 completion.path.display()
             );
             let waiters = std::mem::take(&mut queued.followup_waiters);
-            self.start_pass(completion.path, RootPass::WholeRoot, waiters, Queued::default());
+            self.start_pass(completion.path, RootPass::WholeRoot, waiters, Queued::default()).await;
         }
         // Published before the waiters hear the pass is over, so what they
         // read next is where it left the root.
-        self.publish();
+        self.publish().await;
         // The scan stores its own failure; a refresh caller only waits.
         for waiter in current_waiters {
             if waiter.send(Ok(())).is_err() {
@@ -397,7 +412,7 @@ impl ActiveRoots {
     /// Stop watching `roots`, watching `parent` — the folder holding exactly
     /// them — in their place when given. Asking again for a removal under way
     /// joins it; asking anything else of a folder it holds is refused.
-    pub(super) fn remove(
+    pub(super) async fn remove(
         &mut self,
         roots: Vec<PathBuf>,
         parent: Option<PathBuf>,
@@ -492,7 +507,7 @@ impl ActiveRoots {
                 scan_waiters,
             },
         );
-        self.publish();
+        self.publish().await;
     }
 
     /// A removal reported itself over: start the parent's read when it
@@ -523,7 +538,8 @@ impl ActiveRoots {
                             RootPass::WholeRoot,
                             removal.scan_waiters.into_iter().map(|(_, waiter)| waiter).collect(),
                             Queued::default(),
-                        );
+                        )
+                        .await;
                         Vec::new()
                     }
                     None => removal.scan_waiters,
@@ -549,12 +565,12 @@ impl ActiveRoots {
                 }
                 for root in removal.roots {
                     let waiters = waiters.remove(&root).unwrap_or_default();
-                    self.start_pass(root, RootPass::WholeRoot, waiters, Queued::default());
+                    self.start_pass(root, RootPass::WholeRoot, waiters, Queued::default()).await;
                 }
                 RemovalOutcome::Failed { error, callers: removal.completions }
             }
         };
-        self.publish();
+        self.publish().await;
         Some(outcome)
     }
 
@@ -605,7 +621,7 @@ impl ActiveRoots {
                 schedule.scan.ended().await;
             }
         }
-        self.publish();
+        self.publish().await;
         for (_, removal) in self.removals.drain() {
             removal.task.ended().await;
             for waiter in removal
@@ -620,7 +636,7 @@ impl ActiveRoots {
     }
 
     /// Start a pass over `path`, with its waiters and what is queued behind it.
-    fn start_pass(
+    async fn start_pass(
         &mut self,
         path: PathBuf,
         pass: RootPass,
@@ -632,12 +648,19 @@ impl ActiveRoots {
         self.unstored_failures.remove(&path);
         let whole_root = matches!(pass, RootPass::WholeRoot);
         if whole_root || queued.pending {
-            // Published before the pass starts: it opens its generation at
+            // Written before the pass starts: it opens its generation at
             // once, with no outcome, and a reader must find the root running
             // by then.
-            self.in_memory.send_modify(|held| {
-                held.insert(path.clone(), crate::folder_scan_status::RootScanInMemory::Running);
-            });
+            match self.tables.hold_root_scan_running(&path).await {
+                Ok(()) => {
+                    self.written
+                        .insert(path.clone(), crate::folder_scan_status::HeldRootScan::Running);
+                }
+                Err(error) => self.diagnostics.report_failure(
+                    &format!("hold {} as running before its pass", path.display()),
+                    &error,
+                ),
+            }
         }
         let changed = if whole_root { BTreeSet::new() } else { queued.changed };
         let scan =

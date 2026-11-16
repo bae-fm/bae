@@ -4,149 +4,101 @@ import Testing
 
 @testable import bae
 
-@Suite("Watched folder scan failures")
+@Suite("Watched folder scan alerts")
 struct ImportStoreScanFailureTests {
-    /// Folder scans holding `statuses`, with no scan running.
+    /// Folder scans owing `alerts`, with no folder listed and no scan
+    /// running.
     private static func scans(
-        _ statuses: [BridgeWatchedFolderScanStatus]
+        _ alerts: [BridgeFolderScanAlert]
     ) -> BridgeFolderScans {
         BridgeFolderScans(
-            statuses: statuses,
-            hasProblem: statuses.contains { status in
-                switch status.status {
-                case .failed, .notWatched: true
-                case .notScanned, .scanning, .complete: false
-                }
-            },
-            activity: nil
+            statuses: [],
+            hasProblem: true,
+            activity: nil,
+            alerts: alerts
         )
     }
 
-    private static func failed(
+    private static func alert(
         _ path: String,
-        _ error: String
-    ) -> BridgeWatchedFolderScanStatus {
-        BridgeWatchedFolderScanStatus(
+        _ detail: String,
+        _ kind: BridgeFolderScanAlertKind = .failed
+    ) -> BridgeFolderScanAlert {
+        BridgeFolderScanAlert(
             watchedFolderPath: Data(path.utf8),
             watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
-            watchedFolderPathText: path,
-            status: .failed(error: error),
-            onNetworkVolume: false
+            kind: kind,
+            detail: detail
         )
     }
 
-    private static func notWatched(
-        _ path: String,
-        _ reason: String
-    ) -> BridgeWatchedFolderScanStatus {
-        BridgeWatchedFolderScanStatus(
-            watchedFolderPath: Data(path.utf8),
-            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
-            watchedFolderPathText: path,
-            status: .notWatched(reason: reason),
-            onNetworkVolume: false
-        )
-    }
-
-    private static func complete(_ path: String)
-        -> BridgeWatchedFolderScanStatus
-    {
-        BridgeWatchedFolderScanStatus(
-            watchedFolderPath: Data(path.utf8),
-            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
-            watchedFolderPathText: path,
-            status: .complete,
-            onNetworkVolume: false
-        )
-    }
-
-    /// The failure a scan wrote before the UI existed is in the first folder
-    /// scans the store is given, which is the launch case: the app's own startup scan
-    /// runs and fails before any of this is subscribed.
+    /// The marks the store asked core to write, in order.
     @MainActor
-    @Test("a root already failed in the first delivery is reported")
-    func firstDeliveryReportsAnAlreadyFailedRoot() {
+    private final class Marks {
+        var marked: [BridgeFolderScanAlert] = []
+    }
+
+    private struct MarkRefused: Error {}
+
+    /// Each alert the folder scans owe is raised and marked shown, the
+    /// launch case included: the app's startup scan fails before any of
+    /// this is subscribed, and its alert is in the first delivery.
+    @MainActor
+    @Test("an owed alert is raised and marked shown")
+    func anOwedAlertIsRaisedAndMarkedShown() async {
         let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail, _ in
-            raised.append((name, detail))
+        var raised: [BridgeFolderScanAlert] = []
+        store.onScanFailure = { raised.append($0) }
+        let marks = Marks()
+        store.markScanAlertShown = { alert in marks.marked.append(alert) }
+
+        let failed = Self.alert("/Media", "no such column")
+        let notWatched = Self.alert("/Other", "limit reached", .notWatched)
+        store.applyFolderScans(Self.scans([failed, notWatched]))
+        await store.scanAlertMarksReturned()
+
+        #expect(raised == [failed, notWatched])
+        #expect(Set(marks.marked) == [failed, notWatched])
+    }
+
+    /// A delivery made before an alert's mark returns still owes the alert,
+    /// and does not raise it again.
+    @MainActor
+    @Test("an alert is raised once while its mark is written")
+    func anAlertIsRaisedOnceWhileItsMarkIsWritten() async {
+        let store = ImportStore()
+        var raised: [BridgeFolderScanAlert] = []
+        store.onScanFailure = { raised.append($0) }
+        let (held, release) = AsyncStream<Void>.makeStream()
+        store.markScanAlertShown = { _ in
+            for await _ in held { break }
         }
 
-        store.applyFolderScans(
-            Self.scans([Self.failed("/Media", "no such column")])
-        )
+        let failed = Self.alert("/Media", "offline")
+        store.applyFolderScans(Self.scans([failed]))
+        store.applyFolderScans(Self.scans([failed]))
+        release.yield()
+        await store.scanAlertMarksReturned()
 
-        #expect(raised.count == 1)
-        #expect(raised.first?.0 == "Media")
-        #expect(raised.first?.1 == "no such column")
+        #expect(raised == [failed])
     }
 
-    /// The timer re-reads every root every quarter hour, and the scans are
-    /// re-delivered as any root's scan moves — the same fault must not raise
-    /// the alert again. A different fault on the same root does.
+    /// A mark core refused leaves the alert owed, so the next delivery that
+    /// owes it raises it again.
     @MainActor
-    @Test("the same failure is reported once, a different one again")
-    func repeatedDeliveriesReportOnlyNewFailures() {
+    @Test("an alert whose mark failed is raised again")
+    func anAlertWhoseMarkFailedIsRaisedAgain() async {
         let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail, _ in
-            raised.append((name, detail))
-        }
+        var raised: [BridgeFolderScanAlert] = []
+        store.onScanFailure = { raised.append($0) }
+        store.markScanAlertShown = { _ in throw MarkRefused() }
 
-        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
-        // A delivery that says the same thing, then one that adds a root so
-        // the scans differ while the failure does not.
-        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
-        store.applyFolderScans(
-            Self.scans([
-                Self.failed("/Media", "offline"), Self.complete("/Other"),
-            ])
-        )
-        store.applyFolderScans(
-            Self.scans([Self.failed("/Media", "no such column")])
-        )
+        let failed = Self.alert("/Media", "offline")
+        store.applyFolderScans(Self.scans([failed]))
+        await store.scanAlertMarksReturned()
+        store.applyFolderScans(Self.scans([failed]))
+        await store.scanAlertMarksReturned()
 
-        #expect(raised.map(\.1) == ["offline", "no such column"])
-    }
-
-    /// A root read in full whose directories could not all be watched raises
-    /// its own alert, once, and a failure with the same text after it is a
-    /// different fact.
-    @MainActor
-    @Test("a root that is not watched raises its own alert, once")
-    func aRootThatIsNotWatchedRaisesItsOwnAlert() {
-        let store = ImportStore()
-        var raised: [(String, FolderScanAlertKind)] = []
-        store.onScanFailure = { name, _, kind in raised.append((name, kind)) }
-
-        store.applyFolderScans(
-            Self.scans([Self.notWatched("/Media", "limit reached")])
-        )
-        store.applyFolderScans(
-            Self.scans([Self.notWatched("/Media", "limit reached")])
-        )
-        store.applyFolderScans(
-            Self.scans([Self.failed("/Media", "limit reached")])
-        )
-
-        #expect(raised.map(\.1) == [.notWatched, .failed])
-    }
-
-    /// A root that reads cleanly again has no standing failure, so the next
-    /// time it breaks the same way it is news.
-    @MainActor
-    @Test("a root that recovers reports its next break again")
-    func aRecoveredRootReportsItsNextBreak() {
-        let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { name, detail, _ in
-            raised.append((name, detail))
-        }
-
-        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
-        store.applyFolderScans(Self.scans([Self.complete("/Media")]))
-        store.applyFolderScans(Self.scans([Self.failed("/Media", "offline")]))
-
-        #expect(raised.map(\.1) == ["offline", "offline"])
+        #expect(raised == [failed, failed])
     }
 }

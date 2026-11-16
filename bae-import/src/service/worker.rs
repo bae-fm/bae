@@ -50,12 +50,12 @@ impl ImportService {
         closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
-        // No run, import, open list or catalog release that bae is applying
-        // outlives the process, so bae clears the candidate standings, the
-        // steps of catalog releases being applied and the open lists before
-        // anything reads them.
+        // No run, import, open list, catalog release that bae is applying,
+        // held folder scan or raised scan alert outlives the process, so bae
+        // clears them all before anything reads them.
         tables.clear_candidate_standings().await?;
         tables.clear_catalog_apply_steps().await?;
+        tables.clear_held_folder_scans().await?;
         tables.close_import_lists().await?;
         let runtime = CandidateRuntime::new(tables.clone(), diagnostics.clone());
         let event_tx = crate::ImportEventBus::new(runtime.clone());
@@ -98,12 +98,10 @@ impl ImportService {
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx, diagnostics.clone()));
 
         let watched = services.clone();
-        let (scans_in_memory_tx, scans_in_memory) =
-            tokio::sync::watch::channel(crate::folder_scan_status::FolderScansInMemory::new());
         let bugs = diagnostics.bug_sink();
         let watcher =
             WorkerThread::spawn("folder scan coordinator", bugs.clone(), move |_, watcher_rx| {
-                run_watcher(watcher_rx, fs_rx, watched, folder_watcher, scans_in_memory_tx);
+                run_watcher(watcher_rx, fs_rx, watched, folder_watcher);
             });
 
         let release_reads =
@@ -168,7 +166,6 @@ impl ImportService {
         ImportServiceHandle::new(
             worker,
             watcher,
-            scans_in_memory,
             services,
             runtime,
             release_reads,

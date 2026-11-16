@@ -10,12 +10,16 @@
 //! candidate's files' tags read, [`cover_choice`] checks a cover against what
 //! the scan stored and reads the one a stored selection names, and
 //! [`file_decisions`] settles
-//! the rows a file decision reshapes. Their tables are `folder_scans.sql`,
+//! the rows a file decision reshapes. [`progress`] reads where each watched
+//! folder's scan stands, and stores what the folder scan coordinator holds of
+//! it. Their tables are `folder_scans.sql` and `folder_scans/progress.sql`,
 //! which every device's library holds.
 
 /// The folder scans' part of the library's schema.
-pub(super) const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("folder_scans.sql")]);
+pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
+    include_str!("folder_scans.sql"),
+    include_str!("folder_scans/progress.sql"),
+]);
 
 pub(super) mod columns;
 mod cover_choice;

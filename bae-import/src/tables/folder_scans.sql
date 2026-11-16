@@ -34,8 +34,8 @@ VALUES (1, 0);
 -- that marks it complete. A failed or interrupted scan keeps old and new ones.
 -- `status` is how the current generation's scan ended, NULL until it stores
 -- that, with `detail` saying why a failed scan failed or what an unwatched
--- folder could not watch; whether a scan is reading the folder is never stored, since nothing
--- stored could stop saying so when the process reading it ends.
+-- folder could not watch. Whether a pass is reading the folder is the folder
+-- scan coordinator's, in `folder_scan_held` (`folder_scans/progress.sql`).
 CREATE TABLE IF NOT EXISTS folder_scan_roots (
     watched_folder_path BLOB PRIMARY KEY,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
