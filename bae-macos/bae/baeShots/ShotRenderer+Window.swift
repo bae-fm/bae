@@ -3,13 +3,10 @@ import BaeKit
 import ScreenCaptureKit
 
 extension ShotRenderer {
-    /// The alert panels showing over `window`, once each is drawn, as the app
-    /// puts an alert up: a clear panel of its own over the window, which the
-    /// window server holds apart from the window it sits on.
-    static func sheets(
-        of window: NSWindow,
-        scene: ShotScene
-    ) async throws -> [CGWindowID] {
+    /// The alert panels the app shows, once each is drawn, as the app puts an
+    /// alert up: a clear panel of its own over the window, which the window
+    /// server holds apart from the window it sits on.
+    static func alertPanels() async throws -> [CGWindowID] {
         // The app shows an alert when the alert's view appears, a few run
         // loop passes after AppKit orders the window in.
         try await Wait.until {
@@ -29,7 +26,7 @@ extension ShotRenderer {
     @concurrent
     nonisolated static func windowPNG(
         _ windowID: CGWindowID,
-        sheets: [CGWindowID],
+        alerts: [CGWindowID],
         sceneId: String
     ) async throws -> Data {
         // The window server lists a window a moment after AppKit orders it
@@ -41,21 +38,21 @@ extension ShotRenderer {
         var held: [SCWindow] = []
         for _ in 0..<50 {
             let listed = try await SCShareableContent.currentProcess
-            let found = ([windowID] + sheets)
+            let found = ([windowID] + alerts)
                 .compactMap { id in
                     listed.windows.first { $0.windowID == id }
                 }
             content = listed
             parent = found.first { $0.windowID == windowID }
             held = found
-            if found.count == sheets.count + 1,
+            if found.count == alerts.count + 1,
                 found.allSatisfy({ !$0.frame.isEmpty && $0.isOnScreen })
             {
                 break
             }
             try await Task.sleep(for: .milliseconds(100))
         }
-        guard let content, let parent, held.count == sheets.count + 1 else {
+        guard let content, let parent, held.count == alerts.count + 1 else {
             throw ShotError.windowNotShared(sceneId)
         }
         guard held.allSatisfy({ !$0.frame.isEmpty && $0.isOnScreen }) else {

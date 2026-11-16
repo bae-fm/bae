@@ -84,11 +84,11 @@ enum ShotRenderer {
             // The app shows the alerts a few run loop passes after AppKit
             // orders the window in, so the renderer waits for them before it
             // makes the top one key.
-            let alerts = try await sheets(of: window, scene: scene)
+            let alerts = try await alertPanels()
             try await becomeKey(window, scene: scene)
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
-                sheets: alerts,
+                alerts: alerts,
                 sceneId: scene.id
             )
         }
