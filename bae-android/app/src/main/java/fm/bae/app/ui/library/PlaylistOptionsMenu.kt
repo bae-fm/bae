@@ -6,7 +6,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,7 +41,7 @@ internal fun PlaylistOptionsMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.playlist_delete_menu), color = MaterialTheme.colorScheme.error) },
+                text = { Text(stringResource(R.string.playlist_delete_menu)) },
                 onClick = {
                     expanded = false
                     onDelete()
