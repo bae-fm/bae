@@ -279,6 +279,8 @@ pub struct BridgePlaylistEntryRow {
     pub duration_clock: BridgeDurationClock,
     /// The cover of the release the track is on; `None` when it has none.
     pub cover: Option<BridgeImageRef>,
+    /// The entry's number in the playlist's order, counted from 1.
+    pub number: u64,
     /// Whether an entry comes before this one, so it can move up.
     pub can_move_up: bool,
     /// Whether an entry comes after this one, so it can move down.
@@ -296,6 +298,7 @@ impl BridgePlaylistEntryRow {
             release_id,
             duration_ms,
             cover,
+            number,
             can_move_up,
             can_move_down,
         } = value;
@@ -309,6 +312,7 @@ impl BridgePlaylistEntryRow {
             release_id,
             duration_clock: BridgeDurationClock::of_length(duration_ms),
             cover: cover.map(BridgeImageRef::from_core),
+            number,
             can_move_up,
             can_move_down,
         }

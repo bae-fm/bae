@@ -268,6 +268,7 @@ extension ShotScene {
                         releaseId: "release-\(index)",
                         durationClock: entry.clock,
                         cover: nil,
+                        number: UInt64(index + 1),
                         canMoveUp: index > 0,
                         canMoveDown: index < boardEntries.count - 1
                     )

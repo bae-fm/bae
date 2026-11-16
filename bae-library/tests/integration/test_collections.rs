@@ -349,12 +349,15 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     .await
     .unwrap();
     assert_eq!(reordered.entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), order);
-    let moves: Vec<_> =
-        reordered.entries.iter().map(|entry| (entry.can_move_up, entry.can_move_down)).collect();
+    let moves: Vec<_> = reordered
+        .entries
+        .iter()
+        .map(|entry| (entry.number, entry.can_move_up, entry.can_move_down))
+        .collect();
     assert_eq!(
         moves,
-        vec![(false, true), (true, true), (true, false)],
-        "each entry says whether one comes before it and after it"
+        vec![(1, false, true), (2, true, true), (3, true, false)],
+        "each entry says its number from 1, and whether one comes before it and after it"
     );
 
     people.delete_playlist(id).await.unwrap();

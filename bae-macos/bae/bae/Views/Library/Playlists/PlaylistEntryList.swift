@@ -40,7 +40,6 @@ struct PlaylistEntryList: View {
                 index,
                 entry in
                 PlaylistEntryRow(
-                    number: index + 1,
                     entry: entry,
                     play: { play(entry) },
                     playNext: { playNext(entry) },
@@ -143,7 +142,6 @@ struct PlaylistEntryList: View {
     /// The dragged entry's row drawn at the pointer.
     private func floatingCopy(_ drag: PlaylistEntryDrag) -> some View {
         PlaylistEntryRow(
-            number: drag.index + 1,
             entry: drag.entry,
             play: {},
             playNext: {},
@@ -193,7 +191,6 @@ private struct PlaylistEntryHeightKey: PreferenceKey {
 /// its menu plays it, queues it, and takes it out of the playlist when
 /// `remove` is given.
 private struct PlaylistEntryRow: View {
-    let number: Int
     let entry: BridgePlaylistEntryRow
     let play: () -> Void
     let playNext: () -> Void
@@ -205,7 +202,7 @@ private struct PlaylistEntryRow: View {
 
     var body: some View {
         MacListRow(
-            lead: String(number),
+            lead: String(entry.number),
             cover: entry.cover,
             title: entry.title,
             subtitle: FactList.joined([entry.artistLine.text, entry.albumTitle]

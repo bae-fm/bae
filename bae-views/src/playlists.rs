@@ -80,6 +80,8 @@ pub struct PlaylistEntryRow {
     pub duration_ms: u64,
     /// The cover of the release the track is on.
     pub cover: Option<ImageRef>,
+    /// The entry's number in the playlist's order, counted from 1.
+    pub number: u64,
     /// Whether an entry comes before this one, so it can move up.
     pub can_move_up: bool,
     /// Whether an entry comes after this one, so it can move down.
@@ -131,12 +133,13 @@ pub(crate) fn playlists_sql(narrowing: &str) -> String {
 /// This device's member.
 const OWN_MEMBER: &str = "(SELECT member FROM coven_members WHERE is_self AND NOT removed)";
 
-/// One playlist's entries as its page lists them, in order, each with
-/// whether an entry comes before it and whether one comes after it.
+/// One playlist's entries as its page lists them, in order, each with its
+/// number from 1 and whether an entry comes before it and after it.
 pub(crate) fn playlist_entries_sql() -> String {
     format!(
         "SELECT e.position_id, e.track_id, t.title, {credits} AS artist_line, \
                 r.album_id, a.title, t.release_id, t.duration_ms, {cover}, \
+                ROW_NUMBER() OVER entries AS number, \
                 LAG(e.position_id) OVER entries IS NOT NULL AS can_move_up, \
                 LEAD(e.position_id) OVER entries IS NOT NULL AS can_move_down \
          FROM playlist_entries AS e JOIN tracks AS t ON t.id = e.track_id \
@@ -235,6 +238,7 @@ fn playlist_detail_on(
             release_id: row.get(6)?,
             duration_ms: row.get(7)?,
             cover: cover_ref(&row.get::<_, String>(6)?, row.get(8)?),
+            number: row.get("number")?,
             can_move_up: row.get("can_move_up")?,
             can_move_down: row.get("can_move_down")?,
         })

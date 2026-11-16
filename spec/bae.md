@@ -3032,7 +3032,8 @@ shows the missing-art tile. The list comes with how many playlists the device
 holds, counted by the database, which both apps read to tell an empty list from
 one that has rows. A playlist's page shows its owner, count, length
 and who sees it, then its tracks in order, each with its credit line (§2.3),
-album and release cover. The Add to playlist menu offers only the person's own
+album and release cover. On macOS each track also shows its number in the
+playlist, from 1, which the page's query counts. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
