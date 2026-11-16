@@ -281,12 +281,13 @@ fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<Othe
     })
 }
 
-/// Why bae could not name the device a failed read of a release file names.
+/// Why bae could not name the device that a failed read of a release file
+/// said holds the file.
 #[derive(Debug, thiserror::Error)]
 pub enum OtherDeviceError {
     /// The read named this device as the only one that holds the file. coven
     /// keeps the bytes of this device's files here while their record exists
-    /// (coven 17.3), so this is a bug in coven.
+    /// (coven 17.3), so a read that names this device is a bug in coven.
     #[error("the read named this device, {0:?}, as the only one that holds the file")]
     ThisDevice(coven::DeviceId),
     /// `coven_devices` records a state for the device that coven does not write.

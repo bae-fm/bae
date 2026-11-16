@@ -3,7 +3,7 @@
 use super::*;
 
 /// The moves this device is making of the release `?1`'s files, moving or
-/// failed, each of which can be cancelled. A release's files are staged or
+/// failed, which the person can cancel. A release's files are staged or
 /// moved in one write, so they share one move.
 const RELEASE_MOVES: &str = release_moves!("?1");
 

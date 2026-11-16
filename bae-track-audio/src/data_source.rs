@@ -240,8 +240,9 @@ fn report_fill_failure(on_error: FillErrorHandler, error: Arc<TrackReadError>) {
 }
 
 /// Preserve the actionable storage failure when opening or reading release
-/// file `file_id` from `records`: a file on another device only names the
-/// device the read names, as coven registers it.
+/// file `file_id` from `records`: when the file is only on another device,
+/// report the device that coven's read error names, with its name and state
+/// from coven's registration of it.
 async fn read_error_for_file_read(
     records: &bae_records::Records,
     file_id: &str,

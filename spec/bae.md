@@ -2294,9 +2294,10 @@ from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":
 its files stay on it, and no device can move them to storage any more. Such
 a release offers nothing here, neither moving it to storage, which uploads
-the originals, nor pinning it (§4.3). Playing it fails with the same line,
-naming the device that coven's failed read of the file names, with its name
-and state from coven's registration of that device then.
+the originals, nor pinning it (§4.3). Playing it fails with the same line:
+the line names the device that coven reports when it fails to read the file,
+with the name and state that coven's registration of that device holds at
+that moment.
 
 Whether this device can play a release, and whether it offers moving it to
 storage, comes from these records alone; bae doesn't ask the disk whether
