@@ -189,8 +189,9 @@ pub struct BridgeActiveFolderScan {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidateDetail {
     pub candidate: BridgeFolderCandidate,
-    /// How many folders the candidate is read from when it is several, as
-    /// SQL counts them; 0 for one folder, whose `candidate.parts` is empty.
+    /// How many folders the candidate's files come from, as SQL counts them,
+    /// when they come from several; 0 when they come from one folder, and
+    /// then `candidate.parts` is empty.
     pub part_count: u64,
     pub actionable: bool,
     /// The identify state the candidate's stored verdict stands back up as:

@@ -28,8 +28,8 @@ use bae_records::records::release_records::{
 pub(super) struct CandidateDetailRows {
     candidate: FolderCandidate,
     files: crate::PaneFiles,
-    /// How many folders the candidate is read from when it is several; 0
-    /// for one folder.
+    /// How many folders the candidate's files come from, when they come
+    /// from several; 0 when they come from one folder.
     part_count: u64,
     source_error: Option<crate::GroupingBlock>,
     actionable: bool,

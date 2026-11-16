@@ -188,10 +188,11 @@ extension StorageTableView {
         /// True while `applyLayout` moves and resizes the table's columns,
         /// whose notifications then carry no change of the person's.
         var applyingLayout = false
-        /// Narrows the selection to the releases the list holds, and answers
-        /// with each one's row: nothing here acts on or counts a selected
-        /// release the list no longer shows. It reads the ids of a Shift run
-        /// and of Select All.
+        /// The store that narrows the selection to the releases the list
+        /// holds and answers with each one's row, so nothing here acts on or
+        /// counts a selected release the list no longer shows. The
+        /// coordinator also asks the store for the releases a Shift gesture
+        /// selects and for every release Select All selects.
         let storageManagerStore: StorageManagerStore
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
@@ -616,9 +617,10 @@ extension StorageTableView.Coordinator {
 }
 
 /// The storage table, whose right click opens bae's menu in place of
-/// AppKit's. It names the event it is handling, for the selection it
-/// proposes to be read against, and it takes Select All to core, which
-/// selects every release the list shows rather than the rows the table has
+/// AppKit's. The table keeps the mouse or key press it is handling, so the
+/// coordinator can read the modifier keys and the pressed row behind each
+/// selection change the table proposes. Select All asks the coordinator to
+/// select every release the list shows, not only the rows the table has
 /// loaded.
 final class StorageTable: NSTableView {
     weak var menus: StorageTableView.Coordinator?

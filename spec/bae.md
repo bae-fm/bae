@@ -842,9 +842,9 @@ scan's. The person can flip it: read a folder as one release, or keep its parts
 apart. Their answer is marked as theirs, and no later scan overrides it. The
 person can also combine releases from anywhere into one, in an order they
 choose; such a grouping reads exactly those folders. Combining selects the
-release it makes. A release read from several folders shows those folders at
-the top of its pane, which the pane decides from the count of them its read
-returns from SQL. A combined release's pane offers Keep as Separate
+release it makes. When a release's files come from several folders, its
+pane lists those folders at the top. The pane's SQL query returns how many
+folders there are, and 0 for one folder. A combined release's pane offers Keep as Separate
 Releases, which separates it at once, with no confirmation, and selects the
 releases it returns.
 
@@ -5605,9 +5605,9 @@ Reads come two ways:
   size, and whether a search narrows it; a new sort, filter or search opens new
   queries. The app keeps the selected release ids in the view, and each row in
   view draws its highlight from them: a click, a Command-click or an arrow key
-  changes them, and a Shift run and Select All take their ids from core, which
-  reads every release from one release to another in the list's order, or
-  every release the list shows, loaded or not. Its selection is a live query
+  changes them. To select a range with Shift held, or to select all, the app
+  asks core for the ids: core reads every release from one release to another
+  in the list's order, or every release the list shows, loaded or not. Its selection is a live query
   of its own. The app tells it which releases the person selected, and each value carries the row of each selected
   release the list holds, on screen or not, and the storage actions all of them
   allow. The app offers only those actions. A row's menu acts on the row drawn

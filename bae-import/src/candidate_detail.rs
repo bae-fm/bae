@@ -27,8 +27,8 @@ pub struct ImportCandidateDetailProjection {
     pub candidate: FolderCandidate,
     /// The candidate's files as the pane lists them.
     pub files: PaneFiles,
-    /// How many folders the candidate is read from when it is several; 0
-    /// for one folder.
+    /// How many folders the candidate's files come from, when they come
+    /// from several; 0 when they come from one folder.
     pub part_count: u64,
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
@@ -395,8 +395,8 @@ pub struct ImportCandidateDetail {
     pub candidate: FolderCandidate,
     /// The candidate's files as the pane lists them.
     pub files: PaneFiles,
-    /// How many folders the candidate is read from when it is several, as
-    /// SQL counts them; 0 for one folder.
+    /// How many folders the candidate's files come from, as SQL counts
+    /// them, when they come from several; 0 when they come from one folder.
     pub part_count: u64,
     pub actionable: bool,
     pub skipped: bool,

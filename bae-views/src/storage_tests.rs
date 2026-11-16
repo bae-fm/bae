@@ -833,7 +833,7 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     assert_eq!(
         unknown.sole.map(|sole| sole.release_id).as_deref(),
         Some(RELEASE_LATE),
-        "a release the list lacks is not held"
+        "the sole release leaves out an asked release the list does not show"
     );
 
     let filtered_out = answer(StorageFilter::Remote, ids(&[RELEASE_EARLY])).await;
@@ -851,10 +851,10 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     assert!(!holds(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await);
 }
 
-/// A Shift run and Select All take their releases from SQL: every release
-/// the list shows from one release to another, both included, in the list's
-/// order whichever end comes first, the one it holds when it holds only one
-/// end, and every release it shows.
+/// A range selected with Shift and Select All take their releases from SQL:
+/// every release the list shows from one release to another, both included,
+/// in the list's order whichever end comes first, the one it holds when it
+/// holds only one end, and every release it shows.
 #[tokio::test]
 async fn the_storage_list_answers_the_releases_between_two_and_all_of_them() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;

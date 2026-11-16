@@ -7,11 +7,11 @@ private let logger = Logger.bae("StorageTableSelection")
 // MARK: - Selection
 
 /// The Storage Manager keeps its selection as release ids in the view, and
-/// each row in view draws its highlight from them: the table's own index
-/// selection only proposes rows, and each proposal is read as a change to
-/// the kept ids. A Shift run and Select All take their ids from core, which
-/// reads every release between two releases, or every release the list
-/// shows, loaded or not.
+/// each row in view draws its highlight from them. The table's own index
+/// selection only proposes rows, and the coordinator reads each proposal as
+/// a change to the kept ids. To select a range with Shift, or to select
+/// all, the coordinator asks core, which reads every release between two
+/// releases, or every release the list shows, loaded or not.
 extension StorageTableView.Coordinator {
     func tableView(
         _: NSTableView,
@@ -19,7 +19,8 @@ extension StorageTableView.Coordinator {
     ) -> IndexSet {
         // A highlight the coordinator sets is no person's change.
         guard !applyingSelection else { return proposed }
-        // With no press being handled, no keys are held.
+        // A proposal that no mouse or key press made carries no modifier
+        // keys.
         let event = table.handlingEvent
         let target = event.flatMap { table.pressedRow($0) }
         let proposedIds = ids(at: proposed)
@@ -49,8 +50,8 @@ extension StorageTableView.Coordinator {
 
     /// A Shift gesture: the rows it proposes show selected at once, and
     /// core reads every release from the anchor to the row it reaches,
-    /// loaded or not, which joins the kept ids. One that only shrinks the
-    /// run takes out the rows it drops.
+    /// loaded or not, and the coordinator adds them to the kept ids. A
+    /// gesture that only shrinks the range takes out the rows it drops.
     private func extend(proposed: IndexSet, current: IndexSet, target: Int?) {
         let kept = selection.wrappedValue
         let added = proposed.subtracting(current)
@@ -109,8 +110,9 @@ extension StorageTableView.Coordinator {
     }
 
     /// Highlight the rows in view whose releases `kept` names, each from the
-    /// row it draws. Guarded so the table's delegate call that follows
-    /// doesn't read it as a person's change.
+    /// row it draws. The coordinator sets `applyingSelection` meanwhile, so
+    /// the delegate call that follows does not read the highlight as the
+    /// person's change.
     func applySelection(_ kept: Set<String>) {
         let rows = highlightedRows(kept)
         guard rows != table.selectedRowIndexes else { return }

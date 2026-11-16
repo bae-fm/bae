@@ -22,7 +22,8 @@ private final class OpenedReads: @unchecked Sendable {
         let search: String
     }
 
-    /// A Shift run's read: the list it asked about, and its two ends.
+    /// The read for a range selected with Shift: the list it asked about,
+    /// and the range's two ends.
     struct Run: Equatable {
         let list: List
         let from: String
@@ -249,7 +250,7 @@ struct StorageManagerStoreTests {
 
     @MainActor
     @Test(
-        "a Shift run and Select All ask core about the list on screen, loaded or not"
+        "a Shift range and Select All ask core about the list on screen, loaded or not"
     )
     func runAndSelectAllAskCore() async throws {
         let reads = OpenedReads()
