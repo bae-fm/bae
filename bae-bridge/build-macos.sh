@@ -172,10 +172,15 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
     mkdir -p "$GENERATED_BINDINGS"
 
+    # Without --no-format the generator runs `swift format <file>`, which
+    # prints the formatted file to stdout and leaves the file on disk as it
+    # was. The generator discards that output, so formatting took 13 seconds
+    # and changed nothing.
     "$BINDGEN" generate \
         --library "$DYLIB" \
         --language swift \
-        --out-dir "$GENERATED_BINDINGS/"
+        --out-dir "$GENERATED_BINDINGS/" \
+        --no-format
 
     mkdir -p "$GENERATED_BINDINGS/headers"
     cp "$GENERATED_BINDINGS/bae_bridgeFFI.h" "$GENERATED_BINDINGS/headers/"
