@@ -307,6 +307,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     let mut listing = views.subscribe_playlists();
     let none = query_matching(&mut listing, |_| true).await;
     assert!(none.listed.is_empty() && none.add_targets.is_empty());
+    assert_eq!(none.add_target_count, 0);
     assert!(none.can_create);
 
     let id = library
@@ -325,6 +326,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     assert_eq!(summary.owner.name, "Robin");
     assert_eq!(summary.track_count.count, 2);
     assert_eq!(made.add_targets, made.listed);
+    assert_eq!(made.add_target_count, 1, "the listing counts the person's own playlists");
     let shown = detail_matching(&mut detail, |detail| detail.is_some()).await.unwrap();
     assert_eq!(shown.summary, *summary);
     assert_eq!(

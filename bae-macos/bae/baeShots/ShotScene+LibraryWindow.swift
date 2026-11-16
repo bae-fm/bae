@@ -69,6 +69,9 @@ extension ShotScene {
                         listed: playlists,
                         addTargets: playlists.filter(\.yours),
                         total: UInt64(playlists.count),
+                        addTargetCount: UInt64(
+                            playlists.filter(\.yours).count
+                        ),
                         canCreate: true
                     )
                 )

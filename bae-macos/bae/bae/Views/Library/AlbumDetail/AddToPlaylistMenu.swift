@@ -16,7 +16,7 @@ struct AddToPlaylistMenu: MacMenuPart {
                 MacMenuItem(verbatim: playlist.name) { onAdd(playlist.id) }
             )
         }
-        if !items.isEmpty {
+        if listing.addTargetCount > 0 {
             items.append(.divider)
         }
         items.append(.item(MacMenuItem("New playlist…") { onNewPlaylist() }))

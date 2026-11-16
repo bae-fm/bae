@@ -51,6 +51,7 @@ struct AddToPlaylistMenuTests {
                 listed: [],
                 addTargets: [],
                 total: 0,
+                addTargetCount: 0,
                 canCreate: false
             ),
             onAdd: { _ in },
@@ -68,6 +69,7 @@ struct AddToPlaylistMenuTests {
                 listed: [],
                 addTargets: [summary("Late night"), summary("Running")],
                 total: 0,
+                addTargetCount: 2,
                 canCreate: true
             ),
             onAdd: { added.append($0) },
@@ -95,6 +97,7 @@ struct AddToPlaylistMenuTests {
                 listed: [],
                 addTargets: [],
                 total: 0,
+                addTargetCount: 0,
                 canCreate: true
             ),
             onAdd: { _ in },

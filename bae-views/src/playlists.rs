@@ -61,6 +61,8 @@ pub struct PlaylistListing {
     pub add_targets: Vec<PlaylistSummary>,
     /// How many playlists this device holds: the length of `listed`.
     pub total: u64,
+    /// How many of them are the person's own: the length of `add_targets`.
+    pub add_target_count: u64,
     /// Whether the person has a profile, which a playlist needs to have an
     /// owner.
     pub can_create: bool,
@@ -212,6 +214,11 @@ fn playlist_listing_on(sql: &SqlReadContext<'_>) -> Result<PlaylistListing, DbEr
             playlist_row,
         )?,
         total: sql.query_row(PLAYLIST_TOTAL_SQL, [], |row| row.get(0))?,
+        add_target_count: sql.query_row(
+            &format!("{PLAYLIST_TOTAL_SQL} WHERE pl.person_id = {OWN_MEMBER}"),
+            [],
+            |row| row.get(0),
+        )?,
         can_create: sql.query_row(CAN_CREATE_SQL, [], |row| row.get(0))?,
     })
 }

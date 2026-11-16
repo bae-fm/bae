@@ -375,6 +375,7 @@ private final class PlaylistListingFeed: @unchecked Sendable {
                     listed: [],
                     addTargets: [],
                     total: 0,
+                    addTargetCount: 0,
                     canCreate: true
                 )
             }
