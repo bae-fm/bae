@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 /// The clock, the ids it times and the budget of open files that one test
 /// library runs on, made once as the app's composition makes them for a
-/// process. The library's store is built from them and carries them, its
-/// services open on the store's, and its installation is made with the same
-/// budget, so a test cannot give them different ones.
+/// process. `store` builds the library's store from them, and the store
+/// carries them; its services open on the store's, and `installation` makes
+/// its installation with the same budget, so a test cannot give them
+/// different ones.
 #[derive(Clone)]
 pub struct TestSources {
     clock: ClockRef,
@@ -34,9 +35,9 @@ impl TestSources {
         Self { clock: clock.clone(), ids, files }
     }
 
-    /// An installation for a test, its stores under `app_dir`, whose bugs go
-    /// to the store's test sink and whose places for open files are these
-    /// sources'.
+    /// Makes an installation for a test, with its stores under `app_dir`, its
+    /// bugs going to the store's test sink, and these sources' budget of open
+    /// files.
     pub fn installation(&self, app_dir: std::path::PathBuf) -> coven::Coven {
         coven::Coven::in_memory_sharing(
             app_dir,

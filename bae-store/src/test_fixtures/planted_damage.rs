@@ -46,10 +46,10 @@ pub fn plant_in_library_file(directory: &std::path::Path, table: &str, damage: &
 }
 
 /// Take out every trigger `sql_text` (a domain's SQL file) creates, from the
-/// library file under `directory` that holds `table`: a family of triggers
-/// removed from a closed copy, to time a write without it. An INSTEAD OF
-/// trigger, which other triggers call through its view, is replaced by one
-/// that does nothing, so those callers still run.
+/// library file under `directory` that holds `table`. A test calls this on a
+/// closed copy to time a write without that family of triggers. The function
+/// replaces an INSTEAD OF trigger, which other triggers call through its
+/// view, with one that does nothing, so those callers still run.
 pub fn drop_triggers_of(directory: &std::path::Path, table: &str, sql_text: &str) {
     const CREATE: &str = "CREATE TRIGGER IF NOT EXISTS ";
     const INSTEAD_OF: &str = " INSTEAD OF INSERT ON ";

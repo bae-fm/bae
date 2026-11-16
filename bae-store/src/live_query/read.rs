@@ -42,8 +42,8 @@ impl LiveRequest for crate::ListWindow {
     }
 }
 
-/// A read for another key answers about a place the reader no longer asks
-/// after.
+/// A read for another key answers about a list position the reader no longer
+/// asks for.
 impl LiveRequest for crate::list_windows::OrderKey {
     fn still_answers(&self, current: &Self) -> bool {
         self == current

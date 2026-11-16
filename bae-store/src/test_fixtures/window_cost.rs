@@ -1,9 +1,8 @@
-//! How what one window of a list costs to read is measured: at each size, the
-//! window at the top, the middle and the end, reached by scrolling, which
-//! reads the range that starts at a row's key (`list_windows`), and by a
-//! jump, which reads the key at a position by offset and then that range;
-//! and the position of a key, the count of the rows before it, at the middle
-//! and the end. Each read is the median of several runs.
+//! This fixture times one window of a list at each size. It reads the window
+//! at the top, the middle and the end by scrolling (the range from a row's
+//! key, `list_windows`) and by a jump (the key at a position by offset, then
+//! that range). It also times the count of rows before a key at the middle
+//! and the end. Each time is the median of several runs.
 
 use crate::list_windows::{key_at, read_range, rows_before, Keyed, ListOrder, Seek};
 use crate::{DbError, ListWindow, SortDirection, Store};

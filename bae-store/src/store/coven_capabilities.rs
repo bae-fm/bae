@@ -296,8 +296,9 @@ impl Store {
         Ok(self.reported(self.inner.handle.user_file(file).await)?)
     }
 
-    /// The way to the installation's budget of open files, for work that
-    /// takes places on threads and in services of its own.
+    /// Returns a handle that leases places of the installation's budget of
+    /// open files, for work that takes places on threads and in services of
+    /// its own.
     pub fn file_leases(&self) -> crate::FileLeases {
         crate::FileLeases::of(self.inner.files.clone())
     }

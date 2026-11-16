@@ -1,13 +1,12 @@
-//! A paged list's windows, each read from where the list's order puts it
-//! (`range`: the windows a screen holds, each a range of the order).
+//! A paged list's windows. Each window a screen holds is a range of the
+//! list's order (`range`): the rows from one key up to another, which the
+//! read finds by seeking through the order's index rather than stepping over
+//! the rows before them.
 //!
-//! A window carries a cursor when the screen holds a row beside it: the sort
-//! values of the row at the screen's edge, which the screen read from a window
-//! it was delivered. The window after the row starts just past it, the window
-//! before the row ends just short of it, and the read seeks to the row through
-//! the order's index rather than stepping over the rows before it. A window
-//! with no cursor, a jump to a position, is read by its offset, which steps
-//! over every row before it. Nothing about where rows sit is kept between
+//! A jump to a position reads the key of the row at that position by offset
+//! once (`key_at`), and the screen starts a chain of windows at that key.
+//! `rows_before` counts the rows before a key over index ranges, without
+//! numbering the list. The module keeps nothing about where rows sit between
 //! reads.
 
 use rusqlite::types::Value;
@@ -390,8 +389,8 @@ impl ListOrder {
     }
 
     /// The order's key columns ([`Self::key_columns`]) of a subquery aliased
-    /// `t`, then NULL columns up to `width` of them: what the arms of one
-    /// compound statement select when their orders have different numbers of
+    /// `t`, then NULL columns up to `width` of them: what each SELECT of one
+    /// compound statement selects when their orders have different numbers of
     /// terms.
     #[cfg(desktop)]
     pub fn key_columns_padded(&self, t: &str, width: usize) -> String {

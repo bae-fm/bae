@@ -23,8 +23,8 @@ fn the_median_of_runs_is_the_middle_one() {
     assert_eq!(median(runs), Duration::from_millis(5));
 }
 
-/// A read of two statements is planned statement by statement, in the order
-/// it ran them, each with its values written in and its text on one line.
+/// `plans` writes a plan for each statement the read ran, in the order it
+/// ran them, each with its values written in and its text on one line.
 #[tokio::test]
 async fn plans_each_statement_a_read_ran_in_order() {
     let (db, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;
@@ -57,7 +57,7 @@ async fn plans_each_statement_a_read_ran_in_order() {
     assert!(lines[second].contains("sql=SELECT name FROM sqlite_master WHERE type = 'table' step="));
 }
 
-/// A statement longer than 200 characters is cut there.
+/// `plans` cuts a statement's text at 200 characters.
 #[tokio::test]
 async fn cuts_a_long_statement_at_two_hundred_characters() {
     let (db, _tmp) = crate::test_fixtures::temp_db(Schema::new(&[])).await;

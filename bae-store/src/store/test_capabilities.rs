@@ -23,7 +23,7 @@ impl Store {
 
     /// Record the statements this store's reads and live queries run from
     /// here on, in order with their bound values written in, until the log
-    /// returned drops. Writes are not recorded.
+    /// returned drops. The log does not record writes.
     pub async fn record_statements_for_test(&self) -> Result<coven::StatementLog, DbError> {
         let log = coven::StatementLog::new();
         self.inner.handle.test_record_statements(log.clone()).await.map_err(DbError::from)?;

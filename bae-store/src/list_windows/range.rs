@@ -19,8 +19,8 @@ pub enum ListWindow {
     /// The rows at or after `from` (the list's top when `None`) and before
     /// `until` (no end when `None`), at most `limit` of them, read forward.
     Forward { from: Option<OrderKey>, until: Option<OrderKey>, limit: u64 },
-    /// The `limit` rows nearest before `until`, read backward through the
-    /// index and delivered in the list's order.
+    /// The `limit` rows nearest before `until`. `read_range` reads these rows
+    /// backward through the index and returns them in the list's order.
     Backward { until: OrderKey, limit: u64 },
 }
 
@@ -97,8 +97,8 @@ impl ListOrder {
             .find(|(_, ordering)| ordering.is_ne())
     }
 
-    /// The seeks that read the rows of `[from, until)`, in the order's own
-    /// run, each an index range: the rows from `from` that share a longer
+    /// The seeks that read the rows of `[from, until)`, in the list's sort
+    /// order, each an index range: the rows from `from` that share a longer
     /// prefix with it than with `until`, one seek on the first term where the
     /// two keys differ, bounded on both sides, then the rows before `until`
     /// that share a longer prefix with it.
@@ -133,12 +133,13 @@ impl ListOrder {
         }
     }
 
-    /// The seek of the rows holding the first `at` terms as the two keys do,
-    /// which they share, and the term `at` between theirs, `from`'s first.
-    /// Nothing follows the last term to tie on, so a row at `from`'s value
-    /// there is within.
+    /// The seek for rows whose first `at` terms equal the terms both keys
+    /// share, and whose term `at` lies between the two keys' values, `from`'s
+    /// value first. When `at` is the last term, no later term breaks a tie,
+    /// so a row equal to `from` is in the range.
     fn between(&self, from: &OrderKey, until: &OrderKey, at: usize) -> Seek {
-        // A NULL bound is left out: a comparison leaves NULL out already.
+        // The seek skips a NULL bound, because an SQL comparison with NULL
+        // matches no row.
         let is_set = |key: &OrderKey| !matches!(key.0[at], Value::Null);
         let from_bound = is_set(from)
             .then(|| Bound { inclusive: at + 1 == self.terms.len(), parameter: key_parameter(at) });
@@ -170,8 +171,8 @@ impl ListOrder {
 
 /// `window`'s rows, each with its key, from `read`, which runs the list's
 /// statement under a seek for at most the limit it is given from the offset
-/// it is given. One row past the window's limit is read to find where the
-/// window's far end leaves off.
+/// it is given. `read_range` reads one row more than the limit to find the
+/// key of the next row past the window.
 pub fn read_range<R, E>(
     order: &ListOrder,
     window: &ListWindow,
@@ -225,11 +226,11 @@ pub fn key_at<R, E>(
 }
 
 impl crate::Store {
-    /// A live query of one window of the list `order` sorts, whose request
-    /// moves in place when the screen moves the window's bounds. `read` runs
-    /// the list's statement under a seek, for at most a limit from an offset,
-    /// and gives each row with its key. Coven reruns the query for a write
-    /// inside the window's range alone.
+    /// A live query of one window of the list `order` sorts. When the screen
+    /// changes the window's bounds, coven reruns this same live query with
+    /// the new bounds. `read` runs the list's statement under a seek, for at
+    /// most a limit from an offset, and gives each row with its key. Coven
+    /// reruns the query for a write inside the window's range alone.
     pub fn subscribe_list_window<R, E>(
         &self,
         initial: ListWindow,

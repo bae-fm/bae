@@ -35,8 +35,8 @@ bae-app-dir = { workspace = true, features = ["test-utils"], optional = true }
 tempfile = { workspace = true, optional = true }
 # The schema checks read the triggers' `UPDATE OF` columns.
 regex = { workspace = true, optional = true }
-# The kept seeds' folder is named by a hash of what built them, and a kept
-# store's id is read back from the file beside it.
+# KeptSeeds names the kept seeds' folder after a hash of what built them, and
+# reads a kept store's id from the file beside it.
 sha2 = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
 

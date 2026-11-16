@@ -71,13 +71,14 @@ fn read(
     rows
 }
 
-/// The rows of every order, in it, with each row's key.
+/// Every row of `t` in `order`, with its key.
 fn listed(conn: &Connection, order: &ListOrder) -> Vec<Keyed<String>> {
     read(conn, order, &order.everything(), 1_000, 0).unwrap()
 }
 
 /// A key that no row has and that the order places right after `row`'s key
-/// when its last term runs up, and right before it when it runs down.
+/// when its last term sorts ascending, and right before it when it sorts
+/// descending.
 fn phantom_beside(order: &ListOrder, row: &OrderKey) -> OrderKey {
     let mut values = row.values().to_vec();
     let Some(SortValue::Text(id)) = values.last_mut() else { panic!("ids are text") };
@@ -411,7 +412,8 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_
         async move { crate::test_fixtures::exec_batch(store, sql).await }
     };
 
-    // Each write lands in one window and reruns that one alone.
+    // Each write reruns only the windows whose ranges hold the row before or
+    // after the write.
     let writes: [(&'static str, [bool; 3]); 6] = [
         ("INSERT INTO t (id, n) VALUES ('n015', NULL)", [true, false, false]),
         ("INSERT INTO t (id, n) VALUES ('n035', NULL)", [false, true, false]),

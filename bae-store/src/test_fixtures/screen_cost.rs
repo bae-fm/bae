@@ -1,6 +1,6 @@
-//! How what one screen's read costs is measured: a one-off read, a live
-//! query's first value, a reconfigurable live query moved to another request,
-//! the rerun a write causes and a write itself. Each prints the line
+//! These functions measure how long one screen's reads take: a one-off read,
+//! a live query's first value, a reconfigurable live query moved to another
+//! request, the rerun a write causes and a write itself. Each prints the line
 //! `scripts/perf.sh` reads, `COST metric= value= unit=ms bar=`, the bar being
 //! what the screen needs of that number.
 
@@ -16,14 +16,13 @@ pub fn report_time(metric: &str, time: Duration, bar_ms: f64) {
     eprintln!("{}", cost_line(metric, time, Some(bar_ms)));
 }
 
-/// The line a time is reported as: `bar_ms` is left off for a number with
-/// none.
+/// Formats a time as a COST line and leaves out `bar=` when `bar_ms` is None.
 fn cost_line(metric: &str, time: Duration, bar_ms: Option<f64>) -> String {
     let bar = bar_ms.map(|bar| format!(" bar={bar}")).unwrap_or_default();
     format!("COST metric={metric} value={:.4} unit=ms{bar}", time.as_secs_f64() * 1000.0)
 }
 
-/// A measured time with no bar: a write's, whose gain is the number.
+/// Prints a time that has no bar, such as a write's.
 fn report_unbarred(metric: &str, time: Duration) {
     eprintln!("{}", cost_line(metric, time, None));
 }
@@ -66,10 +65,11 @@ where
     report_time(metric, median(runs), bar_ms);
 }
 
-/// The plain query `sql`, bound to `params`, read [`RUNS`] times and the
-/// median reported as `metric` against `bar_ms` (none for a number with no
-/// bar): the baseline a screen's read is judged against. Returns how many
-/// rows the query gives, so a scenario can check it read what it meant to.
+/// Reads the plain query `sql`, bound to `params`, [`RUNS`] times and reports
+/// the median as `metric` against `bar_ms` (none for a number with no bar);
+/// the scenarios compare each screen's read with this number. Returns how
+/// many rows the query gives, so a scenario can check it read what it meant
+/// to.
 pub async fn plain_cost(
     db: &Store,
     metric: &str,
@@ -96,8 +96,8 @@ pub async fn plain_cost(
         .await
         .expect("the plain query reads")
     };
-    // A read over a second is repeated three times, not fifteen: its number
-    // is its order of magnitude.
+    // When the first read takes over a second, plain_cost reads three times,
+    // not RUNS times, because only the order of magnitude matters.
     let repeats = if first.elapsed() > Duration::from_secs(1) { 3 } else { RUNS };
     let mut runs = Vec::with_capacity(repeats);
     for _ in 0..repeats {
@@ -126,8 +126,8 @@ pub struct ListShape<'a> {
     pub metric: &'a str,
     /// The columns a window reads.
     pub select: &'a str,
-    /// `FROM ... WHERE ...`, always with a WHERE (`WHERE 1` for none), so a
-    /// cursor can be added with AND.
+    /// `FROM ... WHERE ...`, always with a WHERE (`WHERE 1` for none), so
+    /// that list_costs can add the cursor's condition with AND.
     pub source: &'a str,
     /// The order's first term, one expression.
     pub key: &'a str,
@@ -136,7 +136,7 @@ pub struct ListShape<'a> {
     pub descending: bool,
 }
 
-/// The size of a library seed by its name: S, M or L.
+/// The name (S, M or L) of the seed with `albums` albums.
 pub fn size_name(albums: u64) -> &'static str {
     match albums {
         2_000 => "S",
@@ -215,8 +215,8 @@ pub async fn list_costs(db: &Store, size: u64, list: &ListShape<'_>) {
     assert!(rows > 0, "{metric} cursor window is empty at {at}");
 }
 
-/// A live query whose request can be moved, and its next value awaited:
-/// coven's own, or the cancellable one the surfaces hold.
+/// A live query that a caller can move to another request and then await:
+/// coven's ReconfigurableLiveQuery or bae's CancellableLiveQuery.
 pub trait Reconfigurable<Request, Projection> {
     /// Move the query to `request`.
     fn move_to(&mut self, request: Request);
@@ -350,8 +350,8 @@ where
 }
 
 /// [`write_cost`] where each write needs rows made first: `prepare(run)`
-/// makes them, untimed, and only `write` of what it returns is timed, over
-/// `count` runs.
+/// makes them, untimed, and the function times only `write` on what
+/// `prepare` returns, over `count` runs.
 pub async fn prepared_write_cost<P, PFut, W, WFut, T>(
     metric: &str,
     count: usize,

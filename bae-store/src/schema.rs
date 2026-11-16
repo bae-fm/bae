@@ -252,12 +252,12 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
 #[cfg(any(test, feature = "test-utils"))]
 impl Schema {
     /// Open the library on `conn`, a fresh in-memory connection the caller
-    /// opened, outside coven: the schema's functions and collations (and the
-    /// `coven_path_text` coven registers on every connection it opens) are
-    /// registered, then the tables coven lets the triggers follow, made as
-    /// coven makes them, and the schema's own statements run in order. A
-    /// `test-utils` item, so it is the one place a bare library is opened for
-    /// every crate's tests.
+    /// opened, outside coven. The function registers the schema's functions
+    /// and collations and coven's `coven_path_text` (which coven registers on
+    /// every connection it opens), creates the tables coven lets the triggers
+    /// follow as coven creates them, and runs the schema's statements in
+    /// order. The function is a `test-utils` item, so every crate's tests open
+    /// a bare library through this one place.
     pub fn open_bare_library(self, conn: &rusqlite::Connection) {
         register_bare_function(conn, &COVEN_PATH_TEXT);
         for function in self.functions() {

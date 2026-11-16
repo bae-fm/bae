@@ -66,9 +66,11 @@ pub type SeedFn =
 /// once and kept under `target/bench-seed`, so that every run opens a copy.
 pub struct KeptSeeds {
     pub schema: Schema,
-    /// Bumped when `seed` writes different rows, so the seeds are made again.
+    /// Raise this when `seed` writes different rows, so that KeptSeeds makes
+    /// the seeds again.
     pub version: u32,
-    /// Ascending; each size is a copy of the one before, grown to its size.
+    /// The sizes go from smallest to largest; KeptSeeds makes each size's
+    /// store from a copy of the store before it.
     pub sizes: &'static [u64],
     pub seed: SeedFn,
 }
@@ -76,7 +78,8 @@ pub struct KeptSeeds {
 impl KeptSeeds {
     /// The folder holding the kept seeds for this schema, this seed and this
     /// coven: a change to the schema's SQL, to `version` or to the coven pin
-    /// names another folder, and the seeds are made again there.
+    /// names another folder, and KeptSeeds makes the seeds again in that
+    /// folder.
     fn root(&self) -> PathBuf {
         use sha2::{Digest, Sha256};
         let mut key = Sha256::new();
@@ -103,8 +106,8 @@ impl KeptSeeds {
     }
 
     /// The kept seed of size `n`, a folder holding the closed store's folder
-    /// (`app`), its keychain file and its id, made if it is not there. It
-    /// appears whole or not at all.
+    /// (`app`), its keychain file and its id. `kept` makes the folder when it
+    /// is missing and moves it into place only once it is complete.
     async fn kept(&self, n: u64) -> PathBuf {
         let root = self.root();
         let mut previous: Option<(u64, PathBuf)> = None;
@@ -148,8 +151,9 @@ impl KeptSeeds {
         self.seeded_copy_planted(n, |_| ()).await
     }
 
-    /// [`Self::seeded_copy`] with `plant` run on the closed copy's folder
-    /// before it is opened: damage, or a family of triggers dropped.
+    /// Like [`Self::seeded_copy`], but calls `plant` on the copy's closed
+    /// folder before opening it, so a test can damage the data or drop a
+    /// family of triggers.
     pub async fn seeded_copy_planted(
         &self,
         n: u64,
