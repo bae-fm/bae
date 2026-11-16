@@ -164,8 +164,8 @@ impl LibraryViews {
 /// download queue pins the release without having failed (kept, downloading,
 /// or waiting), NULL while it doesn't, as the CTE `pins` with each file row's
 /// id. A pin's download lists its file in `coven_downloading` before
-/// `coven_pins` holds a row for it. A macro so the files statement and the
-/// counts statement build on the one rule.
+/// `coven_pins` holds a row for it. The CTE is a macro so that the files
+/// statement and the counts statement use the same SQL for each file's pin.
 macro_rules! file_pins {
     () => {
         "WITH pins AS (SELECT f.id AS file_row, \

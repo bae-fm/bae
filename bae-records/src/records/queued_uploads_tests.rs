@@ -94,10 +94,11 @@ fn the_progress_read_shows_the_full_reads_counts() {
     assert_eq!(conn.query_row(none, [], release_upload_progress_in_row).unwrap(), None);
 }
 
-/// Every release has a storage row, so a release's upload read with no
-/// queued count is a broken library, not a release with nothing queued: the
-/// read fails. The import list joins a release's storage row only when its
-/// files are queued, so its progress read shows none without one.
+/// Every release has a storage row, so when a release's upload read finds no
+/// queued count, the library is broken, and the read fails instead of
+/// reporting that nothing is queued. The import list joins a release's
+/// storage row only when its files are queued, so its progress read shows no
+/// progress when it finds no storage row.
 #[test]
 fn a_release_upload_read_without_a_storage_row_fails() {
     use crate::records::queued_uploads::{release_upload_in_row, release_upload_progress_in_row};

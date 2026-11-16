@@ -201,10 +201,9 @@ pub fn rows_before<E>(
     order.seeks_before(key).iter().map(&mut count).sum()
 }
 
-/// How many rows of a list come before the rows `seek` reads in `order`:
-/// the rows of `from`, a statement's FROM clause, that `filter` keeps (every
-/// row when it is `None`), counted in one statement over the index ranges
-/// the seek names. `params` binds the named parameters `filter` names beside
+/// How many rows `seek` reads in `order`: the rows of `from`, a statement's
+/// FROM clause, that `filter` keeps (every row when it is `None`) and that
+/// fall in the seek's index ranges, counted in one statement. `params` binds the named parameters `filter` names beside
 /// the seek's own. [`rows_before`] adds these counts over the seeks before a
 /// key to find the key's position.
 pub fn seek_count_on(

@@ -447,7 +447,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
         unreachable!("offered_ids checked it");
     };
     assert!(findings.narrowed_out.is_empty(), "{:?}", findings.narrowed_out);
-    assert!(state.picks_unattended(), "the one row left fits, and is picked");
+    assert!(state.picks_unattended(), "the one row left fits, and the run picks it");
 }
 
 // The order of the folder's track titles against what each read document

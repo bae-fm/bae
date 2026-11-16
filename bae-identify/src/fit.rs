@@ -92,13 +92,14 @@ pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> 
 /// copy, and nothing here blocks an import a person asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderCheck {
-    /// The release lists no tracks, so its count cannot be checked against
-    /// the folder's. Not admitted unverified.
+    /// The release lists no tracks, so bae cannot check its track count
+    /// against the folder's, and bae picks no release it cannot check.
     SourceTracksUnknown,
-    /// The folder's own files rule out every release found — a CD rip against
-    /// no CD, or audio no CD holds against CDs alone — carrying what they
-    /// prove. The releases are offered for a person to pick; none is picked
-    /// for them.
+    /// The folder's own files rule out every release found: the files are a
+    /// CD rip and no release found is a CD, or the files hold audio no CD can
+    /// hold and every release found is a CD. `folder` names which of the two
+    /// the files show. bae offers the releases for the person to pick and
+    /// picks none of them itself.
     MediumDisagrees { folder: MediumConflict },
 }
 

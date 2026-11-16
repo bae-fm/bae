@@ -124,9 +124,9 @@ fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32
 }
 
 /// The release's upload progress as [`RELEASE_UPLOAD_COUNT_COLUMNS`] read
-/// it beside a `release_storage storage` the statement joins only when the
-/// release's files are queued; `None` when it joined none, or none of the
-/// files waits.
+/// it, from a statement that left-joins `release_storage storage` only when
+/// the release has queued files. `None` when the left join finds no row, so
+/// `queued_count` is NULL, or when none of the release's files waits.
 pub fn release_upload_progress_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadProgress>> {
     if row.get::<_, Option<i64>>("queued_count")?.is_none() {
         return Ok(None);

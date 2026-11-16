@@ -146,7 +146,8 @@ pub fn resolve_composer_detail_projection(
     projection.detail.map(composer_detail_of)
 }
 
-/// A composer's page above its rows as its row reads it.
+/// Converts the composer and the work its page opens first, as the database
+/// read returned them, into the page's `ComposerDetail`.
 fn composer_detail_of(raw: DbComposerDetail) -> ComposerDetail {
     ComposerDetail { composer: raw.composer, default_work_id: raw.default_work_id }
 }

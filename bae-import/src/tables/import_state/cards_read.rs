@@ -383,8 +383,9 @@ pub(super) struct StoredVerdictCards {
     narrowed_out_count: u32,
     /// The offered rows when they are several pressings of one album.
     shared_album: Option<StoredSharedAlbum>,
-    /// What a found verdict decides; NULL for every other shape, whose
-    /// decision row declines nothing and picks nothing.
+    /// What a found verdict decides. The statement returns NULL for every
+    /// other kind of verdict, whose decision row declines nothing and picks
+    /// nothing.
     decision: Option<StoredDecision>,
 }
 
