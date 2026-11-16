@@ -11,7 +11,6 @@ import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.data.Library
 import fm.bae.app.plainCreditText
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
@@ -121,7 +120,7 @@ class ArtworkReadGrantsTest {
     private fun callback(grants: ArtworkReadGrants): BaeLibrarySessionCallback =
         BaeLibrarySessionCallback(
             LibraryBrowseTree(
-                Library(FakeAppHandle()),
+                FakeAppHandle(),
                 { BrowseLabels("Library", "Albums", "Composers") },
                 BrowseNodeFactory({ Uri.parse("content://test/cover/${it.id}") }, ::plainCreditText),
                 reportBug = { operation, error -> throw AssertionError("unexpected bug in $operation", error) },

@@ -263,9 +263,6 @@ class Library(
 
     /** One live library search, whose text changes on the same live query as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
-
-    /** Reads that answer one request once, straight from the database, with no subscription. */
-    internal val once = LibraryOneOffReads(handle)
 }
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */

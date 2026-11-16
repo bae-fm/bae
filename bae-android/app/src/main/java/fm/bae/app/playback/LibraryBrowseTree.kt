@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -104,7 +105,8 @@ private fun ParentInterests.retain(
     }
 
 internal class LibraryBrowseTree<Owner : Any>(
-    private val library: Library,
+    /** The open library's handle: the tree reads one request's answer from it once, and lists through [library]. */
+    private val handle: AppHandleInterface,
     private val labels: () -> BrowseLabels,
     private val nodes: BrowseNodeFactory,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
@@ -112,6 +114,8 @@ internal class LibraryBrowseTree<Owner : Any>(
     /** Reports a bug found while answering a controller; the controller is answered with an error. */
     private val reportBug: (operation: String, error: Throwable) -> Unit,
 ) {
+    private val library = Library(handle)
+
     private val onQueryError: (BridgeException) -> Unit = { error ->
         logger.error("library browse live query failed", error)
     }
@@ -311,23 +315,23 @@ internal class LibraryBrowseTree<Owner : Any>(
             }
 
             is BrowseId.Album -> {
-                reportingFailure(onQueryError) { library.once.readAlbumDetail(id.albumId) }?.let {
+                reportingFailure(onQueryError) { handle.readAlbumDetail(id.albumId) }?.let {
                     nodes.album(it.album.id, it.album.title, it.album.cover)
                 }
             }
 
             is BrowseId.Composer -> {
-                reportingFailure(onQueryError) { library.once.readComposerDetail(id.artistId) }?.let {
+                reportingFailure(onQueryError) { handle.readComposerDetail(id.artistId) }?.let {
                     nodes.composer(it.composer)
                 }
             }
 
             is BrowseId.Work -> {
-                reportingFailure(onQueryError) { library.once.readWorkDetail(id.workId) }?.let { nodes.work(it.work) }
+                reportingFailure(onQueryError) { handle.readWorkDetail(id.workId) }?.let { nodes.work(it.work) }
             }
 
             is BrowseId.Track -> {
-                reportingFailure(onQueryError) { library.once.readReleaseTrack(id.releaseId, id.trackId) }
+                reportingFailure(onQueryError) { handle.readReleaseTrack(id.releaseId, id.trackId) }
                     ?.let(nodes::browseTrack)
             }
         }
@@ -345,7 +349,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             return null
         }
         return pageAt(page, pageSize) { offset ->
-            reportingFailure(onQueryError) { library.once.readSearchAlbumPage(query, offset.toLong(), pageSize) }
+            reportingFailure(onQueryError) { handle.readSearchAlbumPage(query, offset.toULong(), pageSize.toULong()) }
                 .map { nodes.album(it.id, it.title, it.cover) }
         }
     }
@@ -452,7 +456,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     suspend fun searchTopPlayable(query: String): BrowseId.Track? {
         checkOpen()
-        val top = reportingFailure(onQueryError) { library.once.readSearchTopPlayable(query) }
+        val top = reportingFailure(onQueryError) { handle.readSearchTopPlayable(query) }
         return top?.let { BrowseId.Track(it.releaseId, it.trackId) }
     }
 

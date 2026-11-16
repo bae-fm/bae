@@ -64,7 +64,7 @@ class PlaybackService(
         }
         val tree =
             LibraryBrowseTree<MediaSession.ControllerInfo>(
-                library = open.library,
+                handle = open.appHandle,
                 labels = {
                     BrowseLabels(
                         library = getString(fm.bae.app.R.string.library),
