@@ -814,10 +814,27 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     assert_eq!(both.sole, None, "two held releases have no sole one");
 
     let one = answer(StorageFilter::All, ids(&[RELEASE_EARLY])).await;
-    assert_eq!(one.sole.as_deref(), Some(RELEASE_EARLY));
+    let sole = one.sole.expect("the list holds one of the asked releases");
+    assert_eq!(sole.release_id, RELEASE_EARLY);
+    let title = db
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT album.title FROM releases release \
+                 JOIN albums album ON album.id = release.album_id WHERE release.id = ?1",
+                [RELEASE_EARLY],
+                |row| row.get::<_, String>(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(sole.album_title, title, "the sole release carries its album's title");
 
     let unknown = answer(StorageFilter::All, ids(&[RELEASE_LATE, "no-such-release"])).await;
-    assert_eq!(unknown.sole.as_deref(), Some(RELEASE_LATE), "a release the list lacks is not held");
+    assert_eq!(
+        unknown.sole.map(|sole| sole.release_id).as_deref(),
+        Some(RELEASE_LATE),
+        "a release the list lacks is not held"
+    );
 
     let filtered_out = answer(StorageFilter::Remote, ids(&[RELEASE_EARLY])).await;
     assert_eq!(filtered_out.sole, None);

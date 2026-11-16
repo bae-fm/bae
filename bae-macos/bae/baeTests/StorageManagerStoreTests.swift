@@ -197,7 +197,10 @@ struct StorageManagerStoreTests {
                     [rows[0].id]: .of(
                         [rows[0]],
                         actions: rows[0].release.storageActions,
-                        sole: rows[0].id
+                        sole: BridgeStorageSoleRelease(
+                            releaseId: rows[0].id,
+                            albumTitle: rows[0].album.title
+                        )
                     ),
                     [rows[0].id, rows[1].id]: .of(
                         [rows[0], rows[1]],
@@ -242,12 +245,12 @@ extension BridgeStorageSelection {
     )
 
     /// Core's answer when the list holds every release in `rows`: core
-    /// offers `actions` and names `sole` as the one release when the
-    /// selection has only one.
+    /// offers `actions` and names `sole`, with its album's title, as the one
+    /// release when the selection has only one.
     fileprivate static func of(
         _ rows: [BridgeStorageRow],
         actions: [BridgeReleaseStorageAction],
-        sole: String? = nil
+        sole: BridgeStorageSoleRelease? = nil
     ) -> BridgeStorageSelection {
         BridgeStorageSelection(
             asked: rows.map(\.id),

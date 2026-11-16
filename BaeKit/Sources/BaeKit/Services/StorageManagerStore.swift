@@ -150,7 +150,7 @@ public final class StorageManagerStore {
     /// when it holds exactly one; `nil` for none or several. Nothing showing
     /// it shows a release the list doesn't.
     public var soleRelease: String? {
-        answer?.sole
+        answer?.sole?.releaseId
     }
 
     /// Whether the list, as core reads it now, holds every one of

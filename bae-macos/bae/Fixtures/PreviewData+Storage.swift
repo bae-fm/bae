@@ -564,7 +564,10 @@ extension PreviewData {
         return BridgeStorageSelection(
             asked: [row.id],
             selected: [row],
-            sole: row.id,
+            sole: BridgeStorageSoleRelease(
+                releaseId: row.id,
+                albumTitle: row.album.title
+            ),
             selectionActions: row.release.storageActions,
             cancelOnly: row.release.transitioning
         )

@@ -196,7 +196,8 @@ impl LibraryViews {
 /// What the Storage Manager's selection read returns: the rows of the selected
 /// releases the list holds, what all of them allow, and the one release the
 /// list holds among them when it holds exactly one.
-pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbStorageActionFlags, Option<String>);
+pub type DbStorageSelection =
+    (Vec<DbStorageRow>, crate::DbStorageActionFlags, Option<crate::StorageSoleRelease>);
 
 /// How many releases the Storage Manager list holds, their files' total size,
 /// and whether a search narrows it.
@@ -620,20 +621,22 @@ pub(crate) fn storage_holds_all_on(
 }
 
 /// The one release of the `release_ids` the list under `filter` and the
-/// search `pattern` holds, when it holds exactly one of them; none for no
-/// release or several.
+/// search `pattern` holds, with its album's title, when it holds exactly one
+/// of them; none for no release or several.
 pub(crate) fn storage_sole_selected_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,
     release_ids: &BTreeSet<String>,
-) -> Result<Option<String>, DbError> {
+) -> Result<Option<crate::StorageSoleRelease>, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let selected = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("selected release ids", error))?;
     let statement = format!(
-        "SELECT CASE WHEN COUNT(*) = 1 THEN MIN(listing.release_id) END \
+        "SELECT CASE WHEN COUNT(*) = 1 THEN MIN(listing.release_id) END, \
+                CASE WHEN COUNT(*) = 1 THEN MIN(album.title) END \
          FROM release_listing listing \
+         JOIN albums album ON album.id = listing.album_id \
          WHERE {filter} AND {searched} \
             AND listing.release_id IN (SELECT value FROM json_each(:selected))",
         filter = storage_filter(filter),
@@ -643,7 +646,13 @@ pub(crate) fn storage_sole_selected_on(
     if let Some(pattern) = &pattern {
         params.push((":search", pattern));
     }
-    Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
+    Ok(sql.query_row(&statement, params.as_slice(), |row| {
+        let release_id: Option<String> = row.get(0)?;
+        let album_title: Option<String> = row.get(1)?;
+        Ok(release_id
+            .zip(album_title)
+            .map(|(release_id, album_title)| crate::StorageSoleRelease { release_id, album_title }))
+    })?)
 }
 
 /// What every one of the `release_ids` the list under `filter` and the search

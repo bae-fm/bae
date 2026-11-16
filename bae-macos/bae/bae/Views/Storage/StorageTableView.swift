@@ -571,7 +571,11 @@ extension StorageTableView.Coordinator {
             entries.append(
                 .item(
                     MacMenuItem(verbatim: action.label) { [runner] in
-                        runner.run(action, targets: targets.rows)
+                        runner.run(
+                            action,
+                            releaseIds: releaseIds,
+                            soleTitle: targets.soleTitle
+                        )
                     }
                 )
             )
@@ -612,7 +616,8 @@ extension StorageTableView.Coordinator {
             return MenuTargets(
                 rows: answer.selected,
                 actions: answer.selectionActions,
-                cancelOnly: answer.cancelOnly
+                cancelOnly: answer.cancelOnly,
+                soleTitle: answer.sole?.albumTitle
             )
         }
         selection.wrappedValue = [clicked.id]
@@ -620,16 +625,19 @@ extension StorageTableView.Coordinator {
         return MenuTargets(
             rows: [clicked],
             actions: clicked.release.storageActions,
-            cancelOnly: clicked.cancelOnly
+            cancelOnly: clicked.cancelOnly,
+            soleTitle: clicked.album.title
         )
     }
 
-    /// The releases a menu acts on, the storage actions they all allow, and
-    /// whether Cancel is the only action one of them offers.
+    /// The releases a menu acts on, the storage actions they all allow,
+    /// whether Cancel is the only action one of them offers, and the album
+    /// title of the one release it acts on, when it acts on one.
     private struct MenuTargets {
         let rows: [BridgeStorageRow]
         let actions: [BridgeReleaseStorageAction]
         let cancelOnly: Bool
+        let soleTitle: String?
     }
 
     private func setInspectorPresented(

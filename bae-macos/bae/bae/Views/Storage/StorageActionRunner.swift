@@ -132,15 +132,19 @@ final class StorageActionRunner {
         }
     }
 
-    /// Run `action` against every release of `targets`. Moving to cloud
+    /// Run `action` against every release `releaseIds` names. `soleTitle` is
+    /// the album title core gives when the action targets one release, which
+    /// the Unpin alert names. Moving to cloud
     /// defers to the confirm sheet; moving to This Mac asks for a destination folder
     /// once and queues the whole batch on the download queue, each release in
     /// a folder of its own below it; pin enqueues the whole batch on the
     /// download queue; unpin asks first while the setting says to, then releases
     /// the whole batch's pins in one call.
-    func run(_ action: BridgeReleaseStorageAction, targets: [BridgeStorageRow])
-    {
-        let releaseIds = targets.map(\.id)
+    func run(
+        _ action: BridgeReleaseStorageAction,
+        releaseIds: [String],
+        soleTitle: String?
+    ) {
         switch action {
         case .upload:
             pendingMoveToCloud = releaseIds
@@ -167,8 +171,7 @@ final class StorageActionRunner {
                 ) {
                     pendingUnpin = PendingUnpin(
                         releaseIds: releaseIds,
-                        title: targets.count == 1
-                            ? targets[0].album.title : nil
+                        title: soleTitle
                     )
                 }
                 else {

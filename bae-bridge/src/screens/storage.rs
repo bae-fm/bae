@@ -13,12 +13,21 @@ pub struct BridgeStorageSelection {
     pub asked: Vec<String>,
     pub selected: Vec<BridgeStorageRow>,
     /// The one release the list holds among those asked about, when it holds
-    /// exactly one.
-    pub sole: Option<String>,
+    /// exactly one, with its album's title.
+    pub sole: Option<BridgeStorageSoleRelease>,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
     /// Whether a selected release is mid-transition or its move failed: the
     /// selection offers only cancelling.
     pub cancel_only: bool,
+}
+
+/// The one release the Storage Manager list holds among the selected ones:
+/// the release the inspector shows, and its album's title, which the Unpin
+/// alert names. Mirrors `StorageSoleRelease`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeStorageSoleRelease {
+    pub release_id: String,
+    pub album_title: String,
 }
 
 /// The transfer queues holding files waiting or on the move, each with
@@ -68,7 +77,10 @@ impl BridgeStorageSelection {
         Self {
             asked: selection.asked,
             selected: selection.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
-            sole: selection.sole,
+            sole: selection.sole.map(|sole| BridgeStorageSoleRelease {
+                release_id: sole.release_id,
+                album_title: sole.album_title,
+            }),
             selection_actions: selection
                 .selection_actions
                 .into_iter()

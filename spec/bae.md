@@ -2512,7 +2512,8 @@ of those two flags over them). The answer names the releases it was asked
 about, so the Mac's menu acts on the rows core answered for the selection it
 shows and offers nothing while the answer is for an earlier one. The answer
 also names the one release the list holds among them when it holds exactly one,
-which the inspector shows, and before an action runs the app asks core whether
+with its album's title, which the inspector shows and the Unpin alert names,
+and before an action runs the app asks core whether
 the list still holds every release it will act on; the app does not search its
 own rows for either one. A release in a download is the download queue's entry
 for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write that

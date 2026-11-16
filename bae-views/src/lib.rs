@@ -54,7 +54,9 @@ pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, SEARCH_RESULT_LIMIT,
 };
 pub use storage_actions::{DbStorageActionFlags, DbStorageActions};
-pub use storage_browse::{ReleaseQueueRun, StorageQueues, StorageSelection, UploadQueueRun};
+pub use storage_browse::{
+    ReleaseQueueRun, StorageQueues, StorageSelection, StorageSoleRelease, UploadQueueRun,
+};
 pub use sync_activity::{
     DownloadQueueActivity, DownloadQueueCounts, SyncActivity, SyncActivityRows, TransferBatch,
     UploadQueueActivity, UploadQueueCounts,

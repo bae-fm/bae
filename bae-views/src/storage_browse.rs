@@ -13,12 +13,21 @@ pub struct StorageSelection {
     pub asked: Vec<String>,
     pub selected: Vec<crate::album_detail::StorageRow>,
     /// The one release the list holds among those asked about, when it holds
-    /// exactly one: the release the inspector shows.
-    pub sole: Option<String>,
+    /// exactly one: the release the inspector shows and the Unpin alert
+    /// names.
+    pub sole: Option<StorageSoleRelease>,
     pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
     /// Whether some selected release is mid-transition or its move failed:
     /// the selection offers only cancelling, which ends those.
     pub cancel_only: bool,
+}
+
+/// The one release the Storage Manager list holds among the selected ones,
+/// with its album's title.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageSoleRelease {
+    pub release_id: String,
+    pub album_title: String,
 }
 
 /// The transfer queues holding files waiting or on the move, each with what
