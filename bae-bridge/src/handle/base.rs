@@ -447,22 +447,23 @@ forward! { sync this => {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
-    /// Move the entry `entry_id` to sit immediately before `before_entry_id`,
-    /// or to the end of its lane without one, and answer whether it moved:
-    /// `false` when the entry, or the one it goes before, is no longer queued
-    /// there, so nothing moved. The lane's list shows the new order when its
-    /// live query runs again after the write.
+    /// Move the entry `entry_id` to `position` among `lane`'s rows as the
+    /// screens show them (for the context lane, the rows after its playing
+    /// track), or to the lane's end past them, and answer whether it moved:
+    /// `false` when the entry is no longer queued in `lane`, so nothing
+    /// moved. Core finds the row the entry then sits before. The lane's list
+    /// shows the move when it arrives.
     ///
     /// The move is sent before the call first waits, so moves sent one after
     /// another, as a drag sends its steps, reach the queue in that order.
     pub async fn reorder_entry(
         self: std::sync::Arc<Self>,
         entry_id: String,
-        before_entry_id: Option<String>,
+        lane: crate::types::BridgeQueueLane,
+        position: u64,
     ) -> Result<bool, BridgeError> {
         let entry_id = parsed_queue_entry_id(&entry_id)?;
-        let before = before_entry_id.as_deref().map(parsed_queue_entry_id).transpose()?;
-        let answer = self.services.playback_reorder_entry(entry_id, before);
+        let answer = self.services.playback_reorder_entry(entry_id, lane.into_core(), position);
         self.run_exported("AppHandle.reorder_entry", move |_| async move { Ok(answer.await?) })
             .await
     }

@@ -20,7 +20,7 @@ pub fn upcoming_order(shuffled: bool) -> ListOrder {
 /// `playback_context c`: those placed past the cursor of the order the lane
 /// reads in. When no track is playing, the cursor is NULL and the condition
 /// matches no rows.
-fn after_the_playing_track(shuffled: bool) -> String {
+pub(super) fn after_the_playing_track(shuffled: bool) -> String {
     format!(
         "c.{place} > (SELECT {cursor} FROM playback_queue)",
         place = context_order_column(shuffled),

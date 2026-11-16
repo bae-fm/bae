@@ -53,12 +53,12 @@ struct QueueSection: View {
     let onClear: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
-    /// Move `entryId` before `beforeEntryId`, or to the lane's end, answering
-    /// whether it moved: `false` when the queue changed first and nothing
-    /// moved.
+    /// Move `entryId` to `position` among `lane`'s rows, answering whether it
+    /// moved: `false` when the queue changed first and nothing moved.
     let onReorder:
-        @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> Bool
+        @MainActor (
+            _ entryId: String, _ lane: BridgeQueueLane, _ position: UInt64
+        ) async throws -> Bool
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
@@ -213,8 +213,7 @@ struct QueueSection: View {
 extension QueueSection {
     /// The gap the lane draws its drop line over, `nil` hiding it: the manual
     /// lane's from an external drop or a cross-lane drag, either lane's from a
-    /// row of its own held over a gap, unless the row after that gap isn't
-    /// loaded yet, where the release moves nothing.
+    /// row of its own held over a gap.
     private var insertGapForLine: Int? {
         if acceptsExternalDrops,
             let gap = dropInsertIndex
@@ -222,17 +221,11 @@ extension QueueSection {
         {
             return gap
         }
-        guard let gap = coordinator.dropGap(in: laneId, count: count),
-            gap == count || itemAt(gap) != nil
-        else {
-            return nil
-        }
-        return gap
+        return coordinator.dropGap(in: laneId, count: count)
     }
 
-    /// Resolves a finished drag: a reorder commits unless the row after the
-    /// drop slot isn't loaded yet, a context row dropped on the manual lane
-    /// enqueues its track, and anything else settles back.
+    /// Resolves a finished drag: a reorder commits, a context row dropped on
+    /// the manual lane enqueues its track, and anything else settles back.
     private func handleDragEnd() {
         // A cross-lane drop skips the animation so the eye stays on the
         // enqueued row, not the source row flying home.
@@ -257,26 +250,16 @@ extension QueueSection {
         case .insertIntoManual(let trackId, let gap):
             onInsertTracks([trackId], gap)
         case .reorder(let entryId, let move, let lane):
-            if move.to + 1 < move.count {
-                guard
-                    let beforeEntryId = itemAt(move.source(at: move.to + 1))?
-                        .id
-                else {
-                    return
-                }
-                commitReorder(entryId, before: beforeEntryId, move, lane)
-                return
-            }
-            commitReorder(entryId, before: nil, move, lane)
+            commitReorder(entryId, move, lane)
         }
     }
 
-    /// Hold `move` on screen and ask core for it: the hold ends when the write
-    /// returns, and the lane then draws its rows, with the failure shown when
-    /// it failed.
+    /// Hold `move` on screen and ask core to move the entry to the slot the
+    /// move puts it in, where core finds the row it then sits before: the hold
+    /// ends when the write returns, and the lane then draws its rows, with the
+    /// failure shown when it failed.
     private func commitReorder(
         _ entryId: String,
-        before beforeEntryId: String?,
         _ move: QueueRowMove,
         _ lane: QueueLaneID
     ) {
@@ -286,7 +269,11 @@ extension QueueSection {
         let onReorderFailed = onReorderFailed
         Task { @MainActor in
             do {
-                if try await onReorder(entryId, beforeEntryId) {
+                if try await onReorder(
+                    entryId,
+                    lane.bridgeLane,
+                    UInt64(move.to)
+                ) {
                     coordinator.reorderMoved(lane, commit: commit)
                 }
                 else {
@@ -442,4 +429,12 @@ extension QueueSection {
 enum QueueLaneID {
     case manual
     case context
+
+    /// The lane as core names it.
+    var bridgeLane: BridgeQueueLane {
+        switch self {
+        case .manual: .manual
+        case .context: .context
+        }
+    }
 }

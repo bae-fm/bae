@@ -122,7 +122,7 @@ internal fun rememberReorderableQueue(
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
             // A step of the drag moves the rows on screen only; its release sends the one reorder.
-            if (order.drop(from.key as? String ?: "", to.key as? String ?: "") == null) {
+            if (order.drop(to.index - from.index) == null) {
                 logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")
             }
         }
@@ -130,10 +130,9 @@ internal fun rememberReorderableQueue(
     // shows what is stored whether the reorder moved the row, moved nothing or failed (and shows its error).
     val onDropped: () -> Unit = {
         order.released()?.let { drop ->
-            val beforeEntryId = (drop.place as? LanePlace.Before)?.entryId
             scope.launch {
-                failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
-                    session.appHandle.reorderEntry(drop.entryId, beforeEntryId)
+                failures.answer("reorderEntry ${drop.entryId} to ${drop.lane} ${drop.position}") {
+                    session.appHandle.reorderEntry(drop.entryId, drop.lane.bridgeLane, drop.position.toULong())
                 }
                 order.reorderReturned(drop.lane)
             }
@@ -197,7 +196,7 @@ internal fun LazyListScope.queueContent(
         // Always fully resolved, so no load hook.
         queueRows(
             session,
-            QueueLane(size = order.manual.size, itemAt = order.manual::get, hold = null),
+            QueueLane(OrderLane.MANUAL, size = order.manual.size, itemAt = order.manual::get, hold = null),
             queue,
             onSkipped,
         )
@@ -235,6 +234,7 @@ private fun LazyListScope.contextLane(
     queueRows(
         session,
         QueueLane(
+            OrderLane.CONTEXT,
             size = order.context.size,
             itemAt = order.context::itemAt,
             hold = session.playback.upcoming::hold,
@@ -248,6 +248,7 @@ private fun LazyListScope.contextLane(
 /** One lane's rows for [queueRows], one row per index. [hold] keeps a row's index read until the returned release
  *  runs. [hold] is null for the manual lane, which core reads whole. */
 private class QueueLane(
+    val lane: OrderLane,
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
     val hold: ((index: Int) -> () -> Unit)?,
@@ -281,7 +282,11 @@ private fun LazyListScope.queueRows(
                         album = item.display.albumTitle,
                         cover = item.display.coverImage,
                         duration = LocalContext.current.durationClockLabel(item.durationClock),
-                        dragHandleModifier = Modifier.draggableHandle(onDragStopped = queue.onDropped),
+                        dragHandleModifier =
+                            Modifier.draggableHandle(
+                                onDragStarted = { queue.order.started(lane.lane, item.entryId, index) },
+                                onDragStopped = queue.onDropped,
+                            ),
                         onClick = {
                             scope.launch {
                                 failures

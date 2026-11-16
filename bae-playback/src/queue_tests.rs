@@ -279,7 +279,7 @@ async fn test_reorder_forward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    assert!(f.queue.reorder(ids[0].clone(), Some(ids[2].clone())).await.unwrap());
+    assert!(f.queue.reorder(ids[0].clone(), QueueLane::Manual, 1).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["b", "a", "c", "d"]));
 }
 
@@ -288,7 +288,7 @@ async fn test_reorder_to_end() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[0].clone(), None).await.unwrap();
+    f.queue.reorder(ids[0].clone(), QueueLane::Manual, 3).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["b", "c", "d", "a"]));
 }
 
@@ -297,7 +297,7 @@ async fn test_reorder_backward() {
     let mut f = release(&["a", "b", "c", "d"]).await;
     f.add(&["a", "b", "c", "d"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[2].clone(), Some(ids[0].clone())).await.unwrap();
+    f.queue.reorder(ids[2].clone(), QueueLane::Manual, 0).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["c", "a", "b", "d"]));
 }
 
@@ -310,18 +310,18 @@ async fn test_reorder_across_gaps() {
     let ids = f.manual_ids().await;
     f.queue.remove(ids[1].clone()).await.unwrap();
     f.queue.remove(ids[3].clone()).await.unwrap();
-    f.queue.reorder(ids[0].clone(), Some(ids[4].clone())).await.unwrap();
+    f.queue.reorder(ids[0].clone(), QueueLane::Manual, 1).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["c", "a", "e"]));
-    f.queue.reorder(ids[4].clone(), Some(ids[2].clone())).await.unwrap();
+    f.queue.reorder(ids[4].clone(), QueueLane::Manual, 0).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["e", "c", "a"]));
 }
 
 #[tokio::test]
-async fn test_reorder_before_self_is_noop() {
+async fn test_reorder_to_its_own_place_is_noop() {
     let mut f = release(&["a", "b", "c"]).await;
     f.add(&["a", "b", "c"]).await;
     let ids = f.manual_ids().await;
-    f.queue.reorder(ids[1].clone(), Some(ids[1].clone())).await.unwrap();
+    f.queue.reorder(ids[1].clone(), QueueLane::Manual, 1).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["a", "b", "c"]));
 }
 
@@ -329,7 +329,7 @@ async fn test_reorder_before_self_is_noop() {
 async fn test_reorder_unknown_source_is_noop() {
     let mut f = release(&["a", "b"]).await;
     f.add(&["a", "b"]).await;
-    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap());
+    assert!(!f.queue.reorder(QueueEntryId::Manual(i64::MAX), QueueLane::Manual, 0).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["a", "b"]));
 }
 
@@ -427,8 +427,8 @@ async fn test_remove_context_tail_entry() {
 async fn test_reorder_context_tail_keeps_cursor() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play_from("t1").await;
-    let (t2, t3) = (f.entry("t2").await, f.entry("t3").await);
-    f.queue.reorder(t3, Some(t2)).await.unwrap();
+    let t3 = f.entry("t3").await;
+    f.queue.reorder(t3, QueueLane::Context, 0).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["t3", "t2", "t4"]));
     assert_eq!(f.current(), "t1", "the playing track stays playing");
 }
@@ -440,8 +440,7 @@ async fn test_reorder_of_the_playing_context_row_moves_the_cursor_with_it() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play_from("t2").await;
     let playing = f.queue.current().unwrap().id.clone();
-    let t4 = f.entry("t4").await;
-    f.queue.reorder(playing, Some(t4)).await.unwrap();
+    f.queue.reorder(playing, QueueLane::Context, 1).await.unwrap();
     assert_eq!(f.context_order().await, names(&["t1", "t3", "t2", "t4"]));
     assert_eq!(f.upcoming().await, names(&["t4"]));
     assert_eq!(f.previous(1_000).await, Some("t3".into()));
@@ -453,8 +452,7 @@ async fn test_reorder_cross_lane_is_noop() {
     f.play_from("t1").await;
     f.add(&["m1"]).await;
     let manual = f.manual_ids().await[0].clone();
-    let context = f.entry("t2").await;
-    assert!(!f.queue.reorder(manual, Some(context)).await.unwrap());
+    assert!(!f.queue.reorder(manual, QueueLane::Context, 0).await.unwrap());
     assert_eq!(f.upcoming().await, names(&["m1", "t2"]));
 }
 
@@ -658,7 +656,7 @@ async fn test_reorder_context_to_end() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play_from("t1").await;
     let t2 = f.entry("t2").await;
-    f.queue.reorder(t2, None).await.unwrap();
+    f.queue.reorder(t2, QueueLane::Context, u64::MAX).await.unwrap();
     assert_eq!(f.upcoming().await, names(&["t3", "t4", "t2"]));
     assert_eq!(f.current(), "t1");
 }
@@ -726,11 +724,11 @@ async fn each_reorder_answers_whether_it_moved() {
     f.add(&["m1", "m2", "m3"]).await;
 
     let manual = f.manual_ids().await;
-    assert!(f.queue.reorder(manual[2].clone(), Some(manual[0].clone())).await.unwrap());
-    let (t2, t4) = (f.entry("t2").await, f.entry("t4").await);
-    assert!(f.queue.reorder(t4, Some(t2)).await.unwrap());
+    assert!(f.queue.reorder(manual[2].clone(), QueueLane::Manual, 0).await.unwrap());
+    let t4 = f.entry("t4").await;
+    assert!(f.queue.reorder(t4, QueueLane::Context, 0).await.unwrap());
     assert!(
-        !f.queue.reorder(QueueEntryId::Manual(i64::MAX), None).await.unwrap(),
+        !f.queue.reorder(QueueEntryId::Manual(i64::MAX), QueueLane::Manual, 0).await.unwrap(),
         "a refused reorder moves nothing"
     );
 }
@@ -762,8 +760,8 @@ async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
         window.next_inline().await.expect("the query stays open").result.unwrap();
     }
 
-    let (t45, t50) = (f.entry("t45").await, f.entry("t50").await);
-    f.queue.reorder(t50, Some(t45)).await.unwrap();
+    let t50 = f.entry("t50").await;
+    f.queue.reorder(t50, QueueLane::Context, 44).await.unwrap();
     assert!(upper.is_marked_for_rerun(), "the rows moved inside the upper window");
     assert!(!lower.is_marked_for_rerun(), "the reorder did not touch the lower window's rows");
 }

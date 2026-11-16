@@ -210,10 +210,12 @@ pub(crate) enum PlaybackCommand {
         entry_id: QueueEntryId,
         reply: QueueEditReply<()>,
     },
-    /// Move `entry_id` to just before `before`, or to the end when it's `None`.
+    /// Move `entry_id` to `position` among `lane`'s rows as the screens show
+    /// them, or to the lane's end past it.
     ReorderQueue {
         entry_id: QueueEntryId,
-        before: Option<QueueEntryId>,
+        lane: crate::QueueLane,
+        position: u64,
         reply: QueueEditReply<bool>,
     },
     /// Empty the manual lane, leaving the context lane playing.
@@ -700,20 +702,20 @@ impl PlaybackHandle {
         let (reply, answer) = oneshot::channel();
         self.edit_queue(PlaybackCommand::RemoveFromQueue { entry_id, reply }, answer)
     }
-    /// Move `entry_id` to just before `before`, or to the end of its lane
-    /// when it's `None`, and answer whether it moved: `false` when the entry,
-    /// or the one it goes before, is no longer queued there, or the two are
-    /// in different lanes.
+    /// Move `entry_id` to `position` among `lane`'s rows as the screens show
+    /// them, or to the lane's end past them, and answer whether it moved:
+    /// `false` when the entry is no longer queued in `lane`.
     ///
     /// The command is sent at the call, in order with the commands sent
     /// before and after it; the answer is the future's.
     pub fn reorder_entry(
         &self,
         entry_id: QueueEntryId,
-        before: Option<QueueEntryId>,
+        lane: crate::QueueLane,
+        position: u64,
     ) -> impl std::future::Future<Output = Result<bool, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.edit_queue(PlaybackCommand::ReorderQueue { entry_id, before, reply }, answer)
+        self.edit_queue(PlaybackCommand::ReorderQueue { entry_id, lane, position, reply }, answer)
     }
     /// Empty the manual lane, answering once it is empty or why it isn't.
     pub fn clear_up_next(

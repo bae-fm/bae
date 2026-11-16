@@ -14,7 +14,7 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 
 use super::queue_fill::{fill_on, ContextFill, ContextFilled};
 use super::*;
-use crate::{QueueEntry, QueueEntryId, RepeatMode};
+use crate::{QueueEntry, QueueEntryId, QueueLane, RepeatMode};
 
 /// The lane a queue entry is in, and the table holding it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,6 +37,14 @@ impl Lane {
         match self {
             Lane::Manual => "position",
             Lane::Context => context_order_column(shuffled),
+        }
+    }
+
+    /// The lane the screens name.
+    fn of(lane: QueueLane) -> Self {
+        match lane {
+            QueueLane::Manual => Lane::Manual,
+            QueueLane::Context => Lane::Context,
         }
     }
 
@@ -230,17 +238,18 @@ impl PlaybackQueueTables {
             .await
     }
 
-    /// Move the entry to sit just before `before`, or to the end of its lane
-    /// without one, and answer whether it moved. Both must be in the same
-    /// lane; nothing moves when either is in none or they are in different
-    /// ones. The context lane's playing track stays the playing track
-    /// wherever it moves.
+    /// Move the entry to `position` among `lane`'s rows as the screens show
+    /// them, or to the lane's end when `position` is past it, and answer
+    /// whether it moved. Nothing moves when the entry is not in `lane`. The
+    /// context lane's playing track stays the playing track wherever it
+    /// moves.
     pub async fn reorder(
         &self,
         id: QueueEntryId,
-        before: Option<QueueEntryId>,
+        lane: QueueLane,
+        position: u64,
     ) -> Result<bool, DbError> {
-        self.store.call(move |sql| reorder_on(sql, id, before)).await
+        self.store.call(move |sql| reorder_on(sql, id, lane, position)).await
     }
 
     /// Make the entry the one playing: an Up Next entry leaves the lane with
@@ -594,30 +603,20 @@ fn set_shuffle_on(sql: &CovenWrite<'_>, on: bool) -> Result<(), DbError> {
 fn reorder_on(
     sql: &CovenWrite<'_>,
     id: QueueEntryId,
-    before: Option<QueueEntryId>,
+    target: QueueLane,
+    position: u64,
 ) -> Result<bool, DbError> {
     let Some(moving) = locate_on(sql, id.clone())? else {
         warn!("reorder: queue entry id not found: {id}");
         return Ok(false);
     };
-    let before = match before {
-        None => None,
-        Some(before) => match locate_on(sql, before.clone())? {
-            Some(target) if target.lane == moving.lane => Some(row_key(&before).1),
-            Some(_) => {
-                warn!(
-                    "reorder: entry {id} and the entry {before} it goes before are in different lanes"
-                );
-                return Ok(false);
-            }
-            None => {
-                warn!("reorder: before id not found: {before}");
-                return Ok(false);
-            }
-        },
-    };
     let lane = moving.lane;
+    if lane != Lane::of(target) {
+        warn!("reorder: entry {id} is not in the {target:?} lane it is moved in");
+        return Ok(false);
+    }
     let (_, entry) = row_key(&id);
+    let before = entry_after_place_on(sql, lane, entry, position)?;
     match lane {
         Lane::Manual => move_entry_on(sql, lane, "position", None, entry, before)?,
         Lane::Context => {
@@ -631,6 +630,33 @@ fn reorder_on(
         }
     }
     Ok(true)
+}
+
+/// The entry a row moved to `position` among `lane`'s rows as the screens
+/// show them sits just before: the row at that position once the moved row
+/// `entry` is left out, or none when the position is past the lane's end.
+fn entry_after_place_on(
+    sql: &CovenWrite<'_>,
+    lane: Lane,
+    entry: i64,
+    position: u64,
+) -> rusqlite::Result<Option<i64>> {
+    let offset = i64::try_from(position).unwrap_or(i64::MAX);
+    let statement = match lane {
+        Lane::Manual => "SELECT entry FROM playback_manual WHERE entry <> ?1 \
+                         ORDER BY position LIMIT 1 OFFSET ?2"
+            .to_string(),
+        Lane::Context => {
+            let shuffled = queue_row_on(sql)?.shuffled;
+            format!(
+                "SELECT c.entry FROM playback_context c WHERE c.entry <> ?1 AND {after} \
+                 ORDER BY c.{column} LIMIT 1 OFFSET ?2",
+                after = super::queue_upcoming::after_the_playing_track(shuffled),
+                column = context_order_column(shuffled),
+            )
+        }
+    };
+    sql.query_row(&statement, params![entry, offset], |row| row.get(0)).optional()
 }
 
 /// Move the entry to just before `before`, or to the end of its lane without

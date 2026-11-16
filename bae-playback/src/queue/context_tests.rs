@@ -193,8 +193,8 @@ async fn test_set_shuffle_on_keeps_history_and_shuffles_only_upcoming() {
 async fn test_shuffle_round_trip_restores_a_reordered_lane_not_source_order() {
     let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
     f.play_from("t1").await;
-    let (t5, t2) = (f.entry("t5").await, f.entry("t2").await);
-    f.queue.reorder(t5, Some(t2)).await.unwrap();
+    let t5 = f.entry("t5").await;
+    f.queue.reorder(t5, QueueLane::Context, 0).await.unwrap();
     let reordered = f.upcoming().await;
     assert_eq!(reordered, names(&["t5", "t2", "t3", "t4"]));
 
@@ -321,8 +321,11 @@ async fn test_a_reorder_made_while_shuffled_is_kept_after_unshuffling() {
     let mut f = release(&["t1", "t2", "t3", "t4", "t5"]).await;
     f.play_from("t1").await;
     f.queue.set_shuffle(true).await.unwrap();
-    let (t5, t2) = (f.entry("t5").await, f.entry("t2").await);
-    f.queue.reorder(t5, Some(t2)).await.unwrap();
+    let shuffled = f.upcoming().await;
+    let (from, before) = (place_of(&shuffled, "t5"), place_of(&shuffled, "t2"));
+    let t5 = f.entry("t5").await;
+    let to = if before > from { before - 1 } else { before };
+    f.queue.reorder(t5, QueueLane::Context, to as u64).await.unwrap();
     let before_t2 = f.upcoming().await;
     let t5_at = before_t2.iter().position(|t| t == "t5").unwrap();
     let t2_at = before_t2.iter().position(|t| t == "t2").unwrap();
@@ -565,4 +568,9 @@ async fn play_tracks_without_a_start_track_leaves_the_queue() {
 
     assert_eq!(f.shown().await, before);
     assert_eq!(f.current(), "t1");
+}
+
+/// Where `name` sits among the upcoming tracks `rows`.
+fn place_of(rows: &[String], name: &str) -> usize {
+    rows.iter().position(|row| row == name).expect("the track is upcoming")
 }

@@ -85,7 +85,7 @@ pub use progress::{
     PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemotePlayback,
     TimelinePoint, POSITION_REPORT_INTERVAL_MS,
 };
-pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
+pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId, QueueLane};
 pub use queue_values::{QueueItem, ResolvedContext, ResolvedQueueSnapshot};
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::{loudness_gain_db, loudness_gain_linear, replay_gain_linear};

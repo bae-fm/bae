@@ -15,12 +15,14 @@ public final class Queue: Sendable, Observable {
     public let clearUpNext: @Sendable () async throws -> Void
     /// Drop the context lane. The playing track keeps playing.
     public let clearPlayingFrom: @Sendable () async throws -> Void
-    /// Move `entryId` to sit before `beforeEntryId`; `nil` moves it to the end
-    /// of its lane. Answers whether it moved: `false` when the queue changed
-    /// first and core moved nothing.
+    /// Move `entryId` to `position` among the rows `lane` shows, or to the
+    /// lane's end past them; core finds the row it then sits before. Answers
+    /// whether it moved: `false` when the entry is no longer in `lane` and
+    /// core moved nothing.
     public let reorderEntry:
-        @Sendable (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> Bool
+        @Sendable (
+            _ entryId: String, _ lane: BridgeQueueLane, _ position: UInt64
+        ) async throws -> Bool
     /// Skip to the row `entryId`. A row the queue no longer holds is not
     /// skipped to, and this answers as if it had been.
     public let skipToEntry: @Sendable (_ entryId: String) async throws -> Void
@@ -43,10 +45,8 @@ public final class Queue: Sendable, Observable {
         clearUpNext: @escaping @Sendable () async throws -> Void = {},
         clearPlayingFrom: @escaping @Sendable () async throws -> Void = {},
         reorderEntry:
-            @escaping @Sendable (String, String?) async throws -> Bool = {
-                _,
-                _ in true
-            },
+            @escaping @Sendable (String, BridgeQueueLane, UInt64) async throws
+            -> Bool = { _, _, _ in true },
         skipToEntry: @escaping @Sendable (String) async throws -> Void = { _ in
         },
         setShuffle: @escaping @Sendable (Bool) -> Void = { _ in },
@@ -107,7 +107,11 @@ public final class Queue: Sendable, Observable {
             clearUpNext: { try await handle.clearUpNext() },
             clearPlayingFrom: { try await handle.clearPlayingFrom() },
             reorderEntry: {
-                try await handle.reorderEntry(entryId: $0, beforeEntryId: $1)
+                try await handle.reorderEntry(
+                    entryId: $0,
+                    lane: $1,
+                    position: $2
+                )
             },
             skipToEntry: { try await handle.skipToEntry(entryId: $0) },
             setShuffle: { on in

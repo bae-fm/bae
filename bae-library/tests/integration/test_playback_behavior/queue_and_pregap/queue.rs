@@ -250,7 +250,8 @@ async fn test_reorder_entry_displaces_preloaded_track() {
             &track0,
             &track2,
             |h, entries| {
-                let moved = h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone()));
+                let moved =
+                    h.reorder_entry(entries[1].id.clone(), bae_playback::QueueLane::Manual, 0);
                 let _answered = tokio::spawn(async move {
                     moved.await.expect("the reorder moves the entry");
                 });
@@ -382,7 +383,7 @@ async fn a_reorder_answers_whether_it_moved() {
         let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
 
         let moved = handle
-            .reorder_entry(id(2), Some(id(0)))
+            .reorder_entry(id(2), bae_playback::QueueLane::Manual, 0)
             .await
             .expect("the playback handle answers the reorder");
         assert!(moved, "the entry moves");
@@ -390,7 +391,11 @@ async fn a_reorder_answers_whether_it_moved() {
         assert_eq!(value.manual[0].entry_id, entries[2].entry_id);
 
         let refused = handle
-            .reorder_entry(bae_playback::QueueEntryId::Manual(i64::MAX), Some(id(0)))
+            .reorder_entry(
+                bae_playback::QueueEntryId::Manual(i64::MAX),
+                bae_playback::QueueLane::Manual,
+                0,
+            )
             .await
             .expect("the reorder is answered");
         assert!(!refused, "no such entry is queued");

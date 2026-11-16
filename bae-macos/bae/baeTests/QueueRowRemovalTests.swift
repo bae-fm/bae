@@ -31,7 +31,7 @@ struct QueueRowRemovalTests {
                 onClear: {},
                 onSkipTo: { _ in },
                 onRemove: { id in removals.record(id) },
-                onReorder: { _, _ in true },
+                onReorder: { _, _, _ in true },
                 onReorderFailed: { _ in },
                 onInsertTracks: { _, _ in },
                 onSetShuffle: nil,

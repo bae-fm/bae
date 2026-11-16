@@ -350,6 +350,21 @@ pub struct BridgeQueueEntry {
     pub duration_clock: BridgeDurationClock,
 }
 
+/// One of the queue's two lanes as the screens show it: Up Next, every row
+/// of it, or the rows of what's playing from after its playing track.
+/// Mirrors `bae_playback::QueueLane`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeQueueLane {
+    Manual,
+    Context,
+}
+
+mirror_enum! {
+    BridgeQueueLane = bae_playback::QueueLane,
+    into_core: pub(crate) fn,
+    variants: { Manual, Context },
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeQueueSnapshot {
     pub manual: Vec<BridgeQueueEntry>,

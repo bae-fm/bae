@@ -45,6 +45,7 @@ import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgePreviewTarget
+import uniffi.bae_bridge.BridgeQueueLane
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeRendererService
@@ -469,7 +470,8 @@ internal open class FakeAppHandle(
 
     override suspend fun reorderEntry(
         entryId: String,
-        beforeEntryId: String?,
+        lane: BridgeQueueLane,
+        position: ULong,
     ): Boolean = unfaked("reorderEntry")
 
     override suspend fun tracksInReleaseOrder(trackIds: List<String>): List<String> = unfaked("tracksInReleaseOrder")

@@ -163,8 +163,8 @@ impl PlaybackService {
                     debug!("a remove answered a caller that stopped waiting");
                 }
             }
-            PlaybackCommand::ReorderQueue { entry_id, before, reply } => {
-                let moved = match self.playback_queue.reorder(entry_id, before).await {
+            PlaybackCommand::ReorderQueue { entry_id, lane, position, reply } => {
+                let moved = match self.playback_queue.reorder(entry_id, lane, position).await {
                     Ok(true) => {
                         self.on_queue_mutated().await;
                         Ok(true)

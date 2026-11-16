@@ -30,9 +30,9 @@ async fn test_context_repeat_shuffled_loops_a_reshuffled_order() {
 async fn test_context_repeat_sequential_wrap_carries_edits_into_the_next_pass() {
     let mut f = release(&["t1", "t2", "t3", "t4"]).await;
     f.play_from("t1").await;
-    let (t2, t3, t4) = (f.entry("t2").await, f.entry("t3").await, f.entry("t4").await);
+    let (t2, t4) = (f.entry("t2").await, f.entry("t4").await);
     f.queue.remove(t2).await.unwrap();
-    f.queue.reorder(t4, Some(t3)).await.unwrap();
+    f.queue.reorder(t4, QueueLane::Context, 0).await.unwrap();
     assert_eq!(f.context_order().await, names(&["t1", "t4", "t3"]));
 
     f.queue.set_repeat_mode(RepeatMode::Context).await.unwrap();

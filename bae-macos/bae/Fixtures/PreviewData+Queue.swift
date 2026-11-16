@@ -257,45 +257,28 @@ private final class PreviewQueueModel {
         apply()
     }
 
-    /// Move `entryId` before `beforeEntryId` within its lane; `nil` moves
-    /// it to the lane's end — core's reorder semantics — and answer whether
-    /// it moved.
-    func reorder(_ entryId: String, before beforeEntryId: String?)
-        -> Bool
-    {
-        func moved(in lane: [BridgeQueueEntry]) -> [BridgeQueueEntry]? {
-            guard
-                let from = lane.firstIndex(where: {
-                    $0.entryId == entryId
-                })
-            else {
-                return nil
-            }
-            var lane = lane
-            let entry = lane.remove(at: from)
-            if let beforeEntryId,
-                let to = lane.firstIndex(where: {
-                    $0.entryId == beforeEntryId
-                })
-            {
-                lane.insert(entry, at: to)
-            }
-            else {
-                lane.append(entry)
-            }
-            return lane
+    /// Move `entryId` to `position` in `lane`, or to the lane's end past it —
+    /// core's reorder semantics — and answer whether it moved.
+    func reorder(
+        _ entryId: String,
+        lane: BridgeQueueLane,
+        position: UInt64
+    ) -> Bool {
+        var rows = lane == .manual ? manual : upcoming
+        guard let from = rows.firstIndex(where: { $0.entryId == entryId })
+        else {
+            return false
         }
-        if let lane = moved(in: manual) {
-            manual = lane
-            apply()
-            return true
+        let entry = rows.remove(at: from)
+        rows.insert(entry, at: min(Int(position), rows.count))
+        if lane == .manual {
+            manual = rows
         }
-        if let lane = moved(in: upcoming) {
-            upcoming = lane
-            apply()
-            return true
+        else {
+            upcoming = rows
         }
-        return false
+        apply()
+        return true
     }
 
     /// Play the entry: it becomes now playing, and it — plus whatever sat
@@ -529,8 +512,8 @@ extension PreviewData {
                 clearPlayingFrom: {
                     await model.clearPlayingFrom()
                 },
-                reorderEntry: { id, before in
-                    await model.reorder(id, before: before)
+                reorderEntry: { id, lane, position in
+                    await model.reorder(id, lane: lane, position: position)
                 },
                 skipToEntry: { id in
                     await model.skipTo(id)

@@ -444,7 +444,8 @@ async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
             &track0,
             &track2,
             |h, entries| {
-                let moved = h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone()));
+                let moved =
+                    h.reorder_entry(entries[1].id.clone(), bae_playback::QueueLane::Manual, 0);
                 let _answered = tokio::spawn(async move {
                     moved.await.expect("the reorder moves the entry");
                 });

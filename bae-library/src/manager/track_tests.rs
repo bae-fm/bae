@@ -228,7 +228,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
         .map(|item| item.entry_id.clone())
         .collect();
     let id = |index: usize| entries[index].parse::<bae_playback::QueueEntryId>().unwrap();
-    tables.reorder(id(2), Some(id(0))).await.unwrap();
+    tables.reorder(id(2), bae_playback::QueueLane::Manual, 0).await.unwrap();
 
     let shown: Vec<(String, String)> = bae_playback::tables::queue_value(test.library.store())
         .await

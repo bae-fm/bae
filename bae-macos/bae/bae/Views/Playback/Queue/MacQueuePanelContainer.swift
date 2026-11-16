@@ -72,8 +72,8 @@ struct MacQueuePanelContainer: View {
                     catch { uiStore.showError(error) }
                 }
             },
-            onReorder: { entryId, beforeEntryId in
-                try await queue.reorderEntry(entryId, beforeEntryId)
+            onReorder: { entryId, lane, position in
+                try await queue.reorderEntry(entryId, lane, position)
             },
             onReorderFailed: { uiStore.showError($0) },
             onInsertTracks: onInsertTracks,

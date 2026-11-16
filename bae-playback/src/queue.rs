@@ -26,6 +26,15 @@ pub enum QueueEntryId {
     Context(i64),
 }
 
+/// One of the queue's two lanes as the screens show it: Up Next, every row
+/// of it, or the context lane's rows after its playing track, in the order
+/// the lane reads in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueLane {
+    Manual,
+    Context,
+}
+
 impl std::str::FromStr for QueueEntryId {
     type Err = String;
 
@@ -144,16 +153,17 @@ impl PlaybackQueue {
         Ok(removed)
     }
 
-    /// Move the entry to sit just before `before`, or to the end of its lane;
-    /// both in one lane. Answers whether it moved: `false` when either names
-    /// no entry of that lane, so the caller can count the anomaly; `reorder`
-    /// logs the mismatch.
+    /// Move the entry to `position` among `lane`'s rows as the screens show
+    /// them, or to the lane's end when `position` is past it. Answers whether
+    /// it moved: `false` when the entry is not in `lane`, so the caller can
+    /// count the anomaly; the mismatch is logged here.
     pub async fn reorder(
         &mut self,
         id: QueueEntryId,
-        before: Option<QueueEntryId>,
+        lane: QueueLane,
+        position: u64,
     ) -> Result<bool, DbError> {
-        self.tables.reorder(id, before).await
+        self.tables.reorder(id, lane, position).await
     }
 
     /// Make the entry current: an Up Next entry drains the ones ahead of it, a

@@ -65,12 +65,13 @@ struct MacQueuePanel: View {
     let onClearPlayingFrom: () -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
-    /// Move the entry `entryId` to sit before `beforeEntryId`; `nil` moves it
-    /// to the end of its lane. Answers whether it moved: `false` when the
-    /// queue changed first and nothing moved.
+    /// Move the entry `entryId` to `position` among its lane's rows. Answers
+    /// whether it moved: `false` when the queue changed first and nothing
+    /// moved.
     let onReorder:
-        @MainActor (_ entryId: String, _ beforeEntryId: String?) async throws
-            -> Bool
+        @MainActor (
+            _ entryId: String, _ lane: BridgeQueueLane, _ position: UInt64
+        ) async throws -> Bool
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
