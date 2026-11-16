@@ -124,13 +124,13 @@ impl FileReads {
     /// on this thread, which waits for it: call it only off the async
     /// workers, holding no other place of the budget.
     pub(super) fn place(&self) -> Result<LeasePlace, FolderScanError> {
-        Ok(self.lease(1)?.place_blocking())
+        Ok(self.lease_one()?.place_blocking())
     }
 
-    /// `count` places of the budget, taken in one wait on this thread, for
-    /// reads that follow one another: the same rules as [`Self::place`].
-    fn lease(&self, count: usize) -> Result<FileLease, FolderScanError> {
-        self.files.lease_blocking(count).map_err(|error| FolderScanError::Other(error.to_string()))
+    /// One place of the budget, taken in one wait on this thread: the same
+    /// rules as [`Self::place`].
+    fn lease_one(&self) -> Result<FileLease, FolderScanError> {
+        self.files.lease_blocking(1).map_err(|error| FolderScanError::Other(error.to_string()))
     }
 
     /// What the scan entries stored for one root say their pass read, and
@@ -255,7 +255,7 @@ impl FileReads {
     fn probe(&self, file: &ScannedFile) -> Result<Playability, FolderScanError> {
         let version = file.version.clone();
         let reader = (!self.tags_known(&version)).then_some(self.tags.as_ref());
-        let (stream, read) = probe(file, reader, &self.lease(1)?)?;
+        let (stream, read) = probe(file, reader, &self.lease_one()?)?;
         let read = read.map(parsed).transpose()?;
         self.with_known(|known| {
             known.track_mut(&version).stream = Some(stream.clone());
