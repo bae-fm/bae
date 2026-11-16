@@ -17,15 +17,15 @@
 //! bae stores the search as rows (`import_candidate_search` and the tables
 //! beside it), and bae rewrites the list's cards each time a provider
 //! answers.
-//! `CandidateSearch` holds what a read of those rows returns, and its cards
-//! are the ones the rows state. The driver that runs the lookups is
+//! `CandidateSearch` holds what a read of those rows returns: its cards are
+//! the ones the rows state, and the read counts each part's releases and
+//! decides where the search stands. The driver that runs the lookups is
 //! [`crate::ImportServiceHandle::start_candidate_search`].
 
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::search::{MetadataResult, SearchQuery};
+use bae_catalogs::search::SearchQuery;
 use bae_catalogs::Failure;
 use bae_identify::release_group::ReleaseGroup;
-use bae_preferences::{CatalogAvailability, SourceAvailability};
 
 /// The run a stored search is on: what each catalog's answer names to land
 /// on it. A new search for a key is on a new run, and no run is used twice.
@@ -50,179 +50,59 @@ pub enum SourceSearch {
     Off,
     /// The source needs a credential this library does not hold, so it was
     /// never asked. Saying so is not the same as saying it found nothing, and
-    /// not the same as [`Self::Off`] — one is fixed by supplying the
+    /// not the same as [`Self::Off`]: one is fixed by supplying the
     /// credential, the other by switching the source back on.
     NotConfigured,
     Searching,
+    /// The source answered with `found` releases, which reach a surface on
+    /// the search's cards.
     Done {
-        results: Vec<MetadataResult>,
+        found: u32,
     },
     /// The source could not answer, or bae broke asking it.
     Failed(Failure),
 }
 
-impl SourceSearch {
-    /// The part a source starts with, given whether this library asks it.
-    pub(crate) fn starting(state: SourceAvailability) -> Self {
-        match state {
-            SourceAvailability::On => SourceSearch::Searching,
-            SourceAvailability::Off => SourceSearch::Off,
-            SourceAvailability::NotConfigured => SourceSearch::NotConfigured,
-        }
-    }
-
-    fn is_settled(&self) -> bool {
-        match self {
-            SourceSearch::Off
-            | SourceSearch::NotConfigured
-            | SourceSearch::Done { .. }
-            | SourceSearch::Failed(_) => true,
-            SourceSearch::Searching => false,
-        }
-    }
-
-    fn results(&self) -> &[MetadataResult] {
-        match self {
-            SourceSearch::Done { results } => results,
-            SourceSearch::Off
-            | SourceSearch::NotConfigured
-            | SourceSearch::Searching
-            | SourceSearch::Failed(_) => &[],
-        }
-    }
-}
-
-/// Where a candidate's typed search stands as a whole — the one glyph a
-/// surface heads it with.
+/// Where a candidate's typed search stands as a whole: the one glyph a
+/// surface heads it with. The search's read decides it from the parts' rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SearchStatus {
     /// A source is still looking.
     Searching,
-    /// Every source has landed and none failed; at least one named a release.
+    /// No source is looking and none failed, and the search did not find
+    /// nothing: a source named a release, or no source was asked.
     Found,
-    /// Every source has landed, none failed, and a source that answered named
-    /// no release. An unavailable provider is not an empty answer.
+    /// No source is looking and none failed, a source answered, and no
+    /// source named a release. A source that was not asked is not an empty
+    /// answer.
     NoMatches,
-    /// Every source has landed and at least one failed, whatever the others
+    /// No source is looking and at least one failed, whatever the others
     /// found.
     Failed,
 }
 
-/// A candidate's typed search: the query, each source's part of it, and the
-/// result area derived from every part that has landed.
+/// A candidate's typed search as its rows read: the query, each source's
+/// part of it, the album cards of every release a source returned, and where
+/// the search stands as a whole.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateSearch {
     pub query: SearchQuery,
     /// Each catalog's part of this search, one entry per
     /// [`LookupCatalog`], in that order. Neither is the main one: a
-    /// surface iterates this and every method below folds over it.
+    /// surface iterates this.
     pub sources: Vec<(LookupCatalog, SourceSearch)>,
     /// Every settled source's results as album cards, the cards the search's
     /// own write stored: a card gains a second source's rows the moment that
     /// source answers.
     pub groups: Vec<ReleaseGroup>,
-}
-
-impl CandidateSearch {
-    /// A search just submitted: every source this library asks is looking, and
-    /// each source it does not ask says which reason it is rather than
-    /// pretending to look.
-    pub fn started(query: SearchQuery, sources: &[CatalogAvailability]) -> Self {
-        Self::of(
-            query,
-            sources
-                .iter()
-                .map(|entry| (entry.catalog, SourceSearch::starting(entry.state)))
-                .collect(),
-            Vec::new(),
-        )
-    }
-
-    /// The search that asked `query`, with each source's part as it stands
-    /// and the album cards stored for its results.
-    pub(crate) fn of(
-        query: SearchQuery,
-        sources: Vec<(LookupCatalog, SourceSearch)>,
-        groups: Vec<ReleaseGroup>,
-    ) -> Self {
-        Self { query, sources, groups }
-    }
-
-    /// This source's part of the search, or `None` for a source the search was
-    /// not started with.
-    pub fn source(&self, source: LookupCatalog) -> Option<&SourceSearch> {
-        self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
-    }
-
-    /// The MusicBrainz release group of `release`, whose documents bae reads
-    /// when the person picks `release`; `None` when `release` is not a
-    /// MusicBrainz result on the list or names no group.
-    pub(crate) fn pickable_group(
-        &self,
-        release: &bae_catalogs::records::LookupRef,
-    ) -> Option<String> {
-        if release.catalog != LookupCatalog::MusicBrainz {
-            return None;
-        }
-        self.landed()
-            .find(|result| result.release() == *release)
-            .and_then(|result| result.source_group_id.clone())
-    }
-
-    /// Every settled source's results, in source order.
-    fn landed(&self) -> impl Iterator<Item = &MetadataResult> {
-        self.sources.iter().flat_map(|(_, state)| state.results())
-    }
-
-    /// The sources with a lookup to run — every asked source of a just-started
-    /// search, and the re-asked ones after a Retry.
-    pub fn searching_sources(&self) -> Vec<LookupCatalog> {
-        self.sources_matching(|state| matches!(state, SourceSearch::Searching))
-    }
-
-    /// Whether every source has landed — nothing is still looking.
-    fn is_settled(&self) -> bool {
-        self.sources.iter().all(|(_, state)| state.is_settled())
-    }
-
-    /// A completed, successful lookup found no releases. A source that was not
-    /// asked, or that failed, is not an empty answer.
-    fn has_no_matches(&self) -> bool {
-        self.is_settled()
-            && self.landed().next().is_none()
-            && self.failed_sources().is_empty()
-            && self.sources.iter().any(|(_, state)| matches!(state, SourceSearch::Done { .. }))
-    }
-
-    /// The sources whose part satisfies `predicate`, in source order.
-    fn sources_matching(&self, predicate: impl Fn(&SourceSearch) -> bool) -> Vec<LookupCatalog> {
-        self.sources
-            .iter()
-            .filter(|(_, state)| predicate(state))
-            .map(|(source, _)| *source)
-            .collect()
-    }
-
-    /// Where the search stands as a whole.
-    pub fn status(&self) -> SearchStatus {
-        if !self.is_settled() {
-            SearchStatus::Searching
-        } else if !self.failed_sources().is_empty() {
-            SearchStatus::Failed
-        } else if self.has_no_matches() {
-            SearchStatus::NoMatches
-        } else {
-            SearchStatus::Found
-        }
-    }
-
-    /// The sources that failed, for the lines that name them and the Retry
-    /// that re-asks them.
-    pub fn failed_sources(&self) -> Vec<LookupCatalog> {
-        self.sources_matching(|state| matches!(state, SourceSearch::Failed(_)))
-    }
+    pub status: SearchStatus,
 }
 
 #[cfg(test)]
-#[path = "candidate_search_tests.rs"]
-mod tests;
+impl CandidateSearch {
+    /// This source's part of the search, or `None` for a source the search was
+    /// not started with.
+    pub(crate) fn source(&self, source: LookupCatalog) -> Option<&SourceSearch> {
+        self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
+    }
+}

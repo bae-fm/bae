@@ -2,7 +2,9 @@
 //! query as columns, each catalog's part of it
 //! (`import_candidate_search_source`), and the releases each part returned,
 //! as match rows the search owns ([`MatchOwner::Search`]). The cards a
-//! surface draws are folded from them as they are read, never stored.
+//! surface draws are folded from them as they are read, never stored. The
+//! read also counts each part's releases and decides where the search stands
+//! as a whole ([`status_column`]).
 //!
 //! Each change is one write that decides from the rows it changes. A
 //! catalog's answer lands only on a part that is still searching, of the
@@ -20,15 +22,15 @@ use super::cards_read::{groups_of, search_cards_sql};
 use super::column_list::{ColumnList, Columns, JsonColumns};
 use super::layout::lay_out_search_on;
 use super::lookup_failure_columns::{failure_columns, failure_of};
-use super::match_record::{match_record_sql, StoredRecord};
-use super::match_rows::{store_match, Listing, MatchOwner, Written};
+use super::match_rows::{store_match, MatchOwner, Written};
 use super::*;
-use crate::candidate_search::{CandidateSearch, SearchRun, SourceSearch};
+use crate::candidate_search::{CandidateSearch, SearchRun, SearchStatus, SourceSearch};
 use crate::CandidateFiles;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::{Failure, InternalFailure};
+use bae_preferences::{CatalogAvailability, SourceAvailability};
 use std::str::FromStr;
 
 /// Delete every typed search: none outlives the process that asked it.
@@ -90,15 +92,22 @@ struct PartColumns<'a> {
     error_detail: Option<&'a str>,
 }
 
-fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
+/// The state a part starts in, given whether the library asks its catalog.
+fn starting_state(availability: SourceAvailability) -> &'static str {
+    match availability {
+        SourceAvailability::On => "searching",
+        SourceAvailability::Off => "off",
+        SourceAvailability::NotConfigured => "not_configured",
+    }
+}
+
+/// The columns of a part a catalog answered with `outcome`.
+fn landed_columns(outcome: &Result<Vec<MetadataResult>, Failure>) -> PartColumns<'_> {
     let settled =
         |state| PartColumns { state, failure: None, failure_status: None, error_detail: None };
-    match part {
-        SourceSearch::Off => settled("off"),
-        SourceSearch::NotConfigured => settled("not_configured"),
-        SourceSearch::Searching => settled("searching"),
-        SourceSearch::Done { .. } => settled("done"),
-        SourceSearch::Failed(Failure::Lookup(failure)) => {
+    match outcome {
+        Ok(_) => settled("done"),
+        Err(Failure::Lookup(failure)) => {
             let columns = failure_columns(Some(failure));
             PartColumns {
                 failure: columns.kind,
@@ -106,14 +115,14 @@ fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
                 ..settled("failed")
             }
         }
-        SourceSearch::Failed(Failure::Internal(failure)) => {
+        Err(Failure::Internal(failure)) => {
             PartColumns { error_detail: Some(&failure.detail), ..settled("failed") }
         }
     }
 }
 
-/// One part as [`parts_column`] holds it: its row, and the releases it
-/// returned, in the order it returned them.
+/// One part as [`parts_column`] holds it: its row, and how many releases it
+/// returned.
 #[derive(serde::Deserialize)]
 struct StoredPart {
     catalog: String,
@@ -121,132 +130,93 @@ struct StoredPart {
     failure: Option<String>,
     failure_status: Option<i64>,
     error_detail: Option<String>,
-    results: Vec<StoredRecord>,
+    found: i64,
 }
 
 /// The parts of the search a column names as one JSON list column in the
-/// order of their positions, each with the releases it returned.
+/// order of their positions, each with the count of releases it returned. A
+/// search's release references a part that answered, so only such a part
+/// counts any.
 fn parts_column(search_run: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
                   'catalog', part.catalog, 'state', part.state, 'failure', part.failure, \
                   'failure_status', part.failure_status, 'error_detail', part.error_detail, \
-                  'results', json((SELECT json_group_array(json({record}) ORDER BY found.position) \
-                                   FROM import_candidate_match AS found \
-                                   WHERE found.search_run = part.search_run \
-                                     AND found.source = part.catalog))) \
+                  'found', (SELECT COUNT(*) FROM import_candidate_match AS found \
+                            WHERE found.search_run = part.search_run \
+                              AND found.source = part.catalog)) \
                   ORDER BY part.position) \
           FROM import_candidate_search_source AS part \
-          WHERE part.search_run = {search_run})",
-        record = match_record_sql("found"),
+          WHERE part.search_run = {search_run})"
     )
+}
+
+/// Where the search a column names stands as a whole, as the text
+/// [`status_of`] reads: searching while a part is, else failed when a part
+/// failed, else no matches when a part answered and no part returned a
+/// release, else found.
+fn status_column(search_run: &str) -> String {
+    let part_in = |state: &str| {
+        format!(
+            "EXISTS (SELECT 1 FROM import_candidate_search_source AS part \
+                     WHERE part.search_run = {search_run} AND part.state = '{state}')"
+        )
+    };
+    format!(
+        "CASE WHEN {searching} THEN 'searching' \
+              WHEN {failed} THEN 'failed' \
+              WHEN {done} AND NOT EXISTS (SELECT 1 FROM import_candidate_match AS found \
+                                          WHERE found.search_run = {search_run}) \
+                  THEN 'no_matches' \
+              ELSE 'found' END",
+        searching = part_in("searching"),
+        failed = part_in("failed"),
+        done = part_in("done"),
+    )
+}
+
+/// The status a [`status_column`] holds.
+fn status_of(status: &str) -> Result<SearchStatus, DbError> {
+    Ok(match status {
+        "searching" => SearchStatus::Searching,
+        "found" => SearchStatus::Found,
+        "no_matches" => SearchStatus::NoMatches,
+        "failed" => SearchStatus::Failed,
+        other => return Err(DbError::unreadable("a search's status", other)),
+    })
 }
 
 impl StoredPart {
     /// The part and the catalog it is of.
-    fn part(self, search: &str) -> Result<(LookupCatalog, SourceSearch), DbError> {
-        let Self { catalog, state, failure, failure_status, error_detail, results } = self;
-        let results = results
-            .into_iter()
-            .map(|record| {
-                let found = record.match_row(search)?;
-                let Listing::Returned = found.listing else {
-                    return Err(DbError::unreadable(
-                        format!(
-                            "import_candidate_match.listing of {search}'s match {}",
-                            found.position
-                        ),
-                        &found.listing,
-                    ));
-                };
-                Ok(found.result)
-            })
-            .collect::<Result<Vec<MetadataResult>, DbError>>()?;
-        let holds_none = |part: SourceSearch| {
-            if results.is_empty() {
-                Ok(part)
-            } else {
-                Err(DbError::unreadable(
-                    format!("the releases of a search's {catalog} part, {state}"),
-                    results.len(),
-                ))
+    fn part(self) -> Result<(LookupCatalog, SourceSearch), DbError> {
+        let Self { catalog, state, failure, failure_status, error_detail, found } = self;
+        let part = match state.as_str() {
+            "off" => SourceSearch::Off,
+            "not_configured" => SourceSearch::NotConfigured,
+            "searching" => SourceSearch::Searching,
+            "done" => SourceSearch::Done {
+                found: u32::try_from(found).map_err(|_too_many| {
+                    DbError::unreadable(format!("the count of a search's {catalog} part"), found)
+                })?,
+            },
+            "failed" => {
+                SourceSearch::Failed(match (failure_of(failure, failure_status)?, error_detail) {
+                    (Some(failure), None) => Failure::Lookup(failure),
+                    (None, Some(detail)) => Failure::Internal(InternalFailure { detail }),
+                    (failure, detail) => {
+                        return Err(DbError::unreadable(
+                            format!("the failure of a search's failed {catalog} part"),
+                            (failure, detail),
+                        ))
+                    }
+                })
+            }
+            other => {
+                return Err(DbError::unreadable("import_candidate_search_source.state", other))
             }
         };
-        let part = match state.as_str() {
-            "off" => holds_none(SourceSearch::Off),
-            "not_configured" => holds_none(SourceSearch::NotConfigured),
-            "searching" => holds_none(SourceSearch::Searching),
-            "done" => Ok(SourceSearch::Done { results: results.clone() }),
-            "failed" => {
-                let failure =
-                    match (failure_of(failure.clone(), failure_status)?, error_detail.clone()) {
-                        (Some(failure), None) => Failure::Lookup(failure),
-                        (None, Some(detail)) => Failure::Internal(InternalFailure { detail }),
-                        (failure, detail) => {
-                            return Err(DbError::unreadable(
-                                format!("the failure of a search's failed {catalog} part"),
-                                (failure, detail),
-                            ))
-                        }
-                    };
-                holds_none(SourceSearch::Failed(failure))
-            }
-            other => Err(DbError::unreadable("import_candidate_search_source.state", other)),
-        }?;
-        let catalog = LookupCatalog::from_str(&catalog).map_err(|_unknown| {
-            DbError::unreadable("import_candidate_search_source.catalog", &catalog)
-        })?;
-        Ok((catalog, part))
+        Ok((catalog_of(&catalog)?, part))
     }
-}
-
-/// Every search, or `key`'s alone, by key, each with the run it is on.
-fn load_on(
-    sql: &impl coven::SqlRead,
-    key: Option<&CandidateKey>,
-) -> Result<Vec<(CandidateKey, SearchRun, CandidateSearch)>, DbError> {
-    let searches = sql.query(
-        &format!(
-            "SELECT search_run, candidate_key, mode, artist, album, catalog_number, barcode, \
-                    {cards} AS cards, {parts} AS parts \
-             FROM import_candidate_search WHERE ?1 IS NULL OR candidate_key = ?1 \
-             ORDER BY search_run",
-            cards = search_cards_sql("import_candidate_search.search_run"),
-            parts = parts_column("import_candidate_search.search_run"),
-        ),
-        params![key],
-        |row| {
-            Ok((
-                row.get::<_, i64>("search_run")?,
-                row.get::<_, CandidateKey>("candidate_key")?,
-                query_of(row),
-                row.get::<_, String>("cards")?,
-                row.get::<_, String>("parts")?,
-            ))
-        },
-    )?;
-    let mut loaded = Vec::with_capacity(searches.len());
-    for (run, key, query, cards, parts) in searches {
-        loaded.push((key.clone(), SearchRun::of(run), search_of(&key, query?, &cards, &parts)?));
-    }
-    Ok(loaded)
-}
-
-/// The search of `key` its query, cards and parts columns hold.
-fn search_of(
-    key: &CandidateKey,
-    query: SearchQuery,
-    cards: &str,
-    parts: &str,
-) -> Result<CandidateSearch, DbError> {
-    let groups = groups_of(cards)?;
-    let stored: Vec<StoredPart> = serde_json::from_str(parts)
-        .map_err(|error| DbError::unreadable_json("a search's stored parts", parts, error))?;
-    let sources = stored
-        .into_iter()
-        .map(|part| part.part(&format!("{key}'s search")))
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(CandidateSearch::of(query, sources, groups))
 }
 
 /// The search of the key a read joins as `keys`, as one JSON object holding
@@ -260,21 +230,22 @@ pub(super) fn search_object_sql() -> String {
         ("barcode", "typed.barcode".to_string()),
         ("cards", search_cards_sql("typed.search_run")),
         ("parts", parts_column("typed.search_run")),
+        ("status", status_column("typed.search_run")),
     ])
     .object()
 }
 
 /// The search a [`search_object_sql`] object holds.
-pub(super) fn search_in(
-    key: &CandidateKey,
-    search: &JsonColumns,
-) -> Result<CandidateSearch, DbError> {
-    search_of(
-        key,
-        query_of(search)?,
-        &search.get::<String>("cards")?,
-        &search.get::<String>("parts")?,
-    )
+pub(super) fn search_in(search: &JsonColumns) -> Result<CandidateSearch, DbError> {
+    let parts = search.get::<String>("parts")?;
+    let stored: Vec<StoredPart> = serde_json::from_str(&parts)
+        .map_err(|error| DbError::unreadable_json("a search's stored parts", &parts, error))?;
+    Ok(CandidateSearch {
+        query: query_of(search)?,
+        sources: stored.into_iter().map(StoredPart::part).collect::<Result<_, _>>()?,
+        groups: groups_of(&search.get::<String>("cards")?)?,
+        status: status_of(&search.get::<String>("status")?)?,
+    })
 }
 
 /// A MusicBrainz result a pick read: what its documents state its album is on
@@ -403,16 +374,19 @@ pub(super) fn end_search_unless_of_on(
     Ok(())
 }
 
-/// Store `search`, just started, as `key`'s, of `files`, in place of any
-/// search it had; the run its parts' answers land on.
+/// Store a search of `query` as `key`'s, of `files`, in place of any search
+/// it had, with a part for each of `sources` in their order: searching where
+/// the library asks the catalog. The run its parts' answers land on, and the
+/// catalogs to ask, in their order.
 fn start_on(
     sql: &CovenWrite<'_>,
     key: &CandidateKey,
     files: Option<&CandidateFiles>,
-    search: &CandidateSearch,
-) -> Result<SearchRun, DbError> {
+    query: &SearchQuery,
+    sources: &[CatalogAvailability],
+) -> Result<(SearchRun, Vec<LookupCatalog>), DbError> {
     sql.execute("DELETE FROM import_candidate_search WHERE candidate_key = ?", [key])?;
-    let query = query_columns(&search.query);
+    let query = query_columns(query);
     let run: i64 = sql.query_row(
         "INSERT INTO import_candidate_search \
              (candidate_key, content_hash, file_edit_revision, mode, artist, album, \
@@ -432,29 +406,35 @@ fn start_on(
         ],
         |row| row.get(0),
     )?;
-    for (position, (catalog, part)) in search.sources.iter().enumerate() {
-        // A search starts before any catalog answers it.
-        assert!(
-            matches!(
-                part,
-                SourceSearch::Off | SourceSearch::NotConfigured | SourceSearch::Searching
-            ),
-            "{key}'s search starts with its {} part already answered",
-            catalog.as_str()
-        );
-        let columns = part_columns(part);
+    for (position, source) in sources.iter().enumerate() {
         sql.execute(
             "INSERT INTO import_candidate_search_source \
                  (search_run, catalog, position, state) VALUES (?, ?, ?, ?)",
             params![
                 run,
-                catalog.as_str(),
+                source.catalog.as_str(),
                 super::match_rows::ordinal_column(position)?,
-                columns.state
+                starting_state(source.state)
             ],
         )?;
     }
-    Ok(SearchRun::of(run))
+    let asked = sql
+        .query(
+            "SELECT catalog FROM import_candidate_search_source \
+             WHERE search_run = ? AND state = 'searching' ORDER BY position",
+            [run],
+            |row| row.get::<_, String>(0),
+        )?
+        .into_iter()
+        .map(|catalog| catalog_of(&catalog))
+        .collect::<Result<_, _>>()?;
+    Ok((SearchRun::of(run), asked))
+}
+
+/// The catalog a part's `catalog` column names.
+fn catalog_of(catalog: &str) -> Result<LookupCatalog, DbError> {
+    LookupCatalog::from_str(catalog)
+        .map_err(|_unknown| DbError::unreadable("import_candidate_search_source.catalog", catalog))
 }
 
 /// Land `catalog`'s answer on its part of the search `run`, if that part is
@@ -465,12 +445,8 @@ fn land_on(
     catalog: LookupCatalog,
     outcome: &Result<Vec<MetadataResult>, Failure>,
 ) -> Result<bool, DbError> {
-    let empty = Vec::new();
-    let (part, results) = match outcome {
-        Ok(results) => (SourceSearch::Done { results: Vec::new() }, results),
-        Err(failure) => (SourceSearch::Failed(failure.clone()), &empty),
-    };
-    let columns = part_columns(&part);
+    let results = outcome.as_deref().unwrap_or_default();
+    let columns = landed_columns(outcome);
     let landed = sql.execute(
         "UPDATE import_candidate_search_source \
          SET state = ?, failure = ?, failure_status = ?, error_detail = ? \
@@ -516,17 +492,20 @@ fn land_on(
 }
 
 impl ImportTables {
-    /// Store `search`, just started, as `key`'s in place of any search it
-    /// had: a folder candidate's of the files the scan holds it with now, a
-    /// library release's of none. Answers the run its parts' answers land
-    /// on. Refused for a folder key the scan holds no candidate at.
+    /// Store a search of `query` as `key`'s in place of any search it had,
+    /// with a part for each of `sources`: a folder candidate's of the files
+    /// the scan holds it with now, a library release's of none. Answers the
+    /// run its parts' answers land on and the catalogs to ask, in their
+    /// order. Refused for a folder key the scan holds no candidate at.
     pub(crate) async fn start_candidate_search(
         &self,
         key: &CandidateKey,
-        search: &CandidateSearch,
-    ) -> Result<SearchRun, crate::ImportError> {
+        query: &SearchQuery,
+        sources: &[CatalogAvailability],
+    ) -> Result<(SearchRun, Vec<LookupCatalog>), crate::ImportError> {
         let key = key.clone();
-        let search = search.clone();
+        let query = query.clone();
+        let sources = sources.to_vec();
         self.store
             .write(move |sql| {
                 let sql = &sql;
@@ -540,7 +519,7 @@ impl ImportTables {
                     };
                     Some(CandidateFiles::of(&stored.candidate))
                 };
-                Ok(start_on(sql, &key, files.as_ref(), &search)?)
+                Ok(start_on(sql, &key, files.as_ref(), &query, &sources)?)
             })
             .await
     }
@@ -582,11 +561,7 @@ impl ImportTables {
                 retried.sort();
                 let catalogs = retried
                     .into_iter()
-                    .map(|(_, catalog)| {
-                        LookupCatalog::from_str(&catalog).map_err(|_unknown| {
-                            DbError::unreadable("import_candidate_search_source.catalog", &catalog)
-                        })
-                    })
+                    .map(|(_, catalog)| catalog_of(&catalog))
                     .collect::<Result<_, _>>()?;
                 Ok(Some((SearchRun::of(run), query?, catalogs)))
             })
@@ -656,15 +631,29 @@ impl ImportTables {
         let release = release.clone();
         self.store
             .call(move |sql| {
-                let Some((_, run, search)) = load_on(sql, Some(&key))?.into_iter().next() else {
+                if release.catalog != LookupCatalog::MusicBrainz {
+                    return Ok(());
+                }
+                // The search's first listing of the release names its group.
+                let Some((run, Some(group))) = sql
+                    .query_row(
+                        "SELECT typed.search_run, found.source_group_id \
+                         FROM import_candidate_search AS typed \
+                         JOIN import_candidate_match AS found \
+                             ON found.search_run = typed.search_run \
+                         WHERE typed.candidate_key = ? AND found.source = ? \
+                           AND found.release_id = ? \
+                         ORDER BY found.position LIMIT 1",
+                        params![key, release.catalog.as_str(), release.key],
+                        |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?)),
+                    )
+                    .optional()?
+                else {
                     return Ok(());
                 };
-                let Some(group) = search.pickable_group(&release) else {
-                    return Ok(());
-                };
-                store_pick_on(sql, run.number(), &release.key, &links)?;
-                let read = lay_out_search_on(sql, run.number())?;
-                let landed = super::match_record::load_search_run_matches_on(sql, run.number())?;
+                store_pick_on(sql, run, &release.key, &links)?;
+                let read = lay_out_search_on(sql, run)?;
+                let landed = super::match_record::load_search_run_matches_on(sql, run)?;
                 let landed: Vec<&MetadataResult> = landed.iter().map(|row| &row.result).collect();
                 let groups: Vec<_> = read.into_iter().filter(|read| read.group == group).collect();
                 let kept = bae_catalogs::album_links::to_keep(&groups, &landed);
@@ -695,4 +684,4 @@ impl ImportTables {
 
 #[cfg(test)]
 #[path = "search_rows_tests.rs"]
-mod tests;
+pub(crate) mod tests;

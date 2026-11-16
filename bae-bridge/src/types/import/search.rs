@@ -224,7 +224,8 @@ pub struct BridgeTermsStatement {
 
 /// One provider's part of a candidate's manual search. Mirrors
 /// `bae_import::SourceSearch`; the results themselves reach a surface
-/// through the search's `groups`, so a source reports only how many it found.
+/// through the search's `groups`, so a source reports only how many it found,
+/// which the search's read counts.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
     /// Switched off: the person is not asking this source.
@@ -254,7 +255,7 @@ impl BridgeSourceSearch {
             SourceSearch::Off => Self::Off,
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
-            SourceSearch::Done { results } => Self::Done { count: results.len() as u32 },
+            SourceSearch::Done { found } => Self::Done { count: found },
             SourceSearch::Failed(bae_catalogs::Failure::Lookup(failure)) => {
                 Self::Failed { failure: BridgeLookupFailure::from_core(failure) }
             }
@@ -265,14 +266,16 @@ impl BridgeSourceSearch {
     }
 }
 
-/// Where a candidate's typed search stands as a whole — the one glyph a
-/// surface heads it with. Mirrors `bae_import::SearchStatus`; crossed
-/// rather than folded per surface, so "still searching" means one thing.
+/// Where a candidate's typed search stands as a whole: the one glyph a
+/// surface heads it with. Mirrors `bae_import::SearchStatus`, which the
+/// search's read decides, so "still searching" means one thing on every
+/// surface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchStatus {
     /// A source is still looking.
     Searching,
-    /// Every source landed, none failed, and at least one named a release.
+    /// No source is looking and none failed, and the search did not find
+    /// nothing: a source named a release, or no source was asked.
     Found,
     /// Every source landed, none failed, and a source that answered named no
     /// release.
@@ -324,12 +327,11 @@ pub struct BridgeCandidateSearch {
 #[cfg(desktop)]
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_import::CandidateSearch) -> Self {
-        let status = BridgeSearchStatus::from_core(search.status());
         let unusable_barcode =
             search.query.unusable_barcode().map(BridgeUnusableBarcode::from_core);
-        let bae_import::CandidateSearch { query, sources, groups } = search;
+        let bae_import::CandidateSearch { query, sources, groups, status } = search;
         Self {
-            status,
+            status: BridgeSearchStatus::from_core(status),
             unusable_barcode,
             query: BridgeSearchQuery::from_core(query),
             sources: sources

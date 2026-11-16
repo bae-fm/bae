@@ -383,3 +383,7 @@ fn worded<T>(
 fn json_of(what: &str, value: &impl serde::Serialize) -> Result<String, DbError> {
     serde_json::to_string(value).map_err(|error| DbError::encode(what, error))
 }
+
+#[cfg(test)]
+#[path = "layout_tests.rs"]
+mod tests;

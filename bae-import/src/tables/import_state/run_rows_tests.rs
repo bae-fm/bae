@@ -369,8 +369,9 @@ async fn a_run_s_rows_go_with_it() {
     }
 }
 
-/// A search of one query with every catalog asked, as a person types it.
-fn typed_search() -> crate::candidate_search::CandidateSearch {
+/// Start a search of one query for `key`, every catalog asked, as a person
+/// types it.
+async fn start_typed_search(tables: &ImportTables, key: &CandidateKey) {
     let availability: Vec<_> = LookupCatalog::ALL
         .into_iter()
         .map(|catalog| bae_preferences::CatalogAvailability {
@@ -378,13 +379,28 @@ fn typed_search() -> crate::candidate_search::CandidateSearch {
             state: bae_preferences::SourceAvailability::On,
         })
         .collect();
-    crate::candidate_search::CandidateSearch::started(
-        bae_catalogs::search::SearchQuery::General {
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-        },
-        &availability,
-    )
+    tables.start_candidate_search(key, &typed_query(), &availability).await.unwrap();
+}
+
+fn typed_query() -> bae_catalogs::search::SearchQuery {
+    bae_catalogs::search::SearchQuery::General {
+        artist: "Artist Name".to_string(),
+        album: "Album Title".to_string(),
+    }
+}
+
+/// The search [`start_typed_search`] starts, as its read returns it before
+/// any catalog answers.
+fn typed_search() -> crate::candidate_search::CandidateSearch {
+    crate::candidate_search::CandidateSearch {
+        query: typed_query(),
+        sources: LookupCatalog::ALL
+            .into_iter()
+            .map(|catalog| (catalog, crate::SourceSearch::Searching))
+            .collect(),
+        groups: Vec::new(),
+        status: crate::SearchStatus::Searching,
+    }
 }
 
 /// One query loads the runtime of every key at once: a folder candidate
@@ -404,8 +420,8 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
         .await
         .unwrap();
     tables.publish_release_run(&second, run(3), &search_waiting(), None).await.unwrap();
-    tables.start_candidate_search(&key, &typed_search()).await.unwrap();
-    tables.start_candidate_search(&third, &typed_search()).await.unwrap();
+    start_typed_search(&tables, &key).await;
+    start_typed_search(&tables, &third).await;
 
     let together = tables.load_candidate_runtimes().await.unwrap();
     let keys: Vec<_> = together.iter().map(|(held, _)| held.clone()).collect();

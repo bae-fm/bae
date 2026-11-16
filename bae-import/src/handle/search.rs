@@ -1,5 +1,5 @@
 use super::*;
-use crate::candidate_search::{CandidateSearch, SearchRun};
+use crate::candidate_search::SearchRun;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::search::SearchQuery;
@@ -24,9 +24,9 @@ impl ImportServiceHandle {
         query: SearchQuery,
     ) -> Result<(), crate::ImportError> {
         let sources = bae_preferences::preferences(&self.services.store).await?.metadata_sources();
-        let search = CandidateSearch::started(query.clone(), &sources);
-        let run = self.services.tables.start_candidate_search(&candidate_key, &search).await?;
-        for source in search.searching_sources() {
+        let (run, asked) =
+            self.services.tables.start_candidate_search(&candidate_key, &query, &sources).await?;
+        for source in asked {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
         Ok(())

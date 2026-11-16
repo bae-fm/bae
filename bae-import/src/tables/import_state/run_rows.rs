@@ -232,7 +232,7 @@ fn load_runtimes_on(
                     let columns: JsonColumns = serde_json::from_str(&json).map_err(|error| {
                         DbError::unreadable_json("a key's stored search", &json, error)
                     })?;
-                    search_in(&key, &columns)
+                    search_in(&columns)
                 })
                 .transpose()?;
             let runtime =

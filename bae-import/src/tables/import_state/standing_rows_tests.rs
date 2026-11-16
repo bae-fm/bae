@@ -373,14 +373,17 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     stored_pane_candidate(&db).await;
     let key = pane_candidate_key();
     let root = host_root("/music");
-    let search = crate::CandidateSearch::started(
-        bae_catalogs::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
-        &[bae_preferences::CatalogAvailability {
-            catalog: bae_catalogs::catalog::LookupCatalog::Discogs,
-            state: bae_preferences::SourceAvailability::On,
-        }],
-    );
-    let run = tables.start_candidate_search(&key, &search).await.unwrap();
+    let (run, _) = tables
+        .start_candidate_search(
+            &key,
+            &bae_catalogs::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
+            &[bae_preferences::CatalogAvailability {
+                catalog: bae_catalogs::catalog::LookupCatalog::Discogs,
+                state: bae_preferences::SourceAvailability::On,
+            }],
+        )
+        .await
+        .unwrap();
     assert!(tables
         .land_candidate_search(
             run,
