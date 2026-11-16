@@ -303,7 +303,7 @@ class OpenLibrary internal constructor(
         widgetJob =
             scope.launch {
                 combine(playback.nowPlaying, playback.isPlaying) { nowPlaying, isPlaying ->
-                    WidgetSnapshot.from(nowPlaying) to isPlaying
+                    WidgetSnapshot.from(nowPlaying, appContext) to isPlaying
                 }.distinctUntilChanged()
                     .collect { (snapshot, _) ->
                         widgetSnapshotStore.write(snapshot)

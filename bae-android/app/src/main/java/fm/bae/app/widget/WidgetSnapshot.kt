@@ -4,6 +4,9 @@ import android.content.Context
 import fm.bae.app.BaeLogger
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
+import fm.bae.app.playback.title
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,8 +44,20 @@ data class WidgetSnapshot(
          * the player's existing [NowPlaying] projection, not a second event
          * subscription.
          */
-        fun from(nowPlaying: NowPlaying?): WidgetSnapshot =
-            WidgetSnapshot(track = nowPlaying?.let { WidgetTrack(it.title, it.artist, it.coverImage) })
+        fun from(
+            nowPlaying: NowPlaying?,
+            context: Context,
+        ): WidgetSnapshot =
+            WidgetSnapshot(
+                track =
+                    nowPlaying?.let {
+                        WidgetTrack(
+                            title = it.display.title(context),
+                            artist = it.display.artist(context),
+                            coverImage = it.display.library?.coverImage,
+                        )
+                    },
+            )
     }
 }
 
@@ -87,13 +102,13 @@ internal fun widgetContent(
     }
 
 /**
- * The track fields the widget shows. [coverImage] is the reference the widget
- * reads the cover by from the open library's image store, decoding it at the
- * widget's cover size.
+ * The track fields the widget shows. [artist] is null for a track the library
+ * no longer holds. [coverImage] is the reference the widget reads the cover by
+ * from the open library's image store, decoding it at the widget's cover size.
  */
 data class WidgetTrack(
     val title: String,
-    val artist: String,
+    val artist: String?,
     val coverImage: BridgeImageRef?,
 )
 
@@ -119,7 +134,7 @@ internal fun WidgetSnapshot.toJson(): String {
     track?.let {
         val t = JSONObject()
         t.put(KEY_TITLE, it.title)
-        t.put(KEY_ARTIST, it.artist)
+        it.artist?.let { artist -> t.put(KEY_ARTIST, artist) }
         it.coverImage?.let { cover ->
             t.put(
                 KEY_COVER,
@@ -140,7 +155,7 @@ private fun parseWidgetSnapshot(obj: JSONObject): WidgetSnapshot {
         obj.optJSONObject(KEY_TRACK)?.let {
             WidgetTrack(
                 title = it.getString(KEY_TITLE),
-                artist = it.getString(KEY_ARTIST),
+                artist = if (it.has(KEY_ARTIST)) it.getString(KEY_ARTIST) else null,
                 coverImage = it.optJSONObject(KEY_COVER)?.let(::parseCover),
             )
         }

@@ -153,9 +153,10 @@ private fun NowPlayingWidgetContent(
                 maxLines = 1,
                 style = ThemeText.rowTitle.glanceStyle(GlanceTheme.colors.onSurface),
             )
-            if (track != null) {
+            val artist = track?.artist
+            if (artist != null) {
                 Text(
-                    text = track.artist,
+                    text = artist,
                     maxLines = 1,
                     style = ThemeText.detail.glanceStyle(GlanceTheme.colors.onSurfaceVariant),
                 )

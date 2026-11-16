@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import android.content.Context
 import android.net.Uri
 import android.os.Looper
 import androidx.media3.common.C
@@ -12,7 +13,6 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import fm.bae.app.BaeLogger
-import fm.bae.app.coreString
 import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -60,7 +60,7 @@ class BaeCorePlayer(
     applicationLooper: Looper,
     private val appHandle: AppHandleInterface,
     private val system: PlaybackSystem,
-    /** The credit line in the person's language, for the media session's artist and the now-playing value. */
+    /** The credit line in the person's language, for the media session's artist. */
     private val creditLineText: (BridgeCreditLine) -> String,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
@@ -146,7 +146,7 @@ class BaeCorePlayer(
             durationMs: Long,
             artworkUri: Uri?,
             creditLineText: (BridgeCreditLine) -> String,
-            removedTitle: String,
+            context: Context,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, durationMs)
             val metadata =
@@ -155,7 +155,7 @@ class BaeCorePlayer(
                     if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
                     artworkUri,
                     creditLineText,
-                    removedTitle,
+                    context,
                 )
             return MediaItemData
                 .Builder(meta.uid)
@@ -171,18 +171,19 @@ class BaeCorePlayer(
                 ).build()
         }
 
-        /** The metadata Media3 shows for [meta]: a removed track shows [removedTitle] with no artist or album. */
+        /** The metadata Media3 shows for [meta]: a track the library no longer holds shows the removed-track title
+         *  with no artist or album. */
         internal fun mediaMetadata(
             meta: Meta,
             durationMs: Long?,
             artworkUri: Uri?,
             creditLineText: (BridgeCreditLine) -> String,
-            removedTitle: String,
+            context: Context,
         ): MediaMetadata {
-            val library = (meta.display as? BridgeNowPlayingDisplay.Library)?.display
+            val library = meta.display.library
             return MediaMetadata
                 .Builder()
-                .setTitle(library?.title ?: removedTitle)
+                .setTitle(meta.display.title(context))
                 .setArtist(library?.let { creditLineText(it.artistLine) })
                 .setAlbumTitle(library?.albumTitle)
                 .setDurationMs(durationMs)
@@ -566,16 +567,7 @@ class BaeCorePlayer(
         invalidateState()
         val meta = currentMeta
         _nowPlaying.value =
-            meta?.let {
-                val library = (it.display as? BridgeNowPlayingDisplay.Library)?.display
-                NowPlaying(
-                    it.trackId,
-                    library?.title ?: removedTitle,
-                    library?.let { shown -> creditLineText(shown.artistLine) } ?: "",
-                    library?.coverImage,
-                    sidePausePrompt,
-                )
-            }
+            meta?.let { NowPlaying(it.trackId, it.display, sidePausePrompt) }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isPlayingOrLoading.value = playWhenReady
         _waitsOnStorage.value = loadWaitsOnStorage
@@ -597,10 +589,6 @@ class BaeCorePlayer(
 
     private fun BridgeQueueEntry.toMeta(): Meta =
         Meta(entryId = entryId, trackId = trackId, display = BridgeNowPlayingDisplay.Library(display))
-
-    /** The title a removed track shows in the player and the media session. */
-    private val removedTitle: String
-        get() = system.context.coreString("core.playback.removed_track")
 
     // ── Media3 state ─────────────────────────────────────────────────────
 
@@ -640,15 +628,15 @@ class BaeCorePlayer(
         // The notification and lock screen show only the current track's cover,
         // which Media3 reads through the artwork provider.
         val artworkUri =
-            (source.current?.display as? BridgeNowPlayingDisplay.Library)
+            source.current
                 ?.display
+                ?.library
                 ?.coverImage
                 ?.let { ArtworkContentProvider.uriFor(system.context, it) }
-        val removedTitle = removedTitle
         val items =
             metas.map { meta ->
                 val itemArtworkUri = if (meta.entryId == null) artworkUri else null
-                mediaItemData(meta, source.durationMs, itemArtworkUri, creditLineText, removedTitle)
+                mediaItemData(meta, source.durationMs, itemArtworkUri, creditLineText, system.context)
             }
         // The current track leads the playlist.
         val currentIndex = if (source.current != null) 0 else C.INDEX_UNSET

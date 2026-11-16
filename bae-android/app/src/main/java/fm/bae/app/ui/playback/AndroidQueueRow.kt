@@ -29,14 +29,15 @@ import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeImageRef
 
 /**
- * One track of the queue: its cover, [title], [artist], [album] and [duration], with Remove and the drag
- * handle ([dragHandleModifier] makes it draggable); tapping the row calls [onClick]. The [current] track is
- * the one playing: its title in the accent colour with its artist only, and no controls.
+ * One track of the queue: its cover, [title], [artist] (null for a track the library no longer holds), [album] and
+ * [duration], with Remove and the drag handle ([dragHandleModifier] makes it draggable); tapping the row calls
+ * [onClick]. The [current] track is the one playing: its title in the accent colour with its artist only, and no
+ * controls.
  */
 @Composable
 internal fun AndroidQueueRow(
     title: String,
-    artist: String,
+    artist: String?,
     cover: BridgeImageRef?,
     album: String? = null,
     duration: String? = null,
@@ -72,7 +73,7 @@ internal fun AndroidQueueRow(
                 color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
-            DetailLine(artist)
+            if (artist != null) DetailLine(artist)
             if (!current && album != null) DetailLine(album)
         }
         if (!current) {

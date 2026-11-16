@@ -27,6 +27,9 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
+import fm.bae.app.playback.title
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidNotice
@@ -70,7 +73,13 @@ fun QueueScreen(
                                 bottom = ThemeSpace.inline,
                             ),
                 )
-                AndroidQueueRow(title = np.title, artist = np.artist, cover = np.coverImage, current = true)
+                val context = LocalContext.current
+                AndroidQueueRow(
+                    title = np.display.title(context),
+                    artist = np.display.artist(context),
+                    cover = np.display.library?.coverImage,
+                    current = true,
+                )
             }
         }
         queueContent(

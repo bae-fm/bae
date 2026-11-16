@@ -102,7 +102,7 @@ class PlaybackComponentShots : BoardShot() {
                 AndroidQueueRow(
                     title = "Margins",
                     artist = "Mara Quill",
-                    cover = playing.track.coverImage,
+                    cover = playing.cover,
                     album = "Northbound",
                     duration = "4:55",
                 )
@@ -113,7 +113,7 @@ class PlaybackComponentShots : BoardShot() {
     fun androidComponentQueueRowNowPlaying() =
         component("android.component.queue-row.now-playing", wide = true) {
             Images {
-                AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.track.coverImage, current = true)
+                AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.cover, current = true)
             }
         }
 
@@ -129,7 +129,7 @@ class PlaybackComponentShots : BoardShot() {
                     AndroidQueueRow(
                         title = "Margins",
                         artist = "Mara Quill",
-                        cover = playing.track.coverImage,
+                        cover = playing.cover,
                         album = "Northbound",
                         duration = "4:55",
                     )

@@ -8,6 +8,7 @@ import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.app.playback.applyPlaybackState
+import fm.bae.app.playback.libraryDisplay
 import fm.bae.app.playback.pausedState
 import fm.bae.app.playback.playbackValues
 import fm.bae.app.playback.playingState
@@ -25,6 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgePlaybackValueState
 import java.io.File
 import java.io.IOException
@@ -46,11 +48,10 @@ class WidgetSnapshotTest {
                 nowPlaying =
                     NowPlaying(
                         trackId = "t1",
-                        title = "Track Title",
-                        artist = "Artist Name",
-                        coverImage = testCoverRef("rel-1"),
+                        display = libraryDisplay(coverImage = testCoverRef("rel-1")),
                         sidePausePrompt = null,
                     ),
+                context = RuntimeEnvironment.getApplication(),
             )
         assertEquals("Track Title", snapshot.track?.title)
         assertEquals("Artist Name", snapshot.track?.artist)
@@ -58,15 +59,25 @@ class WidgetSnapshotTest {
     }
 
     @Test
+    fun mapsARemovedTrackIntoASnapshotWithNoArtistOrCover() {
+        val snapshot =
+            WidgetSnapshot.from(
+                nowPlaying = NowPlaying(trackId = "t1", display = BridgeNowPlayingDisplay.Removed, sidePausePrompt = null),
+                context = RuntimeEnvironment.getApplication(),
+            )
+        assertEquals(WidgetTrack(title = "Removed from library", artist = null, coverImage = null), snapshot.track)
+    }
+
+    @Test
     fun mapsNullNowPlayingToEmptyState() {
-        assertNull(WidgetSnapshot.from(nowPlaying = null).track)
+        assertNull(WidgetSnapshot.from(nowPlaying = null, RuntimeEnvironment.getApplication()).track)
     }
 
     @Test
     fun aPlayingPlayerShowsItsTrackAsPlaying() {
         val player = playingPlayer()
 
-        val content = widgetContent(saved(WidgetSnapshot.from(player.nowPlaying.value)), player)
+        val content = widgetContent(saved(WidgetSnapshot.from(player.nowPlaying.value, RuntimeEnvironment.getApplication())), player)
 
         assertEquals(
             WidgetContent.Track(
@@ -79,7 +90,7 @@ class WidgetSnapshotTest {
 
     @Test
     fun aSavedTrackWithNoOpenLibraryShowsAsStopped() {
-        val snapshot = WidgetSnapshot.from(playingPlayer().nowPlaying.value)
+        val snapshot = WidgetSnapshot.from(playingPlayer().nowPlaying.value, RuntimeEnvironment.getApplication())
 
         val content = widgetContent(saved(snapshot), livePlayer = null) as WidgetContent.Track
 
@@ -92,7 +103,11 @@ class WidgetSnapshotTest {
         val player = playingPlayer()
         player.applyPlaybackState(pausedState(trackId = "t1"))
 
-        val content = widgetContent(saved(WidgetSnapshot.from(player.nowPlaying.value)), player) as WidgetContent.Track
+        val content =
+            widgetContent(
+                saved(WidgetSnapshot.from(player.nowPlaying.value, RuntimeEnvironment.getApplication())),
+                player,
+            ) as WidgetContent.Track
         assertFalse(content.isPlaying)
     }
 
@@ -101,7 +116,10 @@ class WidgetSnapshotTest {
         val player = player()
         player.applyValues(playbackValues(BridgePlaybackValueState.Stopped))
 
-        assertEquals(WidgetContent.NothingPlaying, widgetContent(saved(WidgetSnapshot.from(player.nowPlaying.value)), player))
+        assertEquals(
+            WidgetContent.NothingPlaying,
+            widgetContent(saved(WidgetSnapshot.from(player.nowPlaying.value, RuntimeEnvironment.getApplication())), player),
+        )
     }
 
     @Test
@@ -129,6 +147,17 @@ class WidgetSnapshotTest {
             val snapshot =
                 WidgetSnapshot(
                     track = WidgetTrack(title = "Track Title", artist = "Artist Name", coverImage = null),
+                )
+            store.write(snapshot)
+            assertEquals(saved(snapshot), store.read())
+        }
+
+    @Test
+    fun roundTripsSnapshotWithoutArtist() =
+        withStore { store, _ ->
+            val snapshot =
+                WidgetSnapshot(
+                    track = WidgetTrack(title = "Removed from library", artist = null, coverImage = null),
                 )
             store.write(snapshot)
             assertEquals(saved(snapshot), store.read())

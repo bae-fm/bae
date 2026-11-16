@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,9 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.receiverWithoutVolume
 import fm.bae.app.performBridgeAction
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
+import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -208,7 +212,7 @@ internal fun AndroidFullPlayer(
             AndroidNotice(failure)
         } else {
             CoverImage(
-                cover = track.coverImage,
+                cover = track.display.library?.coverImage,
                 cornerRadius = ThemeRadius.cover,
                 iconPadding = 64.dp,
                 modifier = Modifier.fillMaxWidth().aspectRatio(1f),
@@ -216,7 +220,8 @@ internal fun AndroidFullPlayer(
 
             Spacer(modifier = Modifier.height(ThemeSpace.section))
 
-            ExpandedTrackInfo(title = track.title, artist = track.artist)
+            val context = LocalContext.current
+            ExpandedTrackInfo(title = track.display.title(context), artist = track.display.artist(context))
         }
 
         Spacer(modifier = Modifier.height(ThemeSpace.section))
@@ -240,7 +245,8 @@ internal fun AndroidFullPlayer(
 @Composable
 private fun ExpandedTrackInfo(
     title: String,
-    artist: String,
+    /** Null for a track the library no longer holds. */
+    artist: String?,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -250,12 +256,14 @@ private fun ExpandedTrackInfo(
             modifier = Modifier.weight(1f, fill = false),
         )
     }
-    Text(
-        text = artist,
-        style = ThemeText.heading.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-    )
+    if (artist != null) {
+        Text(
+            text = artist,
+            style = ThemeText.heading.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
 }
 
 /** The seek bar; a failed toggle of its time label shows under it, since this sheet covers the snackbar. */

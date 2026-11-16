@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import fm.bae.app.clockText
+import fm.bae.app.creditLineNamed
 import fm.bae.app.currentLocale
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
@@ -11,7 +12,9 @@ import fm.bae.app.ui.playback.SeekBarState
 import fm.bae.app.ui.playback.SeekLineLook
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeTrackBuffered
+import uniffi.bae_bridge.BridgeTrackDisplay
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeTrackSpan
 
@@ -40,12 +43,22 @@ internal class PlayerStaging(
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
     val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)
 
+    val cover = PreviewData.imageRef("rel-1")
+
     val track =
         NowPlaying(
             trackId = TRACK_ID,
-            title = "Low Tide Hours",
-            artist = "Mara Quill",
-            coverImage = PreviewData.imageRef("rel-1"),
+            display =
+                BridgeNowPlayingDisplay.Library(
+                    BridgeTrackDisplay(
+                        title = "Low Tide Hours",
+                        artistLine = creditLineNamed("Mara Quill"),
+                        albumId = "alb-1",
+                        releaseId = "rel-1",
+                        albumTitle = "Northbound",
+                        coverImage = cover,
+                    ),
+                ),
             sidePausePrompt = null,
         )
 

@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 
 /**
  * When playback activates, the player must project a non-empty timeline in
@@ -109,8 +110,7 @@ class PlaybackActivationTest {
         assertTrue(player.playWhenReady)
         assertEquals("Removed from library", player.mediaMetadata.title.toString())
         assertNull(player.mediaMetadata.artist)
-        assertEquals("Removed from library", player.nowPlaying.value?.title)
-        assertNull(player.nowPlaying.value?.coverImage)
+        assertEquals(BridgeNowPlayingDisplay.Removed, player.nowPlaying.value?.display)
     }
 
     @Test

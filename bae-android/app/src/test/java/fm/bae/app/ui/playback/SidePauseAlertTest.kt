@@ -9,6 +9,7 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.SidePausePrompt
+import fm.bae.app.playback.libraryDisplay
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
@@ -50,9 +51,7 @@ class SidePauseAlertTest {
                     track =
                         NowPlaying(
                             trackId = "trk-1",
-                            title = "Track Title",
-                            artist = "Artist Name",
-                            coverImage = null,
+                            display = libraryDisplay(),
                             sidePausePrompt = prompt,
                         ),
                     onTurnOffPauseBetweenSides = { answers.turnedOff++ },

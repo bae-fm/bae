@@ -4719,8 +4719,8 @@ A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
 one loaded to play next is let go. This holds however the track was deleted.
 From the delete until playback moves off the track, the now-playing bar, the
-queue's now-playing card, Android's full player and the system's media
-controls show the track as removed: they keep their place and the transport
+queue's now-playing card, Android's full player and home-screen widget, and
+the system's media controls show the track as removed: they keep their place and the transport
 keeps the state playback is in, while the title reads "Removed from
 library", with no artists, no cover, and no album for Go to Now Playing to
 open.

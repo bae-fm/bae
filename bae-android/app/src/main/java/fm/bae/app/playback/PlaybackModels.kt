@@ -1,23 +1,38 @@
 package fm.bae.app.playback
 
-import uniffi.bae_bridge.BridgeImageRef
+import android.content.Context
+import fm.bae.app.coreString
+import fm.bae.app.creditLineText
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeSidePausePrompt
+import uniffi.bae_bridge.BridgeTrackDisplay
 import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
 import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
 import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
-/** The track the in-app player shows: a track the library no longer holds shows the removed title and no artist
- *  ([artist] empty) or cover. */
+/** The track the in-app player shows: its id, what the library shows of it or that the library no longer holds it,
+ *  and the prompt of a pause between sides. */
 data class NowPlaying(
     val trackId: String,
-    val title: String,
-    val artist: String,
-    /** The cover the bar fetches bytes for, or null when there is none. */
-    val coverImage: BridgeImageRef?,
+    val display: BridgeNowPlayingDisplay,
     val sidePausePrompt: SidePausePrompt?,
 )
+
+/** What the library shows of the track, or null when the library no longer holds it. */
+val BridgeNowPlayingDisplay.library: BridgeTrackDisplay?
+    get() = (this as? BridgeNowPlayingDisplay.Library)?.display
+
+/** The track's title as the player shows it: the library's title, or, when the library no longer holds the track,
+ *  the title core's catalog gives a removed track. */
+fun BridgeNowPlayingDisplay.title(context: Context): String {
+    val shown = library ?: return context.coreString("core.playback.removed_track")
+    return shown.title
+}
+
+/** The track's artists in the person's language, or null when the library no longer holds the track. */
+fun BridgeNowPlayingDisplay.artist(context: Context): String? = library?.let { context.creditLineText(it.artistLine) }
 
 /**
  * A side-pause prompt with the catalog keys its title, countdown and checkbox

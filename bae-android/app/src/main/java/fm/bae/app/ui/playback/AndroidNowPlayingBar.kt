@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -30,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
+import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -93,12 +97,15 @@ private fun RowScope.NowPlayingTrackInfo(
     track: fm.bae.app.playback.NowPlaying,
     onExpand: () -> Unit,
 ) {
-    // A removed track has no artist, and is named by its title alone.
+    val context = LocalContext.current
+    val title = track.display.title(context)
+    val artist = track.display.artist(context)
+    // A track the library no longer holds has no artist, so the bar names it to TalkBack by its title alone.
     val nowPlayingDescription =
-        if (track.artist.isEmpty()) {
-            track.title
+        if (artist == null) {
+            title
         } else {
-            stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
+            stringResource(R.string.now_playing_track_by_artist, title, artist)
         }
     Row(
         modifier =
@@ -111,7 +118,7 @@ private fun RowScope.NowPlayingTrackInfo(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            cover = track.coverImage,
+            cover = track.display.library?.coverImage,
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,
             modifier = Modifier.size(ThemeSize.barArtwork),
@@ -119,17 +126,19 @@ private fun RowScope.NowPlayingTrackInfo(
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = track.title,
+                text = title,
                 style = ThemeText.rowTitle.style,
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            Text(
-                text = track.artist,
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
+            if (artist != null) {
+                Text(
+                    text = artist,
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
