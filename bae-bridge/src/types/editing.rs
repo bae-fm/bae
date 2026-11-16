@@ -582,21 +582,51 @@ pub enum BridgeDraftAlbum {
     PickedNew,
     /// The album the draft's records name; for a library release with no
     /// catalog applied, the album it is in.
-    Named { album_id: String, title: String, artist_line: BridgeCreditLine },
+    Named { album_id: String, line: BridgeAlbumLine },
     /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String, artist_line: BridgeCreditLine },
+    Picked { album_id: String, line: BridgeAlbumLine },
 }
 
-mirror_enum! {
-    #[cfg(desktop)]
-    BridgeDraftAlbum = bae_import::DraftAlbum,
-    from_core: pub(crate) fn,
-    variants: {
-        New,
-        PickedNew,
-        Named { album_id, title, artist_line: (BridgeCreditLine) },
-        Picked { album_id, title, artist_line: (BridgeCreditLine) },
+/// How the album pick names a library album: its title, then its credit
+/// line when the album credits anyone.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAlbumLine {
+    /// The album credits no one, so its title names it alone.
+    Title {
+        title: String,
     },
+    TitleAndArtists {
+        title: String,
+        artist_line: BridgeCreditLine,
+    },
+}
+
+#[cfg(desktop)]
+impl BridgeAlbumLine {
+    fn from_core(title: String, artist_line: bae_types::credits::CreditLine) -> Self {
+        if artist_line.is_empty() {
+            Self::Title { title }
+        } else {
+            Self::TitleAndArtists { title, artist_line: BridgeCreditLine::from_core(artist_line) }
+        }
+    }
+}
+
+#[cfg(desktop)]
+impl BridgeDraftAlbum {
+    pub(crate) fn from_core(album: bae_import::DraftAlbum) -> Self {
+        use bae_import::DraftAlbum;
+        match album {
+            DraftAlbum::New => Self::New,
+            DraftAlbum::PickedNew => Self::PickedNew,
+            DraftAlbum::Named { album_id, title, artist_line } => {
+                Self::Named { album_id, line: BridgeAlbumLine::from_core(title, artist_line) }
+            }
+            DraftAlbum::Picked { album_id, title, artist_line } => {
+                Self::Picked { album_id, line: BridgeAlbumLine::from_core(title, artist_line) }
+            }
+        }
+    }
 }
 
 /// What the person chose for the album a draft files under. Mirrors

@@ -117,8 +117,10 @@ extension PreviewData {
             ),
             album: .named(
                 albumId: "album-preview",
-                title: edit.albumTitle,
-                artistLine: .named("Preview Artist")
+                line: .titleAndArtists(
+                    title: edit.albumTitle,
+                    artistLine: .named("Preview Artist")
+                )
             ),
             artistResolutions: [],
             changed: false,
@@ -317,8 +319,10 @@ actor PreviewReleaseLibrary {
                         case .album(let albumId):
                             .picked(
                                 albumId: albumId,
-                                title: "Picked album",
-                                artistLine: .named("Preview Artist")
+                                line: .titleAndArtists(
+                                    title: "Picked album",
+                                    artistLine: .named("Preview Artist")
+                                )
                             )
                         }
                 }

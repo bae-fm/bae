@@ -65,17 +65,19 @@ struct DraftAlbumRow: View {
     private var standingTitle: String {
         switch album {
         case .new, .pickedNew: String(localized: "New album")
-        case .named(_, let title, let artistLine),
-            .picked(_, let title, let artistLine):
-            artistLine.names.isEmpty
-                ? title : "\(title) · \(artistLine.text)"
+        case .named(_, let line), .picked(_, let line):
+            switch line {
+            case .title(let title): title
+            case .titleAndArtists(let title, let artistLine):
+                FactList.joined([title, artistLine.text])
+            }
         }
     }
 
     private var standingAlbumId: String? {
         switch album {
         case .new, .pickedNew: nil
-        case .named(let albumId, _, _), .picked(let albumId, _, _): albumId
+        case .named(let albumId, _), .picked(let albumId, _): albumId
         }
     }
 
@@ -168,9 +170,7 @@ struct DraftAlbumRow: View {
 
     /// The album's credit line, then its year where it states one.
     private func line(of result: BridgeAlbumChoice) -> String {
-        let artists = result.artistLine.text
-        guard let year = result.year else { return artists }
-        return "\(artists) · \(year)"
+        FactList.joined([result.artistLine.text, result.year.map(String.init)])
     }
 
     @MainActor

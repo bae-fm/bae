@@ -47,8 +47,10 @@ extension ShotScene {
         )
         draft.album = .named(
             albumId: "album-northbound",
-            title: "Northbound",
-            artistLine: .named("Mara Quill")
+            line: .titleAndArtists(
+                title: "Northbound",
+                artistLine: .named("Mara Quill")
+            )
         )
         draft.changed = true
         return draft

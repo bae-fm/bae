@@ -2030,7 +2030,8 @@ Ana clicks Import. bae:
    library holds it, else the oldest. With neither, the album is new and
    takes its id from its group (§2.6). The pane shows which: "New album", the
    album the records name, or the one picked, as a pop-up under the identity
-   (an album's line is its title and its artists), whose items are that album,
+   (an album's line is its title and its artists, or its title alone for an
+   album that credits no one), whose items are that album,
    New album (a new album even where the records name one the library holds),
    Choose another album…, which searches the library's albums, and after a
    pick the release's own album again; a picked album deleted meanwhile (§2.1)
