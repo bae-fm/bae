@@ -16,6 +16,7 @@ extension ShotScene {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
             let tracks = PreviewData.boardAlbumDetail().releases[0].tracks
+                .map(Track.init(from:))
             for index in [1, 3, 4] {
                 uiStore.pickedTracks.set(tracks[index].id, picked: true)
             }
@@ -29,11 +30,30 @@ extension ShotScene {
                     )
                     MacMenuInPlace(
                         {
-                            MacMenuItem("Play \(3) tracks") {}
-                            MacMenuItem("Play next") {}
-                            MacMenuItem("Add to queue") {}
-                            MacMenuDivider()
-                            MacMenuSubmenu("Add to playlist") {}
+                            TrackMenu(
+                                track: tracks[1],
+                                picking: TrackPicking(
+                                    picked: uiStore.pickedTracks,
+                                    onPlay: { _ in },
+                                    onAddNext: { _ in },
+                                    onAddToQueue: { _ in }
+                                ),
+                                onPlay: {},
+                                onAddNext: { _ in },
+                                onAddToQueue: { _ in },
+                                onExportTrack: { _ in },
+                                onRate: { _ in },
+                                playlists: TrackPlaylistChoices(
+                                    listing: BridgePlaylistListing(
+                                        listed: [],
+                                        addTargets: [],
+                                        total: 0,
+                                        canCreate: true
+                                    ),
+                                    onAdd: { _, _ in },
+                                    onNewPlaylist: { _ in }
+                                )
+                            )
                         },
                         highlighted: 0
                     )

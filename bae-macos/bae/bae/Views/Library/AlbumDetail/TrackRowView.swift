@@ -209,34 +209,17 @@ struct TrackRowView: View {
 
     /// The row's menu, acting on every picked track when the row is among
     /// several, else on the row alone.
-    @MacMenuBuilder
-    private var menu: [MacMenuEntry] {
-        let targets = picking?.picked.targets(for: track.id) ?? [track.id]
-        let playlistMenu = AddToPlaylistMenu(
-            listing: playlists.listing,
-            onAdd: { playlists.onAdd(targets, $0) },
-            onNewPlaylist: { playlists.onNewPlaylist(targets) }
+    private var menu: TrackMenu {
+        TrackMenu(
+            track: track,
+            picking: picking,
+            onPlay: onPlay,
+            onAddNext: onAddNext,
+            onAddToQueue: onAddToQueue,
+            onExportTrack: onExportTrack,
+            onRate: onRate,
+            playlists: playlists
         )
-        if let picking, targets.count > 1 {
-            MacMenuItem("Play \(targets.count) tracks") {
-                picking.onPlay(targets)
-            }
-            MacMenuItem("Play next") { picking.onAddNext(targets) }
-            MacMenuItem("Add to queue") { picking.onAddToQueue(targets) }
-            MacMenuDivider()
-            playlistMenu
-        }
-        else {
-            MacMenuItem("Play") { onPlay() }
-            MacMenuItem("Play next") { onAddNext(track.id) }
-            MacMenuItem("Add to queue") { onAddToQueue(track.id) }
-            MacMenuDivider()
-            if let onRate {
-                TrackRateMenu(stars: track.myStars, onRate: onRate)
-            }
-            playlistMenu
-            MacMenuItem("Save as…") { onExportTrack(track.id) }
-        }
     }
 }
 
