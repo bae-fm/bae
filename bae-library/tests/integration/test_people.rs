@@ -1,6 +1,6 @@
 use super::dropbox_sign_in::DropboxSignIn;
 use super::test_joined_library::loaded;
-use bae_library::followed::value_matching;
+use bae_library::followed::query_matching;
 use bae_library::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile, storage_library,
 };
@@ -23,7 +23,7 @@ async fn a_profile_is_idempotent_once_asked_for() {
     )
     .await;
     let people = library.people().clone();
-    assert!(value_matching(&mut people.subscribe_profiles(), |_| true).await.is_empty());
+    assert!(query_matching(&mut people.subscribe_profiles(), |_| true).await.is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
     assert_eq!(profile.history_sharing, HistorySharing::Private);
@@ -33,7 +33,7 @@ async fn a_profile_is_idempotent_once_asked_for() {
         library.people().create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
     ));
-    let listed = value_matching(&mut people.subscribe_people(), |_| true).await;
+    let listed = query_matching(&mut people.subscribe_people(), |_| true).await;
     assert!(listed.others.is_empty());
     assert_eq!((listed.people, listed.devices), (1, 1));
     let own = listed.own.expect("the profile's person is this device's");
@@ -59,7 +59,7 @@ async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
         Some("Robin"),
     )
     .await;
-    assert!(value_matching(&mut library.people().subscribe_profiles(), |_| true).await.is_empty());
+    assert!(query_matching(&mut library.people().subscribe_profiles(), |_| true).await.is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
@@ -82,7 +82,7 @@ async fn granted_code(owner: &coven::CovenHandle, id: coven::InviteId) -> String
         bae_library::people::InviteShown::Code { .. }
         | bae_library::people::InviteShown::Granting => None,
     };
-    bae_library::followed::value_matching(&mut invites, |invites| {
+    bae_library::followed::query_matching(&mut invites, |invites| {
         invites.iter().any(|invite| granted(invite).is_some())
     })
     .await
@@ -236,7 +236,7 @@ fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
             .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::SevenDays)
             .await
             .unwrap();
-        let listed = bae_library::followed::value_matching(&mut invites, |entries| {
+        let listed = bae_library::followed::query_matching(&mut invites, |entries| {
             entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Refused(_)))
         })
         .await;
@@ -252,7 +252,7 @@ fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
             .invite_person(coven::MemberRole::Member, access(), coven::InviteLifetime::SevenDays)
             .await
             .unwrap();
-        let both = bae_library::followed::value_matching(&mut invites, |entries| {
+        let both = bae_library::followed::query_matching(&mut invites, |entries| {
             entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Open(_)))
         })
         .await;
@@ -263,7 +263,7 @@ fn an_invite_dropbox_refuses_to_share_is_listed_as_refused_until_dismissed() {
         ));
 
         membership.dismiss_refused_invite(refused.operation).await.unwrap();
-        let after = bae_library::followed::value_matching(&mut invites, |entries| {
+        let after = bae_library::followed::query_matching(&mut invites, |entries| {
             !entries.iter().any(|entry| matches!(entry, bae_views::InviteEntry::Refused(_)))
         })
         .await;
@@ -403,7 +403,7 @@ impl Household {
             bae_library::people::InviteShown::Code { .. }
             | bae_library::people::InviteShown::Granting => None,
         };
-        let code = bae_library::followed::value_matching(&mut invites, |invites| {
+        let code = bae_library::followed::query_matching(&mut invites, |invites| {
             invites.iter().any(|invite| granted(invite).is_some())
         })
         .await
@@ -481,7 +481,7 @@ impl Household {
             bae_library::people::InviteShown::Code { .. }
             | bae_library::people::InviteShown::Granting => None,
         };
-        let request = bae_library::followed::value_matching(&mut invites, |invites| {
+        let request = bae_library::followed::query_matching(&mut invites, |invites| {
             invites.iter().any(|invite| deciding(invite).is_some())
         })
         .await

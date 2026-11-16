@@ -128,7 +128,7 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
         let library = household.library(reopened.clone(), library_dir.path()).await;
         let mut profiles = library.manager().subscribe_profiles();
         library.manager().attach_and_start_sync().await.unwrap();
-        let profiles = bae_library::followed::value_matching(&mut profiles, |profiles| {
+        let profiles = bae_library::followed::query_matching(&mut profiles, |profiles| {
             profiles.iter().any(|profile| profile.name == "Rowan")
         })
         .await;
@@ -139,7 +139,7 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
         // The people screen reads Rowan as this device's person and the
         // household's owner as the one other person, and counts two people
         // and two devices, and a person's page reads the owner by member id.
-        let people = bae_library::followed::value_matching(
+        let people = bae_library::followed::query_matching(
             &mut library.manager().subscribe_people(),
             |people| people.own.is_some() && people.others.len() == 1,
         )
@@ -148,7 +148,7 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
         assert_eq!(people.people, 2);
         assert_eq!(people.devices, 2);
         let owner = people.others[0].membership.id;
-        let page = bae_library::followed::value_matching(
+        let page = bae_library::followed::query_matching(
             &mut library.manager().subscribe_person(owner),
             Option::is_some,
         )

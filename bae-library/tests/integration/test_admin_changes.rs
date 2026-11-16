@@ -34,7 +34,7 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
                     | bae_library::people::InviteShown::Granting => None,
                 }
             };
-            let request = bae_library::followed::value_matching(&mut invites, |invites| {
+            let request = bae_library::followed::query_matching(&mut invites, |invites| {
                 invites.iter().any(|open| deciding(open).is_some())
             })
             .await
@@ -53,7 +53,7 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
         let guest = super::test_joined_library::loaded(joined.unwrap().unwrap());
 
         let mut changes = library.manager().subscribe_admin_changes();
-        let done = bae_library::followed::value_matching(&mut changes, |changes| {
+        let done = bae_library::followed::query_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state == AdminChangeState::Done)
         })
         .await;
@@ -67,7 +67,7 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
         };
         assert_eq!((*member, person.as_deref()), (invite.member, Some("Rowan")));
         library.membership().acknowledge_admin_change(*operation).await.unwrap();
-        bae_library::followed::value_matching(&mut changes, Vec::is_empty).await;
+        bae_library::followed::query_matching(&mut changes, Vec::is_empty).await;
         guest.close().await.unwrap();
         library.manager().close().await.unwrap();
     });

@@ -17,7 +17,7 @@ async fn request_that_comes(
     pairing: coven::AddDeviceId,
 ) -> coven::AddDeviceRequest {
     let mut status = first.manager().follow_add_device(pairing);
-    let status = crate::followed::value_matching(&mut status, |status| {
+    let status = crate::followed::query_matching(&mut status, |status| {
         matches!(status, Some(coven::AddDeviceStatus::Waiting { request: Some(_) }))
     })
     .await;
@@ -44,7 +44,7 @@ fn an_approved_request_adds_the_device_that_scanned_the_qr_code() {
         let phone = phone.expect("the approved request lets the phone in");
         let phone_device = this_device(&phone).await;
         let mut status = first.manager().follow_add_device(adding.id);
-        let ended = crate::followed::value_matching(&mut status, |status| {
+        let ended = crate::followed::query_matching(&mut status, |status| {
             matches!(status, Some(coven::AddDeviceStatus::Ended(_)))
         })
         .await;
@@ -97,7 +97,7 @@ fn a_declined_request_ends_the_pairing_without_the_device() {
         });
         assert!(phone.is_none(), "a declined request lets no device in");
         let mut status = first.manager().follow_add_device(adding.id);
-        crate::followed::value_matching(&mut status, |status| {
+        crate::followed::query_matching(&mut status, |status| {
             matches!(status, Some(coven::AddDeviceStatus::Ended(coven::AddDeviceEnd::Declined)))
         })
         .await;
@@ -143,7 +143,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         laptop.stop_sync().await;
         let manager = laptop.manager();
         let mut changes = manager.subscribe_admin_changes();
-        crate::followed::value_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
 
         manager
             .membership
@@ -151,7 +151,7 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
             .await
             .unwrap();
         let waiting =
-            crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
+            crate::followed::query_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {
             operation,
             change: AdminChangeKind::RenameLibrary { name },
@@ -166,14 +166,14 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         assert!(manager.membership.acknowledge_admin_change(operation).await.is_err());
 
         laptop.store().start_sync().await.unwrap();
-        crate::followed::value_matching(&mut changes, |changes| {
+        crate::followed::query_matching(&mut changes, |changes| {
             changes.len() == 1 && changes[0].state == AdminChangeState::Done
         })
         .await;
         assert_eq!(manager.store.store_name().await.unwrap(), "Home");
 
         manager.membership.acknowledge_admin_change(operation).await.unwrap();
-        crate::followed::value_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
         let listed = laptop
             .store()
             .query_texts_for_test("SELECT kind FROM coven_operations WHERE kind = 'RenameStore'")
@@ -232,7 +232,7 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
             .await;
 
         laptop.store().start_sync().await.unwrap();
-        let stopped = crate::followed::value_matching(&mut changes, |changes| {
+        let stopped = crate::followed::query_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
@@ -259,11 +259,11 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
         let laptop = devices.a();
         laptop.stop_sync().await;
         let mut changes = laptop.manager().subscribe_admin_changes();
-        crate::followed::value_matching(&mut changes, Vec::is_empty).await;
+        crate::followed::query_matching(&mut changes, Vec::is_empty).await;
         let unknown = coven::DeviceId(u64::MAX);
         laptop.membership().remove_device(unknown).await.unwrap();
         let waiting =
-            crate::followed::value_matching(&mut changes, |changes| !changes.is_empty()).await;
+            crate::followed::query_matching(&mut changes, |changes| !changes.is_empty()).await;
         let [AdminChange {
             change: AdminChangeKind::RemoveDevice { device, name: None },
             state: AdminChangeState::Waiting,
@@ -275,7 +275,7 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
         assert_eq!(*device, unknown);
 
         laptop.store().start_sync().await.unwrap();
-        let refused = crate::followed::value_matching(&mut changes, |changes| {
+        let refused = crate::followed::query_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
@@ -302,7 +302,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
         let manager = library.first().manager();
         let views = bae_views::LibraryViews::new(library.first().store().clone());
         let mut invites = views.subscribe_invites();
-        crate::followed::value_matching(&mut invites, Vec::is_empty).await;
+        crate::followed::query_matching(&mut invites, Vec::is_empty).await;
         let invite = manager
             .store
             .invite_person(
@@ -317,7 +317,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
             .await
             .unwrap();
         let listed =
-            crate::followed::value_matching(&mut invites, |invites| !invites.is_empty()).await;
+            crate::followed::query_matching(&mut invites, |invites| !invites.is_empty()).await;
         assert_eq!(
             listed
                 .iter()
@@ -326,7 +326,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
                 .collect::<Vec<_>>(),
             vec![(invite, coven::InviteAdmits::NewPerson)]
         );
-        let granted = crate::followed::value_matching(&mut invites, |invites| {
+        let granted = crate::followed::query_matching(&mut invites, |invites| {
             invites.iter().any(|listed| {
                 matches!(
                     crate::people::invite_shown(&listed.open().unwrap().invite),
@@ -340,7 +340,7 @@ fn an_invite_is_listed_until_it_is_cancelled() {
             .filter_map(bae_views::InviteEntry::open)
             .all(|listed| listed.held.is_none()));
         manager.cancel_invite(&invite).await.unwrap();
-        crate::followed::value_matching(&mut invites, Vec::is_empty).await;
+        crate::followed::query_matching(&mut invites, Vec::is_empty).await;
     });
 }
 
@@ -364,9 +364,9 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         let tablet = devices.b();
         tablet.stop_sync().await;
         let mut requested = tablet.manager().subscribe_requested_profile();
-        crate::followed::value_matching(&mut requested, Option::is_none).await;
+        crate::followed::query_matching(&mut requested, Option::is_none).await;
         tablet.people().create_profile("Robin").await.unwrap();
-        crate::followed::value_matching(&mut requested, |requested| {
+        crate::followed::query_matching(&mut requested, |requested| {
             requested
                 == &Some(RequestedProfile {
                     name: "Robin".into(),
@@ -398,7 +398,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
                 coven::Removal::Device,
             )),
         };
-        crate::followed::value_matching(&mut requested, |requested| {
+        crate::followed::query_matching(&mut requested, |requested| {
             requested.as_ref() == Some(&stopped)
         })
         .await;

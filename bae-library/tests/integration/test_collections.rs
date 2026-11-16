@@ -1,4 +1,4 @@
-use bae_library::followed::value_matching;
+use bae_library::followed::query_matching;
 use bae_library::test_libraries::{connect_storage, made_profile, storage_library};
 use bae_people::collections::{RatingTarget, Stars};
 use bae_people::people::Sharing;
@@ -9,7 +9,7 @@ use bae_util::test_ids::test_uuid;
 /// value is what is stored.
 async fn playlists_now(store: &bae_store::Store) -> Vec<bae_views::playlists::PlaylistSummary> {
     let views = bae_views::LibraryViews::new(store.clone());
-    value_matching(&mut views.subscribe_playlists(), |_| true).await.listed
+    query_matching(&mut views.subscribe_playlists(), |_| true).await.listed
 }
 
 #[tokio::test]
@@ -231,7 +231,7 @@ async fn a_playlists_summary_comes_counted_with_its_row() {
     playlist("Empty", &[]).await;
 
     let views = bae_views::LibraryViews::new(library.store().clone());
-    let listing = value_matching(&mut views.subscribe_playlists(), |_| true).await;
+    let listing = query_matching(&mut views.subscribe_playlists(), |_| true).await;
     let summary = |name: &str| listing.listed.iter().find(|p| p.name == name).unwrap().clone();
     let (many, few, empty) = (summary("Many"), summary("Few"), summary("Empty"));
     assert_eq!((many.track_count.count, many.total_duration_ms), (6, 6 * 180_000));
@@ -292,7 +292,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     .await;
 
     let mut listing = views.subscribe_playlists();
-    let none = value_matching(&mut listing, |_| true).await;
+    let none = query_matching(&mut listing, |_| true).await;
     assert!(none.listed.is_empty() && none.add_targets.is_empty());
     assert!(none.can_create);
 
@@ -302,7 +302,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
         .await
         .unwrap();
     let mut detail = views.subscribe_playlist_detail(Some(id.to_string()));
-    let made = value_matching(&mut listing, |listing| !listing.listed.is_empty()).await;
+    let made = query_matching(&mut listing, |listing| !listing.listed.is_empty()).await;
     let summary = &made.listed[0];
     assert_eq!(summary.id, id);
     assert_eq!(summary.name, "Evening");
@@ -320,7 +320,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     );
 
     people.edit_playlist(id, "Gathering", Sharing::Household).await.unwrap();
-    let renamed = value_matching(&mut listing, |listing| {
+    let renamed = query_matching(&mut listing, |listing| {
         listing.listed[0].name == "Gathering" && listing.listed[0].sharing == Sharing::Household
     })
     .await;
@@ -348,7 +348,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
 
     people.delete_playlist(id).await.unwrap();
     detail_matching(&mut detail, |detail| detail.is_none()).await;
-    let gone = value_matching(&mut listing, |listing| listing.listed.is_empty()).await;
+    let gone = query_matching(&mut listing, |listing| listing.listed.is_empty()).await;
     assert!(gone.add_targets.is_empty());
     assert_eq!(gone.total, 0);
     library.manager().close().await.unwrap();
@@ -378,12 +378,12 @@ async fn playlists_list_by_name_in_the_devices_language() {
     };
 
     let mut listing = views.subscribe_playlists();
-    let root = value_matching(&mut listing, |listing| listing.listed.len() == 3).await;
+    let root = query_matching(&mut listing, |listing| listing.listed.len() == 3).await;
     assert_eq!(names(&root), ["Ängel", "Apa", "Zebra"]);
     assert_eq!(root.total, 3);
 
     library.records().set_sort_language("sv").await.unwrap();
-    let swedish = value_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;
+    let swedish = query_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;
     assert_eq!(names(&swedish), ["Apa", "Zebra", "Ängel"]);
     library.manager().close().await.unwrap();
 }

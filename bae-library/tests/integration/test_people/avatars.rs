@@ -48,7 +48,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     assert_eq!(library.people().avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     gate.add_permits(tokio::sync::Semaphore::MAX_PERMITS);
     let mut profiles = library.manager().subscribe_profiles();
-    let stored = bae_library::followed::value_matching(&mut profiles, |profiles| {
+    let stored = bae_library::followed::query_matching(&mut profiles, |profiles| {
         profiles.iter().find(|candidate| candidate.id == profile.id).is_some_and(|candidate| {
             candidate
                 .avatar

@@ -87,7 +87,7 @@ fn a_removed_person_s_rating_still_names_them() {
         // An admin removes Rowan. His rating stays, under his name.
         let mut changes = owner.manager().subscribe_admin_changes();
         owner.membership().remove_member(&rowan.id).await.unwrap();
-        bae_library::followed::value_matching(&mut changes, |changes| {
+        bae_library::followed::query_matching(&mut changes, |changes| {
             changes.iter().any(|change| {
                 matches!(
                     change.change,

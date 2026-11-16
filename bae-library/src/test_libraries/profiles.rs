@@ -1,7 +1,7 @@
 //! Profiles made as the app makes them: asked for, then written once sync
 //! has made the person's private circle (§5.4).
 
-use crate::followed::value_matching;
+use crate::followed::query_matching;
 use crate::LibraryManager;
 use bae_people::people::PersonProfile;
 
@@ -33,7 +33,7 @@ pub async fn requested_profile(
     let mut profiles = manager.subscribe_profiles();
     manager.attach_and_start_sync().await.unwrap();
     let profile = own(
-        value_matching(&mut profiles, |profiles| {
+        query_matching(&mut profiles, |profiles| {
             profiles.iter().any(|profile| profile.id == member)
         })
         .await,
@@ -70,7 +70,7 @@ pub async fn requested_profile_on(
         .id;
     let mut profiles = people.subscribe_profiles();
     handle.start_sync().await.unwrap();
-    let written = value_matching(&mut profiles, |profiles| {
+    let written = query_matching(&mut profiles, |profiles| {
         profiles.iter().any(|profile| profile.id == member)
     });
     let profiles = tokio::select! {

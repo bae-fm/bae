@@ -633,7 +633,7 @@ pub(super) async fn offered(
 pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     let mut pending = manager.records.subscribe_has_pending_uploads_for_release(release_id);
     manager.store.sync_now();
-    crate::followed::value_matching(&mut pending, |has_pending| !has_pending).await;
+    crate::followed::query_matching(&mut pending, |has_pending| !has_pending).await;
 }
 
 // The pending list the sync status shows: coven's pending records named by
@@ -643,7 +643,7 @@ pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_i
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
 pub(super) async fn pending_list_until(
-    values: &mut impl crate::followed::Followed<bae_sync_status::SyncStatusSnapshot>,
+    values: &mut impl bae_store::live_query::LiveSource<bae_sync_status::SyncStatusSnapshot>,
     matches: impl Fn(&[bae_sync_status::PendingItem]) -> bool,
 ) -> Vec<bae_sync_status::PendingItem> {
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending

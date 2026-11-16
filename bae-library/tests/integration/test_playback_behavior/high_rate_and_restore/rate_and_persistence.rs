@@ -454,7 +454,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         handle.play_release(release_id.clone(), None, false).await.expect("the play is answered");
     assert_eq!(played, bae_playback::PlayOutcome::Playing);
     let mut state = bae_playback::tables::subscribe_playback_state(library.store());
-    let row = bae_library::followed::value_matching(&mut state, Option::is_some)
+    let row = bae_library::followed::query_matching(&mut state, Option::is_some)
         .await
         .expect("playing a release persists the playback_state row");
     assert_eq!(row.current.map(|current| current.track_id).as_deref(), Some(first_track.as_str()));
@@ -468,7 +468,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
     handle.stop();
-    bae_library::followed::value_matching(&mut state, Option::is_none).await;
+    bae_library::followed::query_matching(&mut state, Option::is_none).await;
 }
 
 /// The `playback_state` row must advance while a track plays, with no

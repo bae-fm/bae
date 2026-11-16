@@ -4,7 +4,7 @@ use super::*;
 /// value is what is stored.
 async fn playlists_now(store: &bae_store::Store) -> Vec<bae_views::playlists::PlaylistSummary> {
     let views = bae_views::LibraryViews::new(store.clone());
-    bae_library::followed::value_matching(&mut views.subscribe_playlists(), |_| true).await.listed
+    bae_library::followed::query_matching(&mut views.subscribe_playlists(), |_| true).await.listed
 }
 
 #[test]
