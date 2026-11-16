@@ -9,6 +9,16 @@ impl AppHandle {
         crate::screens::config(self.services.subscribe_config(), self.runtime.clone())
     }
 
+    /// The save preset `id`, as the format editor shows it: the first value
+    /// at once, then one after each write that changes it; none once no
+    /// preset has the id.
+    pub fn subscribe_save_preset(
+        &self,
+        id: String,
+    ) -> std::sync::Arc<crate::SavePresetSubscription> {
+        crate::screens::save_preset(self.services.subscribe_save_preset(id), self.runtime.clone())
+    }
+
     /// What this device keeps for the open library, in bytes: the first
     /// value at once, then one after each change.
     pub fn subscribe_device_storage(&self) -> std::sync::Arc<crate::DeviceStorageSubscription> {

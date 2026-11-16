@@ -348,6 +348,7 @@ task_types = [
     "QueueSubscription",
     "ReleaseDetailSubscription",
     "ReleaseFilesSubscription",
+    "SavePresetSubscription",
     "RequestedProfileSubscription",
     "SetupStatesSubscription",
     "StorageQueuesSubscription",

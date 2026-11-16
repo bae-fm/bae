@@ -336,3 +336,28 @@ async fn a_pattern_that_cant_make_a_name_is_stored_as_typed() {
     assert_eq!(prefs.save_filename_pattern, invalid);
     assert!(prefs.save_folder_pattern.pieces().is_empty());
 }
+
+/// The format editor reads its preset by id: it follows the preset's edits,
+/// and reads none once the preset is deleted.
+#[tokio::test]
+async fn a_preset_is_read_by_its_id_until_it_is_deleted() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let mut mp3 = subscribe_save_preset(&db, "mp3".to_string());
+    let mut next_preset = async || {
+        tokio::time::timeout(HANG_GUARD, mp3.next_inline())
+            .await
+            .expect("the live query delivers")
+            .expect("the store is open")
+            .unwrap()
+    };
+    assert_eq!(next_preset().await.map(|preset| preset.name), Some("MP3".to_string()));
+
+    set(&db, |prefs| prefs.save_presets[1].name = "MP3 V0".to_string()).await;
+    assert_eq!(next_preset().await.map(|preset| preset.name), Some("MP3 V0".to_string()));
+
+    set(&db, |prefs| {
+        prefs.save_presets.truncate(1);
+    })
+    .await;
+    assert_eq!(next_preset().await, None);
+}

@@ -26,7 +26,7 @@ pub use name_pattern::{NamePattern, NamePatternError, NamePiece};
 pub use presentation::LookupCatalogSetting;
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
-pub use row::{preferences, subscribe_preferences, PreferencesRow};
+pub use row::{preferences, subscribe_preferences, subscribe_save_preset, PreferencesRow};
 pub use save::{
     Numerals, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenamePattern, SaveFilenameValue,
     SaveFolderPattern, SaveFolderValue, SaveFormat, SavePreset,

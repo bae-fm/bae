@@ -263,6 +263,15 @@ impl LibraryManager {
         self.store.transfer_limits()
     }
 
+    /// The save preset `id`, followed for the format editor: none once no
+    /// preset has the id, until the library closes.
+    pub fn subscribe_save_preset(
+        &self,
+        id: String,
+    ) -> bae_store::live_query::LiveValues<Option<bae_preferences::SavePreset>> {
+        self.values_until_closed(bae_preferences::subscribe_save_preset(&self.store, id))
+    }
+
     pub async fn save_presets(
         &self,
     ) -> Result<Vec<bae_preferences::SavePreset>, bae_store::DbError> {

@@ -263,6 +263,15 @@ impl AppServices {
         self.inner.manager.subscribe_config()
     }
 
+    /// The save preset `id`, followed for the format editor: none once no
+    /// preset has the id.
+    pub fn subscribe_save_preset(
+        &self,
+        id: String,
+    ) -> bae_store::live_query::LiveValues<Option<bae_preferences::SavePreset>> {
+        self.inner.manager.subscribe_save_preset(id)
+    }
+
     /// The part of the preferences `part` takes: the first value at once,
     /// then one after each write that changes it.
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(

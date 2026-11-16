@@ -257,6 +257,17 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// One save preset as the format editor shows it, or none once it is
+    /// deleted.
+    SavePresetSubscription:
+        LiveValues<Option<bae_preferences::SavePreset>> => Option<crate::types::BridgeSavePreset>,
+    converted by |preset: Option<bae_preferences::SavePreset>| {
+        preset.as_ref().map(crate::types::BridgeSavePreset::from_core)
+    },
+    built by save_preset
+}
+
+pulled_read! {
     /// The queue as its screens show it.
     QueueSubscription:
         LiveValues<bae_playback::ResolvedQueueSnapshot> => crate::types::BridgeQueueSnapshot,

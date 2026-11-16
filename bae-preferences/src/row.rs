@@ -31,6 +31,19 @@ pub fn subscribe_preferences(store: &Store) -> coven::LiveQuery<Preferences, bae
     store.subscribe(|sql| Ok(preferences_on(&sql)?))
 }
 
+/// Follow the save preset `id`: the first value at once, then one after each
+/// write that changes it; none once no preset has the id.
+pub fn subscribe_save_preset(
+    store: &Store,
+    id: String,
+) -> coven::LiveQuery<Option<SavePreset>, bae_store::DbError> {
+    store.subscribe(move |sql| {
+        Ok(sql
+            .query("SELECT * FROM save_preset WHERE id = ?1", [id.as_str()], save_preset_row)?
+            .pop())
+    })
+}
+
 /// The owner of the `preferences` row: the one place it is written, one
 /// edit at a time.
 #[derive(Clone)]
@@ -153,31 +166,34 @@ fn preferences_on(sql: &impl SqlRead) -> rusqlite::Result<Preferences> {
 }
 
 fn save_presets_on(sql: &impl SqlRead) -> rusqlite::Result<Vec<SavePreset>> {
-    sql.query("SELECT * FROM save_preset ORDER BY position", [], |row| {
-        let id: String = row.get("id")?;
-        let codec: String = row.get("codec")?;
-        let bit_depth = || -> rusqlite::Result<SaveBitDepth> {
-            let stored: String = row.get("bit_depth")?;
-            match stored.as_str() {
-                "same_as_source" => Ok(SaveBitDepth::SameAsSource),
-                "bits_16" => Ok(SaveBitDepth::Bits16),
-                _ => Err(invalid(row, "bit_depth", stored)),
-            }
-        };
-        let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
-        Ok(SavePreset {
-            name: row.get("name")?,
-            codec: match codec.as_str() {
-                "flac" => SaveCodec::Flac { bit_depth: bit_depth()? },
-                "wav" => SaveCodec::Wav { bit_depth: bit_depth()? },
-                "aiff" => SaveCodec::Aiff { bit_depth: bit_depth()? },
-                "mp3" => SaveCodec::Mp3 { bitrate_kbps: bitrate_kbps()? },
-                "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
-                "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
-                _ => return Err(invalid(row, "codec", codec)),
-            },
-            id,
-        })
+    sql.query("SELECT * FROM save_preset ORDER BY position", [], save_preset_row)
+}
+
+/// One preset as a row of `save_preset` holds it.
+fn save_preset_row(row: &Row<'_>) -> rusqlite::Result<SavePreset> {
+    let id: String = row.get("id")?;
+    let codec: String = row.get("codec")?;
+    let bit_depth = || -> rusqlite::Result<SaveBitDepth> {
+        let stored: String = row.get("bit_depth")?;
+        match stored.as_str() {
+            "same_as_source" => Ok(SaveBitDepth::SameAsSource),
+            "bits_16" => Ok(SaveBitDepth::Bits16),
+            _ => Err(invalid(row, "bit_depth", stored)),
+        }
+    };
+    let bitrate_kbps = || row.get::<_, u32>("bitrate_kbps");
+    Ok(SavePreset {
+        name: row.get("name")?,
+        codec: match codec.as_str() {
+            "flac" => SaveCodec::Flac { bit_depth: bit_depth()? },
+            "wav" => SaveCodec::Wav { bit_depth: bit_depth()? },
+            "aiff" => SaveCodec::Aiff { bit_depth: bit_depth()? },
+            "mp3" => SaveCodec::Mp3 { bitrate_kbps: bitrate_kbps()? },
+            "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
+            "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
+            _ => return Err(invalid(row, "codec", codec)),
+        },
+        id,
     })
 }
 

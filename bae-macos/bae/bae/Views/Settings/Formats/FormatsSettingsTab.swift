@@ -11,8 +11,8 @@ struct FormatsSettingsTab: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    /// The id of the preset whose edit sheet is open; the sheet reads the live
-    /// preset from config by it.
+    /// The id of the preset whose edit sheet is open; the sheet reads the
+    /// preset by it.
     private struct EditingPreset: Identifiable {
         let id: String
     }
@@ -30,17 +30,12 @@ struct FormatsSettingsTab: View {
             .formStyle(.settings)
         }
         .sheet(item: $editingPreset) { editing in
-            // The preset can be gone by the time the sheet renders — deleted
-            // from the sheet itself, or replaced by a config round-trip.
-            if let preset = configStore.config.savePresets.first(where: {
-                $0.id == editing.id
-            }) {
-                SavePresetEditor(
-                    preset: preset,
-                    presets: configStore.config.savePresets,
-                    update: replacePreset
-                )
-            }
+            SavePresetSheet(
+                presetId: editing.id,
+                presets: configStore.config.savePresets,
+                update: replacePreset,
+                onEnded: { editingPreset = nil }
+            )
         }
     }
 
@@ -183,6 +178,84 @@ struct FormatsSettingsTab: View {
                 uiStore.showError(error)
             }
         }
+    }
+}
+
+/// The edit sheet of the preset `presetId`, drawn from the preset's own live
+/// read. It closes when the read answers that no preset has the id.
+private struct SavePresetSheet: View {
+    let presetId: String
+    /// Every format, this one included, for the names it must not repeat.
+    let presets: [BridgeSavePreset]
+    let update: (BridgeSavePreset) -> Void
+    let onEnded: () -> Void
+
+    @Environment(Outputs.self)
+    private var outputs
+    @Environment(UiStore.self)
+    private var uiStore
+    @State
+    private var read = SavePresetRead()
+
+    var body: some View {
+        // A stack, not a group: it is on screen before the read answers, so
+        // its appearance starts the read.
+        ZStack {
+            if let preset = read.preset {
+                SavePresetEditor(
+                    preset: preset,
+                    presets: presets,
+                    update: update
+                )
+            }
+        }
+        .onAppear {
+            do {
+                try read.open(
+                    outputs.subscribeSavePreset(presetId),
+                    fail: { uiStore.showError($0) }
+                )
+            }
+            catch {
+                uiStore.showError(error)
+            }
+        }
+        .onDisappear { read.close() }
+        .onChange(of: read.ended) { _, ended in
+            if ended { onEnded() }
+        }
+    }
+}
+
+/// One save preset's live read, while its edit sheet shows.
+@MainActor
+@Observable
+private final class SavePresetRead {
+    /// The preset as the read last answered; nil before it answers and once
+    /// no preset has its id.
+    private(set) var preset: BridgeSavePreset?
+    /// Whether the read answered that no preset has its id.
+    private(set) var ended = false
+    @ObservationIgnored
+    private var subscription: AnyObject?
+
+    /// Follow `source`, handing a failed read to `fail`.
+    func open(
+        _ source: SavePresetSubscription,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        subscription = ScreenSubscription(
+            source,
+            onValue: { [weak self] preset in
+                self?.preset = preset
+                self?.ended = preset == nil
+            },
+            onError: fail
+        )
+    }
+
+    func close() {
+        subscription = nil
     }
 }
 

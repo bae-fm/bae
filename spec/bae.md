@@ -6053,7 +6053,8 @@ release's or track's id as UTF-8, or a candidate's key.
   with the same name and shape in BaeKit and in Android's data layer. On
   macOS every pulled subscription below goes through it too, and nothing
   else in the app calls a subscription's `next()`. What
-  playback is doing is one (§9.4); so are the settings, the sync status and
+  playback is doing is one (§9.4); so are the settings, one save format by its id for its
+  edit sheet, which reads none once the format is deleted, the sync status and
   activity, the queue, the download counts, whether uploads are paused, whether
   files move only on unmetered networks, the members, this device's open invites, one open
   invite by its id, which reads none once the invite ends, the first
