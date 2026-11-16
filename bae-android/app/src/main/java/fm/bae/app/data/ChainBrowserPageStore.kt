@@ -56,7 +56,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         private set
     override var error by mutableStateOf<PageError?>(null)
         private set
-    override val hasRows: Boolean get() = chain?.placed?.any { it.rows.isNotEmpty() } == true
+    override val hasRows: Boolean get() = firstReadReturned && totalCount > 0
 
     /** The artist headings of the album grid grouped by artist, from their own read. */
     var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())
@@ -69,6 +69,9 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     private var chain: ListChain<Row>? = null
     private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
     private var sectionDeliveries: ScreenSubscription<List<BridgeLibraryBrowseSection>>? = null
+
+    /** Whether the list's count and its first window have both returned since [activate]. */
+    private var firstReadReturned by mutableStateOf(false)
     private var jump: Job? = null
 
     /** The row at [index], or null when no window holds it. */
@@ -86,6 +89,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         sections = emptyList()
         loading = true
         error = null
+        firstReadReturned = false
         this.parameter = parameter
         active = true
         generation++
@@ -186,6 +190,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     private fun changed(openedGeneration: Int) {
         if (openedGeneration != generation || !active) return
         if (count != null && chain?.hasAnswered == true) {
+            firstReadReturned = true
             loading = false
             error = null
         }
@@ -198,10 +203,9 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     ) {
         if (openedGeneration != generation || !active) return
         logger.error("browser page query failed", value)
-        val hadRows = hasRows
         close()
         loading = false
-        error = PageError(appContext.getString(if (hadRows) loadMoreFailed else loadFailed), value, errors, ::retry)
+        error = PageError(appContext.getString(if (hasRows) loadMoreFailed else loadFailed), value, errors, ::retry)
     }
 
     private fun close() {

@@ -48,7 +48,7 @@ internal interface BrowserPageState {
     val loading: Boolean
     val error: PageError?
 
-    /** Whether any row is held to draw. */
+    /** Whether the list's first read has returned and its count query says the list has rows. */
     val hasRows: Boolean
 
     /** How many rows the list has. */

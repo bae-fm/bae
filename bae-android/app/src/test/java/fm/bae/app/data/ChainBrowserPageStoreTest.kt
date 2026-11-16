@@ -184,6 +184,32 @@ class ChainBrowserPageStoreTest {
         assertEquals(ids(0..29), fixture.ids(0..29))
     }
 
+    /**
+     * A jump replaces the chain's windows, so no window holds a row until the new one returns. The list still has
+     * rows by its count query, so a failure then names a later read and the screen keeps the list.
+     */
+    @Test
+    fun aReadThatFailsDuringAJumpNamesALaterRead() {
+        val fixture = open(albums(ids(0..999)))
+
+        fixture.list.deliverImmediately = false
+        fixture.store.reportVisibleRange(900, 910)
+        fixture.idle()
+        assertNull("no window holds a row during the jump", fixture.store.rowAt(900))
+        assertTrue("the count query says the list has rows", fixture.store.hasRows)
+
+        fixture.list.windowFailure = readFailed
+        fixture.list.changed()
+        fixture.idle()
+
+        assertEquals(
+            "Could not load more albums.",
+            fixture.store.error
+                ?.error
+                ?.line,
+        )
+    }
+
     @Test
     fun aLaterReadThatFailsNamesWhatTheListHolds() {
         val fixture = open(albums(ids(0..29)))
