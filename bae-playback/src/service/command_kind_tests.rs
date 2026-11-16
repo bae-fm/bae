@@ -21,8 +21,11 @@ fn playback_command_kind_maps_user_intent_only() {
         Some(PlaybackCommandKind::SetRepeat)
     ));
     // A continuous input and an internal command ship nothing.
-    assert!(playback_command_kind(&PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()))
-        .is_none());
+    assert!(playback_command_kind(&PlaybackCommand::SetVolume(
+        crate::Volume::new(0.5).unwrap(),
+        oneshot::channel().0
+    ))
+    .is_none());
     assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
         track_id: "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
     })
@@ -50,7 +53,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
     }
     let leaves = [
         PlaybackCommand::Resume,
-        PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap()),
+        PlaybackCommand::SetVolume(crate::Volume::new(0.5).unwrap(), oneshot::channel().0),
         PlaybackCommand::SetMuted(true),
         PlaybackCommand::SetRepeatMode(RepeatMode::Context, oneshot::channel().0),
         PlaybackCommand::AutoAdvance { track_id: "track".to_string() },

@@ -97,7 +97,7 @@ use crate::stream_pipeline::{
 pub(crate) use api::PlaybackCommand;
 pub use api::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackState,
-    QueueEditError,
+    QueueEditError, SetVolumeError,
 };
 use api::{PlayReply, QueueEditReply};
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
@@ -664,7 +664,7 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::ClearUpNext(_)
         | PlaybackCommand::ClearPlayingFrom(_)
         | PlaybackCommand::ReevaluateSidePauseStaging
-        | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetVolume(..)
         | PlaybackCommand::SetVolumeLive(_)
         | PlaybackCommand::SetMuted(_)
         | PlaybackCommand::PreviewPlay(_)
@@ -728,7 +728,7 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::HaltOnError
         | PlaybackCommand::ReadFailed { .. }
         | PlaybackCommand::DecodeFailed { .. }
-        | PlaybackCommand::SetVolume(_)
+        | PlaybackCommand::SetVolume(..)
         | PlaybackCommand::SetVolumeLive(_)
         | PlaybackCommand::SetMuted(_)
         | PlaybackCommand::SetRepeatMode(..)

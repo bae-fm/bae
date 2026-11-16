@@ -16,7 +16,7 @@ fn playback_values_follow_playback_until_cancelled() {
     assert_eq!((first.volume, first.is_muted), (1.0, false));
     assert!(first.failure.is_none());
 
-    handle.handle().set_volume(0.4);
+    handle.handle().runtime.block_on(handle.handle().clone().set_volume(0.4)).unwrap();
     pull_until(handle.handle(), || values.clone().next(), |value| value.volume == 0.4);
     handle.handle().set_muted(true);
     pull_until(handle.handle(), || values.clone().next(), |value| value.is_muted);

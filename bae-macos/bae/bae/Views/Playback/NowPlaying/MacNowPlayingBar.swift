@@ -36,7 +36,7 @@ struct MacNowPlayingBar: View {
     /// The level a volume drag is at: moves the output, stores nothing.
     let onVolumeDrag: (Float) -> Void
     /// The level a volume drag or click ends on.
-    let onVolumeChange: (Float) -> Void
+    let onVolumeChange: (Float) async -> Void
     /// Mute or unmute: the value the mute button sets.
     let onSetMuted: (Bool) -> Void
     let onSetShuffle: (Bool) -> Void

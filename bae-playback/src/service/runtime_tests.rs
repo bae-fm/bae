@@ -770,12 +770,10 @@ async fn the_press_after_the_device_failed_reaches_a_fresh_service() {
         ),
         "{heard:?}"
     );
-    playback.set_volume(0.5);
-    let volume = bae_util::test_channels::next_matching(&mut progress, HANG_GUARD, |event| {
-        matches!(event, PlaybackProgress::VolumeChanged { volume } if volume == 0.5).then_some(())
-    })
-    .await;
-    assert_eq!(volume, Some(()));
+    let volume = tokio::time::timeout(HANG_GUARD, playback.set_volume(0.5))
+        .await
+        .expect("the volume is answered");
+    assert!(volume.is_ok(), "{volume:?}");
     assert_eq!(bugs.reports(), Vec::new());
 }
 
@@ -826,21 +824,17 @@ async fn commands_sent_while_the_service_dies_reach_the_next_one() {
     let store = seeded_store(&[]).await;
     let (device, script) = scripted_device([Opening::Fails, Opening::Opens]);
     let playback = start_playback_on(&store, bae_diagnostics::Diagnostics::noop(), device);
-    let mut progress = playback.subscribe_progress();
 
-    playback.set_volume(0.25);
+    let volume = playback.set_volume(0.25);
     let played = playback.play_library_shuffled();
-    let (played, ()) =
-        tokio::time::timeout(HANG_GUARD, async { tokio::join!(played, async { script.allow(2) }) })
-            .await
-            .expect("the play is answered");
-
-    assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");
-    let volume = bae_util::test_channels::next_matching(&mut progress, HANG_GUARD, |event| {
-        matches!(event, PlaybackProgress::VolumeChanged { volume } if volume == 0.25).then_some(())
+    let (volume, played, ()) = tokio::time::timeout(HANG_GUARD, async {
+        tokio::join!(volume, played, async { script.allow(2) })
     })
-    .await;
-    assert_eq!(volume, Some(()));
+    .await
+    .expect("the volume and the play are answered");
+
+    assert!(volume.is_ok(), "{volume:?}");
+    assert!(matches!(played, Ok(PlayOutcome::NothingToPlay)), "{played:?}");
 }
 
 /// Saving state with no service running has nothing to save and starts none:

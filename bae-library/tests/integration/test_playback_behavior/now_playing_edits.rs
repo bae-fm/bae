@@ -234,7 +234,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
         // A volume change commits after those positions, so its value comes
         // after any value they would have sent: the next value must be it,
         // the first value with only the volume changed.
-        fixture.playback_handle.set_volume(SENTINEL_VOLUME);
+        fixture.playback_handle.set_volume(SENTINEL_VOLUME).await.expect("the volume is stored");
         let next = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("the volume's value arrives")

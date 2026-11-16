@@ -14,9 +14,9 @@ public final class Playback: Sendable, Observable {
     public let nextTrack: @Sendable () -> Void
     public let previousTrack: @Sendable () -> Void
     public let seekByRatio: @Sendable (_ ratio: Double) -> Void
-    /// Set the level where a volume drag ends: stored, and shown by every
-    /// screen.
-    public let setVolume: @Sendable (_ volume: Float) -> Void
+    /// Set the level where a volume drag ends, returning once it is stored,
+    /// so the slider can show the dragged level until then.
+    public let setVolume: @Sendable (_ volume: Float) async throws -> Void
     /// Move the output to the level a volume drag is at, storing nothing.
     public let setVolumeLive: @Sendable (_ volume: Float) -> Void
     public let setMuted: @Sendable (_ muted: Bool) -> Void
@@ -70,7 +70,7 @@ public final class Playback: Sendable, Observable {
         nextTrack: @escaping @Sendable () -> Void = {},
         previousTrack: @escaping @Sendable () -> Void = {},
         seekByRatio: @escaping @Sendable (Double) -> Void = { _ in },
-        setVolume: @escaping @Sendable (Float) -> Void = { _ in },
+        setVolume: @escaping @Sendable (Float) async throws -> Void = { _ in },
         setVolumeLive: @escaping @Sendable (Float) -> Void = { _ in },
         setMuted: @escaping @Sendable (Bool) -> Void = { _ in },
         setRepeatMode: @escaping @Sendable (BridgeRepeatMode) -> Void = {
@@ -138,7 +138,7 @@ public final class Playback: Sendable, Observable {
             nextTrack: { handle.nextTrack() },
             previousTrack: { handle.previousTrack() },
             seekByRatio: { handle.seekByRatio(ratio: $0) },
-            setVolume: { handle.setVolume(volume: $0) },
+            setVolume: { try await handle.setVolume(volume: $0) },
             setVolumeLive: { handle.setVolumeLive(volume: $0) },
             setMuted: { handle.setMuted(muted: $0) },
             setRepeatMode: { mode in

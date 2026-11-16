@@ -541,7 +541,7 @@ internal open class FakeAppHandle(
         unfaked("setShuffle")
     }
 
-    override fun setVolume(volume: Float) {
+    override suspend fun setVolume(volume: Float) {
         unfaked("setVolume")
     }
 

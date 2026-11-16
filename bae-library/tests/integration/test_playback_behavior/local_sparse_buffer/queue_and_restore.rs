@@ -260,7 +260,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
         // events may precede it and are not checked; the queue and the resume
         // row below are what show nothing was restored. (The volume differs
         // from the saved one, so a restore's announcement isn't mistaken for it.)
-        handle.set_volume(0.37);
+        handle.set_volume(0.37).await.expect("the volume is stored");
         bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
             PlaybackProgress::VolumeChanged { volume: 0.37 } => Some(()),
             _ => None,
@@ -292,7 +292,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     with_fixture(MultiWindowPlayback::new("multi-window-restore-volume"), async |playback| {
         let track = playback.track_ids[0].clone();
         playback.play_and_wait(&track).await;
-        playback.playback_handle.set_volume(0.3);
+        playback.playback_handle.set_volume(0.3).await.expect("the volume is stored");
         playback.playback_handle.set_muted(true);
         // Read on the feed subscribed before the mute was sent: one subscribed
         // after it misses the event whenever the service serves it first.

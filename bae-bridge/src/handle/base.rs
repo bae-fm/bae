@@ -414,10 +414,6 @@ forward! { sync this => {
         this.services.playback_seek_by_ratio(ratio);
     }
 
-    fn set_volume(volume: f32) {
-        this.services.playback_set_volume(volume);
-    }
-
     fn set_volume_live(volume: f32) {
         this.services.playback_set_volume_live(volume);
     }
@@ -538,6 +534,13 @@ impl AppHandle {
             move |_| async move { Ok(answer.await? as u32) },
         )
         .await
+    }
+
+    /// Set the volume a slider's drag ends on, answering once playback has
+    /// stored it, so the slider can hold the dragged level until then.
+    pub async fn set_volume(self: std::sync::Arc<Self>, volume: f32) -> Result<(), BridgeError> {
+        let answer = self.services.playback_set_volume(volume);
+        self.run_exported("AppHandle.set_volume", move |_| async move { Ok(answer.await?) }).await
     }
 
     /// Set how the queue repeats, answering once it is set.

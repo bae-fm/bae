@@ -3,14 +3,14 @@ import SwiftUI
 
 /// A knobless volume slider. During a click or drag it shows the level under
 /// the pointer and reports each one through `onDrag`; the level the gesture
-/// ends on is reported once through `onChange` and stays shown until `value`
-/// changes.
+/// ends on is set once through `onChange` and stays shown until that set
+/// returns, and then the slider shows `value`.
 struct SlimSlider: View {
     let value: Float
     let onDrag: (Float) -> Void
-    let onChange: (Float) -> Void
+    let onChange: (Float) async -> Void
 
-    /// The level under the pointer, from the gesture's start until `value` changes.
+    /// The level under the pointer, from the gesture's start until its set returns.
     @State
     private var dragValue: Float?
 
@@ -22,6 +22,18 @@ struct SlimSlider: View {
     }
 
     private var clamped: Float { max(0, min(1, dragValue ?? value)) }
+
+    /// Show `level` and set it through `onChange`, until that set returns.
+    private func set(_ level: Float) {
+        dragValue = level
+        Task {
+            await onChange(level)
+            // A drag that began since shows its own level.
+            if dragValue == level {
+                dragValue = nil
+            }
+        }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -63,23 +75,18 @@ struct SlimSlider: View {
                             at: drag.location.x,
                             width: width
                         )
-                        dragValue = level
-                        onChange(level)
+                        set(level)
                     },
             )
         }
         .frame(height: 20)
-        // The level the gesture ended on stays shown until the stored level
-        // changes, to the committed one or to anything else, so the slider
-        // never shows the old level in between.
-        .onChange(of: value) { dragValue = nil }
         .accessibilityElement(children: .ignore)
         .accessibilityValue(Text(Double(clamped).formatted(.percent)))
         .accessibilityAdjustableAction { direction in
             let step: Float = 0.05
             switch direction {
-            case .increment: onChange(min(1, clamped + step))
-            case .decrement: onChange(max(0, clamped - step))
+            case .increment: set(min(1, clamped + step))
+            case .decrement: set(max(0, clamped - step))
             @unknown default: break
             }
         }

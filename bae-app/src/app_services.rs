@@ -615,7 +615,6 @@ impl AppServices {
     delegate_sync!(playback, playback_next => next() -> ());
     delegate_sync!(playback, playback_previous => previous() -> ());
     delegate_sync!(playback, playback_seek_by_ratio => seek_by_ratio(ratio: f64) -> ());
-    delegate_sync!(playback, playback_set_volume => set_volume(volume: f32) -> ());
     delegate_sync!(playback, playback_set_volume_live => set_volume_live(volume: f32) -> ());
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
     delegate_sync!(playback, playback_play_on => play_on(link: bae_playback::renderer::RendererLink, device: bae_playback::renderer::CastReceiver, media_source: bae_playback::renderer::RendererMediaSource) -> ());
@@ -626,6 +625,15 @@ impl AppServices {
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
     delegate_sync!(playback, playback_preview_set_paused => preview_set_paused(paused: bool) -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());
+    /// Set the volume, sent at this call; the future answers once playback has stored it, or why it has not.
+    pub fn playback_set_volume(
+        &self,
+        volume: f32,
+    ) -> impl std::future::Future<Output = Result<(), bae_playback::SetVolumeError>> + Send + 'static
+    {
+        self.inner.playback.set_volume(volume)
+    }
+
     /// Set how the queue repeats, sent at this call; the future answers once it is set or why it is not.
     pub fn playback_set_repeat_mode(
         &self,

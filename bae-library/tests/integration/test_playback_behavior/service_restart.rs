@@ -59,13 +59,7 @@ async fn the_press_after_an_end_plays_on_from_the_saved_position_and_level() {
         playback.play_and_wait(&last_track).await;
         playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(20)));
         wait_for_seeked_on(&mut playback.progress_rx).await.expect("the seek lands");
-        playback.playback_handle.set_volume(0.3);
-        bae_util::test_channels::next_matching(&mut playback.progress_rx, HANG_GUARD, |event| {
-            matches!(event, PlaybackProgress::VolumeChanged { volume } if volume == 0.3)
-                .then_some(())
-        })
-        .await
-        .expect("the volume lands");
+        playback.playback_handle.set_volume(0.3).await.expect("the volume lands");
         playback.playback_handle.shutdown().await;
 
         let (handle, mut progress_rx, _capture_rx, audio_clock) =
@@ -105,7 +99,7 @@ async fn a_fresh_service_plays_nothing_until_a_press_asks_it_to() {
         let (handle, mut progress_rx, _capture_rx, _audio_clock) =
             start_service_whose_device_fails_once(&playback.library).await;
 
-        handle.set_volume(0.5);
+        handle.set_volume(0.5).await.expect("the volume is stored");
         let states = collect_states_on(&mut progress_rx, |s| {
             matches!(s, PlaybackState::Paused { track: paused, .. } if paused.track_id == track)
         })

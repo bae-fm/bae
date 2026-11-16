@@ -214,7 +214,7 @@ pub(super) async fn settled_events_on(
     handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Vec<PlaybackProgress> {
-    handle.set_volume(SENTINEL_VOLUME);
+    handle.set_volume(SENTINEL_VOLUME).await.expect("the sentinel volume is stored");
     let mut events = Vec::new();
     bae_util::test_channels::next_matching(progress_rx, HANG_GUARD, |event| match event {
         PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),

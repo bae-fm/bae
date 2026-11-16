@@ -4971,7 +4971,8 @@ It runs from silent to full, and a level asked for past either is held to it
 where it is set, so this device, the receiver, the stored row and every screen
 hold the same level. A volume slider moves this device and the receiver as it
 is dragged; the stored row and the other screens take the level the drag ends
-on, in one write. A UPnP renderer that describes no volume control can't take
+on, in one write. The slider shows the level the drag ended on until that write
+returns, and then shows the stored level. A UPnP renderer that describes no volume control can't take
 a level: the set fails and is told to the person as a command the receiver
 refused, not taken as done. Each receiver says whether it takes a volume: a
 Chromecast and an AirPlay receiver do, a UPnP renderer does when its description

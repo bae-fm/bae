@@ -35,11 +35,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -177,7 +177,9 @@ private fun ExpandedPlayer(
                 isMuted = isMuted,
                 onSetMuted = { session.appHandle.setMuted(it) },
                 onDragVolume = { session.appHandle.setVolumeLive(it) },
-                onSetVolume = { session.appHandle.setVolume(it) },
+                onSetVolume = { level ->
+                    session.messages.performAndWait("setVolume") { session.appHandle.setVolume(level) }
+                },
                 receiverWithoutVolume = receiverWithoutVolume(castStatus),
             )
         },
@@ -359,7 +361,7 @@ internal fun ExpandedVolumeRow(
     isMuted: Boolean,
     onSetMuted: (Boolean) -> Unit,
     onDragVolume: (Float) -> Unit,
-    onSetVolume: (Float) -> Unit,
+    onSetVolume: suspend (Float) -> Unit,
     receiverWithoutVolume: String? = null,
 ) {
     // A receiver that takes no volume from bae keeps its volume itself: no mute
@@ -376,10 +378,10 @@ internal fun ExpandedVolumeRow(
         return
     }
     // Follow the finger from a local value while dragging, moving the output
-    // as it goes; the level the drag ends on is set once, where it is stored,
-    // and stays shown until the stored volume changes.
+    // as it goes. The level the drag ends on is set once, where it is stored,
+    // and stays shown until that set returns; then the slider shows [volume].
     var dragVolume by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(volume) { dragVolume = null }
+    val scope = rememberCoroutineScope()
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onSetMuted(!isMuted) }) {
             Icon(
@@ -394,7 +396,15 @@ internal fun ExpandedVolumeRow(
                 dragVolume = it
                 onDragVolume(it)
             },
-            onValueChangeFinished = { dragVolume?.let(onSetVolume) },
+            onValueChangeFinished = {
+                dragVolume?.let { level ->
+                    scope.launch {
+                        onSetVolume(level)
+                        // A drag that began since shows its own level.
+                        if (dragVolume == level) dragVolume = null
+                    }
+                }
+            },
             modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
         )
     }

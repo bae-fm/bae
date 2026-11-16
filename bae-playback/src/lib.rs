@@ -92,7 +92,7 @@ pub use replay_gain::{loudness_gain_db, loudness_gain_linear, replay_gain_linear
 pub use service::{
     LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseBoundary,
     PlaybackPauseReason, PlaybackService, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, QueueEditError,
+    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, QueueEditError, SetVolumeError,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTimeline};

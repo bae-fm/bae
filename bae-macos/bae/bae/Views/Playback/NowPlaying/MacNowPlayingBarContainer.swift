@@ -63,7 +63,14 @@ struct MacNowPlayingBarContainer: View {
                 }
             },
             onVolumeDrag: { playback.setVolumeLive($0) },
-            onVolumeChange: { playback.setVolume($0) },
+            onVolumeChange: { level in
+                do {
+                    try await playback.setVolume(level)
+                }
+                catch {
+                    uiStore.showError(error)
+                }
+            },
             onSetMuted: { playback.setMuted($0) },
             onSetShuffle: { queue.setShuffle($0) },
             onSetQueuePresented: { uiStore.setQueuePresented($0) },

@@ -84,6 +84,35 @@ impl QueueEditError {
     }
 }
 
+/// Why a volume the person set was not stored.
+#[derive(Debug, thiserror::Error)]
+pub enum SetVolumeError {
+    /// The level is no number, so it names no volume. A slider never sends
+    /// one, so this is a bug of whoever sent it.
+    #[error("the volume {0} is no number")]
+    NotANumber(f32),
+    /// The service that held the command ended before answering; that end
+    /// was told to whoever follows playback.
+    #[error("the playback service stopped before it answered the volume")]
+    Stopped(#[source] oneshot::error::RecvError),
+    /// The service's thread had ended before the command was sent: shut
+    /// down, or ended on a bug reported as it happened.
+    #[error("the playback service had ended")]
+    Ended(#[source] WorkerEnd),
+    /// The task that stores what playback is doing ended before it stored
+    /// the volume.
+    #[error("playback stopped storing what it does before it stored the volume")]
+    NotStored,
+}
+
+impl SetVolumeError {
+    /// The class a surface words this failure in. Each is a bug: of whoever
+    /// sent the level, or of the service or task that ended.
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        bae_diagnostics::UiErrorCategory::Internal
+    }
+}
+
 /// Where a queue command's answer goes: what the command gives back (a
 /// reorder, the lane's version the move made, or nothing when it moved
 /// nothing).
@@ -159,7 +188,9 @@ pub(crate) enum PlaybackCommand {
     Seek(TrackTime),
     /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
-    SetVolume(crate::Volume),
+    /// Set the level, answering once the service has applied it and told it
+    /// to the task that stores it.
+    SetVolume(crate::Volume, oneshot::Sender<()>),
     /// Move the output to this level while a slider is dragged: nothing is
     /// announced or stored until the drag's final `SetVolume`.
     SetVolumeLive(crate::Volume),
@@ -478,12 +509,41 @@ impl PlaybackHandle {
     pub fn seek_by_ratio(&self, ratio: f64) {
         self.dispatch(PlaybackCommand::SeekByRatio(ratio));
     }
-    /// Set the level to `volume`, held to silent and full; a level that is
-    /// no number sets nothing.
-    pub fn set_volume(&self, volume: f32) {
-        match crate::Volume::new(volume) {
-            Some(volume) => self.dispatch(PlaybackCommand::SetVolume(volume)),
-            None => warn!(volume, "a volume that is no number sets nothing"),
+    /// Set the level to `volume`, held to silent and full, sent at this
+    /// call; the future answers once playback has written the level to the
+    /// `playback_now` row, or why the level never reached that write. The
+    /// progress fan-out forwards an event only after it writes the row change
+    /// the event makes, so the level's `VolumeChanged` on a feed subscribed
+    /// before the send means the write has returned. When that write fails,
+    /// the row keeps the level it had and the fan-out reports the failure as
+    /// a playback error, which the row shows and which halts playback.
+    pub fn set_volume(
+        &self,
+        volume: f32,
+    ) -> impl std::future::Future<Output = Result<(), SetVolumeError>> + Send + 'static {
+        let mut feed = self.progress_handle.subscribe_all();
+        let (reply, answer) = oneshot::channel();
+        let sent = match crate::Volume::new(volume) {
+            Some(level) => self
+                .send(PlaybackCommand::SetVolume(level, reply))
+                .map(|()| level)
+                .map_err(SetVolumeError::Ended),
+            None => Err(SetVolumeError::NotANumber(volume)),
+        };
+        async move {
+            let level = sent?;
+            answer.await.map_err(SetVolumeError::Stopped)?;
+            // The service told the level before it answered, so its event is
+            // on the feed.
+            loop {
+                match feed.recv().await {
+                    Some(PlaybackProgress::VolumeChanged { volume }) if volume == level.get() => {
+                        return Ok(());
+                    }
+                    Some(_) => {}
+                    None => return Err(SetVolumeError::NotStored),
+                }
+            }
         }
     }
     /// Move the output to `volume` as a slider is dragged, announcing nothing

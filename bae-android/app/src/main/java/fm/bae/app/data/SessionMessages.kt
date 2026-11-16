@@ -6,6 +6,7 @@ import fm.bae.app.ErrorDisplays
 import fm.bae.app.performBridgeAction
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -68,6 +69,24 @@ class SessionMessages internal constructor(
         operation: String,
         action: suspend () -> Unit,
     ) {
+        launchAction(operation, action)
+    }
+
+    /**
+     * Run [action] in the session as [perform] does, and return once it has answered, so a control can hold
+     * what the person did until then. Leaving the screen that waits does not stop the action.
+     */
+    suspend fun performAndWait(
+        operation: String,
+        action: suspend () -> Unit,
+    ) {
+        launchAction(operation, action).join()
+    }
+
+    private fun launchAction(
+        operation: String,
+        action: suspend () -> Unit,
+    ): Job =
         // A failure that isn't a typed bridge error is a bug, for the scope's handler.
         scope.launch(CoroutineName(operation)) {
             performBridgeAction(logger, operation, errors, { shown ->
@@ -79,7 +98,6 @@ class SessionMessages internal constructor(
                 }
             }, action)
         }
-    }
 
     /**
      * Run [play], something the person played, in the session. What it did

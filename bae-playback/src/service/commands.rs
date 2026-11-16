@@ -103,8 +103,11 @@ impl PlaybackService {
             }
             PlaybackCommand::Seek(time) => self.seek_to_track_time(time).await,
             PlaybackCommand::SeekByRatio(ratio) => self.seek_by_ratio(ratio).await,
-            PlaybackCommand::SetVolume(volume) => {
+            PlaybackCommand::SetVolume(volume, reply) => {
                 self.set_volume(volume);
+                if reply.send(()).is_err() {
+                    debug!("a volume set by a caller that stopped waiting");
+                }
             }
             PlaybackCommand::SetVolumeLive(volume) => {
                 self.set_volume_live(volume);

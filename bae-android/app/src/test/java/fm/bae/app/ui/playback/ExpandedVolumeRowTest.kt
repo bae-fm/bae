@@ -1,6 +1,10 @@
 package fm.bae.app.ui.playback
 
 import android.app.Application
+import android.view.View
+import android.view.ViewGroup
+import android.widget.SeekBar
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -11,16 +15,18 @@ import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.data.receiverWithoutVolume
 import fm.bae.app.ui.TestTheme
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeRemotePlayback
 import uniffi.bae_bridge.BridgeRendererKind
 
-/** The volume row: mute and the slider, or for a receiver that takes no volume from bae, a line saying where it is set. */
+/** The volume row: mute and the slider, which holds a dragged level until its set returns, or for a receiver that takes no volume from bae, a line saying where it is set. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ExpandedVolumeRowTest {
@@ -62,4 +68,45 @@ class ExpandedVolumeRowTest {
         compose.onNodeWithContentDescription("Mute").assertIsDisplayed()
         compose.onAllNodesWithText("Volume is set on Den").assertCountEquals(0)
     }
+
+    /** The slider shows the level a drag ended on until its set returns, then the stored level. */
+    @Test
+    fun aDraggedLevelStaysUntilItsSetReturns() {
+        val stored = CompletableDeferred<Unit>()
+        val sets = mutableListOf<Float>()
+        lateinit var root: View
+        compose.setContent {
+            root = LocalView.current
+            TestTheme {
+                ExpandedVolumeRow(0.7f, false, {}, {}, { level ->
+                    sets.add(level)
+                    stored.await()
+                })
+            }
+        }
+        compose.waitForIdle()
+        val bar = checkNotNull(seekBarIn(root)) { "the volume row draws a seek bar" }
+        val listener = shadowOf(bar).onSeekBarChangeListener
+
+        compose.runOnUiThread {
+            listener.onStartTrackingTouch(bar)
+            bar.progress = 300
+            listener.onProgressChanged(bar, 300, true)
+            listener.onStopTrackingTouch(bar)
+        }
+        compose.waitForIdle()
+        assertEquals(listOf(0.3f), sets)
+        assertEquals("the dragged level shows while its set is unanswered", 300, bar.progress)
+
+        stored.complete(Unit)
+        compose.waitForIdle()
+        assertEquals("the stored level shows once the set returns", 700, bar.progress)
+    }
+
+    private fun seekBarIn(view: View): SeekBar? =
+        when (view) {
+            is SeekBar -> view
+            is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { seekBarIn(view.getChildAt(it)) }
+            else -> null
+        }
 }
