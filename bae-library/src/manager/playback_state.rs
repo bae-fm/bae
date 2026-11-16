@@ -22,8 +22,8 @@ impl LibraryManager {
     }
 
     /// `file_id`'s bytes, `size` long, read into a buffer from the start,
-    /// which a failed read is logged against. The read holds one place of the
-    /// budget of open files until the buffer is dropped.
+    /// against which bae logs a failed read. The read holds one place of the
+    /// budget of open files until the caller drops the buffer.
     pub async fn open_release_file_stream(
         &self,
         file_id: &str,
@@ -32,7 +32,8 @@ impl LibraryManager {
         self.start_release_file_stream(file_id, size, self.records.lease_one().await)
     }
 
-    /// [`Self::open_release_file_stream`] in a place of `lease`.
+    /// Starts the stream that [`Self::open_release_file_stream`] returns, in
+    /// a place of `lease`.
     fn start_release_file_stream(
         &self,
         file_id: &str,
@@ -56,10 +57,10 @@ impl LibraryManager {
     /// silence a CUE `PREGAP` generates, then each segment, pregap included,
     /// seeked the way playback seeks it. Positions in the served stream are
     /// then positions in the track's stream, which a remote renderer reports
-    /// and seeks by. One stream per file the segments read, each in a place
-    /// the decode's lease took from the budget of open files in one wait;
-    /// they close when the returned decode is dropped. Fails when the track
-    /// reads more files than the budget has places.
+    /// and seeks by. The decode opens one stream per file the segments read,
+    /// each in a place the decode's lease took from the budget of open files
+    /// in one wait; they close when the caller drops the decode. Fails when
+    /// the track reads more files than the budget has places.
     pub async fn open_track_decode(
         &self,
         audio: &bae_records::ResolvedTrackAudio,

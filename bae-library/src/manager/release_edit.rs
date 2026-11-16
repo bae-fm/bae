@@ -285,8 +285,8 @@ impl LibraryManager {
     /// Record `pick` as the album `session` files its release under: a
     /// library album or a new one over the one its records name, or (nothing)
     /// the one its records name. Returns the session's draft, naming the
-    /// album it now files the release under. An album the library does not
-    /// hold cannot be picked.
+    /// album it now files the release under. The method refuses an album the
+    /// library does not hold with `LibraryError::AlbumMissing`.
     pub async fn set_release_edit_album(
         &self,
         session: &ReleaseEdit,

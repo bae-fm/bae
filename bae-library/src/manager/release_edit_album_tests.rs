@@ -75,7 +75,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
             )
             .await
             .is_err(),
-        "an album the library does not hold cannot be picked"
+        "the session refuses an album the library does not hold"
     );
     let applied = manager
         .apply_release_edit_catalog(
@@ -93,7 +93,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
             .unwrap()
             .album,
         named(&grouped),
-        "left to its records, the session files it where they name"
+        "with no pick, the session files the release under the album its records name"
     );
 }
 

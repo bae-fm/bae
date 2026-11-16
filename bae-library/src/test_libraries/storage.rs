@@ -7,8 +7,8 @@ use crate::LibraryManager;
 use bae_catalogs::providers::Providers;
 use coven::{MemoryStorage, Storage};
 
-/// [`storage_library`] opening the person's files within `files`, a budget
-/// the test sizes and watches.
+/// Creates a store like [`storage_library`] that opens the person's files
+/// within `files`, a budget the test sizes and watches.
 pub async fn storage_library_within(
     directory: &std::path::Path,
     providers: Providers,
@@ -41,7 +41,7 @@ pub async fn storage_library_of(
     storage_library_on(directory, providers, http, creator, super::TestSources::system()).await
 }
 
-/// [`storage_library_of`] on `sources`.
+/// Creates a store like [`storage_library_of`] on `sources`.
 async fn storage_library_on(
     directory: &std::path::Path,
     providers: Providers,

@@ -523,8 +523,8 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         .await
         .expect("the pin finishes");
 
-        // Out of the queue the inspector shows no pin whether the files are
-        // kept or not, so the unpin changes nothing it sends.
+        // Out of the queue the inspector shows no pin whether this device
+        // keeps the files or not, so the unpin changes nothing it sends.
         manager.unpin_releases(std::slice::from_ref(&cloud)).await.unwrap();
     }
 }
@@ -569,8 +569,9 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     assert!(all_files_kept(manager, &cloud).await, "the finished pin kept every file");
 }
 
-/// A pin whose download failed shows no file's pin and no count of them,
-/// though the entry stays listed, with its error, to retry.
+/// After a pin's download fails, the inspector shows no file's pin and no
+/// count, and still lists the download with its error so that the person can
+/// retry it.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_failed_pin_shows_no_file_pins() {
     use bae_views::storage_inspector::StorageInspectorTransfer;

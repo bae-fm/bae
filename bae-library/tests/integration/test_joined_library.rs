@@ -137,8 +137,8 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
             .iter()
             .any(|profile| profile.id == rowan.membership.id && profile.name == "Rowan"));
         // The people screen reads Rowan as this device's person and the
-        // household's owner as the one other person, counted together, and a
-        // person's page reads the owner by member id.
+        // household's owner as the one other person, and counts two people
+        // and two devices, and a person's page reads the owner by member id.
         let people = bae_library::followed::value_matching(
             &mut library.manager().subscribe_people(),
             |people| people.own.is_some() && people.others.len() == 1,
@@ -206,7 +206,11 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
         let found = bae_library::unfinished_join_for(&builder, &store.to_string(), &NO_DIAGNOSTICS)
             .await
             .unwrap();
-        assert_eq!(found.as_ref(), Some(join), "the join under way for its own library is found");
+        assert_eq!(
+            found.as_ref(),
+            Some(join),
+            "unfinished_join_for finds the join under way for its own library"
+        );
         assert!(
             bae_library::unfinished_join_for(&builder, "another-library", &NO_DIAGNOSTICS)
                 .await

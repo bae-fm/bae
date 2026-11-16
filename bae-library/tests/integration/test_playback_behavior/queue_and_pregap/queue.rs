@@ -370,7 +370,8 @@ async fn play_tracks_tells_its_caller_which_tracks_it_left_out() {
 
 /// A reorder answers that it moved its entry, and one naming an entry the queue
 /// no longer holds answers that it moved nothing and leaves the queue as it
-/// was, so the screen that held the move shows the tables' order.
+/// was, so the screen that showed the move before the write finished shows
+/// the tables' order.
 #[tokio::test]
 async fn a_reorder_answers_whether_it_moved() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
@@ -380,8 +381,10 @@ async fn a_reorder_answers_whether_it_moved() {
         assert_eq!(entries.len(), 3);
         let id = |i: usize| entries[i].entry_id.parse::<bae_playback::QueueEntryId>().unwrap();
 
-        let moved =
-            handle.reorder_entry(id(2), Some(id(0))).await.expect("the reorder is answered");
+        let moved = handle
+            .reorder_entry(id(2), Some(id(0)))
+            .await
+            .expect("the playback handle answers the reorder");
         assert!(moved, "the entry moves");
         let value = handle.queue_value().await.expect("queue value");
         assert_eq!(value.manual[0].entry_id, entries[2].entry_id);

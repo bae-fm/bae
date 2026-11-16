@@ -75,8 +75,9 @@ async fn a_profile_names_each_new_avatar_at_once() {
 }
 
 /// An avatar whose upload can't finish holds this device's writes. Giving
-/// it up clears the profile's reference to its file; a second try, with the
-/// avatar already gone, is refused as changed meanwhile.
+/// it up clears the profile's reference to its file; give_up_held_image
+/// refuses a second try as changed meanwhile, because the avatar is already
+/// gone.
 #[tokio::test]
 async fn giving_up_a_held_avatar_clears_the_profile_reference() {
     let directory = tempfile::tempdir().unwrap();

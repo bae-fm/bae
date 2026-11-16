@@ -1,5 +1,5 @@
-//! How many files playback holds open: those of the playing track and of the
-//! one preloaded after it, which a track reading two files makes four.
+//! This test checks that playback holds open only the files of the playing
+//! track and the one preloaded after it: four when each reads two files.
 
 use crate::test_playback_behavior::support::*;
 use bae_audio::EncodeFormat;

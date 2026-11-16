@@ -76,7 +76,8 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let playlists = playlists_now(library.store()).await;
     assert_eq!(playlists[0].sharing, Sharing::Household);
     assert_eq!(playlists[0].name, "Gathering");
-    // An edit with a blank name is refused whole: who sees the playlist stays.
+    // edit_playlist refuses a blank name and changes neither the name nor who
+    // sees the playlist.
     assert!(people.edit_playlist(id, "  ", Sharing::Private).await.is_err());
     let playlists = playlists_now(library.store()).await;
     assert_eq!(playlists[0].sharing, Sharing::Household);
@@ -136,8 +137,8 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
-/// Several tracks added together land after the playlist's last entry in the
-/// order given, or none of them land when one is not in the library.
+/// Appending several tracks puts them after the playlist's last entry in the
+/// order given, and appends none of them when one is not in the library.
 #[tokio::test]
 async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
     let directory = tempfile::tempdir().unwrap();
@@ -190,10 +191,10 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
-/// A playlist's summary is counted in SQL from its entries: how many, their
-/// total time, a grid of the first four different releases when its entries
-/// are on that many, else its first entry's cover; and Add to playlist lists
-/// only the person's own.
+/// The playlists read counts each playlist's summary in SQL from its
+/// entries: how many, their total time, a grid of the first four different
+/// releases when its entries are on that many, else its first entry's cover;
+/// and Add to playlist lists only the person's own.
 #[tokio::test]
 async fn a_playlists_summary_comes_counted_with_its_row() {
     use bae_views::playlists::PlaylistCover;

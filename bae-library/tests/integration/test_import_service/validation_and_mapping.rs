@@ -661,9 +661,9 @@ fn seed_gap_appended_rip(f: &ImportFixture) -> (std::path::PathBuf, std::path::P
 }
 
 /// A gap-appended rip's found rows show the length the import stores, not the
-/// release's, which runs on into the next track's pregap: the row's length is
-/// the audio's own, and the release's stays off the row while it is within
-/// three seconds.
+/// release's, because the release's length includes the next track's pregap:
+/// the row's length is the audio's own, and the row leaves out the release's
+/// length while it is within three seconds of the audio's.
 #[tokio::test]
 async fn a_found_row_shows_the_length_the_import_stores() {
     bae_util::test_logs::install();

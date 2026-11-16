@@ -142,8 +142,8 @@ impl LibraryManager {
     /// Give up the cover, artist image or avatar `held` names, whose upload
     /// can't finish and so holds every later write of this device: its row
     /// drops the file, so coven retires the upload and sends the held writes
-    /// (coven §17.4, "Later writes"). Refused, with nothing written, when no
-    /// row references the file any more.
+    /// (coven §17.4, "Later writes"). When no row references the file any
+    /// more, the method writes nothing and returns an error.
     pub async fn give_up_held_image(
         &self,
         held: bae_sync_status::HeldImage,

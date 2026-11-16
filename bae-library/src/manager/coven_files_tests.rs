@@ -313,8 +313,9 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
 }
 
 /// A cover whose upload can't finish holds this device's writes. Giving it
-/// up deletes the cover's row, which leaves its file with no reference; a
-/// second try, with the cover already gone, is refused as changed meanwhile.
+/// up deletes the cover's row, which leaves its file with no reference;
+/// give_up_held_image refuses a second try as changed meanwhile, because the
+/// cover is already gone.
 #[tokio::test]
 async fn giving_up_a_held_cover_deletes_its_row() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;

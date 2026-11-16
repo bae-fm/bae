@@ -25,8 +25,8 @@ impl LibraryManager {
             "Writing release output"
         );
         let total = files.len();
-        // One place for the whole export: each file's stream opens in it after
-        // the one before has closed.
+        // The export holds one place and opens each file's stream in it after
+        // the one before closes.
         let lease = self.records.lease_one().await;
         for (index, file) in files.iter().enumerate() {
             self.export_one_file(file, staging_dir, &lease).await?;

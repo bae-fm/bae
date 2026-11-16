@@ -4,8 +4,9 @@
 //! sent and which releases wait to download; coven's upload watch says how
 //! far each file being sent has got, and the download queue's transfers say
 //! how far the release downloading has got. A bar is the bytes the tables
-//! count done plus each file's or release's size times its latest share,
-//! worked out again when any of the three speaks.
+//! count done plus each file's or release's size times its latest share. The
+//! watch works out each bar again whenever the read or either transfer watch
+//! delivers a value.
 
 use bae_store::DbError;
 use bae_transfers::{DownloadTransfer, ReleaseTransferChange, ReleaseTransfersWatch};
@@ -47,29 +48,31 @@ struct BarsCount {
     /// How far each file being sent has got, as the upload watch last told
     /// it.
     sent: BTreeMap<coven::FileId, coven::TransferProgress>,
-    /// Each file whose upload finished, with how far it had got, until the
-    /// read that stores it arrives. Coven ends a file's progress after the
-    /// commit that stores it, but the read can deliver that commit later, and
-    /// the bar must not drop in between.
+    /// Each file whose upload finished, with how far it had got, until a read
+    /// lists it as stored. Coven ends a file's progress after the commit that
+    /// stores it, but the read can deliver that commit later, and the bar must
+    /// not drop in between.
     finished: BTreeMap<coven::FileId, coven::TransferProgress>,
     /// How far each release downloading has got, as the download queue
     /// last told it.
     downloading: BTreeMap<String, DownloadTransfer>,
     /// Each release whose download finished, with how far it had got, until
-    /// the read that stores it arrives, for the same reason as `finished`.
+    /// a read lists it as stored, for the same reason as `finished`.
     downloaded: BTreeMap<String, DownloadTransfer>,
 }
 
 impl BarsCount {
     fn read(&mut self, bytes: ActivityBytes) {
-        // A file the read no longer lists as sending is stored in it.
+        // When the read no longer lists a file as sending, the read already
+        // counts its bytes as done.
         if let Some(uploads) = &bytes.uploads {
             self.finished
                 .retain(|file, _| uploads.sending.iter().any(|sending| sending.file == *file));
         } else {
             self.finished.clear();
         }
-        // A release the read no longer lists as waiting is stored in it.
+        // When the read no longer lists a release as waiting, the read
+        // already counts its bytes as done.
         self.downloaded.retain(|release_id, _| {
             [&bytes.pins, &bytes.moving_to_this_device]
                 .into_iter()
@@ -235,8 +238,9 @@ impl ActivityBarsWatch {
     }
 
     /// The bars once the first read has said what each batch holds, then
-    /// the bars after each change of the read or a transfer. A failed read is
-    /// handed on. `None` once the read or a watch has ended with its store.
+    /// the bars after each change of the read or a transfer. `next` returns a
+    /// failed read's error. `None` once the read or a watch has ended with
+    /// its store.
     pub async fn next(&mut self) -> Option<Result<ActivityBars, DbError>> {
         loop {
             tokio::select! {

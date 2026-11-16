@@ -757,8 +757,8 @@ fn flac_save_preset(id: &str) -> SavePreset {
 }
 
 /// Save `release_id` under `preset` into a fresh target, returning the most
-/// places the budget saw holding an open file at once. Every source is closed,
-/// and every place back, by the time the save returns.
+/// places the budget saw holding an open file at once. The save closes every
+/// source and gives back every place before it returns.
 async fn peak_sources_open_saving(
     f: &ExportFixture,
     watch: &coven::FileBudgetWatch,
@@ -856,11 +856,12 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
-    // The import's landing search of a FLAC image holds two places (the
-    // search's opening and the one reading its final frames), and the budget
-    // keeps the most places held at once since it began.
+    // The import's search for the byte each track of a FLAC image starts on
+    // holds two places (the search's opening and the one reading its final
+    // frames), and the budget keeps the most places held at once since it
+    // began.
     let import_peak = watch.most_holding();
-    assert_eq!(import_peak, 2, "the import's landing search");
+    assert_eq!(import_peak, 2, "the import's search for track starts held two places");
 
     let peak =
         peak_sources_open_saving(&f, &watch, &release_id, &album_dir, flac_save_preset("tracks"))
@@ -885,8 +886,8 @@ fn flac_files_under(dir: &Path) -> Vec<std::path::PathBuf> {
     found
 }
 
-/// A budget of one place saves every track of a release: each track's file
-/// opens in the one place after the track before it has closed it.
+/// With a budget of one place, a release save still saves every track: it
+/// opens each track's file in the one place after it closes the one before.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_with_a_budget_of_one_place_saves_every_track() {
     bae_util::test_logs::install();
@@ -913,7 +914,8 @@ async fn a_release_save_with_a_budget_of_one_place_saves_every_track() {
     assert_eq!(flac_files_under(&f.temp_path().join("export-tracks")).len(), 6);
 }
 
-/// A budget of one place copies every file of a release in an export.
+/// With a budget of one place, an export still copies every file of the
+/// release.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_export_with_a_budget_of_one_place_copies_every_file() {
     bae_util::test_logs::install();

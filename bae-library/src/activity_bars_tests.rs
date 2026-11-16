@@ -67,8 +67,8 @@ fn a_pin_batch_bar_counts_done_releases_and_the_active_share() {
     assert_eq!(pins_bar(&count), bar(250, 400));
 }
 
-/// A release counted done is counted once: its size is in the tables' bytes
-/// done, and no transfer adds its share.
+/// The bar counts a done release's size once: its size is in the tables'
+/// bytes done, and no transfer adds its share.
 #[test]
 fn a_done_release_counts_its_size_once() {
     let mut count = BarsCount::default();
@@ -165,8 +165,9 @@ fn a_finished_upload_keeps_its_bytes_until_the_read_that_stores_it() {
     assert_eq!(count.bars().unwrap().uploads, bar(250, 300));
 }
 
-/// A file whose upload failed or was held keeps nothing: it is still sending
-/// and starts from its next progress.
+/// When coven holds a file's upload or the upload fails, the bar counts none
+/// of the file's bytes: the file is still sending and starts from its next
+/// progress.
 #[test]
 fn an_upload_that_did_not_finish_keeps_no_bytes() {
     let a = file(1);
@@ -210,8 +211,8 @@ fn a_finished_download_keeps_its_bytes_until_the_read_that_stores_it() {
     assert_eq!(pins_bar(&count), bar(400, 400));
 }
 
-/// A download that failed, was held or was dropped keeps nothing: its release
-/// is still waiting and starts from its next progress.
+/// A download that failed, or that a pause held or a cancel dropped, keeps
+/// nothing: its release is still waiting and starts from its next progress.
 #[test]
 fn a_download_that_did_not_finish_keeps_no_bytes() {
     for end in [coven::TransferEnd::Failed, coven::TransferEnd::Held, coven::TransferEnd::Dropped] {

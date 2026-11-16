@@ -228,7 +228,7 @@ async fn a_selection_with_a_release_mid_upload_offers_only_cancelling() {
     let queued = selection(test.library.manager().clone(), release.id.clone()).await;
     assert_eq!(queued.selected.len(), 1);
     assert!(queued.selection_actions.is_empty());
-    assert!(queued.cancel_only, "files wait to upload: only cancelling is offered");
+    assert!(queued.cancel_only, "files wait to upload: the selection offers only Cancel");
 
     manager.drain_uploads_expecting_work().await.unwrap();
     let uploaded = selection(test.library.manager().clone(), release.id.clone()).await;
@@ -660,9 +660,9 @@ async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
     );
 }
 
-/// The inspector shows a queued file whose original vanished with the
-/// record of the move that found it missing, joined to the file by the
-/// original's path in the inspector's own statement.
+/// When a queued file's original is missing, the inspector shows the file
+/// with the move's record of the missing original. The inspector's query
+/// matches the record to the file by the original's path.
 #[tokio::test]
 async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("inspector-move").await;
