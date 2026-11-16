@@ -32,12 +32,6 @@ final class PickedTracks {
         anchorId = id
     }
 
-    /// Pick the row when it is not picked and unpick it when it is, and
-    /// make it the anchor: what a cmd-click on it does.
-    func toggle(_ id: String) {
-        set(id, picked: !ids.contains(id))
-    }
-
     /// Pick the tracks from the anchor to `targetId`, which `readRange`
     /// reads, and keep the anchor. With no anchor, pick `targetId` alone and
     /// make it the anchor. When `readRange` fails, pick nothing and pass the

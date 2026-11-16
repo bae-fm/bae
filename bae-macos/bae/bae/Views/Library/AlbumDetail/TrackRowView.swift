@@ -199,7 +199,7 @@ struct TrackRowView: View {
         let picked = uiStore.pickedTracks
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
-            picked.toggle(track.id)
+            picked.set(track.id, picked: !isPicked)
         }
         else if modifiers.contains(.shift) {
             picking.onExtend(track.id)
