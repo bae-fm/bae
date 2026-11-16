@@ -10,8 +10,8 @@
 //! query (lists, searches, details, the Storage Manager, the queue's tail, the
 //! import list) and the streams (fast values, and the steps of an open, a setup
 //! call, a close or an apply of a catalog release). `AppHandle`'s `subscribe_*`
-//! and `feed_*` calls hand out what is built here, and nothing else builds a
-//! pull object.
+//! and `feed_*` calls hand out the pull objects this file and its submodules
+//! build, and no other code builds one.
 
 use std::future::Future;
 

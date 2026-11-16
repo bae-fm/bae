@@ -556,8 +556,8 @@ impl LibraryManager {
         self.downloads.watch_transfers()
     }
 
-    /// The export queue as it stands now, each entry with its release, the
-    /// active one with the percent it has reached.
+    /// Read the export queue now: each entry with its release, and the active
+    /// entry with the percent it has reached.
     #[cfg(desktop)]
     pub async fn output_snapshot(&self) -> Result<bae_transfers::OutputSnapshot, LibraryError> {
         // The table first: every export it reads as active has its percent

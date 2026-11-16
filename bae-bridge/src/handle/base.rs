@@ -472,9 +472,9 @@ impl AppHandle {
     }
 
     /// Add tracks to the end of Up Next, and return how many tracks it added,
-    /// so the screen that called it can show that number. The command is sent
-    /// before the call first waits, so commands sent one after another reach
-    /// the queue in that order.
+    /// so the screen that called it can show that number. `add_to_queue` sends
+    /// the command before it first waits, so commands sent one after another
+    /// reach the queue in that order.
     pub async fn add_to_queue(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,

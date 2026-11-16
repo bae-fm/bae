@@ -1042,18 +1042,19 @@ and then by path, in natural order ("Disc 2" before "Disc 10", case aside). A
 release combined from folders in several watched folders sorts by its first
 part: that part's watched folder and path.
 On Found, the list shows a release nested below a folder in that folder's group,
-and so is one at that folder while another is nested below it: the group sorts
-by its newest member's date and its folder, its header leads its members, and
-folding the group shut keeps the header, still counting its members, and leaves
-the members out of the list. Each list keeps its folds, and folding or opening
-every group is one change. A header offers to read its folder as one release
-(§3.1) when a stored reading of the folder keeps its releases apart, or, with
-nothing stored, when the folder is the nearest one above some release that holds
-two releases or more, counting the releases of every tab. While the rows on top
-are a group's, that group's header stays pinned over the top of the list; over a
-release in no group no header is pinned. Each member is read with where its
-group's header sits in the list, so the pinned header is its own group's however
-far above it the header is and whichever rows have loaded.
+and it also shows there a release at that folder while another release sits
+below it: the group sorts by its newest member's date and its folder, its header
+leads its members, and folding the group shut keeps the header, still counting
+its members, and leaves the members out of the list. Each list keeps its folds,
+and folding or opening every group is one change. A header offers to read its
+folder as one release (§3.1) when a stored reading of the folder keeps its
+releases apart, or, with nothing stored, when the folder is the nearest one
+above some release that holds two releases or more, counting the releases of
+every tab. While the rows on top are a group's, that group's header stays pinned
+over the top of the list; over a release in no group no header is pinned. Each
+member is read with where its group's header sits in the list, so the pinned
+header is its own group's however far above it the header is and whichever rows
+have loaded.
 
 Each Found row is in exactly one state. The first that applies wins:
 
@@ -4046,10 +4047,10 @@ storage* where the line names the place the library is kept.
     place of any state that is no problem (§6.2), on the Mac only: *Creating
     the library in Dropbox.* / *Your music stays on this Mac until you move it
     to the cloud.*
-  - Syncing…, only while something is sent or received: *Receiving changes from
-    your other devices.* while a pass applies incoming changes, and *Sending
-    your changes.* while a change goes out or waits next in line, with any
-    cover, artist image or profile picture it names.
+  - Syncing…, only while coven sends or receives changes or files: *Receiving
+    changes from your other devices.* while a pass applies incoming changes, and
+    *Sending your changes.* while a change goes out or waits next in line, with
+    any cover, artist image or profile picture it names.
 - **Green.** Synced, with a dot: *Your library is up to date.* Synced means
   data and files both: a file still uploading is Syncing….
 - **Amber.**

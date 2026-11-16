@@ -1,5 +1,6 @@
-//! A live query whose request the caller changes without opening another, each
-//! read of it resolved into what its screen takes. Nothing runs between pulls:
+//! A [`LiveRead`] holds a live query whose request the caller can change
+//! without opening another query, and it resolves each read into the value its
+//! screen takes. Nothing runs between pulls:
 //! each [`next`](LiveRead::next) reads the query until a value that answers the
 //! request last set resolves.
 

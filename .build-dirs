@@ -17,8 +17,9 @@
 # one switch to another branch), the Android bridge 5.2G against 6.9G (8.1G);
 # its host target held 7.5G with no incremental folders; its macOS .build holds
 # runApp 2.8G, unsigned 3.2G and SourcePackages 3.2G, and its shots tree builds
-# the same app as unsigned and takes as much. Its cargo caps are about twice those, its .build's about one and a half times, and an eviction there
-# refills from sccache.
+# the same app as unsigned and takes as much. Its cargo caps are about twice
+# those, and its .build's about one and a half times; when builds deletes a
+# folder there, the next build refills it from sccache.
 #
 # Caps are about twice a fresh build of each: host 9.8G, macOS bridge 7.4G,
 # Android 6.4G, iOS 12G; the macOS app's .build holds three Xcode build trees

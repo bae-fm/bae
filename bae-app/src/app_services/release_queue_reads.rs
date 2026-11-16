@@ -71,9 +71,9 @@ impl AppServices {
         self.inner.manager.watch_download_transfers()
     }
 
-    /// The export queue as it stands now, each entry with its release, the
-    /// active one with the percent it has reached: the automation surface's
-    /// export status.
+    /// Read the export queue now: each entry with its release, and the active
+    /// entry with the percent it has reached. The automation surface shows it
+    /// as the export status.
     #[cfg(desktop)]
     pub async fn output_snapshot(&self) -> Result<bae_transfers::OutputSnapshot, LibraryError> {
         self.inner.manager.output_snapshot().await

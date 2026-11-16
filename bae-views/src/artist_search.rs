@@ -70,8 +70,8 @@ impl LibraryViews {
     }
 
     /// Follow how many of the artists the text finds come before the row at
-    /// a key, a count over the search's order whose key the caller changes on
-    /// the same live query.
+    /// a key, a count over the search's order. The caller can change the key
+    /// without opening a new live query.
     pub fn subscribe_artist_search_position(
         &self,
         query: Option<crate::LibrarySearchQuery>,

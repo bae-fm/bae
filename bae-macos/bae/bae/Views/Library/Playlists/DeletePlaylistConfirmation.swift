@@ -11,8 +11,9 @@ enum DeletePlaylistConfirmation {
     ) -> (MacAlertWords, [MacAlertButton]) {
         (
             MacAlertWords(
-                // A key of its own: the library deletion's alert reads "Delete
-                // %@?" in English too, and other languages word the two apart.
+                // This alert has its own key because the library deletion
+                // alert also says "Delete %@?" in English, and other languages
+                // translate the two titles differently.
                 Text(
                     LocalizedStringResource(
                         "playlist.delete.title",
