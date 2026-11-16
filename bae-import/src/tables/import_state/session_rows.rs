@@ -285,10 +285,12 @@ type SessionRow = (
     String,
 );
 
-const SESSION_SELECT: &str = "SELECT presentation, search_tab, search_artist, search_album, \
+/// The session columns of `import_candidate_session`, which [`session_row`]
+/// reads, for a statement that adds its own `WHERE`.
+const SESSION_COLUMNS: &str = "SELECT presentation, search_tab, search_artist, search_album, \
             search_catalog, search_barcode, \
             error_command, error_category, error_detail, find_online_section \
-     FROM import_candidate_session WHERE content_hash = ?";
+     FROM import_candidate_session";
 
 fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     Ok((
@@ -326,16 +328,21 @@ fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
     })
 }
 
-/// The session the pane left for `content_hash`, or `None` before it has
+/// The session the pane left for `candidate`, or `None` before it has
 /// touched the candidate.
 pub(super) fn load_session_on(
     sql: &SqlReadContext<'_>,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<Option<CandidateSession>, DbError> {
-    sql.query_row(SESSION_SELECT, [content_hash], session_row)
-        .optional()?
-        .map(session_of)
-        .transpose()
+    let filter = candidate.filter("content_hash");
+    sql.query_row(
+        &format!("{SESSION_COLUMNS} {}", filter.clause),
+        filter.params().as_slice(),
+        session_row,
+    )
+    .optional()?
+    .map(session_of)
+    .transpose()
 }
 
 /// Forget where the pane of `content_hash` was.
@@ -422,7 +429,11 @@ pub(crate) fn move_pane_on(
     // Every move names where the pane goes, so a session nobody has touched
     // moves the same from any starting surface.
     let session = sql
-        .query_row(SESSION_SELECT, [content_hash], session_row)
+        .query_row(
+            &format!("{SESSION_COLUMNS} WHERE content_hash = ?"),
+            [content_hash],
+            session_row,
+        )
         .optional()?
         .map(session_of)
         .transpose()?

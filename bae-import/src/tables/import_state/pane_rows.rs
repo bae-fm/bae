@@ -270,17 +270,17 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
 /// row edits, the failure its last import left, and where the pane was.
 pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<DbCandidatePaneRows, DbError> {
-    let (draft, cover) = load_draft_and_cover_on(sql, content_hash)?;
-    let (draft_blank, draft_valid) = load_draft_columns_on(sql, content_hash)?;
+    let (draft, cover) = load_draft_and_cover_on(sql, candidate)?;
+    let (draft_blank, draft_valid) = load_draft_columns_on(sql, candidate)?;
     Ok(DbCandidatePaneRows {
         cover,
         draft,
         draft_blank,
         draft_valid,
-        failure: load_failure_on(sql, content_hash)?,
-        session: load_session_on(sql, content_hash)?,
+        failure: load_failure_on(sql, candidate)?,
+        session: load_session_on(sql, candidate)?,
     })
 }
 
@@ -293,23 +293,24 @@ impl ImportTables {
         content_hash: &str,
     ) -> Result<DbCandidatePaneRows, DbError> {
         let content_hash = content_hash.to_string();
-        self.store.read(move |sql| load_pane_rows_on(&sql, &content_hash)).await
+        self.store.read(move |sql| load_pane_rows_on(&sql, OneCandidate::Hash(&content_hash))).await
     }
 }
 
-/// Whether the draft of `content_hash` is blank and whether it would import,
-/// as its row stores them beside its fields, in the write that stored them.
+/// Whether the draft of `candidate` is blank and whether it would import, as
+/// its row stores them beside its fields, in the write that stored them.
 fn load_draft_columns_on(
     sql: &impl coven::SqlRead,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<(bool, bool), DbError> {
+    let filter = candidate.filter("content_hash");
     sql.query_row(
-        "SELECT draft_blank, draft_valid FROM import_candidate_edit WHERE content_hash = ?",
-        [content_hash],
+        &format!("SELECT draft_blank, draft_valid FROM import_candidate_edit {}", filter.clause),
+        filter.params().as_slice(),
         |row| Ok((row.get(0)?, row.get(1)?)),
     )
     .optional()?
-    .ok_or_else(|| DbError::unreadable("import_candidate_edit of a stored draft", content_hash))
+    .ok_or_else(|| DbError::unreadable("import_candidate_edit of a stored draft", candidate))
 }
 
 /// Whether the candidate `content_hash` holds a draft row.
@@ -335,17 +336,16 @@ pub(super) fn has_draft_row_on(
 /// imported holds no draft.
 pub(super) fn load_draft_and_cover_on(
     sql: &impl coven::SqlRead,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
-    let draft = load_drafts_on(sql, CandidateRows::One(content_hash))?
-        .remove(content_hash)
+    // One candidate's read returns at most its one draft.
+    let draft = load_drafts_on(sql, CandidateRows::One(candidate))?
+        .into_values()
+        .next()
         .ok_or_else(|| {
-            DbError::unreadable(
-                "import_candidate_edit of a candidate not imported here",
-                content_hash,
-            )
+            DbError::unreadable("import_candidate_edit of a candidate not imported here", candidate)
         })?;
-    Ok((draft, super::cover_rows::load_cover_on(sql, content_hash)?))
+    Ok((draft, super::cover_rows::load_cover_on(sql, candidate)?))
 }
 
 /// Every candidate's complete stored draft, or the one `only` names: one row
@@ -359,10 +359,6 @@ pub(crate) fn load_drafts_on(
     let album_assignments = assignments_json_sql(
         "import_candidate_album_artist_assignment",
         "assignment.content_hash = edit.content_hash",
-    );
-    let track_assignments = assignments_json_sql(
-        "import_candidate_track_artist_assignment",
-        "assignment.content_hash = track.content_hash AND assignment.track_id = track.track_id",
     );
     let rows = sql.query(
         &format!(
@@ -383,23 +379,12 @@ pub(crate) fn load_drafts_on(
                          ORDER BY medium.position) \
                      FROM import_candidate_medium AS medium \
                      WHERE medium.content_hash = edit.content_hash) AS mediums, \
-                    (SELECT json_group_array(json_object( \
-                         'track_id', track.track_id, 'title', track.title, \
-                         'assignment_kind', track.artist_assignment_kind, \
-                         'medium', track.medium, 'side', track.side, \
-                         'track_number', track.track_number, \
-                         'stated_length_ms', track.stated_length_ms, \
-                         'file_kind', track.file_kind, 'file_id', track.file_id, \
-                         'sheet_id', track.sheet_id, 'slice_index', track.slice_index, \
-                         'assignments', json({track_assignments}), \
-                         'roles', json({track_roles}), 'works', json({track_works})) \
-                         ORDER BY track.position) \
+                    (SELECT json_group_array({track} ORDER BY track.position) \
                      FROM import_candidate_track AS track \
                      WHERE track.content_hash = edit.content_hash) AS tracks, \
                     {release_roles} AS release_roles, {works} AS works, {parts} AS parts \
              FROM import_candidate_edit AS edit {clause}",
-            track_roles = values::TRACK_ROLES_JSON,
-            track_works = values::TRACK_WORKS_JSON,
+            track = track_json_sql(),
             release_roles = values::RELEASE_ROLES_JSON,
             works = values::WORKS_JSON,
             parts = values::WORK_PARTS_JSON,
@@ -429,6 +414,29 @@ pub(crate) fn load_drafts_on(
         out.insert(row.content_hash, draft);
     }
     Ok(out)
+}
+
+/// A JSON object of the row `track` of `import_candidate_track`, with its
+/// artist assignments, roles and works, which [`StoredTrack`] reads.
+pub(crate) fn track_json_sql() -> String {
+    format!(
+        "json_object( \
+             'track_id', track.track_id, 'title', track.title, \
+             'assignment_kind', track.artist_assignment_kind, \
+             'medium', track.medium, 'side', track.side, \
+             'track_number', track.track_number, \
+             'stated_length_ms', track.stated_length_ms, \
+             'file_kind', track.file_kind, 'file_id', track.file_id, \
+             'sheet_id', track.sheet_id, 'slice_index', track.slice_index, \
+             'assignments', json({assignments}), \
+             'roles', json({roles}), 'works', json({works}))",
+        assignments = assignments_json_sql(
+            "import_candidate_track_artist_assignment",
+            "assignment.content_hash = track.content_hash AND assignment.track_id = track.track_id",
+        ),
+        roles = values::TRACK_ROLES_JSON,
+        works = values::TRACK_WORKS_JSON,
+    )
 }
 
 /// A stored JSON column of `what`, decoded.
@@ -516,7 +524,7 @@ struct StoredMedium {
 /// One `import_candidate_track` row as the draft's read holds it, with its
 /// artist assignments, roles and works.
 #[derive(serde::Deserialize)]
-struct StoredTrack {
+pub(crate) struct StoredTrack {
     track_id: String,
     title: String,
     assignment_kind: String,
@@ -534,7 +542,7 @@ struct StoredTrack {
 }
 
 impl StoredTrack {
-    fn track(self) -> Result<CandidateTrack, DbError> {
+    pub(crate) fn track(self) -> Result<CandidateTrack, DbError> {
         let missing = |what: &str| {
             DbError::unreadable(
                 format!(
@@ -871,9 +879,10 @@ impl ImportTables {
         let (content_hash, draft) = (content_hash.to_string(), draft.clone());
         self.store
             .write(move |sql| {
-                let stored = load_drafts_on(&sql, CandidateRows::One(&content_hash))?
-                    .remove(&content_hash)
-                    .expect("the state holds the draft the scan seeded");
+                let stored =
+                    load_drafts_on(&sql, CandidateRows::One(OneCandidate::Hash(&content_hash)))?
+                        .remove(&content_hash)
+                        .expect("the state holds the draft the scan seeded");
                 super::draft_store::store_draft(
                     &sql,
                     &content_hash,

@@ -95,7 +95,6 @@ struct StoredFolder {
     _db: bae_store::Store,
     _tmp: tempfile::TempDir,
     tables: crate::tables::ImportTables,
-    watched_folder_path: std::path::PathBuf,
     key: crate::CandidateKey,
     hash: String,
 }
@@ -110,7 +109,6 @@ impl StoredFolder {
             tables: crate::tables::ImportTables::new(db.clone()),
             _db: db,
             _tmp: tmp,
-            watched_folder_path: folder.parent().expect("a watched root").to_path_buf(),
             key: crate::CandidateKey::folder(&folder),
             hash,
         }
@@ -120,9 +118,7 @@ impl StoredFolder {
     /// the scan stored.
     async fn table(&self, draft: &CandidateDraft) -> Result<MappingTable, ImportError> {
         self.tables.replace_draft_for_test(&self.hash, draft).await;
-        self.tables
-            .load_mapping_table_for_test(&self.watched_folder_path, &self.key, &self.hash)
-            .await
+        self.tables.load_mapping_table_for_test(&self.key).await
     }
 }
 

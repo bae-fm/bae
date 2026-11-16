@@ -10,7 +10,18 @@ pub(crate) enum CandidateRows<'a> {
     /// write stored ask for.
     #[cfg(any(test, feature = "test-utils"))]
     All,
-    One(&'a str),
+    One(OneCandidate<'a>),
+}
+
+/// The one candidate a read takes the rows of: the one whose content hash
+/// the caller holds, or the one the scan stores at a key, whose content hash
+/// the statement reads from the scan's row itself. A screen's read names a
+/// candidate by its key, so that none of its statements binds a value that
+/// another statement returned.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum OneCandidate<'a> {
+    Hash(&'a str),
+    Scanned(&'a crate::CandidateKey),
 }
 
 impl<'a> CandidateRows<'a> {
@@ -20,13 +31,50 @@ impl<'a> CandidateRows<'a> {
         match self {
             #[cfg(any(test, feature = "test-utils"))]
             Self::All => CandidateFilter { clause: String::new(), binds: CandidateBinds::None },
-            Self::One(key) => CandidateFilter {
-                clause: format!("WHERE {column} = :candidate"),
-                binds: CandidateBinds::One(key.to_string()),
-            },
+            Self::One(one) => one.filter(column),
         }
     }
 }
+
+impl OneCandidate<'_> {
+    /// The clause keeping this candidate's rows by `column`, and what it
+    /// binds.
+    pub(crate) fn filter(self, column: &str) -> CandidateFilter {
+        CandidateFilter {
+            clause: format!("WHERE {column} = {}", self.hash_sql()),
+            binds: self.binds(),
+        }
+    }
+
+    /// An SQL expression for the candidate's content hash, which binds what
+    /// [`Self::params`] returns.
+    pub(crate) fn hash_sql(self) -> &'static str {
+        match self {
+            Self::Hash(_) => ":candidate",
+            Self::Scanned(_) => SCANNED_HASH,
+        }
+    }
+
+    fn binds(self) -> CandidateBinds {
+        match self {
+            Self::Hash(hash) => CandidateBinds::One(hash.to_string()),
+            Self::Scanned(key) => CandidateBinds::AtScan(key.clone()),
+        }
+    }
+
+    /// What [`Self::hash_sql`] binds, as a statement's parameters.
+    pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
+        match self {
+            Self::Hash(hash) => vec![(":candidate", hash as &dyn rusqlite::ToSql)],
+            Self::Scanned(key) => vec![(":key", *key as &dyn rusqlite::ToSql)],
+        }
+    }
+}
+
+/// The content hash of the release the scan stores at the key a statement
+/// binds as `:key`.
+pub(crate) const SCANNED_HASH: &str =
+    "(SELECT scan.content_hash FROM scan_candidate AS scan WHERE scan.path = :key)";
 
 /// A [`CandidateRows`]' clause, and the parameter it binds.
 pub(crate) struct CandidateFilter {

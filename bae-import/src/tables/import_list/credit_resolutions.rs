@@ -249,12 +249,13 @@ fn statement() -> String {
 }
 
 /// What the library holds for each distinct artist credit of the draft of
-/// the candidate `content_hash`, in the order the draft lists them.
+/// `candidate`, in the order the draft lists them.
 pub(super) fn credit_resolutions_on(
     sql: &SqlReadContext<'_>,
-    content_hash: &str,
+    candidate: crate::tables::import_state::OneCandidate<'_>,
 ) -> Result<Vec<ResolvedCredit>, DbError> {
-    Ok(sql.query(&statement(), rusqlite::named_params! { ":hash": content_hash }, |row| {
+    let statement = statement().replace(":hash", candidate.hash_sql());
+    Ok(sql.query(&statement, candidate.params().as_slice(), |row| {
         let unreadable = |error: String| {
             rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, error.into())
         };

@@ -142,7 +142,8 @@ pub(super) fn load_preparation_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
-    let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
+    let Some(state) = load_states_on(sql, CandidateRows::One(OneCandidate::Hash(content_hash)))?
+        .remove(content_hash)
     else {
         return Ok(None);
     };
@@ -150,7 +151,7 @@ pub(super) fn load_preparation_on(
     {
         return Ok(Some(CandidatePreparationRead::Imported { release_id }));
     }
-    let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, content_hash)?;
+    let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, OneCandidate::Hash(content_hash))?;
     let cover = cover_rows::load_prepared_cover_on(sql, content_hash, cover)?;
     Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
         content_hash: state.content_hash,

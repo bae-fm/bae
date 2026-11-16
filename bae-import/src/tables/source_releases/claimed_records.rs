@@ -146,20 +146,6 @@ pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, 
         .collect()
 }
 
-/// The records of the candidate `content_hash`'s link, merged; none for a
-/// candidate linked to nothing.
-pub(crate) fn claimed_records_on<S: coven::SqlRead>(
-    sql: &S,
-    content_hash: &str,
-) -> Result<Vec<ReleaseRecord>, DbError> {
-    let json: String = sql.query_row(
-        &claimed_records_sql(":hash"),
-        rusqlite::named_params! { ":hash": content_hash },
-        |row| row.get(0),
-    )?;
-    claimed_records_of_json(&json)
-}
-
 #[cfg(test)]
 #[path = "claimed_records_tests.rs"]
 pub(super) mod tests;

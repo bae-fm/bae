@@ -9,12 +9,15 @@ use super::*;
 use crate::candidate_detail::ImportCandidateDetailProjection;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
-use crate::tables::folder_scans::stored_cover_choice;
+use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
     load_candidate_verdict_cards_on, load_current_state_on, load_pane_rows_on, load_standing_on,
+    OneCandidate, SCANNED_HASH,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{claimed_records_on, claimed_records_sql, offered_covers_on};
+use crate::tables::source_releases::{
+    claimed_records_of_json, claimed_records_sql, offered_covers_of_json, offered_covers_sql,
+};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
 use bae_records::records::release_records::{
@@ -91,17 +94,11 @@ pub(super) fn load_candidate_detail_on(
     let current = load_current_state_on(sql, key)?;
     let cards = load_candidate_verdict_cards_on(sql, key)?;
     let candidate = stored.candidate;
-    let content_hash = candidate.files.content_hash();
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {
         Some(release) => StageRows::Imported(release),
-        None => StageRows::Drafting(Box::new(draft_rows_on(
-            sql,
-            &candidate,
-            &content_hash,
-            current.as_ref(),
-        )?)),
+        None => StageRows::Drafting(Box::new(draft_rows_on(sql, key)?)),
     };
     Ok(Some(CandidateDetailRows {
         candidate,
@@ -135,45 +132,34 @@ fn imported_on(
         .optional()?)
 }
 
-/// The draft of the candidate `content_hash` and what its pane draws beside
-/// it: the linked releases' records and covers, the album an import files
-/// under, and what the library holds for the draft's credits.
+/// The draft of the release the scan stores at `key` and what its pane draws
+/// beside it: the linked releases' records and covers, the album an import
+/// files under, and what the library holds for the draft's credits. Each
+/// statement binds only `key` and reads the candidate's content hash from
+/// the scan's row itself.
 fn draft_rows_on(
     sql: &SqlReadContext<'_>,
-    candidate: &FolderCandidate,
-    content_hash: &str,
-    current: Option<&DbImportCandidateState>,
+    key: &crate::CandidateKey,
 ) -> Result<DraftRows, DbError> {
-    let pane_rows = load_pane_rows_on(sql, content_hash)?;
-    let mapping = super::mapping_rows::load_mapping_rows_on(
-        sql,
-        &candidate.watched_folder_path,
-        &candidate.key(),
-        content_hash,
-    )?;
+    let pane_rows = load_pane_rows_on(sql, OneCandidate::Scanned(key))?;
+    let mapping = super::mapping_rows::load_mapping_rows_on(sql, key)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = super::credit_resolutions::credit_resolutions_on(sql, content_hash)?;
+    let artist_resolutions =
+        super::credit_resolutions::credit_resolutions_on(sql, OneCandidate::Scanned(key))?;
     // Every catalog record of what the candidate is linked to, merged in one
     // statement over the stored releases: the linked pressing's releases
     // describe it, an album names its own.
-    let records = match current {
-        Some(_) => claimed_records_on(sql, content_hash)?,
-        None => Vec::new(),
-    };
-    let cover_options = match current {
-        Some(_) => offered_covers_on(sql, content_hash)?,
-        None => Vec::new(),
-    };
-    let picked_library_status = picked_library_status_on(sql, &candidate.key())?;
-    let album = candidate_album_on(sql, &candidate.key())?;
-    let cover = pane_rows
-        .cover
-        .as_ref()
-        .map(|selection| {
-            stored_cover_choice(sql, &candidate.watched_folder_path, &candidate.key(), selection)
-        })
-        .transpose()?;
+    let records = claimed_records_of_json(&while_current_on(
+        sql,
+        key,
+        &claimed_records_sql(SCANNED_HASH),
+    )?)?;
+    let cover_options =
+        offered_covers_of_json(&while_current_on(sql, key, &offered_covers_sql(SCANNED_HASH))?)?;
+    let picked_library_status = picked_library_status_on(sql, key)?;
+    let album = candidate_album_on(sql, key)?;
+    let cover = candidate_cover_choice_on(sql, key)?;
     Ok(DraftRows {
         pane_rows,
         mapping,
@@ -186,9 +172,29 @@ fn draft_rows_on(
     })
 }
 
-/// The content hash of the candidate a statement binds as `:key`.
-const CANDIDATE_HASH: &str =
-    "(SELECT scan.content_hash FROM scan_candidate AS scan WHERE scan.path = :key)";
+/// The JSON array that the statement `array` returns for the release the
+/// scan stores at `key`, while the candidate's state is the one its scanned
+/// files hold (its edit revision is the scan's), and `[]` otherwise: the
+/// pane shows a link's records and covers only for the current state.
+fn while_current_on(
+    sql: &SqlReadContext<'_>,
+    key: &crate::CandidateKey,
+    array: &str,
+) -> Result<String, DbError> {
+    Ok(sql.query_row(
+        &format!(
+            "SELECT CASE WHEN EXISTS ( \
+                 SELECT 1 FROM import_candidate_state AS state \
+                 JOIN scan_candidate AS scan \
+                     ON (scan.content_hash, scan.file_edit_revision) \
+                      = (state.content_hash, state.edit_revision) \
+                 WHERE scan.path = :key) \
+             THEN ({array}) ELSE '[]' END"
+        ),
+        named_params! { ":key": key },
+        |row| row.get(0),
+    )?)
+}
 
 /// The album an import of the candidate `key` files under, read in one
 /// statement: the one picked, else the one its link's records name, else a
@@ -203,7 +209,7 @@ fn candidate_album_on(
             "SELECT key, value ->> 'catalog', value ->> 'kind', value ->> 'key', \
                     value ->> 'album' \
              FROM json_each(({claimed}))",
-            claimed = claimed_records_sql(CANDIDATE_HASH),
+            claimed = claimed_records_sql(SCANNED_HASH),
         ),
         "'[]'",
     );
@@ -211,7 +217,7 @@ fn candidate_album_on(
         .query_row(
             &format!(
                 "WITH pick AS (SELECT album_id FROM import_candidate_album_pick \
-                               WHERE content_hash = {CANDIDATE_HASH}), \
+                               WHERE content_hash = {SCANNED_HASH}), \
                  choice (kind, album_id) AS ( \
                      SELECT CASE WHEN album_id IS NULL THEN 'picked_new' ELSE 'picked' END, \
                             album_id \
@@ -291,7 +297,7 @@ impl CandidateDetailRows {
                     album,
                     cover,
                 } = *draft;
-                let mapping = mapping.table(&pane_rows.draft)?;
+                let mapping = mapping.table()?;
                 ProjectedStage::Drafting(Box::new(DraftProjection {
                     metadata_provenance: current
                         .as_ref()

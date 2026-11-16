@@ -159,17 +159,19 @@ impl StoredCover {
     }
 }
 
-/// The cover the candidate `content_hash` chose, if it chose one.
+/// The cover `candidate` chose, if it chose one.
 pub(super) fn load_cover_on(
     sql: &impl coven::SqlRead,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<Option<CoverSelection>, DbError> {
+    let filter = candidate.filter("cover.content_hash");
     sql.query_row(
         &format!(
-            "SELECT {} FROM import_candidate_cover AS cover WHERE cover.content_hash = ?",
-            cover_read_columns()
+            "SELECT {} FROM import_candidate_cover AS cover {}",
+            cover_read_columns(),
+            filter.clause
         ),
-        [content_hash],
+        filter.params().as_slice(),
         read_cover,
     )
     .optional()?

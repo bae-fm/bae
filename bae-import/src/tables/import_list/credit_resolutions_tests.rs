@@ -82,7 +82,12 @@ async fn answers_alike(
     }
 
     let read_hash = hash.clone();
-    let stated = db.read(move |sql| credit_resolutions_on(&sql, &read_hash)).await.unwrap();
+    let stated = db
+        .read(move |sql| {
+            credit_resolutions_on(&sql, crate::tables::import_state::OneCandidate::Hash(&read_hash))
+        })
+        .await
+        .unwrap();
     let every: Vec<ArtistCredit> = credits.iter().chain(&track_credits).cloned().collect();
     let ruled = db
         .read(move |sql| {

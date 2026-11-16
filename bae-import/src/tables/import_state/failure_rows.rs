@@ -13,17 +13,19 @@ pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportF
     Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
-/// The failure the last import of `content_hash` left.
+/// The failure the last import of `candidate` left.
 pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
-    content_hash: &str,
+    candidate: OneCandidate<'_>,
 ) -> Result<Option<ImportFailure>, DbError> {
+    let filter = candidate.filter("failure.content_hash");
     sql.query_row(
         &format!(
             "SELECT {FAILURE_REASON_COLUMNS}, failure.failed_at \
-             FROM import_candidate_failure failure WHERE failure.content_hash = ?"
+             FROM import_candidate_failure failure {}",
+            filter.clause
         ),
-        [content_hash],
+        filter.params().as_slice(),
         |row| {
             Ok(ImportFailure {
                 reason: failure_reason_from_row(row)?,

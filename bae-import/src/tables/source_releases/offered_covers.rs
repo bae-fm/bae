@@ -17,9 +17,9 @@ use super::*;
 
 /// The offered covers as a JSON array of `{url, label, source, standing,
 /// copies}` objects in the order the picker lists them, for the candidate
-/// bound to `:hash`; `[]` unless the import read its draft from its linked
-/// pressing.
-pub(crate) fn offered_covers_sql() -> String {
+/// whose content hash the expression `hash` names (`:hash` for a bound one);
+/// `[]` unless the import read its draft from its linked pressing.
+pub(crate) fn offered_covers_sql(hash: &str) -> String {
     let copies = super::super::downscaled_copies::copies_json_sql(
         "source_release_cover_copy",
         "copy.catalog = s.catalog AND copy.release_id = s.release_id \
@@ -61,6 +61,7 @@ WHERE (stated OR NOT EXISTS (SELECT 1 FROM firsts WHERE stated))
                 AND (pr.source, pr.release_id) = (c.catalog, c.release_id))",
         claimed = claimed_tables!(),
     )
+    .replace(":hash", hash)
 }
 
 #[derive(serde::Deserialize)]
@@ -72,18 +73,10 @@ struct CoverColumns {
     copies: Vec<bae_catalogs::remote_image::DownscaledCopy>,
 }
 
-/// The covers the picker offers the candidate `content_hash`.
-pub(crate) fn offered_covers_on<S: coven::SqlRead>(
-    sql: &S,
-    content_hash: &str,
-) -> Result<Vec<RemoteCover>, DbError> {
-    let json: String = sql.query_row(
-        &offered_covers_sql(),
-        rusqlite::named_params! { ":hash": content_hash },
-        |row| row.get(0),
-    )?;
-    let rows: Vec<CoverColumns> = serde_json::from_str(&json)
-        .map_err(|error| DbError::unreadable("the offered covers statement", (&json, error)))?;
+/// The covers an [`offered_covers_sql`] column holds.
+pub(crate) fn offered_covers_of_json(json: &str) -> Result<Vec<RemoteCover>, DbError> {
+    let rows: Vec<CoverColumns> = serde_json::from_str(json)
+        .map_err(|error| DbError::unreadable("the offered covers statement", (json, error)))?;
     rows.into_iter()
         .map(|row| {
             Ok(RemoteCover {

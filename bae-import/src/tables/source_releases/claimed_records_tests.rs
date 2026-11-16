@@ -63,8 +63,17 @@ async fn statement_records(
     content_hash: &str,
 ) -> Vec<(Catalog, String, Option<String>)> {
     let content_hash = content_hash.to_owned();
-    db.read(move |sql| claimed_records_on(&sql, &content_hash))
+    let json: String = db
+        .read(move |sql| {
+            Ok(sql.query_row(
+                &claimed_records_sql(":hash"),
+                rusqlite::named_params! { ":hash": content_hash },
+                |row| row.get(0),
+            )?)
+        })
         .await
+        .unwrap();
+    claimed_records_of_json(&json)
         .unwrap()
         .iter()
         .map(|record| {

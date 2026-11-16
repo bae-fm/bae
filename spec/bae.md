@@ -1246,13 +1246,19 @@ as one release is kept on the header as the rows below it and the readings
 stored for it change. The pane reads its one candidate's rows by the candidate's
 key, and so does every read of one candidate's state, draft or preparation, so
 how long one takes does not grow with how many candidates the queue holds.
-Each part of the pane is a statement of its own that finds the candidate's
-scan row by the key, never by what another statement returned: the folder's
-files, with the track count and the summary of its audio counted over the
-scan's rows; whether the person skipped it; the release this device imported
-from it; its current state and its verdict's cards, with the failure lines
-its ledger does not show; the linked release's library status; and the album
-an import files under.
+The pane reads each of its parts with a statement of its own. Each statement
+binds only the key and finds the candidate's scan row, and the content hash
+the scan stored, by that key, never by a value another statement returned.
+The parts are the folder's files, with the track count and the audio summary
+that the statement computes over the scan's rows; whether the person skipped
+the candidate; the release this device imported from it; its current state
+and its verdict's cards, with the failure lines its ledger does not show; and,
+for a candidate this device has not imported, its draft, its cover choice,
+its mapping table with each row's draft track, what the library holds for
+the draft's credits, the linked release's records, the covers the picker
+offers, the linked release's library status and the album an import files
+under. The statement for the records and the covers returns none unless the
+candidate's state is current for the scan.
 
 ### 3.3 Clues in the files
 

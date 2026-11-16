@@ -17,16 +17,22 @@ use crate::mapping::{
     MappingSource, MappingTable, MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup,
     TrackMapping,
 };
-use crate::types::CandidateDraft;
 use crate::ImportError;
 use bae_types::audio_format::AudioFormat;
 
-/// The mapping table as one JSON document, for the candidate at `:wf`, `:cp`
-/// whose draft is `:hash`.
-const MAPPING_SQL: &str = "
+/// The mapping table as one JSON document, for the release the scan stores
+/// at the key the statement binds as `:key`, over the draft stored under its
+/// content hash. Each row carries its draft track whole (`track_json_sql`),
+/// so the rows need no join to another read's draft.
+fn mapping_sql() -> String {
+    format!(
+        "
 WITH RECURSIVE
+candidate AS (
+    SELECT watched_folder_path, path, content_hash FROM scan_candidate WHERE path = :key LIMIT 1
+),
 f AS (
-    SELECT * FROM scan_candidate_file WHERE watched_folder_path = :wf AND candidate_path = :cp
+    SELECT * FROM scan_candidate_file WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key
 ),
 audio_json (relative_path, json) AS (
     SELECT relative_path,
@@ -44,10 +50,13 @@ mediums AS (
                     OVER (ORDER BY m.position
                           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS sides_before,
            COUNT(*) OVER () AS medium_count
-    FROM import_candidate_medium AS m WHERE m.content_hash = :hash
+    FROM import_candidate_medium AS m WHERE m.content_hash = (SELECT content_hash FROM candidate)
 ),
 rows AS (
     SELECT t.position, t.title,
+           (SELECT {track} FROM import_candidate_track AS track
+            WHERE track.content_hash = t.content_hash AND track.track_id = t.track_id)
+               AS track_json,
            CASE WHEN m.sided THEN 'sided' WHEN m.medium_count > 1 THEN 'disc' ELSE 'flat' END
                AS side_kind,
            CASE WHEN m.sided THEN bae_side_letters(m.sides_before + t.side)
@@ -66,12 +75,12 @@ rows AS (
     FROM import_candidate_track AS t
     JOIN mediums AS m ON m.position = t.medium
     LEFT JOIN scan_candidate_unit AS u
-        ON u.watched_folder_path = :wf AND u.candidate_path = :cp AND u.position = t.position
+        ON u.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND u.candidate_path = :key AND u.position = t.position
     LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
     LEFT JOIN scan_cue_track AS ct
-        ON ct.watched_folder_path = :wf AND ct.candidate_path = :cp
+        ON ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key
        AND ct.sheet_relative_path = u.sheet_id AND ct.position = u.cue_track_position
-    WHERE t.content_hash = :hash
+    WHERE t.content_hash = (SELECT content_hash FROM candidate)
 ),
 marked AS (
     SELECT *,
@@ -98,11 +107,11 @@ refs (sheet, file_reference, seq) AS (
             JOIN scan_cue_index AS ci
                 ON (ci.watched_folder_path, ci.candidate_path, ci.sheet_relative_path, ci.track_position)
                  = (ct.watched_folder_path, ct.candidate_path, ct.sheet_relative_path, ct.position)
-            WHERE ct.watched_folder_path = :wf AND ct.candidate_path = :cp AND ct.mode = 'audio'
+            WHERE ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key AND ct.mode = 'audio'
             UNION ALL
             SELECT ct.sheet_relative_path, ct.file_reference, ct.position, 1, 0
             FROM scan_cue_track AS ct
-            WHERE ct.watched_folder_path = :wf AND ct.candidate_path = :cp AND ct.mode = 'audio'
+            WHERE ct.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND ct.candidate_path = :key AND ct.mode = 'audio'
         )
     ) GROUP BY sheet, file_reference
 ),
@@ -121,7 +130,7 @@ disc_options AS (
 ),
 sheet_audio_counts (sheet, count) AS (
     SELECT sheet_relative_path, COUNT(*) FROM scan_sheet_audio_file
-    WHERE watched_folder_path = :wf AND candidate_path = :cp GROUP BY sheet_relative_path
+    WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key GROUP BY sheet_relative_path
 ),
 sheets (relative_path, json) AS (
     SELECT s.relative_path,
@@ -138,21 +147,21 @@ sheets (relative_path, json) AS (
                'described', CASE WHEN n.count = 1 THEN json((
                    SELECT a.json FROM scan_sheet_audio_file AS sa
                    JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
-                   WHERE sa.watched_folder_path = :wf AND sa.candidate_path = :cp
+                   WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
                      AND sa.sheet_relative_path = s.relative_path)) END,
                'requested', json((SELECT json_group_array(r.file_reference ORDER BY r.seq)
                                   FROM refs AS r
                                   WHERE r.sheet = s.relative_path
                                     AND NOT EXISTS (SELECT 1 FROM scan_sheet_audio_file AS sa
-                                                    WHERE sa.watched_folder_path = :wf
-                                                      AND sa.candidate_path = :cp
+                                                    WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate)
+                                                      AND sa.candidate_path = :key
                                                       AND sa.sheet_relative_path = s.relative_path
                                                       AND sa.file_reference = r.file_reference))),
                'references', json((
                    SELECT json_group_array(json_object(
                        'file_reference', r.file_reference,
                        'file_id', (SELECT sa.audio_relative_path FROM scan_sheet_audio_file AS sa
-                                   WHERE sa.watched_folder_path = :wf AND sa.candidate_path = :cp
+                                   WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
                                      AND sa.sheet_relative_path = s.relative_path
                                      AND sa.file_reference = r.file_reference),
                        'options', json((
@@ -161,7 +170,7 @@ sheets (relative_path, json) AS (
                                'codec', o.codec) ORDER BY fo.position)
                            FROM scan_candidate_sheet_offer AS o
                            JOIN f AS fo ON fo.relative_path = o.audio_relative_path
-                           WHERE o.watched_folder_path = :wf AND o.candidate_path = :cp
+                           WHERE o.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND o.candidate_path = :key
                              AND o.sheet_relative_path = s.relative_path
                              AND o.file_reference = r.file_reference))
                    ) ORDER BY r.seq)
@@ -177,7 +186,8 @@ runs AS (
            json_object(
                'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
                'rows', json_group_array(json_object(
-                   'track', position, 'matches', unit_matches, 'position', position_text,
+                   'track', json(track_json), 'matches', unit_matches,
+                   'position', position_text,
                    'listed_ms', listed_ms,
                    'kind', file_kind, 'audio', json(audio), 'unit_ms', unit_ms,
                    'sheet_id', sheet_id, 'index', slice_index, 'number', cue_number,
@@ -209,13 +219,16 @@ SELECT json_object(
                    WHERE f.role <> 'audio'
                      AND NOT (f.role = 'track_sheet'
                               AND EXISTS (SELECT 1 FROM scan_candidate_unit AS u
-                                          WHERE u.watched_folder_path = :wf
-                                            AND u.candidate_path = :cp
+                                          WHERE u.watched_folder_path = (SELECT watched_folder_path FROM candidate)
+                                            AND u.candidate_path = :key
                                             AND u.sheet_id = f.relative_path)))),
     'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
     'tracks', (SELECT COUNT(*) FROM rows),
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
-              WHERE watched_folder_path = :wf AND candidate_path = :cp))";
+              WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key))",
+        track = crate::tables::import_state::track_json_sql(),
+    )
+}
 
 /// A SQL truth value, which JSON holds as 0 or 1.
 fn flag<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
@@ -252,7 +265,8 @@ impl AudioJson {
 
 #[derive(serde::Deserialize)]
 struct RowJson {
-    track: usize,
+    /// The draft track the row maps.
+    track: crate::tables::import_state::StoredTrack,
     #[serde(deserialize_with = "flag")]
     matches: bool,
     position: String,
@@ -358,32 +372,22 @@ struct Document {
     units: usize,
 }
 
-/// Read the mapping table of the candidate at `watched_folder_path` and
-/// `key`, whose draft is the one stored under `content_hash`.
+/// Read the mapping table of the release the scan stores at `key`.
 pub(super) fn load_mapping_rows_on(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &std::path::Path,
     key: &crate::CandidateKey,
-    content_hash: &str,
 ) -> Result<MappingRows, DbError> {
-    let document: String = sql.query_row(
-        MAPPING_SQL,
-        named_params! {
-            ":wf": coven::path_bytes(watched_folder_path),
-            ":cp": key,
-            ":hash": content_hash,
-        },
-        |row| row.get(0),
-    )?;
+    let document: String =
+        sql.query_row(&mapping_sql(), named_params! { ":key": key }, |row| row.get(0))?;
     Ok(MappingRows { document })
 }
 
 impl MappingRows {
-    /// The mapping table over `draft`'s tracks. Refuses a draft whose tracks
-    /// are not the folder's audio units in order: every write that changes
-    /// the folder's files rebuilds the draft, so a mismatch is a stored state
-    /// that contradicts itself.
-    pub(super) fn table(&self, draft: &CandidateDraft) -> Result<MappingTable, ImportError> {
+    /// The mapping table over the draft's tracks. Refuses a draft whose
+    /// tracks are not the folder's audio units in order: every write that
+    /// changes the folder's files rebuilds the draft, so a mismatch is a
+    /// stored state that contradicts itself.
+    pub(super) fn table(&self) -> Result<MappingTable, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
         let document: Document = serde_json::from_str(&self.document)
             .map_err(|error| internal(format!("the mapping statement's document: {error}")))?;
@@ -400,7 +404,7 @@ impl MappingRows {
                 let mut mappings = Vec::new();
                 let sheet = run.sheet.map(sheet_group).transpose()?;
                 for row in run.rows {
-                    mappings.push(track_mapping(row, draft)?);
+                    mappings.push(track_mapping(row)?);
                 }
                 runs.push(match sheet {
                     Some(sheet) => MappingTrackRun::Sheet { sheet, entries: mappings },
@@ -568,12 +572,9 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
     })
 }
 
-fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, ImportError> {
+fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
-    let track = draft
-        .tracks
-        .get(row.track)
-        .ok_or_else(|| internal(format!("the mapping names no draft track {}", row.track)))?;
+    let track = row.track.track()?;
     if !row.matches {
         return Err(internal(format!(
             "draft track {} plays {:?}, which is not the folder's audio unit there",
@@ -623,25 +624,16 @@ fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, I
 
 #[cfg(test)]
 impl crate::tables::ImportTables {
-    /// The mapping table of the stored candidate `key`, over the draft stored
-    /// under `content_hash`.
+    /// The mapping table of the release the scan stores at `key`.
     pub(crate) async fn load_mapping_table_for_test(
         &self,
-        watched_folder_path: &std::path::Path,
         key: &crate::CandidateKey,
-        content_hash: &str,
     ) -> Result<MappingTable, ImportError> {
-        let (watched_folder_path, key, content_hash) =
-            (watched_folder_path.to_path_buf(), key.clone(), content_hash.to_string());
-        let (rows, draft) = self
-            .store
-            .read(move |sql| {
-                let draft =
-                    crate::tables::import_state::load_pane_rows_on(&sql, &content_hash)?.draft;
-                Ok((load_mapping_rows_on(&sql, &watched_folder_path, &key, &content_hash)?, draft))
-            })
+        let key = key.clone();
+        self.store
+            .read(move |sql| load_mapping_rows_on(&sql, &key))
             .await
-            .expect("the rows are read");
-        rows.table(&draft)
+            .expect("the rows are read")
+            .table()
     }
 }

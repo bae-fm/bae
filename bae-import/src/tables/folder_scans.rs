@@ -38,7 +38,7 @@ use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(super) use self::cover_choice::{
-    cover_refusal, cover_version_joins, stored_cover_choice, CoverVersionColumns,
+    candidate_cover_choice_on, cover_refusal, cover_version_joins, CoverVersionColumns,
     COVER_VERSION_COLUMNS,
 };
 pub(super) use self::read::{

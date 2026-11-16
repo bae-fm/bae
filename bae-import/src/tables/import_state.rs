@@ -96,7 +96,7 @@ mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
 
-pub(super) use candidate_rows::CandidateRows;
+pub(super) use candidate_rows::{CandidateRows, OneCandidate, SCANNED_HASH};
 pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
 pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};
 use failure_rows::{delete_failure_on, load_failure_on};
@@ -106,7 +106,7 @@ pub(crate) use import_commit::{
     CommittingCandidate, ImportCommitGuard, ImportRows, NewArtistImages,
 };
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
-pub(super) use pane_rows::load_pane_rows_on;
+pub(super) use pane_rows::{load_pane_rows_on, track_json_sql, StoredTrack};
 pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;
@@ -170,7 +170,7 @@ impl ImportTables {
         let content_hash = content_hash.to_string();
         self.store
             .read(move |sql| {
-                Ok((load_states_rows_on(&sql, CandidateRows::One(&content_hash))?, content_hash))
+                Ok((load_states_rows_on(&sql, CandidateRows::One(OneCandidate::Hash(&content_hash)))?, content_hash))
             })
             .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
             .await
@@ -200,8 +200,8 @@ impl ImportTables {
                 {
                     return Ok(None);
                 }
-                let (draft, _) = pane_rows::load_draft_and_cover_on(&sql, &content_hash)?;
-                let states = load_states_rows_on(&sql, CandidateRows::One(&content_hash))?;
+                let (draft, _) = pane_rows::load_draft_and_cover_on(&sql, OneCandidate::Hash(&content_hash))?;
+                let states = load_states_rows_on(&sql, CandidateRows::One(OneCandidate::Hash(&content_hash)))?;
                 Ok(Some((states, draft, content_hash)))
             })
             .process(|read| {

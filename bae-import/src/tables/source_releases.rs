@@ -38,10 +38,8 @@ use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_ro
 
 mod claimed_records;
 mod offered_covers;
-pub(crate) use claimed_records::{
-    claimed_records_of_json, claimed_records_on, claimed_records_sql,
-};
-pub(crate) use offered_covers::offered_covers_on;
+pub(crate) use claimed_records::{claimed_records_of_json, claimed_records_sql};
+pub(crate) use offered_covers::{offered_covers_of_json, offered_covers_sql};
 mod tracklist;
 
 /// The tables under `source_release`, children before the tables they hang

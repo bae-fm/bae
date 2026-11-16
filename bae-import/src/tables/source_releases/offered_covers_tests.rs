@@ -52,11 +52,25 @@ async fn read_from(
         .unwrap();
 }
 
-async fn offered(db: &Store, content_hash: &str) -> Vec<(String, CoverStanding)> {
+/// The covers the offered covers statement returns for `content_hash`.
+async fn offered_covers(db: &Store, content_hash: &str) -> Vec<RemoteCover> {
     let content_hash = content_hash.to_owned();
-    db.read(move |sql| offered_covers_on(&sql, &content_hash))
+    let json: String = db
+        .read(move |sql| {
+            Ok(sql.query_row(
+                &offered_covers_sql(":hash"),
+                rusqlite::named_params! { ":hash": content_hash },
+                |row| row.get(0),
+            )?)
+        })
         .await
-        .unwrap()
+        .unwrap();
+    offered_covers_of_json(&json).unwrap()
+}
+
+async fn offered(db: &Store, content_hash: &str) -> Vec<(String, CoverStanding)> {
+    offered_covers(db, content_hash)
+        .await
         .into_iter()
         .map(|cover| (cover.image.url, cover.standing))
         .collect()
@@ -186,6 +200,6 @@ async fn offered_covers_statement_matches_pick_covers() {
         "the joined release group's image is among the covers: {expected:?}"
     );
     let content_hash = candidate.files.content_hash();
-    let read = db.read(move |sql| offered_covers_on(&sql, &content_hash)).await.unwrap();
+    let read = offered_covers(&db, &content_hash).await;
     assert_eq!(read, expected);
 }

@@ -202,35 +202,32 @@ impl CoverVersionColumns {
     }
 }
 
-/// The choice `selection` names for the candidate at `candidate_path` of the
-/// watched folder `watched_folder_path`, read with its own statement.
-pub(crate) fn stored_cover_choice(
+/// The cover the release the scan stores at `key` chose, with the version
+/// its scan read the image from, read in one statement; `None` when it chose
+/// none.
+pub(crate) fn candidate_cover_choice_on(
     sql: &SqlReadContext<'_>,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    selection: &CoverSelection,
-) -> Result<CoverChoice, DbError> {
-    let (kind, file_id) = match selection {
-        CoverSelection::Remote(image, source) => {
-            return Ok(CoverChoice::Remote { image: image.clone(), source: *source })
-        }
-        CoverSelection::Local(file_id) => ("local", file_id),
-        CoverSelection::Embedded(file_id) => ("embedded", file_id),
+    key: &CandidateKey,
+) -> Result<Option<CoverChoice>, DbError> {
+    let read = sql
+        .query_row(
+            &format!(
+                "SELECT {cover}, {COVER_VERSION_COLUMNS} FROM scan_candidate AS c \
+                 JOIN import_candidate_cover AS cover ON cover.content_hash = c.content_hash \
+                 {joins} \
+                 WHERE c.path = :key LIMIT 1",
+                cover = crate::tables::import_state::cover_read_columns(),
+                joins = cover_version_joins("cover.kind", "cover.file_id"),
+            ),
+            named_params! { ":key": key },
+            |row| {
+                Ok((crate::tables::import_state::read_cover(row)?, CoverVersionColumns::read(row)?))
+            },
+        )
+        .optional()?;
+    let Some((Some(cover), versions)) = read else {
+        return Ok(None);
     };
-    sql.query_row(
-        &format!(
-            "SELECT {COVER_VERSION_COLUMNS} FROM scan_candidate AS c {joins} \
-             WHERE c.watched_folder_path = :root AND c.path = :key",
-            joins = cover_version_joins(":kind", ":file_id"),
-        ),
-        named_params! {
-            ":kind": kind,
-            ":file_id": file_id,
-            ":root": coven::path_bytes(watched_folder_path),
-            ":key": candidate_path,
-        },
-        CoverVersionColumns::read,
-    )
-    .map_err(DbError::from)?
-    .choice(candidate_path, selection)
+    let selection = cover.selection()?;
+    versions.choice(key, &selection).map(Some)
 }
