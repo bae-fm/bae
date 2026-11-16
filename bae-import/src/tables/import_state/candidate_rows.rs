@@ -38,24 +38,23 @@ enum CandidateBinds {
     #[cfg(any(test, feature = "test-utils"))]
     None,
     One(String),
-    /// One candidate's content hash and the key of the scanned release whose
-    /// file-edit revision the state's edit revision must equal.
-    OneAtScan(String, crate::CandidateKey),
+    /// The key of the scanned release whose content hash and file-edit
+    /// revision the state's content hash and edit revision must equal.
+    AtScan(crate::CandidateKey),
 }
 
 impl CandidateFilter {
-    /// Matches the state row of the candidate `content_hash` only when its
-    /// edit revision equals the file-edit revision the scan holds for the
-    /// release `key`, and no row otherwise. For a statement reading
+    /// Matches the state row of the content hash the scan holds for the
+    /// release `key` only when its edit revision equals the file-edit
+    /// revision the scan holds, and no row otherwise. For a statement reading
     /// `import_candidate_state AS state`.
-    pub(crate) fn current_at_scan(content_hash: &str, key: &crate::CandidateKey) -> Self {
+    pub(crate) fn current_at_scan(key: &crate::CandidateKey) -> Self {
         Self {
-            clause:
-                "WHERE state.content_hash = :candidate \
-                     AND state.edit_revision = (SELECT scan.file_edit_revision \
-                                                FROM scan_candidate AS scan WHERE scan.path = :key)"
-                    .to_string(),
-            binds: CandidateBinds::OneAtScan(content_hash.to_string(), key.clone()),
+            clause: "WHERE (state.content_hash, state.edit_revision) = \
+                         (SELECT scan.content_hash, scan.file_edit_revision \
+                          FROM scan_candidate AS scan WHERE scan.path = :key)"
+                .to_string(),
+            binds: CandidateBinds::AtScan(key.clone()),
         }
     }
 
@@ -65,10 +64,7 @@ impl CandidateFilter {
             #[cfg(any(test, feature = "test-utils"))]
             CandidateBinds::None => Vec::new(),
             CandidateBinds::One(key) => vec![(":candidate", key as &dyn rusqlite::ToSql)],
-            CandidateBinds::OneAtScan(content_hash, key) => vec![
-                (":candidate", content_hash as &dyn rusqlite::ToSql),
-                (":key", key as &dyn rusqlite::ToSql),
-            ],
+            CandidateBinds::AtScan(key) => vec![(":key", key as &dyn rusqlite::ToSql)],
         }
     }
 }

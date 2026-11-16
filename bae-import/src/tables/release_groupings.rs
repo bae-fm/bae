@@ -154,25 +154,16 @@ pub(super) fn forget_at_or_below(
     Ok(removed)
 }
 
-pub(super) fn skipped_on(
-    sql: &impl coven::SqlRead,
-    candidate: &FolderCandidate,
-) -> Result<bool, DbError> {
-    match &candidate.grouping {
-        Some(grouping) => sql
-            .query_row("SELECT skipped FROM release_grouping WHERE key = ?", [grouping], |row| {
-                row.get(0)
-            })
-            .optional()?
-            .ok_or_else(|| {
-                DbError::unreadable(format!("the release_grouping row of {grouping}"), None::<bool>)
-            }),
-        None => Ok(sql.query_row(
-            "SELECT EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = ?)",
-            [coven::path_bytes(&candidate.path)],
-            |row| row.get(0),
-        )?),
-    }
+/// Whether the person set the release stored at `key` aside.
+pub(super) fn skipped_on(sql: &impl coven::SqlRead, key: &CandidateKey) -> Result<bool, DbError> {
+    // A release a grouping reads as one is skipped with its grouping, whose
+    // row the scan row's foreign key keeps; any other is skipped by its own
+    // key.
+    Ok(sql.query_row(
+        "SELECT COALESCE(              (SELECT grouping.skipped FROM scan_candidate AS scan               JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key               WHERE scan.path = :key LIMIT 1),              EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = :key))",
+        named_params! { ":key": key },
+        |row| row.get(0),
+    )?)
 }
 
 /// Rebuild the release of every grouping with no anchor that takes in one of
@@ -622,8 +613,8 @@ impl ImportTables {
         &self,
         candidate: &FolderCandidate,
     ) -> Result<bool, DbError> {
-        let candidate = candidate.clone();
-        self.store.read(move |sql| skipped_on(&sql, &candidate)).await
+        let key = candidate.key();
+        self.store.read(move |sql| skipped_on(&sql, &key)).await
     }
 
     /// The release stored at `key`, whatever its standing: a candidate being

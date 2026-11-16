@@ -11,7 +11,7 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::stored_cover_choice;
 use crate::tables::import_state::{
-    load_current_state_on, load_pane_rows_on, load_standing_on, load_verdict_cards_on,
+    load_candidate_verdict_cards_on, load_current_state_on, load_pane_rows_on, load_standing_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{claimed_records_on, claimed_records_sql, offered_covers_on};
@@ -84,30 +84,14 @@ pub(super) fn load_candidate_detail_on(
     let stored = load_candidate_on(sql, key)?.ok_or_else(|| {
         DbError::unreadable(format!("the scan_candidate rows of listed {key}"), 0)
     })?;
-    let actionable = stored.actionable;
-    let source_error = stored.error;
-    let candidate = stored.candidate;
-    let content_hash = candidate.files.content_hash();
-
-    let skipped = skipped_on(sql, &candidate)?;
+    let skipped = skipped_on(sql, key)?;
     let files = super::pane_files::load_pane_files_on(sql, key)?;
     let standing = load_standing_on(sql, key)?.facts();
-
-    let imported = sql
-        .query_row(
-            "SELECT r.id, r.album_id \
-             FROM local_release_origin o JOIN releases r ON r.id = o.release_id \
-             WHERE o.content_hash = ?",
-            params![content_hash],
-            |row| Ok(ImportedRelease { release_id: row.get(0)?, album_id: row.get(1)? }),
-        )
-        .optional()?;
-
-    let current = load_current_state_on(sql, &content_hash, key)?;
-    let cards = match current.as_ref().and_then(|state| state.identify.as_ref()) {
-        Some(identify) => load_verdict_cards_on(sql, &content_hash, &identify.verdict)?,
-        None => bae_identify::VerdictCards::default(),
-    };
+    let imported = imported_on(sql, key)?;
+    let current = load_current_state_on(sql, key)?;
+    let cards = load_candidate_verdict_cards_on(sql, key)?;
+    let candidate = stored.candidate;
+    let content_hash = candidate.files.content_hash();
     // An imported candidate holds no draft: its pane reads the library
     // release, and the folder's files from its scan.
     let stage = match imported {
@@ -122,8 +106,8 @@ pub(super) fn load_candidate_detail_on(
     Ok(Some(CandidateDetailRows {
         candidate,
         files,
-        source_error,
-        actionable,
+        source_error: stored.error,
+        actionable: stored.actionable,
         skipped,
         current,
         cards,
@@ -131,6 +115,24 @@ pub(super) fn load_candidate_detail_on(
         listed,
         stage,
     }))
+}
+
+/// The release this device imported from the files of the release the scan
+/// stores at `key`.
+fn imported_on(
+    sql: &SqlReadContext<'_>,
+    key: &crate::CandidateKey,
+) -> Result<Option<ImportedRelease>, DbError> {
+    Ok(sql
+        .query_row(
+            "SELECT r.id, r.album_id FROM scan_candidate AS scan \
+             JOIN local_release_origin AS o ON o.content_hash = scan.content_hash \
+             JOIN releases AS r ON r.id = o.release_id \
+             WHERE scan.path = ?",
+            [key],
+            |row| Ok(ImportedRelease { release_id: row.get(0)?, album_id: row.get(1)? }),
+        )
+        .optional()?)
 }
 
 /// The draft of the candidate `content_hash` and what its pane draws beside

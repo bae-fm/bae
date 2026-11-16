@@ -1246,6 +1246,13 @@ as one release is kept on the header as the rows below it and the readings
 stored for it change. The pane reads its one candidate's rows by the candidate's
 key, and so does every read of one candidate's state, draft or preparation, so
 how long one takes does not grow with how many candidates the queue holds.
+Each part of the pane is a statement of its own that finds the candidate's
+scan row by the key, never by what another statement returned: the folder's
+files, with the track count and the summary of its audio counted over the
+scan's rows; whether the person skipped it; the release this device imported
+from it; its current state and its verdict's cards, with the failure lines
+its ledger does not show; the linked release's library status; and the album
+an import files under.
 
 ### 3.3 Clues in the files
 

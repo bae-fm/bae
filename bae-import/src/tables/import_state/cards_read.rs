@@ -379,6 +379,32 @@ pub(crate) fn load_verdict_cards_on(
     verdict_cards_of(&json)
 }
 
+/// The cards of the verdict stored for the release the scan stores at
+/// `key`, read by the key alone: the verdict of its current state, when that
+/// verdict found or failed and so holds findings; no cards for any other.
+pub(crate) fn load_candidate_verdict_cards_on(
+    sql: &impl coven::SqlRead,
+    key: &crate::CandidateKey,
+) -> Result<VerdictCards, DbError> {
+    let json: Option<String> = sql
+        .query_row(
+            &format!(
+                "SELECT {cards} FROM scan_candidate AS scan \
+                 JOIN import_candidate_state AS state \
+                     ON (state.content_hash, state.edit_revision) \
+                        = (scan.content_hash, scan.file_edit_revision) \
+                 JOIN import_candidate_verdict AS verdict \
+                     ON verdict.content_hash = state.content_hash \
+                 WHERE scan.path = ? AND verdict.kind IN ('found', 'failed')",
+                cards = verdict_cards_sql("verdict")
+            ),
+            [key],
+            |row| row.get(0),
+        )
+        .optional()?;
+    json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
+}
+
 /// What [`verdict_cards_sql`] answers.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredVerdictCards {

@@ -67,16 +67,15 @@ pub(crate) fn load_states_rows_on(
     states_rows_where(sql, only.filter("state.content_hash"))
 }
 
-/// The state of the candidate `content_hash` when its edit revision equals
-/// the file-edit revision the scan holds for the release `key`, in the same
-/// read; `None` when another revision wrote it.
+/// The state of the release the scan stores at `key` when its edit revision
+/// equals the file-edit revision the scan holds, in the same read; `None`
+/// when another revision wrote it.
 pub(crate) fn load_current_state_on(
     sql: &impl coven::SqlRead,
-    content_hash: &str,
     key: &crate::CandidateKey,
 ) -> Result<Option<DbImportCandidateState>, DbError> {
-    Ok(states_rows_where(sql, CandidateFilter::current_at_scan(content_hash, key))?()?
-        .remove(content_hash))
+    // The clause keeps at most the one state row of the scan's content hash.
+    Ok(states_rows_where(sql, CandidateFilter::current_at_scan(key))?()?.into_values().next())
 }
 
 /// The states `filter` keeps, each with the rows that share its content hash.
