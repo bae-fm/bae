@@ -234,9 +234,9 @@ final class QueueDragCoordinator {
     }
 
     /// The move the lane's display order shows: the held post-commit one while
-    /// its write has not returned, else none — canonical order. A live drag
-    /// moves no row: the lane marks where the row will land with a line
-    /// (`dropGap`). Derived against the CURRENT `count`, so a queue change
+    /// its write has not returned, else none, so the lane shows canonical
+    /// order. A live drag moves no row: the lane marks where the row will
+    /// go with a line (`dropGap`). Derived against the CURRENT `count`, so a queue change
     /// can never leave a move over slots the lane no longer has.
     func displayMove(for lane: BridgeQueueLane, count: Int) -> QueueRowMove? {
         if let hold = held[lane], hold.move.count == count {
