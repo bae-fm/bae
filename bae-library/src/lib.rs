@@ -48,8 +48,7 @@ pub use local_lifecycle::{
 };
 pub use manager::*;
 pub use outbox_watch::{
-    OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch, ReleaseUploadTransfer,
-    UploadTransfer,
+    OutboxTransfers, OutboxTransfersWatch, ReleaseUploadTransfer, UploadTransfer,
 };
 pub use saved_restore_codes::{saved_restore_codes, SavedRestoreCodesError};
 pub use schema::SCHEMA;

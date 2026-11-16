@@ -2611,7 +2611,10 @@ being sent, that share of its size, beside the stored bytes a live query of the
 files being sent reads; the files being sent together count their objects'
 bytes. Core sends each bar's
 fraction, its bytes done of its bytes in all, and the apps fill the bar to
-it. Core also sends each file's share, keyed by file, for the Storage
+it. Core measures every release's bar and the total again each time the
+query reads or a file's bytes move, from the query's first read on, and
+writes them all to the stream, which holds the latest per release; a release
+the query no longer names leaves the stream. Core also sends each file's share, keyed by file, for the Storage
 manager's rings and the Activity panel's Uploading bar. Core measures how fast
 they go outside the database, from the same watch's bytes, file by file, as
 each step of them goes, so a file sent in one request has a rate too: a rate

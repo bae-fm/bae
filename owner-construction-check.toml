@@ -370,10 +370,8 @@ task_types = [
     "ServerWatch",
     # One subscriber's watch on the catalog image cache's files.
     "RemoteImageWatch",
-    # One subscriber's watch on the outbox's transfers, and the transfers it
-    # reads them from.
+    # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
-    "SendingTransfers",
     # One editor's session on one release, and the bridge's object the app
     # holds over it.
     "ReleaseEdit",
@@ -1804,10 +1802,7 @@ frozen = [
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "group", count = 1, finding = "groups the files coven is uploading by release in a `BTreeMap`" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "join", count = 2, finding = "joins each file coven is uploading to its rate and progress by file id (`get`)" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "length-branch", count = 1, finding = "shows no upload bar when coven uploads no file (`is_empty`)" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "kept-state", count = 3, finding = "holds the last transfers (`told`) and a per-file rate sample window (`throughput`) between deliveries" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "length-branch", count = 1, finding = "delivers only when the transfers changed since the ones it kept (`is_empty`)" },
-    { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::next", shape = "kept-state", count = 3, finding = "keeps the last read of the files coven is uploading (`read`) and a per-file rate sample window (`throughput`) between deliveries" },
-    { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "starts `progress` as an empty `BTreeMap`: the per-file progress that `next` fills from the upload watch and keeps between deliveries" },
+    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "kept-state", count = 3, finding = "keeps the last read of the files coven is uploading (`read`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "filter", count = 2, finding = "keeps the files coven is uploading that have progress (`filter_map`) and drops the kept samples of files coven no longer uploads (`retain`)" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "pick", count = 1, finding = "tests each kept sample against the files coven is uploading with `any`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::rates", shape = "group", count = 1, finding = "returns each file's rate from the samples it kept, in a `HashMap`" },
@@ -1841,7 +1836,6 @@ frozen = [
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::failure_recorded", shape = "pick", count = 3, finding = "tests the pending rows for a removal, a key replacement or a failed pass with `any`" },
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::name_connection_cause", shape = "filter", count = 1, finding = "picks the pending rows about the connection to name their cause (`filter`)" },
     { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
-    { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, finding = "diffs the transfers it kept against the new ones by release, keeping the ones gone and the ones changed (`filter`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "length-branch", count = 3, finding = "merges two label lines only when both state names and catalog numbers (`is_empty`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "pick", count = 2, finding = "groups a release's label rows into lines, finding each row's line by name or catalog numbers with `find`" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "same_numbers", shape = "filter", count = 1, finding = "keeps the catalog numbers of a label line that have a key (`filter_map`)" },
@@ -1860,6 +1854,7 @@ allowed = [
     { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
     { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "length-branch", count = 1, reason = "checks a key's term count against the part's order; the value is the key's term count, not a row" },
+    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::of", shape = "group", count = 1, reason = "starts the empty map of how far each file being sent has got, which coven's upload watch fills; the watch's progress, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::between", shape = "length-branch", count = 1, reason = "tests whether a term is the order's last, by position in its fixed list of terms; the values are terms, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::first_difference", shape = "pick", count = 1, reason = "finds the first term two keys differ on; the values are sort values the screen sends back, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::range_seeks", shape = "filter", count = 2, reason = "keeps the seeks of a range that tie on a longer prefix than the keys' first difference; the values are the statements a window runs, not rows" },

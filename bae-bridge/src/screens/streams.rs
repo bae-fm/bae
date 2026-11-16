@@ -93,28 +93,32 @@ fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTrans
     }
 }
 
-/// Write each batch of the outbox's transfers: the releases' into their
-/// stream and the files being sent together into theirs.
-fn write_outbox_changes(
+/// Write one delivery of the outbox's transfers: every release's into the
+/// releases' stream, which then names no other release, and the files being
+/// sent together into the total's stream.
+fn write_outbox_transfers(
     releases: &StreamWriter,
     total: &StreamWriter,
-    changes: Vec<bae_library::OutboxTransferChange>,
+    transfers: bae_library::OutboxTransfers,
 ) {
-    use bae_library::OutboxTransferChange;
-    let upload = |transfer| BridgeFastValue::ReleaseUpload {
-        transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
-    };
-    let mut release_changes = Vec::new();
-    for change in changes {
-        match change {
-            OutboxTransferChange::Release(change) => release_changes.push(change),
-            OutboxTransferChange::Total(transfer) => match upload_total(transfer) {
-                Some(value) => total.set_only(value),
-                None => total.remove_only(),
-            },
-        }
+    releases.reset(
+        transfers
+            .releases
+            .into_iter()
+            .map(|(release_id, transfer)| {
+                (
+                    release_id.into_bytes(),
+                    BridgeFastValue::ReleaseUpload {
+                        transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
+                    },
+                )
+            })
+            .collect(),
+    );
+    match upload_total(transfers.total) {
+        Some(value) => total.set_only(value),
+        None => total.remove_only(),
     }
-    write_release_changes(releases, release_changes, upload);
 }
 
 /// Two new streams written by one feed, which ends once the host has
@@ -163,9 +167,9 @@ pub(crate) fn outbox_transfer_feeds(
     let (releases, total) = feed_pair(runtime, run, move |services, releases, total| {
         let mut transfers = services.watch_outbox_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
-                let changes = match changes {
-                    Ok(changes) => changes,
+            while let Some(next) = transfers.next().await {
+                let next = match next {
+                    Ok(next) => next,
                     Err(error) => {
                         let error = BridgeError::database_query(error);
                         releases.fail(error.clone());
@@ -173,7 +177,7 @@ pub(crate) fn outbox_transfer_feeds(
                         continue;
                     }
                 };
-                write_outbox_changes(&releases, &total, changes);
+                write_outbox_transfers(&releases, &total, next);
             }
         }
     });

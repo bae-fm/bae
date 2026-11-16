@@ -112,20 +112,9 @@ impl OutboxTransfers {
     }
 }
 
-/// A change to the releases' transfers, or to the files being sent
-/// together.
-#[derive(Debug, Clone, PartialEq)]
-pub enum OutboxTransferChange {
-    /// Every release's transfer, as a reader first reads them, then each one
-    /// that moved, and each release with nothing being sent any more.
-    Release(bae_transfers::ReleaseTransferChange<ReleaseUploadTransfer>),
-    /// The files being sent together.
-    Total(UploadTransfer),
-}
-
-/// The transfers each delivery of the files being sent, or each move of
-/// their bytes, measures.
-struct SendingTransfers {
+/// Every transfer, measured each time the query of the files being sent
+/// reads or their bytes move, for a reader that draws each one.
+pub struct OutboxTransfersWatch {
     sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
     /// The files being sent as the query last read them; `None` until it
     /// first does.
@@ -138,8 +127,8 @@ struct SendingTransfers {
     diagnostics: bae_diagnostics::Diagnostics,
 }
 
-impl SendingTransfers {
-    fn of(
+impl OutboxTransfersWatch {
+    pub(crate) fn of(
         sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
@@ -156,10 +145,10 @@ impl SendingTransfers {
         }
     }
 
-    /// The transfers once the query next reads or the watch next moves, or
-    /// the failure that kept the query from reading; `None` once either has
-    /// ended with its store.
-    async fn next(&mut self) -> Option<Result<OutboxTransfers, bae_store::DbError>> {
+    /// Every release's transfer and the total, once the query next reads or
+    /// the watch next moves, or the failure that kept the query from
+    /// reading; `None` once either has ended with its store.
+    pub async fn next(&mut self) -> Option<Result<OutboxTransfers, bae_store::DbError>> {
         loop {
             tokio::select! {
                 read = self.sending.next() => match read? {
@@ -182,69 +171,6 @@ impl SendingTransfers {
             }
         }
     }
-}
-
-/// Every transfer for a reader that draws each one: all of them first, then
-/// each one that changed since it last read.
-pub struct OutboxTransfersWatch {
-    transfers: SendingTransfers,
-    /// What the reader was last told; `None` before the first read.
-    told: Option<OutboxTransfers>,
-}
-
-impl OutboxTransfersWatch {
-    pub(crate) fn of(
-        sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
-        watch: coven::TransferWatch,
-        clock: coven::ClockRef,
-        diagnostics: bae_diagnostics::Diagnostics,
-    ) -> Self {
-        Self { transfers: SendingTransfers::of(sending, watch, clock, diagnostics), told: None }
-    }
-
-    /// Every release's transfer as one `Reset`, and the total, on the first
-    /// read; after that, wait for transfers to change and name each one. A
-    /// failed read is handed on, and the next read that succeeds is a first
-    /// read again: a reader holds nothing it knows to be current once a read
-    /// failed. `None` once the query has ended with its store.
-    pub async fn next(&mut self) -> Option<Result<Vec<OutboxTransferChange>, bae_store::DbError>> {
-        loop {
-            let next = match self.transfers.next().await? {
-                Ok(next) => next,
-                Err(error) => {
-                    self.told = None;
-                    return Some(Err(error));
-                }
-            };
-            let Some(told) = &self.told else {
-                self.told = Some(next.clone());
-                return Some(Ok(vec![
-                    OutboxTransferChange::Release(bae_transfers::ReleaseTransferChange::Reset(
-                        next.releases,
-                    )),
-                    OutboxTransferChange::Total(next.total),
-                ]));
-            };
-            let changes = changes_between(told, &next);
-            self.told = Some(next);
-            if !changes.is_empty() {
-                return Some(Ok(changes));
-            }
-        }
-    }
-}
-
-/// What a reader told `told` must hear to hold `next`.
-fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<OutboxTransferChange> {
-    let mut changes: Vec<OutboxTransferChange> =
-        bae_transfers::release_changes(&told.releases, &next.releases)
-            .into_iter()
-            .map(OutboxTransferChange::Release)
-            .collect();
-    if told.total != next.total {
-        changes.push(OutboxTransferChange::Total(next.total));
-    }
-    changes
 }
 
 #[cfg(test)]

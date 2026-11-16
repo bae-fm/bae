@@ -556,39 +556,6 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
 // tell them from the live query of the files being sent and coven's upload
 // watch.
 
-/// What a reader of the transfer watch holds after applying `changes`.
-fn apply_transfer_changes(
-    held: &mut Option<crate::OutboxTransfers>,
-    changes: Vec<crate::OutboxTransferChange>,
-) {
-    use crate::OutboxTransferChange;
-    use bae_transfers::ReleaseTransferChange;
-    for change in changes {
-        match change {
-            OutboxTransferChange::Release(ReleaseTransferChange::Reset(releases)) => {
-                *held = Some(crate::OutboxTransfers {
-                    releases,
-                    total: crate::UploadTransfer { bar: None, throughput_bps: 0 },
-                });
-            }
-            OutboxTransferChange::Release(ReleaseTransferChange::Updated {
-                release_id,
-                progress,
-            }) => {
-                held.as_mut().expect("a reset comes first").releases.insert(release_id, progress);
-            }
-            OutboxTransferChange::Release(ReleaseTransferChange::Removed {
-                release_id, ..
-            }) => {
-                held.as_mut().expect("a reset comes first").releases.remove(&release_id);
-            }
-            OutboxTransferChange::Total(total) => {
-                held.as_mut().expect("a reset comes first").total = total;
-            }
-        }
-    }
-}
-
 /// Only the releases with files being sent have a transfer: files that only
 /// wait have none. While a file is sent the total has a bar, and
 /// once every file is sent the file and its release leave and the bar goes.
@@ -609,14 +576,12 @@ async fn the_transfers_name_only_the_files_being_sent() {
         ..manager.store.transfer_limits()
     });
     let mut transfers = manager.watch_outbox_transfers();
-    let mut held = None;
-    apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
     assert_eq!(
-        held,
-        Some(crate::OutboxTransfers {
+        transfers.next().await.unwrap().unwrap(),
+        crate::OutboxTransfers {
             releases: Default::default(),
             total: crate::UploadTransfer { bar: None, throughput_bps: 0 },
-        }),
+        },
         "files that only wait have no transfer"
     );
 
@@ -634,10 +599,9 @@ async fn the_transfers_name_only_the_files_being_sent() {
     });
     let sending = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
-            let current = held.as_ref().unwrap();
+            let current = transfers.next().await.unwrap().unwrap();
             if current.total.bar.is_some() {
-                break current.clone();
+                break current;
             }
         }
     })
@@ -653,11 +617,10 @@ async fn the_transfers_name_only_the_files_being_sent() {
     drain.await.unwrap().unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let current = held.as_ref().unwrap();
+            let current = transfers.next().await.unwrap().unwrap();
             if current.releases.is_empty() && current.total.bar.is_none() {
                 break;
             }
-            apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
         }
     })
     .await
@@ -682,8 +645,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     .await;
     let mut transfers = manager.watch_outbox_transfers();
     let mut files = manager.watch_upload_file_transfers();
-    let mut held = None;
-    apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
+    transfers.next().await.unwrap().unwrap();
 
     // The memory provider takes a request's bytes as it starts, then holds
     // the answer.
@@ -701,8 +663,8 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     });
     let bar = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
-            let bar = held.as_ref().unwrap().releases.get(&release.id).map(|transfer| transfer.bar);
+            let current = transfers.next().await.unwrap().unwrap();
+            let bar = current.releases.get(&release.id).map(|transfer| transfer.bar);
             if bar.is_some_and(|bar| bar.bytes_done > 0) {
                 break bar.unwrap();
             }

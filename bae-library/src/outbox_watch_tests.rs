@@ -1,14 +1,9 @@
 use super::*;
 use bae_diagnostics::Diagnostics;
 use bae_records::{DbSendingFile, DbSendingRelease};
-use bae_transfers::ReleaseTransferChange;
 
 fn file(n: u128) -> coven::FileId {
     coven::FileId(uuid::Uuid::from_u128(n))
-}
-
-fn total(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
-    UploadTransfer { bar: Some(UploadBar { bytes_done, bytes_total: 100 }), throughput_bps }
 }
 
 fn release(bytes_done: u64, throughput_bps: u64) -> ReleaseUploadTransfer {
@@ -34,36 +29,6 @@ fn sending(file: coven::FileId, release: Option<(&str, u64)>) -> DbSendingFile {
 
 fn moved(bytes_transferred: u64, bytes_total: u64) -> coven::TransferProgress {
     coven::TransferProgress { bytes_transferred, bytes_total }
-}
-
-#[test]
-fn a_reader_hears_each_release_that_moved_and_each_that_left() {
-    let first = "release-1".to_string();
-    let second = "release-2".to_string();
-    let told = transfers(
-        vec![(first.clone(), release(100, 5)), (second.clone(), release(100, 5))],
-        total(30, 10),
-    );
-    let next = transfers(vec![(first.clone(), release(200, 8))], total(40, 8));
-
-    let changes = changes_between(&told, &next);
-
-    assert_eq!(changes.len(), 3, "{changes:?}");
-    assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Removed {
-        release_id: second,
-    })));
-    assert!(changes.contains(&OutboxTransferChange::Release(ReleaseTransferChange::Updated {
-        release_id: first,
-        progress: release(200, 8)
-    })));
-    assert!(changes.contains(&OutboxTransferChange::Total(total(40, 8))));
-}
-
-#[test]
-fn transfers_that_did_not_move_say_nothing() {
-    let told = transfers(vec![("release-1".to_string(), release(100, 5))], total(10, 5));
-
-    assert!(changes_between(&told, &told.clone()).is_empty());
 }
 
 /// A release's bar holds its stored bytes and, of each file being sent, the
