@@ -3,7 +3,7 @@
 
 use crate::followed::query_matching;
 use crate::LibraryManager;
-use bae_people::people::PersonProfile;
+use bae_people::people::{PeopleView, PersonProfile};
 
 /// Ask for this device's person's profile named `name`, and sync until the
 /// manager has written it.
@@ -30,16 +30,10 @@ pub async fn requested_profile(
         .expect("asking for a profile needs a registered person")
         .membership
         .id;
-    let mut profiles = manager.subscribe_profiles();
+    let mut people = manager.subscribe_people();
     manager.attach_and_start_sync().await.unwrap();
-    let profile = own(
-        query_matching(&mut profiles, |profiles| {
-            profiles.iter().any(|profile| profile.id == member)
-        })
-        .await,
-        member,
-    );
-    profile
+    let view = query_matching(&mut people, |view| own(view, member).is_some()).await;
+    own(&view, member).expect("the matched view holds the person's profile")
 }
 
 /// [`made_profile`] for a store opened without a library manager, as
@@ -68,21 +62,18 @@ pub async fn requested_profile_on(
         .expect("asking for a profile needs a registered person")
         .membership
         .id;
-    let mut profiles = people.subscribe_profiles();
+    let mut view = people.subscribe_people();
     handle.start_sync().await.unwrap();
-    let written = query_matching(&mut profiles, |profiles| {
-        profiles.iter().any(|profile| profile.id == member)
-    });
-    let profiles = tokio::select! {
+    let written = query_matching(&mut view, |view| own(view, member).is_some());
+    let view = tokio::select! {
         ended = people.finish_profile_requests() => panic!("following the request ended: {ended:?}"),
-        profiles = written => profiles,
+        view = written => view,
     };
-    own(profiles, member)
+    own(&view, member).expect("the matched view holds the person's profile")
 }
 
-fn own(profiles: Vec<PersonProfile>, member: coven::MemberId) -> PersonProfile {
-    profiles
-        .into_iter()
-        .find(|profile| profile.id == member)
-        .expect("the matched profiles hold the person's")
+/// The profile of this device's person in `view`, when that person is
+/// `member` and has made one.
+fn own(view: &PeopleView, member: coven::MemberId) -> Option<PersonProfile> {
+    view.own.as_ref().filter(|own| own.membership.id == member).and_then(|own| own.profile.clone())
 }

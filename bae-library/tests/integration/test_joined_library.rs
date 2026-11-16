@@ -126,16 +126,16 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
             .unwrap();
         let library_dir = tempfile::tempdir().unwrap();
         let library = household.library(reopened.clone(), library_dir.path()).await;
-        let mut profiles = library.manager().subscribe_profiles();
+        let mut listed = library.manager().subscribe_people();
         library.manager().attach_and_start_sync().await.unwrap();
-        let profiles = bae_library::followed::query_matching(&mut profiles, |profiles| {
-            profiles.iter().any(|profile| profile.name == "Rowan")
+        let listed = bae_library::followed::query_matching(&mut listed, |listed| {
+            listed.own.iter().any(|own| own.profile.as_ref().is_some_and(|p| p.name == "Rowan"))
         })
         .await;
         let rowan = library.people().own_person().await.unwrap().expect("Rowan is in");
-        assert!(profiles
-            .iter()
-            .any(|profile| profile.id == rowan.membership.id && profile.name == "Rowan"));
+        let own = listed.own.expect("the matched people hold this device's person");
+        assert_eq!(own.membership.id, rowan.membership.id);
+        assert_eq!(own.profile.map(|profile| profile.id), Some(rowan.membership.id));
         // The people screen reads Rowan as this device's person and the
         // household's owner as the one other person, and counts two people
         // and two devices, and a person's page reads the owner by member id.

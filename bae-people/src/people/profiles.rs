@@ -5,7 +5,6 @@ use super::profile_request::{
 use super::*;
 use crate::membership::{member_columns, member_row};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_records::records::name_sort::sort_key_sql;
 
 /// The columns [`profile_row`] reads of the `people` row `p` and the
 /// `coven_files` row `avatar` of its avatar ([`PROFILES`]): its own, then
@@ -70,13 +69,6 @@ impl People {
         self.inner
             .store
             .subscribe(move |sql| Ok(people_on(&sql, &person_sql(), params![member])?.pop()))
-    }
-
-    /// Follow every profile, ordered by name in the device's language. The
-    /// query reads `name_sort`, so coven reruns it when the device's language
-    /// changes.
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
-        self.inner.store.subscribe(|sql| Ok(sql.query(&profiles_sql(), [], profile_row)?))
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
@@ -578,15 +570,6 @@ fn people_on(
             membership: member_row(row, PROFILE_COLUMN_COUNT)?,
         })
     })
-}
-
-/// Every profile, by name in the device's language, then id.
-fn profiles_sql() -> String {
-    format!(
-        "SELECT {} FROM {PROFILES} ORDER BY {}, p.id",
-        profile_columns(),
-        sort_key_sql("p.name")
-    )
 }
 
 fn update_profile(

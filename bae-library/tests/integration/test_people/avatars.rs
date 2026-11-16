@@ -47,20 +47,20 @@ async fn a_profile_names_each_new_avatar_at_once() {
     assert!(second.version.starts_with(&format!("{}@", second.file.0)), "{}", second.version);
     assert_eq!(library.people().avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     gate.add_permits(tokio::sync::Semaphore::MAX_PERMITS);
-    let mut profiles = library.manager().subscribe_profiles();
-    let stored = bae_library::followed::query_matching(&mut profiles, |profiles| {
-        profiles.iter().find(|candidate| candidate.id == profile.id).is_some_and(|candidate| {
-            candidate
-                .avatar
-                .as_ref()
-                .is_some_and(|avatar| avatar.version == second.file.0.to_string())
-        })
+    let mut listing = library.manager().subscribe_people();
+    let own_avatar = |listed: &bae_people::people::PeopleView| {
+        listed
+            .own
+            .as_ref()
+            .and_then(|own| own.profile.as_ref())
+            .filter(|candidate| candidate.id == profile.id)
+            .and_then(|candidate| candidate.avatar.clone())
+    };
+    let listed = bae_library::followed::query_matching(&mut listing, |listed| {
+        own_avatar(listed).is_some_and(|avatar| avatar.version == second.file.0.to_string())
     })
-    .await
-    .into_iter()
-    .find(|candidate| candidate.id == profile.id)
-    .and_then(|candidate| candidate.avatar)
-    .expect("the stored avatar");
+    .await;
+    let stored = own_avatar(&listed).expect("the stored avatar");
     assert_eq!(stored.file, second.file, "the upload changes no row");
     assert_eq!(
         stored.version,

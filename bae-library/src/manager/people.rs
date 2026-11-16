@@ -50,12 +50,6 @@ impl LibraryManager {
         self.people.subscribe_person(member)
     }
 
-    pub fn subscribe_profiles(
-        &self,
-    ) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>, bae_store::DbError> {
-        self.people.subscribe_profiles()
-    }
-
     /// This person's restore code, for the QR code and to type, for their own
     /// new device.
     pub async fn generate_restore_code(

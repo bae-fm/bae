@@ -197,12 +197,12 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         devices.b().store().start_sync().await.unwrap();
         devices
             .settle("the profile on both devices", async |_, store| {
-                !bae_library::followed::query_matching(
-                    &mut bae_people::People::new(store.clone()).subscribe_profiles(),
+                let listed = bae_library::followed::query_matching(
+                    &mut bae_people::People::new(store.clone()).subscribe_people(),
                     |_| true,
                 )
-                .await
-                .is_empty()
+                .await;
+                listed.own.iter().chain(&listed.others).any(|person| person.profile.is_some())
             })
             .await;
         let b = devices.b().store();

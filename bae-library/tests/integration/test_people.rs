@@ -23,7 +23,8 @@ async fn a_profile_is_idempotent_once_asked_for() {
     )
     .await;
     let people = library.people().clone();
-    assert!(query_matching(&mut people.subscribe_profiles(), |_| true).await.is_empty());
+    let listed = query_matching(&mut people.subscribe_people(), |_| true).await;
+    assert!(listed.own.iter().chain(&listed.others).all(|person| person.profile.is_none()));
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
     assert_eq!(profile.history_sharing, HistorySharing::Private);
@@ -59,7 +60,8 @@ async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
         Some("Robin"),
     )
     .await;
-    assert!(query_matching(&mut library.people().subscribe_profiles(), |_| true).await.is_empty());
+    let listed = query_matching(&mut library.people().subscribe_people(), |_| true).await;
+    assert!(listed.own.iter().chain(&listed.others).all(|person| person.profile.is_none()));
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
