@@ -37,8 +37,7 @@ class LibraryGridTest {
         )
 
     private fun showGrid(
-        grouped: Boolean,
-        sections: List<BridgeLibraryBrowseSection>,
+        layout: AlbumGridLayout,
         onSelectArtist: (String) -> Unit = {},
     ) {
         compose.setContent {
@@ -46,8 +45,7 @@ class LibraryGridTest {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
                     AndroidAlbumGrid(
                         count = rows.size,
-                        grouped = grouped,
-                        sections = sections,
+                        layout = layout,
                         rowAt = rows::getOrNull,
                         gridState = LazyGridState(),
                         onSelectAlbum = {},
@@ -62,8 +60,7 @@ class LibraryGridTest {
     fun aGroupOpensWithItsArtistAndItsCardsGiveTheYearAndOtherCredits() {
         var opened: String? = null
         showGrid(
-            grouped = true,
-            sections = listOf(BridgeLibraryBrowseSection("artist-a", "Group Artist", null, 0uL, 3uL)),
+            layout = AlbumGridLayout.Grouped(listOf(BridgeLibraryBrowseSection("artist-a", "Group Artist", null, 0uL, 3uL))),
             onSelectArtist = { opened = it },
         )
 
@@ -77,7 +74,7 @@ class LibraryGridTest {
 
     @Test
     fun theFlatGridGivesEachAlbumsArtists() {
-        showGrid(grouped = false, sections = emptyList())
+        showGrid(AlbumGridLayout.Flat)
 
         compose.onAllNodesWithText("Artist Name").assertCountEquals(rows.size)
         compose.onNodeWithText("1974 · with Other Artist").assertDoesNotExist()

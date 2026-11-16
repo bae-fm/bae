@@ -19,6 +19,7 @@ import fm.bae.app.ui.albumdetail.TrackRowCallbacks
 import fm.bae.app.ui.albumdetail.TrackRowData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
+import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidAlbumTile
 import fm.bae.app.ui.library.AndroidArtistHeading
@@ -62,8 +63,7 @@ class LibraryComponentShots : BoardShot() {
                 Box(Modifier.width(380.dp).height(240.dp)) {
                     AndroidAlbumGrid(
                         count = rows.size,
-                        grouped = false,
-                        sections = emptyList(),
+                        layout = AlbumGridLayout.Flat,
                         rowAt = rows::get,
                         gridState = rememberLazyGridState(),
                         onSelectAlbum = {},

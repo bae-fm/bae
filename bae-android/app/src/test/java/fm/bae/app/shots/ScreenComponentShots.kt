@@ -17,6 +17,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.AndroidLibraryScreen
@@ -49,8 +50,7 @@ class ScreenComponentShots : BoardShot() {
                         Box(modifier) {
                             AndroidAlbumGrid(
                                 count = previewAlbums.size,
-                                grouped = false,
-                                sections = emptyList(),
+                                layout = AlbumGridLayout.Flat,
                                 rowAt = previewAlbums::get,
                                 gridState = state.gridState,
                                 onSelectAlbum = {},

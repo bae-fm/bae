@@ -49,8 +49,7 @@ internal fun AndroidAlbumGridContainer(
     ) {
         AndroidAlbumGrid(
             count = page.totalCount,
-            grouped = page.grouped,
-            sections = page.sections,
+            layout = if (page.grouped) AlbumGridLayout.Grouped(page.sections) else AlbumGridLayout.Flat,
             rowAt = page::rowAt,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
@@ -59,18 +58,28 @@ internal fun AndroidAlbumGridContainer(
     }
 }
 
+/** How the album grid lays out its albums. The grid's count query reports which layout applies. */
+internal sealed interface AlbumGridLayout {
+    /** The albums in one run, each card naming the album's artists. */
+    data object Flat : AlbumGridLayout
+
+    /**
+     * The albums by artist under [sections]: each group opens with the artist's header, which stays at the
+     * top while the group's albums scroll past it.
+     */
+    data class Grouped(
+        val sections: List<BridgeLibraryBrowseSection>,
+    ) : AlbumGridLayout
+}
+
 /**
- * The album grid, taking its rows by index so the screenshot scenes can render
- * it without a live session. When [grouped] is true, which the grid's count
- * query reports, the grid groups its albums by artist under [sections]: each
- * group opens with the artist's header, which stays at the top while the
- * group's albums scroll past it.
+ * The album grid in [layout], taking its rows by index so the screenshot scenes can render it without a
+ * live session.
  */
 @Composable
 internal fun AndroidAlbumGrid(
     count: Int,
-    grouped: Boolean,
-    sections: List<BridgeLibraryBrowseSection>,
+    layout: AlbumGridLayout,
     rowAt: (Int) -> BridgeAlbumAppearance?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
@@ -84,30 +93,37 @@ internal fun AndroidAlbumGrid(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (!grouped) {
-            albumItems(0 until count, rowAt, grouped = false, onSelectAlbum)
-        } else {
-            sections.forEach { section ->
-                stickyHeader(key = section.id, contentType = ARTIST_GROUP_HEADER) { index ->
-                    val pinned by remember(gridState, index) {
-                        derivedStateOf {
-                            gridState.firstVisibleItemIndex > index ||
-                                (gridState.firstVisibleItemIndex == index && gridState.firstVisibleItemScrollOffset > 0)
+        when (layout) {
+            AlbumGridLayout.Flat -> {
+                albumItems(0 until count, rowAt, grouped = false, onSelectAlbum)
+            }
+
+            is AlbumGridLayout.Grouped -> {
+                layout.sections.forEach { section ->
+                    stickyHeader(key = section.id, contentType = ARTIST_GROUP_HEADER) { index ->
+                        val pinned by remember(gridState, index) {
+                            derivedStateOf {
+                                gridState.firstVisibleItemIndex > index ||
+                                    (
+                                        gridState.firstVisibleItemIndex == index &&
+                                            gridState.firstVisibleItemScrollOffset > 0
+                                    )
+                            }
                         }
+                        AndroidArtistHeading(
+                            section = section,
+                            pinned = pinned,
+                            gridPadding = ThemeSpace.group,
+                            onClick = { onSelectArtist(section.id) },
+                        )
                     }
-                    AndroidArtistHeading(
-                        section = section,
-                        pinned = pinned,
-                        gridPadding = ThemeSpace.group,
-                        onClick = { onSelectArtist(section.id) },
+                    albumItems(
+                        section.firstPosition.toInt() until (section.firstPosition + section.albumCount).toInt(),
+                        rowAt,
+                        grouped = true,
+                        onSelectAlbum,
                     )
                 }
-                albumItems(
-                    section.firstPosition.toInt() until (section.firstPosition + section.albumCount).toInt(),
-                    rowAt,
-                    grouped = true,
-                    onSelectAlbum,
-                )
             }
         }
     }
