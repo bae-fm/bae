@@ -399,6 +399,8 @@ extension ShotScene {
                         duration: 295_000
                     )
                 ],
+                upNextCount: 1,
+                isEmpty: false,
                 context: QueuePlaybackContext(
                     bridge: BridgePlaybackContext(
                         kind: .release,

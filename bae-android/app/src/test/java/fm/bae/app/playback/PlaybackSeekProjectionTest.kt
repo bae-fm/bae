@@ -210,6 +210,8 @@ class PlaybackSeekProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = 0u,
+                isEmpty = true,
             ),
         )
 
@@ -231,6 +233,8 @@ class PlaybackSeekProjectionTest {
                 shuffled = false,
                 hasNext = false,
                 hasPrevious = true,
+                upNextCount = 0u,
+                isEmpty = true,
             ),
         )
 

@@ -70,6 +70,8 @@ struct QueueViewControlsTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacQueuePanel(
                 manual: store.manualQueue,
+                upNextCount: store.upNextCount,
+                isEmpty: store.queueIsEmpty,
                 context: store.queueContext,
                 shuffled: store.shuffled,
                 upcoming: QueueUpcoming(store: store, queue: queue),

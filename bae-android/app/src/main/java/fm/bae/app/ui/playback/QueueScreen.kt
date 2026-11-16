@@ -27,6 +27,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
+import fm.bae.app.playback.QueueProjection
 import fm.bae.app.playback.artist
 import fm.bae.app.playback.library
 import fm.bae.app.playback.title
@@ -104,8 +105,11 @@ internal class ReorderableQueue(
     val failures: QueueFailures,
     /** The queue's last read failed, so its order is no longer known to be current; shown in its place. */
     val readFailure: DisplayError?,
-    /** Core's shuffle mode, which the context section's toggle shows. */
-    val shuffled: Boolean,
+    /**
+     * Core's queue value: its shuffle mode, which the context section's toggle shows, its count of Up Next
+     * and whether nothing is to play after the playing track.
+     */
+    val value: QueueProjection,
 )
 
 /** The optimistic queue order and its reorderable list state, re-seeded from core except during a drag. */
@@ -157,7 +161,14 @@ internal fun rememberReorderableQueue(
             order.apply(queue.manual, queue.context)
         }
     }
-    return ReorderableQueue(order, reorderState, onDropped, failures, readFailure, queue.shuffled)
+    return ReorderableQueue(
+        order,
+        reorderState,
+        onDropped,
+        failures,
+        readFailure,
+        queue,
+    )
 }
 
 // The queue's lanes, an empty message, or the failure of its last read, below the caller's now-playing header;
@@ -184,7 +195,7 @@ internal fun LazyListScope.queueContent(
     }
     // Only show the empty message when nothing follows at all; with a context
     // present, the "Playing from" section below carries the queue.
-    if (order.isEmpty) {
+    if (queue.value.isEmpty) {
         item(key = "empty") {
             Text(
                 text = stringResource(if (hasNowPlaying) R.string.queue_nothing_up_next else R.string.queue_empty),
@@ -195,7 +206,7 @@ internal fun LazyListScope.queueContent(
         return
     }
 
-    if (order.manual.isNotEmpty()) {
+    if (queue.value.upNextCount > 0u) {
         item(key = "uphdr") { UpNextSectionLabel(session, failures) }
         // Always fully resolved, so no load hook.
         queueRows(
@@ -229,7 +240,7 @@ private fun LazyListScope.contextLane(
             session = session,
             failures = queue.failures,
             text = stringResource(labelRes),
-            shuffled = queue.shuffled,
+            shuffled = queue.value.shuffled,
         )
     }
     // The context tail can be as long as the library, and core reads only part of it: the lazy list

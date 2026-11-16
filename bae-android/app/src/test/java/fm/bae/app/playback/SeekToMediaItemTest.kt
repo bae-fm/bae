@@ -118,6 +118,8 @@ class SeekToMediaItemTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = manual.size.toUInt(),
+                isEmpty = false,
             ),
         )
         player.onSessionUpNext(manual)

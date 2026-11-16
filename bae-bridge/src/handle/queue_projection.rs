@@ -170,5 +170,7 @@ mirror_struct! {
         shuffled,
         has_next,
         has_previous,
+        up_next_count,
+        is_empty,
     },
 }

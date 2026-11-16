@@ -233,7 +233,9 @@ private final class PreviewQueueModel {
                     ) : nil,
                 shuffled: shuffled,
                 hasNext: !manual.isEmpty || !upcoming.isEmpty,
-                hasPrevious: false
+                hasPrevious: false,
+                upNextCount: UInt32(manual.count),
+                isEmpty: manual.isEmpty && (!hasContext || upcoming.isEmpty)
             )
         )
     }
@@ -460,7 +462,9 @@ extension PreviewData {
                 },
                 shuffled: shuffled,
                 hasNext: !upcoming.isEmpty,
-                hasPrevious: false
+                hasPrevious: false,
+                upNextCount: UInt32(manual.count),
+                isEmpty: manual.isEmpty && (context == nil || upcoming.isEmpty)
             )
         )
         return store

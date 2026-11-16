@@ -27,6 +27,11 @@ public class PlaybackStore {
     public internal(set) var failure: BridgePlaybackErrorReason?
     /// The manual lane ("Up next") — explicitly enqueued tracks, drained first.
     public var manualQueue: [BridgeQueueEntry] = []
+    /// How many entries Up Next holds, as core's queue value counts them.
+    public private(set) var upNextCount: UInt32 = 0
+    /// Whether nothing is to play after the playing track, as core's queue
+    /// value says.
+    public private(set) var queueIsEmpty = true
     /// What's playing from, or `nil`. Its tracks are the `upcoming` list.
     public var queueContext: QueuePlaybackContext?
     /// Whether shuffle is on, which holds with nothing playing: the next play
@@ -125,6 +130,8 @@ extension PlaybackStore {
     @MainActor
     public func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         manualQueue = snapshot.manual
+        upNextCount = snapshot.upNextCount
+        queueIsEmpty = snapshot.isEmpty
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         shuffled = snapshot.shuffled
         if queueContext == nil {

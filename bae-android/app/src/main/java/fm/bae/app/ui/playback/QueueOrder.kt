@@ -22,9 +22,6 @@ internal class QueueOrder {
     val manual = mutableStateListOf<BridgeQueueEntry>()
     val context = ContextLaneOrder()
 
-    val isEmpty: Boolean
-        get() = manual.isEmpty() && context.size == 0
-
     /** Whether a drag is moving rows now. */
     private var dragging = false
 

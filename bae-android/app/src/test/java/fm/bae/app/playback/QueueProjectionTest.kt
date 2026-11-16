@@ -69,6 +69,8 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = 2u,
+                isEmpty = false,
             ),
         )
 
@@ -92,6 +94,8 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = 1u,
+                isEmpty = false,
             ),
         )
 
@@ -120,6 +124,8 @@ class QueueProjectionTest {
                 shuffled = true,
                 hasNext = false,
                 hasPrevious = false,
+                upNextCount = 0u,
+                isEmpty = true,
             ),
         )
 
@@ -142,6 +148,8 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = 0u,
+                isEmpty = false,
             ),
         )
 
@@ -163,6 +171,8 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = true,
                 hasPrevious = false,
+                upNextCount = 1u,
+                isEmpty = false,
             ),
         )
 
@@ -173,6 +183,8 @@ class QueueProjectionTest {
                 shuffled = false,
                 hasNext = false,
                 hasPrevious = false,
+                upNextCount = 0u,
+                isEmpty = true,
             ),
         )
 

@@ -68,6 +68,8 @@ class PlaybackReadFailureTest {
             shuffled = false,
             hasNext = false,
             hasPrevious = false,
+            upNextCount = 0u,
+            isEmpty = true,
         )
 
     private fun player() =

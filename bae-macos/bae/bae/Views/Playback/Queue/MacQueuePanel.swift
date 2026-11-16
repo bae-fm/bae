@@ -41,6 +41,10 @@ extension QueueUpcoming {
 struct MacQueuePanel: View {
     /// The manual "Up next" lane, played first and always loaded in full.
     let manual: [BridgeQueueEntry]
+    /// How many entries the "Up next" lane holds, as core counts them.
+    let upNextCount: UInt32
+    /// Whether nothing is to play after the playing track, as core says.
+    let isEmpty: Bool
     /// What's playing from, or `nil`; its tracks come from `upcoming`.
     let context: QueuePlaybackContext?
     /// Whether shuffle is on, which the context section's toggle shows.
@@ -89,10 +93,6 @@ struct MacQueuePanel: View {
     @State
     private var dragCoordinator = QueueDragCoordinator()
 
-    private var isEmpty: Bool {
-        manual.isEmpty && (context == nil || upcoming.total == 0)
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -126,10 +126,10 @@ struct MacQueuePanel: View {
                         // external track drops.
                         QueueSection(
                             // Labelled only when it has rows.
-                            title: manual.isEmpty
+                            title: upNextCount == 0
                                 ? nil : String(localized: "Up next"),
                             shuffled: false,
-                            count: manual.count,
+                            count: Int(upNextCount),
                             itemAt: { index in
                                 manual.indices.contains(index)
                                     ? manual[index] : nil

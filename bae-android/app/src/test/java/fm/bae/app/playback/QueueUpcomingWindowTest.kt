@@ -90,6 +90,8 @@ class QueueUpcomingWindowTest {
                     shuffled = false,
                     hasNext = false,
                     hasPrevious = false,
+                    upNextCount = 0u,
+                    isEmpty = true,
                 ),
             )
             assertNull(player.queue.value.context)
@@ -202,6 +204,8 @@ class QueueUpcomingWindowTest {
             shuffled = shuffled,
             hasNext = true,
             hasPrevious = false,
+            upNextCount = 0u,
+            isEmpty = false,
         )
 
     private fun itemAt(

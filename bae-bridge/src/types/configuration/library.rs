@@ -414,6 +414,11 @@ pub struct BridgeQueueSnapshot {
     pub shuffled: bool,
     pub has_next: bool,
     pub has_previous: bool,
+    /// How many entries Up Next holds.
+    pub up_next_count: u32,
+    /// Whether nothing is to play after the playing track: Up Next is empty
+    /// and the context lane holds no track past the playing one.
+    pub is_empty: bool,
 }
 
 /// Which kind of source the context plays from, so the UI labels the section

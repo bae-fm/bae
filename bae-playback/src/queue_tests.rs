@@ -555,6 +555,25 @@ async fn test_has_next_and_has_previous() {
     assert!(f.value().await.has_next, "repeat always has a next track");
 }
 
+/// The value counts Up Next and says whether anything is to play after the
+/// playing track: nothing before a release plays, its tail while it plays,
+/// nothing once its last track plays, and an entry added to Up Next.
+#[tokio::test]
+async fn test_value_counts_up_next_and_says_whether_the_queue_is_empty() {
+    let mut f = release(&["t1", "t2"]).await;
+    let empty = f.value().await;
+    assert_eq!((empty.up_next_count, empty.is_empty), (0, true));
+    f.play_from("t1").await;
+    let first = f.value().await;
+    assert_eq!((first.up_next_count, first.is_empty), (0, false), "t2 is upcoming");
+    f.next().await;
+    let last = f.value().await;
+    assert_eq!((last.up_next_count, last.is_empty), (0, true), "nothing follows t2");
+    f.add(&["t1"]).await;
+    let added = f.value().await;
+    assert_eq!((added.up_next_count, added.is_empty), (1, false));
+}
+
 /// The upcoming tracks are a list in the lane's order: windows are ranges of
 /// it bounded by the key of a row at each end, the count is its own read, and
 /// a jump reads the key at a position and counts the rows before it. The

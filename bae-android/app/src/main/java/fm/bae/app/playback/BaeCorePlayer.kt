@@ -252,6 +252,12 @@ class BaeCorePlayer(
     private var latestLine: BridgeTimelinePoint? = null
     private var hasNext: Boolean = false
     private var shuffled: Boolean = false
+
+    /** Core's count of Up Next, from its last queue value. */
+    private var upNextCount: UInt = 0u
+
+    /** Whether core's last queue value says nothing is to play after the playing track. */
+    private var queueIsEmpty: Boolean = true
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
 
@@ -505,6 +511,8 @@ class BaeCorePlayer(
         shuffled = value.shuffled
         hasNext = value.hasNext
         hasPrevious = value.hasPrevious
+        upNextCount = value.upNextCount
+        queueIsEmpty = value.isEmpty
         publish()
     }
 
@@ -548,6 +556,8 @@ class BaeCorePlayer(
                         )
                     },
                 shuffled = shuffled,
+                upNextCount = upNextCount,
+                isEmpty = queueIsEmpty,
             )
     }
 

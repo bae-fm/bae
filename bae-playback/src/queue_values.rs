@@ -35,4 +35,9 @@ pub struct ResolvedQueueSnapshot {
     pub shuffled: bool,
     pub has_next: bool,
     pub has_previous: bool,
+    /// How many entries Up Next holds.
+    pub up_next_count: u32,
+    /// Whether nothing is to play after the playing track: Up Next is empty
+    /// and the context lane holds no track past its cursor.
+    pub is_empty: bool,
 }

@@ -156,8 +156,9 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     // The playing track is the one at the lane's cursor, in shuffled order
     // when shuffle is on and in list order otherwise; with no cursor, no
     // track comes before or after it.
-    let (has_next, has_previous): (bool, bool) = sql.query_row(
-        "SELECT q.repeat <> 'off' \
+    let (has_next, has_previous, up_next_count, is_empty): (bool, bool, u32, bool) = sql
+        .query_row(
+            "SELECT q.repeat <> 'off' \
                 OR EXISTS (SELECT 1 FROM playback_manual) \
                 OR EXISTS (SELECT 1 FROM playback_context c \
                            WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
@@ -166,17 +167,25 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
                 EXISTS (SELECT 1 FROM playback_context c \
                         WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
                             < CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
-                                              ELSE q.ordered_cursor END) \
+                                              ELSE q.ordered_cursor END), \
+                (SELECT COUNT(*) FROM playback_manual), \
+                NOT EXISTS (SELECT 1 FROM playback_manual) \
+                AND NOT EXISTS (SELECT 1 FROM playback_context c \
+                                WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
+                                    > CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
+                                                      ELSE q.ordered_cursor END) \
          FROM playback_queue q",
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )?;
     Ok(crate::ResolvedQueueSnapshot {
         manual,
         context: head.context,
         shuffled: head.shuffled,
         has_next,
         has_previous,
+        up_next_count,
+        is_empty,
     })
 }
 

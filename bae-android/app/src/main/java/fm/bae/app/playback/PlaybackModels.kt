@@ -68,11 +68,15 @@ data class QueueContext(
 }
 
 /** The queue as two sections: tracks added by hand ([manual]) and the [context] played from, or
- *  null when there is none. [shuffled] is core's shuffle mode, which holds with no context too. */
+ *  null when there is none. [shuffled] is core's shuffle mode, which holds with no context too.
+ *  [upNextCount] and [isEmpty] are core's count of [manual] and whether nothing is to play after the
+ *  playing track. */
 data class QueueProjection(
     val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
     val shuffled: Boolean = false,
+    val upNextCount: UInt = 0u,
+    val isEmpty: Boolean = true,
 ) {
     companion object {
         val EMPTY = QueueProjection(manual = emptyList(), context = null)

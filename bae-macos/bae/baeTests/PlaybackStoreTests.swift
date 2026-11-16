@@ -51,7 +51,9 @@ private func contextSnapshot(
         ),
         shuffled: shuffled,
         hasNext: true,
-        hasPrevious: false
+        hasPrevious: false,
+        upNextCount: UInt32(manual.count),
+        isEmpty: false
     )
 }
 
@@ -163,7 +165,9 @@ struct PlaybackStoreUpcomingListTests {
                 context: nil,
                 shuffled: false,
                 hasNext: false,
-                hasPrevious: false
+                hasPrevious: false,
+                upNextCount: 0,
+                isEmpty: true
             )
         )
         #expect(store.upcomingEpoch == nil)
@@ -190,7 +194,9 @@ struct PlaybackStoreUpcomingListTests {
                 context: nil,
                 shuffled: true,
                 hasNext: false,
-                hasPrevious: false
+                hasPrevious: false,
+                upNextCount: 0,
+                isEmpty: true
             )
         )
         #expect(store.queueContext == nil)

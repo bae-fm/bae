@@ -33,6 +33,8 @@ struct MacQueuePanelContainer: View {
             }
         MacQueuePanel(
             manual: playbackStore.manualQueue,
+            upNextCount: playbackStore.upNextCount,
+            isEmpty: playbackStore.queueIsEmpty,
             context: playbackStore.queueContext,
             shuffled: playbackStore.shuffled,
             upcoming: QueueUpcoming(store: playbackStore, queue: queue),
