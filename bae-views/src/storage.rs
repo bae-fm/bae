@@ -198,7 +198,7 @@ impl LibraryViews {
 /// What the Storage Manager's selection read returns: the rows of the selected
 /// releases the list holds, what all of them allow, and the one release the
 /// list holds among them when it holds exactly one.
-pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbSelectionActions, Option<String>);
+pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbStorageActionFlags, Option<String>);
 
 /// How many releases the Storage Manager list holds, their files' total size,
 /// and whether a search narrows it.
@@ -654,7 +654,7 @@ pub(crate) fn storage_selection_actions_on(
     filter: StorageFilter,
     pattern: Option<&str>,
     release_ids: &BTreeSet<String>,
-) -> Result<crate::DbSelectionActions, DbError> {
+) -> Result<crate::DbStorageActionFlags, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let selected = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("selected release ids", error))?;
@@ -674,7 +674,7 @@ pub(crate) fn storage_selection_actions_on(
     if let Some(pattern) = &pattern {
         params.push((":search", pattern));
     }
-    Ok(sql.query_row(&statement, params.as_slice(), crate::DbSelectionActions::of_row)?)
+    Ok(sql.query_row(&statement, params.as_slice(), crate::DbStorageActionFlags::of_row)?)
 }
 
 /// The Storage Manager list's order over `release_listing listing`. Every

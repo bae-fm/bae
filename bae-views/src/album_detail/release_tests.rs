@@ -30,12 +30,14 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
     };
     let ctx = ReleaseResolveCtx { cover: None, is_compilation: false, album_year };
     let actions = crate::DbStorageActions {
-        upload: false,
-        pin: false,
-        unpin: false,
-        move_to_this_device: false,
+        offered: crate::DbStorageActionFlags {
+            upload: false,
+            pin: false,
+            unpin: false,
+            move_to_this_device: false,
+            cancel_only: false,
+        },
         transitioning: false,
-        cancel_only: false,
     };
     ReleaseDetail::from_raw(raw, None, actions, &ctx)
 }

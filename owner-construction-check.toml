@@ -1972,5 +1972,5 @@ allowed = [
     { path = "bae-views/src/album.rs", item = "resolve_album_detail", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
     { path = "bae-views/src/search.rs", item = "LibrarySearchQuery::parse", shape = "length-branch", count = 1, reason = "tests whether the search text is blank; text the person typed, not rows" },
     { path = "bae-views/src/storage.rs", item = "storage_selected_on", shape = "length-branch", count = 1, reason = "returns early when the request asks for nothing; the request's ids or keys, not rows" },
-    { path = "bae-views/src/storage_actions.rs", item = "listed", shape = "filter", count = 1, reason = "lists the storage actions a release offers from its four flags; a fixed list of actions, not rows" },
+    { path = "bae-views/src/storage_actions.rs", item = "DbStorageActionFlags::list", shape = "filter", count = 1, reason = "lists the storage actions a release offers from its four flags; a fixed list of actions, not rows" },
 ]

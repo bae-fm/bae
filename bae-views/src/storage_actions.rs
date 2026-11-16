@@ -6,57 +6,64 @@ use bae_records::records::query::RELEASE_STORAGE_PINNED;
 use bae_types::release_storage::ReleaseStorageAction;
 use rusqlite::Row;
 
-/// The actions whose flags are set, in the order the screens list them.
-fn listed(
-    upload: bool,
-    pin: bool,
-    unpin: bool,
-    move_to_this_device: bool,
-) -> Vec<ReleaseStorageAction> {
-    [
-        (upload, ReleaseStorageAction::Upload),
-        (pin, ReleaseStorageAction::Pin),
-        (unpin, ReleaseStorageAction::Unpin),
-        (move_to_this_device, ReleaseStorageAction::MoveToThisDevice),
-    ]
-    .into_iter()
-    .filter_map(|(offered, action)| offered.then_some(action))
-    .collect()
-}
-
-/// The storage actions a release offers and whether it is mid-transition, as
-/// [`storage_action_columns`] reads them.
+/// The storage actions a release, or every release of a selection, offers,
+/// and whether Cancel is the only action, as [`storage_action_columns`] or
+/// [`selection_action_columns`] reads them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DbStorageActions {
+pub struct DbStorageActionFlags {
     pub upload: bool,
     pub pin: bool,
     pub unpin: bool,
     pub move_to_this_device: bool,
-    /// Whether files wait to upload or a transfer runs: the release offers
-    /// only cancelling then.
-    pub transitioning: bool,
-    /// Whether Cancel is the only action the release offers: it is
+    /// Whether Cancel is the only action offered: a release is
     /// mid-transition, or its move to storage failed and cancelling ends the
     /// move.
     pub cancel_only: bool,
 }
 
-impl DbStorageActions {
-    /// The actions the columns say the release offers, in the order the
-    /// screens list them.
+impl DbStorageActionFlags {
+    /// The actions offered, in the order the screens list them; none for a
+    /// selection of no releases.
     pub fn list(&self) -> Vec<ReleaseStorageAction> {
-        listed(self.upload, self.pin, self.unpin, self.move_to_this_device)
+        [
+            (self.upload, ReleaseStorageAction::Upload),
+            (self.pin, ReleaseStorageAction::Pin),
+            (self.unpin, ReleaseStorageAction::Unpin),
+            (self.move_to_this_device, ReleaseStorageAction::MoveToThisDevice),
+        ]
+        .into_iter()
+        .filter_map(|(offered, action)| offered.then_some(action))
+        .collect()
     }
 
-    /// The actions [`storage_action_columns`] gave `row`.
+    /// The flags the action columns gave `row`.
     pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
             upload: row.get("can_upload")?,
             pin: row.get("can_pin")?,
             unpin: row.get("can_unpin")?,
             move_to_this_device: row.get("can_move_to_this_device")?,
-            transitioning: row.get("transitioning")?,
             cancel_only: row.get("cancel_only")?,
+        })
+    }
+}
+
+/// The storage actions a release offers and whether it is mid-transition, as
+/// [`storage_action_columns`] reads them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DbStorageActions {
+    pub offered: DbStorageActionFlags,
+    /// Whether files wait to upload or a transfer runs: the release offers
+    /// only cancelling then.
+    pub transitioning: bool,
+}
+
+impl DbStorageActions {
+    /// The actions [`storage_action_columns`] gave `row`.
+    pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            offered: DbStorageActionFlags::of_row(row)?,
+            transitioning: row.get("transitioning")?,
         })
     }
 }
@@ -102,37 +109,6 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
          ({transitioning} OR COALESCE(storage.move_failed = 1, 0)) AS cancel_only",
         transitioning = transitioning_sql(release),
     )
-}
-
-/// What every one of a set of releases allows, and whether Cancel is the only
-/// action one of them offers, as [`selection_action_columns`] reads them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DbSelectionActions {
-    pub upload: bool,
-    pub pin: bool,
-    pub unpin: bool,
-    pub move_to_this_device: bool,
-    /// Whether some release of the selection is mid-transition or its move
-    /// failed: the selection offers only cancelling.
-    pub cancel_only: bool,
-}
-
-impl DbSelectionActions {
-    /// The actions every selected release offers, in the order the screens
-    /// list them; none for no releases.
-    pub fn list(&self) -> Vec<ReleaseStorageAction> {
-        listed(self.upload, self.pin, self.unpin, self.move_to_this_device)
-    }
-
-    pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self {
-            upload: row.get("can_upload")?,
-            pin: row.get("can_pin")?,
-            unpin: row.get("can_unpin")?,
-            move_to_this_device: row.get("can_move_to_this_device")?,
-            cancel_only: row.get("cancel_only")?,
-        })
-    }
 }
 
 /// The columns over rows carrying [`storage_action_columns`]: each action

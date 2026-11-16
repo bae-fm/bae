@@ -68,7 +68,7 @@ impl ReleaseSummary {
             album_id: raw.album_id,
             media: raw.media,
             storage_state,
-            storage_actions: raw.actions.list(),
+            storage_actions: raw.actions.offered.list(),
             upload,
             transitioning: raw.actions.transitioning,
             file_count: raw.file_count,

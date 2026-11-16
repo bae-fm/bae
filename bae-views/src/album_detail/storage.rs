@@ -143,7 +143,7 @@ impl StorageRow {
             album_year: raw.album.year,
         };
         StorageRow {
-            cancel_only: raw.release.actions.cancel_only,
+            cancel_only: raw.release.actions.offered.cancel_only,
             release: ReleaseSummary::from_raw(raw.release, &ctx),
             album: AlbumSummary::from_raw(raw.album),
             status: raw.status,
