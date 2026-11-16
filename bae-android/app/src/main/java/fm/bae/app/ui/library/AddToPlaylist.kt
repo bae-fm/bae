@@ -16,34 +16,43 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.PlaylistListingStore
 import fm.bae.app.factsLine
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
 
 /**
- * Adding a track to a playlist from a track's menu: whether the menu offers it (the person can make
- * playlists) and the track whose sheet of playlists is open, if any.
+ * Adding a track to a playlist from a track's menu: whether the menu offers it, and the track whose
+ * sheet of playlists is open, if any. Only the sheet reads [trackId], so opening the sheet redraws
+ * the sheet and not the page.
  */
 internal class TrackPlaylistAdd(
-    val offered: Boolean,
-    /** The track whose Add to playlist sheet is open. */
-    val trackId: String?,
-    private val choose: (String?) -> Unit,
+    private val playlists: PlaylistListingStore,
 ) {
+    /** Whether the menu offers Add to playlist: the person can make playlists. */
+    val offered: Boolean get() = playlists.listing?.canCreate == true
+
+    /** The track whose Add to playlist sheet is open. */
+    var trackId by mutableStateOf<String?>(null)
+        private set
+
     /** Open the sheet for [trackId]. */
-    fun ask(trackId: String) = choose(trackId)
+    fun ask(trackId: String) {
+        this.trackId = trackId
+    }
 
     /** Close the sheet. */
-    fun dismiss() = choose(null)
+    fun dismiss() {
+        trackId = null
+    }
 }
 
-/** The Add to playlist state of a page with tracks; the playlists are read while the page is shown. */
+/** The Add to playlist state of a page with tracks. The page reads the person's playlists while it is on screen. */
 @Composable
 internal fun rememberTrackPlaylistAdd(session: OpenLibrary): TrackPlaylistAdd {
-    val page = rememberPlaylistListing(session)
-    var trackId by remember { mutableStateOf<String?>(null) }
-    return TrackPlaylistAdd(page.listing?.canCreate == true, trackId) { trackId = it }
+    val playlists = rememberPlaylistListing(session)
+    return remember(playlists) { TrackPlaylistAdd(playlists) }
 }
 
 /** The sheet of the person's playlists for the track [add] holds, with New playlist… first. */
