@@ -44,11 +44,14 @@ impl OutboxTransfers {
     /// The transfers of the files `sending` lists: each file as far as
     /// `progress` has it and at its rate in `rates`, a release with its
     /// stored files and its files being sent together. A file the watch or
-    /// the rates don't name yet has moved nothing.
+    /// the rates don't name yet has moved nothing. A release whose bytes
+    /// done pass its total is a bug, which goes to `diagnostics`; its bar
+    /// shows full.
     pub(crate) fn of(
         sending: &DbSendingUploads,
         rates: &HashMap<coven::FileId, u64>,
         progress: &BTreeMap<coven::FileId, coven::TransferProgress>,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Self {
         let add = |sum: &mut u64, value: u64| {
             *sum = sum.checked_add(value).expect("upload bytes overflow");
@@ -92,6 +95,19 @@ impl OutboxTransfers {
                 add(&mut bar.bytes_total, moved.bytes_total);
             }
         }
+        for (release_id, release) in &mut releases {
+            let UploadBar { bytes_done, bytes_total } = release.bar;
+            if bytes_done > bytes_total {
+                diagnostics.report_bug(
+                    "draw a release's upload bar",
+                    &format!(
+                        "release {release_id}: {bytes_done} bytes done pass its total of \
+                         {bytes_total}"
+                    ),
+                );
+                release.bar.bytes_done = bytes_total;
+            }
+        }
         Self { releases, total }
     }
 }
@@ -119,6 +135,7 @@ struct SendingTransfers {
     progress: BTreeMap<coven::FileId, coven::TransferProgress>,
     throughput: UploadThroughput,
     clock: coven::ClockRef,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl SendingTransfers {
@@ -126,6 +143,7 @@ impl SendingTransfers {
         sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self {
             sending,
@@ -134,6 +152,7 @@ impl SendingTransfers {
             progress: BTreeMap::new(),
             throughput: UploadThroughput::default(),
             clock,
+            diagnostics,
         }
     }
 
@@ -158,6 +177,7 @@ impl SendingTransfers {
                     sending,
                     &self.throughput.rates(now),
                     &self.progress,
+                    &self.diagnostics,
                 )));
             }
         }
@@ -177,8 +197,9 @@ impl OutboxTransfersWatch {
         sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
-        Self { transfers: SendingTransfers::of(sending, watch, clock), told: None }
+        Self { transfers: SendingTransfers::of(sending, watch, clock, diagnostics), told: None }
     }
 
     /// Every release's transfer as one `Reset`, and the total, on the first

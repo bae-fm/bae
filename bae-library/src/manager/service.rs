@@ -463,6 +463,7 @@ impl LibraryManager {
             ),
             self.store.subscribe_upload_transfers(),
             self.clock.clone(),
+            self.diagnostics.clone(),
         )
     }
 

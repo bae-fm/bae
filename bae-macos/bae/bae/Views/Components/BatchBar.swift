@@ -105,7 +105,7 @@ final class BatchBarNSView<Value: Sendable & Equatable>: NSView {
             CoreBugReporter().report(operation: "BatchBar.show", detail: detail)
             return
         }
-        segments[index].fraction = min(max(value.map(fraction) ?? 0, 0), 1)
+        segments[index].fraction = value.map(fraction) ?? 0
         needsDisplay = true
     }
 

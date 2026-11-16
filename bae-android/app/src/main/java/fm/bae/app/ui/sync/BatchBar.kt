@@ -100,7 +100,7 @@ internal class BatchBarView<V : Any>(
         index: Int,
         value: V?,
     ) {
-        segments[index].fraction = (value?.let(fraction) ?: 0.0).coerceIn(0.0, 1.0).toFloat()
+        segments[index].fraction = (value?.let(fraction) ?: 0.0).toFloat()
         invalidate()
     }
 

@@ -71,7 +71,7 @@ internal class ShareBarView(
     /** Shows [share] of the track filled, without following a stream. */
     fun showFraction(share: Float) {
         crossing.cancel()
-        fraction = share.coerceIn(0f, 1f)
+        fraction = share
         invalidate()
     }
 

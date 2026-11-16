@@ -1,4 +1,5 @@
 use super::*;
+use bae_diagnostics::Diagnostics;
 use bae_records::{DbSendingFile, DbSendingRelease};
 use bae_transfers::ReleaseTransferChange;
 
@@ -89,7 +90,7 @@ fn a_release_holds_its_stored_bytes_and_its_files_shares() {
     let progress =
         [(a, moved(55, 220)), (b, moved(110, 110)), (cover, moved(5, 50))].into_iter().collect();
 
-    let measured = OutboxTransfers::of(&sending, &rates, &progress);
+    let measured = OutboxTransfers::of(&sending, &rates, &progress, &Diagnostics::noop());
 
     assert_eq!(
         measured.releases,
@@ -119,13 +120,40 @@ fn a_file_not_yet_heard_has_moved_nothing() {
         }],
         paused: false,
     };
-    let measured = OutboxTransfers::of(&one, &HashMap::new(), &BTreeMap::new());
+    let measured =
+        OutboxTransfers::of(&one, &HashMap::new(), &BTreeMap::new(), &Diagnostics::noop());
     assert_eq!(measured.releases["release-1"], release(400, 0));
     assert_eq!(measured.total.bar, Some(UploadBar { bytes_done: 0, bytes_total: 0 }),);
 
     let none = DbSendingUploads { files: Vec::new(), releases: Vec::new(), paused: false };
     assert_eq!(
-        OutboxTransfers::of(&none, &HashMap::new(), &BTreeMap::new()),
+        OutboxTransfers::of(&none, &HashMap::new(), &BTreeMap::new(), &Diagnostics::noop()),
         transfers(Vec::new(), UploadTransfer { bar: None, throughput_bps: 0 })
     );
+}
+
+/// A release whose bytes stored and bytes being sent pass its total is a bug:
+/// the watch reports it and draws the release's bar full.
+#[test]
+fn a_release_past_its_total_is_reported_and_drawn_full() {
+    let a = file(1);
+    let sending = DbSendingUploads {
+        files: vec![sending(a, Some(("release-1", 200)))],
+        releases: vec![DbSendingRelease {
+            release_id: "release-1".into(),
+            bytes_stored: 900,
+            bytes_total: 1_000,
+        }],
+        paused: false,
+    };
+    let progress = [(a, moved(200, 200))].into_iter().collect();
+    let mut measured = None;
+
+    let logs = bae_util::test_logs::capture_warn_logs(|| {
+        measured =
+            Some(OutboxTransfers::of(&sending, &HashMap::new(), &progress, &Diagnostics::noop()));
+    });
+
+    assert_eq!(measured.unwrap().releases["release-1"], release(1_000, 0));
+    assert!(logs.contains("1100 bytes done pass its total of 1000"), "{logs}");
 }
