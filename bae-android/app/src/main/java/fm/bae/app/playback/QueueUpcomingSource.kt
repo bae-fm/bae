@@ -1,21 +1,16 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BaeLogger
-import fm.bae.app.data.BROWSER_PAGE_SIZE
 import fm.bae.app.data.Library
-import fm.bae.app.data.ListChain
+import fm.bae.app.data.ListChainReader
 import fm.bae.app.data.ListReads
-import fm.bae.screensubscription.ScreenSubscription
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeList
-import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeQueueEntry
 
@@ -66,8 +61,14 @@ internal class UpcomingTail(
      */
     private var opening: OrderReads? = null
 
-    /** The tail's length as the shown count last said it; 0 until it answers. */
-    val total: Int get() = shown?.total ?: 0
+    /** The tail's length as the shown count last said it; 0 until the count delivers. */
+    val total: Int
+        get() =
+            shown
+                ?.reader
+                ?.count
+                ?.rows
+                ?.toInt() ?: 0
 
     /** How many holds each place has: the rows on screen. */
     private val holds = mutableMapOf<Int, Int>()
@@ -75,6 +76,7 @@ internal class UpcomingTail(
     /** The rows the shown chain holds, by index in the tail. */
     fun entries(): Map<Int, BridgeQueueEntry> =
         shown
+            ?.reader
             ?.chain
             ?.placed
             .orEmpty()
@@ -149,54 +151,8 @@ internal class UpcomingTail(
     /** The rows on screen changed: the chain grows towards them, or starts over from them when they are far off. */
     private fun follow() {
         val reads = following() ?: return
-        val first = holds.keys.minOrNull()
-        if (first != null && reads.jump == null) {
-            val last = holds.keys.max()
-            val chain = reads.chain
-            chain.visible = first..last
-            if (chain.isEmpty || !chain.reaches(first) || !chain.reaches(last)) {
-                jumpTo(reads, first)
-            } else {
-                chain.reconcile()
-            }
-        }
-    }
-
-    /** Start [reads]' chain over at the row the list has at [position], a plain read of its key, not a live one. */
-    private fun jumpTo(
-        reads: OrderReads,
-        position: Int,
-    ) {
-        val keyAt = reads.reads.keyAt ?: return
-        reads.chain.stop()
-        reads.jump =
-            scope.launch {
-                val key =
-                    try {
-                        keyAt(position.toULong())
-                    } catch (error: BridgeException) {
-                        if (reads.current) {
-                            reads.jump = null
-                            failed(error, reads)
-                        }
-                        return@launch
-                    }
-                if (!reads.current) return@launch
-                reads.jump = null
-                // A position past the list's end has the last row's key, which sits at the last position.
-                val known = if (reads.countAnswered) maxOf(reads.total - 1, 0) else position
-                reads.chain.restart(key, minOf(position, known))
-            }
-    }
-
-    private fun counted(
-        count: BridgeListCount,
-        reads: OrderReads,
-    ) {
-        if (!reads.current) return
-        reads.total = count.rows.toInt()
-        reads.countAnswered = true
-        answered(reads)
+        val first = holds.keys.minOrNull() ?: return
+        reads.reader.show(first, holds.keys.max())
     }
 
     private fun changed(reads: OrderReads) {
@@ -210,7 +166,7 @@ internal class UpcomingTail(
      */
     private fun answered(reads: OrderReads) {
         if (reads === opening) {
-            if (!reads.countAnswered || !reads.chain.hasAnswered) return
+            if (!reads.reader.answered) return
             shown?.stop()
             shown = reads
             opening = null
@@ -231,39 +187,19 @@ internal class UpcomingTail(
         onChange()
     }
 
-    /** The reads of the tail in one order: its chain of windows and its count. */
+    /** The reads of the tail in one order. */
     private inner class OrderReads(
         val shuffled: Boolean,
     ) {
-        val reads = source.reads(shuffled)
-        val chain = ListChain(scope, reads, BROWSER_PAGE_SIZE, { changed(this) }, { failed(it, this) })
-        var total = 0
-        var countAnswered = false
-        var jump: Job? = null
-        private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
+        val reader = ListChainReader(scope, source.reads(shuffled), { changed(this) }, { failed(it, this) })
 
         /** Whether the tail still uses these reads: they are the shown ones or the ones the list changes to. */
         val current: Boolean get() = this === shown || this === opening
 
         /** Start the count and the chain at the list's top, once the tail holds these reads. */
-        fun start() {
-            countDeliveries =
-                ScreenSubscription(
-                    reads.count(),
-                    scope,
-                    onValue = { counted(it, this) },
-                    onError = { failed(it, this) },
-                )
-            chain.restart(null, 0)
-        }
+        fun start() = reader.start()
 
         /** End every read; the rows the chain last held stay. */
-        fun stop() {
-            jump?.cancel()
-            jump = null
-            chain.stop()
-            countDeliveries?.stop()
-            countDeliveries = null
-        }
+        fun stop() = reader.stop()
     }
 }
