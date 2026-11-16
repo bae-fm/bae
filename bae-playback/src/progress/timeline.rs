@@ -42,6 +42,10 @@ pub struct TimelinePoint {
     /// play rate. Through the pregap it stands at the track's start, which
     /// is as early as this timeline goes.
     pub moving: bool,
+    /// Playback started this line because it applied a seek, so the line's
+    /// position is the seek's target. A surface that showed a seek before
+    /// playback applied it waits for such a line.
+    pub started_at_seek: bool,
 }
 
 /// The preview clip's line.
@@ -165,6 +169,7 @@ impl TimelineFold {
                 position_ms: position.position_ms.max(0) as u64,
                 duration_ms: position.duration_ms,
                 moving,
+                started_at_seek: seeked,
             }
         });
         let preview = positions.preview.as_ref().map(|preview| PreviewTimelinePoint {
@@ -176,8 +181,9 @@ impl TimelineFold {
                 PreviewState::Playing { target, .. } if *target == preview.target
             ),
         });
-        // A seek is a new line even when it lands where the line already
-        // was, so a surface that showed the seek ahead of core sees it land.
+        // A seek starts a new line even when its target is where the line
+        // already puts the track, so a surface that showed the seek before
+        // playback applied it learns that playback applied it.
         if seeked {
             self.library = None;
         }

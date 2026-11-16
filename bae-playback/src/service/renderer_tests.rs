@@ -301,17 +301,22 @@ async fn ending_remote_playback_after_a_seek_resumes_at_the_seek_target() {
     );
 }
 
-/// The `Seeked` positions `rx` holds for `track_id`, in track time.
+/// The positions `rx` holds for `track_id`, in track time. A paused load sends
+/// its position as a position, never as a `Seeked`, so a `Seeked` fails.
 fn shown_positions(
     rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
 ) -> Vec<i64> {
     let mut shown = Vec::new();
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::Seeked { track_id: tid, position_ms, .. } = progress {
-            if tid == track_id {
-                shown.push(position_ms);
+        match progress {
+            PlaybackProgress::PositionUpdate { track_id: tid, position_ms, .. }
+                if tid == track_id =>
+            {
+                shown.push(position_ms)
             }
+            PlaybackProgress::Seeked { .. } => panic!("a paused load sent a Seeked"),
+            _ => {}
         }
     }
     shown

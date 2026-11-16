@@ -26,9 +26,8 @@ impl PlaybackService {
         }
     }
 
-    /// Emit the current track's position as a `Seeked` progress event: the
-    /// single emitter for non-tick position updates (a seek, a paused load).
-    /// Nothing without a current track.
+    /// Emit the current track's position as a `Seeked` progress event, once
+    /// playback has applied a seek. Nothing without a current track.
     pub(super) fn emit_position_display(&self) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;

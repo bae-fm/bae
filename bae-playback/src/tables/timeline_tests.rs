@@ -13,6 +13,7 @@ fn timeline() -> PlaybackTimeline {
             position_ms: 61_000,
             duration_ms: None,
             moving: true,
+            started_at_seek: true,
         }),
         preview: Some(PreviewTimelinePoint {
             target: PreviewTarget::sample_range("/music/Album Title/01.flac".into(), 44_100, None),
@@ -69,6 +70,8 @@ async fn the_schema_refuses_half_a_line() {
     for sql in [
         "UPDATE playback_timeline SET track_id = 'track-1'",
         "UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0",
+        "UPDATE playback_timeline SET track_id = 'track-1', position_ms = 0, moving = 1",
+        "UPDATE playback_timeline SET started_at_seek = 0",
         "UPDATE playback_timeline SET duration_ms = 1000",
         "UPDATE playback_timeline SET preview_path = x'2f61', preview_start_sample = 0, \
              preview_position_ms = 0, preview_duration_ms = 1000",

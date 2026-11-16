@@ -316,6 +316,9 @@ pub struct BridgeTimelinePoint {
     /// `None` when the track's length is unknown.
     pub duration_ms: Option<u64>,
     pub moving: bool,
+    /// Playback started this line because it applied a seek, so the
+    /// position is the seek's target.
+    pub started_at_seek: bool,
 }
 
 /// The preview clip's line. Mirrors
@@ -376,7 +379,7 @@ impl BridgePreviewPosition {
 mirror_struct! {
     BridgeTimelinePoint = bae_playback::TimelinePoint,
     from_core: fn,
-    fields: { track_id, position_ms, duration_ms, moving },
+    fields: { track_id, position_ms, duration_ms, moving, started_at_seek },
 }
 
 mirror_struct! {

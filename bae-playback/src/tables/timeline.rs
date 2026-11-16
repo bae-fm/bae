@@ -53,7 +53,7 @@ fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Resu
     });
     sql.execute(
         "UPDATE playback_timeline SET track_id = ?, position_ms = ?, duration_ms = ?, \
-             moving = ?, preview_path = ?, preview_start_sample = ?, \
+             moving = ?, started_at_seek = ?, preview_path = ?, preview_start_sample = ?, \
              preview_end_sample = ?, preview_position_ms = ?, preview_duration_ms = ?, \
              preview_moving = ?",
         params![
@@ -61,6 +61,7 @@ fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Resu
             library.map(|line| line.position_ms),
             library.and_then(|line| line.duration_ms),
             library.map(|line| line.moving),
+            library.map(|line| line.started_at_seek),
             preview.as_ref().map(|clip| clip.0.as_slice()),
             preview.as_ref().map(|clip| clip.1),
             preview.as_ref().and_then(|clip| clip.2),
@@ -76,7 +77,7 @@ fn write_on(sql: &CovenWrite<'_>, timeline: &PlaybackTimeline) -> rusqlite::Resu
 pub(super) fn reset_playback_timeline_on(sql: &coven::BulkSqlContext<'_>) -> rusqlite::Result<()> {
     sql.execute(
         "UPDATE playback_timeline SET track_id = NULL, position_ms = NULL, duration_ms = NULL, \
-             moving = NULL, preview_path = NULL, \
+             moving = NULL, started_at_seek = NULL, preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, \
              preview_position_ms = NULL, preview_duration_ms = NULL, preview_moving = NULL",
         [],
@@ -94,6 +95,7 @@ fn playback_timeline_on(sql: &SqlReadContext<'_>) -> Result<PlaybackTimeline, Db
                 position_ms: row.get("position_ms")?,
                 duration_ms: row.get("duration_ms")?,
                 moving: row.get("moving")?,
+                started_at_seek: row.get("started_at_seek")?,
             }),
         };
         let preview = match preview_target_from_row(row)? {

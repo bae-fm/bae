@@ -24,9 +24,12 @@ class PlaybackSeekProjectionTest {
     /** What the player's scope reported, as the session scope's handler reports bugs. */
     private val reported = mutableListOf<Throwable>()
 
-    /** A seek shows its target until core tells a line that lands there; lines elsewhere are from before it. */
+    /**
+     * After a seek, Media3 shows the seek's target until core sends a line that playback started at a
+     * seek. Core sent every other line before playback applied the seek, even one at the target.
+     */
     @Test
-    fun inTrackSeekPublishesDropPositionUntilCoresLineLandsAtIt() {
+    fun inTrackSeekPublishesDropPositionUntilALineStartedAtTheSeek() {
         val (player, handle) = player()
 
         player.startPlaying(durationMs = 100_000uL)
@@ -41,18 +44,18 @@ class PlaybackSeekProjectionTest {
         player.onLine(positionMs = 20_000, durationMs = 100_000)
         assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onLine(positionMs = 80_000, durationMs = 100_000)
+        player.onLine(positionMs = 75_000, durationMs = 100_000)
         assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onLine(positionMs = 75_010, durationMs = 100_000)
-        assertMedia3Position(player, positionMs = 75_010, durationMs = 100_000)
+        player.onSeekLine(positionMs = 74_999, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 74_999, durationMs = 100_000)
 
         player.onLine(positionMs = 80_000, durationMs = 100_000)
         assertMedia3Position(player, positionMs = 80_000, durationMs = 100_000)
     }
 
-    /** Each line core tells moves Media3's position, which moves on by itself
-     *  from there; a seek's line does too. */
+    /** Each line core sends moves Media3's position, which moves on by itself
+     *  from there, and a line playback started at a seek does too. */
     @Test
     fun eachLineIsToldToMedia3() {
         val (player, _) = player()
@@ -62,13 +65,13 @@ class PlaybackSeekProjectionTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(10_000L, player.currentPosition)
 
-        player.onLine(positionMs = 75_000, durationMs = 100_000)
+        player.onSeekLine(positionMs = 75_000, durationMs = 100_000)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(75_000L, player.currentPosition)
     }
 
     @Test
-    fun aLinePastTheTargetDoesNotClearProjectionUntilALineLandsAtIt() {
+    fun aLinePastTheTargetDoesNotClearProjectionUntilALineStartedAtTheSeek() {
         val (player, _) = player()
 
         player.startPlaying(durationMs = 100_000uL)
@@ -80,8 +83,11 @@ class PlaybackSeekProjectionTest {
         player.onLine(positionMs = 80_000, durationMs = 100_000)
         assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
 
-        player.onLine(positionMs = 75_000, durationMs = 100_000)
+        player.onSeekLine(positionMs = 75_000, durationMs = 100_000)
         assertMedia3Position(player, positionMs = 75_000, durationMs = 100_000)
+
+        player.onLine(positionMs = 80_000, durationMs = 100_000)
+        assertMedia3Position(player, positionMs = 80_000, durationMs = 100_000)
     }
 
     @Test
@@ -268,7 +274,7 @@ class PlaybackSeekProjectionTest {
         shadowOf(Looper.getMainLooper()).idle()
     }
 
-    /** Core's timeline telling a line of track-1. */
+    /** Applies a timeline whose line for track-1 moves on from [positionMs]. */
     private fun BaeCorePlayer.onLine(
         positionMs: Long,
         durationMs: Long?,
@@ -276,12 +282,21 @@ class PlaybackSeekProjectionTest {
         applyTimeline(timeline(line("track-1", positionMs, durationMs)))
     }
 
+    /** Applies a timeline whose line for track-1 playback started at a seek to [positionMs]. */
+    private fun BaeCorePlayer.onSeekLine(
+        positionMs: Long,
+        durationMs: Long?,
+    ) {
+        applyTimeline(timeline(line("track-1", positionMs, durationMs, startedAtSeek = true)))
+    }
+
     private fun line(
         trackId: String,
         positionMs: Long,
         durationMs: Long?,
         moving: Boolean = true,
-    ) = BridgeTimelinePoint(trackId, positionMs.toULong(), durationMs?.toULong(), moving)
+        startedAtSeek: Boolean = false,
+    ) = BridgeTimelinePoint(trackId, positionMs.toULong(), durationMs?.toULong(), moving, startedAtSeek)
 
     /** Where Media3 shows the track: the anchor it moves on from, and the length. */
     private fun assertMedia3Position(

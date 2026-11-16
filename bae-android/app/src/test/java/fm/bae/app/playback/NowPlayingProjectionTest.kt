@@ -178,7 +178,13 @@ class NowPlayingProjectionTest {
     private fun line(
         trackId: String,
         positionMs: ULong,
-    ) = BridgeTimelinePoint(trackId = trackId, positionMs = positionMs, durationMs = 185_000uL, moving = true)
+    ) = BridgeTimelinePoint(
+        trackId = trackId,
+        positionMs = positionMs,
+        durationMs = 185_000uL,
+        moving = true,
+        startedAtSeek = false,
+    )
 
     private fun player(): BaeCorePlayer {
         val context = RuntimeEnvironment.getApplication()

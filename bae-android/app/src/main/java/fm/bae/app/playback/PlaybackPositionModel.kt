@@ -1,12 +1,23 @@
 package fm.bae.app.playback
 
-import kotlin.math.abs
+/**
+ * One line of core's timeline: a track's position, whether it moves on from there, the track's
+ * length (null when unknown), and whether playback started the line because it applied a seek, so
+ * that [positionMs] is the seek's target.
+ */
+internal data class TimelineLine(
+    val trackId: String,
+    val positionMs: Long,
+    val durationMs: Long?,
+    val moving: Boolean,
+    val startedAtSeek: Boolean,
+)
 
 /**
  * Pure seek and position math for the Media3 playback state. Owns the position
- * anchor from the lines core's timeline tells, the current track's duration,
- * and the pending in-track seek whose dropped position wins until core's line
- * lands at it.
+ * anchor from the lines in core's timeline, the current track's duration, and
+ * the pending in-track seek. Media3 shows the pending seek's position until
+ * core sends a line that playback started at a seek.
  *
  * Holds no Media3 or bridge types: track ids are plain strings, positions and
  * durations are milliseconds, and an unknown duration is null. [BaeCorePlayer]
@@ -44,46 +55,36 @@ internal class PlaybackPositionModel {
     }
 
     /**
-     * Fold a line into the position state. Core tells a new line for each seek it applies, at the
-     * seek's target: a line for the pending in-track seek's track that lands within
-     * [SEEK_LANDED_WITHIN_MS] of its target confirms it, and any other line for that track is from
-     * before core applied it and is held ([PositionUpdate.HeldByPendingSeek]). A position for a
-     * different track than the one playing is rejected ([PositionUpdate.StaleTrack]); otherwise the
-     * anchor and duration advance ([PositionUpdate.Applied]).
+     * Fold a line into the position state. Playback starts a new line at each seek it applies, at
+     * the seek's target. A line for the pending in-track seek's track that playback started at a
+     * seek confirms the pending seek. The model holds any other line for that track, since core sent
+     * it before playback applied the seek ([PositionUpdate.HeldByPendingSeek]). The model rejects a
+     * line for a different track than the one playing ([PositionUpdate.StaleTrack]), and otherwise
+     * moves the anchor and duration to the line's ([PositionUpdate.Applied]).
      */
     fun onLine(
         currentTrackId: String?,
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long?,
-        moving: Boolean,
+        line: TimelineLine,
     ): PositionUpdate {
-        val pendingSeek = pendingSeek
-        if (pendingSeek != null && pendingSeek.matches(trackId)) {
-            if (abs(positionMs - pendingSeek.targetPositionMs) > SEEK_LANDED_WITHIN_MS) {
-                return PositionUpdate.HeldByPendingSeek
+        val held = pendingSeek?.matches(line.trackId) == true && !line.startedAtSeek
+        return when {
+            !targetsCurrentTrack(currentTrackId, line.trackId) -> {
+                PositionUpdate.StaleTrack
             }
-            if (targetsCurrentTrack(currentTrackId, trackId)) {
-                this.pendingSeek = null
-            }
-        }
-        return apply(currentTrackId, trackId, positionMs, durationMs, moving)
-    }
 
-    private fun apply(
-        currentTrackId: String?,
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long?,
-        moving: Boolean,
-    ): PositionUpdate {
-        if (!targetsCurrentTrack(currentTrackId, trackId)) {
-            return PositionUpdate.StaleTrack
+            held -> {
+                PositionUpdate.HeldByPendingSeek
+            }
+
+            else -> {
+                // A line for the pending seek's track that gets here started at a seek.
+                if (pendingSeek?.matches(line.trackId) == true) pendingSeek = null
+                anchorPositionMs = line.positionMs
+                durationMs = line.durationMs
+                lineMoves = line.moving
+                PositionUpdate.Applied
+            }
         }
-        anchorPositionMs = positionMs
-        this.durationMs = durationMs
-        lineMoves = moving
-        return PositionUpdate.Applied
     }
 
     /** A position update targets the current track when no track is playing yet or
@@ -140,19 +141,13 @@ internal class PlaybackPositionModel {
     }
 }
 
-/**
- * How far from a pending seek's target a line may land and still be the seek's: core lands a seek at
- * the ratio this player sent, which comes back to the target give or take rounding.
- */
-private const val SEEK_LANDED_WITHIN_MS = 1_000L
-
 /** The outcome of folding a line into [PlaybackPositionModel]. */
 internal enum class PositionUpdate {
     /** The position advanced; the player should republish its projection. */
     Applied,
 
-    /** A pending in-track seek for the current track outranks this line until
-     *  core's line lands at its target — the projection holds, nothing republishes. */
+    /** A pending in-track seek for the current track holds this line back until core sends a
+     *  line that playback started at a seek. The projection stays, and nothing republishes. */
     HeldByPendingSeek,
 
     /** The position is for a track that is not the one playing. */

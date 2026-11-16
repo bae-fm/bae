@@ -5641,7 +5641,9 @@ in confirms nothing, and an add another surface made confirms nowhere else.
 The timeline, for the operating system's media controls and Media3, which
 move the position on themselves, is another device-local row,
 `playback_timeline`: the line of the playing track and of a preview, each a
-position and whether it moves on from it. Playback writes it only as it
+position and whether it moves on from it at the play rate, and whether
+playback started the track's line because it applied a seek, in which case
+the line's position is the seek's target. Playback writes it only as it
 leaves the line it holds (a seek, even one that lands on the line, another
 track or clip, a pause or resume, a new length, the pregap ending, or a
 position more than a second off the line), before it tells anyone else, and
@@ -5650,7 +5652,8 @@ query of it, a value after each write. Those surfaces show no time before a
 track's start, so a playing pregap is one line standing at the start, and the
 line that moves begins as the track does. A seek the person makes through
 Media3 shows its target there until playback writes a line for that track
-within a second of the target; the lines before it are from before the seek.
+that it started at a seek; playback wrote each line before that one before it
+applied the seek. A paused load, such as a restore, starts no line at a seek.
 The queue is a live subscription of its own. The playing track's position
 reaches an app only in a `KeyedValueStream` (§10.2), under the track's id: the
 track-relative position, how far through the track's length it is, and the
@@ -6383,7 +6386,7 @@ membership's (`membership.sql`).
 | `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, and the last failure (§9.4) |
-| `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on, and the count of seeks applied (§9.4) |
+| `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on from there, and whether playback started the track's line at a seek (§9.4) |
 | `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 
 A play's fill, Clear up next, Clear playing from and the emptying as a library

@@ -376,20 +376,17 @@ async fn imported_library_without_playback() -> (TestLibrary, TempDir) {
     (library, temp_dir)
 }
 
-/// Restoring playback state on service start must emit the restored position
-/// as a `Seeked` progress event, since the restored track comes up Paused and
-/// no position ticks will fire to put a position on screen otherwise.
-///
-/// This test specifically uses `position_ms = 0` so the internal `seek()`
-/// call (which has its own `emit_position_display`) is skipped, forcing the
-/// test to rely entirely on the tail emission in `restore()`.
+/// Restoring playback state on service start sends the restored position as
+/// a position, since the restored track comes up Paused and the output reports
+/// no positions while paused. A restore is a load, not a seek, so it sends no
+/// `Seeked`.
 ///
 /// We do NOT reuse `PlaybackTestFixture` here because its playback service is
 /// spawned on a background thread that may not finish initializing before the
 /// test writes the snapshot, causing the fixture's service to consume the
 /// snapshot instead of the test's new service.
 #[tokio::test]
-async fn test_restore_emits_seeked_at_saved_position() {
+async fn test_restore_sends_the_saved_position() {
     bae_util::test_logs::install();
 
     // Build a library + import tracks, but do NOT start a playback service.
@@ -410,19 +407,19 @@ async fn test_restore_emits_seeked_at_saved_position() {
     // before our test service starts.
     library.manager().write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
 
-    // Start the playback service — restore() runs on the audio thread before
-    // run() and calls emit_position_display at its tail.
+    // Start the playback service: restore() runs on the audio thread before
+    // run(), and the paused load sends its position once its track is ready.
     let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
 
-    let landed = wait_for_seeked_on(&mut progress_rx).await;
-    assert_eq!(
-        landed,
-        Some(0),
-        "restore() must emit a Seeked at the restored position — the tail \
-         emit is how a progress display learns the resume point (the restored \
-         track comes up Paused, so no position ticks fire)"
-    );
+    let sent =
+        bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
+            PlaybackProgress::PositionUpdate { position_ms, .. } => Some(Ok(position_ms)),
+            PlaybackProgress::Seeked { .. } => Some(Err("a restore sent a Seeked")),
+            _ => None,
+        })
+        .await;
+    assert_eq!(sent, Some(Ok(0)), "the restore sends the saved position as a position");
 
     handle.stop();
 }

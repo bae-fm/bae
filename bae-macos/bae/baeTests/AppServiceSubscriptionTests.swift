@@ -388,7 +388,8 @@ private func line(trackId: String, positionMs: UInt64)
             trackId: trackId,
             positionMs: positionMs,
             durationMs: 120_000,
-            moving: true
+            moving: true,
+            startedAtSeek: false
         ),
         preview: nil
     )

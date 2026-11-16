@@ -384,7 +384,8 @@ private func libraryTimeline(
             trackId: trackId,
             positionMs: positionMs,
             durationMs: 200_000,
-            moving: moving
+            moving: moving,
+            startedAtSeek: false
         ),
         preview: nil
     )

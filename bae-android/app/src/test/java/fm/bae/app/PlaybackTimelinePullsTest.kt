@@ -40,7 +40,7 @@ class PlaybackTimelinePullsTest {
 
         handle.playbackValues.deliver(playbackValues(playingState(trackId = "track-1")))
         shadowOf(Looper.getMainLooper()).idle()
-        handle.playbackTimeline.deliver(timeline(BridgeTimelinePoint("track-1", 42_000uL, 180_000uL, true)))
+        handle.playbackTimeline.deliver(timeline(BridgeTimelinePoint("track-1", 42_000uL, 180_000uL, true, false)))
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(42_000L, session.playback.contentPosition)

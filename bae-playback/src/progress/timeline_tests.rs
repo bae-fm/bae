@@ -85,16 +85,28 @@ fn a_position_off_the_line_tells_it_again() {
     assert!(fold.next(&position("track-1", 12_000), &values, false, at(6_000)).is_some());
 }
 
-/// A seek tells a new line even where the line already was.
+/// After a seek the fold sends a new line, even when the seek's target is
+/// where the line already puts the track. The line says playback started it at
+/// a seek for as long as playback stays on it, and a line playback starts for
+/// any other reason says it did not.
 #[test]
-fn a_seek_tells_a_new_line() {
+fn a_seek_starts_a_line_that_says_so() {
     let mut fold = TimelineFold::new();
     let values = playing("track-1");
-    fold.next(&position("track-1", 10_000), &values, false, at(0));
+    let first = fold.next(&position("track-1", 10_000), &values, false, at(0)).unwrap();
+    assert!(!first.library.unwrap().started_at_seek);
 
-    let timeline =
-        fold.next(&position("track-1", 11_000), &values, true, at(1_000)).expect("a seek is told");
-    assert_eq!(line(&timeline), (11_000, true));
+    let seeked = fold
+        .next(&position("track-1", 11_000), &values, true, at(1_000))
+        .expect("the fold sends a line after a seek");
+    assert_eq!(line(&seeked), (11_000, true));
+    assert!(seeked.library.unwrap().started_at_seek);
+    assert_eq!(fold.next(&position("track-1", 11_200), &values, false, at(1_200)), None);
+
+    let jumped = fold
+        .next(&position("track-1", 30_000), &values, false, at(1_400))
+        .expect("a position off the line starts a new one");
+    assert!(!jumped.library.unwrap().started_at_seek);
 }
 
 /// Another track, the pregap, and no track: each is told, the pregap at the

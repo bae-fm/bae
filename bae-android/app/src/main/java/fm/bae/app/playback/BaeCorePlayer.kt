@@ -391,8 +391,9 @@ class BaeCorePlayer(
     /**
      * Fold core's latest line into Media3's position: Media3 moves the position
      * on from the state's playing speed, so it is told only as playback leaves
-     * the line it holds, which is when core tells one. Core tells a new line for each seek it
-     * applies, so a seek this player sent lands with the line at its target.
+     * the line it holds, which is when core sends one. Playback starts a new line at each seek it
+     * applies, and the line says so, so after a seek this player sent, core sends a line at the
+     * seek's target that says playback started it at a seek.
      */
     fun applyTimeline(timeline: BridgePlaybackTimeline) {
         latestLine = timeline.library
@@ -416,10 +417,13 @@ class BaeCorePlayer(
     private fun fold(line: BridgeTimelinePoint): PositionUpdate =
         positionModel.onLine(
             playingTrackId,
-            line.trackId,
-            line.positionMs.toLong(),
-            line.durationMs?.toLong(),
-            line.moving,
+            TimelineLine(
+                trackId = line.trackId,
+                positionMs = line.positionMs.toLong(),
+                durationMs = line.durationMs?.toLong(),
+                moving = line.moving,
+                startedAtSeek = line.startedAtSeek,
+            ),
         )
 
     /** Enter loading for [track]; true when that made playback active. */
@@ -693,8 +697,9 @@ class BaeCorePlayer(
             }
 
             else -> {
-                // COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by ratio; the
-                // requested position shows until core's line lands at it.
+                // COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by ratio, and
+                // Media3 shows the requested position until core sends a line
+                // that playback started at the seek.
                 val ratio = positionModel.beginInTrackSeek(playingTrackId, positionMs)
                 if (ratio != null) {
                     appHandle.seekByRatio(ratio)

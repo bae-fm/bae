@@ -116,12 +116,13 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
             position_ms: 10_000,
             duration_ms: Some(100_000),
             moving: true,
+            started_at_seek: false,
         }),
         "the tick along the line left the line as told"
     );
 
-    // A seek that lands near where the line puts it is a new line all the
-    // same, so a surface that showed the seek first sees it land.
+    // A seek to a position close to where the line puts the track still
+    // starts a new line, which says playback started it at a seek.
     progress_tx
         .send(PlaybackProgress::Seeked {
             track_id: "track-1".into(),
@@ -132,7 +133,10 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
         .unwrap();
     next_event(&mut events).await;
     let timeline = crate::tables::playback_timeline(&db).await.unwrap();
-    assert_eq!(timeline.library.map(|line| line.position_ms), Some(10_400));
+    assert_eq!(
+        timeline.library.map(|line| (line.position_ms, line.started_at_seek)),
+        Some((10_400, true))
+    );
 }
 
 /// A write of what playback is doing that fails reaches the subscribers as

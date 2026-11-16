@@ -318,13 +318,15 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
 
     let (handle, _capture_rx, _audio_clock) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
+    // A restore is a load, not a seek, so it sends its position as a position.
     let shown =
         bae_util::test_channels::next_matching(&mut progress_rx, HANG_GUARD, |event| match event {
-            PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
+            PlaybackProgress::PositionUpdate { position_ms, .. } => Some(Ok(position_ms)),
+            PlaybackProgress::Seeked { .. } => Some(Err("the restore sent a Seeked")),
             _ => None,
         })
         .await;
-    assert_eq!(shown, Some(0), "the restored track shows its start");
+    assert_eq!(shown, Some(Ok(0)), "the restored track shows its start");
 
     handle.stop();
 }
@@ -673,8 +675,8 @@ async fn pause_on_back_album(fixture: &mut CueFlacTestFixture, track_id: &str) {
     .expect("the track pauses");
 }
 
-/// The command just sent loaded `track_id` paused, and the position it left
-/// for the UI is `track_id`'s start.
+/// The command just sent loaded `track_id` paused, and the position it sent
+/// is `track_id`'s start. A load is not a seek, so it sends no `Seeked`.
 async fn assert_paused_load_shows_start(fixture: &mut CueFlacTestFixture, track_id: &str) {
     let events = settled_events_on(&fixture.playback_handle, &mut fixture.progress_rx).await;
     assert!(
@@ -683,9 +685,13 @@ async fn assert_paused_load_shows_start(fixture: &mut CueFlacTestFixture, track_
         states_in(&events),
     );
     assert!(
+        !events.iter().any(|event| matches!(event, PlaybackProgress::Seeked { .. })),
+        "a paused load sends no Seeked, got {events:?}",
+    );
+    assert!(
         events.iter().any(|event| matches!(
             event,
-            PlaybackProgress::Seeked { track_id: tid, position_ms: 0, .. } if tid == track_id
+            PlaybackProgress::PositionUpdate { track_id: tid, position_ms: 0, .. } if tid == track_id
         )),
         "the paused load shows {track_id} at its start, got {events:?}",
     );

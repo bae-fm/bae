@@ -6,7 +6,7 @@ import org.junit.Test
 
 class PlaybackPositionModelTest {
     @Test
-    fun inTrackSeekProjectsDroppedPositionUntilALineLandsAtIt() {
+    fun inTrackSeekProjectsDroppedPositionUntilALineStartedAtTheSeek() {
         val model = playingModel(durationMs = 100_000)
         assertEquals(PositionUpdate.Applied, model.progress(positionMs = 10_000))
         assertPosition(model, positionMs = 10_000, durationMs = 100_000)
@@ -16,19 +16,18 @@ class PlaybackPositionModelTest {
         assertEquals(75_000, model.effectivePositionMs)
         assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        // A line from before core applied the seek is held by the projection.
+        // The projection holds each line core sent before playback applied the seek, one at the
+        // target among them.
         assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000))
-        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
-
-        // A line overshooting the target by more than a second is held too.
         assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 80_000))
+        assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 75_000))
         assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        // The seek's line lands at the target, give or take rounding.
-        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 74_999))
+        // Playback starts a line at the seek it applied, at the target give or take rounding.
+        assertEquals(PositionUpdate.Applied, model.seekLine(positionMs = 74_999))
         assertPosition(model, positionMs = 74_999, durationMs = 100_000)
 
-        // With the seek landed, each line advances the anchor again.
+        // Once playback has applied the seek, each line moves the anchor again.
         assertEquals(PositionUpdate.Applied, model.progress(positionMs = 80_000))
         assertPosition(model, positionMs = 80_000, durationMs = 100_000)
     }
@@ -93,10 +92,7 @@ class PlaybackPositionModelTest {
     fun progressForDifferentTrackIsStale() {
         val model = playingModel(durationMs = 100_000)
 
-        assertEquals(
-            PositionUpdate.StaleTrack,
-            model.onLine(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
-        )
+        assertEquals(PositionUpdate.StaleTrack, model.onLine(currentTrackId = TRACK, line("other", positionMs = 30_000)))
         // A stale update never moved the anchor.
         assertEquals(0, model.effectivePositionMs)
     }
@@ -107,7 +103,7 @@ class PlaybackPositionModelTest {
 
         assertEquals(
             PositionUpdate.Applied,
-            model.onLine(currentTrackId = null, trackId = TRACK, positionMs = 30_000, durationMs = 100_000, moving = true),
+            model.onLine(currentTrackId = null, line(TRACK, positionMs = 30_000)),
         )
         assertEquals(30_000, model.effectivePositionMs)
     }
@@ -129,7 +125,18 @@ class PlaybackPositionModelTest {
     private fun PlaybackPositionModel.progress(
         positionMs: Long,
         durationMs: Long? = 100_000,
-    ): PositionUpdate = onLine(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, moving = true)
+    ): PositionUpdate = onLine(currentTrackId = TRACK, line(TRACK, positionMs, durationMs))
+
+    private fun PlaybackPositionModel.seekLine(positionMs: Long): PositionUpdate =
+        onLine(currentTrackId = TRACK, line(TRACK, positionMs, startedAtSeek = true))
+
+    /** A moving line of [trackId] at [positionMs]. */
+    private fun line(
+        trackId: String,
+        positionMs: Long,
+        durationMs: Long? = 100_000,
+        startedAtSeek: Boolean = false,
+    ) = TimelineLine(trackId, positionMs, durationMs, moving = true, startedAtSeek = startedAtSeek)
 
     /** Where the model puts Media3's position, and the length it holds. */
     private fun assertPosition(

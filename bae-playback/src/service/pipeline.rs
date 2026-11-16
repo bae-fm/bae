@@ -182,13 +182,21 @@ impl PlaybackService {
     /// last showed: the old position of a restarted track, or none for a new
     /// one. A load headed for Playing shows its position through those reports
     /// once audio flows. A load that failed or was abandoned left no paused
-    /// track, so it shows nothing.
+    /// track, so it shows nothing. A load is not a seek, so this sends a
+    /// position, not a `Seeked`.
     pub(super) fn show_paused_load_position(&self) {
-        if matches!(
-            &self.slot,
-            PlaybackSlot::Active(cur) if cur.phase.intent() == PlayIntent::Paused
-        ) {
-            self.emit_position_display();
+        let PlaybackSlot::Active(cur) = &self.slot else {
+            return;
+        };
+        if cur.phase.intent() == PlayIntent::Paused {
+            emit_progress(
+                &self.progress_tx,
+                PlaybackProgress::position_update(
+                    cur.prepared.timeline,
+                    cur.prepared.track_id.clone(),
+                    cur.position,
+                ),
+            );
         }
     }
 

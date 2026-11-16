@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS playback_timeline (
     position_ms INTEGER CHECK (position_ms >= 0),
     duration_ms INTEGER CHECK (duration_ms >= 0),
     moving      INTEGER CHECK (moving IN (0, 1)),
+    -- 1 when playback started the track's line because it applied a seek,
+    -- so the position is the seek's target.
+    started_at_seek INTEGER CHECK (started_at_seek IN (0, 1)),
     -- The preview clip's line: the file range it auditions (its path as
     -- coven's bytes, the end NULL for the rest of the file), where it is, its
     -- length, and whether it moves on. Set together while a preview is
@@ -26,7 +29,8 @@ CREATE TABLE IF NOT EXISTS playback_timeline (
     preview_duration_ms  INTEGER CHECK (preview_duration_ms >= 0),
     preview_moving       INTEGER CHECK (preview_moving IN (0, 1)),
     CHECK ((track_id IS NULL) = (position_ms IS NULL)
-        AND (track_id IS NULL) = (moving IS NULL)),
+        AND (track_id IS NULL) = (moving IS NULL)
+        AND (track_id IS NULL) = (started_at_seek IS NULL)),
     CHECK (duration_ms IS NULL OR track_id IS NOT NULL),
     CHECK ((preview_path IS NULL) = (preview_start_sample IS NULL)
         AND (preview_path IS NULL) = (preview_position_ms IS NULL)
