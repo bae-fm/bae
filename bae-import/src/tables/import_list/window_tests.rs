@@ -854,6 +854,55 @@ fn with_cover(root: &std::path::Path, name: &str) -> FolderCandidate {
     )
 }
 
+/// A Done row reads as its library release's records describe it: identified
+/// when a record names its pressing, identified as an album when the records
+/// name only its album, and prefilled when no catalog describes it.
+#[tokio::test]
+async fn a_done_row_reads_as_its_library_release_s_records_describe_it() {
+    let lib = Library::new().await;
+    let pressing = bae_catalogs::records::ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+        Some("mb-group".to_string()),
+    );
+    let album = bae_catalogs::records::ReleaseRecord::album(
+        &bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "master-7"),
+    );
+    let imported = |folder: &'static str, records: Vec<bae_catalogs::records::ReleaseRecord>| {
+        lib.scan(folder)
+            + lib.import_of(
+                lib.candidate(folder),
+                folder,
+                "2026-01-01T00:00:00Z",
+                "Album Title",
+                records,
+            )
+    };
+    lib.run(
+        imported("a-pressed", vec![pressing.clone(), album.clone()])
+            + imported("b-album", vec![album.clone()])
+            + imported("c-bare", Vec::new()),
+    )
+    .await;
+
+    let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
+    let read = crate::tables::ImportTables::new(lib.db.clone())
+        .read_import_window(
+            list,
+            bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
+        )
+        .await
+        .unwrap();
+    let readings: Vec<_> = window_rows(&read).into_iter().map(|row| row.reading).collect();
+    assert_eq!(
+        readings,
+        [
+            crate::triage::TriageReading::Identified { records: vec![pressing, album.clone()] },
+            crate::triage::TriageReading::IdentifiedAlbum { records: vec![album] },
+            crate::triage::TriageReading::Prefilled,
+        ]
+    );
+}
+
 /// An import deletes a candidate's draft and cover. When the library deletes
 /// the release the import wrote, the folder returns to Found with its files'
 /// blank draft and its own cover, on its row and in its pane.

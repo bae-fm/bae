@@ -38,7 +38,9 @@ use bae_catalogs::records::ReleaseRecord;
 use bae_records::records::queued_uploads::{
     release_upload_progress_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COUNT_COLUMNS,
 };
-use bae_records::records::read::{records_column, release_records_json_sql};
+use bae_records::records::read::{
+    records_column, release_records_json_sql, release_records_kind_sql,
+};
 use bae_records::UploadProgress;
 use bae_store::ListWindow;
 use rusqlite::ToSql;
@@ -227,6 +229,9 @@ struct ReleaseRows {
     upload: Option<UploadProgress>,
     /// The catalogs the imported release's records name.
     library_records: Vec<ReleaseRecord>,
+    /// What the imported release's records identify it as, as
+    /// [`release_records_kind_sql`] states it.
+    library_records_kind: Option<String>,
     /// The records of what the candidate's link names, merged.
     link_records: Option<String>,
     /// The draft's source, the link and the cover, which are the
@@ -274,6 +279,7 @@ fn rows_statement(position: &str, columns: &str) -> String {
                 {RELEASE_UPLOAD_COUNT_COLUMNS}, \
                 CASE WHEN origin.release_id IS NOT NULL THEN {library_records} END \
                     AS library_records, \
+                {library_records_kind} AS library_records_kind, \
                 CASE WHEN link.content_hash IS NOT NULL AND origin.release_id IS NULL \
                      THEN ({link_records}) END AS link_records, \
                 {COVER_VERSION_COLUMNS}, {columns} \
@@ -314,6 +320,7 @@ fn rows_statement(position: &str, columns: &str) -> String {
         cover = cover_read_columns(),
         library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),
         library_records = release_records_json_sql("origin.release_id"),
+        library_records_kind = release_records_kind_sql("origin.release_id"),
         invalid = invalid_columns.0,
         invalid_join = invalid_columns.1,
         actions = action_columns(),
@@ -366,6 +373,7 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
             Some(_) => records_column(row, "library_records")?,
             None => Vec::new(),
         },
+        library_records_kind: row.get("library_records_kind")?,
         link_records: row.get("link_records")?,
         provenance: read_provenance(row)?,
         link: read_release_link(row)?,
@@ -376,6 +384,20 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
 
 /// A release's item: a folder that failed validation as its scan read it, or
 /// a candidate as its placement and the keyed rows beside it say.
+/// How the row of a release this device imported reads: as what the library
+/// release's records identify it as, with those records.
+fn library_reading(
+    kind: Option<&str>,
+    records: Vec<ReleaseRecord>,
+) -> Result<TriageReading, DbError> {
+    match kind {
+        None => Ok(TriageReading::Prefilled),
+        Some("pressing") => Ok(TriageReading::Identified { records }),
+        Some("album") => Ok(TriageReading::IdentifiedAlbum { records }),
+        Some(other) => Err(DbError::unreadable("what a library release's records identify", other)),
+    }
+}
+
 fn release_item(release: ReleaseRows, item: Item) -> Result<ImportListItem, DbError> {
     match item {
         Item::Invalid => invalid_item(release),
@@ -416,6 +438,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         header_key,
         upload,
         library_records,
+        library_records_kind,
         link_records,
         provenance,
         link,
@@ -434,7 +457,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         Some(imported) => ShownRows {
             metadata_provenance: None,
             release_link: None,
-            reading: TriageReading::of_library(library_records),
+            reading: library_reading(library_records_kind.as_deref(), library_records)?,
             cover: bae_records::cover_ref(&imported.release_id, library_cover)
                 .map(|image| crate::CoverImageSource::Library { image }),
         },

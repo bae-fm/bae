@@ -1771,8 +1771,6 @@ frozen = [
     { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "sort", count = 1, finding = "reverses the performed works it collected on its way up the tree (`reverse`)" },
     { path = "bae-import/src/tables/watched_folders.rs", item = "watched_folders_of", shape = "pick", count = 1, finding = "`watched_folders_of` picks with `find` (found by the check)" },
     { path = "bae-import/src/tables/watched_folders/watched_path.rs", item = "canonical_absolute_root", shape = "pick", count = 1, finding = "`canonical_absolute_root` picks with `any` (found by the check)" },
-    { path = "bae-import/src/triage/model.rs", item = "TriageReading::of_library", shape = "length-branch", count = 1, finding = "treats a library release as prefilled when it has no catalog records (`is_empty`)" },
-    { path = "bae-import/src/triage/model.rs", item = "TriageReading::of_library", shape = "pick", count = 1, finding = "`TriageReading::of_library` picks with `any` (found by the check)" },
     { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::next", shape = "kept-state", count = 3, finding = "keeps what the read and the two transfer watches last delivered in `count` between deliveries" },
     { path = "bae-library/src/activity_bars.rs", item = "BarsCount::downloads_heard", shape = "pick", count = 2, finding = "tests whether the last read lists a finished download as stored with `all` over the batches' waiting releases" },
     { path = "bae-library/src/activity_bars.rs", item = "BarsCount::read", shape = "filter", count = 2, finding = "drops the kept finished uploads and downloads the new read lists as stored (`retain`)" },

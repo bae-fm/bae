@@ -138,21 +138,6 @@ impl TriageReading {
         }
     }
 
-    /// How the row of a release this device imported reads: from the
-    /// catalog records of the library release, as the library holds them.
-    pub fn of_library(records: Vec<bae_catalogs::records::ReleaseRecord>) -> Self {
-        if records.is_empty() {
-            Self::Prefilled
-        } else if records
-            .iter()
-            .any(|record| matches!(record, bae_catalogs::records::ReleaseRecord::Pressing { .. }))
-        {
-            Self::Identified { records }
-        } else {
-            Self::IdentifiedAlbum { records }
-        }
-    }
-
     /// Every catalog record the row names: none unless it is linked.
     pub fn records(self) -> Vec<bae_catalogs::records::ReleaseRecord> {
         match self {

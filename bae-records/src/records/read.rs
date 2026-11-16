@@ -250,6 +250,21 @@ pub fn release_records_json_sql(release: &str) -> String {
     )
 }
 
+/// What the records of the release `release` (an SQL expression naming its
+/// id) identify it as: 'pressing' when a catalog's record names its pressing,
+/// 'album' when the records name only its album, and NULL when no catalog
+/// describes it.
+pub fn release_records_kind_sql(release: &str) -> String {
+    format!(
+        "CASE WHEN EXISTS (SELECT 1 FROM release_records AS rr \
+                           WHERE rr.release_id = {release} AND rr.kind = 'pressing') \
+                  THEN 'pressing' \
+              WHEN EXISTS (SELECT 1 FROM release_records AS rr \
+                           WHERE rr.release_id = {release}) \
+                  THEN 'album' END"
+    )
+}
+
 /// The release's records as [`release_records_json_sql`] read them into
 /// `column`.
 pub fn records_column(
