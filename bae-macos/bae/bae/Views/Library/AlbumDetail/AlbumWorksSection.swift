@@ -28,12 +28,13 @@ struct AlbumWorksSection: View {
                                 )
                             Button(work.title) { onOpenWork(work.workId) }
                                 .buttonStyle(.accentPlain)
-                            if let composers = work.composerNames {
-                                Text(
-                                    verbatim: FactList.glyph + " " + composers
-                                )
-                                .foregroundStyle(.secondary)
-                            }
+                            Text(
+                                verbatim: FactList.glyph + " "
+                                    + (work.composerNames ?? "")
+                            )
+                            .foregroundStyle(.secondary)
+                            .opacity(work.composerNames == nil ? 0 : 1)
+                            .accessibilityHidden(work.composerNames == nil)
                         }
                         .themeText(.body)
                         .lineLimit(1)
