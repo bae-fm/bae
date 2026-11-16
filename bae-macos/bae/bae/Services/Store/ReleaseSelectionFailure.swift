@@ -1,8 +1,9 @@
 import BaeKit
 
-/// A failed release selection belongs to the row the person picked, which
-/// `release`, the release the row shows first, identifies. The failure does
-/// not belong to the candidate's metadata draft or to the search as a whole.
+/// A failed release selection belongs to the row the person picked.
+/// `release` identifies that row by the release the row shows first. The
+/// failure does not belong to the candidate's metadata draft or to the search
+/// as a whole.
 struct ReleaseSelectionFailure: Equatable {
     let release: BridgeLookupRef
     let error: DisplayError

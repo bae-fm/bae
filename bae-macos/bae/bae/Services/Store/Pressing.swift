@@ -38,7 +38,7 @@ struct Pressing: Equatable, Identifiable {
     /// own while core reads that release. The list draws this row selected.
     let chosen: Bool
     /// Whether the row holds the release that identification picked on its
-    /// own, which core reads in full before it stores the answer.
+    /// own, which core reads in full before it links the candidate to it.
     let pickBeingRead: Bool
 
     /// Where it was released and what it is made of, as one line of text:
