@@ -459,7 +459,8 @@ extension Library {
             { PulledValues(handle.subscribePlaylists()) }
         }
 
-        /// The playlist page's read through `handle`.
+        /// The album page's read through `handle`, which the page sets to the
+        /// album and the release chosen on it.
         private static func albumDetail(
             _ handle: any AppHandleProtocol
         )
@@ -470,6 +471,7 @@ extension Library {
             { KeyedDetailQuery(handle.subscribeAlbumDetail()) }
         }
 
+        /// The playlist page's read through `handle`.
         private static func playlistDetail(
             _ handle: any AppHandleProtocol
         ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
