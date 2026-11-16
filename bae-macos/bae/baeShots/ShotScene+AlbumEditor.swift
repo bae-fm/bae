@@ -157,12 +157,12 @@ extension ShotScene {
     private static var albumMenu: some View {
         MacMenuInPlace(
             {
-                MacMenuItem(verbatim: "Northbound · Mara Quill", checked: true)
-                {}
-                MacMenuItem("New album") {}
-                MacMenuItem("Show in library") {}
-                MacMenuDivider()
-                MacMenuItem("Choose another album…") {}
+                MacPopUpMenu(
+                    DraftAlbumRow.albumOptions(editedRelease.album),
+                    selection: .standing,
+                    select: { _ in }
+                )
+                .entries
             },
             highlighted: 0,
             isPopUp: true

@@ -35,7 +35,7 @@ struct DraftAlbumRow: View {
     /// What the pop-up chooses between: the album the draft files under now,
     /// the release's own album again after a pick, or a search of
     /// the library's albums.
-    private enum Choice: Hashable {
+    enum Choice: Hashable {
         case standing
         case newAlbum
         case releasesAlbum
@@ -52,40 +52,37 @@ struct DraftAlbumRow: View {
                 albumPopUp
             }
             else {
-                Text(verbatim: standingTitle)
+                Text(verbatim: album.standingTitle)
                     .lineLimit(1)
                     .foregroundStyle(
-                        standingAlbumId == nil ? .tertiary : .primary
+                        album.standingAlbumId == nil ? .tertiary : .primary
                     )
             }
             Spacer(minLength: 0)
         }
     }
 
-    private var standingTitle: String {
-        switch album {
-        case .new, .pickedNew: String(localized: "New album")
-        case .named(_, let line), .picked(_, let line):
-            switch line {
-            case .titleAlone(let title): title
-            case .titleAndArtists(let title, let artistLine):
-                FactList.joined([title, artistLine.text])
-            }
+    /// The pop-up's options for `album`: the album as it stands, then what
+    /// the person can change it to.
+    @MacPopUpBuilder<Choice>
+    static func albumOptions(_ album: BridgeDraftAlbum) -> [MacPopUpEntry<
+        Choice
+    >] {
+        MacPopUpOption(verbatim: album.standingTitle, value: Choice.standing)
+        if album.standingAlbumId != nil {
+            MacPopUpOption("New album", value: Choice.newAlbum)
         }
-    }
-
-    private var standingAlbumId: String? {
-        switch album {
-        case .new, .pickedNew: nil
-        case .named(let albumId, _), .picked(let albumId, _): albumId
+        if album.isPicked {
+            MacPopUpOption(
+                "Use the release’s album",
+                value: Choice.releasesAlbum
+            )
         }
-    }
-
-    private var isPicked: Bool {
-        switch album {
-        case .picked, .pickedNew: true
-        case .new, .named: false
+        if album.standingAlbumId != nil {
+            MacPopUpOption("Show in library", value: Choice.showInLibrary)
         }
+        MacMenuDivider()
+        MacPopUpOption("Choose another album…", value: Choice.searchLibrary)
     }
 
     /// Choosing the search opens the picker and leaves the choice as it was.
@@ -102,7 +99,7 @@ struct DraftAlbumRow: View {
                     case .releasesAlbum:
                         actions.pick(.records)
                     case .showInLibrary:
-                        if let albumId = standingAlbumId {
+                        if let albumId = album.standingAlbumId {
                             actions.viewInLibrary(albumId)
                         }
                     case .searchLibrary:
@@ -111,27 +108,7 @@ struct DraftAlbumRow: View {
                 }
             )
         ) {
-            MacPopUpOption(
-                verbatim: standingTitle,
-                value: Choice.standing
-            )
-            if standingAlbumId != nil {
-                MacPopUpOption("New album", value: Choice.newAlbum)
-            }
-            if isPicked {
-                MacPopUpOption(
-                    "Use the release’s album",
-                    value: Choice.releasesAlbum
-                )
-            }
-            if standingAlbumId != nil {
-                MacPopUpOption("Show in library", value: Choice.showInLibrary)
-            }
-            MacMenuDivider()
-            MacPopUpOption(
-                "Choose another album…",
-                value: Choice.searchLibrary
-            )
+            Self.albumOptions(album)
         }
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             picker
@@ -189,6 +166,37 @@ struct DraftAlbumRow: View {
         catch {
             results = []
             searchError = DisplayError(error)
+        }
+    }
+}
+
+extension BridgeDraftAlbum {
+    /// What the draft files under as it stands, as the album row names it.
+    fileprivate var standingTitle: String {
+        switch self {
+        case .new, .pickedNew: String(localized: "New album")
+        case .named(_, let line), .picked(_, let line):
+            switch line {
+            case .titleAlone(let title): title
+            case .titleAndArtists(let title, let artistLine):
+                FactList.joined([title, artistLine.text])
+            }
+        }
+    }
+
+    /// The library album the draft files under, `nil` for a new one.
+    fileprivate var standingAlbumId: String? {
+        switch self {
+        case .new, .pickedNew: nil
+        case .named(let albumId, _), .picked(let albumId, _): albumId
+        }
+    }
+
+    /// Whether the person picked the album, not the release's records.
+    fileprivate var isPicked: Bool {
+        switch self {
+        case .picked, .pickedNew: true
+        case .new, .named: false
         }
     }
 }
