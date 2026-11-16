@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ./scripts/build-layout.sh
 
-# This script reads the staticlib it builds back out of the target dir, so it
+# This script reads the libraries it builds back out of the target dir, so it
 # owns that dir: a shared one can be rewritten by another checkout in between.
 export CARGO_TARGET_DIR="target-macos"
 
@@ -126,14 +126,18 @@ else
 fi
 
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
+# The staticlib links into the app. The generator reads the uniffi metadata
+# from the dylib, which the same build writes and which is a sixth of the
+# staticlib's size.
 STATIC_LIB="$CARGO_ARTIFACT_DIR/libbae_bridge.a"
+DYLIB="$CARGO_ARTIFACT_DIR/libbae_bridge.dylib"
 BINDGEN="$CARGO_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
 XCFRAMEWORK="BaeKit/Frameworks/BaeBridgeFFI.xcframework"
 COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
 # The generator's settings, and the install step that rewrites what it
 # generates: a change to either changes the bindings without changing the
-# static library.
+# libraries.
 UNIFFI_CONFIG="bae-bridge/uniffi.toml"
 INSTALL_BINDINGS="bae-bridge/install-swift-bindings.sh"
 XCFRAMEWORK_TOOL="bae-bridge/xcframework.py"
@@ -146,6 +150,7 @@ else
     STAMP_CONTENT="$(cat "$COMPLETION_STAMP")"
     if [[ "$STAMP_CONTENT" != "$EXPECTED_STAMP" ]] ||
        [[ "$STATIC_LIB" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$DYLIB" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$UNIFFI_CONFIG" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$INSTALL_BINDINGS" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$XCFRAMEWORK_TOOL" -nt "$COMPLETION_STAMP" ]] ||
@@ -168,7 +173,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     mkdir -p "$GENERATED_BINDINGS"
 
     "$BINDGEN" generate \
-        --library "$STATIC_LIB" \
+        --library "$DYLIB" \
         --language swift \
         --out-dir "$GENERATED_BINDINGS/"
 
