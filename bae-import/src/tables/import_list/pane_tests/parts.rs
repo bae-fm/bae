@@ -307,8 +307,7 @@ async fn the_pane_names_the_album_the_linked_release_s_records_name() {
     let candidate = linked(&db, &root).await;
     let named = |album: &bae_records::DbAlbum| crate::DraftAlbum::Named {
         album_id: album.id.clone(),
-        title: album.title.clone(),
-        artist_line: Default::default(),
+        line: crate::AlbumLine::TitleAlone { title: album.title.clone() },
     };
     assert_eq!(pane_draft(&db, &candidate).await.album, crate::DraftAlbum::New);
 

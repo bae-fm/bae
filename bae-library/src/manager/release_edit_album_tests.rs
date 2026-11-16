@@ -33,13 +33,11 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
     seed_musicbrainz(&test, "unnamed-new", "unnamed-group", 1);
     let named = |album: &DbAlbum| DraftAlbum::Named {
         album_id: album.id.clone(),
-        title: album.title.clone(),
-        artist_line: Default::default(),
+        line: bae_import::AlbumLine::TitleAlone { title: album.title.clone() },
     };
     let picked_album = DraftAlbum::Picked {
         album_id: picked.id.clone(),
-        title: picked.title.clone(),
-        artist_line: Default::default(),
+        line: bae_import::AlbumLine::TitleAlone { title: picked.title.clone() },
     };
 
     let session = manager.open_release_edit(&release.id).await.unwrap();

@@ -588,7 +588,7 @@ pub enum BridgeDraftAlbum {
 }
 
 /// How the album pick names a library album: its title, then its credit
-/// line when the album credits anyone.
+/// line when the album credits anyone. Mirrors `bae_import::AlbumLine`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAlbumLine {
     /// The album credits no one, so its title names it alone.
@@ -602,14 +602,13 @@ pub enum BridgeAlbumLine {
 }
 
 #[cfg(desktop)]
-impl BridgeAlbumLine {
-    fn from_core(title: String, artist_line: bae_types::credits::CreditLine) -> Self {
-        if artist_line.is_empty() {
-            Self::TitleAlone { title }
-        } else {
-            Self::TitleAndArtists { title, artist_line: BridgeCreditLine::from_core(artist_line) }
-        }
-    }
+mirror_enum! {
+    BridgeAlbumLine = bae_import::AlbumLine,
+    from_core: fn,
+    variants: {
+        TitleAlone { title },
+        TitleAndArtists { title, artist_line: (BridgeCreditLine) },
+    },
 }
 
 #[cfg(desktop)]
@@ -619,11 +618,11 @@ impl BridgeDraftAlbum {
         match album {
             DraftAlbum::New => Self::New,
             DraftAlbum::PickedNew => Self::PickedNew,
-            DraftAlbum::Named { album_id, title, artist_line } => {
-                Self::Named { album_id, line: BridgeAlbumLine::from_core(title, artist_line) }
+            DraftAlbum::Named { album_id, line } => {
+                Self::Named { album_id, line: BridgeAlbumLine::from_core(line) }
             }
-            DraftAlbum::Picked { album_id, title, artist_line } => {
-                Self::Picked { album_id, line: BridgeAlbumLine::from_core(title, artist_line) }
+            DraftAlbum::Picked { album_id, line } => {
+                Self::Picked { album_id, line: BridgeAlbumLine::from_core(line) }
             }
         }
     }

@@ -206,7 +206,7 @@ fn candidate_album_on(
     sql: &SqlReadContext<'_>,
     key: &crate::CandidateKey,
 ) -> Result<crate::DraftAlbum, DbError> {
-    use crate::DraftAlbum;
+    use crate::{AlbumLine, DraftAlbum};
     let named = album_records_name_sql(
         &format!(
             "SELECT key, value ->> 'catalog', value ->> 'kind', value ->> 'key', \
@@ -247,11 +247,11 @@ fn candidate_album_on(
         "new" => DraftAlbum::PickedNew,
         "named" => {
             let (album_id, title, artist_line) = album("named")?;
-            DraftAlbum::Named { album_id, title, artist_line }
+            DraftAlbum::Named { album_id, line: AlbumLine::of(title, artist_line) }
         }
         "album" => {
             let (album_id, title, artist_line) = album("picked")?;
-            DraftAlbum::Picked { album_id, title, artist_line }
+            DraftAlbum::Picked { album_id, line: AlbumLine::of(title, artist_line) }
         }
         other => return Err(DbError::unreadable("the kind of a candidate's album", other)),
     })

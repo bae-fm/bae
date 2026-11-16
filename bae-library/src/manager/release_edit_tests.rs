@@ -399,8 +399,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         manager.set_release_edit_album(&session, album_pick(&picked)).await.unwrap().album,
         bae_import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
-            title: "Picked Album".to_string(),
-            artist_line: Default::default(),
+            line: bae_import::AlbumLine::TitleAlone { title: "Picked Album".to_string() },
         }
     );
     manager.save_release_edit(&session).await.unwrap();
@@ -449,8 +448,7 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
         manager.set_release_edit_album(&pane, bae_import::AlbumPick::Records).await.unwrap().album,
         DraftAlbum::Named {
             album_id: own.id.clone(),
-            title: own.title.clone(),
-            artist_line: Default::default(),
+            line: bae_import::AlbumLine::TitleAlone { title: own.title.clone() },
         },
         "the other editor's pick and apply are not this one's"
     );

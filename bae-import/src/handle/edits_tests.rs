@@ -35,8 +35,10 @@ async fn a_picked_album_shows_over_what_the_records_name() {
         pane(&handle, &key).await.draft().unwrap().album,
         crate::DraftAlbum::Picked {
             album_id: album.id.clone(),
-            title: "Library Album".to_string(),
-            artist_line: bae_types::credits::CreditLine::of_name("Artist Name"),
+            line: crate::AlbumLine::TitleAndArtists {
+                title: "Library Album".to_string(),
+                artist_line: bae_types::credits::CreditLine::of_name("Artist Name"),
+            },
         }
     );
 

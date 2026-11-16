@@ -322,12 +322,12 @@ impl LibraryManager {
                 .await?
                 .ok_or_else(|| LibraryError::AlbumMissing { album_id: album_id.clone() })?;
             let artist_line = self.records.album_credit_line(&album_id).await?;
-            Ok::<_, LibraryError>((album_id, album.title, artist_line))
+            Ok::<_, LibraryError>((album_id, bae_import::AlbumLine::of(album.title, artist_line)))
         };
         match &work.album_pick {
             bae_import::AlbumPick::Album { album_id } => {
-                let (album_id, title, artist_line) = titled(album_id.clone()).await?;
-                return Ok(bae_import::DraftAlbum::Picked { album_id, title, artist_line });
+                let (album_id, line) = titled(album_id.clone()).await?;
+                return Ok(bae_import::DraftAlbum::Picked { album_id, line });
             }
             bae_import::AlbumPick::New => return Ok(bae_import::DraftAlbum::PickedNew),
             bae_import::AlbumPick::Records => {}
@@ -339,8 +339,8 @@ impl LibraryManager {
         Ok(match change.new_album {
             Some(_) => bae_import::DraftAlbum::New,
             None => {
-                let (album_id, title, artist_line) = titled(change.target_album_id).await?;
-                bae_import::DraftAlbum::Named { album_id, title, artist_line }
+                let (album_id, line) = titled(change.target_album_id).await?;
+                bae_import::DraftAlbum::Named { album_id, line }
             }
         })
     }
@@ -592,7 +592,10 @@ fn release_edit_seed(
         edit,
         cover,
         display,
-        album: bae_import::DraftAlbum::Named { album_id, title, artist_line },
+        album: bae_import::DraftAlbum::Named {
+            album_id,
+            line: bae_import::AlbumLine::of(title, artist_line),
+        },
     })
 }
 

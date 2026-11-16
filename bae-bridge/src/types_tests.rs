@@ -519,8 +519,10 @@ mod conversion_roundtrip {
                 },
                 album: bae_import::DraftAlbum::Named {
                     album_id: "album-id".to_string(),
-                    title: "Album Title".to_string(),
-                    artist_line: bae_types::credits::CreditLine::of_name("Album Artist"),
+                    line: bae_import::AlbumLine::TitleAndArtists {
+                        title: "Album Title".to_string(),
+                        artist_line: bae_types::credits::CreditLine::of_name("Album Artist"),
+                    },
                 },
                 artist_resolutions: Vec::new(),
                 changed: true,
@@ -551,23 +553,6 @@ mod conversion_roundtrip {
             let clock = track.duration_clock;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
         }
-    }
-
-    #[cfg(desktop)]
-    #[test]
-    fn an_album_that_credits_no_one_is_named_by_its_title_alone() {
-        let album = BridgeDraftAlbum::from_core(bae_import::DraftAlbum::Picked {
-            album_id: "album-id".to_string(),
-            title: "Album Title".to_string(),
-            artist_line: bae_types::credits::CreditLine::default(),
-        });
-        assert_eq!(
-            album,
-            BridgeDraftAlbum::Picked {
-                album_id: "album-id".to_string(),
-                line: BridgeAlbumLine::TitleAlone { title: "Album Title".to_string() },
-            }
-        );
     }
 }
 

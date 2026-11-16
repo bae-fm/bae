@@ -106,9 +106,35 @@ pub enum DraftAlbum {
     /// The album the draft's records name (see
     /// [`bae_records::Records::album_records_name`]); for a library release
     /// with no catalog applied, the album it is in.
-    Named { album_id: String, title: String, artist_line: bae_types::credits::CreditLine },
+    Named { album_id: String, line: AlbumLine },
     /// The album the person picked, over what the records name.
-    Picked { album_id: String, title: String, artist_line: bae_types::credits::CreditLine },
+    Picked { album_id: String, line: AlbumLine },
+}
+
+/// How the album pick names a library album: its title, then its credit
+/// line when the album credits anyone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlbumLine {
+    /// The album credits no one, so its title names it alone.
+    TitleAlone {
+        title: String,
+    },
+    TitleAndArtists {
+        title: String,
+        artist_line: bae_types::credits::CreditLine,
+    },
+}
+
+impl AlbumLine {
+    /// The line of an album titled `title` whose credits print as
+    /// `artist_line`.
+    pub fn of(title: String, artist_line: bae_types::credits::CreditLine) -> Self {
+        if artist_line.is_empty() {
+            Self::TitleAlone { title }
+        } else {
+            Self::TitleAndArtists { title, artist_line }
+        }
+    }
 }
 
 /// What the person chose for the album a draft files under.
