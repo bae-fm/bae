@@ -28,12 +28,10 @@ struct DownloadRow: View {
                     Text(op.titleText)
                         .lineLimit(1)
 
-                    if op.release != nil {
-                        Text(op.detailText)
-                            .themeText(.detail)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(op.detailText)
+                        .themeText(.detail)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
                 }
                 progressView
                 stateChip

@@ -2704,7 +2704,7 @@ same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
 queues only that release's failed pin. The queue's counts say, with its per-phase numbers,
 whether it holds any entry and whether any failed, which is what the phones' Pinning screen
-reads to offer Pause and Retry. Each entry keeps its release's file count and total size from the write that queued it, so the Pinning screen's row still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
+reads to offer Pause and Retry. Each entry keeps its release's file count and total size from the write that queued it, so its row (on a Mac's transfer queues and Android's Pinning screen) still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
 the queue and removes what it downloaded. A failed download shows on its
 release in Storage Manager, whose *Retry* queues the release's pin again; nothing retries it on its own. A read that fails, as a

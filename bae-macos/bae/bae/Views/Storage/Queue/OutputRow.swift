@@ -31,29 +31,13 @@ struct OutputRow: View {
             Text(op.titleText)
                 .lineLimit(1)
 
-            detailLine
+            Text(verbatim: FactList.joined([filesText, presetName]))
                 .themeText(.detail)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
 
             stateChip
         } below: {
-            EmptyView()
-        }
-    }
-
-    /// "12 files · 213 MB", with the preset name appended for a save; only
-    /// the preset name once the library no longer holds the release.
-    @ViewBuilder
-    private var detailLine: some View {
-        switch (op.release, presetName) {
-        case (_?, let presetName?):
-            Text(verbatim: FactList.joined([filesText, presetName]))
-        case (_?, nil):
-            Text(verbatim: filesText)
-        case (nil, let presetName?):
-            Text(presetName)
-        case (nil, nil):
             EmptyView()
         }
     }
