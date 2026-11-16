@@ -39,6 +39,9 @@ import fm.bae.app.R
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.mainActivityIntent
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
+import fm.bae.app.playback.title
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -68,8 +71,9 @@ class NowPlayingWidget : GlanceAppWidget() {
         id: GlanceId,
     ) {
         val session = AppSessionHolder.currentSession()
-        val content = widgetContent(session?.playback, context)
-        val cover = widgetCover(context, (content as? WidgetContent.Track)?.coverImage, session)
+        val content = widgetContent(session?.playback)
+        val track = (content as? WidgetContent.Track)?.nowPlaying?.display?.library
+        val cover = widgetCover(context, track?.coverImage, session)
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
@@ -139,13 +143,13 @@ private fun NowPlayingWidgetContent(
             Text(
                 text =
                     when (content) {
-                        is WidgetContent.Track -> content.title
+                        is WidgetContent.Track -> content.nowPlaying.display.title(context)
                         WidgetContent.NothingPlaying -> context.getString(R.string.widget_nothing_playing)
                     },
                 maxLines = 1,
                 style = ThemeText.rowTitle.glanceStyle(GlanceTheme.colors.onSurface),
             )
-            val artist = track?.artist
+            val artist = track?.nowPlaying?.display?.artist(context)
             if (artist != null) {
                 Text(
                     text = artist,

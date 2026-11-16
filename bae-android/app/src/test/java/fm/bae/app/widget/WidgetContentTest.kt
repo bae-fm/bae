@@ -7,16 +7,21 @@ import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.app.playback.applyPlaybackState
+import fm.bae.app.playback.artist
+import fm.bae.app.playback.library
 import fm.bae.app.playback.pausedState
 import fm.bae.app.playback.playbackValues
 import fm.bae.app.playback.playingState
 import fm.bae.app.playback.removedPlayingState
+import fm.bae.app.playback.title
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
@@ -36,15 +41,13 @@ class WidgetContentTest {
 
     @Test
     fun aPlayingPlayerShowsItsTrackAsPlaying() {
-        assertEquals(
-            WidgetContent.Track(
-                title = "Track Title",
-                artist = "Artist Name",
-                coverImage = testCoverRef("rel-1"),
-                isPlaying = true,
-            ),
-            widgetContent(playingPlayer(), context),
-        )
+        val content = widgetContent(playingPlayer()) as WidgetContent.Track
+
+        val display = content.nowPlaying.display
+        assertEquals("Track Title", display.title(context))
+        assertEquals("Artist Name", display.artist(context))
+        assertEquals(testCoverRef("rel-1"), display.library?.coverImage)
+        assertTrue(content.isPlaying)
     }
 
     @Test
@@ -52,10 +55,13 @@ class WidgetContentTest {
         val player = player()
         player.applyPlaybackState(removedPlayingState(trackId = "t1"))
 
-        assertEquals(
-            WidgetContent.Track(title = "Removed from library", artist = null, coverImage = null, isPlaying = true),
-            widgetContent(player, context),
-        )
+        val content = widgetContent(player) as WidgetContent.Track
+
+        val display = content.nowPlaying.display
+        assertEquals("Removed from library", display.title(context))
+        assertNull(display.artist(context))
+        assertNull(display.library?.coverImage)
+        assertTrue(content.isPlaying)
     }
 
     @Test
@@ -63,7 +69,7 @@ class WidgetContentTest {
         val player = playingPlayer()
         player.applyPlaybackState(pausedState(trackId = "t1"))
 
-        val content = widgetContent(player, context) as WidgetContent.Track
+        val content = widgetContent(player) as WidgetContent.Track
         assertFalse(content.isPlaying)
     }
 
@@ -72,12 +78,12 @@ class WidgetContentTest {
         val player = player()
         player.applyValues(playbackValues(BridgePlaybackValueState.Stopped))
 
-        assertEquals(WidgetContent.NothingPlaying, widgetContent(player, context))
+        assertEquals(WidgetContent.NothingPlaying, widgetContent(player))
     }
 
     @Test
     fun noOpenLibraryShowsNothingPlaying() {
-        assertEquals(WidgetContent.NothingPlaying, widgetContent(player = null, context))
+        assertEquals(WidgetContent.NothingPlaying, widgetContent(player = null))
     }
 
     private fun playingPlayer(): BaeCorePlayer =
