@@ -270,6 +270,11 @@ pub struct BridgeArtistDetail {
     /// The artist's albums in discography order: year ascending with unknown
     /// years last, then title.
     pub albums: Vec<BridgeAlbum>,
+    /// How many other printed names the page lists; it shows them when
+    /// there are any.
+    pub credit_name_count: u64,
+    /// How many albums the page lists.
+    pub album_count: u64,
 }
 
 #[derive(Debug, Clone, Copy, uniffi::Enum)]

@@ -20,4 +20,9 @@ pub struct ArtistDetail {
     /// The artist's other printed names, which its page lists and edits.
     pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
     pub albums: Vec<AlbumSummary>,
+    /// How many other printed names the page lists, which decides whether
+    /// it shows them.
+    pub credit_name_count: u64,
+    /// How many albums the page lists.
+    pub album_count: u64,
 }

@@ -147,6 +147,8 @@ fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
         artist: raw.artist,
         credit_names: raw.credit_names,
         albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
+        credit_name_count: raw.credit_name_count,
+        album_count: raw.album_count,
     }
 }
 
@@ -180,7 +182,24 @@ fn find_artist_detail_on(
         &artist.artist.id,
         &crate::sort_key_sql("credit_name.name"),
     )?;
-    Ok(Some(ArtistDetailRows { artist, credit_names, albums }))
+    // How many rows each section above lists.
+    let (credit_name_count, album_count) = sql.query_row(
+        &format!(
+            "SELECT {credit_names} AS credit_name_count, \
+                    (SELECT COUNT(*) FROM album_artist_link link \
+                     JOIN albums a ON a.id = link.album_id \
+                     WHERE link.artist_id = ?1) AS album_count",
+            credit_names = bae_records::records::artist_credit_names::credit_name_count_sql("?1"),
+        ),
+        params![artist_id],
+        |row| {
+            Ok((
+                bae_store::read::count_column(row, "credit_name_count")?,
+                bae_store::read::count_column(row, "album_count")?,
+            ))
+        },
+    )?;
+    Ok(Some(ArtistDetailRows { artist, credit_names, albums, credit_name_count, album_count }))
 }
 
 #[derive(Clone, PartialEq)]
@@ -188,6 +207,8 @@ struct ArtistDetailRows {
     artist: DbArtistSummary,
     credit_names: Vec<bae_records::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
+    credit_name_count: u64,
+    album_count: u64,
 }
 
 impl ArtistDetailRows {
@@ -200,6 +221,8 @@ impl ArtistDetailRows {
                 .into_iter()
                 .map(AlbumSummaryRow::process)
                 .collect::<Result<_, _>>()?,
+            credit_name_count: self.credit_name_count,
+            album_count: self.album_count,
         })
     }
 }

@@ -98,7 +98,7 @@ private fun ArtistDetailContent(
                 missing = detail.artist.image == null,
             )
         }
-        if (detail.creditNames.isNotEmpty()) {
+        if (detail.creditNameCount > 0u) {
             item {
                 Column(
                     modifier =
@@ -116,7 +116,7 @@ private fun ArtistDetailContent(
                 }
             }
         }
-        if (detail.albums.isNotEmpty()) {
+        if (detail.albumCount > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_albums)) }
             items(detail.albums, key = { it.id }) { album ->
                 AndroidLibraryRow(

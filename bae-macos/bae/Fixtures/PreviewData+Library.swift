@@ -224,6 +224,8 @@ extension PreviewData {
             )
         ],
         albums: Array(albums.prefix(6)),
+        creditNameCount: 1,
+        albumCount: UInt64(min(albums.count, 6)),
     )
 
     // MARK: - Session

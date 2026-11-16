@@ -134,6 +134,17 @@ pub fn credit_names_json_sql(artist_id: &str, order_key: &str) -> String {
     )
 }
 
+/// How many other printed names [`credit_names_json_sql`] lists for the
+/// artist `artist_id` (an SQL expression).
+pub fn credit_name_count_sql(artist_id: &str) -> String {
+    format!(
+        "(SELECT COUNT(*) \
+          FROM artist_shown_as shown \
+          JOIN artist_credits credit_name ON credit_name.artist_id = shown.artist_id \
+          WHERE shown.shown_artist_id = {artist_id})"
+    )
+}
+
 /// The other printed names [`credit_names_json_sql`] reads into `column`.
 pub fn credit_names_column(row: &Row<'_>, column: &str) -> rusqlite::Result<Vec<ArtistCreditName>> {
     #[derive(serde::Deserialize)]

@@ -160,6 +160,10 @@ pub struct DbArtistDetail {
     /// The artist's other printed names, its merged artists' too.
     pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
     pub albums: Vec<DbAlbumSummary>,
+    /// How many rows `credit_names` holds.
+    pub credit_name_count: u64,
+    /// How many rows `albums` holds.
+    pub album_count: u64,
 }
 
 impl DbComposerSummary {

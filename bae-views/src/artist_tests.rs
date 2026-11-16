@@ -311,6 +311,7 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
 
     assert_eq!(detail.artist.artist.id, ARTIST_A);
     assert_eq!(detail.artist.album_count, 5);
+    assert_eq!((detail.album_count, detail.credit_name_count), (5, 0), "the page counts its rows");
 
     let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
     assert_eq!(

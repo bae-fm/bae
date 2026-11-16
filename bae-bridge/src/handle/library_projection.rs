@@ -492,6 +492,8 @@ mirror_struct! {
         artist: (BridgeArtistSummary),
         credit_names: (each crate::types::BridgeArtistCreditName),
         albums: (each BridgeAlbum),
+        credit_name_count,
+        album_count,
     },
 }
 

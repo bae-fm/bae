@@ -449,7 +449,14 @@ object PreviewData {
     fun artistDetail(
         artist: BridgeArtistSummary = artistSummary(),
         albums: List<BridgeAlbum> = listOf(album()),
-    ): BridgeArtistDetail = BridgeArtistDetail(artist = artist, creditNames = emptyList(), albums = albums)
+    ): BridgeArtistDetail =
+        BridgeArtistDetail(
+            artist = artist,
+            creditNames = emptyList(),
+            albums = albums,
+            creditNameCount = 0u,
+            albumCount = albums.size.toULong(),
+        )
 
     fun member(
         id: String = "00000000-0000-4000-8000-000000000001",
