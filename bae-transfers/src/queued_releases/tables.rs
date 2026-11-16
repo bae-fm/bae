@@ -95,7 +95,7 @@ impl QueuedPayload for DownloadRequest {
             )
             .optional()?;
         if kind.as_deref() == Some("pin") {
-            crate::storage_moves::unpin_stored_files_on(sql, release_id)?;
+            crate::storage_moves::unpin_files_on(sql, release_id)?;
         }
         Ok(())
     }

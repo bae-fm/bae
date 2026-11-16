@@ -131,22 +131,17 @@ const RELEASE_UNPIN_FILES: &str = "SELECT f.file, coven_file_device(c.coordinate
      JOIN coven_files AS c ON c.id = f.file \
      WHERE f.release_id = ?1 ORDER BY f.id";
 
-/// Unpin `release_id`'s files that are stored in the cloud, as
-/// [`unpin_releases`] does for a release.
-pub(crate) fn unpin_stored_files_on(
+/// Unpin every file of `release_id`, as [`unpin_releases`] does for a
+/// release. coven has nothing to remove for a file on one device only.
+pub(crate) fn unpin_files_on(
     sql: &CovenWrite<'_>,
     release_id: &str,
 ) -> Result<(), bae_store::DbError> {
-    let files: Vec<coven::FileId> = sql
-        .query(RELEASE_UNPIN_FILES, [release_id], |row| {
-            Ok((row.get::<_, coven::FileId>(0)?, row.get::<_, bool>(1)?))
-        })?
-        .into_iter()
-        .filter_map(|(file, in_storage)| in_storage.then_some(file))
-        .collect();
-    if !files.is_empty() {
-        sql.unpin(&files)?;
-    }
+    let files: Vec<coven::FileId> =
+        sql.query("SELECT file FROM release_files WHERE release_id = ?1", [release_id], |row| {
+            row.get(0)
+        })?;
+    sql.unpin(&files)?;
     Ok(())
 }
 
