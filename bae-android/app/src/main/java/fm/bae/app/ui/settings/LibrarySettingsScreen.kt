@@ -35,7 +35,6 @@ import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminChange
-import uniffi.bae_bridge.BridgeMemberRole
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
@@ -58,12 +57,7 @@ internal fun LibrarySettingsScreen(
     val name = (model.name as? LibraryNameRead.Named)?.name
     AndroidSettingsLibrary(
         name = name,
-        canRename =
-            (members.people as? PeopleRead.Loaded)
-                ?.people
-                ?.own
-                ?.membership
-                ?.role == BridgeMemberRole.ADMIN,
+        canRename = members.selfIsAdmin,
         sync = syncRowSummary(line),
         peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
         hasStorage = storage is Storage.At,
