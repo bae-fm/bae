@@ -85,7 +85,7 @@ final class StorageActionRunner {
             logger.warning(
                 """
                 A storage action acts on nothing: the list no longer holds \
-                \(unlisted.joined(separator: ", "), privacy: .public)
+                \(unlisted.joined(separator: ", "))
                 """
             )
             return nil

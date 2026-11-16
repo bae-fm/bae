@@ -85,10 +85,10 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
                         .map { Self.name(of: $0.0) }
                     logger.warning(
                         """
-                        Settings window \(window.title, privacy: .public) \
-                        leaves its buttons where they are: missing \
-                        \(missing.joined(separator: ", "), privacy: .public), \
-                        or the buttons are in no view
+                        Settings window \(window.title) leaves its buttons \
+                        where they are: missing \
+                        \(missing.joined(separator: ", ")), or the buttons \
+                        are in no view
                         """
                     )
                 }
