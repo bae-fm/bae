@@ -32,6 +32,12 @@ final class PickedTracks {
         anchorId = id
     }
 
+    /// Pick the row when it is not picked and unpick it when it is, and
+    /// make it the anchor: what a cmd-click on it does.
+    func toggle(_ id: String) {
+        set(id, picked: !ids.contains(id))
+    }
+
     /// Pick the tracks from the anchor to `targetId`, which `readRange`
     /// reads, and keep the anchor. With no anchor, pick `targetId` alone and
     /// make it the anchor. When `readRange` fails, pick nothing and pass the
@@ -79,11 +85,11 @@ final class PickedTracks {
     }
 }
 
-/// Picking on a track list: the picked set, what a shift-click on a row
-/// picks, and what a menu on it does, each action given the picked ids in no
-/// order.
+/// What a track list does with picked tracks: what a shift-click on a row
+/// picks, and what a menu on several picked tracks does, each action given
+/// the picked ids in no order. The picks themselves are the page's, in
+/// `UiStore`.
 struct TrackPicking {
-    let picked: PickedTracks
     /// Pick the rows from the anchor to the row `targetId`, as core reads
     /// them.
     let onExtend: (_ targetId: String) -> Void

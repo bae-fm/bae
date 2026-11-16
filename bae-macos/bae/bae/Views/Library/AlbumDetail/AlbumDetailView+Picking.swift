@@ -7,7 +7,6 @@ extension AlbumDetailView {
     /// them.
     var trackPicking: TrackPicking {
         TrackPicking(
-            picked: uiStore.pickedTracks,
             onExtend: { targetId in
                 uiStore.pickedTracks.extend(
                     to: targetId,

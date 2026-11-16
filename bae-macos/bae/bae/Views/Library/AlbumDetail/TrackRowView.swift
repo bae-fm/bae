@@ -115,8 +115,8 @@ struct TrackRowView: View {
     var onRate: ((BridgeStars?) -> Void)?
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
-    /// How the person picks several tracks in the list, or `nil` when the
-    /// list does not allow picking.
+    /// What a menu on several picked tracks does, or `nil` where the list
+    /// picks no tracks. The picks themselves are the page's, in `UiStore`.
     var picking: TrackPicking?
 
     @State
@@ -135,7 +135,7 @@ struct TrackRowView: View {
                 isCurrent: isCurrent,
                 isPlaying: isPlaying,
                 hover: isHovered,
-                picked: picking?.picked.contains(track.id) ?? false,
+                picked: isPicked,
                 highlight: highlightOpacity,
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
@@ -165,9 +165,7 @@ struct TrackRowView: View {
         .simultaneousGesture(
             TapGesture().onEnded { handleTap() }
         )
-        .accessibilityAddTraits(
-            picking?.picked.contains(track.id) == true ? .isSelected : []
-        )
+        .accessibilityAddTraits(isPicked ? .isSelected : [])
         .contentShape(Rectangle())
         .onHover { hovering in
             hoverWorkItem?.cancel()
@@ -190,14 +188,18 @@ struct TrackRowView: View {
         .draggable(track.id)
     }
 
+    private var isPicked: Bool {
+        picking != nil && uiStore.pickedTracks.contains(track.id)
+    }
+
     /// Cmd picks or unpicks the row, shift picks the range from the last
     /// pick, and a plain click clears the picks.
     private func handleTap() {
         guard let picking else { return }
-        let picked = picking.picked
+        let picked = uiStore.pickedTracks
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
-            picked.set(track.id, picked: !picked.contains(track.id))
+            picked.toggle(track.id)
         }
         else if modifiers.contains(.shift) {
             picking.onExtend(track.id)
@@ -212,6 +214,8 @@ struct TrackRowView: View {
     private var menu: TrackMenu {
         TrackMenu(
             track: track,
+            targets: picking == nil
+                ? [track.id] : uiStore.pickedTracks.targets(for: track.id),
             picking: picking,
             onPlay: onPlay,
             onAddNext: onAddNext,

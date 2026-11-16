@@ -32,8 +32,11 @@ extension ShotScene {
                         {
                             TrackMenu(
                                 track: tracks[1],
+                                targets: uiStore.pickedTracks.targets(
+                                    for: tracks[1].id
+                                ),
                                 picking: TrackPicking(
-                                    picked: uiStore.pickedTracks,
+                                    onExtend: { _ in },
                                     onPlay: { _ in },
                                     onAddNext: { _ in },
                                     onAddToQueue: { _ in }

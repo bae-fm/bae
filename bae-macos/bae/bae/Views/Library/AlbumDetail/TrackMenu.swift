@@ -5,7 +5,11 @@ import BaeKit
 /// plays, queues, rates, adds to a playlist and saves the row's track alone.
 struct TrackMenu: MacMenuPart {
     let track: Track
-    /// Picking several tracks, or `nil` where the list has none.
+    /// The tracks the menu acts on: every picked track when the row is
+    /// among several, else the row's track alone.
+    let targets: [String]
+    /// What the menu does with several picked tracks, or `nil` where the
+    /// list picks no tracks.
     let picking: TrackPicking?
     let onPlay: () -> Void
     let onAddNext: (String) -> Void
@@ -19,7 +23,6 @@ struct TrackMenu: MacMenuPart {
 
     @MacMenuBuilder
     var entries: [MacMenuEntry] {
-        let targets = picking?.picked.targets(for: track.id) ?? [track.id]
         let playlistMenu = AddToPlaylistMenu(
             listing: playlists.listing,
             onAdd: { playlists.onAdd(targets, $0) },
