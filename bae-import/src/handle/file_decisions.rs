@@ -14,32 +14,12 @@ impl ImportServiceHandle {
             .send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
     }
 
-    /// For each FILE reference of the track sheet at `sheet_file_id`, the
-    /// candidate's audio files, each offered or refused with the reason.
-    ///
-    /// Refusals are decided here from stored scan facts, so the picker never
-    /// offers a file that [`Self::set_sheet_binding`] would reject.
-    pub async fn sheet_binding_options(
-        &self,
-        candidate_key: crate::CandidateKey,
-        sheet_file_id: String,
-    ) -> Result<Vec<crate::folder_scanner::SheetReferenceOptions>, crate::ImportError> {
-        let (files, _) = self.folder_files_for_binding(&candidate_key).await?;
-        self.services
-            .diagnostics
-            .blocking("offer a sheet's audio bindings", move || {
-                files.sheet_binding_options(&sheet_file_id)
-            })
-            .await
-            .map_err(Into::into)
-    }
-
     /// Bind a FILE reference of one of a candidate's track sheets to an audio
     /// file, or clear the binding with `None`.
     ///
     /// Clearing does not restore the scan's guess: clearing says the guess was
-    /// wrong. Only audio that [`Self::sheet_binding_options`] offers is
-    /// accepted. The write also clears the stored identify verdict, because a
+    /// wrong. Only audio the pane's mapping offers for the reference is
+    /// accepted: the write refuses what the stored scan facts refuse. The write also clears the stored identify verdict, because a
     /// binding changes the folder's tracks.
     pub async fn set_sheet_binding(
         &self,

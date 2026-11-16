@@ -406,11 +406,24 @@ async fn a_cleared_sheet_can_be_bound_again() {
         fixture.identified_for(&dir).await.is_none(),
         "the cleared binding left the found release unanswered"
     );
+    // The pane's mapping lists the cleared sheet as a row of its own, with
+    // what each of its references may name.
     let options = fixture
-        .import
-        .sheet_binding_options(key.clone(), "Test Album.cue".to_string())
+        .pane(&dir)
         .await
-        .unwrap();
+        .expect("the candidate reads back")
+        .draft()
+        .expect("the candidate holds a draft")
+        .mapping
+        .files
+        .iter()
+        .find_map(|row| match row {
+            crate::MappingFileRow::Sheet(sheet) if sheet.sheet_id == "Test Album.cue" => {
+                Some(sheet.reference_options.clone())
+            }
+            _ => None,
+        })
+        .expect("the cleared sheet is a row of its own");
     assert!(
         options[0].options.iter().any(|option| option.file_id == "Test Album.flac"
             && option.offer == crate::folder_scanner::SheetBindingOffer::Offered),

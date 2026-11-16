@@ -45,7 +45,6 @@ impl AppServices {
     delegate_async!(import, import_select_candidate_file_tags => select_candidate_file_tags(candidate_key: bae_import::CandidateKey) -> Result<u64, bae_import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: bae_import::CandidateKey) -> Result<u64, bae_import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: std::path::PathBuf) -> Result<(), bae_import::ImportError>);
-    delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: bae_import::CandidateKey, sheet_file_id: String) -> Result<Vec<bae_import::folder_scanner::SheetReferenceOptions>, bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: bae_import::CandidateKey, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: bae_import::CandidateKey, sheet_file_id: String, disc: bae_import::folder_scanner::SheetDisc) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_fetch_candidate_covers => fetch_candidate_covers(candidate_key: &bae_import::CandidateKey) -> Result<bae_import::RemoteCoverGallery, bae_import::ImportError>);

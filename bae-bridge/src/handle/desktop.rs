@@ -367,34 +367,13 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// Audio choices for each FILE reference in the candidate's track sheet.
-        /// Each reference carries its current association and the files core
-        /// offers or refuses with a reason. A reference remains present even
-        /// when it has no available audio.
-        ///
-        /// Calculated from stored scan facts. The mapping projection also carries
-        /// these options for surfaces that render the assignments directly.
-        fn sheet_binding_options(
-            candidate_key: Vec<u8>,
-            sheet_file_id: String,
-        ) -> Vec<crate::types::BridgeSheetReferenceOptions> {
-            Ok(this
-                .services
-                .import_sheet_binding_options(candidate_key.into(), sheet_file_id)
-                .await
-                .map_err(BridgeError::from)?
-                .into_iter()
-                .map(crate::types::BridgeSheetReferenceOptions::from_core)
-                .collect())
-        }
-
         /// Associate one FILE reference in a candidate's track sheet with audio,
         /// or clear that reference with `audio_file_id: None`.
         ///
         /// Clearing leaves that reference unassigned; it does not restore what
-        /// the scan proposed. `audio_file_id` must be one the matching reference's
-        /// [`Self::sheet_binding_options`] call offered — a refused one is rejected
-        /// here rather than at commit.
+        /// the scan proposed. `audio_file_id` must be one the mapping's options
+        /// for the reference offer; a refused one is rejected here rather than
+        /// at commit.
         ///
         /// Persists the decision and clears the candidate's stored identify
         /// verdict, because a bound sheet is a different disc. The candidate
