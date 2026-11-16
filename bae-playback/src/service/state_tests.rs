@@ -11,10 +11,10 @@ async fn playback_state_mapping() {
     service.slot = PlaybackSlot::Stopped;
     assert!(matches!(service.playback_state(), PlaybackState::Stopped));
 
-    service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: "t".to_string() });
+    service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared("t".to_string()));
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading { track: LoadingTrack::Unprepared { .. }, .. }
+        PlaybackState::Loading { track: LoadingTrack::Unprepared(_), .. }
     ));
 
     let generation = service.next_load_generation();

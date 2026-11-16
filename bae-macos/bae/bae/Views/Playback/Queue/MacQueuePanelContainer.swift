@@ -25,9 +25,9 @@ struct MacQueuePanelContainer: View {
         let onGoToNowPlaying: (() -> Void)? =
             navigation.isEnabled ? { navigation.perform() } : nil
         let np = playbackStore.nowPlaying
-        let track = np.track
+        let library = np.display?.library
         let cover: ImageContent? =
-            track?.display.coverImage
+            library?.coverImage
             .map {
                 .libraryImage($0)
             }
@@ -36,13 +36,11 @@ struct MacQueuePanelContainer: View {
             context: playbackStore.queueContext,
             shuffled: playbackStore.shuffled,
             upcoming: QueueUpcoming(store: playbackStore, queue: queue),
-            position: playbackStore.trackPosition(
-                forTrack: track?.track.trackId
-            ),
+            position: playbackStore.trackPosition(forTrack: np.trackId),
             onShowUpcoming: { await playbackStore.showUpcoming(queue: queue) },
             isActive: np.isActive,
-            nowPlayingTitle: track?.display.title,
-            nowPlayingArtist: track?.display.artistLine.text,
+            nowPlayingTitle: np.display?.title,
+            nowPlayingArtist: library?.artistLine.text,
             nowPlayingCover: cover,
             isPlaying: np.isPlaying,
             onClose: onClose,

@@ -10,13 +10,15 @@ private func makeTrack(_ id: String) -> BridgeNowPlayingTrack {
             trackId: id,
             durationMs: nil
         ),
-        display: BridgeTrackDisplay(
-            title: "Title \(id)",
-            artistLine: .named("Artist Name"),
-            albumId: "album-1",
-            releaseId: "release-1",
-            albumTitle: "Album Title",
-            coverImage: nil
+        display: .library(
+            display: BridgeTrackDisplay(
+                title: "Title \(id)",
+                artistLine: .named("Artist Name"),
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
         )
     )
 }
@@ -267,184 +269,89 @@ struct PlaybackStoreUpcomingFailureTests {
     }
 }
 
-@Suite("PlaybackStore loading transition")
-struct PlaybackStoreBeginLoadingTests {
-    /// If `nowPlaying.track` went nil while loading, the now-playing bar would
-    /// close on every track change.
+@Suite("PlaybackStore now playing")
+struct PlaybackStoreNowPlayingTests {
+    /// A load names its track with the library's display of it from its
+    /// first value, so the bar shows the next track at once.
     @MainActor
-    @Test("retains the playing track until the target metadata arrives")
-    func retainsPlayingTrack() {
+    @Test("a load shows the next track before core prepares it")
+    func aLoadShowsTheNextTrack() {
         let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
+        store.apply(.playing(track: makeTrack("a")))
 
-        store.beginLoading(trackId: "b", waitsOnStorage: false)
-
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-        #expect(store.nowPlaying.isActive)
-        #expect(store.nowPlaying.loadingTrackId == "b")
-    }
-
-    @MainActor
-    @Test("retains the paused track until the target metadata arrives")
-    func retainsPausedTrack() {
-        let store = PlaybackStore()
-        store.pause(track: makeTrack("a"), reason: .manual)
-
-        store.beginLoading(trackId: "b", waitsOnStorage: false)
-
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-        #expect(store.nowPlaying.loadingTrackId == "b")
-    }
-
-    @MainActor
-    @Test("switches to the target once its metadata lands")
-    func switchesToTarget() {
-        let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
-
-        store.beginLoading(trackId: "b", waitsOnStorage: false)
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-
-        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
-        #expect(store.nowPlaying.track?.track.trackId == "b")
-        #expect(store.nowPlaying.loadingTrackId == "b")
-        #expect(store.nowPlaying.isActive)
-    }
-
-    @MainActor
-    @Test("ignores a target for a stale track id")
-    func ignoresStaleTarget() {
-        let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
-        store.beginLoading(trackId: "b", waitsOnStorage: false)
-
-        store.setLoadingTarget(makeTrack("stale"), waitsOnStorage: false)
-
-        #expect(store.nowPlaying.loadingTrackId == "b")
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-    }
-
-    @MainActor
-    @Test("cold-start loading has no displayed track but is active")
-    func coldStartHasNoTrack() {
-        let store = PlaybackStore()
-
-        store.beginLoading(trackId: "x", waitsOnStorage: false)
-
-        #expect(store.nowPlaying.track == nil)
-        #expect(store.nowPlaying.loadingTrackId == "x")
-        #expect(store.nowPlaying.isActive)
-    }
-
-    /// A seek sends only a resolved loading state for the current track, with
-    /// no bare one first; the spinner shows and the track stays on screen.
-    @MainActor
-    @Test("a seek while playing re-enters loading for the current track")
-    func seekWhilePlayingEntersLoading() {
-        let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
-
-        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
-
-        #expect(store.nowPlaying.loadingTrackId == "a")
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-        #expect(store.nowPlaying.isActive)
-    }
-
-    @MainActor
-    @Test("a seek while paused re-enters loading for the current track")
-    func seekWhilePausedEntersLoading() {
-        let store = PlaybackStore()
-        store.pause(track: makeTrack("a"), reason: .manual)
-
-        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
-
-        #expect(store.nowPlaying.loadingTrackId == "a")
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-    }
-
-    /// Without a bare loading state first, a target for another track is stale.
-    @MainActor
-    @Test("ignores a resolved target for a track other than the one playing")
-    func ignoresTargetForOtherPlayingTrack() {
-        let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
-
-        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
-
-        #expect(store.nowPlaying.loadingTrackId == nil)
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-    }
-
-    /// The bar keeps the track before until the next one's metadata lands, but
-    /// what marks or opens the current track must not point at that one.
-    @MainActor
-    @Test("the current track is the loading one, never the one before it")
-    func currentTrackIsTheLoadingOne() {
-        let store = PlaybackStore()
-        store.play(track: makeTrack("a"))
-        #expect(store.nowPlaying.current?.track.trackId == "a")
-        #expect(store.nowPlaying.currentTrackId == "a")
-
-        store.beginLoading(trackId: "b", waitsOnStorage: false)
-        #expect(store.nowPlaying.track?.track.trackId == "a")
-        #expect(store.nowPlaying.current == nil)
-        #expect(store.nowPlaying.currentTrackId == "b")
-
-        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
-        #expect(store.nowPlaying.current?.track.trackId == "b")
-        #expect(store.nowPlaying.currentTrackId == "b")
-
-        store.stop()
-        #expect(store.nowPlaying.current == nil)
-        #expect(store.nowPlaying.currentTrackId == nil)
-    }
-
-    /// The arc around Play follows the now-playing value's wait on storage.
-    @MainActor
-    @Test("the now-playing value waits on storage when the load passes true")
-    func waitsOnStorageWhenTheLoadPassesTrue() {
-        let store = PlaybackStore()
-        store.beginLoading(trackId: "a", waitsOnStorage: false)
-        #expect(!store.nowPlaying.waitsOnStorage)
-        store.beginLoading(trackId: "a", waitsOnStorage: true)
-        #expect(store.nowPlaying.waitsOnStorage)
-        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
-        #expect(!store.nowPlaying.waitsOnStorage)
-        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: true)
-        #expect(store.nowPlaying.waitsOnStorage)
-        store.play(track: makeTrack("a"))
-        #expect(!store.nowPlaying.waitsOnStorage)
-    }
-}
-
-@Suite("NowPlaying state")
-struct NowPlayingStateTests {
-    @Test("loading counts as playing so the transport shows the pause glyph")
-    func loadingIsPlaying() {
-        #expect(
-            NowPlaying.loading(
-                .unprepared(trackId: "x"),
-                previous: nil,
+        store.apply(
+            .loading(
+                track: .unprepared(
+                    trackId: "b",
+                    display: makeTrack("b").display
+                ),
                 waitsOnStorage: false
             )
-            .isPlaying
         )
+
+        #expect(store.nowPlaying.trackId == "b")
+        #expect(store.nowPlaying.display?.title == "Title b")
+        #expect(store.nowPlaying.isActive)
+        #expect(store.nowPlaying.isPlaying)
     }
 
-    @Test("only a load waits on storage")
-    func onlyALoadWaitsOnStorage() {
-        #expect(!NowPlaying.playing(makeTrack("a")).waitsOnStorage)
+    /// A track the library no longer holds keeps its place and transport,
+    /// and shows as removed: no artist, no cover, no album.
+    @MainActor
+    @Test("a deleted playing track shows as removed")
+    func aDeletedTrackShowsAsRemoved() {
+        let store = PlaybackStore()
+        store.apply(.playing(track: makeTrack("a")))
+
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(trackId: "a", durationMs: nil),
+                    display: .removed
+                )
+            )
+        )
+
+        #expect(store.nowPlaying.trackId == "a")
+        #expect(store.nowPlaying.isPlaying)
+        #expect(store.nowPlaying.display?.library == nil)
         #expect(
-            !NowPlaying.paused(makeTrack("a"), reason: .manual).waitsOnStorage
+            store.nowPlaying.display?.title
+                == localizedCoreString("core.playback.removed_track")
         )
-        #expect(!NowPlaying.stopped.waitsOnStorage)
+        #expect(store.nowPlaying.secondaryLine == nil)
     }
 
-    @Test("stopped clears the track and is inactive")
+    @Test("only a load that waits on storage shows the wait")
+    func onlyALoadThatWaitsShowsTheWait() {
+        let track = makeTrack("a")
+        #expect(
+            BridgePlaybackValueState.loading(
+                track: .prepared(track: track),
+                waitsOnStorage: true
+            )
+            .waitsOnStorage
+        )
+        #expect(
+            !BridgePlaybackValueState.loading(
+                track: .prepared(track: track),
+                waitsOnStorage: false
+            )
+            .waitsOnStorage
+        )
+        #expect(!BridgePlaybackValueState.playing(track: track).waitsOnStorage)
+        #expect(
+            !BridgePlaybackValueState.paused(track: track, reason: .manual)
+                .waitsOnStorage
+        )
+        #expect(!BridgePlaybackValueState.stopped.waitsOnStorage)
+    }
+
+    @Test("stopped names no track and is inactive")
     func stoppedIsInactive() {
-        let stopped = NowPlaying.stopped
-        #expect(stopped.track == nil)
+        let stopped = BridgePlaybackValueState.stopped
+        #expect(stopped.trackId == nil)
+        #expect(stopped.display == nil)
         #expect(!stopped.isActive)
         #expect(!stopped.isPlaying)
     }
@@ -465,11 +372,15 @@ struct PlaybackStoreSidePausePromptTests {
         let store = PlaybackStore()
         let track = makeTrack("track-1")
 
-        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        store.apply(
+            .paused(track: track, reason: .sideEnded(prompt: Self.prompt))
+        )
         #expect(store.presentedSidePausePrompt == Self.prompt)
 
         store.dismissSidePausePrompt(Self.prompt)
-        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        store.apply(
+            .paused(track: track, reason: .sideEnded(prompt: Self.prompt))
+        )
 
         #expect(store.presentedSidePausePrompt == nil)
     }
@@ -480,20 +391,15 @@ struct PlaybackStoreSidePausePromptTests {
         let store = PlaybackStore()
         let track = makeTrack("track-1")
 
-        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        store.apply(
+            .paused(track: track, reason: .sideEnded(prompt: Self.prompt))
+        )
         store.dismissSidePausePrompt(Self.prompt)
-        store.play(track: track)
-        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        store.apply(.playing(track: track))
+        store.apply(
+            .paused(track: track, reason: .sideEnded(prompt: Self.prompt))
+        )
 
         #expect(store.presentedSidePausePrompt == Self.prompt)
-    }
-}
-
-extension NowPlaying {
-    /// The loading track's id, which can differ from the displayed track's;
-    /// `nil` while nothing loads.
-    fileprivate var loadingTrackId: String? {
-        guard case .loading(let loading, _, _) = self else { return nil }
-        return loading.trackId
     }
 }

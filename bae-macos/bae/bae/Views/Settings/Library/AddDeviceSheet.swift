@@ -33,14 +33,18 @@ struct AddDeviceSheet: View {
             onDecline: { decide(sync.addDevice.decline) },
             onDismiss: onDismiss
         )
+        // The task ends as the sheet closes, and the store then ends the
+        // pairing.
         .task(id: adding?.id) {
             guard let adding else { return }
-            await store.followAddDevice(adding.id)
+            await store.followAddDevice(
+                adding.id,
+                endingWith: sync.addDevice.end
+            )
         }
         .onChange(of: store.addDeviceStatus?.face) { _, face in
             if face == .declined { onDismiss() }
         }
-        .onDisappear { end() }
     }
 
     /// The pairing the code shown belongs to.
@@ -66,20 +70,6 @@ struct AddDeviceSheet: View {
                     "Add device decision failed: \(String(reflecting: error))"
                 )
                 self.error = DisplayError(error)
-            }
-        }
-    }
-
-    /// The sheet closed: end the pairing, whatever its status.
-    private func end() {
-        guard let adding else { return }
-        let end = sync.addDevice.end
-        Task {
-            do { try await end(adding.id) }
-            catch {
-                logger.error(
-                    "Ending the pairing failed: \(String(reflecting: error))"
-                )
             }
         }
     }
@@ -143,7 +133,7 @@ struct AddDeviceSheetContent: View {
                 .themeText(.body)
         case .adding(let name):
             MacSpinner("Adding \(name)…")
-        case .expired:
+        case .expired, .forgotten:
             Text(
                 "This code has ended. Close this and choose Add device again for a new one."
             )

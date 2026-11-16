@@ -4,6 +4,7 @@ import fm.bae.app.creditLineNamed
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgePlaybackPauseReason
@@ -41,6 +42,25 @@ internal fun timeline(library: BridgeTimelinePoint?): BridgePlaybackTimeline =
         preview = null,
     )
 
+/** What the library shows of a track it holds. */
+internal fun libraryDisplay(
+    title: String = "Track Title",
+    artistNames: String = "Artist Name",
+    albumId: String = "album-1",
+    releaseId: String = "release-1",
+    albumTitle: String = "Album Title",
+    coverImage: BridgeImageRef? = null,
+) = BridgeNowPlayingDisplay.Library(
+    BridgeTrackDisplay(
+        title = title,
+        artistLine = creditLineNamed(artistNames),
+        albumId = albumId,
+        releaseId = releaseId,
+        albumTitle = albumTitle,
+        coverImage = coverImage,
+    ),
+)
+
 internal fun nowPlayingTrack(
     trackId: String = "track-1",
     title: String = "Track Title",
@@ -52,15 +72,18 @@ internal fun nowPlayingTrack(
     durationMs: ULong? = 180_000uL,
 ) = BridgeNowPlayingTrack(
     track = BridgePlayingTrack(trackId = trackId, durationMs = durationMs),
-    display =
-        BridgeTrackDisplay(
-            title = title,
-            artistLine = creditLineNamed(artistNames),
-            albumId = albumId,
-            releaseId = releaseId,
-            albumTitle = albumTitle,
-            coverImage = coverImage,
-        ),
+    display = libraryDisplay(title, artistNames, albumId, releaseId, albumTitle, coverImage),
+)
+
+/** [trackId] playing after the library stopped holding it. */
+internal fun removedPlayingState(
+    trackId: String = "track-1",
+    durationMs: ULong? = 180_000uL,
+) = BridgePlaybackValueState.Playing(
+    BridgeNowPlayingTrack(
+        track = BridgePlayingTrack(trackId = trackId, durationMs = durationMs),
+        display = BridgeNowPlayingDisplay.Removed,
+    ),
 )
 
 internal fun playingState(
@@ -91,10 +114,15 @@ internal fun pausedState(
     reason,
 )
 
+/** A load of [trackId] that playback has yet to prepare, showing [title]. */
 internal fun loadingState(
     trackId: String,
+    title: String = "Track Title",
     waitsOnStorage: Boolean = false,
-) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Unprepared(trackId), waitsOnStorage)
+) = BridgePlaybackValueState.Loading(
+    BridgeLoadingTrack.Unprepared(trackId, libraryDisplay(title = title)),
+    waitsOnStorage,
+)
 
 internal fun loadingState(
     prepared: BridgeNowPlayingTrack,

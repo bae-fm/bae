@@ -64,7 +64,7 @@ public struct AppServiceComponents {
 
 #if DEBUG
     public struct AppServiceTestState {
-        public let nowPlaying: NowPlaying
+        public let nowPlaying: BridgePlaybackValueState
         public let manualQueueEntryIds: [String]
         public let settings: PlaybackSettings?
         public let failure: BridgePlaybackErrorReason?

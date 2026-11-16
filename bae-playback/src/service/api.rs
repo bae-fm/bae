@@ -261,11 +261,13 @@ pub(crate) enum PlaybackCommand {
 /// `PlaybackProgress::PositionUpdate` and `PlaybackProgress::Seeked` instead, so
 /// the frequent position updates stay apart from this rarer event.
 ///
-/// `Track` is what the state holds of its track: the service's
-/// [`PlayingTrack`], or the [`NowPlayingTrack`](crate::NowPlayingTrack)
-/// surfaces show, which joins the library's current display onto it.
+/// `Track` is what the state holds of a prepared track, and `Named` what it
+/// holds of a track a load names before the service has prepared it: the
+/// service's [`PlayingTrack`] and the track's id, or the
+/// [`NowPlayingTrack`](crate::NowPlayingTrack)s surfaces show, which join
+/// the library's current display onto each.
 #[derive(Debug, Clone, PartialEq)]
-pub enum PlaybackState<Track = PlayingTrack> {
+pub enum PlaybackState<Track = PlayingTrack, Named = String> {
     Stopped,
     Playing {
         track: Track,
@@ -277,30 +279,31 @@ pub enum PlaybackState<Track = PlayingTrack> {
     /// `waits_on_storage` is true while one of the loading track's reads
     /// fetches from storage, so the person waits on a download.
     Loading {
-        track: LoadingTrack<Track>,
+        track: LoadingTrack<Track, Named>,
         waits_on_storage: bool,
     },
 }
 
-/// The track a load is for: its id alone until the service has prepared it,
-/// then the prepared track, which carries the id.
+/// The track a load is for: named by its id alone until the service has
+/// prepared it, then the prepared track, which carries the id.
 #[derive(Debug, Clone, PartialEq)]
-pub enum LoadingTrack<Track = PlayingTrack> {
-    Unprepared { track_id: String },
+pub enum LoadingTrack<Track = PlayingTrack, Named = String> {
+    Unprepared(Named),
     Prepared(Track),
 }
 
-impl<Track> LoadingTrack<Track> {
-    /// The same load holding `f`'s result for its prepared track, or `f`'s
-    /// error.
-    pub fn try_map_track<Mapped, Error>(
+impl<Track, Named> LoadingTrack<Track, Named> {
+    /// The same load holding `prepared`'s result for a prepared track, or
+    /// `named`'s for a track named by its id alone.
+    pub fn map_tracks<Mapped, MappedNamed>(
         self,
-        f: impl FnOnce(Track) -> Result<Mapped, Error>,
-    ) -> Result<LoadingTrack<Mapped>, Error> {
-        Ok(match self {
-            Self::Unprepared { track_id } => LoadingTrack::Unprepared { track_id },
-            Self::Prepared(track) => LoadingTrack::Prepared(f(track)?),
-        })
+        prepared: impl FnOnce(Track) -> Mapped,
+        named: impl FnOnce(Named) -> MappedNamed,
+    ) -> LoadingTrack<Mapped, MappedNamed> {
+        match self {
+            Self::Unprepared(track) => LoadingTrack::Unprepared(named(track)),
+            Self::Prepared(track) => LoadingTrack::Prepared(prepared(track)),
+        }
     }
 }
 
@@ -308,26 +311,31 @@ impl LoadingTrack {
     /// The id of the track being loaded.
     pub fn track_id(&self) -> &str {
         match self {
-            Self::Unprepared { track_id } => track_id,
+            Self::Unprepared(track_id) => track_id,
             Self::Prepared(track) => &track.track_id,
         }
     }
 }
 
-impl<Track> PlaybackState<Track> {
-    /// The same state holding `f`'s result for its track, or `f`'s error.
-    pub fn try_map_track<Mapped, Error>(
+impl<Track, Named> PlaybackState<Track, Named> {
+    /// The same state holding `prepared`'s result for a prepared track, and
+    /// `named`'s for a track a load names by its id alone.
+    pub fn map_tracks<Mapped, MappedNamed>(
         self,
-        mut f: impl FnMut(Track) -> Result<Mapped, Error>,
-    ) -> Result<PlaybackState<Mapped>, Error> {
-        Ok(match self {
+        mut prepared: impl FnMut(Track) -> Mapped,
+        named: impl FnOnce(Named) -> MappedNamed,
+    ) -> PlaybackState<Mapped, MappedNamed> {
+        match self {
             Self::Stopped => PlaybackState::Stopped,
-            Self::Playing { track } => PlaybackState::Playing { track: f(track)? },
-            Self::Paused { track, reason } => PlaybackState::Paused { track: f(track)?, reason },
-            Self::Loading { track, waits_on_storage } => {
-                PlaybackState::Loading { track: track.try_map_track(f)?, waits_on_storage }
+            Self::Playing { track } => PlaybackState::Playing { track: prepared(track) },
+            Self::Paused { track, reason } => {
+                PlaybackState::Paused { track: prepared(track), reason }
             }
-        })
+            Self::Loading { track, waits_on_storage } => PlaybackState::Loading {
+                track: track.map_tracks(prepared, named),
+                waits_on_storage,
+            },
+        }
     }
 }
 

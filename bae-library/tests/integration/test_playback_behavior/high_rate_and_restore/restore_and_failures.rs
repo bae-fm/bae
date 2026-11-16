@@ -262,7 +262,6 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         .next()
         .await
         .expect("the playback values resolve")
-        .expect("a stopped playback names no track")
         .playback
         .state;
     assert!(

@@ -98,6 +98,9 @@ const DIRECT_KEYS: &[&str] = &[
     "core.identity.identified",
     // The pause alert's body, the same sentence for a side or a disc.
     "core.playback.pause.message",
+    // The title a removed track shows in the now-playing surfaces
+    // (`BridgeNowPlayingDisplay::Removed`).
+    "core.playback.removed_track",
     // A `BridgeFactTerm::Counted` part: the UI words the count and the
     // medium's label through it.
     "core.pressing.media_count",

@@ -117,19 +117,23 @@ extension ShotScene {
             isMuted: false,
             repeatMode: .off
         )
-        store.play(
-            track: BridgeNowPlayingTrack(
-                track: BridgePlayingTrack(
-                    trackId: "board-track",
-                    durationMs: 303_000
-                ),
-                display: BridgeTrackDisplay(
-                    title: "Low Tide Hours",
-                    artistLine: .named("Mara Quill"),
-                    albumId: "board-0",
-                    releaseId: "rel-board-0",
-                    albumTitle: "Low Tide Hours",
-                    coverImage: nil
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: "board-track",
+                        durationMs: 303_000
+                    ),
+                    display: .library(
+                        display: BridgeTrackDisplay(
+                            title: "Low Tide Hours",
+                            artistLine: .named("Mara Quill"),
+                            albumId: "board-0",
+                            releaseId: "rel-board-0",
+                            albumTitle: "Low Tide Hours",
+                            coverImage: nil
+                        )
+                    )
                 )
             )
         )

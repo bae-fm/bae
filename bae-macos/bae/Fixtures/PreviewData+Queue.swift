@@ -316,15 +316,17 @@ private final class PreviewQueueModel {
         else {
             return
         }
-        store.play(
-            track: BridgeNowPlayingTrack(
-                track: BridgePlayingTrack(
-                    trackId: entry.trackId,
-                    // The queue entry carries only a clock label, not raw ms;
-                    // the shot now-playing bar just needs a plausible total.
-                    durationMs: 200_000
-                ),
-                display: entry.display
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: entry.trackId,
+                        // The queue entry carries only a clock label, not raw ms;
+                        // the shot now-playing bar just needs a plausible total.
+                        durationMs: 200_000
+                    ),
+                    display: .library(display: entry.display)
+                )
             )
         )
         apply()

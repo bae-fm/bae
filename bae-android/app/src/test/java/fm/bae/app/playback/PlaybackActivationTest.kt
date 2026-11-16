@@ -70,12 +70,12 @@ class PlaybackActivationTest {
     }
 
     @Test
-    fun bareLoadingHoldsThePreviousTrack() {
+    fun aLoadShowsTheNextTrackBeforeItIsPrepared() {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = false)
 
-        // A track is playing, then the next begins loading before its metadata
-        // resolves (the bare loading event carries no track).
+        // A track is playing, then the next begins loading: the value names it
+        // with its details before core has prepared its audio.
         player.applyPlaybackState(
             playingState(
                 trackId = "t1",
@@ -83,14 +83,34 @@ class PlaybackActivationTest {
                 durationMs = 200_000uL,
             ),
         )
-        player.applyPlaybackState(loadingState("t2"))
+        player.applyPlaybackState(loadingState("t2", title = "Second Title"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        // The previous track stays current (with a spinner) so the timeline never
-        // blinks empty mid-playback, which would otherwise drop the notification.
+        // The next track is current at once, so the timeline never blinks
+        // empty mid-playback, which would otherwise drop the notification.
         assertEquals(Player.STATE_BUFFERING, player.playbackState)
         assertEquals(1, player.currentTimeline.windowCount)
-        assertEquals("First Title", player.mediaMetadata.title.toString())
+        assertEquals("Second Title", player.mediaMetadata.title.toString())
+        assertEquals("t2", player.nowPlaying.value?.trackId)
+    }
+
+    @Test
+    fun aDeletedPlayingTrackShowsAsRemovedAndKeepsPlaying() {
+        val context = RuntimeEnvironment.getApplication()
+        val player = player(context, foreground = false)
+
+        player.applyPlaybackState(playingState(trackId = "t1", title = "First Title"))
+        player.applyPlaybackState(removedPlayingState(trackId = "t1"))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // The bar and the session keep the track and its transport, with the
+        // title saying the library no longer holds it.
+        assertEquals(Player.STATE_READY, player.playbackState)
+        assertTrue(player.playWhenReady)
+        assertEquals("Removed from library", player.mediaMetadata.title.toString())
+        assertNull(player.mediaMetadata.artist)
+        assertEquals("Removed from library", player.nowPlaying.value?.title)
+        assertNull(player.nowPlaying.value?.coverImage)
     }
 
     @Test
@@ -109,17 +129,17 @@ class PlaybackActivationTest {
     }
 
     @Test
-    fun bareLoadingDoesNotStartTheServiceWithNothingToPlay() {
+    fun aLoadOnScreenStartsThePlaybackServiceBeforeItIsPrepared() {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = true)
 
-        // A bare loading event with no prior track has nothing to host yet, so it
-        // must not start the service (which would otherwise be an idle service the
-        // system reclaims). The resolved event that follows starts it.
+        // A load names its track with its details from its first value, so the
+        // service comes up then, before core has prepared the track.
         player.applyPlaybackState(loadingState("t1"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertNull(shadowOf(context).nextStartedService)
+        val started = shadowOf(context).nextStartedService
+        assertEquals(PlaybackService::class.java.name, started?.component?.className)
     }
 
     @Test

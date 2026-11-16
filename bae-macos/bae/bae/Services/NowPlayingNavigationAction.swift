@@ -8,21 +8,31 @@ struct NowPlayingNavigationAction {
     let playbackStore: PlaybackStore
     let uiStore: UiStore
 
-    /// Enabled once core has said which track is current; while the next
-    /// track is only an id, the bar still shows the one before it, and
-    /// revealing that one would be revealing the wrong track.
-    var isEnabled: Bool { playbackStore.nowPlaying.current != nil }
+    /// Enabled while a track loads, plays or is paused and the library
+    /// holds it; a removed track has no album to reveal.
+    var isEnabled: Bool { target != nil }
 
     func perform() {
-        guard let track = playbackStore.nowPlaying.current else {
+        guard case (let trackId, let display)? = target else {
             preconditionFailure(
-                "Go to Now Playing is disabled without a playing track"
+                "Go to Now Playing is disabled without a track in the library"
             )
         }
         uiStore.navigateToAlbum(
-            track.display.albumId,
-            trackId: track.track.trackId,
-            releaseId: track.display.releaseId
+            display.albumId,
+            trackId: trackId,
+            releaseId: display.releaseId
         )
+    }
+
+    /// The track the state names, with the library's display of it.
+    private var target: (String, BridgeTrackDisplay)? {
+        let state = playbackStore.nowPlaying
+        guard let trackId = state.trackId,
+            let display = state.display?.library
+        else {
+            return nil
+        }
+        return (trackId, display)
     }
 }

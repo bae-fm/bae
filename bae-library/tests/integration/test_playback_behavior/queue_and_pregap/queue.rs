@@ -441,7 +441,7 @@ async fn set_repeat_mode_applies_and_reports_each_mode() {
             tokio::time::timeout(HANG_GUARD, async {
                 loop {
                     let value = values.next().await.expect("the playback values resolve");
-                    if value.is_some_and(|value| value.repeat_mode == expected) {
+                    if value.repeat_mode == expected {
                         return;
                     }
                 }

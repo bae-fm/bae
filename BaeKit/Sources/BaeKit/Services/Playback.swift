@@ -225,7 +225,7 @@ extension Playback {
     /// a load), resume while paused, nothing while stopped — there is no
     /// track to act on, and `resume` would also tear down an active import
     /// shot.
-    public func playPause(for nowPlaying: NowPlaying) {
+    public func playPause(for nowPlaying: BridgePlaybackValueState) {
         switch nowPlaying {
         case .playing, .loading:
             pause()

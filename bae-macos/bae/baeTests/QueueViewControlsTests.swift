@@ -29,7 +29,7 @@ struct QueueViewControlsTests {
     func playingCardExposesPause() async throws {
         let recorder = Recorder()
         try await withHostedPane(
-            nowPlaying: .playing(track),
+            nowPlaying: .playing(track: track),
             recorder: recorder
         ) { hosted in
             try clickPlayPause(in: hosted)
@@ -45,7 +45,7 @@ struct QueueViewControlsTests {
     func pausedCardExposesPlay() async throws {
         let recorder = Recorder()
         try await withHostedPane(
-            nowPlaying: .paused(track, reason: .manual),
+            nowPlaying: .paused(track: track, reason: .manual),
             recorder: recorder
         ) { hosted in
             try clickPlayPause(in: hosted)
@@ -60,22 +60,13 @@ struct QueueViewControlsTests {
     /// `body`.
     @MainActor
     private func withHostedPane(
-        nowPlaying: NowPlaying,
+        nowPlaying: BridgePlaybackValueState,
         recorder: Recorder,
         _ body: ((window: NSWindow, view: NSView)) async throws -> Void
     ) async throws {
         let store = PreviewData.queueStore(manualCount: 0, context: nil)
         let queue = Queue.stub()
-        switch nowPlaying {
-        case .playing(let track):
-            store.play(track: track)
-        case .paused(let track, let reason):
-            store.pause(track: track, reason: reason)
-        case .stopped:
-            break
-        case .loading:
-            Issue.record("the control fixture does not use a loading state")
-        }
+        store.apply(nowPlaying)
         try await SnapshotTestSupport.withHostedWindow(
             MacQueuePanel(
                 manual: store.manualQueue,
@@ -83,12 +74,12 @@ struct QueueViewControlsTests {
                 shuffled: store.shuffled,
                 upcoming: QueueUpcoming(store: store, queue: queue),
                 position: store.trackPosition(
-                    forTrack: store.nowPlaying.track?.track.trackId
+                    forTrack: store.nowPlaying.trackId
                 ),
                 onShowUpcoming: { await store.showUpcoming(queue: queue) },
                 isActive: store.nowPlaying.isActive,
-                nowPlayingTitle: store.nowPlaying.track?.display.title,
-                nowPlayingArtist: store.nowPlaying.track?.display.artistLine
+                nowPlayingTitle: store.nowPlaying.display?.title,
+                nowPlayingArtist: store.nowPlaying.display?.library?.artistLine
                     .text,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
@@ -165,13 +156,15 @@ struct QueueViewControlsTests {
                 trackId: "track-id",
                 durationMs: 180_000
             ),
-            display: BridgeTrackDisplay(
-                title: "Track Title",
-                artistLine: .named("Artist Name"),
-                albumId: "album-id",
-                releaseId: "release-id",
-                albumTitle: "Album Title",
-                coverImage: nil
+            display: .library(
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistLine: .named("Artist Name"),
+                    albumId: "album-id",
+                    releaseId: "release-id",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
     }

@@ -310,13 +310,15 @@ struct LibraryNameStoreTests {
 private let playingState = BridgePlaybackValueState.playing(
     track: BridgeNowPlayingTrack(
         track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
-        display: BridgeTrackDisplay(
-            title: "Track Title",
-            artistLine: .named("Artist Name"),
-            albumId: "album-1",
-            releaseId: "release-1",
-            albumTitle: "Album Title",
-            coverImage: nil
+        display: .library(
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistLine: .named("Artist Name"),
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
         )
     )
 )
@@ -363,8 +365,7 @@ struct AppServiceMediaControlTests {
             playbackValues(state: playing(trackId: "track-1"))
         )
         try await Wait.until {
-            appService.stateForTesting.nowPlaying.track?.track.trackId
-                == "track-1"
+            appService.stateForTesting.nowPlaying.trackId == "track-1"
         }
         handle.deliverTimeline(line(trackId: "track-2", positionMs: 30_000))
         handle.deliverPlayback(
@@ -399,13 +400,15 @@ private func playing(trackId: String) -> BridgePlaybackValueState {
     .playing(
         track: BridgeNowPlayingTrack(
             track: BridgePlayingTrack(trackId: trackId, durationMs: 120_000),
-            display: BridgeTrackDisplay(
-                title: "Track Title",
-                artistLine: .named("Artist Name"),
-                albumId: "album-1",
-                releaseId: "release-1",
-                albumTitle: "Album Title",
-                coverImage: nil
+            display: .library(
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistLine: .named("Artist Name"),
+                    albumId: "album-1",
+                    releaseId: "release-1",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
     )

@@ -94,8 +94,7 @@ impl PlaybackService {
         self.retire_preloaded_track();
 
         // First Loading emission: bare, before the metadata lookup.
-        self.slot =
-            PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared(track_id.to_string()));
         self.sync_audio_state();
         self.emit_state();
 

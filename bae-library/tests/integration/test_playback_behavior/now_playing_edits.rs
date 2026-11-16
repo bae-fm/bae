@@ -33,21 +33,22 @@ async fn paused_on_first_track(fixture: &PlaybackTestFixture) -> String {
 /// paused and `accept` takes what it shows. The system media controls are
 /// handed the same value, so they must show it too.
 async fn now_playing_until(
-    values: &bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
+    values: &bae_store::live_query::LiveValues<bae_playback::NowPlayingValues>,
     track_id: &str,
     what: &str,
     accept: impl Fn(&bae_playback::TrackDisplay) -> bool,
 ) -> bae_playback::TrackDisplay {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let Some(value) = values.next().await.expect("the playback values resolve") else {
-                continue;
-            };
+            let value = values.next().await.expect("the playback values resolve");
             let media_control = value.playback.media_control();
             let PlaybackState::Paused { track, .. } = value.playback.state else {
                 continue;
             };
-            if track.track.track_id != track_id || !accept(&track.display) {
+            let bae_playback::NowPlayingDisplay::Library(display) = track.display else {
+                continue;
+            };
+            if track.track.track_id != track_id || !accept(&display) {
                 continue;
             }
             assert_eq!(
@@ -55,7 +56,7 @@ async fn now_playing_until(
                 bae_playback::MediaControlPlayback::Library,
                 "the media controls show the library's paused track"
             );
-            return track.display;
+            return display;
         }
     })
     .await
@@ -210,8 +211,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
         let value = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("the playing value arrives")
-            .expect("the playback values resolve")
-            .expect("the library holds the playing track");
+            .expect("the playback values resolve");
         let PlaybackState::Playing { track } = &value.playback.state else {
             panic!("the first value shows the track playing, not {:?}", value.playback.state);
         };
@@ -238,8 +238,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
         let next = tokio::time::timeout(HANG_GUARD, values.next())
             .await
             .expect("the volume's value arrives")
-            .expect("the playback values resolve")
-            .expect("the library holds the playing track");
+            .expect("the playback values resolve");
         let mut expected = value.clone();
         expected.playback.volume = SENTINEL_VOLUME;
         assert_eq!(next, expected, "no playback value follows the positions");

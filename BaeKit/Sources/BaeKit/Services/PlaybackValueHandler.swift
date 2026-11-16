@@ -15,28 +15,7 @@ final class PlaybackValueHandler {
         playbackStore.settings = PlaybackSettings(values)
         playbackStore.failure = values.failure
         castStore.applyStatus(values.remote)
-        applyPlaybackState(values.state)
-    }
-
-    private func applyPlaybackState(_ state: BridgePlaybackValueState) {
-        switch state {
-        case .stopped:
-            playbackStore.stop()
-        case .loading(.unprepared(let trackId), let waitsOnStorage):
-            playbackStore.beginLoading(
-                trackId: trackId,
-                waitsOnStorage: waitsOnStorage
-            )
-        case .loading(.prepared(let track), let waitsOnStorage):
-            playbackStore.setLoadingTarget(
-                track,
-                waitsOnStorage: waitsOnStorage
-            )
-        case .playing(let track):
-            playbackStore.play(track: track)
-        case .paused(let track, let reason):
-            playbackStore.pause(track: track, reason: reason)
-        }
+        playbackStore.apply(values.state)
     }
 
     func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {

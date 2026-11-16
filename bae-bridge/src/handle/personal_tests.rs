@@ -72,10 +72,12 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert!(scanned.carries_s3_key);
         let status = app.follow_add_device(added.id.clone()).unwrap();
         assert!(matches!(
-            status.next().await.unwrap(),
+            status.clone().next().await.unwrap(),
             BridgeAddDeviceStatus::Waiting { request: None }
         ));
+        // Ending the pairing forgets it, which the status says.
         app.clone().end_add_device(added.id).await.unwrap();
+        assert!(matches!(status.next().await.unwrap(), BridgeAddDeviceStatus::Forgotten));
 
         // Asking again for the profile the person has, by its name, is done.
         app.clone().create_profile("Robin".into()).await.unwrap();

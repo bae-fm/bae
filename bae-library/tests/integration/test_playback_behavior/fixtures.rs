@@ -20,7 +20,7 @@ pub(super) async fn play_emits_bare_loading_then_loading_with_metadata_then_play
         );
 
         match loading[0] {
-            PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: id }, .. } => {
+            PlaybackState::Loading { track: LoadingTrack::Unprepared(id), .. } => {
                 assert_eq!(id, &track_id)
             }
             other => panic!("first Loading is emitted before the track is prepared, got {other:?}"),

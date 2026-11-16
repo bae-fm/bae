@@ -23,26 +23,22 @@ struct MacNowPlayingBarContainer: View {
 
     var body: some View {
         let np = playbackStore.nowPlaying
-        let track = np.track
+        let library = np.display?.library
         let cover: ImageContent? =
-            track?.display.coverImage
+            library?.coverImage
             .map {
                 .libraryImage($0)
             }
         MacNowPlayingBar(
-            trackTitle: track?.display.title,
+            trackTitle: np.display?.title,
             // The artist while the side-end card is open, which says the side
             // ended; after it closes, the line says why playback is paused.
             secondaryLine: playbackStore.presentedSidePausePrompt == nil
-                ? np.secondaryLine : track?.display.artistLine.text,
+                ? np.secondaryLine : library?.artistLine.text,
             cover: cover,
             isPlaying: np.isPlaying,
-            position: playbackStore.trackPosition(
-                forTrack: track?.track.trackId
-            ),
-            buffered: playbackStore.trackBuffered(
-                forTrack: track?.track.trackId
-            ),
+            position: playbackStore.trackPosition(forTrack: np.trackId),
+            buffered: playbackStore.trackBuffered(forTrack: np.trackId),
             waitsOnStorage: np.waitsOnStorage,
             showRemainingTime: configStore.config.showRemainingTime,
             settings: playbackStore.settings,

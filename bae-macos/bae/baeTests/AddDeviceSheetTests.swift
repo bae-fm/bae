@@ -74,11 +74,42 @@ struct AddDeviceSheetTests {
         try await Wait.until { handle.cancelled }
     }
 
+    @MainActor
+    @Test("closing the sheet stops its status before it ends the pairing")
+    func closingTheSheetDeliversNoStatusAfterIt() async throws {
+        let holder = AddDeviceResultHolder()
+        holder.result = .success(Self.adding)
+        let handle = PairingHandle()
+        let store = MembershipStore(handle: handle)
+        let ended = EndedPairings()
+        let sync = Sync(
+            addDevice: AddDeviceCalls(end: { pairing in ended.record(pairing) })
+        )
+        try await SnapshotTestSupport.withHostedWindow(
+            AddDeviceHarness(holder: holder).environment(store)
+                .environment(sync),
+            size: NSSize(width: 400, height: 480)
+        ) { _, _ in
+            try await Wait.until { handle.statuses != nil }
+            let statuses = try #require(handle.statuses)
+            statuses.deliver(.waiting(request: nil))
+            try await Wait.until { store.addDeviceStatus?.face == .code }
+        }
+        try await Wait.until { !ended.pairings.isEmpty }
+        #expect(ended.pairings == [Self.adding.id])
+        // What coven reports once it forgets the pairing reaches no view:
+        // the read stopped before the end call.
+        try #require(handle.statuses).deliver(.forgotten)
+        try await Wait.until { handle.cancelled }
+        #expect(store.addDeviceStatus?.face == .code)
+    }
+
     @Test("a declined pairing closes the sheet; the others say what happened")
     func faceOfAnEndWithoutDevice() {
         #expect(BridgeAddDeviceStatus.ended(end: .declined).face == .declined)
         #expect(BridgeAddDeviceStatus.ended(end: .expired).face == .expired)
         #expect(BridgeAddDeviceStatus.ended(end: .refused).face == .refused)
+        #expect(BridgeAddDeviceStatus.forgotten.face == .forgotten)
         #expect(
             BridgeAddDeviceStatus.approved(deviceName: "Tablet").face
                 == .adding(name: "Tablet")
@@ -91,6 +122,19 @@ struct AddDeviceSheetTests {
         SnapshotTestSupport.descendants(of: host)
             .filter { $0.isKind(of: kind) }
             .count
+    }
+}
+
+/// The pairings the sheet ended.
+private final class EndedPairings: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ended: [String] = []
+
+    var pairings: [String] { lock.withLock { ended } }
+
+    func record(_ pairing: String) {
+        lock.withLock { ended.append(pairing) }
+        Wait.happened()
     }
 }
 

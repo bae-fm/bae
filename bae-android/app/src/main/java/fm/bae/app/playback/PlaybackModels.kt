@@ -8,6 +8,8 @@ import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
 import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
 import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
+/** The track the in-app player shows: a track the library no longer holds shows the removed title and no artist
+ *  ([artist] empty) or cover. */
 data class NowPlaying(
     val trackId: String,
     val title: String,

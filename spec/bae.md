@@ -3634,7 +3634,10 @@ closes it. A pairing she declines closes the sheet. One that expires says "This 
 ended" and to choose Add device again for a new one, and one coven refuses
 because the request failed a check says the request was refused and the device
 was not added, each in the sheet with **Done**. Closing the sheet, however it
-closes, ends the pairing. While the sheet follows it, Carol's
+closes, ends the pairing, which coven then forgets. The sheet stops following
+the pairing before it ends it, so it closes showing what it last showed; a
+pairing coven has forgotten while the sheet follows it says "This code has
+ended" as an expired one does. While the sheet follows it, Carol's
 device syncs every 5 seconds instead of every 30, so the request reaches her
 within seconds of being sent. A quiet sync is two requests to the storage,
 about 24 a minute, only while the sheet is open
@@ -4606,11 +4609,13 @@ playing from  Album Title, tracks 4–11
 ```
 
 When track 3 ends, Up next drains first, then the release continues at track
-4. While the next track loads, the Mac's now-playing bar keeps showing the
-track before it so the bar does not close on every change, but nothing that
-marks or opens the current track follows it: the speaker mark on an album's
-track list is on the track loading, and Go to Now Playing waits until that
-track's details have arrived.
+4. While the next track loads, the now-playing bar, the queue's now-playing
+card, Android's full player and the system's media controls show it: the
+value that names the track it loads carries its title, artists and cover,
+before playback has prepared its audio, so a track change has no moment
+without a track to show.
+The speaker mark on an album's track list is on the track loading, and Go to
+Now Playing opens its album.
 
 What's playing from is a release, several releases in the order chosen, a
 list of tracks in the order it was sent, or the whole library. The queue's
@@ -4713,6 +4718,12 @@ before a row the screen hasn't read yet stays where it was.
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
 one loaded to play next is let go. This holds however the track was deleted.
+From the delete until playback moves off the track, the now-playing bar, the
+queue's now-playing card, Android's full player and the system's media
+controls show the track as removed: they keep their place and the transport
+keeps the state playback is in, while the title reads "Removed from
+library", with no artists, no cover, and no album for Go to Now Playing to
+open.
 
 ### 7.2 Repeat, shuffle, previous
 
@@ -5622,9 +5633,11 @@ phase and whether its load waits on storage, the volume, the mute, where playbac
 kind, model, address and whether it takes a volume), the preview, and why playback last failed,
 until it next plays or the person dismisses the failure notice. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a
-live query of that row joined with the playing track's display and the
-queue's repeat mode, a value after each change; while the row names a track
-the library no longer holds, until playback moves off it, no value is sent.
+live query of that row joined with the display of the track it names
+(loading, playing or paused) and the queue's repeat mode, a value after each
+change, every value reaching the app as it is. A track the library no longer
+holds comes back with no display, which the value states as a removed track
+(§7.1).
 The failure notice shows wherever the person is while the row holds a failure:
 an alert on macOS, a snackbar on Android. Playback writes a second failure
 over the first while the notice shows, and the notice shows the latest. When

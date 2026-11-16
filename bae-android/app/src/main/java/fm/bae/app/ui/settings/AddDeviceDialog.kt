@@ -78,6 +78,9 @@ internal sealed interface AddDeviceFace {
 
     /** coven refused the request, so no device was added: the dialog says so. */
     data object Refused : AddDeviceFace
+
+    /** coven no longer holds the pairing: the dialog says its code has ended, as for an expired one. */
+    data object Forgotten : AddDeviceFace
 }
 
 internal fun BridgeAddDeviceStatus.face(): AddDeviceFace =
@@ -97,6 +100,10 @@ internal fun BridgeAddDeviceStatus.face(): AddDeviceFace =
                 BridgeAddDeviceEnd.Expired -> AddDeviceFace.Expired
                 BridgeAddDeviceEnd.Refused -> AddDeviceFace.Refused
             }
+        }
+
+        BridgeAddDeviceStatus.Forgotten -> {
+            AddDeviceFace.Forgotten
         }
     }
 
@@ -291,7 +298,7 @@ private fun AddDeviceBody(
                 BodyLine(stringResource(R.string.add_device_added, face.name))
             }
 
-            face is AddDeviceFace.Expired -> {
+            face is AddDeviceFace.Expired || face is AddDeviceFace.Forgotten -> {
                 BodyLine(stringResource(R.string.add_device_expired))
             }
 

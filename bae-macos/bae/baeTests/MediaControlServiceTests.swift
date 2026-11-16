@@ -363,13 +363,15 @@ private func nowPlayingTrack(trackId: String) -> BridgeNowPlayingTrack {
             trackId: trackId,
             durationMs: 200_000
         ),
-        display: BridgeTrackDisplay(
-            title: "Track Title",
-            artistLine: .named("Artist Name"),
-            albumId: "album-1",
-            releaseId: "release-1",
-            albumTitle: "Album Title",
-            coverImage: nil
+        display: .library(
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistLine: .named("Artist Name"),
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
         )
     )
 }

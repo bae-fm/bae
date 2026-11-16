@@ -64,27 +64,13 @@ live_query_read!(
 
 /// A screen's read as the app pulls it: `$object` holds `$inner`, a
 /// [`PulledRead`], each pulled value converted to `$bridge` by `$convert`,
-/// and `$make` builds it. With `when present`, `$convert` answers an
-/// `Option`, and a pull passes over each value it answers `None` for,
-/// waiting for the next. A screen that moves its read in place adds its own
-/// exported calls on `$object`.
+/// and `$make` builds it. Every value the read answers reaches the app. A
+/// screen that moves its read in place adds its own exported calls on
+/// `$object`.
 macro_rules! pulled_read {
     (
         $(#[$meta:meta])*
         $object:ident: $inner:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
-    ) => {
-        pulled_read! {
-            $(#[$meta])*
-            $object: $inner => $bridge,
-            converted by |value| Some(($convert)(value)), when present,
-            built by $make
-        }
-    };
-    (
-        $(#[$meta:meta])*
-        $object:ident: $inner:ty => $bridge:ty,
-        converted by $convert:expr, when present,
-        built by $make:ident
     ) => {
         $(#[$meta])*
         #[derive(uniffi::Object)]
@@ -100,7 +86,7 @@ macro_rules! pulled_read {
             std::sync::Arc::new($object { inner, runtime })
         }
 
-        pulled_read_calls! { $object => $bridge, converted by $convert, when present }
+        pulled_read_calls! { $object => $bridge, converted by $convert }
     };
 }
 
@@ -109,11 +95,6 @@ macro_rules! pulled_read {
 /// for every other.
 macro_rules! pulled_read_calls {
     ($object:ident => $bridge:ty, converted by $convert:expr) => {
-        pulled_read_calls! {
-            $object => $bridge, converted by |value| Some(($convert)(value)), when present
-        }
-    };
-    ($object:ident => $bridge:ty, converted by $convert:expr, when present) => {
         #[uniffi::export(async_runtime = "tokio", cancellable)]
         impl $object {
             /// The read's next value, the first at once. A failed read is
@@ -124,12 +105,8 @@ macro_rules! pulled_read_calls {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
-                        loop {
-                            let value = crate::screens::PulledRead::next(&self.inner).await?;
-                            if let Some(value) = ($convert)(value) {
-                                return Ok(value);
-                            }
-                        }
+                        let value = crate::screens::PulledRead::next(&self.inner).await?;
+                        Ok(($convert)(value))
                     })
                     .await
             }
@@ -185,15 +162,12 @@ pub use storage::*;
 pub(crate) use streams::*;
 
 pulled_read! {
-    /// What playback is doing, apart from where it is in what it plays. A
-    /// value whose playing track the library no longer holds is passed over:
-    /// the value before it stands until playback moves off the track.
+    /// What playback is doing, apart from where it is in what it plays: a
+    /// track the library no longer holds shows as removed until playback
+    /// moves off it.
     PlaybackValuesSubscription:
-        LiveValues<Option<bae_playback::NowPlayingValues>> => crate::types::BridgePlaybackValues,
-    converted by |values: Option<bae_playback::NowPlayingValues>| {
-        values.map(crate::types::BridgePlaybackValues::from_core)
-    },
-    when present,
+        LiveValues<bae_playback::NowPlayingValues> => crate::types::BridgePlaybackValues,
+    converted by crate::types::BridgePlaybackValues::from_core,
     built by playback_values
 }
 
@@ -364,14 +338,10 @@ pulled_read! {
 
 pulled_read! {
     /// Where the pairing Add Device's sheet started is: waiting for a
-    /// request, approved or ended. It reports nothing once the pairing is
-    /// forgotten.
+    /// request, approved, ended, or forgotten once the sheet has ended it.
     AddDeviceStatusSubscription:
         LiveValues<Option<coven::AddDeviceStatus>> => crate::handle::BridgeAddDeviceStatus,
-    converted by |status: Option<coven::AddDeviceStatus>| {
-        status.map(crate::handle::BridgeAddDeviceStatus::from_core)
-    },
-    when present,
+    converted by crate::handle::BridgeAddDeviceStatus::from_core,
     built by add_device_status
 }
 

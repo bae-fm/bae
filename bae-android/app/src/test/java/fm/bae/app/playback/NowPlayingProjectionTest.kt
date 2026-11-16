@@ -3,7 +3,6 @@ package fm.bae.app.playback
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Timeline
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.creditLineNamed
 import fm.bae.app.plainCreditText
 import fm.bae.app.testCoverRef
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +20,6 @@ import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeTimelinePoint
-import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
  * The MediaSession playlist projection (BaeCorePlayer.orderedMetas). The
@@ -36,15 +34,7 @@ class NowPlayingProjectionTest {
         BaeCorePlayer.Meta(
             entryId = "entry-$id",
             trackId = id,
-            display =
-                BridgeTrackDisplay(
-                    title = "Title $id",
-                    artistLine = creditLineNamed("Artist Name"),
-                    albumId = "album-1",
-                    releaseId = "release-1",
-                    albumTitle = "Album Title",
-                    coverImage = null,
-                ),
+            display = libraryDisplay(title = "Title $id"),
         )
 
     @Test
@@ -171,7 +161,7 @@ class NowPlayingProjectionTest {
         BridgeQueueEntry(
             entryId = "entry-$trackId",
             trackId = trackId,
-            display = meta(trackId).display,
+            display = libraryDisplay(title = "Title $trackId").display,
             durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
         )
 

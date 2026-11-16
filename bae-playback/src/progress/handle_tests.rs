@@ -250,8 +250,8 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_moves_no_po
     let mut positions = handle.subscribe_positions();
     positions.positions();
     assert_eq!(
-        crate::tables::now_playing(&db).await.unwrap().map(|now| now.playback.state),
-        Some(crate::PlaybackState::Stopped)
+        crate::tables::now_playing(&db).await.unwrap().playback.state,
+        crate::PlaybackState::Stopped
     );
 
     progress_tx
@@ -262,9 +262,13 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_moves_no_po
         })
         .unwrap();
     next_event(&mut events).await;
-    assert_eq!(
-        crate::tables::now_playing(&db).await.unwrap(),
-        None,
+    assert!(
+        matches!(
+            crate::tables::now_playing(&db).await.unwrap().playback.state,
+            crate::PlaybackState::Playing {
+                track: crate::NowPlayingTrack { display: crate::NowPlayingDisplay::Removed, .. }
+            }
+        ),
         "the row names track-1, which the library does not hold"
     );
     assert_eq!(

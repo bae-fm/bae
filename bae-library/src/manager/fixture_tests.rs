@@ -472,9 +472,7 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let restored = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let value = values.next().await.expect("the playback values resolve");
-            if let Some(bae_playback::PlaybackState::Paused { track, .. }) =
-                value.map(|value| value.playback.state)
-            {
+            if let bae_playback::PlaybackState::Paused { track, .. } = value.playback.state {
                 return track;
             }
         }

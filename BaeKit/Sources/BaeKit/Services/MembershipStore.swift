@@ -61,13 +61,13 @@ public final class MembershipStore {
     private let subscribePerson:
         @MainActor (MembershipStore, String) throws -> AnyObject
     /// Starts the pull of a pairing's status, handing each value to the
-    /// closure; the subscription runs while what it returns is held.
+    /// closure; the subscription runs until the closure it returns stops it.
     private let followAddDeviceStatus:
         @MainActor (
             String,
             @escaping @MainActor (BridgeAddDeviceStatus) -> Void,
             @escaping @MainActor (any Error) -> Void
-        ) throws -> AnyObject
+        ) throws -> @MainActor () -> Void
     /// Asks this device to sync every few seconds, returning what ends the
     /// request.
     private let holdFrequentSync: @MainActor () -> () -> Void
@@ -126,11 +126,12 @@ public final class MembershipStore {
                 try Self.followPerson(handle, store: store, memberId: memberId)
             },
             followAddDeviceStatus: { pairing, apply, fail in
-                ScreenSubscription(
+                let subscription = ScreenSubscription(
                     try handle.followAddDevice(pairing: pairing),
                     onValue: apply,
                     onError: fail
                 )
+                return { subscription.stop() }
             },
             holdFrequentSync: {
                 let hold = handle.holdInviteScreenSync()
@@ -168,7 +169,7 @@ public final class MembershipStore {
                 String,
                 @escaping @MainActor (BridgeAddDeviceStatus) -> Void,
                 @escaping @MainActor (any Error) -> Void
-            ) throws -> AnyObject,
+            ) throws -> @MainActor () -> Void,
         holdFrequentSync: @escaping @MainActor () -> () -> Void
     ) {
         self.holdFrequentSync = holdFrequentSync
@@ -204,7 +205,7 @@ public final class MembershipStore {
                 },
                 followAddDeviceStatus: { _, apply, _ in
                     if let addDeviceStatus { apply(addDeviceStatus) }
-                    return NSObject()
+                    return {}
                 },
                 holdFrequentSync: { {} }
             )
@@ -269,13 +270,19 @@ public final class MembershipStore {
         selfIsAdmin = membership.selfIsAdmin
     }
 
-    /// Follow the pairing `pairing` until the calling task is cancelled: Add
-    /// Device's sheet runs it while it shows the pairing's code.
-    public func followAddDevice(_ pairing: String) async {
+    /// Follow the pairing `pairing` until the calling task is cancelled, then
+    /// stop following it and end it with `end`: Add Device's sheet runs it
+    /// while it shows the pairing's code. The pulls stop before the end
+    /// call, so the forgotten status coven reports once the pairing ends
+    /// reaches no view, and the sheet closes showing what it last showed.
+    public func followAddDevice(
+        _ pairing: String,
+        endingWith end: @escaping @Sendable (String) async throws -> Void
+    ) async {
         addDeviceStatus = nil
-        let pulls: AnyObject
+        var stop: (@MainActor () -> Void)?
         do {
-            pulls = try followAddDeviceStatus(
+            stop = try followAddDeviceStatus(
                 pairing,
                 { [weak self] status in self?.addDeviceStatus = status },
                 { [weak self] error in self?.fail(error) }
@@ -283,13 +290,17 @@ public final class MembershipStore {
         }
         catch {
             fail(error)
-            return
         }
-        // Held until the task is cancelled, which ends the stream's wait.
-        let (cancelled, holding) = AsyncStream.makeStream(of: Never.self)
-        for await _ in cancelled {}
-        holding.finish()
-        withExtendedLifetime(pulls) {}
+        await Task.untilCancelled()
+        stop?()
+        Task {
+            do { try await end(pairing) }
+            catch {
+                logger.error(
+                    "Ending the pairing failed: \(String(reflecting: error))"
+                )
+            }
+        }
     }
 
     /// Have this device sync every few seconds until the calling task is
@@ -353,6 +364,9 @@ public enum AddDeviceFace: Equatable, Sendable {
     case expired
     /// coven refused the request, so no device was added: the sheet says so.
     case refused
+    /// coven no longer holds the pairing: the sheet says its code has ended,
+    /// as for an expired one.
+    case forgotten
 }
 
 extension BridgeAddDeviceStatus {
@@ -371,6 +385,7 @@ extension BridgeAddDeviceStatus {
         case .ended(.declined): return .declined
         case .ended(.expired): return .expired
         case .ended(.refused): return .refused
+        case .forgotten: return .forgotten
         }
     }
 }

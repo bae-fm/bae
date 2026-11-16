@@ -112,11 +112,11 @@ impl LibraryManager {
         bae_playback::tables::subscribe_playback_timeline(&self.store)
     }
 
-    /// Follow what playback is doing as its screens show it; `None` while it
-    /// names a track the library no longer holds.
+    /// Follow what playback is doing as its screens show it; a track the
+    /// library no longer holds shows as removed.
     pub fn subscribe_now_playing(
         &self,
-    ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>, bae_store::DbError> {
+    ) -> coven::LiveQuery<bae_playback::NowPlayingValues, bae_store::DbError> {
         bae_playback::tables::subscribe_now_playing(&self.store)
     }
 }

@@ -545,6 +545,6 @@ impl SkipDirection {
 /// The now-playing values of `fixture`'s library, as a screen reads them.
 pub(super) fn playback_values(
     fixture: &PlaybackTestFixture,
-) -> bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
+) -> bae_store::live_query::LiveValues<bae_playback::NowPlayingValues> {
     fixture.library.manager().values_until_closed(fixture.library.manager().subscribe_now_playing())
 }

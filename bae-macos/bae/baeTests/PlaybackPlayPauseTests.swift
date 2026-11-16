@@ -6,7 +6,7 @@ import Testing
 /// dispatched on the slot: playing or loading pauses, paused resumes, stopped
 /// does nothing (no track to act on, and `resume` would tear down an active
 /// import shot). The caller computes the absolute command from the
-/// `NowPlaying` it renders.
+/// playback state it renders.
 @Suite("Playback.playPause(for:)")
 struct PlaybackPlayPauseTests {
     private final class Counter: @unchecked Sendable {
@@ -32,19 +32,21 @@ struct PlaybackPlayPauseTests {
                 trackId: "track-1",
                 durationMs: 180_000
             ),
-            display: BridgeTrackDisplay(
-                title: "Track Title",
-                artistLine: .named("Artist Name"),
-                albumId: "album-1",
-                releaseId: "release-1",
-                albumTitle: "Album Title",
-                coverImage: nil
+            display: .library(
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistLine: .named("Artist Name"),
+                    albumId: "album-1",
+                    releaseId: "release-1",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
     }
 
     /// Returns the (pause, resume) call counts after one `playPause(for:)`.
-    private static func dispatch(_ nowPlaying: NowPlaying) -> (
+    private static func dispatch(_ nowPlaying: BridgePlaybackValueState) -> (
         pause: Int, resume: Int
     ) {
         let pauses = Counter()
@@ -59,7 +61,7 @@ struct PlaybackPlayPauseTests {
 
     @Test("playing pauses")
     func playingPauses() {
-        let counts = Self.dispatch(.playing(Self.track()))
+        let counts = Self.dispatch(.playing(track: Self.track()))
         #expect(counts == (pause: 1, resume: 0))
     }
 
@@ -67,8 +69,7 @@ struct PlaybackPlayPauseTests {
     func loadingPauses() {
         let counts = Self.dispatch(
             .loading(
-                .prepared(track: Self.track()),
-                previous: nil,
+                track: .prepared(track: Self.track()),
                 waitsOnStorage: false
             )
         )
@@ -77,7 +78,9 @@ struct PlaybackPlayPauseTests {
 
     @Test("paused resumes")
     func pausedResumes() {
-        let counts = Self.dispatch(.paused(Self.track(), reason: .manual))
+        let counts = Self.dispatch(
+            .paused(track: Self.track(), reason: .manual)
+        )
         #expect(counts == (pause: 0, resume: 1))
     }
 

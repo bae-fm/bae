@@ -12,6 +12,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import fm.bae.app.BaeLogger
+import fm.bae.app.coreString
 import fm.bae.fastvalues.LatestStream
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLoadingTrack
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackPauseReason
@@ -42,7 +44,6 @@ import uniffi.bae_bridge.BridgeQueueSnapshot
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTimelinePoint
 import uniffi.bae_bridge.BridgeTrackBuffered
-import uniffi.bae_bridge.BridgeTrackDisplay
 import uniffi.bae_bridge.BridgeTrackPosition
 
 private const val TAG = "bae.BaeCorePlayer"
@@ -79,7 +80,8 @@ class BaeCorePlayer(
         /** Null for the current track's metadata, which is not a queue entry. */
         val entryId: String?,
         val trackId: String,
-        val display: BridgeTrackDisplay,
+        /** What the library shows of the track; a queue entry's is always in the library. */
+        val display: BridgeNowPlayingDisplay,
     ) {
         /** The playlist item's id, which Media3 requires unique in a playlist: a
          *  queue entry's id, or the current track's. A track queued twice is two
@@ -111,8 +113,7 @@ class BaeCorePlayer(
 
         /**
          * An empty playlist is always [Player.STATE_IDLE]: [SimpleBasePlayer]
-         * crashes on an empty playlist in STATE_BUFFERING, which is where a load
-         * sits before the track's metadata arrives.
+         * crashes on an empty playlist in STATE_BUFFERING.
          */
         fun playbackStateFor(
             transport: Transport,
@@ -145,6 +146,7 @@ class BaeCorePlayer(
             durationMs: Long,
             artworkUri: Uri?,
             creditLineText: (BridgeCreditLine) -> String,
+            removedTitle: String,
         ): MediaItemData {
             val currentDurationMs = itemDurationMs(meta, durationMs)
             val metadata =
@@ -153,6 +155,7 @@ class BaeCorePlayer(
                     if (currentDurationMs == C.TIME_UNSET) null else currentDurationMs,
                     artworkUri,
                     creditLineText,
+                    removedTitle,
                 )
             return MediaItemData
                 .Builder(meta.uid)
@@ -168,23 +171,27 @@ class BaeCorePlayer(
                 ).build()
         }
 
+        /** The metadata Media3 shows for [meta]: a removed track shows [removedTitle] with no artist or album. */
         internal fun mediaMetadata(
             meta: Meta,
             durationMs: Long?,
             artworkUri: Uri?,
             creditLineText: (BridgeCreditLine) -> String,
-        ): MediaMetadata =
-            MediaMetadata
+            removedTitle: String,
+        ): MediaMetadata {
+            val library = (meta.display as? BridgeNowPlayingDisplay.Library)?.display
+            return MediaMetadata
                 .Builder()
-                .setTitle(meta.display.title)
-                .setArtist(creditLineText(meta.display.artistLine))
-                .setAlbumTitle(meta.display.albumTitle)
+                .setTitle(library?.title ?: removedTitle)
+                .setArtist(library?.let { creditLineText(it.artistLine) })
+                .setAlbumTitle(library?.albumTitle)
                 .setDurationMs(durationMs)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .setArtworkUri(artworkUri)
                 .build()
+        }
     }
 
     /** What the Media3 playlist is built from: the up-next [entries], the
@@ -355,7 +362,7 @@ class BaeCorePlayer(
                 }
 
                 is BridgePlaybackValueState.Playing -> {
-                    activate(Transport.READY, state.track)
+                    activate(Transport.READY, Current.of(state.track))
                 }
 
                 is BridgePlaybackValueState.Paused -> {
@@ -423,23 +430,22 @@ class BaeCorePlayer(
     private fun onLoading(track: BridgeLoadingTrack): Boolean {
         // Showing the loading track right away lets Media3 post the notification
         // and start the service while the app is still on screen; once the screen
-        // locks, Android may refuse the start. Until core has prepared it, the
-        // prior track stays on screen.
-        val prepared =
+        // locks, Android may refuse the start.
+        val current =
             when (track) {
-                is BridgeLoadingTrack.Unprepared -> null
-                is BridgeLoadingTrack.Prepared -> track.track
+                is BridgeLoadingTrack.Unprepared -> Current(track.trackId, null, track.display)
+                is BridgeLoadingTrack.Prepared -> Current.of(track.track)
             }
-        return activate(Transport.BUFFERING, prepared)
+        return activate(Transport.BUFFERING, current)
     }
 
     /**
-     * Enter play-when-ready for [transport]; a null [track] keeps the prior track.
+     * Enter play-when-ready for [transport] on [track].
      * True when that made playback active, which asks for the playback service.
      */
     private fun activate(
         transport: Transport,
-        track: BridgeNowPlayingTrack?,
+        track: Current,
     ): Boolean {
         // A value also arrives when only the volume, mute, repeat mode or the
         // playing track's display changed, repeating the state already in force;
@@ -448,27 +454,39 @@ class BaeCorePlayer(
         val becameActive =
             !playWhenReady ||
                 this.transport != transport ||
-                (track != null && track.track.trackId != playingTrackId)
+                track.trackId != playingTrackId
         this.transport = transport
         playWhenReady = true
         sidePausePrompt = null
-        if (track != null) {
-            makeCurrent(track)
-        }
+        makeCurrent(track)
         return becameActive
     }
 
-    /** Make [track] the current track. Its duration is null when unknown. */
-    private fun makeCurrent(track: BridgeNowPlayingTrack) {
-        val trackId = track.track.trackId
+    /** The track a value names, as the player takes it: its id, its length once prepared (null while it is not, or
+     *  when unknown), and what the library shows of it. */
+    private data class Current(
+        val trackId: String,
+        val durationMs: Long?,
+        val display: BridgeNowPlayingDisplay,
+    ) {
+        companion object {
+            fun of(track: BridgeNowPlayingTrack): Current {
+                val playing = track.track
+                return Current(playing.trackId, playing.durationMs?.toLong(), track.display)
+            }
+        }
+    }
+
+    /** Make [track] the current track. */
+    private fun makeCurrent(track: Current) {
         positionModel.setActiveTrack(
-            trackChanged = trackId != playingTrackId,
-            durationMs = track.track.durationMs?.toLong(),
+            trackChanged = track.trackId != playingTrackId,
+            durationMs = track.durationMs,
         )
         currentMeta =
             Meta(
                 entryId = null,
-                trackId = trackId,
+                trackId = track.trackId,
                 display = track.display,
             )
     }
@@ -476,7 +494,7 @@ class BaeCorePlayer(
     private fun applyPaused(state: BridgePlaybackValueState.Paused) {
         transport = Transport.READY
         playWhenReady = false
-        makeCurrent(state.track)
+        makeCurrent(Current.of(state.track))
         sidePausePrompt =
             when (val reason = state.reason) {
                 BridgePlaybackPauseReason.Manual -> null
@@ -549,11 +567,12 @@ class BaeCorePlayer(
         val meta = currentMeta
         _nowPlaying.value =
             meta?.let {
+                val library = (it.display as? BridgeNowPlayingDisplay.Library)?.display
                 NowPlaying(
                     it.trackId,
-                    it.display.title,
-                    creditLineText(it.display.artistLine),
-                    it.display.coverImage,
+                    library?.title ?: removedTitle,
+                    library?.let { shown -> creditLineText(shown.artistLine) } ?: "",
+                    library?.coverImage,
                     sidePausePrompt,
                 )
             }
@@ -576,7 +595,12 @@ class BaeCorePlayer(
             )
     }
 
-    private fun BridgeQueueEntry.toMeta(): Meta = Meta(entryId = entryId, trackId = trackId, display = display)
+    private fun BridgeQueueEntry.toMeta(): Meta =
+        Meta(entryId = entryId, trackId = trackId, display = BridgeNowPlayingDisplay.Library(display))
+
+    /** The title a removed track shows in the player and the media session. */
+    private val removedTitle: String
+        get() = system.context.coreString("core.playback.removed_track")
 
     // ── Media3 state ─────────────────────────────────────────────────────
 
@@ -616,14 +640,15 @@ class BaeCorePlayer(
         // The notification and lock screen show only the current track's cover,
         // which Media3 reads through the artwork provider.
         val artworkUri =
-            source.current
+            (source.current?.display as? BridgeNowPlayingDisplay.Library)
                 ?.display
                 ?.coverImage
                 ?.let { ArtworkContentProvider.uriFor(system.context, it) }
+        val removedTitle = removedTitle
         val items =
             metas.map { meta ->
                 val itemArtworkUri = if (meta.entryId == null) artworkUri else null
-                mediaItemData(meta, source.durationMs, itemArtworkUri, creditLineText)
+                mediaItemData(meta, source.durationMs, itemArtworkUri, creditLineText, removedTitle)
             }
         // The current track leads the playlist.
         val currentIndex = if (source.current != null) 0 else C.INDEX_UNSET

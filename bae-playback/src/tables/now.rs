@@ -16,9 +16,9 @@ use crate::renderer::picker::{kind_column, kind_from_column};
 use crate::renderer::CastReceiver;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
-    LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackPauseBoundary,
-    PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
-    PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
+    LoadingTrack, NowPlayingDisplay, NowPlayingTrack, NowPlayingValues, PlaybackChange,
+    PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
+    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
 
 /// The `playback_now` row, as playback writes it.
@@ -34,18 +34,18 @@ impl PlaybackNowRow {
     }
 }
 
-/// Follow what playback is doing as its screens show it. `None` while the
-/// row names a track the library no longer holds: the track was deleted, and
-/// playback has yet to move off it.
+/// Follow what playback is doing as its screens show it. A track the library
+/// no longer holds shows as removed: the track was deleted, and playback has
+/// yet to move off it.
 pub fn subscribe_now_playing(
     store: &Store,
-) -> coven::LiveQuery<Option<NowPlayingValues>, bae_store::DbError> {
+) -> coven::LiveQuery<NowPlayingValues, bae_store::DbError> {
     store.subscribe(|sql| now_playing_on(&sql))
 }
 
 /// What playback is doing now, as `subscribe_now_playing` reads it.
 #[cfg(any(test, feature = "test-utils"))]
-pub async fn now_playing(store: &Store) -> Result<Option<NowPlayingValues>, DbError> {
+pub async fn now_playing(store: &Store) -> Result<NowPlayingValues, DbError> {
     store.read(|sql| now_playing_on(&sql)).await
 }
 
@@ -254,7 +254,7 @@ impl<'a> StateColumns<'a> {
                 columns.state = "loading";
                 columns.waits_on_storage = Some(*waits_on_storage);
                 match track {
-                    LoadingTrack::Unprepared { track_id } => {
+                    LoadingTrack::Unprepared(track_id) => {
                         columns.track_id = Some(track_id);
                         columns.prepared = Some(false);
                     }
@@ -360,7 +360,7 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
             track: if row.get::<_, bool>("prepared")? {
                 LoadingTrack::Prepared(track)
             } else {
-                LoadingTrack::Unprepared { track_id: track.track_id }
+                LoadingTrack::Unprepared(track.track_id)
             },
             waits_on_storage: row.get("waits_on_storage")?,
         },
@@ -481,9 +481,9 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReaso
 }
 
 /// The row as the screens show it, with the queue's repeat mode and the
-/// playing track's current display, in one statement; `None` while the row
-/// names a track the library no longer holds.
-fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, DbError> {
+/// current display of the track it names, loading, playing or paused, in one
+/// statement; a track the library no longer holds shows as removed.
+fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<NowPlayingValues, DbError> {
     let (values, repeat_mode, failure, display) = sql.query_row(
         &format!(
             "SELECT n.*, q.repeat, {columns} \
@@ -507,14 +507,12 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
             ))
         },
     )?;
-    // `Err(())`: the library no longer holds the track.
-    let playback = values.try_map_track(|track| {
-        display.clone().map(|display| NowPlayingTrack { track, display }).ok_or(())
-    });
-    match playback {
-        Ok(playback) => Ok(Some(NowPlayingValues { playback, repeat_mode, failure })),
-        Err(()) => Ok(None),
-    }
+    let display = NowPlayingDisplay::of(display);
+    let playback = values.map_tracks(
+        |track| NowPlayingTrack { track, display: display.clone() },
+        |track_id| NowPlayingTrack { track: track_id, display: display.clone() },
+    );
+    Ok(NowPlayingValues { playback, repeat_mode, failure })
 }
 
 /// Plant damage for a test: the table `playback_now` is gone, so the volume

@@ -32,12 +32,34 @@ impl BridgePreviewTarget {
     }
 }
 
-/// The playing track as surfaces show it: the playback service's track joined
-/// with the library's current display for it.
+/// The prepared track the playback row names, as surfaces show it: the
+/// playback service's track joined with what the library shows of it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeNowPlayingTrack {
     pub track: BridgePlayingTrack,
-    pub display: BridgeTrackDisplay,
+    pub display: BridgeNowPlayingDisplay,
+}
+
+/// What surfaces show of the track the playback row names: the library's
+/// current display of it, or that the library no longer holds it. Mirrors
+/// `bae_playback::NowPlayingDisplay`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeNowPlayingDisplay {
+    Library {
+        display: BridgeTrackDisplay,
+    },
+    /// The library no longer holds the track: it was deleted, and playback
+    /// has yet to move off it.
+    Removed,
+}
+
+mirror_enum! {
+    BridgeNowPlayingDisplay = bae_playback::NowPlayingDisplay,
+    from_core: fn,
+    variants: {
+        Library(display: (BridgeTrackDisplay)),
+        Removed,
+    },
 }
 
 /// The playing track as the playback service knows it: which track, and the
@@ -66,7 +88,7 @@ pub struct BridgeTrackDisplay {
 mirror_struct! {
     BridgeNowPlayingTrack = bae_playback::NowPlayingTrack,
     from_core: fn,
-    fields: { track: (BridgePlayingTrack), display: (BridgeTrackDisplay) },
+    fields: { track: (BridgePlayingTrack), display: (BridgeNowPlayingDisplay) },
 }
 
 mirror_struct! {
@@ -350,7 +372,10 @@ pub enum BridgePlaybackValueState {
 }
 
 mirror_enum! {
-    BridgePlaybackValueState = bae_playback::PlaybackState<bae_playback::NowPlayingTrack>,
+    BridgePlaybackValueState = bae_playback::PlaybackState<
+        bae_playback::NowPlayingTrack,
+        bae_playback::NowPlayingTrack<String>,
+    >,
     from_core: fn,
     variants: {
         Stopped,
@@ -360,21 +385,33 @@ mirror_enum! {
     },
 }
 
-/// The track a load is for: its id alone until core has prepared it, then the
-/// prepared track, which carries the id.
+/// The track a load is for: its id and what the library shows of it until
+/// core has prepared it, then the prepared track, which carries the id.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeLoadingTrack {
-    Unprepared { track_id: String },
+    Unprepared { track_id: String, display: BridgeNowPlayingDisplay },
     Prepared { track: BridgeNowPlayingTrack },
 }
 
-mirror_enum! {
-    BridgeLoadingTrack = bae_playback::LoadingTrack<bae_playback::NowPlayingTrack>,
-    from_core: fn,
-    variants: {
-        Unprepared { track_id },
-        Prepared(track: (BridgeNowPlayingTrack)),
-    },
+impl BridgeLoadingTrack {
+    fn from_core(
+        track: bae_playback::LoadingTrack<
+            bae_playback::NowPlayingTrack,
+            bae_playback::NowPlayingTrack<String>,
+        >,
+    ) -> Self {
+        match track {
+            bae_playback::LoadingTrack::Unprepared(bae_playback::NowPlayingTrack {
+                track: track_id,
+                display,
+            }) => {
+                Self::Unprepared { track_id, display: BridgeNowPlayingDisplay::from_core(display) }
+            }
+            bae_playback::LoadingTrack::Prepared(track) => {
+                Self::Prepared { track: BridgeNowPlayingTrack::from_core(track) }
+            }
+        }
+    }
 }
 
 #[cfg(desktop)]

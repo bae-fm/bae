@@ -9,12 +9,12 @@ impl AppServices {
     /// device's `playback_now` row with the playing track's current display:
     /// the first value at once, then one after each write that changes it —
     /// playback's own, or the library's to what the playing track shows.
-    /// `None` while the row names a track the library no longer holds, until
-    /// playback moves off it. Where playback is in the track is
+    /// A track the library no longer holds shows as removed, until playback
+    /// moves off it. Where playback is in the track is
     /// [`subscribe_playback_positions`](Self::subscribe_playback_positions).
     pub fn subscribe_playback_values(
         &self,
-    ) -> bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
+    ) -> bae_store::live_query::LiveValues<bae_playback::NowPlayingValues> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_now_playing())
     }

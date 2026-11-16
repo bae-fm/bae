@@ -336,7 +336,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
 
     settle_playback_queue(&db, true).await.unwrap();
     assert_eq!(upcoming(&db).await, vec![tracks[1].clone()], "kept to resume");
-    let resumed = now_playing(&db).await.unwrap().expect("nothing to display");
+    let resumed = now_playing(&db).await.unwrap();
     assert_eq!(resumed.playback.state, crate::PlaybackState::Stopped);
     assert_eq!(resumed.failure, None);
     assert_eq!(

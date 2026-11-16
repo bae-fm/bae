@@ -13,7 +13,8 @@ private let logger = Logger.bae("PlaybackStore")
 /// the read they open hands its values to `self` on the main actor.
 @Observable
 public class PlaybackStore {
-    public private(set) var nowPlaying: NowPlaying = .stopped
+    /// What playback is doing to which track, as core's latest value says.
+    public private(set) var nowPlaying: BridgePlaybackValueState = .stopped
     private var dismissedSidePausePromptId: String?
 
     /// The volume, mute and repeat mode; `nil` until core's first playback
@@ -94,66 +95,12 @@ public class PlaybackStore {
         dismissedSidePausePromptId = prompt.id
     }
 
-    public func stop() {
-        setNowPlaying(.stopped)
-    }
-
-    /// Enter loading for `trackId`, keeping the displayed track until
-    /// `setLoadingTarget` brings the target's metadata; otherwise the
-    /// now-playing bar would close on every track change. `waitsOnStorage`
-    /// is true while the load waits on a download.
-    public func beginLoading(trackId: String, waitsOnStorage: Bool) {
-        setNowPlaying(
-            .loading(
-                .unprepared(trackId: trackId),
-                previous: nowPlaying.track,
-                waitsOnStorage: waitsOnStorage
-            )
-        )
-    }
-
-    /// The target's metadata arrived. It applies when already loading this
-    /// track, or when playing or paused on it (core re-enters loading to buffer
-    /// a seek); in any other state a newer load has moved on and it is dropped.
-    /// `waitsOnStorage` is true while the load waits on a download.
-    public func setLoadingTarget(
-        _ target: BridgeNowPlayingTrack,
-        waitsOnStorage: Bool
-    ) {
-        let trackId = target.track.trackId
-        let previous: BridgeNowPlayingTrack?
-        switch nowPlaying {
-        case .loading(let loading, let priorFallback, _)
-        where loading.trackId == trackId:
-            previous = priorFallback
-        case .playing(let current) where current.track.trackId == trackId,
-            .paused(let current, _) where current.track.trackId == trackId:
-            previous = current
-        default:
-            // Logged so a stuck now-playing bar can be traced.
-            logger.debug(
-                "dropping stale loading target for \(trackId); no longer the current track"
-            )
-            return
+    /// Take the state core's latest value says.
+    public func apply(_ state: BridgePlaybackValueState) {
+        if nowPlaying.sidePausePrompt?.id != state.sidePausePrompt?.id {
+            dismissedSidePausePromptId = nil
         }
-        setNowPlaying(
-            .loading(
-                .prepared(track: target),
-                previous: previous,
-                waitsOnStorage: waitsOnStorage
-            )
-        )
-    }
-
-    public func pause(
-        track: BridgeNowPlayingTrack,
-        reason: BridgePlaybackPauseReason
-    ) {
-        setNowPlaying(.paused(track, reason: reason))
-    }
-
-    public func play(track: BridgeNowPlayingTrack) {
-        setNowPlaying(.playing(track))
+        nowPlaying = state
     }
 
     /// Tracks went into Up Next: the queue button's badge shows how many.
@@ -163,13 +110,6 @@ public class PlaybackStore {
             return
         }
         queueItemsAddedSubject.send(count)
-    }
-
-    private func setNowPlaying(_ next: NowPlaying) {
-        if nowPlaying.sidePausePrompt?.id != next.sidePausePrompt?.id {
-            dismissedSidePausePromptId = nil
-        }
-        nowPlaying = next
     }
 }
 
@@ -340,37 +280,45 @@ extension BridgeSideCountdown {
     }
 }
 
-extension BridgeLoadingTrack {
-    /// The id of the track being loaded.
-    public var trackId: String {
+extension BridgeNowPlayingDisplay {
+    /// The library's display of the track; `nil` once the library no longer
+    /// holds it.
+    public var library: BridgeTrackDisplay? {
         switch self {
-        case .unprepared(let trackId): trackId
-        case .prepared(let track): track.track.trackId
+        case .library(let display): display
+        case .removed: nil
         }
     }
 
-    /// The loading track once core has prepared it.
-    public var prepared: BridgeNowPlayingTrack? {
+    /// The title the now-playing surfaces show: the track's, or the line
+    /// saying the library no longer holds it.
+    public var title: String {
         switch self {
-        case .unprepared: nil
-        case .prepared(let track): track
+        case .library(let display): display.title
+        case .removed: localizedCoreString("core.playback.removed_track")
         }
     }
 }
 
-public enum NowPlaying {
-    case stopped
-    /// A track is being loaded. Until core has prepared it, `track` falls back
-    /// to `previous`, what was on screen, so the now-playing UI stays up.
-    /// `waitsOnStorage` while the load waits on a download.
-    case loading(
-        BridgeLoadingTrack,
-        previous: BridgeNowPlayingTrack?,
-        waitsOnStorage: Bool
-    )
-    case playing(BridgeNowPlayingTrack)
-    case paused(BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason)
+extension BridgeLoadingTrack {
+    /// The id of the track being loaded.
+    public var trackId: String {
+        switch self {
+        case .unprepared(let trackId, _): trackId
+        case .prepared(let track): track.track.trackId
+        }
+    }
 
+    /// What the library shows of the track being loaded.
+    public var display: BridgeNowPlayingDisplay {
+        switch self {
+        case .unprepared(_, let display): display
+        case .prepared(let track): track.display
+        }
+    }
+}
+
+extension BridgePlaybackValueState {
     public var isActive: Bool {
         if case .stopped = self {
             return false
@@ -378,58 +326,38 @@ public enum NowPlaying {
         return true
     }
 
-    public var track: BridgeNowPlayingTrack? {
+    /// The id of the track the state names: the one loading, playing or
+    /// paused.
+    public var trackId: String? {
         switch self {
-        case .playing(let t), .paused(let t, _): t
-        case .loading(let loading, let previous, _):
-            loading.prepared ?? previous
+        case .playing(let track), .paused(let track, _): track.track.trackId
+        case .loading(let loading, _): loading.trackId
         case .stopped: nil
         }
     }
 
-    /// The track core says is current: the one playing or paused, or the
-    /// loading one once core has prepared it. `nil` while the next track is
-    /// only an id, when `track` still shows the one before it so the bar does
-    /// not close on every track change; what marks or opens the current track
-    /// reads this, not `track`.
-    public var current: BridgeNowPlayingTrack? {
+    /// What the library shows of the track the state names.
+    public var display: BridgeNowPlayingDisplay? {
         switch self {
-        case .playing(let t), .paused(let t, _): t
-        case .loading(let loading, _, _): loading.prepared
-        case .stopped: nil
-        }
-    }
-
-    /// The id of the current track, the loading one included before core has
-    /// prepared it.
-    public var currentTrackId: String? {
-        switch self {
-        case .playing(let t), .paused(let t, _): t.track.trackId
-        case .loading(let loading, _, _): loading.trackId
+        case .playing(let track), .paused(let track, _): track.display
+        case .loading(let loading, _): loading.display
         case .stopped: nil
         }
     }
 
     public var secondaryLine: String? {
-        switch self {
-        case .paused(let track, let reason):
-            if let prompt = reason.sidePausePrompt {
-                return prompt.title()
-            }
-            return track.display.artistLine.text
-        case .playing(let track):
-            return track.display.artistLine.text
-        case .loading:
-            return track?.display.artistLine.text
-        case .stopped:
-            return nil
+        if case .paused(_, let reason) = self,
+            let prompt = reason.sidePausePrompt
+        {
+            return prompt.title()
         }
+        return display?.library?.artistLine.text
     }
 
     /// Whether a load waits on a download, for the arc around Play.
     public var waitsOnStorage: Bool {
         switch self {
-        case .loading(_, _, let waitsOnStorage): waitsOnStorage
+        case .loading(_, let waitsOnStorage): waitsOnStorage
         case .playing, .paused, .stopped: false
         }
     }
@@ -442,9 +370,7 @@ public enum NowPlaying {
         case .paused, .stopped: false
         }
     }
-}
 
-extension NowPlaying {
     fileprivate var sidePausePrompt: BridgeSidePausePrompt? {
         guard case .paused(_, let reason) = self else {
             return nil

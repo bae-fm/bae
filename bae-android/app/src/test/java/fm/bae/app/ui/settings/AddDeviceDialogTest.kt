@@ -52,6 +52,8 @@ class AddDeviceDialogTest {
 
         override suspend fun endAddDevice(pairing: String) {
             ended += pairing
+            // coven forgets an ended pairing, and its read says so.
+            subscription?.pulls?.deliver(BridgeAddDeviceStatus.Forgotten)
         }
     }
 
@@ -85,6 +87,48 @@ class AddDeviceDialogTest {
         compose.waitForIdle()
         assertTrue("closing the dialog ends the subscription", statuses.cancelled)
         assertEquals("closing the dialog ends the pairing", listOf(handle.adding.id), handle.ended)
+    }
+
+    @Test
+    fun closingTheDialogStopsItsStatusBeforeItEndsThePairing() {
+        val handle = PairingHandle()
+        var shown by mutableStateOf(true)
+        compose.setContent {
+            TestTheme {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                    if (shown) AddDeviceDialog(appHandle = handle, onDismiss = { shown = false })
+                }
+            }
+        }
+        compose.waitForIdle()
+        val statuses = checkNotNull(handle.subscription).pulls
+        statuses.deliver(BridgeAddDeviceStatus.Waiting(request = null))
+        compose.waitForIdle()
+
+        shown = false
+        compose.waitForIdle()
+        assertEquals(listOf(handle.adding.id), handle.ended)
+        assertEquals(
+            "the forgotten status the end brings reaches no view",
+            BridgeAddDeviceStatus.Forgotten,
+            statuses.untaken(),
+        )
+    }
+
+    @Test
+    fun aForgottenPairingSaysItsCodeHasEnded() {
+        val handle = PairingHandle()
+        compose.setContent {
+            TestTheme {
+                CompositionLocalProvider(LocalBugReports provides BugReports()) {
+                    AddDeviceDialog(appHandle = handle, onDismiss = {})
+                }
+            }
+        }
+        compose.waitForIdle()
+        checkNotNull(handle.subscription).pulls.deliver(BridgeAddDeviceStatus.Forgotten)
+        compose.waitForIdle()
+        compose.onNodeWithText("This code has ended. Close this and choose Add device again for a new one.").assertIsDisplayed()
     }
 
     /** The dialog stays open on [line], with Done, when the pairing ends as [end]. */

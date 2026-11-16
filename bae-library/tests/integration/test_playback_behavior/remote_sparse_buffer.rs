@@ -157,14 +157,16 @@ async fn a_load_from_storage_waits_on_storage() {
 /// Wait until the now-playing row shows a state that `accept` returns true
 /// for. If the wait times out, the panic message names `what`.
 async fn now_playing_until(
-    values: &bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
+    values: &bae_store::live_query::LiveValues<bae_playback::NowPlayingValues>,
     what: &str,
-    accept: impl Fn(&PlaybackState<bae_playback::NowPlayingTrack>) -> bool,
+    accept: impl Fn(
+        &PlaybackState<bae_playback::NowPlayingTrack, bae_playback::NowPlayingTrack<String>>,
+    ) -> bool,
 ) {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let value = values.next().await.expect("the playback values resolve");
-            if value.is_some_and(|value| accept(&value.playback.state)) {
+            if accept(&value.playback.state) {
                 return;
             }
         }

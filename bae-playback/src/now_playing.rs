@@ -1,5 +1,7 @@
-//! What playback surfaces show of the playing track: the playback service's
-//! [`PlayingTrack`], joined with the library's current [`TrackDisplay`] for it.
+//! What playback surfaces show of the track playback names: the playback
+//! service's [`PlayingTrack`] or the id of the track it loads, joined with
+//! the library's current [`TrackDisplay`] for it, or marked removed once the
+//! library no longer holds it.
 
 /// A track as the now-playing bar, the queue, and the system media controls
 /// show it, read from the library's current state.
@@ -24,19 +26,39 @@ pub struct PlayingTrack {
     pub duration_ms: Option<u64>,
 }
 
-/// The playing track as surfaces show it.
+/// What surfaces show of the track the playback row names: the library's
+/// current display of it, or that the library no longer holds it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct NowPlayingTrack {
-    pub track: PlayingTrack,
-    pub display: TrackDisplay,
+pub enum NowPlayingDisplay {
+    Library(TrackDisplay),
+    /// The library no longer holds the track: it was deleted, and playback
+    /// has yet to move off it.
+    Removed,
+}
+
+impl NowPlayingDisplay {
+    /// `display` when the library holds the track, and `Removed` when it
+    /// read none.
+    pub fn of(display: Option<TrackDisplay>) -> Self {
+        display.map_or(Self::Removed, Self::Library)
+    }
+}
+
+/// A track the playback row names, as surfaces show it. `Track` is what
+/// playback knows of it: the prepared [`PlayingTrack`], or the track's id
+/// alone while a load has yet to prepare it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NowPlayingTrack<Track = PlayingTrack> {
+    pub track: Track,
+    pub display: NowPlayingDisplay,
 }
 
 /// What playback surfaces show, read from the device's `playback_now` row:
-/// the service's values with the playing track's current display, the
-/// queue's repeat mode, and why playback last failed.
+/// the service's values with the current display of the track the row
+/// names, the queue's repeat mode, and why playback last failed.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NowPlayingValues {
-    pub playback: crate::PlaybackValues<NowPlayingTrack>,
+    pub playback: crate::PlaybackValues<NowPlayingTrack, NowPlayingTrack<String>>,
     pub repeat_mode: crate::RepeatMode,
     /// Why playback last failed; `None` once playback plays again or the
     /// person dismisses the failure notice.

@@ -58,11 +58,11 @@ pub enum MediaControlPlayback {
 
 /// What playback is doing, apart from where it is in what it plays: these
 /// change when playback does something, while [`PlaybackPositions`] move
-/// as audio plays. `Track` is what the state holds of the playing track; see
-/// [`PlaybackState`].
+/// as audio plays. `Track` and `Named` are what the state holds of its
+/// track; see [`PlaybackState`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct PlaybackValues<Track = crate::PlayingTrack> {
-    pub state: PlaybackState<Track>,
+pub struct PlaybackValues<Track = crate::PlayingTrack, Named = String> {
+    pub state: PlaybackState<Track, Named>,
     pub volume: f32,
     pub is_muted: bool,
     /// Where playback is going: this device's own output, a remote renderer,
@@ -275,15 +275,22 @@ impl PlaybackPositions {
     }
 }
 
-impl<Track> PlaybackValues<Track> {
-    /// The same values holding `f`'s result for the state's track, or `f`'s
-    /// error.
-    pub fn try_map_track<Mapped, Error>(
+impl<Track, Named> PlaybackValues<Track, Named> {
+    /// The same values holding `prepared`'s result for the state's prepared
+    /// track, and `named`'s for a track a load names by its id alone.
+    pub fn map_tracks<Mapped, MappedNamed>(
         self,
-        f: impl FnMut(Track) -> Result<Mapped, Error>,
-    ) -> Result<PlaybackValues<Mapped>, Error> {
+        prepared: impl FnMut(Track) -> Mapped,
+        named: impl FnOnce(Named) -> MappedNamed,
+    ) -> PlaybackValues<Mapped, MappedNamed> {
         let Self { state, volume, is_muted, remote, preview } = self;
-        Ok(PlaybackValues { state: state.try_map_track(f)?, volume, is_muted, remote, preview })
+        PlaybackValues {
+            state: state.map_tracks(prepared, named),
+            volume,
+            is_muted,
+            remote,
+            preview,
+        }
     }
 
     /// What the operating-system media surface shows of these values.

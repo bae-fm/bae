@@ -93,7 +93,13 @@ private fun RowScope.NowPlayingTrackInfo(
     track: fm.bae.app.playback.NowPlaying,
     onExpand: () -> Unit,
 ) {
-    val nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
+    // A removed track has no artist, and is named by its title alone.
+    val nowPlayingDescription =
+        if (track.artist.isEmpty()) {
+            track.title
+        } else {
+            stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
+        }
     Row(
         modifier =
             Modifier

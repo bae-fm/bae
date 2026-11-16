@@ -107,6 +107,9 @@ pub enum BridgeAddDeviceStatus {
     Ended {
         end: BridgeAddDeviceEnd,
     },
+    /// coven no longer holds the pairing: the sheet that showed its code
+    /// ended it, or this device never made it.
+    Forgotten,
 }
 /// How a pairing ended.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
@@ -122,7 +125,11 @@ pub enum BridgeAddDeviceEnd {
     Expired,
 }
 impl BridgeAddDeviceStatus {
-    pub(crate) fn from_core(value: coven::AddDeviceStatus) -> Self {
+    /// The status coven reads for a pairing: `None` once it has forgotten it.
+    pub(crate) fn from_core(value: Option<coven::AddDeviceStatus>) -> Self {
+        let Some(value) = value else {
+            return Self::Forgotten;
+        };
         match value {
             coven::AddDeviceStatus::Waiting { request } => Self::Waiting {
                 request: request.map(|request| Arc::new(BridgeAddDeviceRequest { request })),

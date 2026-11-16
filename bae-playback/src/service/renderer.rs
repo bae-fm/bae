@@ -622,8 +622,7 @@ impl PlaybackService {
             self.finish_listening().await;
         }
 
-        self.slot =
-            PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared(track_id.to_string()));
         self.emit_state();
 
         let resolved = match ResolvedTrackAudio::resolve(&self.records, track_id).await {

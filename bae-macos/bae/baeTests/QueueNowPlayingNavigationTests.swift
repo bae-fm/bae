@@ -21,19 +21,23 @@ struct QueueNowPlayingNavigationTests {
         ui.setLibraryBrowserMode(.artists)
         ui.setQueuePresented(true)
         let store = PlaybackStore()
-        store.play(
-            track: BridgeNowPlayingTrack(
-                track: BridgePlayingTrack(
-                    trackId: "playing-track",
-                    durationMs: 180_000
-                ),
-                display: BridgeTrackDisplay(
-                    title: "Track Title",
-                    artistLine: .named("Track Artist"),
-                    albumId: "playing-album",
-                    releaseId: "playing-release",
-                    albumTitle: "Album Title",
-                    coverImage: nil
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: "playing-track",
+                        durationMs: 180_000
+                    ),
+                    display: .library(
+                        display: BridgeTrackDisplay(
+                            title: "Track Title",
+                            artistLine: .named("Track Artist"),
+                            albumId: "playing-album",
+                            releaseId: "playing-release",
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        )
+                    )
                 )
             )
         )
