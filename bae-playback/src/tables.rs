@@ -42,7 +42,7 @@ pub use queue_reads::{subscribe_queue_value, subscribe_session_up_next};
 pub use queue_upcoming::queue_upcoming;
 pub use queue_upcoming::{
     subscribe_upcoming_count, subscribe_upcoming_position, subscribe_upcoming_window,
-    upcoming_key_at, upcoming_order,
+    upcoming_key_at,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use resume::plant_unreadable_resume_row_for_test;

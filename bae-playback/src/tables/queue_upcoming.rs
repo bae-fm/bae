@@ -12,7 +12,7 @@ use bae_store::{ListWindow, WindowRead};
 
 /// The upcoming tracks' order: the lane's place in the order it reads in,
 /// which is its own while shuffle is off and the shuffled one while it is on.
-pub fn upcoming_order(shuffled: bool) -> ListOrder {
+pub(super) fn upcoming_order(shuffled: bool) -> ListOrder {
     ListOrder::new(vec![SortTerm::ascending(format!("c.{}", context_order_column(shuffled)))])
 }
 
