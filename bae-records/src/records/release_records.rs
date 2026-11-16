@@ -333,12 +333,8 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
                   AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
                       <> json_extract(new.value, '$[1]'))";
 
-/// One statement answers every check: the caller passes the checks as one
-/// JSON array, and the statement matches each by plain equality on the index
-/// its kind of record has — its pressing on `idx_release_records_catalog_key`,
-/// its album on `idx_release_records_catalog_album`. The statement returns
-/// one row per check, in check order. Each row has the check's albums as a
-/// JSON array: albums that contain the pressing first, then the oldest first.
+/// One statement answers every check: the checks go in as one JSON array,
+/// and [`library_status_sql`] answers one row for each, in check order.
 pub fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
@@ -356,10 +352,27 @@ pub fn check_releases_in_library_on(
     )
     .to_string();
     Ok(sql.query(
+        &library_status_sql("SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)"),
+        params![checks_json],
+        library_status_of,
+    )?)
+}
+
+/// The statement that says which library albums hold each release `checks`
+/// selects, as `(position, release_id, catalog, group_id)`: a catalog's
+/// release and the album (MusicBrainz release group, Discogs master) it
+/// files it under, `group_id` NULL for none.
+///
+/// Each check is matched by plain equality on the index its kind of record
+/// has — its pressing on `idx_release_records_catalog_key`, its album on
+/// `idx_release_records_catalog_album` — and one row comes back for each
+/// check, in `position` order, holding its albums as a JSON array, those
+/// holding its pressing first, then by age. [`library_status_of`] reads a
+/// row.
+pub fn library_status_sql(checks: &str) -> String {
+    format!(
         r#"
-            WITH checks(position, release_id, catalog, group_id) AS (
-                SELECT key, value ->> 0, value ->> 1, value ->> 2 FROM json_each(?1)
-            ),
+            WITH checks(position, release_id, catalog, group_id) AS ({checks}),
             matches(position, album_id, holds_release) AS (
                 SELECT checks.position, r.album_id, 1
                 FROM checks
@@ -393,23 +406,24 @@ pub fn check_releases_in_library_on(
                     FROM found WHERE found.position = checks.position) AS albums
             FROM checks
             ORDER BY checks.position
-        "#,
-        params![checks_json],
-        |row| {
-            let albums: Vec<StoredAlbumMatch> = bae_store::read::json_column(row, "albums")?;
-            Ok(LibraryStatus {
-                release_id: row.get("release_id")?,
-                albums: albums
-                    .into_iter()
-                    .map(|album| crate::LibraryAlbumMatch {
-                        album_id: album.album_id,
-                        album_title: album.album_title,
-                        holds_release: album.holds_release != 0,
-                    })
-                    .collect(),
+        "#
+    )
+}
+
+/// The library status one row of [`library_status_sql`] holds.
+pub fn library_status_of(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryStatus> {
+    let albums: Vec<StoredAlbumMatch> = bae_store::read::json_column(row, "albums")?;
+    Ok(LibraryStatus {
+        release_id: row.get("release_id")?,
+        albums: albums
+            .into_iter()
+            .map(|album| crate::LibraryAlbumMatch {
+                album_id: album.album_id,
+                album_title: album.album_title,
+                holds_release: album.holds_release != 0,
             })
-        },
-    )?)
+            .collect(),
+    })
 }
 
 /// One album match as the library check's statement writes it into its

@@ -15,14 +15,13 @@ use crate::tables::import_state::{
     load_verdict_cards_on,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{
-    claimed_records_on, load_source_release_on, offered_covers_on,
-};
+use crate::tables::source_releases::{claimed_records_on, offered_covers_on};
+use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
-use crate::{ImportedRelease, ReleaseLink};
-use bae_identify::PressingLink;
 use bae_records::records::read::album_credit_line_on;
-use bae_records::records::release_records::{album_records_name_on, check_releases_in_library_on};
+use bae_records::records::release_records::{
+    album_records_name_on, library_status_of, library_status_sql,
+};
 
 #[derive(Clone, PartialEq)]
 pub(super) struct CandidateDetailRows {
@@ -142,7 +141,6 @@ fn draft_rows_on(
     content_hash: &str,
     current: Option<&DbImportCandidateState>,
 ) -> Result<DraftRows, DbError> {
-    let release_link = current.and_then(|state| state.release_link.clone());
     let pane_rows = load_pane_rows_on(sql, content_hash)?;
     let mapping = super::mapping_rows::load_mapping_rows_on(
         sql,
@@ -153,10 +151,6 @@ fn draft_rows_on(
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
     let artist_resolutions = super::credit_resolutions::credit_resolutions_on(sql, content_hash)?;
-    // The linked pressing's stored primary release, which the library check
-    // reads.
-    let primary =
-        primary_release_on(sql, candidate, release_link.as_ref().and_then(ReleaseLink::pressing))?;
     // Every catalog record of what the candidate is linked to, merged in one
     // statement over the stored releases: the linked pressing's releases
     // describe it, an album names its own.
@@ -168,14 +162,7 @@ fn draft_rows_on(
         Some(_) => offered_covers_on(sql, content_hash)?,
         None => Vec::new(),
     };
-    let picked_library_status = match primary.as_ref() {
-        Some(release) => {
-            check_releases_in_library_on(sql, &[bae_records::LibraryCheck::of_release(release)])?
-                .into_iter()
-                .next()
-        }
-        None => None,
-    };
+    let picked_library_status = picked_library_status_on(sql, &candidate.key())?;
     let album = candidate_album_on(sql, content_hash, &records)?;
     let cover = pane_rows
         .cover
@@ -311,27 +298,28 @@ impl CandidateDetailRows {
     }
 }
 
-/// Read the release the linked pressing names first, the one the draft is
-/// read from, in the pane's SQL snapshot. None for a candidate linked to no
-/// pressing.
-///
-/// A stored pick always has its releases — the pick write fetches them first —
-/// so when one is missing, the read fails instead of returning part of the
-/// pane.
-fn primary_release_on(
+/// Which library albums hold the release the candidate `key` is linked to,
+/// the pressing its link names first; `None` for a candidate linked to no
+/// pressing. The link's foreign key keeps the release it names stored.
+fn picked_library_status_on(
     sql: &SqlReadContext<'_>,
-    candidate: &FolderCandidate,
-    link: Option<&PressingLink>,
-) -> Result<Option<bae_catalogs::source_release::SourceRelease>, DbError> {
-    let Some(link) = link else {
-        return Ok(None);
-    };
-    load_source_release_on(sql, &link.record)?.map(Some).ok_or_else(|| {
-        DbError::unreadable(
-            format!("the source release {} claimed for {}", link.record.key, candidate.key()),
-            None::<String>,
+    key: &crate::CandidateKey,
+) -> Result<Option<LibraryStatus>, DbError> {
+    Ok(sql
+        .query_row(
+            &library_status_sql(
+                "SELECT 0, link.release_id, link.source, release.source_group_id \
+                 FROM scan_candidate AS scan \
+                 JOIN import_candidate_release_link AS link \
+                     ON link.content_hash = scan.content_hash AND link.kind = 'pressing' \
+                 JOIN source_release AS release \
+                     ON (release.catalog, release.release_id) = (link.source, link.release_id) \
+                 WHERE scan.path = :key",
+            ),
+            named_params! { ":key": key },
+            library_status_of,
         )
-    })
+        .optional()?)
 }
 
 impl ImportTables {
