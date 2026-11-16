@@ -35,8 +35,8 @@ impl PlaybackNowRow {
 }
 
 /// Follow what playback is doing as its screens show it. A track the library
-/// no longer holds shows as removed: the track was deleted, and playback has
-/// yet to move off it.
+/// no longer holds shows as removed: the person deleted it from the library,
+/// and playback has not yet moved to another track.
 pub fn subscribe_now_playing(
     store: &Store,
 ) -> coven::LiveQuery<NowPlayingValues, bae_store::DbError> {

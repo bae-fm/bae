@@ -1,7 +1,8 @@
-//! What playback surfaces show of the track playback names: the playback
-//! service's [`PlayingTrack`] or the id of the track it loads, joined with
-//! the library's current [`TrackDisplay`] for it, or marked removed once the
-//! library no longer holds it.
+//! What the apps' playback screens show of the track the playback row names:
+//! the playback service's [`PlayingTrack`] or the id of the track it loads,
+//! with the library's current [`TrackDisplay`] for it.
+//! [`NowPlayingDisplay::of`] marks the track removed when the library no
+//! longer holds it.
 
 /// A track as the now-playing bar, the queue, and the system media controls
 /// show it, read from the library's current state.
@@ -31,8 +32,8 @@ pub struct PlayingTrack {
 #[derive(Debug, Clone, PartialEq)]
 pub enum NowPlayingDisplay {
     Library(TrackDisplay),
-    /// The library no longer holds the track: it was deleted, and playback
-    /// has yet to move off it.
+    /// The library no longer holds the track: the person deleted it from the
+    /// library, and playback has not yet moved to another track.
     Removed,
 }
 

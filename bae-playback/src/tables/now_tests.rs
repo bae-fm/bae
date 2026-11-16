@@ -231,9 +231,9 @@ async fn a_deleted_playing_track_shows_as_removed_at_once() {
     assert_eq!(next_value(&mut values).await.playback.state, PlaybackState::Stopped);
 }
 
-/// A load shows the track it loads from the start: the value that names the
-/// next track, before playback has prepared it, carries its display, so a
-/// track change has no value without one.
+/// While playback loads the next track, before it prepares the track, the
+/// value already holds that track's display, so no value during a track
+/// change lacks a display.
 #[tokio::test]
 async fn a_track_change_shows_the_next_track_before_it_is_prepared() {
     let (db, _tmp, tracks) = release_db(2).await;
@@ -276,9 +276,11 @@ async fn the_row_holds_a_loads_wait_on_storage_while_it_lasts() {
             waits_on_storage,
         })
     };
-    let waits = |state: PlaybackState<crate::NowPlayingTrack, crate::NowPlayingTrack<String>>| match state {
-        PlaybackState::Loading { waits_on_storage, .. } => Some(waits_on_storage),
-        _ => None,
+    let waits = |state: PlaybackState<crate::NowPlayingTrack, crate::NowPlayingTrack<String>>| {
+        match state {
+            PlaybackState::Loading { waits_on_storage, .. } => Some(waits_on_storage),
+            _ => None,
+        }
     };
 
     row.apply(&loading(false)).await.unwrap();

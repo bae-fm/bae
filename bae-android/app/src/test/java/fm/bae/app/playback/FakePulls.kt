@@ -40,7 +40,7 @@ internal class PullChannel<V> {
 
     suspend fun next(): V = answers.receive().getOrThrow()
 
-    /** The first value delivered that no pull took, or null when every one was taken. */
+    /** The first value delivered that no pull took, or null when pulls took every value. */
     fun untaken(): V? = answers.tryReceive().getOrNull()?.getOrNull()
 
     fun cancel() {

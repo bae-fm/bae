@@ -172,8 +172,8 @@ class BaeCorePlayer(
                 ).build()
         }
 
-        /** The metadata Media3 shows for [meta]: a track the library no longer holds shows the removed-track title
-         *  with no artist or album. */
+        /** The metadata Media3 shows for [meta]. For a track the library no longer holds, it shows the title core's
+         *  catalog gives a removed track, with no artist or album. */
         internal fun mediaMetadata(
             meta: Meta,
             durationMs: Long?,

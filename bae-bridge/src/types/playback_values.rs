@@ -48,8 +48,8 @@ pub enum BridgeNowPlayingDisplay {
     Library {
         display: BridgeTrackDisplay,
     },
-    /// The library no longer holds the track: it was deleted, and playback
-    /// has yet to move off it.
+    /// The library no longer holds the track: the person deleted it from the
+    /// library, and playback has not yet moved to another track.
     Removed,
 }
 

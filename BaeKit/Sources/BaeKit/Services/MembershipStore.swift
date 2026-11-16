@@ -272,9 +272,10 @@ public final class MembershipStore {
 
     /// Follow the pairing `pairing` until the calling task is cancelled, then
     /// stop following it and end it with `end`: Add Device's sheet runs it
-    /// while it shows the pairing's code. The pulls stop before the end
-    /// call, so the forgotten status coven reports once the pairing ends
-    /// reaches no view, and the sheet closes showing what it last showed.
+    /// while it shows the pairing's code. The store stops reading the
+    /// pairing's status before it calls `end`, so the sheet never shows the
+    /// forgotten status that coven reports after the pairing ends, and keeps
+    /// what it showed last.
     public func followAddDevice(
         _ pairing: String,
         endingWith end: @escaping @Sendable (String) async throws -> Void

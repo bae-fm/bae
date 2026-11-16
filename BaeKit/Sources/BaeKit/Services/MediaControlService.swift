@@ -181,8 +181,9 @@ public final class MediaControlService: @unchecked Sendable {
 
     // MARK: - Library Now Playing
 
-    /// Push the Now Playing info for a library playback state. A `.stopped`
-    /// state clears; every other state names the track it shows.
+    /// Push the Now Playing info for a library playback state: clear Now
+    /// Playing for a stopped state, and write the state's track to it for
+    /// every other state.
     public func updateNowPlaying(
         state: BridgePlaybackValueState,
         appHandle: AppHandle

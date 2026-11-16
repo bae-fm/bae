@@ -52,7 +52,7 @@ class AddDeviceDialogTest {
 
         override suspend fun endAddDevice(pairing: String) {
             ended += pairing
-            // coven forgets an ended pairing, and its read says so.
+            // coven forgets an ended pairing, so the pairing's live read delivers Forgotten.
             subscription?.pulls?.deliver(BridgeAddDeviceStatus.Forgotten)
         }
     }
@@ -109,7 +109,7 @@ class AddDeviceDialogTest {
         compose.waitForIdle()
         assertEquals(listOf(handle.adding.id), handle.ended)
         assertEquals(
-            "the forgotten status the end brings reaches no view",
+            "the dialog never takes the Forgotten status that ending the pairing delivers",
             BridgeAddDeviceStatus.Forgotten,
             statuses.untaken(),
         )

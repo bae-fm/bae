@@ -75,8 +75,9 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = false)
 
-        // A track is playing, then the next begins loading: the value names it
-        // with its details before core has prepared its audio.
+        // A track is playing, then the next begins loading: the first loading
+        // value carries the next track's details before core has prepared its
+        // audio.
         player.applyPlaybackState(
             playingState(
                 trackId = "t1",
@@ -87,8 +88,9 @@ class PlaybackActivationTest {
         player.applyPlaybackState(loadingState("t2", title = "Second Title"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        // The next track is current at once, so the timeline never blinks
-        // empty mid-playback, which would otherwise drop the notification.
+        // The next track is current at once, so the timeline is never empty,
+        // even briefly, during playback; an empty timeline would drop the
+        // notification.
         assertEquals(Player.STATE_BUFFERING, player.playbackState)
         assertEquals(1, player.currentTimeline.windowCount)
         assertEquals("Second Title", player.mediaMetadata.title.toString())
@@ -133,8 +135,8 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = true)
 
-        // A load names its track with its details from its first value, so the
-        // service comes up then, before core has prepared the track.
+        // The first loading value carries the track's details, so the player
+        // starts the service then, before core has prepared the track.
         player.applyPlaybackState(loadingState("t1"))
         shadowOf(Looper.getMainLooper()).idle()
 

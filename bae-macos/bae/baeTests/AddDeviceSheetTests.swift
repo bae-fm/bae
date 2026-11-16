@@ -75,7 +75,9 @@ struct AddDeviceSheetTests {
     }
 
     @MainActor
-    @Test("closing the sheet stops its status before it ends the pairing")
+    @Test(
+        "closing the sheet stops reading the pairing's status before it ends the pairing"
+    )
     func closingTheSheetDeliversNoStatusAfterIt() async throws {
         let holder = AddDeviceResultHolder()
         holder.result = .success(Self.adding)

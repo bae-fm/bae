@@ -3634,8 +3634,9 @@ closes it. A pairing she declines closes the sheet. One that expires says "This 
 ended" and to choose Add device again for a new one, and one coven refuses
 because the request failed a check says the request was refused and the device
 was not added, each in the sheet with **Done**. Closing the sheet, however it
-closes, ends the pairing, which coven then forgets. The sheet stops following
-the pairing before it ends it, so it closes showing what it last showed; a
+closes, ends the pairing, which coven then forgets. Closing the sheet
+first stops it following the pairing and then ends the pairing, so the sheet
+keeps showing its last step until it closes; a
 pairing coven has forgotten while the sheet follows it says "This code has
 ended" as an expired one does. While the sheet follows it, Carol's
 device syncs every 5 seconds instead of every 30, so the request reaches her

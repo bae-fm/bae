@@ -2420,7 +2420,7 @@ nb = "{seconds, plural, one {Neste plate starter om # sekund.} other {Neste plat
 fi = "{seconds, plural, one {Seuraava levy alkaa # sekunnin kuluttua.} other {Seuraava levy alkaa # sekunnin kuluttua.}}"
 
 [messages."core.playback.removed_track"]
-comment = "Title the now-playing bar, the mini player and the system media controls show in place of a playing track's title once the track is deleted from the library, until playback moves to the next track."
+comment = "Title the now-playing bar, the mini player and the system media controls show in place of a playing track's title once the person or another of their devices deletes the track from the library, until playback moves to the next track."
 value = "Removed from library"
 
 [messages."core.playback.removed_track".translations]
