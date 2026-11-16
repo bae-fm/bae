@@ -176,7 +176,8 @@ impl IdentifyRunView {
     /// that failed as it did. The lookup of an offered row's pressing and the
     /// fetches applying the release a run picked have no cell. The reference
     /// cards (`reference_cards_of`) state the rule the stored
-    /// cards' statement answers with.
+    /// cards' statement answers with, and only they use it.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(super) fn shows(&self, failure: &super::IdentifyFailure) -> bool {
         use super::IdentifyFailure;
         let failed_as = |lookup: &LookupView, failed: &LookupFailure| {
