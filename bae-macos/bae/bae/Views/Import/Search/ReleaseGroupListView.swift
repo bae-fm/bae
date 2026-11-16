@@ -192,10 +192,10 @@ struct ReleaseGroupSection: View {
         .padding(.leading, Self.ruleInset)
     }
 
-    /// The pick being read right now on this pressing, while one is: the
-    /// person's pick of this row, else, while the person has none being read,
-    /// the pick identification made on its own, which core says the row
-    /// holds.
+    /// How core reads a pick on this row right now. When the person picked
+    /// this row and core is still reading it, returns their pick. When core
+    /// reads no pick of the person's, returns the pick identification made by
+    /// itself, if core says this row holds it.
     func loading(_ pressing: Pressing) -> PickReading? {
         if let loadingPick {
             return loadingPick.pressing == pressing.link.record

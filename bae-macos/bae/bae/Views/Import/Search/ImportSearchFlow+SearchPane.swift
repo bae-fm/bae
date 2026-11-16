@@ -12,8 +12,8 @@ extension ImportSearchFlow {
         let importStore: ImportStore
     }
 
-    /// Which candidate a search pane renders. Its rows say which of them
-    /// the candidate is linked to.
+    /// Which candidate a search pane renders. Core marks the pane's row that
+    /// holds the release it linked the candidate to.
     struct SearchPaneInput {
         let candidate: Candidate
         let key: Data

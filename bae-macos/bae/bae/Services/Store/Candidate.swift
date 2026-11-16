@@ -93,11 +93,12 @@ enum MetadataApplication: Equatable, Sendable {
     case fileTags
 }
 
-/// A person's pick being read: the row it was made on, named by the record
-/// the row leads with, and the steps its read reports.
+/// The pick a person made on a row while core reads it: the release the row
+/// shows first, which identifies that row, and the apply that holds the step
+/// core's read is at.
 struct LoadingPick {
     let pressing: BridgeLookupRef
-    /// `nil` where no bridge is behind the pick.
+    /// `nil` when no bridge runs the read, as in a shot or a test.
     let apply: (any CatalogApplySource)?
 }
 

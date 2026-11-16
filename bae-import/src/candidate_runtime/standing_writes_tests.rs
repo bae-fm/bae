@@ -708,8 +708,8 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
     );
 }
 
-/// Each row of the answer `key` stands at, by its lead release, with what the
-/// candidate picked among them.
+/// Returns each row of the answer the runtime holds for `key`, as its lead
+/// release's ID and the candidate's choice for that row.
 async fn row_choices(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
@@ -717,7 +717,7 @@ async fn row_choices(
     let Some(IdentificationRuntime::Saving(SavingAnswer { state, .. })) =
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification)
     else {
-        panic!("the answer is being written");
+        panic!("expected the runtime to be saving the answer for {key}");
     };
     state
         .cards
@@ -729,10 +729,10 @@ async fn row_choices(
         .collect()
 }
 
-/// While bae reads the release an answer picked on its own, the answer's
-/// statement says which row holds it, and that row is the one chosen, since
-/// the candidate is linked to no pressing yet. An answer that picks nothing
-/// leaves every row unchosen.
+/// While bae reads the release an answer picked by itself, the answer's SQL
+/// query marks the row that holds that release as the pick bae is reading,
+/// and marks it chosen, because bae has not linked the candidate to a pressing
+/// yet. The query marks no row of an answer that picks nothing.
 #[tokio::test]
 async fn the_row_holding_the_pick_being_read_reads_as_chosen() {
     let runtime = CandidateRuntime::for_test().await;

@@ -33,9 +33,9 @@ impl PressingLink {
     }
 }
 
-/// What the candidate a list is for has picked among its rows, for one row,
-/// as the list's statement reads it from the candidate's link and from where
-/// its identification stands. A row formed in memory holds neither.
+/// Which pick of the list's candidate one row holds. The list's SQL query
+/// reads it from the candidate's release link and from its identification's
+/// status. A row that bae builds in memory has both values false.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RowChoice {
     /// The row holds the release the candidate is linked to, or, while the

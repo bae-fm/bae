@@ -210,13 +210,13 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
 /// release the list's verdict picks on its own; a list that is no verdict's
 /// has none.
 ///
-/// A release is chosen when the candidate is linked to it, or when it is the
-/// verdict's own pick, which bae is reading in full, while the candidate is
-/// linked to no pressing.
+/// `chosen` marks a release when bae linked the candidate to it. Before bae
+/// links the candidate to a pressing, it also marks the release the verdict
+/// picked by itself while bae reads that release in full.
 fn choice_columns_sql(found: &str, files: &str, pick: Option<&str>) -> String {
     let linked = format!("release_link.content_hash = {files} AND release_link.kind = 'pressing'");
-    // The standing comes first, so a list whose pick no one reads never
-    // computes the pick.
+    // SQLite checks the standing first, so it skips the pick's subquery
+    // whenever bae is not reading a pick.
     let being_read = match pick {
         Some(pick) => format!(
             "(EXISTS (SELECT 1 FROM import_candidate_standing AS reading \
@@ -237,9 +237,10 @@ fn choice_columns_sql(found: &str, files: &str, pick: Option<&str>) -> String {
     )
 }
 
-/// The SQL of the content hash of the folder candidate a run's match row
-/// `found` (or a stored verdict's) is of: the verdict's own, or the one the
-/// standing of the run in flight names. NULL for a library release's run.
+/// The SQL of the content hash of the folder candidate that the match row
+/// `found` belongs to. A stored verdict's row carries the hash itself. A row
+/// of a run that is still going gets it from the standing that names the run.
+/// The SQL is NULL for a library release's run.
 fn run_files_sql(found: &str) -> String {
     format!(
         "COALESCE({found}.content_hash, \

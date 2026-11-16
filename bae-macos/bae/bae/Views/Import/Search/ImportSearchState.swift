@@ -10,8 +10,8 @@ struct ImportSearchState {
     /// The typed search submitted for this candidate, as its providers land.
     /// `nil` before one is submitted and after it is cleared.
     let search: BridgeCandidateSearch?
-    /// The person's pick being read, whose row names the network read it
-    /// waits on.
+    /// The release the person picked, while core reads it in full from the
+    /// network. Its row shows which lookup core is waiting on.
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let isImporting: Bool

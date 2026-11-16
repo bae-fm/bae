@@ -422,9 +422,9 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
     );
 }
 
-/// A row reads as its run's pick being read exactly while that pick is read
-/// in full, an Import asked of it or not: never while the lookup waits, runs,
-/// or writes an answer that picks nothing.
+/// A row's identification status is ReadingPick exactly while bae reads the
+/// run's pick in full, whether or not the person asked to import it, and never
+/// while the lookup waits, runs, or writes an answer that picks no release.
 #[tokio::test]
 async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
     let lib = Library::new().await;

@@ -471,9 +471,9 @@ struct FindOnlineResultAreaTests {
 @MainActor
 @Suite("The pick the pane shows being read")
 struct FindOnlineReadingPickTests {
-    /// The sole match core picked on its own is the row that holds the
-    /// spinner while it is read, as its row says; with no pick being read
-    /// none does.
+    /// The sole match that core picked holds the spinner while core reads it,
+    /// and core marks its row chosen. When core reads no pick, no row holds
+    /// the spinner.
     @Test("a sole match selects itself while core reads it")
     func aSoleMatchSelectsItself() throws {
         let reading = try #require(

@@ -1,13 +1,14 @@
 import BaeKit
 
-/// A failed release selection belongs to the row that was picked, named by
-/// the record it leads with, not to the candidate's metadata draft or to the
-/// search as a whole.
+/// A failed release selection belongs to the row the person picked, which
+/// `release`, the release the row shows first, identifies. It does not belong
+/// to the candidate's metadata draft or to the search as a whole.
 struct ReleaseSelectionFailure: Equatable {
     let release: BridgeLookupRef
     let error: DisplayError
 
-    /// Whether `pressing` is the row the failed pick was made on.
+    /// Whether `pressing` is the row the person picked when the selection
+    /// failed.
     func matches(_ pressing: Pressing) -> Bool {
         pressing.link.record == release
     }

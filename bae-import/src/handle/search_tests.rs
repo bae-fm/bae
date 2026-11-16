@@ -44,8 +44,8 @@ async fn an_answer_that_cannot_be_saved_fails_its_source() {
         .await;
 }
 
-/// Each row of `key`'s typed search, by its lead release, and whether it is
-/// the row the candidate is linked to.
+/// Returns each row of the runtime's typed search as its lead release's ID and
+/// whether bae linked the candidate to that row.
 fn chosen_rows(runtime: &crate::CandidateRuntimeSnapshot) -> Vec<(String, bool)> {
     let mut rows: Vec<(String, bool)> = runtime
         .search
@@ -59,9 +59,9 @@ fn chosen_rows(runtime: &crate::CandidateRuntimeSnapshot) -> Vec<(String, bool)>
     rows
 }
 
-/// The typed search's own statement says which of its rows holds the release
-/// the candidate is linked to: none before the person picks, the picked row
-/// once the pick stores the link.
+/// The typed search's SQL query marks the row that holds the release bae
+/// linked the candidate to. It marks no row before the person picks a release,
+/// and it marks the picked row after bae stores the link.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_row_holding_the_linked_release_reads_as_chosen() {
     let fixture = Fixture::new("search-row-chosen").await;

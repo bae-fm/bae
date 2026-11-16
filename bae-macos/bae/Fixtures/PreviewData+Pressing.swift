@@ -34,7 +34,8 @@ extension PreviewData {
 extension BridgePressing {
     /// A fixture's pressing row, stating what its lead record states: its
     /// records agree, so no value names a catalog. Unless a fixture says so,
-    /// the candidate has picked none of it.
+    /// the row does not hold the candidate's linked release, and bae is not
+    /// reading it as identification's own pick.
     init(
         releases: [BridgeMetadataResult],
         sources: [BridgeLookupCatalog],
