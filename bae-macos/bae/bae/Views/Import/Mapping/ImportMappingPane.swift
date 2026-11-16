@@ -37,7 +37,7 @@ struct ImportMappingPane: View {
     let onClearMetadata: () -> Void
     let onUnlink: () -> Void
     let onEditCover: () -> Void
-    let onSelectCover: (BridgeCoverSelection) -> Void
+    let onDropCoverImage: (String) -> Void
     let onNavigateToPlacement: (Data) -> Void
 
     /// The folder's mapping, as core reads it back for this candidate.
@@ -128,7 +128,7 @@ struct ImportMappingPane: View {
             onClearMetadata: onClearMetadata,
             onUnlink: onUnlink,
             onEditCover: onEditCover,
-            onSelectCover: onSelectCover,
+            onDropCoverImage: onDropCoverImage,
         )
     }
 

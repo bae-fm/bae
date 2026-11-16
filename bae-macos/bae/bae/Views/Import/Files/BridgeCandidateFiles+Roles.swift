@@ -5,14 +5,6 @@ import Foundation
 /// role and the sheet↔audio binding cross the bridge as typed values: nothing
 /// here decides a file's job, and nothing infers a pairing from a filename.
 
-extension BridgeFileRole {
-    /// Artwork shown in the gallery, including images unavailable as covers.
-    var isImage: Bool {
-        if case .artwork = self { return true }
-        return false
-    }
-}
-
 extension BridgeCandidateFile {
     /// Core's cover action; nil for files the cover decoder does not support.
     var coverChoice: BridgeCoverChoice? {
@@ -21,11 +13,6 @@ extension BridgeCandidateFile {
         default: return nil
         }
     }
-}
-
-extension BridgeCandidateFiles {
-    /// Every artwork attachment shown by the lightbox.
-    var images: [BridgeCandidateFile] { files.filter { $0.role.isImage } }
 }
 
 extension BridgeSheetBindingOption {

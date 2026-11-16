@@ -128,8 +128,8 @@ extension ImportView {
                 )
             },
             onEditCover: { presentCoverPicker(for: candidate) },
-            onSelectCover: { selection in
-                selectCover(selection, for: candidate)
+            onDropCoverImage: { fileId in
+                selectCover(.releaseImage(fileId: fileId), for: candidate)
             },
             onNavigateToPlacement: { key in
                 uiStore.navigateToImportCandidate(key)

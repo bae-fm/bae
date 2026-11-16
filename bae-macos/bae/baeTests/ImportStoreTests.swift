@@ -275,7 +275,7 @@ struct ImportStoreSidebarCoverTests {
         let key = Data(path.utf8)
         let remoteCover = try #require(PreviewData.remoteCovers.last)
         let localArtwork = try #require(
-            PreviewData.bridgeCandidateFiles.images.last
+            PreviewData.bridgeCandidateFiles.coverFiles.last
         )
         let choices = [
             remoteCover.coverChoice,

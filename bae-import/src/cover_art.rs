@@ -59,14 +59,17 @@ pub enum CoverSelection {
 }
 
 /// Why a cover was refused: it names something the candidate's scan did not
-/// store. A cover is one of the folder's images or the artwork its tags hold,
-/// as the scan read them, and nothing else.
+/// store, or an image in a format no cover can be. A cover is one of the
+/// folder's images in a cover's format or the artwork its tags hold, as the
+/// scan read them, and nothing else.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CoverRefusal {
     #[error("the folder holds no file {file_id}")]
     NotInFolder { file_id: String },
     #[error("{file_id} is not one of the folder's images")]
     NotAnImage { file_id: String },
+    #[error("{file_id} is an image in a format a cover can't be")]
+    NotACover { file_id: String },
     #[error("the tags read from {source_file_id} hold no artwork")]
     NoTagArtwork { source_file_id: String },
 }

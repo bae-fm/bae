@@ -41,7 +41,7 @@ struct ImportOnlineBrowserTests {
             onClearMetadata: {},
             onUnlink: {},
             onEditCover: {},
-            onSelectCover: { _ in }
+            onDropCoverImage: { _ in }
         )
         .environment(store)
         .environment(Importer.stub())

@@ -67,7 +67,7 @@ struct CoverPickerEmptyStateTests {
     )
     func identifyFromPicker() throws {
         #expect(!RemoteCoverItems.unlinked.canRefresh)
-        let images = PreviewData.bridgeCandidateFiles.images
+        let images = PreviewData.bridgeCandidateFiles.coverFiles
         let files = images.compactMap { file in
             file.coverChoice.map {
                 CoverItem(coverChoice: $0, label: file.file.name)

@@ -10,7 +10,8 @@ use crate::CoverSelection;
 
 /// Why `cover` cannot be the cover of the candidate whose files hash to
 /// `content_hash`, or `None` when it can: a folder image must be a file the
-/// scan stored as one of the folder's images, and tag artwork must be what
+/// scan stored as one of the folder's images, in a format a cover can be
+/// (`bae_supported_cover`), and tag artwork must be what
 /// the file-tag snapshot holds, `snapshot` when the save stores that one with
 /// it. Every scan of these files holds the same paths, so any of them
 /// answers. A catalog's image names nothing the scan holds.
@@ -23,22 +24,25 @@ pub(crate) fn cover_refusal(
     match cover {
         PreparedCover::Remote { .. } => Ok(None),
         PreparedCover::Local(file_id) => {
-            let role = sql
+            let file = sql
                 .query_row(
-                    "SELECT file.role FROM scan_candidate AS candidate \
+                    "SELECT file.role, bae_supported_cover(file.relative_path) \
+                     FROM scan_candidate AS candidate \
                      JOIN scan_candidate_file AS file \
                        ON file.watched_folder_path = candidate.watched_folder_path \
                       AND file.candidate_path = candidate.path \
                      WHERE candidate.content_hash = ? AND file.relative_path = ? \
                      LIMIT 1",
                     params![content_hash, file_id],
-                    |row| row.get::<_, String>(0),
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)),
                 )
                 .optional()?;
-            Ok(match role.as_deref() {
-                None => Some(CoverRefusal::NotInFolder { file_id: file_id.clone() }),
-                Some("artwork") => None,
-                Some(_) => Some(CoverRefusal::NotAnImage { file_id: file_id.clone() }),
+            let file_id = file_id.clone();
+            Ok(match file {
+                None => Some(CoverRefusal::NotInFolder { file_id }),
+                Some((role, _)) if role != "artwork" => Some(CoverRefusal::NotAnImage { file_id }),
+                Some((_, false)) => Some(CoverRefusal::NotACover { file_id }),
+                Some((_, true)) => None,
             })
         }
         PreparedCover::Embedded(source_file_id) => {

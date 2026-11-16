@@ -25,7 +25,7 @@ struct ImportMetadataSourceSection: View {
     let onClearMetadata: () -> Void
     let onUnlink: () -> Void
     let onEditCover: () -> Void
-    let onSelectCover: (BridgeCoverSelection) -> Void
+    let onDropCoverImage: (String) -> Void
 
     var body: some View {
         Group {
@@ -68,9 +68,8 @@ struct ImportMetadataSourceSection: View {
                     clearMetadata: onClearMetadata,
                     unlink: onUnlink
                 ),
-                localCoverSelections: candidate.localCoverSelections,
                 onEditCover: onEditCover,
-                onSelectCover: onSelectCover
+                onDropCoverImage: onDropCoverImage
             )
         }
         else {

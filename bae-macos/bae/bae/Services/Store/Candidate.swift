@@ -520,14 +520,6 @@ struct Candidate: Equatable, Identifiable {
         draft?.metadataDraftIsBlank ?? true
     }
 
-    var localCoverSelections: [String: BridgeCoverSelection] {
-        files.images.reduce(into: [:]) { selections, image in
-            if let choice = image.coverChoice {
-                selections[image.file.name] = choice.selection
-            }
-        }
-    }
-
     /// What the candidate is linked to in the catalogs: the pressing picked,
     /// or the album whose pressing is unknown, whatever its draft was read
     /// from since.

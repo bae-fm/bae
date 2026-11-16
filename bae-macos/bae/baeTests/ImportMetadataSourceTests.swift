@@ -519,9 +519,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             editingCommands: EditingCommitCommands(),
             commit: nil,
             sourceActions: sourceActions(recording: recorder),
-            localCoverSelections: [:],
             onEditCover: {},
-            onSelectCover: { _ in }
+            onDropCoverImage: { _ in }
         )
         .frame(width: 900, height: 520)
         .importPreviewEnvironment()

@@ -103,9 +103,10 @@ struct MacImportDraft: View {
     /// commit.
     let commit: ImportCommitControls?
     let sourceActions: ImportReleaseSourceActions
-    let localCoverSelections: [String: BridgeCoverSelection]
     let onEditCover: () -> Void
-    let onSelectCover: (BridgeCoverSelection) -> Void
+    /// Send the folder image dropped on the cover, by its file id, for core
+    /// to make the cover or refuse.
+    let onDropCoverImage: (String) -> Void
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -139,9 +140,8 @@ struct MacImportDraft: View {
                         ImportCoverWell(
                             coverContent: coverContent,
                             hasCoverOptions: hasCoverOptions,
-                            localCoverSelections: localCoverSelections,
                             onEditCover: onEditCover,
-                            onSelectCover: onSelectCover
+                            onDropImage: onDropCoverImage
                         )
                     },
                     audioFacts: {
@@ -267,9 +267,10 @@ struct ImportCoverWell: View {
     let coverContent: ImageContent?
     /// Whether the release or the folder has any artwork to pick from.
     let hasCoverOptions: Bool
-    let localCoverSelections: [String: BridgeCoverSelection]
     let onEditCover: () -> Void
-    let onSelectCover: (BridgeCoverSelection) -> Void
+    /// Send a folder image dropped on the well, by its file id, for core to
+    /// make the cover or refuse; `nil` where the well takes no drop.
+    let onDropImage: ((String) -> Void)?
 
     static let coverSize = ReleaseMetadataLayout.coverSize
 
@@ -315,10 +316,10 @@ struct ImportCoverWell: View {
                 )
         }
         .dropDestination(for: String.self) { fileIds, _ in
-            guard let fileId = fileIds.first,
-                let selection = localCoverSelections[fileId]
-            else { return false }
-            onSelectCover(selection)
+            guard let onDropImage, let fileId = fileIds.first else {
+                return false
+            }
+            onDropImage(fileId)
             return true
         } isTargeted: {
             dropTargeted = $0

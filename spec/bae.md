@@ -2055,10 +2055,12 @@ storage, so the picker says it is saving the cover while it does. On the Mac, an
 that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. A draft read from the tags, typed in or cleared, or a
 candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. A cover is a catalog's image, or
-one of the folder's images or the artwork its tags hold as the scan read
-them: a draft naming a file the scan did not store as an image, or artwork
-the tags do not hold, is refused when it is saved, and the cover stays as
-it was. The artists' pictures
+one of the folder's images in a format bae can store, or the artwork its
+tags hold, as the scan read them: a draft naming a file the scan did not
+store as an image, an image in another format, or artwork the tags do not
+hold, is refused when it is saved, and the cover stays as it was. Dropping one
+of the folder's images on the pane's cover sends its file to core, which makes
+it the cover or refuses it by the same rule. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels

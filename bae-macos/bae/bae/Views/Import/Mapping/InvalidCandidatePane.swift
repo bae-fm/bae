@@ -56,9 +56,8 @@ struct InvalidCandidatePane: View {
                 ImportCoverWell(
                     coverContent: invalid.cover.map(ImageContent.init(bridge:)),
                     hasCoverOptions: false,
-                    localCoverSelections: [:],
                     onEditCover: {},
-                    onSelectCover: { _ in }
+                    onDropImage: nil
                 )
                 if let tags = invalid.tags {
                     ImportReleaseSummaryView(

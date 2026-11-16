@@ -88,7 +88,7 @@ enum ImportMappingPreview {
             onClearMetadata: {},
             onUnlink: {},
             onEditCover: {},
-            onSelectCover: { _ in },
+            onDropCoverImage: { _ in },
             onNavigateToPlacement: { _ in },
         )
         .environment(store)

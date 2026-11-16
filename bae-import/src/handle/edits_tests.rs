@@ -608,3 +608,56 @@ async fn a_cover_the_scan_did_not_store_is_refused() {
     shut_down(handle).await;
     assert_eq!(after, before);
 }
+
+/// A folder image in a format no cover can be, such as a bitmap, is refused
+/// as a cover, so a drop of any of the folder's images reaches core and core
+/// decides.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_folder_image_in_a_format_no_cover_can_be_is_refused() {
+    use crate::folder_scanner::{CandidateFile, FileRole, ScannedFile};
+    let (parts, db, tmp) = setup_test_import().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (mut candidate, key, _hash) = unscanned_candidate(&tables, &tmp, "Album").await;
+    let scan_path = candidate.path.join("scan.bmp");
+    std::fs::write(&scan_path, b"BM").unwrap();
+    let metadata = std::fs::metadata(&scan_path).unwrap();
+    let modified_at_ns = crate::folder_scanner::file_modified_at_ns(&scan_path, &metadata).unwrap();
+    candidate.files.files.push(CandidateFile {
+        file: ScannedFile::new(
+            scan_path.clone(),
+            "scan.bmp".to_string(),
+            metadata.len(),
+            modified_at_ns,
+        ),
+        role: FileRole::Artwork,
+    });
+    let hash = candidate.files.content_hash();
+    rescan_into(&tables, candidate.clone()).await;
+    let fixture = started(parts, db, candidate, key.clone(), tmp).await;
+    let handle = fixture.handle;
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    let before = crate::preparations::stored_preparation(&handle.services.tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate is prepared");
+
+    let error = handle
+        .set_candidate_cover(&key, crate::CoverSelection::Local("scan.bmp".to_string()))
+        .await
+        .expect_err("refused");
+    assert!(
+        matches!(
+            &error,
+            crate::ImportError::Cover(crate::CoverRefusal::NotACover { file_id })
+                if file_id == "scan.bmp"
+        ),
+        "{error:?}"
+    );
+
+    let after = crate::preparations::stored_preparation(&handle.services.tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate remains prepared");
+    shut_down(handle).await;
+    assert_eq!(after, before);
+}
