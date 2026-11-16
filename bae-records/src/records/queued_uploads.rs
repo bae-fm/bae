@@ -113,7 +113,7 @@ pub const UPLOAD_QUEUE_WAIT_COLUMNS: &str =
 /// it.
 pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
     Ok(UploadQueueWait::pick(
-        row.get::<_, Option<bool>>("uploads_paused")?.unwrap_or(false),
+        row.get("uploads_paused")?,
         bae_store::read::count_column(row, "uploads_sending")?,
         row.get("upload_network_usable")?,
         row.get::<_, Option<bool>>("uploads_metered")?.unwrap_or(false),
