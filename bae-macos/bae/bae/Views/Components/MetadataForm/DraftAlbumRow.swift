@@ -67,7 +67,7 @@ struct DraftAlbumRow: View {
         case .new, .pickedNew: String(localized: "New album")
         case .named(_, let line), .picked(_, let line):
             switch line {
-            case .title(let title): title
+            case .titleAlone(let title): title
             case .titleAndArtists(let title, let artistLine):
                 FactList.joined([title, artistLine.text])
             }

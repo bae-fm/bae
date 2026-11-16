@@ -565,7 +565,7 @@ mod conversion_roundtrip {
             album,
             BridgeDraftAlbum::Picked {
                 album_id: "album-id".to_string(),
-                line: BridgeAlbumLine::Title { title: "Album Title".to_string() },
+                line: BridgeAlbumLine::TitleAlone { title: "Album Title".to_string() },
             }
         );
     }

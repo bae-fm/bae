@@ -592,7 +592,7 @@ pub enum BridgeDraftAlbum {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAlbumLine {
     /// The album credits no one, so its title names it alone.
-    Title {
+    TitleAlone {
         title: String,
     },
     TitleAndArtists {
@@ -605,7 +605,7 @@ pub enum BridgeAlbumLine {
 impl BridgeAlbumLine {
     fn from_core(title: String, artist_line: bae_types::credits::CreditLine) -> Self {
         if artist_line.is_empty() {
-            Self::Title { title }
+            Self::TitleAlone { title }
         } else {
             Self::TitleAndArtists { title, artist_line: BridgeCreditLine::from_core(artist_line) }
         }
