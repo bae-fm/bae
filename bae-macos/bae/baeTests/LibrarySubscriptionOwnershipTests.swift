@@ -4,28 +4,6 @@ import Testing
 
 @testable import bae
 
-/// One feed of values a probe answers a read with: a test emits, the read
-/// takes them in order.
-private final class Feed<Value: Sendable>: @unchecked Sendable {
-    private let stream: AsyncStream<Value>
-    private let continuation: AsyncStream<Value>.Continuation
-    private var iterator: AsyncStream<Value>.AsyncIterator
-
-    init() {
-        (stream, continuation) = AsyncStream.makeStream()
-        iterator = stream.makeAsyncIterator()
-    }
-
-    func emit(_ value: Value) { continuation.yield(value) }
-
-    func next() async throws -> Value {
-        guard let value = await iterator.next() else {
-            throw CancellationError()
-        }
-        return value
-    }
-}
-
 /// Stands in for the album list: records the window its list asks for, and
 /// answers it and the count with whatever rows a test emits.
 private final class AlbumListProbe: @unchecked Sendable {
