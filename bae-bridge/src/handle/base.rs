@@ -316,19 +316,6 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// The ones of the releases the Storage Manager list under `filter` and
-    /// the `search` text doesn't hold, in id order.
-    fn storage_unlisted(
-        filter: crate::types::BridgeStorageFilter,
-        search: String,
-        release_ids: Vec<String>,
-    ) -> Vec<String> {
-        this.services
-            .storage_unlisted(filter.into_core(), &search, release_ids.into_iter().collect())
-            .await
-            .map_err(BridgeError::from)
-    }
-
     /// The releases the Storage Manager list under `sort`, `filter` and the
     /// `search` text shows from the release `from` to the release `to`, both
     /// included: what a Shift-click selects.

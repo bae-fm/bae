@@ -839,26 +839,6 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let filtered_out = answer(StorageFilter::Remote, ids(&[RELEASE_EARLY])).await;
     assert_eq!(filtered_out.sole, None);
     assert!(filtered_out.selected.is_empty());
-
-    let unlisted = |filter: StorageFilter, search: &'static str, asked: BTreeSet<String>| {
-        let views = views.clone();
-        async move { views.storage_unlisted(filter, search, asked).await.unwrap() }
-    };
-    let none: Vec<String> = Vec::new();
-    assert_eq!(unlisted(StorageFilter::All, "", ids(&[RELEASE_EARLY, RELEASE_LATE])).await, none);
-    assert_eq!(unlisted(StorageFilter::All, "", ids(&[])).await, none);
-    assert_eq!(
-        unlisted(StorageFilter::All, "", ids(&[RELEASE_EARLY, "no-such-release"])).await,
-        vec!["no-such-release".to_string()]
-    );
-    assert_eq!(
-        unlisted(StorageFilter::Remote, "", ids(&[RELEASE_EARLY])).await,
-        vec![RELEASE_EARLY.to_string()]
-    );
-    assert_eq!(
-        unlisted(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await,
-        vec![RELEASE_EARLY.to_string()]
-    );
 }
 
 /// A range selected with Shift and Select All take their releases from SQL:

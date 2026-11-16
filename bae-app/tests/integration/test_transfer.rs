@@ -69,8 +69,7 @@ async fn collect_progress(
 
 /// Pin `release_id` as the download worker does: its queue entry started, the
 /// pin ending it in its write. Returns the events the pin reported and how it
-/// ended. A release the queue passes over (a local one) has no entry, which
-/// the pin never gets to end.
+/// ended.
 async fn pin_with_events(
     library: &bae_library::test_libraries::TestLibrary,
     release_id: &str,
@@ -102,10 +101,6 @@ async fn pin_with_events(
         .await;
     let events = std::mem::take(&mut *events.lock().unwrap());
     (events, outcome)
-}
-
-fn failed(events: &[TransferProgress]) -> bool {
-    events.iter().any(|e| matches!(e, TransferProgress::Failed { .. }))
 }
 
 async fn expect_storage_state(
@@ -208,8 +203,8 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 
-/// Pin rejects a Local release: there is no cloud file to fetch into the pinned
-/// cache.
+/// A pin request refuses a Local release, to the caller: there is no cloud
+/// file to fetch into the pinned cache, so nothing is queued.
 #[tokio::test]
 async fn test_pin_rejects_local_release() {
     bae_util::test_logs::install();
@@ -219,9 +214,8 @@ async fn test_pin_rejects_local_release() {
         crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
             .await;
 
-    let (events, outcome) = pin_with_events(&mgr, &release_id).await;
-    assert!(failed(&events), "pin must fail for a local release");
-    outcome.expect_err("a failed pin ends no queue entry");
+    let refused = mgr.manager().enqueue_pins(vec![release_id]).await.unwrap_err();
+    assert!(matches!(refused, bae_library::LibraryError::Storage(_)), "{refused:?}");
 }
 
 /// Unpin rejects a Local release: it has no remote files to drop from the cache.

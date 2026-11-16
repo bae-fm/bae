@@ -395,19 +395,63 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     Ok(added)
 }
 
+/// Why the download queue took no entry for a release of a selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DownloadRefusal {
+    /// No such release is in the library.
+    Missing,
+    /// The release's files are not stored in the cloud, so there is nothing
+    /// to download.
+    NotInStorage,
+}
+
+/// What one write queueing a selection for download did.
+#[derive(Debug, PartialEq, Eq)]
+pub struct DownloadsQueued {
+    /// Whether any release went in or was queued again.
+    pub added: bool,
+    /// Each release the write could not queue, in the selection's order,
+    /// with why. Queueing it changed nothing.
+    pub refused: Vec<(String, DownloadRefusal)>,
+}
+
+/// The releases of `release_ids` (a JSON array) that no download can serve,
+/// in the selection's order, with why.
+fn download_refusals_on(
+    sql: &CovenWrite<'_>,
+    release_ids: &str,
+) -> Result<Vec<(String, DownloadRefusal)>, DbError> {
+    Ok(sql.query(
+        "SELECT requested.value, releases.id IS NULL \
+         FROM json_each(?1) AS requested \
+         LEFT JOIN releases ON releases.id = requested.value \
+         LEFT JOIN release_storage AS storage ON storage.release_id = requested.value \
+         WHERE releases.id IS NULL OR storage.stored IS NOT 1 \
+         ORDER BY requested.key",
+        [release_ids],
+        |row| {
+            let missing: bool = row.get(1)?;
+            Ok((
+                row.get(0)?,
+                if missing { DownloadRefusal::Missing } else { DownloadRefusal::NotInStorage },
+            ))
+        },
+    )?)
+}
+
 /// Queue to pin, in the order given, each of `release_ids` that is
 /// uploaded and not wholly pinned on this device, as its storage row says,
-/// passing over one waiting or downloading, one the library no longer
-/// holds, and one local: decided in the write that queues them. One whose
-/// download failed is queued again in its place, as a retry queues it.
-/// `true` when any went in or was queued again.
+/// in one write that decides which. One waiting or downloading, or already
+/// pinned, needs nothing; one whose download failed is queued again in its
+/// place, as a retry queues it. One the library no longer holds and one
+/// whose files are not in the cloud are refused, with why.
 pub(crate) fn enqueue_pinnable_releases_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
     created_at: i64,
-) -> Result<bool, DbError> {
+) -> Result<DownloadsQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
-    Ok(sql.execute(
+    let added = sql.execute(
         &format!(
             "INSERT INTO download_queue (release_id, created_at, file_count, total_size, state, kind) \
              SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
@@ -426,7 +470,8 @@ pub(crate) fn enqueue_pinnable_releases_on(
             ":created_at": created_at,
             ":release_ids": release_ids,
         },
-    )? > 0)
+    )? > 0;
+    Ok(DownloadsQueued { added, refused: download_refusals_on(sql, &release_ids)? })
 }
 
 /// Whether the queue holds `release_id`, in any phase.
@@ -593,19 +638,19 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
 }
 
 /// Queue to move to this device into `target_dir`, in the order given, each of
-/// `release_ids` that is stored in the cloud, in one write that decides which:
-/// one the library no longer holds or that is local is passed over, and so is
-/// one waiting or downloading; one whose download failed becomes this
-/// move-to-this-device in its place. `true` when any went in or was queued again.
+/// `release_ids` that is stored in the cloud, in one write that decides which.
+/// One waiting or downloading needs nothing; one whose download failed becomes
+/// this move-to-this-device in its place. One the library no longer holds and
+/// one whose files are not in the cloud are refused, with why.
 #[cfg(desktop)]
 pub(crate) fn enqueue_moves_to_this_device_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
     target_dir: &std::path::Path,
     created_at: i64,
-) -> Result<bool, DbError> {
+) -> Result<DownloadsQueued, DbError> {
     let release_ids = serde_json::Value::from(release_ids.to_vec()).to_string();
-    Ok(sql.execute(
+    let added = sql.execute(
         "INSERT INTO download_queue \
              (release_id, created_at, file_count, total_size, state, kind, target_dir) \
          SELECT requested.value, :created_at, storage.file_count, storage.total_size, \
@@ -623,7 +668,8 @@ pub(crate) fn enqueue_moves_to_this_device_on(
             ":release_ids": release_ids,
             ":target_dir": coven::path_bytes(target_dir),
         },
-    )? > 0)
+    )? > 0;
+    Ok(DownloadsQueued { added, refused: download_refusals_on(sql, &release_ids)? })
 }
 
 /// Empty the export and save queue and let it run: what the library opens

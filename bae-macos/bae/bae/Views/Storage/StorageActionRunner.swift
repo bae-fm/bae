@@ -2,9 +2,6 @@ import AppKit
 import BaeKit
 import Observation
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("StorageActionRunner")
 
 /// Runs Storage Manager row context-menu actions against a set of releases.
 ///
@@ -24,9 +21,8 @@ private let logger = Logger.bae("StorageActionRunner")
 /// unpinning" is on, so it stashes the targets in `pendingUnpin` and the view
 /// shows the alert (`unpinConfirmation`).
 ///
-/// Every action acts only on the targets the list still holds when it starts —
-/// after its sheet or panel, which the list can change under — so a release
-/// that left the list is never acted on.
+/// Every action passes core the ids the person picked. Core refuses a
+/// release it can't act on, and the Storage Manager window shows the refusal.
 @MainActor
 @Observable
 final class StorageActionRunner {
@@ -36,7 +32,6 @@ final class StorageActionRunner {
     private let outputs: Outputs
     private let configStore: ConfigStore
     private let uiStore: UiStore
-    private let storageManagerStore: StorageManagerStore
     /// Opens Settings at the Save as pane, in front of a save panel.
     private let openSaveAsSettings: @MainActor () -> Void
 
@@ -55,7 +50,6 @@ final class StorageActionRunner {
         outputs: Outputs,
         configStore: ConfigStore,
         uiStore: UiStore,
-        storageManagerStore: StorageManagerStore,
         openSaveAsSettings: @escaping @MainActor () -> Void
     ) {
         self.releaseEditor = releaseEditor
@@ -64,33 +58,7 @@ final class StorageActionRunner {
         self.outputs = outputs
         self.configStore = configStore
         self.uiStore = uiStore
-        self.storageManagerStore = storageManagerStore
         self.openSaveAsSettings = openSaveAsSettings
-    }
-
-    /// Returns `releaseIds` when core says the list still holds all of them,
-    /// and nil when one has left it (uploaded out of the Local list, filtered
-    /// out, deleted), so the runner never acts on a release the list does
-    /// not hold.
-    private func listed(_ releaseIds: [String]) async -> [String]? {
-        let unlisted: [String]
-        do {
-            unlisted = try await storageManagerStore.unlisted(releaseIds)
-        }
-        catch {
-            uiStore.showError(error)
-            return nil
-        }
-        guard unlisted.isEmpty else {
-            logger.warning(
-                """
-                A storage action acts on nothing: the list no longer holds \
-                \(unlisted.joined(separator: ", "))
-                """
-            )
-            return nil
-        }
-        return releaseIds
     }
 
     /// Export each release verbatim to a folder chosen once for the whole batch.
@@ -102,7 +70,6 @@ final class StorageActionRunner {
             return
         }
         Task {
-            guard let releaseIds = await listed(releaseIds) else { return }
             for releaseId in releaseIds {
                 do {
                     try await outputs.enqueueExport(releaseId, targetDir)
@@ -128,7 +95,6 @@ final class StorageActionRunner {
             else {
                 return
             }
-            guard let releaseIds = await listed(releaseIds) else { return }
             for releaseId in releaseIds {
                 do {
                     try await outputs.enqueueReleaseSave(
@@ -168,28 +134,20 @@ final class StorageActionRunner {
             // serializes the batch and reports progress via the Downloads pane
             // and per-release transfer events — not an awaited per-release loop.
             Task {
-                guard let releaseIds = await listed(releaseIds),
-                    !releaseIds.isEmpty
-                else { return }
                 do { try await downloads.queuePins(releaseIds) }
                 catch { uiStore.showError(error) }
             }
         case .unpin:
-            Task {
-                guard let releaseIds = await listed(releaseIds),
-                    !releaseIds.isEmpty
-                else { return }
-                if UnpinAsk.asks(
-                    askBeforeUnpinning: configStore.config.askBeforeUnpinning
-                ) {
-                    pendingUnpin = PendingUnpin(
-                        releaseIds: releaseIds,
-                        title: soleTitle
-                    )
-                }
-                else {
-                    unpin(releaseIds, steps: UnpinAsk.withoutAsking)
-                }
+            if UnpinAsk.asks(
+                askBeforeUnpinning: configStore.config.askBeforeUnpinning
+            ) {
+                pendingUnpin = PendingUnpin(
+                    releaseIds: releaseIds,
+                    title: soleTitle
+                )
+            }
+            else {
+                unpin(releaseIds, steps: UnpinAsk.withoutAsking)
             }
         }
     }
@@ -199,12 +157,7 @@ final class StorageActionRunner {
     func answerUnpin(_ pending: PendingUnpin, _ answer: UnpinAsk.Answer) {
         let steps = UnpinAsk.steps(after: answer)
         guard !steps.isEmpty else { return }
-        Task {
-            guard let releaseIds = await listed(pending.releaseIds),
-                !releaseIds.isEmpty
-            else { return }
-            unpin(releaseIds, steps: steps)
-        }
+        unpin(pending.releaseIds, steps: steps)
     }
 
     private func unpin(_ releaseIds: [String], steps: [UnpinAsk.Step]) {
@@ -231,10 +184,8 @@ final class StorageActionRunner {
         }
         pendingMoveToCloud = nil
         Task {
-            guard let listedIds = await listed(releaseIds), !listedIds.isEmpty
-            else { return }
             do {
-                try await releaseEditor.moveReleasesToCloud(listedIds)
+                try await releaseEditor.moveReleasesToCloud(releaseIds)
             }
             catch {
                 uiStore.showError(error)
@@ -250,7 +201,6 @@ final class StorageActionRunner {
     /// leaving it in its prior state — core dispatches to whichever is running.
     func cancelTransitions(releaseIds: [String]) {
         Task {
-            guard let releaseIds = await listed(releaseIds) else { return }
             for id in releaseIds {
                 do {
                     try await sync.cancelReleaseTransition(id)
@@ -282,9 +232,6 @@ final class StorageActionRunner {
             return
         }
         Task {
-            guard let releaseIds = await listed(releaseIds),
-                !releaseIds.isEmpty
-            else { return }
             do {
                 try await releaseEditor.moveReleasesToThisDevice(
                     releaseIds,

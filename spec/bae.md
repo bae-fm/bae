@@ -2607,12 +2607,13 @@ of those two flags over them). The answer names the releases it was asked
 about, so the Mac's menu acts on the rows core answered for the selection it
 shows and offers nothing while the answer is for an earlier one. The answer
 also names the one release the list holds among them when it holds exactly one,
-with its album's title, which the inspector shows and the Unpin alert names,
-and before an action runs the app asks core which of the action's releases are
-no longer in the list, and the action does nothing when core names any; the app
-does not search its own rows for either one. A release in a download is the download queue's entry
-for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write that
-changes its files, so the entry and coven's change commit together and the
+with its album's title, which the inspector shows and the Unpin alert names;
+the app does not search its own rows for either one. An action on the selection
+passes core the ids the person picked, and core acts on each, refusing one it
+can't act on (a release deleted meanwhile, or one in the wrong state for the
+action), which the person sees. A release in a download is the download queue's
+entry for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write
+that changes its files, so the entry and coven's change commit together and the
 release never shows a download its files have finished. The storage rows and the
 album and release detail read the entry in their own query.
 
@@ -2741,10 +2742,12 @@ the person. Cancel changes nothing, ticked or not. With the setting off, Unpin
 unpins at once. The MCP tool's unpin never asks.
 
 Asking to pin several releases queues, in the order asked and in one write,
-each that can be: one already waiting or downloading, pinned, local, or
-deleted meanwhile is passed over, as the releases' storage rows say, and one whose
-pin failed is queued again in its place, as retrying queues it. If the write fails, nothing is
-queued; the person sees the error and the failure is reported as a bug.
+each that can be: one already waiting or downloading, or pinned, needs
+nothing, as the releases' storage rows say, and one whose pin failed is queued
+again in its place, as retrying queues it. A release deleted meanwhile, or one
+whose files are not in the cloud, is refused: the rest queue, and the person
+sees the refusal. If the write fails, nothing is queued; the person sees the
+error and the failure is reported as a bug.
 
 ### 4.4 Making a release local again
 
@@ -2757,9 +2760,11 @@ Carol wants her box set out of storage. She picks a folder on her drive. Each
 release she selects goes in a folder of its own below it, named for the
 release's source folder, so two releases that both hold `01.flac` do not
 collide; a release with no source folder name fails its entry. One request
-queues the whole selection in the download queue (§4.3), in one write that
-passes over a release that is local, deleted meanwhile, or already waiting or
-downloading, and makes a failed pin's entry this move-to-this-device in its place. The
+queues the whole selection in the download queue (§4.3), in one write: a
+release already waiting or downloading needs nothing, a failed pin's entry
+becomes this move-to-this-device in its place, and a release that is local or
+deleted meanwhile is refused, while the rest queue and the person sees the
+refusal. The
 queue makes them local one release at a time, in the order asked, and its
 pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again

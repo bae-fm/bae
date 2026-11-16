@@ -41,9 +41,8 @@ public final class StorageManagerStore {
     @ObservationIgnored
     private var queueDeliveries:
         ScreenSubscription<PulledValues<BridgeStorageQueues>>?
-    /// The sort, filter and search text the list shows, which `unlisted`,
-    /// `idsBetween` and `allIds` pass to core when they ask about the list's
-    /// releases.
+    /// The sort, filter and search text the list shows, which `idsBetween`
+    /// and `allIds` pass to core when they ask about the list's releases.
     @ObservationIgnored
     private var shown: ShownList?
     /// The releases selected in the list. The store asks the selection read
@@ -159,22 +158,6 @@ public final class StorageManagerStore {
     /// it shows a release the list doesn't.
     public var soleRelease: String? {
         answer?.sole?.releaseId
-    }
-
-    /// The ones of `releaseIds` the list, as core reads it now, doesn't
-    /// hold, in id order. Asked only while the list is shown: a storage
-    /// action acts on releases picked from the shown list's rows.
-    public func unlisted(_ releaseIds: [String]) async throws -> [String] {
-        guard let shown else {
-            preconditionFailure(
-                "A storage action asked about releases while no list is shown"
-            )
-        }
-        return try await library.storageUnlisted(
-            shown.filter,
-            shown.search,
-            releaseIds
-        )
     }
 
     /// The releases the list, as core reads it now, shows from the release

@@ -659,15 +659,15 @@ where
 {
     /// Queue to pin, in the order given, each of `release_ids` that is
     /// uploaded and not wholly pinned on this device, in one write that
-    /// decides which: one waiting or downloading, one the library no longer
-    /// holds, and one local are passed over, and one whose download failed is
-    /// queued again in its place. `true` when any went in or was queued
-    /// again.
+    /// decides which: one waiting, downloading or pinned needs nothing, one
+    /// whose download failed is queued again in its place, and one the
+    /// library no longer holds or whose files are not in the cloud is
+    /// refused, with why.
     pub async fn enqueue_pinnable(
         &self,
         release_ids: Vec<String>,
         created_at: i64,
-    ) -> Result<bool, DbError> {
+    ) -> Result<tables::DownloadsQueued, DbError> {
         self.store
             .call(move |sql| tables::enqueue_pinnable_releases_on(sql, &release_ids, created_at))
             .await
@@ -675,26 +675,27 @@ where
 
     /// Queue to move to this device into `target_dir`, in the order given, each of
     /// `release_ids` that is stored in the cloud, in one write that decides
-    /// which: one the library no longer holds, one local, and one waiting or
-    /// downloading are passed over, and one whose download failed becomes this
-    /// move-to-this-device in its place. `true` when any went in or was queued again.
+    /// which: one waiting or downloading needs nothing, one whose download
+    /// failed becomes this move-to-this-device in its place, and one the
+    /// library no longer holds or whose files are not in the cloud is
+    /// refused, with why.
     #[cfg(desktop)]
     pub async fn enqueue_moves_to_this_device(
         &self,
         release_ids: Vec<String>,
         target_dir: std::path::PathBuf,
         created_at: i64,
-    ) -> Result<bool, DbError> {
-        let added = self
+    ) -> Result<tables::DownloadsQueued, DbError> {
+        let queued = self
             .store
             .call(move |sql| {
                 tables::enqueue_moves_to_this_device_on(sql, &release_ids, &target_dir, created_at)
             })
             .await?;
-        if added {
+        if queued.added {
             self.wake();
         }
-        Ok(added)
+        Ok(queued)
     }
 }
 

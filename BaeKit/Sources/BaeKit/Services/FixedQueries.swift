@@ -130,20 +130,6 @@
         }
     }
 
-    extension Library {
-        /// Core's canned answer to which releases asked about the list
-        /// doesn't hold, for shots and tests: `unlisted`, whatever the
-        /// filter, search and releases.
-        public static func fixedStorageUnlisted(
-            _ unlisted: [String]
-        )
-            -> @Sendable (BridgeStorageFilter, String, [String]) async throws
-            -> [String]
-        {
-            { _, _, _ in unlisted }
-        }
-    }
-
     extension StorageSelectionQuery {
         /// A selection read whose answers the caller chose, in core's place,
         /// for shots and tests: the fixture answers each set of ids with what

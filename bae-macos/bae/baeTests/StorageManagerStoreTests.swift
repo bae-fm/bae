@@ -80,7 +80,6 @@ private final class OpenedReads: @unchecked Sendable {
                     values: fixed.values
                 )
             },
-            storageUnlisted: Library.fixedStorageUnlisted([]),
             storageIdsBetween: { [self] sort, filter, search, from, to in
                 lock.withLock {
                     let list = List(sort: sort, filter: filter, search: search)
@@ -193,10 +192,6 @@ struct StorageManagerStoreTests {
         #expect(
             store.soleRelease == nil,
             "when the list holds two of the selected releases, the store has no sole release"
-        )
-        #expect(
-            try await store.unlisted(Array(selected)).isEmpty,
-            "the list holds the releases core answered for"
         )
 
         #expect(

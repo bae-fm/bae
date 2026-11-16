@@ -72,13 +72,6 @@ public final class Library: Sendable, Observable {
     public let storageSelection:
         @Sendable (_ filter: BridgeStorageFilter, _ search: String)
             -> StorageSelectionQuery
-    /// The ones of the releases the Storage Manager list under one filter
-    /// and search text doesn't hold, in id order.
-    public let storageUnlisted:
-        @Sendable (
-            _ filter: BridgeStorageFilter, _ search: String,
-            _ releaseIds: [String]
-        ) async throws -> [String]
     /// The releases the Storage Manager list under one sort, filter and
     /// search text shows from one release to another, both included: what a
     /// Shift-click selects.
@@ -210,10 +203,6 @@ public final class Library: Sendable, Observable {
             -> StorageSelectionQuery = { _, _ in
                 fatalError("Library storage selection is not installed")
             },
-        storageUnlisted:
-            @escaping @Sendable (BridgeStorageFilter, String, [String])
-            async
-            throws -> [String] = { _, _, _ in throw StubError.notImplemented },
         storageIdsBetween:
             @escaping @Sendable (
                 BridgeStorageSort, BridgeStorageFilter, String, String, String
@@ -279,7 +268,6 @@ public final class Library: Sendable, Observable {
         self.artistSearch = artistSearch
         self.storageList = storageList
         self.storageSelection = storageSelection
-        self.storageUnlisted = storageUnlisted
         self.storageIdsBetween = storageIdsBetween
         self.storageIds = storageIds
         self.storageQueues = storageQueues
@@ -340,7 +328,6 @@ extension Library {
                         )
                     )
                 },
-                storageUnlisted: Self.storageUnlisted(handle),
                 storageIdsBetween: Self.storageIdsBetween(handle),
                 storageIds: Self.storageIds(handle),
                 storageQueues: {
@@ -373,23 +360,6 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable ([String]) async throws -> [String] {
             { try await handle.resolveToTrackIds(ids: $0) }
-        }
-
-        /// The ones of some releases a Storage Manager list doesn't hold,
-        /// read through `handle`.
-        private static func storageUnlisted(
-            _ handle: any AppHandleProtocol
-        )
-            -> @Sendable (BridgeStorageFilter, String, [String]) async throws ->
-            [String]
-        {
-            {
-                try await handle.storageUnlisted(
-                    filter: $0,
-                    search: $1,
-                    releaseIds: $2
-                )
-            }
         }
 
         /// The releases a Storage Manager list shows between two releases,

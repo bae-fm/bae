@@ -78,7 +78,6 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_storage_queues())
     }
 
-    delegate_view!(storage_unlisted => storage_unlisted(filter: bae_views::StorageFilter, search: &str, release_ids: std::collections::BTreeSet<String>) -> Vec<String>);
     delegate_view!(storage_ids_between => storage_ids_between(sort: &bae_views::StorageSortCriterion, filter: bae_views::StorageFilter, search: &str, from: &str, to: &str) -> Vec<String>);
     delegate_view!(storage_ids => storage_ids(filter: bae_views::StorageFilter, search: &str) -> Vec<String>);
     delegate_view!(storage_key_at => storage_key_at(sort: &bae_views::StorageSortCriterion, filter: bae_views::StorageFilter, search: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
