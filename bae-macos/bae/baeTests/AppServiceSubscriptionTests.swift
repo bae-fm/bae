@@ -273,7 +273,7 @@ struct InvitesSubscriptionTests {
         #expect(
             handle.subscribed.filter { $0.hasPrefix("adminChanges") }
                 == ["adminChanges library", "adminChanges people"],
-            "pages that show one place share its read"
+            "showing a place again starts no second read"
         )
         #expect(handle.subscribed.filter { $0 == "members" }.count == 1)
     }

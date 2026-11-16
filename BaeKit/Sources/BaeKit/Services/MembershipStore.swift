@@ -93,11 +93,9 @@ public final class MembershipStore {
     /// What the page reads of the waiting join requests, while it does.
     @ObservationIgnored
     private var waitingRequestSubscription: AnyObject?
-    /// What the pages read of each place's admin changes, with how many
-    /// pages read it.
+    /// What the pages read of each place's admin changes.
     @ObservationIgnored
-    private var adminChangeReads:
-        [BridgeAdminChangePlace: (pages: Int, subscription: AnyObject)] = [:]
+    private var adminChangeReads: [BridgeAdminChangePlace: AnyObject] = [:]
     /// What an invite's sheet reads, with the invite id it reads.
     @ObservationIgnored
     private var inviteSubscription: (inviteId: String, subscription: AnyObject)?
@@ -342,34 +340,22 @@ extension MembershipStore {
         )
     }
 
-    /// Read the admin changes that show in `place` while a page shows them.
-    /// Pages that show the same place share one read.
+    /// Read the admin changes that show in `place` while its page shows them.
     public func showAdminChanges(at place: BridgeAdminChangePlace) {
-        if let read = adminChangeReads[place] {
-            adminChangeReads[place] = (read.pages + 1, read.subscription)
-            return
-        }
+        guard adminChangeReads[place] == nil else { return }
         do {
-            adminChangeReads[place] = (
-                1, try subscribeAdminChanges(self, place)
-            )
+            adminChangeReads[place] = try subscribeAdminChanges(self, place)
         }
         catch {
             fail(error)
         }
     }
 
-    /// End a page's read of the admin changes that show in `place`; the read
-    /// ends with the last page that shows them.
+    /// End the read of the admin changes that show in `place`, once its page
+    /// closes.
     public func hideAdminChanges(at place: BridgeAdminChangePlace) {
-        guard let read = adminChangeReads[place] else { return }
-        if read.pages > 1 {
-            adminChangeReads[place] = (read.pages - 1, read.subscription)
-        }
-        else {
-            adminChangeReads[place] = nil
-            adminChanges[place] = nil
-        }
+        adminChangeReads[place] = nil
+        adminChanges[place] = nil
     }
 
     /// The subscription to the open invite with `inviteId`, which hands each
