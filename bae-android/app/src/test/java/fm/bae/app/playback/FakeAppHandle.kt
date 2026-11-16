@@ -73,6 +73,7 @@ import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeUploadReleasesOutcome
+import uniffi.bae_bridge.BridgeWorkChild
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.CastReceiversSubscription
 import uniffi.bae_bridge.ComposerDetailSubscription
@@ -120,6 +121,7 @@ internal open class FakeAppHandle(
     private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
     private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
     private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
+    private val workChildren: Map<String, List<BridgeWorkChild>> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
@@ -314,6 +316,22 @@ internal open class FakeAppHandle(
                 initialSearchError(query)?.let(count::fail) ?: count.emit(searchResults(query).albums.size)
             }
         }
+
+    /** The work child counts the handle opened, oldest first, each answering its work's first count when it opens. */
+    val workChildCounts = mutableListOf<FakeCountSubscription>()
+
+    override fun subscribeWorkChildCount(workId: String): ListCountSubscription =
+        FakeCountSubscription(workId).also { count ->
+            workChildCounts += count
+            count.emit(workChildren[workId].orEmpty().size)
+        }
+
+    /** Returns the work's children from [offset], at most [limit], as the database would. */
+    override suspend fun readWorkChildPage(
+        workId: String,
+        offset: ULong,
+        limit: ULong,
+    ): List<BridgeWorkChild> = workChildren[workId].orEmpty().drop(offset.toInt()).take(limit.toInt())
 
     /** Returns the window of the search's albums from [offset], at most [limit], as the database would. */
     override suspend fun readSearchAlbumPage(

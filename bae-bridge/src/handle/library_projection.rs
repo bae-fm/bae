@@ -623,6 +623,19 @@ impl BridgeWorkTrackSummary {
     }
 }
 
+impl crate::types::BridgeWorkChild {
+    pub(super) fn from_core(child: bae_views::album_detail::WorkChild) -> Self {
+        match child {
+            bae_views::album_detail::WorkChild::Part(work) => {
+                Self::Part { work: BridgeWorkSummary::from_core(work) }
+            }
+            bae_views::album_detail::WorkChild::Release(release) => {
+                Self::Release { release: BridgeWorkReleaseSummary::from_core(release) }
+            }
+        }
+    }
+}
+
 /// Not a `mirror_struct`: the media cross worded, which is all a surface
 /// does with them.
 impl BridgeWorkReleaseSummary {

@@ -369,21 +369,30 @@ pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
     })
 }
 
-fn work_release_rows(
-    sql: &SqlReadContext<'_>,
-    work_id: &str,
-) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
-    sql.query(
-        &format!(
-            "SELECT DISTINCT
-            r.id AS release_id,
+/// The columns [`row_to_work_release_summary`] reads of the release `r`, its
+/// album `a` and its place among the album's releases `number`.
+pub(crate) fn work_release_columns() -> String {
+    format!(
+        "r.id AS release_id,
             r.album_id,
             a.title AS album_title,
             r.release_name,
             r.year AS release_year,
             {media} AS release_media,
             number.number AS release_number,
-            {cover} AS cover_version
+            {cover} AS cover_version",
+        cover = cover_version_sql("r.id"),
+        media = release_media_sql("r.id"),
+    )
+}
+
+fn work_release_rows(
+    sql: &SqlReadContext<'_>,
+    work_id: &str,
+) -> Result<Vec<DbWorkReleaseSummary>, DbError> {
+    sql.query(
+        &format!(
+            "SELECT DISTINCT {columns}
          FROM track_works tw
          JOIN tracks t ON t.id = tw.track_id
          JOIN releases r ON r.id = t.release_id
@@ -391,9 +400,8 @@ fn work_release_rows(
          JOIN albums a ON a.id = r.album_id
          WHERE tw.work_id = ?
          ORDER BY {order}",
+            columns = work_release_columns(),
             order = work_release_order("a", "r"),
-            cover = cover_version_sql("r.id"),
-            media = release_media_sql("r.id"),
         ),
         params![work_id],
         row_to_work_release_summary,
@@ -401,7 +409,7 @@ fn work_release_rows(
     .map_err(DbError::from)
 }
 
-fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
+pub(crate) fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
     Ok(DbWorkReleaseSummary {
         release_id: row.get("release_id")?,
         album_id: row.get("album_id")?,

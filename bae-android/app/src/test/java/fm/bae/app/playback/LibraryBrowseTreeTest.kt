@@ -30,6 +30,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeReleaseRoleSummary
 import uniffi.bae_bridge.BridgeTermLabel
+import uniffi.bae_bridge.BridgeWorkChild
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -89,6 +90,46 @@ class LibraryBrowseTreeTest {
             }
             assertTrue(bugs.single().second is MissingMainRelease)
             tree.close()
+        }
+
+    /** A work's children are the page the database read returns at the page's offset: its parts, then its releases as their albums. */
+    @Test
+    fun aWorksChildrenAreThePageTheReadReturns() =
+        runBlocking {
+            val children =
+                listOf(
+                    BridgeWorkChild.Part(BridgeFixtures.workSummary(workId = "work-part")),
+                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "rel-1", albumId = "album-1")),
+                    BridgeWorkChild.Release(BridgeFixtures.workRelease(releaseId = "rel-2", albumId = "album-2")),
+                )
+            val tree = tree(FakeAppHandle(workChildren = mapOf("work-1" to children)))
+            val work = BrowseId.Work("work-1").mediaId
+
+            assertEquals(
+                listOf(BrowseId.Work("work-part").mediaId, BrowseId.Album("album-1").mediaId),
+                tree.children(work, 0, 2)!!.map { it.mediaId },
+            )
+            assertEquals(listOf(BrowseId.Album("album-2").mediaId), tree.children(work, 1, 2)!!.map { it.mediaId })
+            assertTrue(tree.children(work, 2, 2)!!.isEmpty())
+            tree.close()
+        }
+
+    /** A work's live child count tells the controller each time it changes, but not at its first answer. */
+    @Test
+    fun aWorksChildCountTellsTheControllerEachChange() =
+        runBlocking {
+            val handle = FakeAppHandle(workChildren = mapOf("work-1" to listOf(BridgeWorkChild.Part(BridgeFixtures.workSummary()))))
+            val notifications = mutableListOf<Pair<String, Int>>()
+            val tree = tree(handle) { parent, count -> notifications += parent to count }
+            val work = BrowseId.Work("work-1").mediaId
+
+            tree.subscribeParent(Any(), work)
+            assertTrue(notifications.isEmpty())
+            handle.workChildCounts.single().emit(3)
+
+            assertEquals(listOf(work to 3), notifications)
+            tree.close()
+            assertTrue(handle.workChildCounts.single().cancelled)
         }
 
     /** A composer's children are its page's rows, the window the car asks for: works, then credits as their albums. */

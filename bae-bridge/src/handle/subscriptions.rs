@@ -149,6 +149,15 @@ impl AppHandle {
         )
     }
 
+    /// Read live how many children the work `work_id` has: the rows
+    /// `read_work_child_page` pages through.
+    pub fn subscribe_work_child_count(&self, work_id: String) -> Arc<crate::ListCountSubscription> {
+        crate::screens::list_count(
+            self.services.subscribe_work_child_count(&work_id),
+            self.runtime.clone(),
+        )
+    }
+
     /// The album detail view's read, showing nothing until `set_id`.
     pub fn subscribe_album_detail(&self) -> Arc<crate::AlbumDetailSubscription> {
         crate::screens::album_detail(self.services.subscribe_album_detail(), self.runtime.clone())

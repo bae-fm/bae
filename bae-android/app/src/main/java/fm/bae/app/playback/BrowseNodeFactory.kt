@@ -11,6 +11,7 @@ import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeTrack
+import uniffi.bae_bridge.BridgeWorkChild
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /**
@@ -83,6 +84,13 @@ internal class BrowseNodeFactory(
             is BridgeComposerDetailItem.Work -> work(item.work)
             is BridgeComposerDetailItem.ReleaseCredit -> album(item.credit.albumId, item.credit.albumTitle, null)
             is BridgeComposerDetailItem.TrackCredit -> album(item.credit.albumId, item.credit.albumTitle, null)
+        }
+
+    /** A child of a work: a part opens its own parts and releases, and a release opens its album. */
+    fun workChild(child: BridgeWorkChild): MediaItem =
+        when (child) {
+            is BridgeWorkChild.Part -> work(child.work)
+            is BridgeWorkChild.Release -> album(child.release.albumId, child.release.albumTitle, child.release.cover)
         }
 
     /** A playable track node, carrying its release and track ids so the player

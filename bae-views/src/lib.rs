@@ -21,6 +21,7 @@ mod album_search;
 pub mod artist;
 pub mod artist_search;
 mod browse;
+mod browse_pages;
 pub mod composer;
 pub mod composer_detail;
 mod invites;

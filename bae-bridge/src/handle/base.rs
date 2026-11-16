@@ -80,6 +80,24 @@ forward! { async this => {
             .collect())
     }
 
+    /// One page of the children of the work `work_id`, read once: at most
+    /// `limit` of them starting `offset` in, its parts and then the releases
+    /// that perform it.
+    fn read_work_child_page(
+        work_id: String,
+        offset: u64,
+        limit: u64,
+    ) -> Vec<crate::types::BridgeWorkChild> {
+        Ok(this
+            .services
+            .work_child_page(&work_id, offset, limit)
+            .await
+            .map_err(BridgeError::from)?
+            .into_iter()
+            .map(crate::types::BridgeWorkChild::from_core)
+            .collect())
+    }
+
     /// One track of a release as a browse item shows it, read once; `None`
     /// when the release has no such track.
     fn read_release_track(

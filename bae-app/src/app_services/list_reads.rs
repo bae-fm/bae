@@ -183,6 +183,15 @@ impl AppServices {
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
     }
+
+    /// How many children the work `work_id` has, which a media browser pages
+    /// through by offset.
+    pub fn subscribe_work_child_count(
+        &self,
+        work_id: &str,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        list_rows(&self.inner.manager, self.inner.views.subscribe_work_child_count(work_id))
+    }
 }
 
 /// One window of a list, as its first value at once, then one for each

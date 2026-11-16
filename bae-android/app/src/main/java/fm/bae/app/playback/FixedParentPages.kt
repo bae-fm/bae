@@ -1,19 +1,15 @@
 package fm.bae.app.playback
 
-import androidx.media3.common.MediaItem
 import fm.bae.app.data.Library
 import fm.bae.app.data.LiveQueryEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import uniffi.bae_bridge.BridgeAlbumDetail
 
-// The browse tree's parents whose children it reads whole, from their detail
-// reads: an album's main release's tracks, and a work's parts and releases.
+// The browse tree's parent whose children it reads whole, from its detail
+// read: an album's main release's tracks.
 
-private typealias OptionalLiveQuery<Value> = Flow<LiveQueryEvent<Value?>>
-private typealias BrowsePageQuery = Flow<LiveQueryEvent<BrowsePage>>
-
-/** The live page of [parentId], an album or a work, whose children the tree reads whole. */
+/** The live page of [parentId], an album, whose children the tree reads whole. */
 internal fun parentFlow(
     library: Library,
     nodes: BrowseNodeFactory,
@@ -30,26 +26,9 @@ internal fun parentFlow(
             }
         }
 
-        is BrowseId.Work -> {
-            library.workDetails(id.workId).mapBrowse { detail ->
-                detail
-                    ?.let {
-                        it.childWorks.map(nodes::work) +
-                            it.releases.map { release ->
-                                nodes.album(release.albumId, release.albumTitle, release.cover)
-                            }
-                    }.orEmpty()
-            }
-        }
-
         else -> {
             error("$parentId has no fixed parent query")
         }
-    }
-
-private fun <Value> OptionalLiveQuery<Value>.mapBrowse(rows: (Value?) -> List<MediaItem>): BrowsePageQuery =
-    map { event ->
-        event.mapValue { value -> rows(value).let { BrowsePage(it, it.size) } }
     }
 
 /**

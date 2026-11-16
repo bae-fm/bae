@@ -63,6 +63,7 @@ import uniffi.bae_bridge.BridgeSubsonicNetwork
 import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
+import uniffi.bae_bridge.BridgeWorkReleaseSummary
 import uniffi.bae_bridge.BridgeWorkSummary
 
 /**
@@ -262,6 +263,20 @@ object BridgeFixtures {
             linkedReleaseCount = 1L,
             representativeReleaseId = "rel-1",
             representativeCover = null,
+        )
+
+    fun workRelease(
+        releaseId: String = "rel-1",
+        albumId: String = "album-1",
+        albumTitle: String = "Album Title",
+    ): BridgeWorkReleaseSummary =
+        BridgeWorkReleaseSummary(
+            releaseId = releaseId,
+            albumId = albumId,
+            albumTitle = albumTitle,
+            name = BridgeReleaseName.Numbered(1L),
+            media = emptyList(),
+            cover = null,
         )
 
     fun searchResults(

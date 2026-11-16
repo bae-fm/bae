@@ -260,8 +260,6 @@ class Library(
             (rows as? BridgeListRows.Downloads)?.rows ?: error("the download queue delivered rows of another list")
         }
 
-    internal fun workDetails(id: String): DetailEvents<BridgeWorkDetail> = detailFlow(::workDetail, id)
-
     /** One live library search, whose text changes on the same live query as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
 
@@ -271,6 +269,13 @@ class Library(
      */
     internal fun searchAlbumCount(query: String): PulledSubscription<BridgeListCount> =
         handle.subscribeSearchAlbumCount(query).let { pulled(it::next, it::cancel) }
+
+    /**
+     * How many children the work [workId] has, read live: the rows
+     * [AppHandleInterface.readWorkChildPage] pages through.
+     */
+    internal fun workChildCount(workId: String): PulledSubscription<BridgeListCount> =
+        handle.subscribeWorkChildCount(workId).let { pulled(it::next, it::cancel) }
 }
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */

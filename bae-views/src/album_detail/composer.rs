@@ -54,6 +54,16 @@ pub struct WorkDetail {
     pub tracks: Vec<DbWorkTrackSummary>,
 }
 
+/// One child of a work as a media browser lists it: its parts, then the
+/// releases that perform it.
+#[derive(Debug, Clone)]
+pub enum WorkChild {
+    /// A work that is part of it.
+    Part(DbWorkSummary),
+    /// A release that performs it.
+    Release(WorkReleaseSummary),
+}
+
 #[derive(Debug, Clone)]
 pub struct WorkReleaseSummary {
     pub release_id: String,

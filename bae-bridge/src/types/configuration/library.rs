@@ -183,6 +183,16 @@ pub struct BridgeWorkDetail {
     pub tracks: Vec<BridgeWorkTrackSummary>,
 }
 
+/// One child of a work as a media browser lists it: its parts, then the
+/// releases that perform it.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeWorkChild {
+    /// A work that is part of it.
+    Part { work: BridgeWorkSummary },
+    /// A release that performs it.
+    Release { release: BridgeWorkReleaseSummary },
+}
+
 #[derive(Debug, Clone, Copy, uniffi::Enum)]
 pub enum BridgeComposerSortField {
     Name,
