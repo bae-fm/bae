@@ -2782,7 +2782,9 @@ Two ways put a release back on disk, from desktop:
   stays open behind it; the menu follows any change made there, and a format
   added there is chosen in it at once. Deleting the format last used makes the
   first format left the last used, in the same write; the only format left
-  can't be deleted, and its Delete… is off.
+  can't be deleted, and its Delete… is off. The settings' read of the
+  preferences carries the format last used whole, joined in SQL to the id the
+  preferences name, and the file name field's preview ends in its extension.
   One file name pattern and one folder name pattern serve every format. A
   pattern is text with values in it, each value one chip: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward

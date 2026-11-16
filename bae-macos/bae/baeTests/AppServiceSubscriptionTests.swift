@@ -547,7 +547,11 @@ private func testBridgeConfig() -> BridgeConfig {
         ],
         folderPatternError: nil,
         saveExtras: PreviewData.saveExtras,
-        lastSavePreset: "flac",
+        lastSavePreset: BridgeSavePreset(
+            id: "flac",
+            name: "FLAC",
+            codec: .flac(bitDepth: .sameAsSource)
+        ),
         castEnabled: false,
         castTranscodeFormat: .mp3,
         mcp: BridgeMcpConfig(enabled: false, port: 47777),

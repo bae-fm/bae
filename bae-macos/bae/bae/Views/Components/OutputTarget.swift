@@ -64,7 +64,7 @@ enum OutputTarget {
         let panel = makeFolderPanel()
         let picker = SaveFormatPicker(
             configStore: configStore,
-            selectedPresetId: configStore.config.lastSavePreset,
+            selectedPresetId: configStore.config.lastSavePreset.id,
             frame: NSRect(x: 54, y: 5, width: 190, height: 24),
             openFormats: openFormats,
             onChange: { _ in }

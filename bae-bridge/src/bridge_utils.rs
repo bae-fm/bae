@@ -219,7 +219,9 @@ impl BridgeConfig {
             save_filename_pattern,
             save_folder_pattern,
             save_extras,
-            last_save_preset,
+            // Read whole as the config's `last_save_preset` below, joined to
+            // the id this names.
+            last_save_preset: _,
             pause_between_sides,
             side_pause_countdown,
             max_concurrent_uploads,
@@ -281,7 +283,7 @@ impl BridgeConfig {
                 .collect(),
             folder_pattern_error: BridgeNamePatternError::of(save_folder_pattern),
             save_extras: BridgeSaveExtras::from_core(save_extras),
-            last_save_preset: last_save_preset.clone(),
+            last_save_preset: BridgeSavePreset::from_core(&config.last_save_preset),
             cast_enabled: *cast_enabled,
             cast_transcode_format: BridgeCastTranscodeFormat::from_core(*cast_transcode_format),
             mcp: BridgeMcpConfig { enabled: *enabled, port: *port },

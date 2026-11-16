@@ -42,13 +42,7 @@ struct FormatsSettingsTab: View {
     /// The extension, dot included, of the files the next save writes: those
     /// of the format last used, as the save panel starts with it.
     private var nextFileExtension: String {
-        let config = configStore.config
-        guard
-            let preset = config.savePresets.first(where: {
-                $0.id == config.lastSavePreset
-            })
-        else { return "" }
-        return "." + preset.codec.fileExtension
+        "." + configStore.config.lastSavePreset.codec.fileExtension
     }
 
     private var namesSection: some View {

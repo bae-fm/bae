@@ -65,7 +65,7 @@
             importDestination: BridgeImportDestination = .cloud,
             storage: BridgeStorageLocation? = nil,
             savePresets: [BridgeSavePreset] = PreviewData.savePresets,
-            lastSavePreset: String = "flac",
+            lastSavePreset: BridgeSavePreset? = nil,
             filenamePieces: [BridgeSaveFilenamePiece] = PreviewData
                 .exportFilenamePieces,
             filenamePatternError: BridgeNamePatternError? = nil,
@@ -106,7 +106,9 @@
                         folderPieces: folderPieces,
                         folderPatternError: folderPatternError,
                         saveExtras: PreviewData.saveExtras,
-                        lastSavePreset: lastSavePreset,
+                        // As core reads it: the first format unless a
+                        // fixture names another.
+                        lastSavePreset: lastSavePreset ?? savePresets[0],
                         castEnabled: castEnabled,
                         castTranscodeFormat: .mp3,
                         mcp: BridgeMcpConfig(enabled: mcpEnabled, port: 47777),

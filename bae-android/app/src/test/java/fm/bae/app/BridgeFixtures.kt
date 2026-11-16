@@ -432,7 +432,12 @@ object BridgeFixtures {
                     coverFile = true,
                     loudnessTags = true,
                 ),
-            lastSavePreset = "flac",
+            lastSavePreset =
+                BridgeSavePreset(
+                    id = "flac",
+                    name = "FLAC",
+                    codec = BridgeSaveCodec.Flac(bitDepth = BridgeSaveBitDepth.SAME_AS_SOURCE),
+                ),
             castEnabled = false,
             castTranscodeFormat = BridgeCastTranscodeFormat.MP3,
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),

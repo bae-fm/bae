@@ -144,7 +144,7 @@ final class SaveFormatPicker: NSObject {
             selectedPresetId = added
         }
         else if !after.contains(where: { $0.presetId == selectedPresetId }) {
-            selectedPresetId = configStore.config.lastSavePreset
+            selectedPresetId = configStore.config.lastSavePreset.id
         }
         rebuildItems()
         onChange(selectedChoice)

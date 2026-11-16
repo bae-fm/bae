@@ -22,7 +22,7 @@ struct SaveFormatPickerTests {
         PreviewData.makeConfigStore(
             libraryFullWidth: false,
             savePresets: presets,
-            lastSavePreset: lastUsed
+            lastSavePreset: presets.first { $0.id == lastUsed }
         )
     }
 

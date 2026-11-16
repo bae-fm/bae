@@ -66,9 +66,9 @@ public struct Config: Equatable {
     public let folderPatternError: BridgeNamePatternError?
     /// The cover and loudness settings every save format shares.
     public let saveExtras: BridgeSaveExtras
-    /// Id of the preset the last save, of a track or a release, used: the one
-    /// a save starts with.
-    public let lastSavePreset: String
+    /// The preset the last save, of a track or a release, used: the one a
+    /// save starts with.
+    public let lastSavePreset: BridgeSavePreset
     /// Whether casting to a network receiver is available. Core enforces it —
     /// while off it runs no discovery and refuses to start a session — so the
     /// playback bar reads this only to decide whether to show its Cast control.

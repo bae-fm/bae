@@ -361,3 +361,22 @@ async fn a_preset_is_read_by_its_id_until_it_is_deleted() {
     .await;
     assert_eq!(next_preset().await, None);
 }
+
+/// The settings read the preset the last save used whole, joined to the id
+/// the preferences name, and follow a change of which preset that is.
+#[tokio::test]
+async fn the_config_carries_the_last_used_preset() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let first = config(&db, "/library".into()).await.unwrap();
+    assert_eq!(first.last_save_preset.id, "flac");
+    assert_eq!(first.last_save_preset, first.prefs.save_presets[0]);
+
+    set(&db, |prefs| prefs.last_save_preset = "mp3".to_string()).await;
+    let changed = config(&db, "/library".into()).await.unwrap();
+    assert_eq!(changed.last_save_preset.name, "MP3");
+    assert_eq!(
+        changed.last_save_preset.codec,
+        SaveCodec::Mp3 { bitrate_kbps: 320 },
+        "the preset's fields come with it"
+    );
+}

@@ -65,9 +65,9 @@ pub struct BridgeConfig {
     pub folder_pattern_error: Option<BridgeNamePatternError>,
     /// The cover and loudness settings every save format shares.
     pub save_extras: BridgeSaveExtras,
-    /// Id of the preset the last save, of a track or a release, used, the one a
-    /// save starts with (a valid preset id; core keeps it non-dangling).
-    pub last_save_preset: String,
+    /// The preset the last save, of a track or a release, used, the one a
+    /// save starts with, read joined to the preferences.
+    pub last_save_preset: BridgeSavePreset,
     /// Whether casting to a network receiver is available. Off unless the user
     /// turns it on; while off, core runs no discovery and refuses to start a
     /// session, and the UI hides its Cast control.

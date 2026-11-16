@@ -24,9 +24,12 @@ pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_destination::ImportDestination;
 pub use name_pattern::{NamePattern, NamePatternError, NamePiece};
 pub use presentation::LookupCatalogSetting;
+pub use row::{
+    config, preferences, subscribe_config, subscribe_preferences, subscribe_save_preset,
+    PreferencesRow,
+};
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};
-pub use row::{preferences, subscribe_preferences, subscribe_save_preset, PreferencesRow};
 pub use save::{
     Numerals, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenamePattern, SaveFilenameValue,
     SaveFolderPattern, SaveFolderValue, SaveFormat, SavePreset,
@@ -381,6 +384,9 @@ pub struct Config {
     pub store_id: coven::StoreId,
     pub library_path: PathBuf,
     pub prefs: Preferences,
+    /// The save preset the last save used, which `prefs` names by id, read
+    /// joined to the preferences.
+    pub last_save_preset: SavePreset,
 }
 
 impl Config {
@@ -388,7 +394,10 @@ impl Config {
     /// tests that build a value without a library.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
-        Self { store_id, library_path: library_path.into(), prefs: Preferences::default() }
+        let prefs = Preferences::default();
+        // The defaults' last-used format is their first, FLAC.
+        let last_save_preset = prefs.save_presets[0].clone();
+        Self { store_id, library_path: library_path.into(), prefs, last_save_preset }
     }
 }
 

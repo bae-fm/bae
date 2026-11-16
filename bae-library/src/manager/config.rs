@@ -53,11 +53,7 @@ impl LibraryManager {
     /// The library's preferences as stored now, with the library and its
     /// directory, as the settings screens read them.
     pub async fn config(&self) -> Result<bae_preferences::Config, bae_store::DbError> {
-        Ok(bae_preferences::Config {
-            store_id: self.store.store_id(),
-            library_path: self.library_path(),
-            prefs: self.preferences().await?,
-        })
+        bae_preferences::config(&self.store, self.library_path()).await
     }
 
     /// The library's preferences as the settings screens read them, with the
@@ -65,12 +61,9 @@ impl LibraryManager {
     /// each write that changes them, until the surface cancels or the library
     /// closes.
     pub fn subscribe_config(&self) -> bae_store::live_query::LiveValues<bae_preferences::Config> {
-        let store_id = self.store.store_id();
-        let library_path = self.library_path();
-        self.values_until_closed(bae_preferences::subscribe_preferences(&self.store).process(
-            move |prefs| {
-                Ok(bae_preferences::Config { store_id, library_path: library_path.clone(), prefs })
-            },
+        self.values_until_closed(bae_preferences::subscribe_config(
+            &self.store,
+            self.library_path(),
         ))
     }
 

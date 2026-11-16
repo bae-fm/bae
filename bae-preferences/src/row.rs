@@ -6,7 +6,7 @@
 //! Its tables are `row.sql`.
 
 use super::{
-    CastTranscodeFormat, DiscogsValidation, IdentificationPreferences, ImportDestination,
+    CastTranscodeFormat, Config, DiscogsValidation, IdentificationPreferences, ImportDestination,
     LookupCatalogPreferences, McpConfig, NamePattern, NamePiece, Preferences, PreferencesError,
     ReplayGainMode, SaveBitDepth, SaveCodec, SaveExtras, SaveFilenameValue, SaveFolderValue,
     SavePreset, SidePauseCountdown, SubsonicConfig, SubsonicNetwork,
@@ -15,6 +15,7 @@ use bae_store::{DbError, Store};
 use coven::{CovenWrite, SqlRead};
 use rusqlite::{params, Row};
 use std::num::NonZeroU32;
+use std::path::PathBuf;
 
 /// The preferences' part of the library's schema.
 pub(super) const SCHEMA: bae_store::SchemaPart =
@@ -23,6 +24,42 @@ pub(super) const SCHEMA: bae_store::SchemaPart =
 /// This device's preferences for the library.
 pub async fn preferences(store: &Store) -> Result<Preferences, DbError> {
     store.read(|sql| Ok(preferences_on(&sql)?)).await
+}
+
+/// This device's preferences for the library `store` holds, kept in
+/// `library_path`, with the save preset the last save used, as the settings
+/// screens read them.
+pub async fn config(store: &Store, library_path: PathBuf) -> Result<Config, DbError> {
+    let store_id = store.store_id();
+    store.read(move |sql| Ok(config_on(&sql, store_id, library_path)?)).await
+}
+
+/// Follow [`config`]: the first value at once, then one after each write
+/// that changes it.
+pub fn subscribe_config(
+    store: &Store,
+    library_path: PathBuf,
+) -> coven::LiveQuery<Config, bae_store::DbError> {
+    let store_id = store.store_id();
+    store.subscribe(move |sql| Ok(config_on(&sql, store_id, library_path.clone())?))
+}
+
+fn config_on(
+    sql: &impl SqlRead,
+    store_id: coven::StoreId,
+    library_path: PathBuf,
+) -> rusqlite::Result<Config> {
+    Ok(Config {
+        store_id,
+        library_path,
+        prefs: preferences_on(sql)?,
+        last_save_preset: sql.query_row(
+            "SELECT s.* FROM preferences AS p \
+             JOIN save_preset AS s ON s.id = p.last_save_preset",
+            [],
+            save_preset_row,
+        )?,
+    })
 }
 
 /// Follow this device's preferences: the first value at once, then one
