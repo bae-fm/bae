@@ -155,9 +155,11 @@ struct TrackLengthText: View {
             if let listedLength {
                 Text(DurationClock.label(listedLength))
                     .foregroundStyle(Theme.warning)
-                    .help(localizedCoreString("core.track.listed_length"))
+                    .help(
+                        localizedCoreString("ui.import.mapping.listed_length")
+                    )
                     .accessibilityLabel(
-                        localizedCoreString("core.track.listed_length")
+                        localizedCoreString("ui.import.mapping.listed_length")
                     )
             }
         }
