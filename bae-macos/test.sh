@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Runs the macOS app's tests: with no names, the unit tests (baeTests) and the UI
-# tests (baeUITests); with names, only the named baeTests Swift test types
-# (`Type` or `Type/test`). Fails when a name ran no tests: xcodebuild passes a
-# filter that matches nothing, such as a file name.
+# tests (baeUITests); with names, only the named Swift test types (`Type` or
+# `Type/test`) of baeTests, or of the bundle `--bundle` names. Fails when a
+# name ran no tests: xcodebuild passes a filter that matches nothing, such as a
+# file name.
 #
 # `--build-only` compiles the app and its test targets, then the screenshot
 # scenes (baeShots) into their own tree (scripts/xcode-trees.sh), and stops,
@@ -23,8 +24,12 @@
 # scenes' bundle instead: `builds app-build --test <Class>` runs a class
 # declared under bae-macos/bae/baeShots through it (`.app-build`'s
 # `test mac:shots` line), since the `bae` scheme never runs that bundle.
+# `--bundle baeUITests` names the UI tests, which the `bae` scheme builds with
+# baeTests: `builds app-build --test <Class>` runs a class declared under
+# bae-macos/bae/baeUITests through it (`.app-build`'s `test mac:ui` line), on a
+# build host only, since the UI tests open the app's windows.
 #
-# Usage: bae-macos/test.sh [--build-only | --run-only] [--bundle baeTests|baeShots] [<Type>[/<test>] ...]
+# Usage: bae-macos/test.sh [--build-only | --run-only] [--bundle baeTests|baeUITests|baeShots] [<Type>[/<test>] ...]
 set -euo pipefail
 
 ACTION=test
@@ -44,9 +49,10 @@ BUNDLE_NAME=baeTests
 if [[ "${1:-}" == "--bundle" ]]; then
     case "${2:-}" in
     baeTests) ;;
+    baeUITests) BUNDLE_NAME=baeUITests ;;
     baeShots) BUNDLE_NAME=baeShots ;;
     *)
-        echo "--bundle takes baeTests or baeShots" >&2
+        echo "--bundle takes baeTests, baeUITests or baeShots" >&2
         exit 2
         ;;
     esac
@@ -89,13 +95,13 @@ if [[ "$ACTION" != test-without-building ]]; then
     CONFIGURATION=Debug ./bae-macos/prepare-build.sh
 fi
 
-# The bundle is the first argument: baeTests builds and runs the `bae` scheme
-# (baeTests and baeUITests) in the unsigned tree, and baeShots the `baeShots`
-# scheme in the shots tree.
+# The bundle is the first argument: baeTests and baeUITests build and run the
+# `bae` scheme (which holds both) in the unsigned tree, and baeShots the
+# `baeShots` scheme in the shots tree.
 xcodebuild_tests() {
     local scheme tree
     case "$1" in
-    baeTests) scheme=bae tree=("${XCODE_MACOS_UNSIGNED_ARGS[@]}") ;;
+    baeTests | baeUITests) scheme=bae tree=("${XCODE_MACOS_UNSIGNED_ARGS[@]}") ;;
     baeShots) scheme=baeShots tree=("${XCODE_MACOS_SHOTS_ARGS[@]}") ;;
     esac
     shift

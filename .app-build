@@ -22,6 +22,8 @@ sources mac bae-macos BaeKit
 # The shot scenes are in their own test bundle, baeShots, which the `test mac`
 # line does not run.
 sources mac:shots bae-macos/bae/baeShots
+# The UI tests are in baeUITests, which the `test mac` line does not run either.
+sources mac:ui bae-macos/bae/baeUITests
 sources android bae-android
 
 step mac macos ./bae-macos/run.sh --no-open
@@ -45,4 +47,8 @@ limit android-shots 20m
 
 test mac ./bae-macos/test.sh --run-only {class}
 test mac:shots ./bae-macos/test.sh --run-only --bundle baeShots {class}
+test mac:ui ./bae-macos/test.sh --run-only --bundle baeUITests {class}
+# The UI tests launch the app and drive its windows, so builds runs them only
+# on a build host, where no one sits at the screen.
+opens-windows mac:ui
 test android ./bae-android/test-class.sh {class}

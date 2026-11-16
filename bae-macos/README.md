@@ -71,6 +71,10 @@ nothing, so the script reads the run's result bundle and fails when a name ran
 no tests. It generates the Xcode project from `project.yml` first, so a test
 file added since the last generation runs.
 
+A UI test (baeUITests) launches the app and drives its windows. Run one class
+with `builds app-build bae <branch> --test <Class>`, which runs it on a build
+host, so its windows never cover the screen of the Mac you work at.
+
 ## Formatting
 
 Swift code is formatted with [swift-format](https://github.com/swiftlang/swift-format), which ships with Xcode (run via `xcrun swift-format`). The pre-commit hook formats `bae-macos/bae/bae/` automatically. Config is in `.swift-format`.
