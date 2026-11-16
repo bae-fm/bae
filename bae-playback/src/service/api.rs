@@ -211,7 +211,7 @@ pub(crate) enum PlaybackCommand {
         reply: QueueEditReply<()>,
     },
     /// Move `entry_id` to `position` among `lane`'s rows as the screens show
-    /// them, or to the lane's end past it.
+    /// them, or to the lane's end when `position` is past the last row.
     ReorderQueue {
         entry_id: QueueEntryId,
         lane: crate::QueueLane,
@@ -703,8 +703,9 @@ impl PlaybackHandle {
         self.edit_queue(PlaybackCommand::RemoveFromQueue { entry_id, reply }, answer)
     }
     /// Move `entry_id` to `position` among `lane`'s rows as the screens show
-    /// them, or to the lane's end past them, and answer whether it moved:
-    /// `false` when the entry is no longer queued in `lane`.
+    /// them, or to the lane's end when `position` is past the last row, and
+    /// answer whether it moved: `false` when the entry is no longer queued in
+    /// `lane`.
     ///
     /// The command is sent at the call, in order with the commands sent
     /// before and after it; the answer is the future's.

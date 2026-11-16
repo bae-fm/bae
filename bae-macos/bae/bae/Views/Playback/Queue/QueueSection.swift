@@ -256,8 +256,8 @@ extension QueueSection {
 
     /// Hold `move` on screen and ask core to move the entry to the slot the
     /// move puts it in, where core finds the row it then sits before: the hold
-    /// ends when the write returns, and the lane then draws its rows, with the
-    /// failure shown when it failed.
+    /// ends when the write returns, and the lane then draws its rows, and
+    /// `onReorderFailed` shows the error when the write fails.
     private func commitReorder(
         _ entryId: String,
         _ move: QueueRowMove,

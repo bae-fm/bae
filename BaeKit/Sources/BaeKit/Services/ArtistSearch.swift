@@ -25,11 +25,11 @@ public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 @MainActor
 @Observable
 public final class ArtistSearchResults {
-    /// What the text typed last finds; nil until a text's list has answered,
-    /// and when the last text's first read failed.
+    /// What the text typed last finds; nil until the first read of a text's
+    /// list returns, and nil when that first read failed.
     public private(set) var list: ArtistSearchList?
-    /// Why the last text's read failed: its first read, with no list shown,
-    /// or a later read of the list shown.
+    /// The error from the last text's read: either its first read failed and
+    /// no list is shown, or a later read of the shown list failed.
     public private(set) var error: DisplayError?
 
     @ObservationIgnored

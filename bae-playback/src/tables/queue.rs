@@ -225,8 +225,8 @@ impl PlaybackQueueTables {
     }
 
     /// Move the entry to `position` among `lane`'s rows as the screens show
-    /// them, or to the lane's end when `position` is past it, and answer
-    /// whether it moved. Nothing moves when the entry is not in `lane`. The
+    /// them, or to the lane's end when `position` is past the last row, and
+    /// answer whether it moved. Nothing moves when the entry is not in `lane`. The
     /// context lane's playing track stays the playing track wherever it
     /// moves.
     pub async fn reorder(
@@ -602,7 +602,7 @@ fn reorder_on(
     };
     let lane = moving.lane;
     if lane != target {
-        warn!("reorder: entry {id} is not in the {target:?} lane it is moved in");
+        warn!("reorder: entry {id} is not in the {target:?} lane the caller asked to move it in");
         return Ok(false);
     }
     let (_, entry) = row_key(&id);
@@ -622,9 +622,9 @@ fn reorder_on(
     Ok(true)
 }
 
-/// The entry a row moved to `position` among `lane`'s rows as the screens
-/// show them sits just before: the row at that position once the moved row
-/// `entry` is left out, or none when the position is past the lane's end.
+/// Find the entry that a row moved to `position` goes before. The function
+/// counts `lane`'s rows in the order the screens show them, skips the moved
+/// row `entry`, and returns none when `position` is past the lane's end.
 fn entry_after_place_on(
     sql: &CovenWrite<'_>,
     lane: QueueLane,

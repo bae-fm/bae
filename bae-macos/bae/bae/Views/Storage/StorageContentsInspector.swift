@@ -131,7 +131,8 @@ struct StorageContentsInspector: View {
             selectedFile = nil
             return
         }
-        // Another file's value shows nothing of this one.
+        // Clear the previous file's details so they do not show while this
+        // file's read is pending.
         if fileId != fileReader?.id {
             selectedFile = nil
         }

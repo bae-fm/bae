@@ -26,9 +26,9 @@ pub enum QueueEntryId {
     Context(i64),
 }
 
-/// One of the queue's two lanes as the screens show it: Up Next, every row
-/// of it, or the context lane's rows after its playing track, in the order
-/// the lane reads in.
+/// One of the queue's two lanes as the screens show it: Up Next with all its
+/// rows, or the context lane with the rows after its playing track, in the
+/// order the screens list them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QueueLane {
     Manual,
@@ -153,10 +153,11 @@ impl PlaybackQueue {
         Ok(removed)
     }
 
-    /// Move the entry to `position` among `lane`'s rows as the screens show
-    /// them, or to the lane's end when `position` is past it. Answers whether
-    /// it moved: `false` when the entry is not in `lane`, so the caller can
-    /// count the anomaly; the mismatch is logged here.
+    /// Move the entry `id` to `position` among `lane`'s rows as the screens
+    /// show them, or to the lane's end when `position` is past the last row.
+    /// Returns whether the entry moved: `false` when the entry is not in
+    /// `lane`, so the caller can count the anomaly; this function logs the
+    /// mismatch.
     pub async fn reorder(
         &mut self,
         id: QueueEntryId,

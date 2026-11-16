@@ -350,8 +350,8 @@ pub struct BridgeQueueEntry {
     pub duration_clock: BridgeDurationClock,
 }
 
-/// One of the queue's two lanes as the screens show it: Up Next, every row
-/// of it, or the rows of what's playing from after its playing track.
+/// One of the queue's two lanes as the screens show it: Up Next with all its
+/// rows, or the context lane with the rows after the playing track.
 /// Mirrors `bae_playback::QueueLane`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeQueueLane {

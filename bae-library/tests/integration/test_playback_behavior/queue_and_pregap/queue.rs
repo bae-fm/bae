@@ -399,7 +399,7 @@ async fn a_reorder_answers_whether_it_moved() {
                 0,
             )
             .await
-            .expect("the reorder is answered");
+            .expect("the playback handle answers the reorder");
         assert!(!refused, "no such entry is queued");
         assert_eq!(
             handle.queue_value().await.expect("queue value").manual,

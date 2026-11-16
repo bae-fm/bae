@@ -83,7 +83,8 @@ public final class Library: Sendable, Observable {
     public let storageInspector:
         @Sendable () -> DetailQuery<BridgeStorageInspector>
     /// Open the Storage Manager inspector's live read of one release file,
-    /// by its id, which its file details show.
+    /// which the inspector's file details show. The caller sets the file's
+    /// id.
     public let storageFile: @Sendable () -> DetailQuery<BridgeFile>
     /// Open the Storage sheet's live read of a release's files, in the order
     /// its file table sorts by, read in core.

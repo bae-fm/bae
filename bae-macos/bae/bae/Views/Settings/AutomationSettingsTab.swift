@@ -35,8 +35,8 @@ struct AutomationSettingsContent: View {
     let configStore: ConfigStore
     let copyToPasteboard: @MainActor (String) -> Void
 
-    /// The toggle's new value while the save that writes it is in flight,
-    /// named by that save. The toggle draws the stored value otherwise.
+    /// The toggle's new value while the save that writes it has not
+    /// returned, named by that save. The toggle draws the stored value otherwise.
     @State
     private var heldEnabled: HeldToggle?
     /// How many saves have started, which names each save.
@@ -304,7 +304,8 @@ private struct HeldToggle {
 
 /// What the MCP switch draws.
 extension AutomationSettingsContent {
-    /// The value a save in flight writes, else the stored value.
+    /// The value that a save that has not returned yet writes, else the stored
+    /// value.
     private var enabled: Bool {
         heldEnabled?.value ?? configStore.config.mcp.enabled
     }

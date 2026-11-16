@@ -234,7 +234,7 @@ final class QueueDragCoordinator {
     }
 
     /// The move the lane's display order shows: the held post-commit one while
-    /// its write is in flight, else none — canonical order. A live drag
+    /// its write has not returned, else none — canonical order. A live drag
     /// moves no row: the lane marks where the row will land with a line
     /// (`dropGap`). Derived against the CURRENT `count`, so a queue change
     /// can never leave a move over slots the lane no longer has.
@@ -351,9 +351,10 @@ final class QueueDragCoordinator {
         return .reorder(entryId: active.item.id, move: move, lane: active.lane)
     }
 
-    /// Keep a committed reorder on screen until its write returns, and answer
-    /// which commit it is, for the write's return to name. The settling row
-    /// lands in the slot the move places it at.
+    /// Keep a committed reorder on screen until its write returns, and return
+    /// which commit it is: the caller passes that number to `reorderMoved` or
+    /// `reorderFailed` when the write returns. The floating copy of the
+    /// released row moves into the slot the move places it at.
     @discardableResult
     func hold(_ move: QueueRowMove, lane: BridgeQueueLane) -> Int {
         commits += 1
@@ -367,8 +368,8 @@ final class QueueDragCoordinator {
     }
 
     /// The write for `commit` moved the row: the lane draws its rows, which
-    /// show the move. A return for a commit a later drop replaced changes
-    /// nothing.
+    /// show the move. When a later drop has replaced this commit, this call
+    /// does nothing.
     func reorderMoved(_ lane: BridgeQueueLane, commit: Int) {
         guard held[lane]?.commit == commit else {
             return

@@ -257,8 +257,9 @@ private final class PreviewQueueModel {
         apply()
     }
 
-    /// Move `entryId` to `position` in `lane`, or to the lane's end past it —
-    /// core's reorder semantics — and answer whether it moved.
+    /// Move `entryId` to `position` in `lane`, or to the lane's end when
+    /// `position` is past the last row, as core's reorder does, and return
+    /// whether it found the entry in the lane.
     func reorder(
         _ entryId: String,
         lane: BridgeQueueLane,

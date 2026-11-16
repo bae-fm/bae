@@ -160,7 +160,8 @@ impl LibraryViews {
     }
 
     /// Follow the release file `initial` names, or none, as the inspector's
-    /// file details show it; none while no such file exists. Another file is a
+    /// file details show it; the query returns none while no such file
+    /// exists. Another file is a
     /// new request on the same query.
     pub fn subscribe_storage_file(
         &self,

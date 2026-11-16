@@ -78,8 +78,9 @@ extension QueueDragCoordinatorTests {
         )
     }
 
-    /// Two drops in a row: the first's return is for a move the second
-    /// replaced, so it leaves the second held, whether it moved or failed.
+    /// Two drops in a row: when the first reorder's write returns, whether
+    /// the move succeeded or failed, the coordinator keeps holding the second
+    /// move.
     @Test("an earlier reorder's return leaves a later hold")
     func earlierReturnLeavesALaterHold() {
         let coordinator = QueueDragCoordinator()
