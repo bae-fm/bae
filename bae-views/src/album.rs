@@ -33,10 +33,7 @@ impl LibraryViews {
     ) -> Result<DbLibrarySearchResults, DbError> {
         let pattern = search_pattern(query);
         let limit_i64 = limit as i64;
-        self.store
-            .read(move |sql| search_library_on(&sql, &pattern, limit_i64))
-            .process(LibrarySearchRows::process)
-            .await
+        self.store.read(move |sql| search_library_on(&sql, &pattern, limit_i64)).await
     }
 
     /// One window of the albums a search finds, in title order: at most `limit`
@@ -55,7 +52,12 @@ impl LibraryViews {
         let cap = crate::SEARCH_RESULT_LIMIT as i64;
         self.store
             .read(move |sql| search_albums_on(&sql, &pattern, limit, offset, cap))
-            .process(|rows| Ok(rows.into_iter().map(AlbumSearchRow::process).collect::<Vec<_>>()))
+            .process(|rows| {
+                Ok(rows
+                    .into_iter()
+                    .map(crate::album_detail::AlbumSearchResult::from_raw)
+                    .collect::<Vec<_>>())
+            })
             .await
     }
 
@@ -108,7 +110,7 @@ impl LibraryViews {
                 let Some(results) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
-                Ok(LibrarySearchProjection { results: results.process()? })
+                Ok(LibrarySearchProjection { results })
             })
     }
 
@@ -442,7 +444,7 @@ fn search_albums_on(
     limit: i64,
     offset: i64,
     cap: i64,
-) -> Result<Vec<AlbumSearchRow>, DbError> {
+) -> Result<Vec<DbAlbumSearchResult>, DbError> {
     let album_query = format!(
         r#"
             SELECT a.id, a.title, a.year,
@@ -464,7 +466,7 @@ fn search_albums_on(
         title_key = crate::sort_key_sql("a.title"),
     );
     Ok(sql.query(&album_query, params![pattern, limit, offset, cap], |row| {
-        Ok(AlbumSearchRow {
+        Ok(DbAlbumSearchResult {
             id: row.get("id")?,
             title: row.get("title")?,
             year: row.get("year")?,
@@ -483,7 +485,7 @@ fn search_library_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     limit: i64,
-) -> Result<LibrarySearchRows, DbError> {
+) -> Result<DbLibrarySearchResults, DbError> {
     let albums = search_albums_on(sql, pattern, limit, 0, limit)?;
     let tracks = sql.query(
         &format!(
@@ -597,67 +599,7 @@ fn search_library_on(
         params![pattern],
         |row| row.get(0),
     )?;
-    Ok(LibrarySearchRows { albums, artists, tracks, composers, works, top_playable, found })
-}
-
-#[derive(Clone, PartialEq)]
-struct AlbumSearchRow {
-    id: String,
-    title: String,
-    year: Option<i32>,
-    primary_release_id: String,
-    cover_version: Option<String>,
-    artist_line: bae_types::credits::CreditLine,
-}
-
-#[derive(Clone, PartialEq)]
-struct LibrarySearchRows {
-    albums: Vec<AlbumSearchRow>,
-    artists: Vec<DbArtistSummary>,
-    tracks: Vec<DbTrackSearchResult>,
-    composers: Vec<DbComposerSummary>,
-    works: Vec<DbWorkSummary>,
-    top_playable: Option<DbTopPlayable>,
-    found: bool,
-}
-
-impl AlbumSearchRow {
-    fn process(self) -> crate::album_detail::AlbumSearchResult {
-        crate::album_detail::AlbumSearchResult::from_raw(DbAlbumSearchResult {
-            id: self.id,
-            title: self.title,
-            year: self.year,
-            primary_release_id: self.primary_release_id,
-            cover_version: self.cover_version,
-            artist_line: self.artist_line,
-        })
-    }
-}
-
-impl LibrarySearchRows {
-    fn process(self) -> Result<DbLibrarySearchResults, DbError> {
-        let albums = self
-            .albums
-            .into_iter()
-            .map(|row| DbAlbumSearchResult {
-                id: row.id,
-                title: row.title,
-                year: row.year,
-                primary_release_id: row.primary_release_id,
-                cover_version: row.cover_version,
-                artist_line: row.artist_line,
-            })
-            .collect();
-        Ok(DbLibrarySearchResults {
-            albums,
-            artists: self.artists,
-            tracks: self.tracks,
-            composers: self.composers,
-            works: self.works,
-            top_playable: self.top_playable,
-            found: self.found,
-        })
-    }
+    Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, top_playable, found })
 }
 
 fn find_album_detail_on(
