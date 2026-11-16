@@ -71,9 +71,10 @@ nothing, so the script reads the run's result bundle and fails when a name ran
 no tests. It generates the Xcode project from `project.yml` first, so a test
 file added since the last generation runs.
 
-A UI test (baeUITests) launches the app and drives its windows. Run one class
-with `builds app-build bae <branch> --test <Class>`, which runs it on a build
-host, so its windows never cover the screen of the Mac you work at.
+A UI test (baeUITests) launches the app, then clicks and types in its windows.
+Run one class with `builds app-build bae <branch> --test <Class>`, which runs
+it on a build host, so its windows never cover the screen of the Mac you work
+at.
 
 ## Formatting
 
