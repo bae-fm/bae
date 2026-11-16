@@ -723,8 +723,7 @@ async fn row_choices(
         .cards
         .groups
         .iter()
-        .flat_map(|group| &group.sections)
-        .flat_map(|section| &section.pressings)
+        .flat_map(bae_identify::release_group::ReleaseGroup::pressings)
         .map(|pressing| (pressing.lead().release_id.clone(), pressing.choice()))
         .collect()
 }

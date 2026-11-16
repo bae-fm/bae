@@ -51,8 +51,7 @@ fn chosen_rows(runtime: &crate::CandidateRuntimeSnapshot) -> Vec<(String, bool)>
         .search
         .iter()
         .flat_map(|search| &search.groups)
-        .flat_map(|group| &group.sections)
-        .flat_map(|section| &section.pressings)
+        .flat_map(bae_identify::release_group::ReleaseGroup::pressings)
         .map(|pressing| (pressing.lead().release_id.clone(), pressing.choice().chosen))
         .collect();
     rows.sort();
