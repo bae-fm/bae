@@ -39,7 +39,11 @@ step android android-shots scripts/cargo.sh run -p bae-shots -- run --platform a
 shots mac scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select {select}
 shots android scripts/cargo.sh run -p bae-shots -- run --platform android --select {select}
 
+limit macos 20m
+limit macos-tests 20m
 limit macos-tests-run 10m
+limit android-bridge 15m
+limit android 15m
 limit android-tests 10m
 limit mac-shots 20m
 limit mac-window-shots 20m
