@@ -490,3 +490,17 @@ async fn the_keys_between_two_rows_are_the_run_between_them() {
         "{closed:?}"
     );
 }
+
+/// Combine shows the number of rows it would make one release while every
+/// selected row can join one, and zero once a row cannot.
+#[tokio::test]
+async fn combine_counts_the_selection_while_every_row_can_join() {
+    let lib = five_rows().await;
+    let list = lib.open(view(TriageTab::Pending)).await;
+    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("B")] }).await;
+    let combine =
+        |count, enabled| Some(SelectionOffer { action: CandidateAction::Combine, count, enabled });
+    assert_eq!(offer(&lib, list, CandidateAction::Combine).await, combine(2, true));
+    lib.run(lib.identifying("A", "running")).await;
+    assert_eq!(offer(&lib, list, CandidateAction::Combine).await, combine(0, false));
+}

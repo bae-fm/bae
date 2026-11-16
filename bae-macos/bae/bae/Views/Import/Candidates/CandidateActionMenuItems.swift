@@ -51,7 +51,6 @@ struct CandidateActionMenuItems: MacMenuPart {
         in menu: CandidateActionMenu
     ) -> String {
         guard menu.isSelection else { return offer.action.rowLabel }
-        guard let count = offer.count else { return offer.action.label }
-        return offer.action.label(count: count)
+        return offer.action.label(count: offer.applicable)
     }
 }

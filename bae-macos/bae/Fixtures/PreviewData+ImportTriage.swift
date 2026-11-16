@@ -495,7 +495,8 @@ extension PreviewData {
         hasGroups: true
     )
 
-    /// A shot row's live state offering `actions`.
+    /// A shot row's live state whose row offers each of `actions` for
+    /// itself.
     static func triageLive(
         _ actions: [BridgeCandidateAction],
         identifying: BridgeIdentifyingStep? = nil,
@@ -515,8 +516,7 @@ extension PreviewData {
     /// What a row whose lookup is stored offers over its draft: no
     /// Identify, since the stored lookup is shown as it stood.
     private static let identifiedDraftCommands: [BridgeCandidateAction] = [
-        .resetToFileMetadata, .clearMetadata, .combine, .skip,
-        .revealFolder,
+        .resetToFileMetadata, .clearMetadata, .skip, .revealFolder,
     ]
 
     /// What a row no lookup is stored for offers over its draft.
@@ -594,6 +594,29 @@ extension PreviewData {
                 .done: importTabItems(.done),
                 .skipped: importTabItems(.skipped),
             ]
+        )
+    }
+}
+
+extension BridgeCandidateLiveState {
+    /// A fixture row's live state whose row offers each of `actions` for
+    /// itself, as core offers a row's own commands: for that one row, each
+    /// enabled.
+    init(
+        identifying: BridgeIdentifyingStep?,
+        import: BridgeImportStep?,
+        actions: [BridgeCandidateAction],
+        standing: BridgePendingStanding?,
+        badge: BridgeRowBadge?
+    ) {
+        self.init(
+            identifying: identifying,
+            import: `import`,
+            offers: actions.map {
+                BridgeSelectionOffer(action: $0, count: 1, enabled: true)
+            },
+            standing: standing,
+            badge: badge
         )
     }
 }

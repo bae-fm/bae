@@ -131,18 +131,20 @@ extension PreviewData {
 
     /// A selection of `keys`, with what it offers as core's selection
     /// statement answers it: each
-    /// action offered once per selected candidate whose live state lists it,
-    /// in the order the surfaces list them. The fixture offers Combine when
-    /// the person selects two or more rows, and enables it only when every
-    /// selected candidate lists it. This function repeats core's selection
-    /// query for fixtures, because the apps have no copy of that query.
+    /// action offered once per selected candidate whose row offers it, in the
+    /// order the surfaces list them. The fixture offers Combine when the
+    /// person selects two or more rows, counting them and enabled when
+    /// `combinable` says every row can join one release, and counting none
+    /// otherwise. This function repeats core's selection query for fixtures,
+    /// because the apps have no copy of that query.
     @MainActor
     static func importSelection(
         of keys: [Data],
-        in store: ImportStore
+        in store: ImportStore,
+        combinable: Bool = false
     ) -> ImportSelection {
         let listed: [[BridgeCandidateAction]] = keys.map {
-            store.selectedCandidates[$0]?.live?.actions ?? []
+            store.selectedCandidates[$0]?.live?.offers.map(\.action) ?? []
         }
         let offers = selectionActionOrder.compactMap {
             action -> BridgeSelectionOffer? in
@@ -150,8 +152,8 @@ extension PreviewData {
                 return keys.count >= 2
                     ? BridgeSelectionOffer(
                         action: action,
-                        count: UInt64(keys.count),
-                        enabled: listed.allSatisfy { $0.contains(action) }
+                        count: combinable ? UInt64(keys.count) : 0,
+                        enabled: combinable
                     ) : nil
             }
             let count = listed.filter { $0.contains(action) }.count

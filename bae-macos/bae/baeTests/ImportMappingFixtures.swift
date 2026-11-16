@@ -420,7 +420,7 @@ extension MappingFixtures {
                     ? [] : [.import])
                     + [
                         .identify, .resetToFileMetadata, .clearMetadata,
-                        .combine, .skip, .revealFolder,
+                        .skip, .revealFolder,
                     ],
                 standing: .notLookedUp,
                 badge: nil

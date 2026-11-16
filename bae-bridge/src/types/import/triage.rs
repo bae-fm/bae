@@ -452,7 +452,8 @@ pub struct BridgeCandidateLiveState {
     pub identifying: Option<BridgeIdentifyingStep>,
     /// The step of the import that owns the candidate; `None` when none does.
     pub import: Option<BridgeImportStep>,
-    pub actions: Vec<BridgeCandidateAction>,
+    /// What the row's own menu offers, Combine never among them.
+    pub offers: Vec<BridgeSelectionOffer>,
     /// Where the row stands among Found's states; `None` off Found.
     pub standing: Option<BridgePendingStanding>,
     /// The one badge the row wears in that state; `None` unless it waits on

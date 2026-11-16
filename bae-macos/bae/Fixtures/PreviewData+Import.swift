@@ -273,8 +273,7 @@ extension PreviewData {
                 actions: [
                     .import, .identify, .resetToFileMetadata,
                     .clearMetadata, .skip,
-                    separable ? .separate : .combine, .revealFolder,
-                ],
+                ] + (separable ? [.separate] : []) + [.revealFolder],
                 standing: .notLookedUp,
                 badge: nil
             ),

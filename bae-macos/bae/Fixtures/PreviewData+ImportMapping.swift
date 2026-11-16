@@ -381,7 +381,7 @@ extension PreviewData {
                         && edit.albumTitle.isEmpty ? [] : [.import])
                         + [
                             .identify, .resetToFileMetadata,
-                            .clearMetadata, .combine, .skip, .revealFolder,
+                            .clearMetadata, .skip, .revealFolder,
                         ],
                     standing: .notLookedUp,
                     badge: nil

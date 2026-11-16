@@ -43,6 +43,23 @@ impl CandidateAction {
         CandidateAction::Restore,
         CandidateAction::RevealFolder,
     ];
+
+    /// Every action one row offers alone, in the same order. Combine makes
+    /// several rows one release, so only a selection of several rows offers
+    /// it.
+    pub const ROW: [CandidateAction; 11] = [
+        CandidateAction::Import,
+        CandidateAction::CancelImport,
+        CandidateAction::Identify,
+        CandidateAction::CancelIdentification,
+        CandidateAction::RetryIdentification,
+        CandidateAction::ResetToFileMetadata,
+        CandidateAction::ClearMetadata,
+        CandidateAction::Separate,
+        CandidateAction::Skip,
+        CandidateAction::Restore,
+        CandidateAction::RevealFolder,
+    ];
 }
 
 /// What the tables say a candidate's commands are decided from: whether it can
@@ -100,6 +117,7 @@ impl CandidateActionBasis {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CandidateLiveState {
     pub facts: TriageRuntimeFacts,
+    /// The commands the row offers alone, from [`CandidateAction::ROW`].
     pub actions: Vec<CandidateAction>,
     /// Where the row stands among Found's states; `None` off Found.
     pub standing: Option<PendingStanding>,
@@ -114,6 +132,15 @@ impl CandidateLiveState {
         standing: Option<PendingStanding>,
     ) -> Self {
         Self { actions, standing, facts }
+    }
+
+    /// What the row's own menu offers: each command the row offers, for that
+    /// one row, each able to run.
+    pub fn offers(&self) -> Vec<super::SelectionOffer> {
+        self.actions
+            .iter()
+            .map(|&action| super::SelectionOffer { action, count: 1, enabled: true })
+            .collect()
     }
 
     /// The lookup at work the row shows: the work its state counts, so only a

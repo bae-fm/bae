@@ -1250,8 +1250,11 @@ standing of an imported release, the records of the stored releases a linked row
 claims (each release's album, its own records and the albums kept for those),
 the file versions its folder-image and embedded covers name, and the header of
 the group a window starts inside of, with the key of the item beyond the window.
-A one-row menu on the Mac reads its offers from the row's own list of commands;
-only a selection of several rows counts offers, in SQL. Its counts — each tab's,
+Core sends each offer with the number shown beside it and whether it can run:
+a row's own offers, each for that one row and leaving out Combine, come with
+the row, and a selection's come from one statement, which counts the rows each
+command runs on and gives Combine every selected row while every one can join
+one release and none otherwise. The list's counts — each tab's,
 each filter entry's, how many items the list holds and how many releases its
 filters keep, and how many each group's header counts — come from COUNT queries
 over the placement's rows, which read the placement's indexes; no table stores

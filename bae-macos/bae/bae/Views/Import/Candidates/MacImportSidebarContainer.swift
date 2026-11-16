@@ -266,10 +266,9 @@ extension MacImportSidebarContainer {
             )
         }
         return CandidateActionMenu(
-            offers: ImportCandidateActionOffer.row(
-                row.candidateKey,
-                actions: row.live.actions
-            ),
+            offers: row.live.offers.map {
+                ImportCandidateActionOffer($0, rowKey: row.candidateKey)
+            },
             isSelection: false
         )
     }

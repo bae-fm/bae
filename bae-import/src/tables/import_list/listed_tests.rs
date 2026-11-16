@@ -557,3 +557,18 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
         "with no runtime entry of its own"
     );
 }
+
+/// A row's own menu offers each command the row offers, for that one row and
+/// able to run, and leaves Combine to a selection of several rows.
+#[tokio::test]
+async fn a_row_offers_its_commands_for_itself_without_combine() {
+    let lib = Library::new().await;
+    lib.run(scanned_with_states(&lib, &["Release"]) + lib.valid_draft("Release")).await;
+    let read = lib.shown(view(TriageTab::Pending)).await;
+    let (_, live) = row_at(&read, "Release");
+    let offers = live.offers();
+    assert!(offers.iter().any(|offer| offer.action == CandidateAction::Import));
+    assert!(!offers.iter().any(|offer| offer.action == CandidateAction::Combine));
+    assert_eq!(offers.iter().map(|offer| offer.action).collect::<Vec<_>>(), live.actions);
+    assert!(offers.iter().all(|offer| offer.count == 1 && offer.enabled));
+}

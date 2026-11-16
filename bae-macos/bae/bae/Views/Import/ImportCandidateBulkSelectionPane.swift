@@ -138,11 +138,6 @@ struct ImportCandidateBulkSelectionCard: View {
 }
 
 extension ImportCandidateActionOffer {
-    /// The number in the row's chip: the folders the action applies to. Combine
-    /// applies to the whole selection when it can run and to none when a
-    /// folder holds it back.
-    var chipCount: Int { enabled ? applicable : 0 }
-
     /// Whether the action gets folders into the library; its row gets the
     /// accent and a heavier name.
     var isConstructive: Bool { action == .import || action == .combine }
@@ -219,7 +214,7 @@ private struct BulkActionRow: View {
                     MacImportDestination(destination: importDestination)
                 }
                 StatusChip(
-                    Text(verbatim: offer.chipCount.formatted())
+                    Text(verbatim: offer.applicable.formatted())
                         .monospacedDigit(),
                     tone: isConstructive ? .accent : .neutral
                 )

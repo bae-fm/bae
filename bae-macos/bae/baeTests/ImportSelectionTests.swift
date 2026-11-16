@@ -206,12 +206,12 @@ struct ImportSelectionTests {
                 ImportCandidateActionOffer.selection(
                     selection.summary
                 )
-                .map { ($0.action, $0.count) }
+                .map { ($0.action, $0.applicable) }
         )
         #expect(counts[.import] == 1)
         #expect(counts[.skip] == 2)
         #expect(counts[.restore] == nil)
-        #expect(counts[.combine] == .some(nil))
+        #expect(counts[.combine] == 0)
         #expect(counts[.revealFolder] == 2)
     }
 }

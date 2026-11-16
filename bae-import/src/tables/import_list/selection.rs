@@ -18,9 +18,9 @@ use crate::{CandidateAction, CandidateKey};
 /// offered, by its place in [`CandidateAction::ALL`]. Each command runs row
 /// by row over the rows that offer it, so the selection offers it when any
 /// row does. Combine is one command over the whole selection: the selection
-/// offers Combine for two or more rows and enables it only when Combine can
-/// merge every row. A row that Combine cannot merge shows the reason, and
-/// Combine stays in the offers.
+/// offers Combine for two or more rows and enables it, counting every row,
+/// only when Combine can merge every row; otherwise it counts none. A row that
+/// Combine cannot merge shows the reason, and Combine stays in the offers.
 pub(super) fn selection(
     sql: &SqlReadContext<'_>,
     keys: &[CandidateKey],
@@ -35,7 +35,9 @@ pub(super) fn selection(
         .enumerate()
         .map(|(at, action)| match action {
             CandidateAction::Combine => format!(
-                "SELECT {at} + 1, n_rows, COALESCE(every_can_combine, 0), NULL, NULL \
+                "SELECT {at} + 1, \
+                        CASE WHEN COALESCE(every_can_combine, 0) THEN n_rows ELSE 0 END, \
+                        COALESCE(every_can_combine, 0), NULL, NULL \
                  FROM total WHERE n_rows >= 2"
             ),
             _ => format!(

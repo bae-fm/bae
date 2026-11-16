@@ -42,8 +42,8 @@ extension ImportView {
             if case .folder(_, .several(let parts)) = candidate.source {
                 ImportCombinedSourceView(
                     parts: parts,
-                    canSeparate: candidate.live?.actions
-                        .contains(.separate) == true,
+                    canSeparate: candidate.live?.offers
+                        .contains { $0.action == .separate } == true,
                     onSeparate: { separateSelectedCandidate() }
                 )
             }

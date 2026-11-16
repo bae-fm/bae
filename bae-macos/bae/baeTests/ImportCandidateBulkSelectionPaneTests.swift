@@ -74,54 +74,37 @@ struct ImportCandidateBulkSelectionPaneTests {
         #expect(card.rows(in: .folder).map(\.action) == [.revealFolder])
     }
 
-    /// Each row states how many of the selected folders its action applies to:
-    /// one of the two can be imported, both can be reset or skipped.
-    @Test("a row counts the selected folders its action applies to")
-    func aRowCountsTheFoldersItAppliesTo() {
+    /// Each row states the number core sends for its action: one of the two
+    /// folders can be imported, both can be reset or skipped, and Combine
+    /// counts none while a folder holds it back.
+    @Test("a row shows the number core sends for its action")
+    func aRowShowsTheNumberCoreSends() {
         let card = Self.card()
 
-        #expect(card.rows(in: .importing).map(\.count) == [1, nil])
-        #expect(card.rows(in: .metadata).map(\.count) == [2, 2])
-        #expect(card.rows(in: .placement).map(\.count) == [2])
-        #expect(card.rows(in: .folder).map(\.count) == [2])
+        #expect(card.rows(in: .importing).map(\.applicable) == [1, 0])
+        #expect(card.rows(in: .metadata).map(\.applicable) == [2, 2])
+        #expect(card.rows(in: .placement).map(\.applicable) == [2])
+        #expect(card.rows(in: .folder).map(\.applicable) == [2])
     }
 
-    /// Combine applies to the selection as a whole rather than folder by
-    /// folder, so it is the one row with no count of its own; every other row
-    /// counts the folders the selection offers its action for.
-    @Test("Combine carries no count where every action row carries one")
-    func combineCarriesNoCount() {
-        let card = Self.card()
-
-        for row in card.drawnGroups.flatMap(card.rows(in:)) {
-            guard row.action != .combine else {
-                #expect(row.count == nil)
-                continue
-            }
-            #expect(row.count == row.applicable)
-        }
-    }
-
-    /// Every row draws a count chip, Combine's too: Combine's chip counts the
-    /// whole selection when Combine is enabled, and zero when a selected
-    /// folder disables it.
-    @Test("every row draws a count chip")
-    func everyRowDrawsACountChip() {
-        let card = Self.card()
-
-        let rows = card.rows(in: .importing)
-        #expect(rows.first?.chipCount == 1)
-        let combine = rows.first { $0.action == .combine }
-        #expect(combine?.chipCount == (combine?.enabled == true ? 2 : 0))
-        #expect(
-            ImportCandidateActionOffer(
-                action: .combine,
-                applicable: 2,
-                enabled: false,
-                rowKey: nil
+    /// Combine counts the whole selection when every folder can join one
+    /// release.
+    @Test("Combine counts the selection when it can run")
+    func combineCountsTheSelectionWhenItCanRun() {
+        let card = Self.card(
+            offers: ImportCandidateActionOffer.selection(
+                PreviewData.importSelection(
+                    of: Self.selectedKeys,
+                    in: PreviewData.importTabScene().store,
+                    combinable: true
+                )
+                .summary
             )
-            .chipCount == 0
         )
+
+        let combine = card.rows(in: .importing).first { $0.action == .combine }
+        #expect(combine?.applicable == 2)
+        #expect(combine?.enabled == true)
     }
 
     /// A group with no row is not drawn.

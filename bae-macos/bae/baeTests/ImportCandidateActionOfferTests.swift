@@ -4,23 +4,27 @@ import Testing
 
 @testable import bae
 
-/// What one row's menu offers, read from the commands its live state lists.
+/// What one row's menu offers: core's offers for that row, under its key.
 @Suite("The import row's action offers")
 struct ImportCandidateActionOfferTests {
-    /// Each command the row lists is one offer for that row, in the order
-    /// listed, with a count of one and nothing disabled; the combine command
-    /// makes several rows one release, so a lone row's menu leaves it out.
-    @Test("a row offers each command its live state lists except combining")
-    func aRowOffersEachCommandItListsExceptCombining() {
+    /// Each offer core sends for the row is one offer for that row, in the
+    /// order core sends them, with the number and whether it can run as core
+    /// says.
+    @Test("a row's menu offers what core offers for the row")
+    func aRowsMenuOffersWhatCoreOffers() {
         let key = Data([1, 2, 3])
-        let offers = ImportCandidateActionOffer.row(
-            key,
-            actions: [.revealFolder, .skip, .combine, .identify, .import]
+        let live = BridgeCandidateLiveState(
+            identifying: nil,
+            import: nil,
+            actions: [.revealFolder, .skip, .identify],
+            standing: nil,
+            badge: nil
         )
+        let offers = live.offers.map {
+            ImportCandidateActionOffer($0, rowKey: key)
+        }
 
-        #expect(
-            offers.map(\.action) == [.revealFolder, .skip, .identify, .import]
-        )
+        #expect(offers.map(\.action) == [.revealFolder, .skip, .identify])
         #expect(
             offers.allSatisfy {
                 $0.applicable == 1 && $0.enabled && $0.rowKey == key
