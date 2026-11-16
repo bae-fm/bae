@@ -111,7 +111,7 @@ internal class UpcomingTail(
         return {
             if (!released) {
                 released = true
-                val left = (holds[index] ?: 1) - 1
+                val left = checkNotNull(holds[index]) { "released a hold never taken" } - 1
                 if (left > 0) holds[index] = left else holds.remove(index)
                 follow()
             }
