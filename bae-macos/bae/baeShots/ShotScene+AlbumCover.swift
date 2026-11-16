@@ -16,12 +16,20 @@ extension ShotScene {
     ]
 
     /// `mac.album.change-cover.no-linked-release` draws the release with no
-    /// catalog release linked: no remote section and no Refresh.
+    /// catalog release linked: no remote section and no Refresh. The sheet
+    /// is the one the album page presents: `CoverSheetView` in its
+    /// `CoverPickerFrame`, raised over the window as a modal.
     private static func albumCoverScene(id: String, linked: Bool) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 1_200, height: 1_000)) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                openAlbum: true,
+                coverGallery: linked
+                    ? boardCoverGallery()
+                    : boardCoverGallery(remotes: [], linked: false)
+            )
             let images = ImageStore(
                 fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
                 fetchReleaseImageBytes: { _, source in
@@ -34,39 +42,27 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            let content = CoverGalleryContent(
-                linked ? boardCoverGallery() : boardCoverGallery(remotes: [])
-            )
-            // The board's sheet: 1100 by 820, centred in the window with
-            // no dimming behind it.
-            let sheet = CoverGalleryView(
-                content: content,
-                remoteItems: linked
-                    ? .linked(content.remote?.items ?? []) : .unlinked,
-                filter: .constant(.all),
-                focusedCover: .constant(nil),
-                selectedCover: nil,
-                lightboxLoad: LightboxImageLoad(),
-                onRefresh: {},
-                onFindRelease: {},
-                onSelect: { _ in },
-                onDone: {}
-            )
-            .frame(width: 1_100, height: 820)
-            .background(Color(nsColor: .windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-            .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
-            .environment(images)
-            return ShotStage(
-                ZStack {
-                    ShotScenes.libraryWindow(
-                        uiStore: uiStore,
-                        backing: backing,
-                        playbackStore: boardPlayback(),
-                        size: size
+            let lightboxLoad = LightboxImageLoad()
+            uiStore.presentModal {
+                CoverPickerFrame {
+                    CoverSheetView(
+                        owner: .release(releaseId: "rel-board-0"),
+                        lightboxLoad: lightboxLoad,
+                        onFindRelease: {},
+                        refreshCovers: {},
+                        onSelect: { _ in },
+                        onDone: {}
                     )
-                    sheet
-                },
+                }
+                .environment(images)
+            }
+            return ShotStage(
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    playbackStore: boardPlayback(),
+                    size: size
+                ),
                 images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
@@ -83,14 +79,17 @@ extension ShotScene {
     }
 
     /// What core reads for the board's release: its cover, two Discogs
-    /// covers and the image files in its folder, focused on its cover.
+    /// covers and the image files in its folder, focused on its cover. With
+    /// `linked` false, core reads it as a release that names no catalog
+    /// release.
     static func boardCoverGallery(
         remotes remoteCovers: [BoardRemoteCover] = [
             BoardRemoteCover(name: "front", position: 1, type: .front),
             BoardRemoteCover(name: "back", position: 2, type: .back),
         ],
         files fileNames: [String] = ["cover.jpg", "back.jpg", "disc.jpg"],
-        releaseId: String = "rel-board-0"
+        releaseId: String = "rel-board-0",
+        linked: Bool = true
     ) -> BridgeCoverGallery {
         let remotes = remoteCovers.map(boardGalleryCover)
         let files = fileNames.map {
@@ -111,7 +110,7 @@ extension ShotScene {
                 ),
                 label: .current
             ),
-            fetch: .linked,
+            fetch: linked ? .linked : .unlinked,
             sections: [
                 BridgeCoverSection(
                     source: .remote,
