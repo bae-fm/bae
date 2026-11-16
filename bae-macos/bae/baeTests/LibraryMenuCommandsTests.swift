@@ -119,7 +119,14 @@ struct LibraryMenuCommandsTests {
             ),
             libraryBrowseSession: LibraryBrowseSession(
                 library: Library(albumList: { _, _ in
-                    .fixed(albums, answers: UnansweredCount(), canShuffle: true)
+                    .fixed(
+                        albums,
+                        answers: UnansweredCount(),
+                        extra: .albumGrid(
+                            albums: UInt64(albums.count),
+                            canShuffle: true
+                        )
+                    )
                 }),
                 uiStore: uiStore
             ),

@@ -270,22 +270,12 @@
         public static func fixed(
             _ rows: [Row],
             answers: UnansweredCount,
-            itemCount: Int? = nil,
-            canShuffle: Bool? = nil,
             sections: [BridgeLibraryBrowseSection] = [],
-            extra countExtra: BridgeListCountExtra? = nil,
+            extra: BridgeListCountExtra = .none,
             leadingHeader: @escaping @Sendable (_ position: Int) -> Row? = {
                 _ in nil
             }
         ) -> BridgeListQueries<Row> {
-            let extra: BridgeListCountExtra =
-                countExtra
-                ?? (itemCount != nil || canShuffle != nil
-                    ? BridgeListCountExtra.albumGrid(
-                        albums: UInt64(itemCount ?? rows.count),
-                        canShuffle: canShuffle ?? false
-                    ) : nil)
-                ?? BridgeListCountExtra.none
             let window = Self.fixedWindow(
                 of: rows,
                 answers: answers,

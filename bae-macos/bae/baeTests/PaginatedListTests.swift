@@ -276,7 +276,7 @@ struct PaginatedListTests {
             queries: .fixed(
                 [album, album],
                 answers: UnansweredCount(),
-                itemCount: 1
+                extra: .albumGrid(albums: 1, canShuffle: false)
             ),
             onError: { Issue.record("List failed: \($0)") }
         )
