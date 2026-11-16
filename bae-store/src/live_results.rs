@@ -144,8 +144,8 @@ impl<L: CovenLiveQuery> LiveResults<L> {
         }
     }
 
-    /// What `read` returns of the query, such as its request handle or how
-    /// often it has run.
+    /// What `read` returns of the query, such as how often it has run.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn with<R>(&self, read: impl FnOnce(&L) -> R) -> R {
         read(&self.held.lock().expect("no run of the query panicked").query)
     }
