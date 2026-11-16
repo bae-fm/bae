@@ -17,7 +17,7 @@ extension ShotScene {
             .frame(width: 380, alignment: .leading)
         },
         component("mac.component.import-group-header.default", height: 60) {
-            ImportListGroupHeader(
+            MacImportGroupHeader(
                 group: BridgeTriageGroup(
                     key: PreviewData.releaseQueueGroupKey,
                     name: "Mara Quill — Field Recordings (1979)",

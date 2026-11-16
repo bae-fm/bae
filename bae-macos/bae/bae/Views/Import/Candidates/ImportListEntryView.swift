@@ -63,7 +63,7 @@ struct ImportListEntryView: View {
         let actions = entry.actions
         switch entry.item {
         case .groupHeader(_, let group, _, let expanded, _):
-            ImportListGroupHeader(
+            MacImportGroupHeader(
                 group: group,
                 expanded: expanded,
                 onSetExpanded: { actions.onSetGroupExpanded(group, $0) },
@@ -93,7 +93,7 @@ struct ImportListEntryView: View {
 
 /// A folder group's header: its chevron and name, folding the group open or
 /// shut on a click. Its members follow as rows of their own.
-struct ImportListGroupHeader: View {
+struct MacImportGroupHeader: View {
     let group: BridgeTriageGroup
     let expanded: Bool
     let onSetExpanded: (Bool) -> Void
