@@ -72,12 +72,7 @@ struct StorageManagerView: View {
                 .frame(minWidth: 440, maxHeight: .infinity)
 
             if inspectorPresented {
-                // Only the part of the selection the list holds, so the
-                // inspector never shows a release the list doesn't.
-                StorageInspector(
-                    releaseId: storageManagerStore.soleRelease,
-                    initialSelectedFileId: initialSelectedFileId
-                )
+                StorageInspector(initialSelectedFileId: initialSelectedFileId)
             }
         }
         .frame(
