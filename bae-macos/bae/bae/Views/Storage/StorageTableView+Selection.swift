@@ -11,21 +11,20 @@ import BaeKit
 /// shows, loaded or not.
 extension StorageTableView.Coordinator {
     func tableView(
-        _ tableView: NSTableView,
+        _: NSTableView,
         selectionIndexesForProposedSelection proposed: IndexSet
     ) -> IndexSet {
         // A highlight the coordinator sets is no person's change.
         guard !applyingSelection else { return proposed }
-        let table = tableView as? StorageTable
         // With no press being handled, no keys are held.
-        let event = table?.handlingEvent
-        let target = event.flatMap { table?.pressedRow($0) }
+        let event = table.handlingEvent
+        let target = event.flatMap { table.pressedRow($0) }
         let proposedIds = ids(at: proposed)
         // A proposal of rows still loading selects nothing.
         guard proposed.isEmpty || !proposedIds.isEmpty else {
-            return tableView.selectedRowIndexes
+            return table.selectedRowIndexes
         }
-        let current = tableView.selectedRowIndexes
+        let current = table.selectedRowIndexes
         let kept = selection.wrappedValue
         switch SelectionGesture(event?.modifierFlags ?? []) {
         case .replace:
@@ -41,7 +40,7 @@ extension StorageTableView.Coordinator {
         case .extend:
             extend(proposed: proposed, current: current, target: target)
         }
-        return highlightedRows(selection.wrappedValue, in: tableView)
+        return highlightedRows(selection.wrappedValue)
     }
 
     /// A Shift gesture: the rows it proposes show selected at once, and
@@ -91,12 +90,11 @@ extension StorageTableView.Coordinator {
     /// Highlight the rows in view whose releases `kept` names, each from the
     /// row it draws. Guarded so the table's delegate call that follows
     /// doesn't read it as a person's change.
-    func applySelection(_ kept: Set<String>, to tableView: NSTableView?) {
-        guard let tableView else { return }
-        let rows = highlightedRows(kept, in: tableView)
-        guard rows != tableView.selectedRowIndexes else { return }
+    func applySelection(_ kept: Set<String>) {
+        let rows = highlightedRows(kept)
+        guard rows != table.selectedRowIndexes else { return }
         applyingSelection = true
-        tableView.selectRowIndexes(rows, byExtendingSelection: false)
+        table.selectRowIndexes(rows, byExtendingSelection: false)
         applyingSelection = false
     }
 
@@ -107,13 +105,10 @@ extension StorageTableView.Coordinator {
     }
 
     /// The rows in view whose releases `kept` names.
-    private func highlightedRows(
-        _ kept: Set<String>,
-        in tableView: NSTableView
-    ) -> IndexSet {
+    private func highlightedRows(_ kept: Set<String>) -> IndexSet {
         var rows = IndexSet()
         guard !kept.isEmpty else { return rows }
-        let range = tableView.rows(in: tableView.visibleRect)
+        let range = table.rows(in: table.visibleRect)
         for row in range.location..<(range.location + range.length)
         where row < rootCount {
             if let id = list.row(at: row)?.id, kept.contains(id) {

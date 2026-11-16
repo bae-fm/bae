@@ -17,7 +17,7 @@ extension StorageTableView.Coordinator {
     /// column's width follows the window, which a width written before it
     /// moved would undo.
     func applyLayout(_ layout: StorageTableLayout) {
-        guard let tableView, layout != appliedLayout else { return }
+        guard layout != appliedLayout else { return }
         let previous = appliedLayout
         appliedLayout = layout
         // Moving and resizing columns here posts the notifications a person's
@@ -25,7 +25,7 @@ extension StorageTableView.Coordinator {
         applyingLayout = true
         defer { applyingLayout = false }
         for (index, entry) in layout.columns.enumerated() {
-            let at = tableView.column(
+            let at = table.column(
                 withIdentifier: NSUserInterfaceItemIdentifier(
                     entry.column.rawValue
                 )
@@ -36,7 +36,7 @@ extension StorageTableView.Coordinator {
                 )
                 continue
             }
-            let tableColumn = tableView.tableColumns[at]
+            let tableColumn = table.tableColumns[at]
             let before = previous?.columns
                 .first {
                     $0.column == entry.column
@@ -48,7 +48,7 @@ extension StorageTableView.Coordinator {
                 tableColumn.width = entry.width
             }
             if at != index {
-                tableView.moveColumn(at, toColumn: index)
+                table.moveColumn(at, toColumn: index)
             }
         }
     }
@@ -58,8 +58,8 @@ extension StorageTableView.Coordinator {
     private func writeLayout(
         fitted: (column: StorageTableColumn, width: CGFloat)? = nil
     ) {
-        guard let tableView, !applyingLayout else { return }
-        let columns = tableView.tableColumns.compactMap {
+        guard !applyingLayout else { return }
+        let columns = table.tableColumns.compactMap {
             tableColumn -> StorageTableLayout.Column? in
             guard
                 let column = StorageTableColumn(
@@ -95,7 +95,7 @@ extension StorageTableView.Coordinator {
     func tableViewColumnDidResize(_ notification: Notification) {
         // Only a width the person drags is kept: the first column also
         // follows the window's width, which is no choice of theirs.
-        guard let headerView = tableView?.headerView,
+        guard let headerView = table.headerView,
             headerView.resizedColumn >= 0
         else {
             return

@@ -65,7 +65,7 @@ struct StorageTableView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let coordinator = context.coordinator
-        let tableView = StorageTable()
+        let tableView = coordinator.table
         tableView.menus = coordinator
         tableView.onSelectAll = { [weak coordinator] in
             coordinator?.selectAllShown()
@@ -101,7 +101,6 @@ struct StorageTableView: NSViewRepresentable {
         let header = StorageTableHeader()
         header.menus = coordinator
         tableView.headerView = header
-        coordinator.tableView = tableView
         coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
 
@@ -115,14 +114,9 @@ struct StorageTableView: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let tableView = scrollView.documentView as? NSTableView else {
-            logger.error(
-                "Storage scroll view is missing its table document view"
-            )
-            return
-        }
+    func updateNSView(_: NSScrollView, context: Context) {
         let coordinator = context.coordinator
+        let tableView = coordinator.table
         // Reading these `@Observable` fields here is what makes SwiftUI
         // re-invoke `updateNSView` when the list grows, changes, or is swapped
         // for a fresh instance on a sort/filter change.
@@ -157,7 +151,7 @@ struct StorageTableView: NSViewRepresentable {
 
         coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
-        coordinator.applySelection(selection, to: tableView)
+        coordinator.applySelection(selection)
     }
 
     static func dismantleNSView(
@@ -205,7 +199,9 @@ extension StorageTableView {
         /// The tone and accent of the window the table is in, which its
         /// hosted cells draw in.
         private(set) var appearance: HostedAppearance
-        weak var tableView: NSTableView?
+        /// The table the coordinator serves, for as long as the coordinator
+        /// lives.
+        let table: StorageTable
 
         private var rootEpoch: LoadEpoch?
         private(set) var rootCount = 0
@@ -240,6 +236,7 @@ extension StorageTableView {
             self.downloadStore = downloadStore
             self.outboxStore = outboxStore
             self.appearance = appearance
+            table = StorageTable()
         }
 
         func update(
@@ -303,14 +300,13 @@ extension StorageTableView {
         @objc
         private func clipViewMoved() {
             holdRowsInView()
-            applySelection(selection.wrappedValue, to: tableView)
+            applySelection(selection.wrappedValue)
         }
 
         /// Each row in view holds its page; a row leaving the view lets its
         /// hold go.
         func holdRowsInView() {
-            guard let tableView else { return }
-            let range = tableView.rows(in: tableView.visibleRect)
+            let range = table.rows(in: table.visibleRect)
             let inView = Set(range.location..<(range.location + range.length))
             for (row, hold) in rowHolds where !inView.contains(row) {
                 hold.cancel()
@@ -332,10 +328,7 @@ extension StorageTableView {
                     // Only the still-mounted list's selection applies; a tab
                     // switch swaps the list before this resolves.
                     if !landed, let self, list === self.list {
-                        self.applySelection(
-                            self.selection.wrappedValue,
-                            to: self.tableView
-                        )
+                        self.applySelection(self.selection.wrappedValue)
                     }
                     await Task.untilCancelled()
                 }
@@ -583,7 +576,7 @@ extension StorageTableView.Coordinator {
         }
         selection.wrappedValue = [clicked.id]
         anchorId = clicked.id
-        applySelection([clicked.id], to: tableView)
+        applySelection([clicked.id])
         return MenuTargets(
             rows: [clicked],
             actions: clicked.release.storageActions,
@@ -608,7 +601,7 @@ extension StorageTableView.Coordinator {
     ) {
         selection.wrappedValue = [releaseId]
         anchorId = releaseId
-        applySelection([releaseId], to: tableView)
+        applySelection([releaseId])
         inspectorPresented.wrappedValue = presented
     }
 }
