@@ -137,15 +137,6 @@ class LatestStream<V : Any> private constructor(
             LatestStream(values) { (it as? BridgeFastValue.TrackBuffered)?.buffered }
 
         /**
-         * True under the playing track's id while its load waits on storage; a shot's holds
-         * true under each of [waiting] and nothing feeds it.
-         */
-        fun trackStorageWaits(waiting: Set<String>? = null): LatestStream<Boolean> =
-            LatestStream(waiting?.associateWith { true }) {
-                if (it is BridgeFastValue.TrackWaitsOnStorage) true else null
-            }
-
-        /**
          * The counted step a restore, join or reset runs, opening or loading, while it runs one; a shot's holds
          * [value], fed by nothing.
          */
@@ -260,14 +251,6 @@ fun LatestStream<BridgeTrackBuffered>.feed(
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
 ): LatestFeed = fed(scope, reportBug, appHandle::feedTrackBuffered)
-
-/** Fill from core. */
-@JvmName("feedTrackStorageWaits")
-fun LatestStream<Boolean>.feed(
-    appHandle: AppHandleInterface,
-    scope: CoroutineScope,
-    reportBug: (BridgeException) -> Unit,
-): LatestFeed = fed(scope, reportBug, appHandle::feedTrackStorageWaits)
 
 /** A fed stream's feed, which stops when cancelled; the stream then holds nothing. */
 class LatestFeed internal constructor(

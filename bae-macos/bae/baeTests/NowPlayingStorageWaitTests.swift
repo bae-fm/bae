@@ -14,7 +14,6 @@ import Testing
 struct NowPlayingStorageWaitTests {
     @Test("a load waiting on storage turns the arc and keeps the seek bar")
     func waitTurnsTheArc() async throws {
-        let waits = LatestStream<Bool>.trackStorageWaits(waiting: ["track-1"])
         let held = [BridgeTrackSpan(start: 0, end: 0.08)]
         let buffered = LatestStream.trackBuffered(
             holding: ["track-1": BridgeTrackBuffered(ranges: held)]
@@ -23,7 +22,7 @@ struct NowPlayingStorageWaitTests {
         try await SnapshotTestSupport.withHostedWindow(
             bar(
                 buffered: buffered.source(for: "track-1"),
-                storageWait: waits.source(for: "track-1")
+                waitsOnStorage: true
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -48,8 +47,7 @@ struct NowPlayingStorageWaitTests {
         try await SnapshotTestSupport.withHostedWindow(
             bar(
                 buffered: LatestStream.trackBuffered().source(for: "track-1"),
-                storageWait: LatestStream<Bool>.trackStorageWaits()
-                    .source(for: "track-1")
+                waitsOnStorage: false
             )
             .frame(width: size.width, height: size.height),
             size: size
@@ -64,7 +62,7 @@ struct NowPlayingStorageWaitTests {
     /// The bar for a track loading to play a quarter of the way in.
     private func bar(
         buffered: LatestSource<BridgeTrackBuffered>,
-        storageWait: LatestSource<Bool>
+        waitsOnStorage: Bool
     ) -> some View {
         MacNowPlayingBar(
             trackTitle: "Track Title",
@@ -83,7 +81,7 @@ struct NowPlayingStorageWaitTests {
                 )
                 .source(for: "track-1"),
             buffered: buffered,
-            storageWait: storageWait,
+            waitsOnStorage: waitsOnStorage,
             showRemainingTime: false,
             settings: PlaybackSettings(
                 volume: 0.7,

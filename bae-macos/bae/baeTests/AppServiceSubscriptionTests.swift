@@ -618,10 +618,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         NoopKeyedValueStream()
     }
 
-    override func feedTrackStorageWaits() -> KeyedValueStream {
-        NoopKeyedValueStream()
-    }
-
     override func subscribeUploadsPaused() -> UploadsPausedSubscription {
         SilentUploadsPaused()
     }

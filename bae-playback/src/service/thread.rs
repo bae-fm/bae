@@ -322,7 +322,6 @@ impl PlaybackThread {
     /// the one time it is told, and let go of what the service held outside
     /// itself. Playback is stopped, here, previewing nothing.
     fn report_the_end(&self, reason: crate::PlaybackErrorReason) {
-        self.arbiter.set_waiting(None);
         self.playing_bytes.send_replace(None);
         self.audio_focus.release();
         for event in [
@@ -428,7 +427,7 @@ impl PlaybackService {
         let worker = WorkerThread::spawn(PLAYBACK_THREAD, bugs, move |channel, messages| {
             thread.run(channel, messages, restore_playback)
         });
-        PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
+        PlaybackHandle::new(worker, progress_handle, playing_bytes_rx)
     }
 
     /// Serve `starter`, then `commands`, and what else wakes the loop, until
@@ -467,6 +466,7 @@ impl PlaybackService {
                     due = ticking.elapsed(), if ticking.is_armed() => Wake::RemoteDisplayTick(due),
                     Some(command) = next_command(commands, service) => Wake::Command(command),
                     (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
+                    () = self.file_buffers.storage_fetch_changed() => Wake::StorageFetch,
                     else => break,
                 }
             };
@@ -498,6 +498,7 @@ impl PlaybackService {
             Wake::CountdownElapsed(deadline) => self.side_pause_countdown_elapsed(deadline).await,
             Wake::Command(command) => return self.handle_command(command).await,
             Wake::HeldTracks { held, infos } => self.handle_held_tracks(held, infos).await,
+            Wake::StorageFetch => self.storage_fetch_changed(),
         }
         ControlFlow::Continue(())
     }
@@ -542,6 +543,8 @@ enum Wake {
         held: Vec<String>,
         infos: Vec<PlaybackTrackInfo>,
     },
+    /// The current track started or stopped fetching from storage.
+    StorageFetch,
 }
 
 #[cfg(test)]

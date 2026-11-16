@@ -142,10 +142,7 @@ extension ShotScene {
         component(id, height: 70) {
             MacPlayPause(
                 isPlaying: playing,
-                storageWait: waiting
-                    ? LatestStream.trackStorageWaits(waiting: ["preview-track"])
-                        .source(for: "preview-track")
-                    : nil,
+                waitsOnStorage: waiting,
                 onToggle: {}
             )
         }

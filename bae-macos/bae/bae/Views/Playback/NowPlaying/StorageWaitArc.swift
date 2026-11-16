@@ -3,8 +3,7 @@ import BaeKit
 import SwiftUI
 
 /// An arc turning around the play/pause control while the track's load
-/// waits on storage. The native view reads the wait each display frame, so
-/// the wait coming and going never re-evaluates SwiftUI.
+/// waits on storage, as the now-playing value says.
 struct StorageWaitArc: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent
@@ -12,7 +11,7 @@ struct StorageWaitArc: NSViewRepresentable {
     private var colorScheme
 
     /// Whether the loading track's load waits on storage.
-    let source: LatestSource<Bool>
+    let waits: Bool
 
     func makeNSView(context _: Context) -> StorageWaitArcNSView {
         let view = StorageWaitArcNSView()
@@ -24,16 +23,9 @@ struct StorageWaitArc: NSViewRepresentable {
         apply(to: view)
     }
 
-    static func dismantleNSView(
-        _ view: StorageWaitArcNSView,
-        coordinator _: ()
-    ) {
-        view.stopFollowing()
-    }
-
     private func apply(to view: StorageWaitArcNSView) {
         view.color = NSColor(accent.color(in: colorScheme))
-        view.follow(source)
+        view.show(waits)
     }
 }
 
@@ -44,9 +36,6 @@ final class StorageWaitArcNSView: NSView {
     private static let turnKey = "turn"
 
     private let arc = CAShapeLayer()
-    private lazy var following = FrameFollowing<Bool>(view: self) {
-        [weak self] waits in self?.show(waits == true)
-    }
 
     var color: NSColor = .controlAccentColor {
         didSet { arc.strokeColor = color.cgColor }
@@ -79,15 +68,6 @@ final class StorageWaitArcNSView: NSView {
         fatalError()
     }
 
-    func follow(_ source: LatestSource<Bool>) {
-        following.follow(source)
-    }
-
-    func stopFollowing() {
-        following.stop()
-        show(false)
-    }
-
     override func layout() {
         super.layout()
         arc.frame = bounds
@@ -98,7 +78,7 @@ final class StorageWaitArcNSView: NSView {
         )
     }
 
-    private func show(_ waits: Bool) {
+    func show(_ waits: Bool) {
         isHidden = !waits
         if waits, arc.animation(forKey: Self.turnKey) == nil {
             let turn = CABasicAnimation(keyPath: "transform.rotation.z")

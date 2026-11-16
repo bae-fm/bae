@@ -267,9 +267,19 @@ pub(crate) enum PlaybackCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState<Track = PlayingTrack> {
     Stopped,
-    Playing { track: Track },
-    Paused { track: Track, reason: PlaybackPauseReason },
-    Loading { track: LoadingTrack<Track> },
+    Playing {
+        track: Track,
+    },
+    Paused {
+        track: Track,
+        reason: PlaybackPauseReason,
+    },
+    /// `waits_on_storage` while one of the loading track's reads fetches
+    /// from storage, so the person waits on a download.
+    Loading {
+        track: LoadingTrack<Track>,
+        waits_on_storage: bool,
+    },
 }
 
 /// The track a load is for: its id alone until the service has prepared it,
@@ -314,7 +324,9 @@ impl<Track> PlaybackState<Track> {
             Self::Stopped => PlaybackState::Stopped,
             Self::Playing { track } => PlaybackState::Playing { track: f(track)? },
             Self::Paused { track, reason } => PlaybackState::Paused { track: f(track)?, reason },
-            Self::Loading { track } => PlaybackState::Loading { track: track.try_map_track(f)? },
+            Self::Loading { track, waits_on_storage } => {
+                PlaybackState::Loading { track: track.try_map_track(f)?, waits_on_storage }
+            }
         })
     }
 }
@@ -324,7 +336,7 @@ impl PlaybackState {
     pub fn track_id(&self) -> Option<&str> {
         match self {
             Self::Stopped => None,
-            Self::Loading { track } => Some(track.track_id()),
+            Self::Loading { track, .. } => Some(track.track_id()),
             Self::Playing { track } | Self::Paused { track, .. } => Some(&track.track_id),
         }
     }
@@ -357,25 +369,15 @@ pub struct PlaybackHandle {
     /// ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackMessage>,
     progress_handle: PlaybackProgressHandle,
-    /// The arbiter the service's reads run under, which hears whether the
-    /// playing track's load waits on storage.
-    arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
     playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackMessage>,
         progress_handle: PlaybackProgressHandle,
-        arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
         playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
     ) -> Self {
-        Self { worker, progress_handle, arbiter, playing_bytes }
-    }
-
-    /// The playing track while the person waits on its load and the load
-    /// reads from storage, by id; `None` otherwise.
-    pub fn subscribe_storage_waits(&self) -> bae_track_audio::StorageWaitWatch {
-        self.arbiter.subscribe_storage_waits()
+        Self { worker, progress_handle, playing_bytes }
     }
 
     /// The parts of the playing track whose bytes this device holds, as

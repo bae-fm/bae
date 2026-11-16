@@ -334,9 +334,19 @@ pub struct BridgePreviewTimelinePoint {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackValueState {
     Stopped,
-    Loading { track: BridgeLoadingTrack },
-    Playing { track: BridgeNowPlayingTrack },
-    Paused { track: BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason },
+    /// `waits_on_storage` while one of the loading track's reads fetches
+    /// from storage, so the person waits on a download.
+    Loading {
+        track: BridgeLoadingTrack,
+        waits_on_storage: bool,
+    },
+    Playing {
+        track: BridgeNowPlayingTrack,
+    },
+    Paused {
+        track: BridgeNowPlayingTrack,
+        reason: BridgePlaybackPauseReason,
+    },
 }
 
 mirror_enum! {
@@ -344,7 +354,7 @@ mirror_enum! {
     from_core: fn,
     variants: {
         Stopped,
-        Loading { track: (BridgeLoadingTrack) },
+        Loading { track: (BridgeLoadingTrack), waits_on_storage },
         Playing { track: (BridgeNowPlayingTrack) },
         Paused { track: (BridgeNowPlayingTrack), reason: (BridgePlaybackPauseReason) },
     },

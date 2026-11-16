@@ -240,10 +240,10 @@ private fun NowPlayingTransportButtons(
     onOpenQueue: () -> Unit,
 ) {
     val isPlaying by player.isPlayingOrLoading.collectAsState()
-    val loadingTrackId by player.loadingTrackId.collectAsState()
+    val waitsOnStorage by player.waitsOnStorage.collectAsState()
     NowPlayingTransport(
         isPlaying = isPlaying,
-        storageWait = loadingTrackId?.let { player.trackStorageWaits.source(it) },
+        waitsOnStorage = waitsOnStorage,
         repeatMode = repeatMode,
         onPrevious = { player.seekToPreviousMediaItem() },
         onPlayPause = { player.togglePlayPause() },

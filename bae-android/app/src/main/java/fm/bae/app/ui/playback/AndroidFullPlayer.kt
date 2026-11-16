@@ -59,7 +59,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 
@@ -143,7 +142,7 @@ private fun ExpandedPlayer(
 ) {
     val player = session.playback
     val isPlaying by player.isPlayingOrLoading.collectAsState()
-    val loadingTrackId by player.loadingTrackId.collectAsState()
+    val waitsOnStorage by player.waitsOnStorage.collectAsState()
     val repeatMode by player.repeatMode.collectAsState()
     val volume by player.volume.collectAsState()
     val isMuted by player.isMuted.collectAsState()
@@ -156,7 +155,7 @@ private fun ExpandedPlayer(
         transport = {
             ExpandedTransportRow(
                 isPlaying = isPlaying,
-                storageWait = loadingTrackId?.let { player.trackStorageWaits.source(it) },
+                waitsOnStorage = waitsOnStorage,
                 onPrevious = { player.seekToPreviousMediaItem() },
                 onPlayPause = { player.togglePlayPause() },
                 onNext = { player.seekToNextMediaItem() },
@@ -286,7 +285,7 @@ private fun ExpandedSeekSection(
 @Composable
 internal fun ExpandedTransportRow(
     isPlaying: Boolean,
-    storageWait: LatestSource<Boolean>?,
+    waitsOnStorage: Boolean,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
@@ -307,7 +306,7 @@ internal fun ExpandedTransportRow(
         AndroidPlayPause(
             isPlaying = isPlaying,
             iconSize = 48.dp,
-            storageWait = storageWait,
+            waitsOnStorage = waitsOnStorage,
             onToggle = onPlayPause,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.section))

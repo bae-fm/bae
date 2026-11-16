@@ -20,7 +20,7 @@ pub(super) async fn play_emits_bare_loading_then_loading_with_metadata_then_play
         );
 
         match loading[0] {
-            PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: id } } => {
+            PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: id }, .. } => {
                 assert_eq!(id, &track_id)
             }
             other => panic!("first Loading is emitted before the track is prepared, got {other:?}"),
@@ -29,7 +29,7 @@ pub(super) async fn play_emits_bare_loading_then_loading_with_metadata_then_play
         let prepared_loading = loading
             .iter()
             .find_map(|s| match s {
-                PlaybackState::Loading { track: LoadingTrack::Prepared(track) } => Some(track),
+                PlaybackState::Loading { track: LoadingTrack::Prepared(track), .. } => Some(track),
                 _ => None,
             })
             .expect("a Loading carrying the prepared track must be emitted");

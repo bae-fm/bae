@@ -12,7 +12,7 @@ mod read_error;
 // is desktop-only.
 #[cfg(desktop)]
 pub mod scrub_points;
-mod storage_wait;
+mod storage_fetch;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(desktop)]
 pub mod track_sources;
@@ -20,4 +20,4 @@ pub mod track_sources;
 pub use decode::{SegmentDecodeParams, SegmentStart, StreamDecodeParams};
 pub use preview_target::PreviewTarget;
 pub use read_error::TrackReadError;
-pub use storage_wait::StorageWaitWatch;
+pub use storage_fetch::StorageFetchWatch;

@@ -146,10 +146,6 @@ pub enum BridgeFastValue {
     /// The parts of the playing track whose bytes this device holds; keyed
     /// by track, the playing one alone.
     TrackBuffered { buffered: BridgeTrackBuffered },
-    /// The playing track's load waits on storage; keyed by track, the
-    /// playing one alone, while the person waits on its load and it reads
-    /// from storage.
-    TrackWaitsOnStorage,
     /// Where the preview is in its clip; a stream's one key, `""`, while a
     /// preview is loaded.
     PreviewPosition { position: BridgePreviewPosition },

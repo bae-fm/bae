@@ -385,24 +385,6 @@ pub(crate) fn track_buffered(
     })
 }
 
-/// The stream [`AppHandle::feed_track_storage_waits`](crate::AppHandle::feed_track_storage_waits) hands out.
-pub(crate) fn track_storage_waits(
-    runtime: OperationRuntime,
-    run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let mut waits = services.subscribe_storage_waits();
-        async move {
-            loop {
-                write_storage_wait(&writer, waits.waiting());
-                if waits.changed().await.is_err() {
-                    return;
-                }
-            }
-        }
-    })
-}
-
 #[cfg(desktop)]
 /// The stream [`AppHandle::feed_preview_position`](crate::AppHandle::feed_preview_position) hands out.
 pub(crate) fn preview_position(
@@ -595,22 +577,6 @@ fn track_is_fully_buffered(value: &BridgeFastValue) -> bool {
         BridgeFastValue::TrackBuffered { buffered }
             if matches!(buffered.ranges.as_slice(), [span] if span.start == 0.0 && span.end == 1.0)
     )
-}
-
-/// The stream holds the track whose load waits on storage, at rest: the wait
-/// is the whole value, so a view reads it once when it comes, and the arc it
-/// shows turns on its own clock.
-fn write_storage_wait(writer: &StreamWriter, waiting: Option<String>) {
-    writer.reset_resting(track_storage_wait(waiting), |_, _| true);
-}
-
-/// The track whose load waits on storage as its stream holds it: under its
-/// key, or nothing while no load does.
-fn track_storage_wait(waiting: Option<String>) -> HashMap<Vec<u8>, BridgeFastValue> {
-    waiting
-        .map(|track_id| (track_id.into_bytes(), BridgeFastValue::TrackWaitsOnStorage))
-        .into_iter()
-        .collect()
 }
 
 #[cfg(test)]

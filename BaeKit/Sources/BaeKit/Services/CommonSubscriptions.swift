@@ -102,7 +102,6 @@ final class CommonSubscriptions {
                 downloadStore.releaseProgress.feed(from: appHandle),
                 playbackStore.trackPositions.feed(from: appHandle),
                 playbackStore.trackBuffered.feed(from: appHandle),
-                playbackStore.trackStorageWaits.feed(from: appHandle),
             ]
         startSync()
     }

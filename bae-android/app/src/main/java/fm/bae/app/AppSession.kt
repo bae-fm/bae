@@ -192,10 +192,6 @@ class OpenLibrary internal constructor(
             playback.trackPositions.feed(appHandle, scope) { bugs.report("read the playing track's position", it) }
         streamFeeds +=
             playback.trackBuffered.feed(appHandle, scope) { bugs.report("read the playing track's held bytes", it) }
-        streamFeeds +=
-            playback.trackStorageWaits.feed(appHandle, scope) {
-                bugs.report("read the playing track's wait on storage", it)
-            }
         subscribeToTransfers(scope)
         screenSubscriptions +=
             ScreenSubscription(

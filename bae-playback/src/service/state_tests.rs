@@ -14,7 +14,7 @@ async fn playback_state_mapping() {
     service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: "t".to_string() });
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading { track: LoadingTrack::Unprepared { .. } }
+        PlaybackState::Loading { track: LoadingTrack::Unprepared { .. }, .. }
     ));
 
     let generation = service.next_load_generation();
@@ -24,7 +24,7 @@ async fn playback_state_mapping() {
     );
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading { track: LoadingTrack::Prepared(_) }
+        PlaybackState::Loading { track: LoadingTrack::Prepared(_), .. }
     ));
 
     service.slot = active_slot(test_prepared_track("t", buffer.clone()), TrackPhase::Playing);

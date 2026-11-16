@@ -29,7 +29,7 @@ internal class PlayerStaging(
     progress: Double,
     elapsedSeconds: Long,
     held: List<BridgeTrackSpan>,
-    waitsOnStorage: Boolean = false,
+    val waitsOnStorage: Boolean = false,
 ) {
     private val position =
         BridgeTrackPosition(
@@ -39,8 +39,6 @@ internal class PlayerStaging(
         )
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
     val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)
-    val storageWait =
-        LatestStream.trackStorageWaits(if (waitsOnStorage) setOf(TRACK_ID) else emptySet()).source(TRACK_ID)
 
     val track =
         NowPlaying(

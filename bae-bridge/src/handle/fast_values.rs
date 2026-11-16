@@ -73,14 +73,6 @@ impl AppHandle {
     pub fn feed_track_buffered(&self) -> Arc<KeyedValueStream> {
         crate::screens::track_buffered(self.runtime.clone(), self.run_feed())
     }
-
-    /// Write that the playing track's load waits on storage into a stream
-    /// keyed by track id, the playing track's alone, while the person waits
-    /// on the load and it reads from storage. A load read from this device's
-    /// own copy or the cache writes nothing.
-    pub fn feed_track_storage_waits(&self) -> Arc<KeyedValueStream> {
-        crate::screens::track_storage_waits(self.runtime.clone(), self.run_feed())
-    }
 }
 
 #[cfg(desktop)]

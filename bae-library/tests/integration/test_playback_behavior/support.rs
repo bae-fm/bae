@@ -348,7 +348,7 @@ pub(super) async fn observe_boundary(
             PlaybackProgress::TrackCompleted { track_id } if track_id == finishing => {
                 outcome.completed_for_finishing = true;
             }
-            PlaybackProgress::StateChanged { state: PlaybackState::Loading { track } }
+            PlaybackProgress::StateChanged { state: PlaybackState::Loading { track, .. } }
                 if track.track_id() == incoming =>
             {
                 outcome.loading_for_incoming = true;

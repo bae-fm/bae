@@ -8,8 +8,6 @@ import android.graphics.Paint
 import android.util.TypedValue
 import android.view.View
 import android.view.animation.LinearInterpolator
-import fm.bae.fastvalues.FrameFollowing
-import fm.bae.fastvalues.LatestSource
 
 private const val ARC_STROKE_DP = 2.5f
 private const val ARC_SWEEP_DEGREES = 90f
@@ -19,9 +17,8 @@ private const val ARC_START_DEGREES = -90f
 private const val TURN_MS = 1_000L
 
 /**
- * An arc turning around the play/pause control while the track's load
- * waits on storage, gone otherwise. It reads the wait each display frame
- * from the stream's key, so the wait coming and going never recomposes.
+ * An arc turning around the play/pause control, shown while the track's
+ * load waits on storage: it turns while it is attached to a window.
  */
 internal class StorageWaitArcView(
     context: Context,
@@ -39,12 +36,14 @@ internal class StorageWaitArcView(
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
         }
-    private val following = FrameFollowing<Boolean>(this, ::show)
 
     init {
-        visibility = GONE
         accessibilityLiveRegion = ACCESSIBILITY_LIVE_REGION_POLITE
     }
+
+    /** Whether the arc turns now: from when the view is attached to a window until it is detached. */
+    internal val isTurning: Boolean
+        get() = turning.isStarted
 
     /** Draw in [color], read out as [label]. */
     fun style(
@@ -57,22 +56,15 @@ internal class StorageWaitArcView(
         invalidate()
     }
 
-    fun follow(waits: LatestSource<Boolean>) = following.follow(waits)
-
-    fun stopFollowing() {
-        following.stop()
-        show(null)
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        turning.start()
     }
 
-    private fun show(waits: Boolean?) {
-        val shown = waits == true
-        visibility = if (shown) VISIBLE else GONE
-        if (shown && !turning.isStarted) {
-            turning.start()
-        } else if (!shown) {
-            turning.cancel()
-            rotation = 0f
-        }
+    override fun onDetachedFromWindow() {
+        turning.cancel()
+        rotation = 0f
+        super.onDetachedFromWindow()
     }
 
     override fun onDraw(canvas: Canvas) {

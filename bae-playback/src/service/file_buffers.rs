@@ -36,6 +36,9 @@ pub(super) struct FileBuffers {
     /// into every reader started below; the current track is designated
     /// foreground via `mark_foreground` whenever it becomes current.
     arbiter: Arc<FetchArbiter>,
+    /// The current track while one of its reads fetches from storage, as
+    /// the arbiter hears it.
+    storage_fetches: bae_track_audio::StorageFetchWatch,
     /// The current track's bytes and the buffer holding them; `None` while
     /// no track is current, or the current one plays on another device.
     playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
@@ -66,6 +69,7 @@ impl FileBuffers {
             runtime,
             cached: HashMap::new(),
             retired: Vec::new(),
+            storage_fetches: arbiter.subscribe_storage_fetches(),
             arbiter,
             playing,
             files,
@@ -90,11 +94,18 @@ impl FileBuffers {
         self.playing.send_replace(None);
     }
 
-    /// The track a load the person waits on is for, or `None` once nothing
-    /// loads: the playing track's reads from storage while it loads are the
-    /// download its load waits on.
-    pub(super) fn set_waiting(&self, track_id: Option<&str>) {
-        self.arbiter.set_waiting(track_id);
+    /// Whether `track_id` is the current track and one of its reads fetches
+    /// from storage.
+    pub(super) fn fetches_from_storage(&self, track_id: &str) -> bool {
+        self.storage_fetches.fetching().as_deref() == Some(track_id)
+    }
+
+    /// Wait until the current track starts or stops fetching from storage;
+    /// never, once the arbiter is gone.
+    pub(super) async fn storage_fetch_changed(&mut self) {
+        if self.storage_fetches.changed().await.is_err() {
+            std::future::pending::<()>().await;
+        }
     }
 
     /// Hold a track that has left the live slot. Its buffers stay cached and

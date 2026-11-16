@@ -14,9 +14,8 @@ struct MacNowPlayingBar: View {
     /// The parts of the playing track whose bytes are here; `nil` while no
     /// track plays.
     let buffered: LatestSource<BridgeTrackBuffered>?
-    /// Whether the loading track's load waits on storage; `nil` while no
-    /// track loads.
-    let storageWait: LatestSource<Bool>?
+    /// Whether the loading track's load waits on storage.
+    let waitsOnStorage: Bool
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
     /// The volume, mute and repeat mode; `nil` until core says them, when
@@ -211,7 +210,7 @@ struct MacNowPlayingBar: View {
     private var playPauseButton: some View {
         MacPlayPause(
             isPlaying: isPlaying,
-            storageWait: storageWait,
+            waitsOnStorage: waitsOnStorage,
             onToggle: onPlayPause
         )
     }
@@ -395,8 +394,8 @@ extension MacNowPlayingBar {
 /// arrives from storage an accent arc turns round it.
 struct MacPlayPause: View {
     let isPlaying: Bool
-    /// Whether the loading track waits on storage; `nil` while no track loads.
-    let storageWait: LatestSource<Bool>?
+    /// Whether the loading track waits on storage.
+    let waitsOnStorage: Bool
     let onToggle: () -> Void
 
     var body: some View {
@@ -409,9 +408,7 @@ struct MacPlayPause: View {
         .foregroundStyle(.primary)
         .background(Circle().fill(Theme.tile))
         .overlay {
-            if let storageWait {
-                StorageWaitArc(source: storageWait)
-            }
+            StorageWaitArc(waits: waitsOnStorage)
         }
     }
 }

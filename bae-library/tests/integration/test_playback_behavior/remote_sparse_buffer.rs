@@ -108,10 +108,10 @@ impl PlaybackFixture for RemoteMultiWindowPlayback {
     }
 }
 
-/// While the person waits on a track whose file is read from storage, its
-/// load waits on storage, under the track's id, and none of the track is
-/// held yet; once the track plays, it waits on nothing, and its bytes go on
-/// arriving until all of them are held.
+/// While the person waits on a track whose file is read from storage, the
+/// now-playing row shows its load waiting on storage, and none of the track
+/// is held yet; once the track plays, the row shows it playing, and its bytes
+/// go on arriving until all of them are held.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_load_from_storage_waits_on_storage() {
     with_fixture(RemoteMultiWindowPlayback::new("remote-load-wait"), async |playback| {
@@ -120,22 +120,20 @@ async fn a_load_from_storage_waits_on_storage() {
         let (reached, observed) = tokio::sync::oneshot::channel();
         let (resume, resumed) = tokio::sync::oneshot::channel();
         playback.cloud.hold_body_at(playback.flac_object.clone(), 12, reached, resumed).await;
-        let mut waits = playback.playback_handle.subscribe_storage_waits();
+        let manager = playback.library.manager();
+        let values = manager.values_until_closed(manager.subscribe_now_playing());
         let mut buffered = playback.playback_handle.follow_track_buffered();
 
         playback.playback_handle.play(track.clone());
         observed.await.expect("the load reads the FLAC from storage");
-        let waiting = tokio::time::timeout(HANG_GUARD, async {
-            loop {
-                if let Some(waiting) = waits.waiting() {
-                    return waiting;
-                }
-                waits.changed().await.expect("playback runs");
-            }
+        now_playing_until(&values, "the load waiting on storage", |state| {
+            matches!(
+                state,
+                PlaybackState::Loading { track: LoadingTrack::Prepared(shown), waits_on_storage: true }
+                    if shown.track.track_id == track
+            )
         })
-        .await
-        .expect("the waited load waits on storage");
-        assert_eq!(waiting, track);
+        .await;
         let held = buffered.next().await.expect("playback runs").expect("a track plays");
         assert_eq!(held.track_id, track);
         assert_eq!(held.ranges, vec![], "none of the held read's bytes are here");
@@ -147,10 +145,32 @@ async fn a_load_from_storage_waits_on_storage() {
     )
     .await
     .expect("the track plays once its bytes arrive");
-        assert_eq!(waits.waiting(), None, "a playing track waits on no storage");
+        now_playing_until(&values, "the track playing", |state| {
+            matches!(state, PlaybackState::Playing { track: playing } if playing.track.track_id == track)
+        })
+        .await;
         wait_for_whole_track(&mut buffered, &track).await;
     })
     .await;
+}
+
+/// Wait until the now-playing row shows a state `accept` takes, `what` it
+/// waits for naming it in the failure.
+async fn now_playing_until(
+    values: &bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
+    what: &str,
+    accept: impl Fn(&PlaybackState<bae_playback::NowPlayingTrack>) -> bool,
+) {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let value = values.next().await.expect("the playback values resolve");
+            if value.is_some_and(|value| accept(&value.playback.state)) {
+                return;
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("the now-playing row never shows {what}"));
 }
 
 /// Remote-cloud port of `switching_tracks_within_a_multi_window_file_keeps_streaming`:

@@ -29,7 +29,7 @@ class PlaybackBoardShots : BoardShot() {
                             onCollapse = {},
                             seek = { playing.SeekRow(SeekLineLook.LARGE) },
                             transport = {
-                                ExpandedTransportRow(true, playing.storageWait, onPrevious = {}, onPlayPause = {}, onNext = {})
+                                ExpandedTransportRow(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {})
                             },
                             secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
                             volumeRow = { ExpandedVolumeRow(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") },

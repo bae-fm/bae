@@ -43,9 +43,7 @@ struct MacNowPlayingBarContainer: View {
             buffered: playbackStore.trackBuffered(
                 forTrack: track?.track.trackId
             ),
-            storageWait: playbackStore.trackStorageWait(
-                forTrack: np.loadingTrackId
-            ),
+            waitsOnStorage: np.waitsOnStorage,
             showRemainingTime: configStore.config.showRemainingTime,
             settings: playbackStore.settings,
             receiverWithoutVolume: castStore.receiverWithoutVolume,

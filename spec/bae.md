@@ -4896,7 +4896,9 @@ position is never left standing.
 While the person waits on a track to start, or on a seek to land, and one
 of the playing track's reads fetches from storage (coven tells a read that
 fetches how many of its bytes are in hand), an arc turns around the
-play/pause control. Reading ahead while the track plays, a preload of the
+play/pause control: playback writes the wait into `playback_now` with the
+loading state (§9.4) as it starts and as it ends, and the arc shows what the
+row holds. Reading ahead while the track plays, a preload of the
 next track, and a load this device serves from its own copy or the cache show
 no arc. The playing track's reads, in every file it plays from (a pregap at
 the end of the file before included), go ahead of a preload's, which waits
@@ -5613,7 +5615,7 @@ command and a preview already so stays so, so a pause from the lock screen or
 a media key never starts a paused preview. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
 changes, before it tells anyone else of the change: the playing track and its
-phase, volume, mute, where playback is going (a receiver by its id, name,
+phase, with, while it loads, whether the load waits on storage, volume, mute, where playback is going (a receiver by its id, name,
 kind, model, address and whether it takes a volume), the preview, and why playback last failed,
 until it next plays or the person dismisses the failure notice. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a
@@ -5665,9 +5667,7 @@ status every 8 ms. While playback is paused or loading, it sends the position
 once. The native view draws the latest position each display frame, with no
 arithmetic of its own. A preview's position reaches an app the same way, in a
 `KeyedValueStream` too. So do the parts of the playing track its buffer holds (§7.6), as
-fractions of its length under its id, and the playing track's wait on
-storage, under its id while the person waits on its load and it reads from
-storage. When playback accepts a seek the person made, it reports the seek's
+fractions of its length under its id. When playback accepts a seek the person made, it reports the seek's
 target as the track's position, or the preview's, before it rebuilds the
 stream, so the track's position, or the preview's, moves to the target at once,
 every view drawing that track (the seek bar, the queue's strip) or that preview
@@ -5936,7 +5936,7 @@ release's or track's id as UTF-8, or a candidate's key.
   library membership, which moves its checks in place.
 - **Fast values** — transfer bytes and rates, the Activity lines' bars, file shares, export
   percents, playback and preview positions, the parts of the playing track
-  its buffer holds and its load's wait on storage,
+  its buffer holds,
   import percents, and how far a
   bulk action has got, which core sends many times a second, and the steps
   of an open and of a setup call — reach an app
@@ -5969,8 +5969,7 @@ release's or track's id as UTF-8, or a candidate's key.
   when it changes (a download's bytes, a transfer line's bar, a file's or
   release's upload share, an export's percent) rests once a second passes
   without one, and moves again with the next, so a stalled or paused transfer
-  asks for no frames; a track's wait on storage rests from the start, since the arc
-  it shows turns on its own clock; nothing the UI framework observes holds a fast value.
+  asks for no frames; nothing the UI framework observes holds a fast value.
 - **Pulled subscriptions** — the browse, download and queue lists, the searches,
   the import list and its counts, the detail views, the Storage manager's
   list, a release's files, and the reads of which
@@ -6385,7 +6384,7 @@ membership's (`membership.sql`).
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |
-| `playback_now` | the one row of what this device's playback is doing: track and phase, pause prompt, volume, mute, receiver and its kind, preview, and the last failure (§9.4) |
+| `playback_now` | the one row of what this device's playback is doing: track and phase, whether a load waits on storage, pause prompt, volume, mute, receiver and its kind, preview, and the last failure (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on from there, and whether playback started the track's line at a seek (§9.4) |
 | `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 

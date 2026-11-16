@@ -285,12 +285,12 @@ class BaeCorePlayer(
     private val _isPlayingOrLoading = MutableStateFlow(false)
     val isPlayingOrLoading: StateFlow<Boolean> = _isPlayingOrLoading.asStateFlow()
 
-    /** The track core is loading, while it loads one. */
-    private val _loadingTrackId = MutableStateFlow<String?>(null)
-    val loadingTrackId: StateFlow<String?> = _loadingTrackId.asStateFlow()
+    /** Whether core's load of a track waits on a download, for the arc around Play. */
+    private val _waitsOnStorage = MutableStateFlow(false)
+    val waitsOnStorage: StateFlow<Boolean> = _waitsOnStorage.asStateFlow()
 
-    /** The track core loads, while it loads one; [publish] shows it. */
-    private var loadingTrack: String? = null
+    /** Whether core's load waits on a download; [publish] shows it. */
+    private var loadWaitsOnStorage = false
 
     /**
      * Where the playing track is, by track id, for the View that draws it each
@@ -304,13 +304,6 @@ class BaeCorePlayer(
      * to feed.
      */
     val trackBuffered: LatestStream<BridgeTrackBuffered> = LatestStream.trackBuffered()
-
-    /**
-     * Whether the playing track's load waits on storage, by track id, for the
-     * spinner around Play that reads it each display frame: the session's to
-     * feed.
-     */
-    val trackStorageWaits: LatestStream<Boolean> = LatestStream.trackStorageWaits()
 
     // The in-app queue; the current track is not in it.
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)
@@ -349,7 +342,7 @@ class BaeCorePlayer(
     fun applyValues(values: BridgePlaybackValues) {
         readFailures.valuesArrived()
         val previousTrackId = playingTrackId
-        loadingTrack = values.state.loadingTrackId()
+        loadWaitsOnStorage = (values.state as? BridgePlaybackValueState.Loading)?.waitsOnStorage == true
         val becameActive =
             when (val state = values.state) {
                 BridgePlaybackValueState.Stopped -> {
@@ -566,7 +559,7 @@ class BaeCorePlayer(
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isPlayingOrLoading.value = playWhenReady
-        _loadingTrackId.value = loadingTrack
+        _waitsOnStorage.value = loadWaitsOnStorage
         _queue.value =
             QueueProjection(
                 manual = manualEntries,
@@ -869,24 +862,6 @@ private fun editingTheQueueFails(edit: String): ListenableFuture<*> {
     logger.warning("a controller asked to $edit queue items, which core's queue doesn't take")
     return Futures.immediateFailedFuture<Unit>(UnsupportedOperationException("$edit queue items"))
 }
-
-/** The track this state loads, while it is a load. */
-private fun BridgePlaybackValueState.loadingTrackId(): String? =
-    when (this) {
-        is BridgePlaybackValueState.Loading -> {
-            when (val loading = track) {
-                is BridgeLoadingTrack.Unprepared -> loading.trackId
-                is BridgeLoadingTrack.Prepared -> loading.track.track.trackId
-            }
-        }
-
-        BridgePlaybackValueState.Stopped,
-        is BridgePlaybackValueState.Playing,
-        is BridgePlaybackValueState.Paused,
-        -> {
-            null
-        }
-    }
 
 /** Open each stopped read of the context's tail again, in the playlist's head and on the screen. */
 internal fun BaeCorePlayer.retryUpcoming() {

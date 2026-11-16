@@ -40,7 +40,6 @@ import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.components.liftsSnackbar
-import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeRepeatMode
 
 /**
@@ -133,7 +132,7 @@ private fun RowScope.NowPlayingTrackInfo(
 @Composable
 internal fun NowPlayingTransport(
     isPlaying: Boolean,
-    storageWait: LatestSource<Boolean>?,
+    waitsOnStorage: Boolean,
     repeatMode: BridgeRepeatMode,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
@@ -148,7 +147,7 @@ internal fun NowPlayingTransport(
     AndroidPlayPause(
         isPlaying = isPlaying,
         iconSize = ThemeIcon.large,
-        storageWait = storageWait,
+        waitsOnStorage = waitsOnStorage,
         onToggle = onPlayPause,
     )
     BarIconButton(onClick = onNext) {

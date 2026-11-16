@@ -39,16 +39,21 @@ impl PlaybackService {
         );
     }
 
-    /// Pure map of the current slot to the public `PlaybackState`. Position data
-    /// is excluded — it flows through `PositionUpdate`/`Seeked` events.
+    /// The current slot as the public `PlaybackState`, a load with whether
+    /// its track fetches from storage. Position data is excluded — it flows
+    /// through `PositionUpdate`/`Seeked` events.
     pub(super) fn playback_state(&self) -> PlaybackState {
+        let loading = |track: LoadingTrack| PlaybackState::Loading {
+            waits_on_storage: self.file_buffers.fetches_from_storage(track.track_id()),
+            track,
+        };
         match &self.slot {
             PlaybackSlot::Stopped => PlaybackState::Stopped,
-            PlaybackSlot::Loading(track) => PlaybackState::Loading { track: track.clone() },
+            PlaybackSlot::Loading(track) => loading(track.clone()),
             PlaybackSlot::Active(cur) => match &cur.phase {
-                TrackPhase::Loading { .. } => PlaybackState::Loading {
-                    track: LoadingTrack::Prepared(PlayingTrack::from_prepared(&cur.prepared)),
-                },
+                TrackPhase::Loading { .. } => {
+                    loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(&cur.prepared)))
+                }
                 TrackPhase::Playing => {
                     PlaybackState::Playing { track: PlayingTrack::from_prepared(&cur.prepared) }
                 }
@@ -72,16 +77,23 @@ impl PlaybackService {
     /// track is Completed is a bug — `playback_state` treats it as unreachable.
     pub(super) fn emit_state(&self) {
         let state = self.playback_state();
-        self.file_buffers.set_waiting(match &state {
-            PlaybackState::Loading { track } => Some(track.track_id()),
-            PlaybackState::Stopped
-            | PlaybackState::Playing { .. }
-            | PlaybackState::Paused { .. } => None,
-        });
         if matches!(state, PlaybackState::Stopped) {
             self.file_buffers.clear_playing();
         }
         emit_progress(&self.progress_tx, PlaybackProgress::StateChanged { state });
+    }
+
+    /// The current track started or stopped fetching from storage: a load
+    /// tells whether it waits on storage now.
+    pub(super) fn storage_fetch_changed(&self) {
+        let loading = match &self.slot {
+            PlaybackSlot::Stopped => false,
+            PlaybackSlot::Loading(_) => true,
+            PlaybackSlot::Active(cur) => matches!(cur.phase, TrackPhase::Loading { .. }),
+        };
+        if loading {
+            self.emit_state();
+        }
     }
 
     /// Write the shared `AudioState` atomic as a projection of the slot. The

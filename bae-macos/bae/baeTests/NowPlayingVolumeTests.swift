@@ -70,7 +70,7 @@ struct NowPlayingVolumeTests {
             isPlaying: true,
             position: nil,
             buffered: nil,
-            storageWait: nil,
+            waitsOnStorage: false,
             showRemainingTime: false,
             settings: settings,
             receiverWithoutVolume: receiverWithoutVolume,

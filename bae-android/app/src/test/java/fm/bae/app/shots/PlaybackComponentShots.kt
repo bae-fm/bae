@@ -53,19 +53,19 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentPlayPausePaused() =
-        component("android.component.play-pause.paused") { AndroidPlayPause(false, ThemeIcon.large, null) {} }
+        component("android.component.play-pause.paused") { AndroidPlayPause(false, ThemeIcon.large, false) {} }
 
     @Test
     fun androidComponentPlayPausePlaying() =
-        component("android.component.play-pause.playing") { AndroidPlayPause(true, ThemeIcon.large, null) {} }
+        component("android.component.play-pause.playing") { AndroidPlayPause(true, ThemeIcon.large, false) {} }
 
     @Test
     fun androidComponentPlayPauseWaiting() =
-        component("android.component.play-pause.waiting") { AndroidPlayPause(true, ThemeIcon.large, waiting.storageWait) {} }
+        component("android.component.play-pause.waiting") { AndroidPlayPause(true, ThemeIcon.large, waiting.waitsOnStorage) {} }
 
     @Test
     fun androidComponentPlayPauseFullPlayer() =
-        component("android.component.play-pause.full-player") { AndroidPlayPause(true, 48.dp, null) {} }
+        component("android.component.play-pause.full-player") { AndroidPlayPause(true, 48.dp, false) {} }
 
     @Test
     fun androidComponentSeekBarPlaying() = component("android.component.seek-bar.playing", wide = true) { playing.SeekRow() }
@@ -85,7 +85,7 @@ class PlaybackComponentShots : BoardShot() {
                             onCollapse = {},
                             seek = { playing.SeekRow(SeekLineLook.LARGE) },
                             transport = {
-                                ExpandedTransportRow(true, playing.storageWait, onPrevious = {}, onPlayPause = {}, onNext = {})
+                                ExpandedTransportRow(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {})
                             },
                             secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
                             volumeRow = { ExpandedVolumeRow(0.7f, false, {}, {}, {}) },
@@ -163,7 +163,7 @@ internal fun Bar(staging: PlayerStaging) =
             transport = {
                 NowPlayingTransport(
                     isPlaying = true,
-                    storageWait = staging.storageWait,
+                    waitsOnStorage = staging.waitsOnStorage,
                     repeatMode = BridgeRepeatMode.OFF,
                     onPrevious = {},
                     onPlayPause = {},

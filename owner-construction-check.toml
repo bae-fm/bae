@@ -529,10 +529,10 @@ ProgressWriter = "ProgressStream"
 # every release's progress.
 ReleaseTransferReport = "ReleaseTransfers"
 ReleaseTransfersWatch = "ReleaseTransfers"
-# One read's wait on storage, counted in the storage waits while it runs,
-# and a watch on the track whose load waits on storage.
-FetchProgress = "StorageWaits"
-StorageWaitWatch = "StorageWaits"
+# One read's fetch from storage, counted in the storage fetches while it
+# runs, and a watch on the playing track while one of its reads fetches.
+FetchProgress = "StorageFetches"
+StorageFetchWatch = "StorageFetches"
 # Every progress event playback reports, and where playback is.
 PlaybackProgressFeed = "PlaybackProgressHandle"
 PlaybackPositionsWatch = "PlaybackProgressHandle"
@@ -1199,7 +1199,7 @@ OpenCalls = "LibrarySessions"
     "spawn_fill",
 ]
 "bae-track-audio/src/data_source/local.rs" = ["LocalReader::new"]
-"bae-track-audio/src/storage_wait.rs" = ["StorageWaits::new"]
+"bae-track-audio/src/storage_fetch.rs" = ["StorageFetches::new"]
 "bae-track-audio/src/track_sources.rs" = [
     "SourceStream::start",
     # The tracks' work runs in a set this function drains, and drops if it fails.

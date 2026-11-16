@@ -53,11 +53,7 @@ struct NowPlayingBarPreview: View {
                 )
                 .source(for: "preview-track")
                 : nil,
-            storageWait:
-                LatestStream.trackStorageWaits(
-                    waiting: waitsOnStorage ? ["preview-track"] : []
-                )
-                .source(for: "preview-track"),
+            waitsOnStorage: waitsOnStorage,
             showRemainingTime: false,
             settings: PlaybackSettings(
                 volume: volume,

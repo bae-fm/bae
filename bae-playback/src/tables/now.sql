@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- While loading: whether the track's audio is prepared yet. A playing or
     -- paused track always is.
     prepared    INTEGER CHECK (prepared IN (0, 1)),
+    -- While loading: whether the person waits on storage, because one of the
+    -- track's reads fetches from there.
+    waits_on_storage INTEGER CHECK (waits_on_storage IN (0, 1)),
     -- The prepared track's length; NULL when it is unknown.
     duration_ms INTEGER CHECK (duration_ms >= 0),
     -- Why it is paused: by hand, or at the end of a side or disc, which the
@@ -63,6 +66,7 @@ CREATE TABLE IF NOT EXISTS playback_now (
     failure_device_state TEXT CHECK (failure_device_state IN ('active', 'removed', 'replaced')),
     CHECK ((state = 'stopped') = (track_id IS NULL)),
     CHECK ((state = 'loading') = (prepared IS NOT NULL)),
+    CHECK ((state = 'loading') = (waits_on_storage IS NOT NULL)),
     CHECK (duration_ms IS NULL OR state IN ('playing', 'paused') OR prepared = 1),
     CHECK ((state = 'paused') = (pause_reason IS NOT NULL)),
     CHECK ((pause_reason IS 'side_ended') = (side_boundary_id IS NOT NULL)),

@@ -7,15 +7,26 @@ use crate::test_playback_behavior::support::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn a_local_load_waits_on_no_storage_and_holds_the_whole_track() {
     with_fixture(MultiWindowPlayback::new("local-load-wait"), async |playback| {
-        let mut waits = playback.playback_handle.subscribe_storage_waits();
         let mut buffered = playback.playback_handle.follow_track_buffered();
 
         let track = playback.track_ids[0].clone();
-        playback.play_and_wait(&track).await;
+        playback.playback_handle.play(track.clone());
+        let states = collect_states_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track: playing } if playing.track_id == track),
+        )
+        .await;
+        assert!(
+            matches!(states.last(), Some(PlaybackState::Playing { .. })),
+            "the track plays, got {states:?}"
+        );
+        assert!(
+            !states
+                .iter()
+                .any(|s| matches!(s, PlaybackState::Loading { waits_on_storage: true, .. })),
+            "a local load waits on no storage, got {states:?}"
+        );
         wait_for_whole_track(&mut buffered, &track).await;
-
-        assert!(!waits.has_changed().expect("playback runs"), "a local load waits on no storage");
-        assert_eq!(waits.waiting(), None);
 
         // Once playback stops, no track's bytes are followed.
         playback.playback_handle.stop();
@@ -163,7 +174,7 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
     assert!(
         states
             .iter()
-            .any(|s| matches!(s, PlaybackState::Loading { track } if track.track_id() == second)),
+            .any(|s| matches!(s, PlaybackState::Loading { track, .. } if track.track_id() == second)),
         "a pregap skip rebuilds through play_track, which surfaces a Loading arc"
     );
 
@@ -326,6 +337,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
                 state:
                     PlaybackState::Loading {
                         track: LoadingTrack::Prepared(track),
+                        ..
                     },
             } if track.track_id == last_track => {
                 saw_loading = true;

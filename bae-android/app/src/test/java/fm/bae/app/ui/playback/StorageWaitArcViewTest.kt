@@ -2,10 +2,11 @@ package fm.bae.app.ui.playback
 
 import android.app.Activity
 import android.os.Looper
-import android.view.View
+import android.widget.FrameLayout
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -16,28 +17,27 @@ import java.time.Duration
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class StorageWaitArcViewTest {
-    /** The arc shows, read out by its label, while the track's load waits on storage, and goes once it doesn't. */
+    /** The arc is read out by its label and turns while it is on screen, and stops once it is taken off. */
     @Test
-    fun theArcShowsWhileTheLoadWaitsOnStorage() {
+    fun theArcTurnsWhileItIsShown() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-        val arc = StorageWaitArcView(activity).also { activity.setContentView(it) }
-        val waits = LatestStream.written<Boolean>()
+        val frame = FrameLayout(activity).also { activity.setContentView(it) }
+        val arc = StorageWaitArcView(activity)
         arc.style(color = 0, label = "waiting")
-        arc.follow(waits.source(KEY))
-        assertEquals(View.GONE, arc.visibility)
 
-        waits.write(KEY, true)
-        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
-        assertEquals(View.VISIBLE, arc.visibility)
+        frame.addView(arc)
+        // The window attaches its views on its first frame.
+        shadowOf(Looper.getMainLooper()).idleFor(FIRST_FRAMES)
+        assertTrue("the arc is on screen", arc.isAttachedToWindow)
         assertEquals("waiting", arc.contentDescription)
+        assertTrue("the arc turns", arc.isTurning)
 
-        waits.write(KEY, null)
-        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
-        assertEquals(View.GONE, arc.visibility)
+        frame.removeView(arc)
+        assertFalse(arc.isTurning)
+        assertEquals(0f, arc.rotation)
     }
 
     private companion object {
-        const val KEY = "track"
-        val FRAME: Duration = Duration.ofMillis(20)
+        val FIRST_FRAMES: Duration = Duration.ofMillis(100)
     }
 }

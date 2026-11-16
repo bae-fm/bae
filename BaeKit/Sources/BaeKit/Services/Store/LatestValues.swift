@@ -706,32 +706,6 @@ extension LatestStream where Value == BridgeTrackBuffered {
     }
 }
 
-extension LatestStream where Value == Bool {
-    /// True under the playing track's id while its load waits on storage;
-    /// a shot's holds true under each of `waiting` and nothing feeds it.
-    public static func trackStorageWaits(waiting: Set<String> = [])
-        -> LatestStream
-    {
-        LatestStream(
-            holding: keyed(
-                Dictionary(uniqueKeysWithValues: waiting.map { ($0, true) })
-            )
-        ) {
-            if case .trackWaitsOnStorage = $0 {
-                true
-            }
-            else {
-                nil
-            }
-        }
-    }
-
-    /// Fill from core.
-    public func feed(from appHandle: AppHandle) -> LatestFeed {
-        fed { appHandle.feedTrackStorageWaits() }
-    }
-}
-
 extension LatestStream where Value == BridgePreviewPosition {
     /// Where the preview is in its clip, while one is loaded; a preview's
     /// holds `value` and nothing feeds it.

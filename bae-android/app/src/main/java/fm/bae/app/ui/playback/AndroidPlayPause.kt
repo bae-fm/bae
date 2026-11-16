@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
-import fm.bae.fastvalues.LatestSource
 
 /** How far the arc sits outside the glyph, on each side. */
 private val arcClearance = 8.dp
@@ -25,29 +24,25 @@ private val arcClearance = 8.dp
 /**
  * Play/pause toggle, its glyph [iconSize], which differs between the bar and
  * the expanded player. While core loads a track it shows pause, and a press
- * lands the load paused; while the load waits on storage, as [storageWait]
- * holds, an arc turns around it.
+ * lands the load paused; while the load waits on storage, as
+ * [waitsOnStorage] says, an arc turns around it.
  */
 @Composable
 fun AndroidPlayPause(
     isPlaying: Boolean,
     iconSize: Dp,
-    storageWait: LatestSource<Boolean>?,
+    waitsOnStorage: Boolean,
     onToggle: () -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary.toArgb()
     val waiting = stringResource(R.string.downloading_the_track)
     Box(contentAlignment = Alignment.Center) {
         // Under the button, so the button takes every press.
-        if (storageWait != null) {
+        if (waitsOnStorage) {
             AndroidView(
                 modifier = Modifier.matchParentSize(),
                 factory = { context -> StorageWaitArcView(context) },
-                update = { arc ->
-                    arc.style(color = accent, label = waiting)
-                    arc.follow(storageWait)
-                },
-                onRelease = { arc -> arc.stopFollowing() },
+                update = { arc -> arc.style(color = accent, label = waiting) },
             )
         }
         // Room around the glyph, so the arc turns clear of it at either size.

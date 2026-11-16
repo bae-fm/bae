@@ -32,13 +32,6 @@ impl AppServices {
         self.inner.playback.subscribe_positions()
     }
 
-    /// The playing track while the person waits on its load and the load
-    /// reads from storage, by id; `None` otherwise, and for a load this
-    /// device serves from its own copy or the cache.
-    pub fn subscribe_storage_waits(&self) -> bae_track_audio::StorageWaitWatch {
-        self.inner.playback.subscribe_storage_waits()
-    }
-
     /// The parts of the playing track whose bytes this device holds, as
     /// fractions of its length, which change as its bytes arrive and as its
     /// buffer drops what playback has passed.

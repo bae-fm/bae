@@ -124,7 +124,7 @@ public final class MediaControlService: @unchecked Sendable {
         case .library:
             let state = values.state
             #if os(macOS)
-                if isShowingPreview, case .loading(.unprepared) = state {
+                if isShowingPreview, case .loading(.unprepared, _) = state {
                     clearNowPlaying()
                 }
             #endif
@@ -215,9 +215,9 @@ public final class MediaControlService: @unchecked Sendable {
             return NowPlayingMetadata(track: track, playbackRate: 1.0)
         case .paused(let track, _):
             return NowPlayingMetadata(track: track, playbackRate: 0.0)
-        case .loading(.prepared(let track)):
+        case .loading(.prepared(let track), _):
             return NowPlayingMetadata(track: track, playbackRate: 0.0)
-        case .loading(.unprepared), .stopped:
+        case .loading(.unprepared, _), .stopped:
             return nil
         }
     }

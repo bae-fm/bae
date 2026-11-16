@@ -82,13 +82,15 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
         PlaybackChange::State(state) => {
             let columns = StateColumns::of(state);
             sql.execute(
-                "UPDATE playback_now SET state = ?, track_id = ?, prepared = ?, duration_ms = ?, \
-                     pause_reason = ?, side_boundary_id = ?, side_boundary_kind = ?, \
-                     side_label = ?, side_resumes_at = ?",
+                "UPDATE playback_now SET state = ?, track_id = ?, prepared = ?, \
+                     waits_on_storage = ?, duration_ms = ?, pause_reason = ?, \
+                     side_boundary_id = ?, side_boundary_kind = ?, side_label = ?, \
+                     side_resumes_at = ?",
                 params![
                     columns.state,
                     columns.track_id,
                     columns.prepared,
+                    columns.waits_on_storage,
                     columns.duration_ms,
                     columns.pause_reason,
                     columns.side_boundary_id,
@@ -197,7 +199,7 @@ pub(super) fn reset_playback_now_on(
 ) -> rusqlite::Result<()> {
     sql.execute(
         "UPDATE playback_now SET state = 'stopped', track_id = NULL, prepared = NULL, \
-             duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
+             waits_on_storage = NULL, duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
              side_boundary_kind = NULL, side_label = NULL, side_resumes_at = NULL, \
              remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL, \
              cast_receiver_kind = NULL, cast_receiver_model = NULL, \
@@ -219,6 +221,7 @@ struct StateColumns<'a> {
     state: &'static str,
     track_id: Option<&'a str>,
     prepared: Option<bool>,
+    waits_on_storage: Option<bool>,
     duration_ms: Option<i64>,
     pause_reason: Option<&'static str>,
     side_boundary_id: Option<&'a str>,
@@ -233,6 +236,7 @@ impl<'a> StateColumns<'a> {
             state: "stopped",
             track_id: None,
             prepared: None,
+            waits_on_storage: None,
             duration_ms: None,
             pause_reason: None,
             side_boundary_id: None,
@@ -246,8 +250,9 @@ impl<'a> StateColumns<'a> {
         };
         match state {
             PlaybackState::Stopped => {}
-            PlaybackState::Loading { track } => {
+            PlaybackState::Loading { track, waits_on_storage } => {
                 columns.state = "loading";
+                columns.waits_on_storage = Some(*waits_on_storage);
                 match track {
                     LoadingTrack::Unprepared { track_id } => {
                         columns.track_id = Some(track_id);
@@ -357,6 +362,7 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
             } else {
                 LoadingTrack::Unprepared { track_id: track.track_id }
             },
+            waits_on_storage: row.get("waits_on_storage")?,
         },
         "playing" => PlaybackState::Playing { track },
         "paused" => {

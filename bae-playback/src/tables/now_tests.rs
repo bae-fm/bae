@@ -39,8 +39,14 @@ async fn each_change_reads_back_as_written() {
     let unknown_length = PlayingTrack { duration_ms: None, ..track.clone() };
     let resumes_at = chrono::DateTime::from_timestamp_millis(1_800_000_000_000).unwrap();
     for state in [
-        PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: tracks[0].clone() } },
-        PlaybackState::Loading { track: LoadingTrack::Prepared(track.clone()) },
+        PlaybackState::Loading {
+            track: LoadingTrack::Unprepared { track_id: tracks[0].clone() },
+            waits_on_storage: false,
+        },
+        PlaybackState::Loading {
+            track: LoadingTrack::Prepared(track.clone()),
+            waits_on_storage: true,
+        },
         PlaybackState::Playing { track: unknown_length },
         PlaybackState::Paused { track: track.clone(), reason: PlaybackPauseReason::Manual },
         PlaybackState::Paused {
@@ -195,4 +201,69 @@ async fn a_deleted_playing_track_reads_as_nothing_to_show() {
 
     row.apply(&PlaybackChange::State(PlaybackState::Stopped)).await.unwrap();
     assert_eq!(now(&db).await.playback.state, PlaybackState::Stopped);
+}
+
+/// A load's wait on storage is in the row while it lasts: the load that
+/// starts waiting writes it, the load that stops waiting clears it, and the
+/// track playing leaves no wait.
+#[tokio::test]
+async fn the_row_holds_a_loads_wait_on_storage_while_it_lasts() {
+    let (db, _tmp, tracks) = release_db(1).await;
+    let row = PlaybackNowRow::new(db.clone());
+    let track = PlayingTrack { track_id: tracks[0].clone(), duration_ms: Some(1_000) };
+    let loading = |waits_on_storage| {
+        PlaybackChange::State(PlaybackState::Loading {
+            track: LoadingTrack::Prepared(track.clone()),
+            waits_on_storage,
+        })
+    };
+    let waits = |state: PlaybackState<crate::NowPlayingTrack>| match state {
+        PlaybackState::Loading { waits_on_storage, .. } => Some(waits_on_storage),
+        _ => None,
+    };
+
+    row.apply(&loading(false)).await.unwrap();
+    assert_eq!(waits(now(&db).await.playback.state), Some(false));
+    row.apply(&loading(true)).await.unwrap();
+    assert_eq!(waits(now(&db).await.playback.state), Some(true), "the wait started");
+    row.apply(&loading(false)).await.unwrap();
+    assert_eq!(waits(now(&db).await.playback.state), Some(false), "the wait ended");
+
+    row.apply(&loading(true)).await.unwrap();
+    row.apply(&PlaybackChange::State(PlaybackState::Playing { track: track.clone() }))
+        .await
+        .unwrap();
+    assert_eq!(waits(now(&db).await.playback.state), None, "a playing track waits on nothing");
+    let column: Option<bool> = db
+        .read(|sql| {
+            Ok(sql.query_row("SELECT waits_on_storage FROM playback_now", [], |row| row.get(0))?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(column, None, "playing clears the wait");
+}
+
+/// The row holds a wait on storage exactly while it loads.
+#[tokio::test]
+async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
+    let (db, _tmp, tracks) = release_db(1).await;
+    let track_id = tracks[0].clone();
+    for sql in [
+        format!(
+            "UPDATE playback_now SET state = 'playing', track_id = '{track_id}', \
+                 waits_on_storage = 0"
+        ),
+        format!(
+            "UPDATE playback_now SET state = 'loading', track_id = '{track_id}', prepared = 1, \
+                 waits_on_storage = NULL"
+        ),
+        "UPDATE playback_now SET waits_on_storage = 1".to_string(),
+    ] {
+        let statement = sql.clone();
+        let refused = db
+            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
+            .await
+            .is_err();
+        assert!(refused, "{sql}");
+    }
 }

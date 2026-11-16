@@ -52,10 +52,6 @@ public class PlaybackStore {
     /// its track id, for the seek bar that reads them each display frame.
     public let trackBuffered: LatestStream<BridgeTrackBuffered>
 
-    /// Whether the playing track's load waits on storage, under its track
-    /// id, for the arc around Play that reads it each display frame.
-    public let trackStorageWaits: LatestStream<Bool>
-
     /// The count of tracks each add puts in the queue; drives the queue
     /// button's "+N" badge.
     @ObservationIgnored
@@ -65,16 +61,14 @@ public class PlaybackStore {
         queueItemsAddedSubject.eraseToAnyPublisher()
     }
 
-    /// A store whose positions, held parts and storage waits the
-    /// subscription fills, or, for a shot, fixed ones.
+    /// A store whose positions and held parts the subscription fills, or,
+    /// for a shot, fixed ones.
     public init(
         trackPositions: LatestStream<BridgeTrackPosition> = .trackPositions(),
-        trackBuffered: LatestStream<BridgeTrackBuffered> = .trackBuffered(),
-        trackStorageWaits: LatestStream<Bool> = .trackStorageWaits()
+        trackBuffered: LatestStream<BridgeTrackBuffered> = .trackBuffered()
     ) {
         self.trackPositions = trackPositions
         self.trackBuffered = trackBuffered
-        self.trackStorageWaits = trackStorageWaits
     }
 
     /// Where `trackId` is while it plays, for the native view drawing it;
@@ -91,14 +85,6 @@ public class PlaybackStore {
         -> LatestSource<BridgeTrackBuffered>?
     {
         trackId.map { trackBuffered.source(for: $0) }
-    }
-
-    /// Whether the load of `trackId` waits on storage, for the arc around
-    /// Play; `nil` while no track loads.
-    public func trackStorageWait(forTrack trackId: String?)
-        -> LatestSource<Bool>?
-    {
-        trackId.map { trackStorageWaits.source(for: $0) }
     }
 
     public var presentedSidePausePrompt: BridgeSidePausePrompt? {
@@ -120,12 +106,14 @@ public class PlaybackStore {
 
     /// Enter loading for `trackId`, keeping the displayed track until
     /// `setLoadingTarget` brings the target's metadata; otherwise the
-    /// now-playing bar would close on every track change.
-    public func beginLoading(trackId: String) {
+    /// now-playing bar would close on every track change. `waitsOnStorage`
+    /// while the load waits on a download.
+    public func beginLoading(trackId: String, waitsOnStorage: Bool) {
         setNowPlaying(
             .loading(
                 .unprepared(trackId: trackId),
-                previous: nowPlaying.track
+                previous: nowPlaying.track,
+                waitsOnStorage: waitsOnStorage
             )
         )
     }
@@ -133,11 +121,15 @@ public class PlaybackStore {
     /// The target's metadata arrived. It applies when already loading this
     /// track, or when playing or paused on it (core re-enters loading to buffer
     /// a seek); in any other state a newer load has moved on and it is dropped.
-    public func setLoadingTarget(_ target: BridgeNowPlayingTrack) {
+    /// `waitsOnStorage` while the load waits on a download.
+    public func setLoadingTarget(
+        _ target: BridgeNowPlayingTrack,
+        waitsOnStorage: Bool
+    ) {
         let trackId = target.track.trackId
         let previous: BridgeNowPlayingTrack?
         switch nowPlaying {
-        case .loading(let loading, let priorFallback)
+        case .loading(let loading, let priorFallback, _)
         where loading.trackId == trackId:
             previous = priorFallback
         case .playing(let current) where current.track.trackId == trackId,
@@ -151,7 +143,11 @@ public class PlaybackStore {
             return
         }
         setNowPlaying(
-            .loading(.prepared(track: target), previous: previous)
+            .loading(
+                .prepared(track: target),
+                previous: previous,
+                waitsOnStorage: waitsOnStorage
+            )
         )
     }
 
@@ -363,7 +359,12 @@ public enum NowPlaying {
     case stopped
     /// A track is being loaded. Until core has prepared it, `track` falls back
     /// to `previous`, what was on screen, so the now-playing UI stays up.
-    case loading(BridgeLoadingTrack, previous: BridgeNowPlayingTrack?)
+    /// `waitsOnStorage` while the load waits on a download.
+    case loading(
+        BridgeLoadingTrack,
+        previous: BridgeNowPlayingTrack?,
+        waitsOnStorage: Bool
+    )
     case playing(BridgeNowPlayingTrack)
     case paused(BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason)
 
@@ -377,7 +378,8 @@ public enum NowPlaying {
     public var track: BridgeNowPlayingTrack? {
         switch self {
         case .playing(let t), .paused(let t, _): t
-        case .loading(let loading, let previous): loading.prepared ?? previous
+        case .loading(let loading, let previous, _):
+            loading.prepared ?? previous
         case .stopped: nil
         }
     }
@@ -390,7 +392,7 @@ public enum NowPlaying {
     public var current: BridgeNowPlayingTrack? {
         switch self {
         case .playing(let t), .paused(let t, _): t
-        case .loading(let loading, _): loading.prepared
+        case .loading(let loading, _, _): loading.prepared
         case .stopped: nil
         }
     }
@@ -400,7 +402,7 @@ public enum NowPlaying {
     public var currentTrackId: String? {
         switch self {
         case .playing(let t), .paused(let t, _): t.track.trackId
-        case .loading(let loading, _): loading.trackId
+        case .loading(let loading, _, _): loading.trackId
         case .stopped: nil
         }
     }
@@ -421,11 +423,11 @@ public enum NowPlaying {
         }
     }
 
-    /// The loading track's id, which can differ from the displayed track's.
-    public var loadingTrackId: String? {
+    /// Whether a load waits on a download, for the arc around Play.
+    public var waitsOnStorage: Bool {
         switch self {
-        case .loading(let loading, _): loading.trackId
-        case .playing, .paused, .stopped: nil
+        case .loading(_, _, let waitsOnStorage): waitsOnStorage
+        case .playing, .paused, .stopped: false
         }
     }
 

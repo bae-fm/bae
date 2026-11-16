@@ -91,9 +91,15 @@ internal fun pausedState(
     reason,
 )
 
-internal fun loadingState(trackId: String) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Unprepared(trackId))
+internal fun loadingState(
+    trackId: String,
+    waitsOnStorage: Boolean = false,
+) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Unprepared(trackId), waitsOnStorage)
 
-internal fun loadingState(prepared: BridgeNowPlayingTrack) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Prepared(prepared))
+internal fun loadingState(
+    prepared: BridgeNowPlayingTrack,
+    waitsOnStorage: Boolean = false,
+) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Prepared(prepared), waitsOnStorage)
 
 internal fun BaeCorePlayer.applyPlaybackState(state: BridgePlaybackValueState) {
     applyValues(playbackValues(state))

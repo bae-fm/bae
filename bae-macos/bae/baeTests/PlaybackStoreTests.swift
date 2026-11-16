@@ -246,7 +246,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.beginLoading(trackId: "b")
+        store.beginLoading(trackId: "b", waitsOnStorage: false)
 
         #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.isActive)
@@ -259,7 +259,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.pause(track: makeTrack("a"), reason: .manual)
 
-        store.beginLoading(trackId: "b")
+        store.beginLoading(trackId: "b", waitsOnStorage: false)
 
         #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.loadingTrackId == "b")
@@ -271,10 +271,10 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.beginLoading(trackId: "b")
+        store.beginLoading(trackId: "b", waitsOnStorage: false)
         #expect(store.nowPlaying.track?.track.trackId == "a")
 
-        store.setLoadingTarget(makeTrack("b"))
+        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
         #expect(store.nowPlaying.track?.track.trackId == "b")
         #expect(store.nowPlaying.loadingTrackId == "b")
         #expect(store.nowPlaying.isActive)
@@ -285,9 +285,9 @@ struct PlaybackStoreBeginLoadingTests {
     func ignoresStaleTarget() {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
-        store.beginLoading(trackId: "b")
+        store.beginLoading(trackId: "b", waitsOnStorage: false)
 
-        store.setLoadingTarget(makeTrack("stale"))
+        store.setLoadingTarget(makeTrack("stale"), waitsOnStorage: false)
 
         #expect(store.nowPlaying.loadingTrackId == "b")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -298,7 +298,7 @@ struct PlaybackStoreBeginLoadingTests {
     func coldStartHasNoTrack() {
         let store = PlaybackStore()
 
-        store.beginLoading(trackId: "x")
+        store.beginLoading(trackId: "x", waitsOnStorage: false)
 
         #expect(store.nowPlaying.track == nil)
         #expect(store.nowPlaying.loadingTrackId == "x")
@@ -313,7 +313,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.setLoadingTarget(makeTrack("a"))
+        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
 
         #expect(store.nowPlaying.loadingTrackId == "a")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -326,7 +326,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.pause(track: makeTrack("a"), reason: .manual)
 
-        store.setLoadingTarget(makeTrack("a"))
+        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
 
         #expect(store.nowPlaying.loadingTrackId == "a")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -339,7 +339,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.setLoadingTarget(makeTrack("b"))
+        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
 
         #expect(store.nowPlaying.loadingTrackId == nil)
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -355,18 +355,35 @@ struct PlaybackStoreBeginLoadingTests {
         #expect(store.nowPlaying.current?.track.trackId == "a")
         #expect(store.nowPlaying.currentTrackId == "a")
 
-        store.beginLoading(trackId: "b")
+        store.beginLoading(trackId: "b", waitsOnStorage: false)
         #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.current == nil)
         #expect(store.nowPlaying.currentTrackId == "b")
 
-        store.setLoadingTarget(makeTrack("b"))
+        store.setLoadingTarget(makeTrack("b"), waitsOnStorage: false)
         #expect(store.nowPlaying.current?.track.trackId == "b")
         #expect(store.nowPlaying.currentTrackId == "b")
 
         store.stop()
         #expect(store.nowPlaying.current == nil)
         #expect(store.nowPlaying.currentTrackId == nil)
+    }
+
+    /// The arc around Play follows the now-playing value's wait on storage.
+    @MainActor
+    @Test("a load waits on storage while its value says so")
+    func waitsOnStorageWhileTheValueSaysSo() {
+        let store = PlaybackStore()
+        store.beginLoading(trackId: "a", waitsOnStorage: false)
+        #expect(!store.nowPlaying.waitsOnStorage)
+        store.beginLoading(trackId: "a", waitsOnStorage: true)
+        #expect(store.nowPlaying.waitsOnStorage)
+        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: false)
+        #expect(!store.nowPlaying.waitsOnStorage)
+        store.setLoadingTarget(makeTrack("a"), waitsOnStorage: true)
+        #expect(store.nowPlaying.waitsOnStorage)
+        store.play(track: makeTrack("a"))
+        #expect(!store.nowPlaying.waitsOnStorage)
     }
 }
 
@@ -375,19 +392,22 @@ struct NowPlayingStateTests {
     @Test("loading counts as playing so the transport shows the pause glyph")
     func loadingIsPlaying() {
         #expect(
-            NowPlaying.loading(.unprepared(trackId: "x"), previous: nil)
-                .isPlaying
+            NowPlaying.loading(
+                .unprepared(trackId: "x"),
+                previous: nil,
+                waitsOnStorage: false
+            )
+            .isPlaying
         )
     }
 
-    @Test("loadingTrackId is nil when not loading")
-    func loadingTrackIdNilWhenNotLoading() {
-        #expect(NowPlaying.playing(makeTrack("a")).loadingTrackId == nil)
+    @Test("only a load waits on storage")
+    func onlyALoadWaitsOnStorage() {
+        #expect(!NowPlaying.playing(makeTrack("a")).waitsOnStorage)
         #expect(
-            NowPlaying.paused(makeTrack("a"), reason: .manual).loadingTrackId
-                == nil
+            !NowPlaying.paused(makeTrack("a"), reason: .manual).waitsOnStorage
         )
-        #expect(NowPlaying.stopped.loadingTrackId == nil)
+        #expect(!NowPlaying.stopped.waitsOnStorage)
     }
 
     @Test("stopped clears the track and is inactive")
@@ -435,5 +455,14 @@ struct PlaybackStoreSidePausePromptTests {
         store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
 
         #expect(store.presentedSidePausePrompt == Self.prompt)
+    }
+}
+
+extension NowPlaying {
+    /// The loading track's id, which can differ from the displayed track's;
+    /// `nil` while nothing loads.
+    fileprivate var loadingTrackId: String? {
+        guard case .loading(let loading, _, _) = self else { return nil }
+        return loading.trackId
     }
 }

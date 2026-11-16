@@ -66,18 +66,20 @@ class PlaybackControlsTest {
         assertEquals(0, handle.resumeCount)
     }
 
-    /** The loading track is named while it loads, by id whether or not core has prepared it, and not once it plays. */
+    /** A load waits on storage while its value says so, whether or not core has prepared the track, and not once it plays. */
     @Test
-    fun theLoadingTrackIsNamedUntilItPlays() {
+    fun aLoadWaitsOnStorageWhileItsValueSaysSo() {
         val (player, _) = player()
 
         player.applyPlaybackState(loadingState("next"))
-        assertEquals("next", player.loadingTrackId.value)
-        player.applyPlaybackState(loadingState(nowPlayingTrack(trackId = "next")))
-        assertEquals("next", player.loadingTrackId.value)
+        assertEquals(false, player.waitsOnStorage.value)
+        player.applyPlaybackState(loadingState("next", waitsOnStorage = true))
+        assertEquals(true, player.waitsOnStorage.value)
+        player.applyPlaybackState(loadingState(nowPlayingTrack(trackId = "next"), waitsOnStorage = true))
+        assertEquals(true, player.waitsOnStorage.value)
         player.applyPlaybackState(playingState(trackId = "next"))
 
-        assertEquals(null, player.loadingTrackId.value)
+        assertEquals(false, player.waitsOnStorage.value)
     }
 
     @Test
