@@ -1,7 +1,7 @@
 use super::*;
 use crate::folder_scanner::{
-    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer,
-    SheetBindingOption, SheetDiscEdits, StoredCandidateEdits,
+    collect_release_candidate_files_with_scope, CandidateFileEdits, CategorizedFiles,
+    SheetBindingOffer, SheetBindingOption, SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::pane::blank_candidate_draft;
 use crate::tables::watched_path::host_root;

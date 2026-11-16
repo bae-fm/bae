@@ -147,7 +147,7 @@ impl ImportServiceHandle {
         // An imported candidate holds no draft, so no pane is kept for it.
         let draft = match &projection.stage {
             crate::ProjectedStage::Drafting(draft) => draft,
-            crate::ProjectedStage::Imported { release, .. } => {
+            crate::ProjectedStage::Imported { release } => {
                 return Err(crate::ImportError::FilesAlreadyImported {
                     release_id: release.release_id.clone(),
                 })

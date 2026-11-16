@@ -134,9 +134,11 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
             files: vec![
                 audio("01.flac"),
                 audio("02.flac"),
+                file("booklet.bmp", FileRole::Artwork),
                 file("cover.jpg", FileRole::Artwork),
                 file("drawing.svg", FileRole::Artwork),
                 file("notes.txt", FileRole::Other),
+                file("scan.webp", FileRole::Artwork),
             ],
             parts: Vec::new(),
         },
@@ -157,10 +159,10 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
         .expect("the scanned candidate has a pane")
         .resolve();
 
-    let files = &detail.candidate.files;
-    assert_eq!(files.track_count(), 2);
+    let files = &detail.files;
+    assert_eq!(files.track_count, 2);
     assert_eq!(
-        files.source_audio_summary(),
+        files.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Uniform {
             descriptor: bae_records::source_audio::SourceAudioDescriptor {
                 layout: bae_records::source_audio::SourceAudioLayout::File,
@@ -175,9 +177,88 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
         })
     );
     assert_eq!(
-        files.cover_files().map(|entry| entry.file.relative_path.as_str()).collect::<Vec<_>>(),
-        vec!["cover.jpg"]
+        files.cover_files.iter().map(|file| file.name.as_str()).collect::<Vec<_>>(),
+        vec!["cover.jpg", "scan.webp"]
     );
+    assert_eq!(
+        files.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
+        vec!["booklet.bmp", "cover.jpg", "drawing.svg", "scan.webp"]
+    );
+    // Every image keeps its role; only the ones a picker can show offer a
+    // cover.
+    let covers = files
+        .files
+        .iter()
+        .filter_map(|file| match &file.role {
+            crate::PaneFileRole::Artwork { choice } => Some((file.name.as_str(), choice.is_some())),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        covers,
+        vec![
+            ("booklet.bmp", false),
+            ("cover.jpg", true),
+            ("drawing.svg", false),
+            ("scan.webp", true)
+        ]
+    );
+    assert_eq!(files.files.len(), 7);
+}
+
+/// A folder whose audio files disagree is summarized by each fact they
+/// disagree on, as the scan's own summary of the files states it.
+#[tokio::test]
+async fn the_pane_summarizes_audio_files_that_disagree() {
+    use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let folder = folder_below(&root, "Album");
+    let flac = CandidateFile {
+        file: ScannedFile::new(folder.join("01.flac"), "01.flac".to_string(), 1_000, 1)
+            .with_test_flac_audio(),
+        role: FileRole::Audio,
+    };
+    let mut mp3 = ScannedFile::new(folder.join("02.mp3"), "02.mp3".to_string(), 1_000, 1);
+    mp3.source_audio = Some(crate::folder_scanner::ScannedAudio {
+        content_type: bae_util::content_type::ContentType::Mp3,
+        container: bae_util::audio_container::AudioContainer::Mp3,
+        duration_ms: 3_000,
+        format: bae_types::audio_format::AudioFormat {
+            codec: bae_util::content_type::ContentType::Mp3.display_name().to_string(),
+            sample_rate_hz: 48_000,
+            bits_per_sample: None,
+            bitrate_kbps: Some(320),
+            channels: 2,
+        },
+    });
+    let candidate = candidate_with(
+        &root,
+        "Album",
+        CategorizedFiles {
+            files: vec![flac, CandidateFile { file: mp3, role: FileRole::Audio }],
+            parts: Vec::new(),
+        },
+        crate::folder_scanner::ReleaseFileScope::Recursive,
+    );
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    let detail = tables
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane")
+        .resolve();
+
+    let summary = candidate.files.source_audio_summary();
+    assert!(matches!(summary, Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })));
+    assert_eq!(detail.files.source_audio, summary);
 }
 
 /// The pane says which library albums hold the linked release: the album

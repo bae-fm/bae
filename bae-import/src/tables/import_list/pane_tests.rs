@@ -384,7 +384,6 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
                 release_id: release_id.clone(),
                 album_id: album_id.clone(),
             },
-            images: crate::mapping::folder_images(&candidate.files),
         },
         "an imported candidate's pane reads no draft, whatever rows it holds"
     );

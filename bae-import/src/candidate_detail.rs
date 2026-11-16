@@ -25,6 +25,8 @@ use bae_records::LibraryStatus;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
     pub candidate: FolderCandidate,
+    /// The candidate's files as the pane lists them.
+    pub files: PaneFiles,
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
@@ -52,11 +54,10 @@ pub struct ImportCandidateDetailProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectedStage {
     Drafting(Box<DraftProjection>),
+    /// Its gallery is the folder's images, [`PaneFiles::images`]: the
+    /// library release's editor lists the release's files.
     Imported {
         release: ImportedRelease,
-        /// The folder's images, read from its scan: the gallery beside the
-        /// library release, whose editor lists the release's files.
-        images: Vec<super::mapping::MappingImage>,
     },
 }
 
@@ -102,6 +103,56 @@ pub struct DraftProjection {
     pub session: Option<CandidateSession>,
 }
 
+/// The candidate's files as its pane lists them, each fact read from the
+/// scan's rows by the statement that reads them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaneFiles {
+    /// Every file of the folder, in release-relative path order.
+    pub files: Vec<PaneFile>,
+    /// The folder's images a cover picker can show, in the same order.
+    pub cover_files: Vec<PaneFile>,
+    /// Every image of the folder, in the same order: the gallery.
+    pub images: Vec<super::mapping::MappingImage>,
+    /// How many tracks the folder plays: its audio units.
+    pub track_count: u32,
+    /// What the folder's audio is, summarized over its audio files; `None`
+    /// for a folder with none.
+    pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
+}
+
+/// One file of the candidate as its pane lists it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaneFile {
+    /// The file's path in the release.
+    pub name: String,
+    pub size: u64,
+    /// The folder below the release root the file is in, `/`-terminated;
+    /// `None` at the root.
+    pub dir_prefix: Option<String>,
+    pub file_name: String,
+    /// The format of an audio file.
+    pub audio_format: Option<bae_types::audio_format::AudioFormat>,
+    pub role: PaneFileRole,
+}
+
+/// The job the scan proposed for one file, with what the pane states beside
+/// it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PaneFileRole {
+    Audio,
+    /// A track sheet, with how many audio tracks it lays out.
+    TrackSheet {
+        track_count: u32,
+    },
+    /// An image, with the cover it makes when a cover picker can show it.
+    Artwork {
+        choice: Option<CoverChoice>,
+    },
+    DamagedImage,
+    Document,
+    Other,
+}
+
 /// Where the list places one release, as its row in the list's placement
 /// (`import_list_placement`) holds it: what its commands are decided from,
 /// and where it stands among Found's states.
@@ -144,6 +195,7 @@ impl ImportCandidateDetailProjection {
     pub fn resolve(self) -> ImportCandidateDetail {
         let Self {
             candidate,
+            files,
             source_error,
             actionable,
             skipped,
@@ -165,10 +217,10 @@ impl ImportCandidateDetailProjection {
             _ => None,
         };
         let (import_status, pane_placement, stage) = match stage {
-            ProjectedStage::Imported { release, images } => (
+            ProjectedStage::Imported { release } => (
                 import_status_of(Some(&release), source_error.as_ref(), None),
                 CandidatePanePlacement::Done,
-                CandidateStage::Imported { release, images },
+                CandidateStage::Imported { release },
             ),
             ProjectedStage::Drafting(draft) => {
                 let session = draft.session_or_initial(stored_verdict.is_some());
@@ -257,6 +309,7 @@ impl ImportCandidateDetailProjection {
         };
         ImportCandidateDetail {
             candidate,
+            files,
             actionable,
             skipped,
             // A candidate with no stored verdict shows no run.
@@ -334,6 +387,8 @@ impl CandidateImportStatus {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetail {
     pub candidate: FolderCandidate,
+    /// The candidate's files as the pane lists them.
+    pub files: PaneFiles,
     pub actionable: bool,
     pub skipped: bool,
     pub resumed_identify_state: IdentifyStateView,
@@ -376,11 +431,10 @@ impl ImportCandidateDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateStage {
     Drafting(Box<CandidateDraftPane>),
+    /// Its gallery is the folder's images, [`PaneFiles::images`]: the
+    /// library release's editor lists the release's files.
     Imported {
         release: ImportedRelease,
-        /// The folder's images, read from its scan: the gallery beside the
-        /// library release, whose editor lists the release's files.
-        images: Vec<super::mapping::MappingImage>,
     },
 }
 

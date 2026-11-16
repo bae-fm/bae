@@ -1,41 +1,30 @@
 use super::super::*;
 
 impl BridgeFileInfo {
-    fn from_core(f: &bae_import::folder_scanner::ScannedFile) -> Self {
+    fn from_core(file: &bae_import::PaneFile) -> Self {
         BridgeFileInfo {
-            name: f.relative_path.clone(),
-            size: f.version.size,
-            dir_prefix: f.dir_prefix.clone(),
-            file_name: f.file_name.clone(),
-            audio_format: f
-                .source_audio
-                .as_ref()
-                .map(|audio| BridgeAudioFormat::from_core(audio.format.clone())),
+            name: file.name.clone(),
+            size: file.size,
+            dir_prefix: file.dir_prefix.clone(),
+            file_name: file.file_name.clone(),
+            audio_format: file.audio_format.clone().map(BridgeAudioFormat::from_core),
         }
     }
 }
 
 impl BridgeCandidateFile {
-    fn from_core(entry: bae_import::folder_scanner::CandidateFile) -> Self {
-        use bae_import::folder_scanner::{CandidateFile, FileRole};
-
-        let cover_choice = entry.cover_choice().map(BridgeCoverChoice::from_core);
-        let CandidateFile { file, role } = entry;
-        let file = BridgeFileInfo::from_core(&file);
-        let role = match role {
-            FileRole::Audio => BridgeFileRole::Audio,
-            // The disc assignment is the mapping table's to show, on the group
-            // header that carries the picker for it. A roles row states what
-            // the sheet's slots are, which already reflects the assignment.
-            FileRole::TrackSheet { sheet, .. } => BridgeFileRole::TrackSheet {
-                // A derived count, not a carried field — `CueSheet` is a large
-                // parse product the bridge doesn't mirror.
-                track_count: sheet.playable_track_count() as u32,
-            },
-            FileRole::Artwork => BridgeFileRole::Artwork { choice: cover_choice },
-            FileRole::DamagedImage => BridgeFileRole::DamagedImage,
-            FileRole::Document { .. } => BridgeFileRole::Document,
-            FileRole::Other => BridgeFileRole::Other,
+    fn from_core(entry: bae_import::PaneFile) -> Self {
+        use bae_import::PaneFileRole;
+        let file = BridgeFileInfo::from_core(&entry);
+        let role = match entry.role {
+            PaneFileRole::Audio => BridgeFileRole::Audio,
+            PaneFileRole::TrackSheet { track_count } => BridgeFileRole::TrackSheet { track_count },
+            PaneFileRole::Artwork { choice } => {
+                BridgeFileRole::Artwork { choice: choice.map(BridgeCoverChoice::from_core) }
+            }
+            PaneFileRole::DamagedImage => BridgeFileRole::DamagedImage,
+            PaneFileRole::Document => BridgeFileRole::Document,
+            PaneFileRole::Other => BridgeFileRole::Other,
         };
         BridgeCandidateFile { file, role }
     }
@@ -60,17 +49,19 @@ mirror_struct! {
 }
 
 impl BridgeCandidateFiles {
-    pub(crate) fn from_core(files: bae_import::folder_scanner::CategorizedFiles) -> Self {
-        let source_audio = files.source_audio_summary().map(BridgeSourceAudioSummary::from_core);
-        let file_metadata_identity = files.file_metadata_identity();
-        let cover_files =
-            files.cover_files().cloned().map(BridgeCandidateFile::from_core).collect();
-        let bae_import::folder_scanner::CategorizedFiles { files, .. } = files;
+    /// The pane's files, with the identity of the audio behind a file-metadata
+    /// preview.
+    pub(crate) fn from_core(
+        file_metadata_identity: String,
+        files: Vec<bae_import::PaneFile>,
+        cover_files: Vec<bae_import::PaneFile>,
+        source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
+    ) -> Self {
         BridgeCandidateFiles {
             file_metadata_identity,
-            cover_files,
+            cover_files: cover_files.into_iter().map(BridgeCandidateFile::from_core).collect(),
             files: files.into_iter().map(BridgeCandidateFile::from_core).collect(),
-            source_audio,
+            source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
         }
     }
 }
@@ -275,48 +266,4 @@ mirror_struct! {
         files: (each BridgeMappingFileRow),
         untitled_track_count,
     },
-}
-
-#[cfg(test)]
-mod cover_projection_tests {
-    use super::*;
-    use bae_import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
-
-    #[test]
-    fn unsupported_cover_formats_remain_artwork_without_a_cover_action() {
-        let names =
-            ["front.jpg", "back.png", "scan.gif", "scan.webp", "booklet.bmp", "drawing.svg"];
-        let files = CategorizedFiles {
-            files: names
-                .iter()
-                .map(|name| CandidateFile {
-                    file: ScannedFile::new(
-                        std::path::Path::new("/synthetic").join(name),
-                        (*name).to_string(),
-                        100,
-                        1,
-                    ),
-                    role: FileRole::Artwork,
-                })
-                .collect(),
-            parts: Vec::new(),
-        };
-        let projected = BridgeCandidateFiles::from_core(files);
-        assert_eq!(projected.files.len(), names.len());
-        assert_eq!(
-            projected.cover_files.iter().map(|entry| entry.file.name.as_str()).collect::<Vec<_>>(),
-            &names[..4]
-        );
-        for (index, entry) in projected.files.iter().enumerate() {
-            let BridgeFileRole::Artwork { choice } = &entry.role else {
-                panic!("previewable artwork lost its role");
-            };
-            assert_eq!(choice.is_some(), index < 4);
-            if let Some(choice) = choice {
-                assert!(
-                    matches!(&choice.selection, BridgeCoverSelection::ReleaseImage { file_id } if file_id == names[index])
-                );
-            }
-        }
-    }
 }

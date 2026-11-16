@@ -204,7 +204,7 @@ pub use apply_steps::{CatalogApplyId, CatalogApplyStep, CatalogApplySteps};
 pub use candidate_detail::{
     CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,
     DraftProjection, ImportCandidateDetail, ImportCandidateDetailProjection, ListedRelease,
-    ProjectedStage,
+    PaneFile, PaneFileRole, PaneFiles, ProjectedStage,
 };
 #[cfg(desktop)]
 pub use candidate_key::CandidateKey;

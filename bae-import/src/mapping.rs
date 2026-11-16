@@ -6,8 +6,7 @@
 //! joining separate lists.
 
 use crate::folder_scanner::{
-    AudioDamage, CandidateFile, CategorizedFiles, FileRole, InvalidCandidate, ProposedRole,
-    SheetDisc, SheetReferenceOptions,
+    AudioDamage, InvalidCandidate, ProposedRole, SheetDisc, SheetReferenceOptions,
 };
 use crate::types::RawTrackEdit;
 
@@ -75,6 +74,11 @@ pub enum MappingFileRow {
 }
 
 /// One of the folder's images, as the gallery shows it.
+///
+/// Which image leads the release is not a property of the image: it is the
+/// cover choice, which the stored row answers first, then the picked release's
+/// own art, then the folder's images by name. The gallery lists what the folder
+/// has; the card shows what was chosen.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingImage {
     /// The file's identity within the release (its relative path).
@@ -226,16 +230,6 @@ pub struct MappingContainer {
     pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
-/// The folder's images, in the scan's order: its gallery.
-pub(crate) fn folder_images(files: &CategorizedFiles) -> Vec<MappingImage> {
-    files
-        .files
-        .iter()
-        .filter(|entry| matches!(entry.role, FileRole::Artwork))
-        .map(mapping_image)
-        .collect()
-}
-
 /// The table's track rows in commit order — what the editor shapes into the
 /// release it writes.
 pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
@@ -245,20 +239,6 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
         .flat_map(MappingTrackSide::mappings)
         .map(|mapping| mapping.track.clone())
         .collect()
-}
-
-/// One of the folder's images, as the gallery carries it.
-///
-/// Which image leads the release is not a property of the image: it is the
-/// cover choice, which the stored row answers first, then the picked release's
-/// own art, then the folder's images by name. The gallery lists what the folder
-/// has; the card shows what was chosen.
-fn mapping_image(entry: &CandidateFile) -> MappingImage {
-    MappingImage {
-        file_id: entry.file.relative_path.clone(),
-        name: entry.file.file_name.clone(),
-        file: entry.file.version.clone(),
-    }
 }
 
 /// A folder that failed validation, as the pane looking into it reads it.

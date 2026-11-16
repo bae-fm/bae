@@ -33,6 +33,7 @@ mod listed;
 mod mapping_rows;
 mod order;
 mod pane;
+mod pane_files;
 mod placement;
 mod read;
 mod search;
@@ -105,6 +106,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &super::layout_text::MEDIUM_IS_SIDED,
     &super::layout_text::LENGTHS_DISAGREE,
     &super::layout_text::TRIM,
+    &pane_files::SUPPORTED_COVER,
 ];
 
 /// The collations the import list's SQL names.

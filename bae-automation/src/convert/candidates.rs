@@ -44,10 +44,11 @@ pub(crate) async fn automation_candidate_from_folder(
             folder.skipped,
             folder.is_added(),
         ),
-        track_count: candidate.files.track_count(),
-        source_audio: candidate
+        track_count: folder.files.track_count,
+        source_audio: folder
             .files
-            .source_audio_summary()
+            .source_audio
+            .clone()
             .map(AutomationSourceAudioSummary::from_core),
         content_hash: candidate.files.content_hash(),
         runtime: AutomationCandidateRuntime {

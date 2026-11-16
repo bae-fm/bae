@@ -24,6 +24,7 @@ use bae_records::records::release_records::{
 #[derive(Clone, PartialEq)]
 pub(super) struct CandidateDetailRows {
     candidate: FolderCandidate,
+    files: crate::PaneFiles,
     source_error: Option<crate::GroupingBlock>,
     actionable: bool,
     skipped: bool,
@@ -89,6 +90,7 @@ pub(super) fn load_candidate_detail_on(
     let content_hash = candidate.files.content_hash();
 
     let skipped = skipped_on(sql, &candidate)?;
+    let files = super::pane_files::load_pane_files_on(sql, key)?;
     let standing = load_standing_on(sql, key)?.facts();
 
     let imported = sql
@@ -119,6 +121,7 @@ pub(super) fn load_candidate_detail_on(
     };
     Ok(Some(CandidateDetailRows {
         candidate,
+        files,
         source_error,
         actionable,
         skipped,
@@ -248,6 +251,7 @@ impl CandidateDetailRows {
     pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, crate::ImportError> {
         let Self {
             candidate,
+            files,
             source_error,
             actionable,
             skipped,
@@ -273,10 +277,7 @@ impl CandidateDetailRows {
                 )
             });
         let stage = match stage {
-            StageRows::Imported(release) => ProjectedStage::Imported {
-                release,
-                images: crate::mapping::folder_images(&candidate.files),
-            },
+            StageRows::Imported(release) => ProjectedStage::Imported { release },
             StageRows::Drafting(draft) => {
                 let DraftRows {
                     pane_rows,
@@ -315,6 +316,7 @@ impl CandidateDetailRows {
         };
         Ok(ImportCandidateDetailProjection {
             candidate,
+            files,
             source_error,
             actionable,
             skipped,

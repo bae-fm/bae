@@ -52,10 +52,11 @@ impl crate::types::BridgeWatchedFolderScanStatus {
 impl crate::types::BridgeFolderCandidate {
     pub(super) fn from_core(
         candidate: bae_import::FolderCandidate,
+        files: crate::types::BridgeCandidateFiles,
+        track_count: u32,
         skipped: bool,
         is_added: bool,
     ) -> Self {
-        let track_count = candidate.files.track_count();
         crate::types::BridgeFolderCandidate {
             parts: candidate
                 .files
@@ -67,7 +68,7 @@ impl crate::types::BridgeFolderCandidate {
             folder_path: coven::path_bytes(&candidate.path),
             source_folder_name: candidate.name.clone(),
             watched_folder_path: coven::path_bytes(&candidate.watched_folder_path),
-            files: crate::types::BridgeCandidateFiles::from_core(candidate.files),
+            files,
             track_count,
             skipped,
             is_added,
@@ -595,6 +596,7 @@ impl crate::types::BridgeImportCandidateDetail {
         let is_added = detail.is_added();
         let bae_import::ImportCandidateDetail {
             candidate,
+            files,
             actionable,
             skipped,
             resumed_identify_state,
@@ -607,8 +609,21 @@ impl crate::types::BridgeImportCandidateDetail {
             stage,
         } = detail;
         let rate = signals.as_ref().and_then(|signals| signals.origin.not_cd_rate);
+        let bae_import::PaneFiles { files, cover_files, images, track_count, source_audio } = files;
+        let files = crate::types::BridgeCandidateFiles::from_core(
+            candidate.files.file_metadata_identity(),
+            files,
+            cover_files,
+            source_audio,
+        );
         Self {
-            candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
+            candidate: crate::types::BridgeFolderCandidate::from_core(
+                candidate,
+                files,
+                track_count,
+                skipped,
+                is_added,
+            ),
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_view(
                 resumed_identify_state,
@@ -618,18 +633,20 @@ impl crate::types::BridgeImportCandidateDetail {
             live: crate::types::BridgeCandidateLiveState::from_core(live),
             import_status: import_status.map(crate::types::BridgeCandidateImportStatus::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),
-            stage: crate::types::BridgeCandidateStage::from_core(stage),
+            stage: crate::types::BridgeCandidateStage::from_core(stage, images),
         }
     }
 }
 
 impl crate::types::BridgeCandidateStage {
-    fn from_core(stage: bae_import::CandidateStage) -> Self {
+    /// The pane's stage; an imported candidate's gallery is `images`, the
+    /// folder's.
+    fn from_core(stage: bae_import::CandidateStage, images: Vec<bae_import::MappingImage>) -> Self {
         match stage {
             bae_import::CandidateStage::Drafting(draft) => {
                 Self::Drafting { draft: crate::types::BridgeCandidateDraftPane::from_core(*draft) }
             }
-            bae_import::CandidateStage::Imported { release, images } => Self::Imported {
+            bae_import::CandidateStage::Imported { release } => Self::Imported {
                 release: crate::types::BridgeImportedRelease::from_core(release),
                 images: images
                     .into_iter()
