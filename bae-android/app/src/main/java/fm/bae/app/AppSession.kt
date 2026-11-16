@@ -156,7 +156,6 @@ class OpenLibrary internal constructor(
 
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
-        appHandle.triggerSync()
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         sortLanguage = SortLanguage(appContext, scope, appHandle::setSortLanguage).also(SortLanguage::start)
         observeNowPlayingForWidget(scope)
