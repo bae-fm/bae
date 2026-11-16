@@ -1,6 +1,10 @@
 //! The Mac capture: builds the bridge and the Xcode project, then runs the
 //! `baeShots` test bundle, which draws each scene and writes
 //! `<board>@macos.{png,json}` into the output directory.
+//!
+//! `bae-bridge/build-macos.sh` builds the bridge and installs its Swift
+//! bindings, so the capture runs it once and tells xcodebuild to skip the
+//! scheme's pre-action, which would run it again.
 
 use super::{check_complete, clear, taken, CaptureError, Step, NEEDS_WINDOW};
 use bae_shots_lint::declared::Declared;
@@ -33,7 +37,6 @@ pub(crate) fn capture(
     for step in [
         Step::new("build-layout", root, "scripts/build-layout.sh", &[]),
         Step::new("bridge", root, "bae-bridge/build-macos.sh", &[]),
-        Step::new("Swift bindings", root, "bae-bridge/install-swift-bindings.sh", &["macos"]),
         Step::new("xcodegen", &xcode, "xcodegen", &[]),
     ] {
         step.run()?;
@@ -72,12 +75,13 @@ fn harness_prefixes(prefixes: &[Prefix], taken: &[Name]) -> Vec<String> {
         .collect()
 }
 
-/// The `xcodebuild … test` of the `baeShots` scheme. Xcode forwards a
-/// variable named `TEST_RUNNER_<NAME>` to the test process as `<NAME>`, so
-/// the harness reads `BAE_SHOTS_OUT`, `BAE_SHOTS_SCENES` (the prefixes, none
-/// for every scene) and `BAE_SHOTS_WINDOWS`. The app host links FFmpeg from
-/// the repository's prebuilt dist, so its libraries go on the loader path of
-/// the xcodebuild process itself.
+/// The `xcodebuild … test` of the `baeShots` scheme, with
+/// `BAE_SKIP_RUST_BRIDGE=YES` because the capture built the bridge before it.
+/// Xcode forwards a variable named `TEST_RUNNER_<NAME>` to the test process as
+/// `<NAME>`, so the harness reads `BAE_SHOTS_OUT`, `BAE_SHOTS_SCENES` (the
+/// prefixes, none for every scene) and `BAE_SHOTS_WINDOWS`. The app host links
+/// FFmpeg from the repository's prebuilt dist, so its libraries go on the
+/// loader path of the xcodebuild process itself.
 pub(crate) fn xcodebuild(
     xcode_directory: &Path,
     tree_args: &[String],
@@ -100,6 +104,7 @@ pub(crate) fn xcodebuild(
             "Debug",
             "CODE_SIGNING_ALLOWED=NO",
             "CODE_SIGNING_REQUIRED=NO",
+            "BAE_SKIP_RUST_BRIDGE=YES",
         ],
     );
     step.args.extend(tree_args.iter().cloned());

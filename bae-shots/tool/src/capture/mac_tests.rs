@@ -37,6 +37,7 @@ fn xcodebuild_runs_the_shots_scheme_in_the_named_trees() {
             "Debug",
             "CODE_SIGNING_ALLOWED=NO",
             "CODE_SIGNING_REQUIRED=NO",
+            "BAE_SKIP_RUST_BRIDGE=YES",
             "<tree flag>",
             "/b/shots",
             "<packages flag>",
