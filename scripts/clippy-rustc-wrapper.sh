@@ -14,9 +14,28 @@
 # of the unit's folder in .fingerprint; scripts/clippy-crates.sh makes the units
 # of the crates it names stale from those records, so they are rebuilt, and
 # linted.
+#
+# The linted crates compile incrementally, so a lint after an edit recompiles
+# only what the edit changed. `builds cargo` turns incremental compilation off
+# outside main, since sccache refuses an incremental compile, but sccache
+# caches nothing clippy-driver runs anyway. When cargo passes no
+# `-C incremental`, the wrapper passes `-C incremental=<profile dir>/incremental`,
+# the folder cargo itself uses, which builds keeps.
 case "$1" in
 */clippy-driver)
     if [ -n "${CARGO_PRIMARY_PACKAGE:-}" ]; then
+        deps= incremental=
+        prev=
+        for arg in "$@"; do
+            case "$prev" in
+            -L) case "$arg" in dependency=*) deps=${arg#dependency=} ;; esac ;;
+            -C) case "$arg" in incremental=*) incremental=$arg ;; esac ;;
+            esac
+            prev=$arg
+        done
+        if [ -z "$incremental" ] && [ -n "$deps" ]; then
+            set -- "$@" -C "incremental=$deps/../incremental"
+        fi
         exec "$@"
     fi
     shift
