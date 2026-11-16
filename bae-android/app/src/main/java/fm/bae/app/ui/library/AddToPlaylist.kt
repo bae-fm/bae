@@ -1,6 +1,7 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,9 +19,13 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.PlaylistListingStore
 import fm.bae.app.factsLine
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.retryAction
 
 /**
  * Adding a track to a playlist from a track's menu: whether the menu offers it, and the track whose
@@ -63,11 +68,6 @@ internal fun TrackPlaylistAddShown(
 ) {
     val trackId = add.trackId ?: return
     var creating by remember(trackId) { mutableStateOf(false) }
-    val context = LocalContext.current
-    val targets =
-        session.browserPages.playlists.listing
-            ?.addTargets
-            .orEmpty()
     AndroidSheet(onDismiss = add::dismiss, title = stringResource(R.string.playlist_add_title)) {
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             AndroidRow(
@@ -76,7 +76,33 @@ internal fun TrackPlaylistAddShown(
                 leadingIcon = Icons.Filled.Add,
                 onClick = { creating = true },
             )
-            targets.forEach { playlist ->
+            PlaylistTargets(session, add, trackId)
+        }
+    }
+    if (creating) {
+        NewPlaylistDialog(
+            session = session,
+            trackIds = listOf(trackId),
+            onDismiss = { creating = false },
+            onCreated = { add.dismiss() },
+        )
+    }
+}
+
+/** The playlists [add]'s track can go into, once their listing answers; its error, or a spinner until then. */
+@Composable
+private fun PlaylistTargets(
+    session: OpenLibrary,
+    add: TrackPlaylistAdd,
+    trackId: String,
+) {
+    val context = LocalContext.current
+    val playlists = session.browserPages.playlists
+    val listing = playlists.listing
+    val loadError = playlists.error
+    when {
+        listing != null -> {
+            listing.addTargets.forEach { playlist ->
                 AndroidLibraryRow(
                     title = playlist.name,
                     subtitle =
@@ -96,13 +122,20 @@ internal fun TrackPlaylistAddShown(
                 )
             }
         }
-    }
-    if (creating) {
-        NewPlaylistDialog(
-            session = session,
-            trackIds = listOf(trackId),
-            onDismiss = { creating = false },
-            onCreated = { add.dismiss() },
-        )
+
+        loadError != null -> {
+            AndroidNotice(
+                error = loadError.error,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                action = loadError.error.retryAction(onClick = loadError.onRetry),
+            )
+        }
+
+        // The listing has not answered yet, so a spinner shows in its place.
+        else -> {
+            AndroidSpinner(
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
+            )
+        }
     }
 }
