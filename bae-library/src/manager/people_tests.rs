@@ -404,7 +404,7 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         .await;
         assert!(tablet.people().create_profile("Robin").await.is_err());
         let mut after = tablet.manager().subscribe_requested_profile();
-        let first = after.next().await.unwrap().unwrap();
+        let first = after.next_inline().await.unwrap().unwrap();
         assert_eq!(first, Some(stopped));
     });
 }

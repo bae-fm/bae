@@ -231,3 +231,12 @@ impl bae_store::live_query::LiveSource<SubsonicView> for SubsonicWatch {
         Box::pin(async move { SubsonicWatch::next(self).await.map(Ok) })
     }
 }
+
+impl bae_store::live_query::IntoLiveSource<SubsonicView> for SubsonicWatch {
+    fn into_live_source(
+        self,
+        _bugs: bae_store::live_query::BugSinkRef,
+    ) -> Box<dyn bae_store::live_query::LiveSource<SubsonicView>> {
+        Box::new(self)
+    }
+}

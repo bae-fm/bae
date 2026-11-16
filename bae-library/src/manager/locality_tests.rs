@@ -159,7 +159,7 @@ async fn next_playability(
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let projection = live
-                .next()
+                .next_inline()
                 .await
                 .expect("the release's read stays open")
                 .result
@@ -449,7 +449,7 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
     });
     let seen = rows.clone();
     let collector = tokio::spawn(async move {
-        while let Some(Ok(count)) = transitions.next().await {
+        while let Some(Ok(count)) = transitions.next_inline().await {
             seen.lock().unwrap().push(count);
         }
     });

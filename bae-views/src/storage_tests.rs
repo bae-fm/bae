@@ -373,7 +373,7 @@ async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
                 "album 1",
                 window_of_five_from(from),
             );
-            ids_of(&query.next().await.unwrap().result.unwrap())
+            ids_of(&query.next_inline().await.unwrap().result.unwrap())
         }
     };
     let mut live = views.subscribe_storage_window(
@@ -383,8 +383,8 @@ async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
         window_of_five_from(from.clone()),
     );
     let mut count = views.subscribe_storage_count(StorageFilter::All, "album 1");
-    let before = ids_of(&live.next().await.unwrap().result.unwrap());
-    let found = count.next().await.unwrap().unwrap();
+    let before = ids_of(&live.next_inline().await.unwrap().result.unwrap());
+    let found = count.next_inline().await.unwrap().unwrap();
     assert!(found.rows > 20, "the search finds {} releases", found.rows);
     assert_eq!(before.len(), 5);
     assert_eq!(before, fresh(from.clone()).await);
@@ -397,7 +397,7 @@ async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
         .await
         .unwrap();
     let counted = loop {
-        let counted = count.next().await.unwrap().unwrap();
+        let counted = count.next_inline().await.unwrap().unwrap();
         if counted.rows != found.rows {
             break counted;
         }
@@ -804,7 +804,7 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
         let views = views.clone();
         async move {
             let mut live = views.subscribe_storage_selection(filter, "", asked.clone());
-            let value = live.next().await.expect("the query stays open").result.unwrap();
+            let value = live.next_inline().await.expect("the query stays open").result.unwrap();
             crate::storage::resolve_storage_selection(&asked, value)
         }
     };

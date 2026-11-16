@@ -209,6 +209,7 @@ impl ImportServiceHandle {
         let mut scans = crate::folder_scan_status::FolderScansLive::new(
             self.services.tables.clone(),
             self.scans_in_memory.clone(),
+            self.services.diagnostics.bug_sink(),
         );
         loop {
             let progress = scans

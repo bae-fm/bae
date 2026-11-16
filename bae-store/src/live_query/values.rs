@@ -2,6 +2,7 @@
 //! to reconfigure, ended by the surface or by the library closing.
 
 use super::LiveQueryError;
+use crate::live_results::LiveResults;
 use tokio_util::sync::CancellationToken;
 
 /// The future of a source's next value: a value, a failed read, or `None`
@@ -18,14 +19,33 @@ pub trait LiveSource<T>: Send {
     fn next(&mut self) -> NextValue<'_, T>;
 }
 
-/// A coven live query, failing with bae's own error or coven's.
-impl<T, E> LiveSource<T> for coven::LiveQuery<T, E>
+/// A coven live query's results, failing with bae's own error or coven's.
+impl<T, E> LiveSource<T> for LiveResults<coven::LiveQuery<T, E>>
 where
     T: Clone + PartialEq + Send + 'static,
     E: From<coven::DbError> + coven::task::CarriesBug + Into<crate::DbError> + Send + 'static,
 {
     fn next(&mut self) -> NextValue<'_, T> {
-        Box::pin(async move { Some(coven::LiveQuery::next(self).await?.map_err(Into::into)) })
+        Box::pin(async move { Some(LiveResults::next(self).await?.map_err(Into::into)) })
+    }
+}
+
+/// What [`LiveValues`] pulls values from: a live source, or a coven live
+/// query, whose results it takes through [`LiveResults`]. Each live source
+/// implements it by boxing itself: one implementation over every live source
+/// would overlap the one for coven's live query.
+pub trait IntoLiveSource<T> {
+    /// The source, reporting a panic around a coven run to `bugs`.
+    fn into_live_source(self, bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<T>>;
+}
+
+impl<T, E> IntoLiveSource<T> for coven::LiveQuery<T, E>
+where
+    T: Clone + PartialEq + Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Into<crate::DbError> + Send + 'static,
+{
+    fn into_live_source(self, bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<T>> {
+        Box::new(LiveResults::new(self, bugs))
     }
 }
 
@@ -36,6 +56,16 @@ where
 {
     fn next(&mut self) -> NextValue<'_, T> {
         Box::pin(crate::WithSyncState::next(self))
+    }
+}
+
+impl<R, T> IntoLiveSource<T> for crate::WithSyncState<R, T>
+where
+    R: Clone + PartialEq + Send + 'static,
+    T: Clone + PartialEq + Send + 'static,
+{
+    fn into_live_source(self, _bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<T>> {
+        Box::new(self)
     }
 }
 
@@ -54,11 +84,12 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
     /// `query`'s values, ended by `cancellation`, reporting a bug a failed
     /// read carries to `bugs`.
     pub fn new(
-        query: impl LiveSource<T> + 'static,
+        query: impl IntoLiveSource<T>,
         cancellation: CancellationToken,
         bugs: coven::task::BugSinkRef,
     ) -> Self {
-        Self { query: tokio::sync::Mutex::new(Some(Box::new(query))), cancellation, bugs }
+        let query = query.into_live_source(bugs.clone());
+        Self { query: tokio::sync::Mutex::new(Some(query)), cancellation, bugs }
     }
 
     /// The next value, or why there is none. A failed read that carries a

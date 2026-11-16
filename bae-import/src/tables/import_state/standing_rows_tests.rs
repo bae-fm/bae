@@ -221,7 +221,7 @@ async fn imports_in_flight(db: &Store) -> u32 {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .subscribe_import_counts()
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap()

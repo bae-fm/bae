@@ -13,7 +13,7 @@ async fn detail_matching(
 ) -> bae_views::album_detail::AlbumDetail {
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let event = values.next().await.expect("the album detail's read stays open");
+            let event = values.next_inline().await.expect("the album detail's read stays open");
             let projection = event.result.expect("the album detail reads");
             if let Some(detail) = bae_views::album::resolve_album_detail_projection(projection) {
                 if wanted(&detail) {

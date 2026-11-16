@@ -49,7 +49,7 @@ async fn sections_under(
 ) -> Vec<crate::LibraryBrowseSection> {
     crate::LibraryViews::new(db.clone())
         .subscribe_album_sections(sort)
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap()
@@ -74,7 +74,7 @@ async fn window_under(
 ) -> WindowRead<DbAlbumAppearance> {
     crate::LibraryViews::new(db.clone())
         .subscribe_album_window(sort, group_by_artist, window)
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -85,7 +85,7 @@ async fn window_under(
 async fn counts_of(db: &Store, group_by_artist: bool) -> AlbumCounts {
     crate::LibraryViews::new(db.clone())
         .subscribe_album_count(group_by_artist)
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap()
@@ -386,20 +386,20 @@ async fn the_artist_sections_are_their_own_live_query() {
     let mut browse = views.subscribe_album_window(&[], true, top(1));
     let mut sections = views.subscribe_album_sections(&[]);
     let requests = browse.requests();
-    browse.next().await.expect("the query stays open").result.unwrap();
-    let first = sections.next().await.expect("the query stays open").unwrap();
+    browse.next_inline().await.expect("the query stays open").result.unwrap();
+    let first = sections.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(first.len(), 3);
 
     for position in [2, 0, 4] {
         let key = key_of_row(&db, &[], true, position).await;
         let window = from_key(key, 1);
         requests.set(window.clone()).unwrap();
-        let moved = browse.next().await.expect("the query stays open").result.unwrap();
+        let moved = browse.next_inline().await.expect("the query stays open").result.unwrap();
         assert_eq!(moved.window, window);
     }
 
     delete_release(&test_records(&db), &grouped_release(4)).await;
-    let changed = tokio::time::timeout(HANG_GUARD, sections.next())
+    let changed = tokio::time::timeout(HANG_GUARD, sections.next_inline())
         .await
         .expect("deleting an artist's last release wakes the sections")
         .expect("the query stays open")
@@ -425,7 +425,7 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
             direction: SortDirection::Ascending,
         }];
         let mut sections = LibraryViews::new(db.clone()).subscribe_album_sections(&sort);
-        let initial = sections.next().await.expect("the query stays open").unwrap();
+        let initial = sections.next_inline().await.expect("the query stays open").unwrap();
         assert_eq!(initial[0].id, third);
 
         meet_musicbrainz_artist(
@@ -437,7 +437,7 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
         .await;
         devices.resume().await;
         let renamed = loop {
-            let shown = tokio::time::timeout(HANG_GUARD, sections.next())
+            let shown = tokio::time::timeout(HANG_GUARD, sections.next_inline())
                 .await
                 .expect("the other device's name reaches the sections")
                 .expect("the query stays open")
@@ -450,7 +450,7 @@ fn artist_sections_follow_renames_and_disappearing_groups() {
         assert_eq!(renamed[2].first_position, 4);
 
         delete_release(&test_records(db), &grouped_release(4)).await;
-        let removed = sections.next().await.expect("the query stays open").unwrap();
+        let removed = sections.next_inline().await.expect("the query stays open").unwrap();
         assert_eq!(removed.len(), 2);
         assert!(!removed.iter().any(|section| section.id == third));
     });
@@ -512,11 +512,11 @@ fn merged_and_repeated_credits_make_one_appearance_per_artist() {
             .await;
         let views = LibraryViews::new(db.clone());
         let mut counts = views.subscribe_album_count(true);
-        assert_eq!(counts.next().await.expect("the query stays open").unwrap().rows, 6);
+        assert_eq!(counts.next_inline().await.expect("the query stays open").unwrap().rows, 6);
 
         merge_apart(devices, ("Artist Name A", "Artist Name B"), "discogs-grouped").await;
         let merged = loop {
-            let shown = tokio::time::timeout(HANG_GUARD, counts.next())
+            let shown = tokio::time::timeout(HANG_GUARD, counts.next_inline())
                 .await
                 .expect("the merge reaches the count")
                 .expect("the query stays open")
@@ -621,7 +621,7 @@ async fn an_artist_section_carries_the_artists_picture() {
     let (db, _dir) = grouped_library().await;
     let records = bae_records::test_fixtures::test_records(&db);
     let mut sections = LibraryViews::new(db.clone()).subscribe_album_sections(&[]);
-    let initial = sections.next().await.expect("the query stays open").unwrap();
+    let initial = sections.next_inline().await.expect("the query stays open").unwrap();
     assert!(initial.iter().all(|section| section.image.is_none()));
     let version = bae_records::test_fixtures::live_query::write_artist_image(
         &records,
@@ -629,7 +629,7 @@ async fn an_artist_section_carries_the_artists_picture() {
         "artist image bytes",
     )
     .await;
-    let pictured = sections.next().await.expect("the query stays open").unwrap();
+    let pictured = sections.next_inline().await.expect("the query stays open").unwrap();
     let images = pictured
         .iter()
         .map(|section| {
@@ -726,9 +726,14 @@ async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
             .collect();
         let mut count = views.subscribe_album_count(group_by_artist);
         for query in &mut live {
-            tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+            tokio::time::timeout(HANG_GUARD, query.next_inline())
+                .await
+                .unwrap()
+                .unwrap()
+                .result
+                .unwrap();
         }
-        count.next().await.expect("the query stays open").unwrap();
+        count.next_inline().await.expect("the query stays open").unwrap();
 
         // "Album BB" is B's, which sorts between Album B and Album D grouped
         // or flat.
@@ -741,7 +746,7 @@ async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
         let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
         assert_eq!(marked, [false, true, false], "grouped {group_by_artist}");
         assert!(count.is_marked_for_rerun());
-        let rows = tokio::time::timeout(HANG_GUARD, live[1].next())
+        let rows = tokio::time::timeout(HANG_GUARD, live[1].next_inline())
             .await
             .unwrap()
             .expect("the query stays open")
@@ -749,7 +754,7 @@ async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
             .unwrap()
             .rows;
         assert!(rows.iter().any(|row| row.album.title == "Album BB"));
-        count.next().await.expect("the query stays open").unwrap();
+        count.next_inline().await.expect("the query stays open").unwrap();
 
         // A second album, in the first window's range this time: it reruns
         // that window and the count, and not the one below it.
@@ -764,8 +769,8 @@ async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
         let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
         assert_eq!(marked, [true, false, false], "grouped {group_by_artist}");
         assert!(count.is_marked_for_rerun());
-        live[0].next().await.expect("the query stays open").result.unwrap();
-        count.next().await.expect("the query stays open").unwrap();
+        live[0].next_inline().await.expect("the query stays open").result.unwrap();
+        count.next_inline().await.expect("the query stays open").unwrap();
 
         // And one in the last window's range, which is open below.
         let id = grouped_album(7);
@@ -822,7 +827,7 @@ async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
                 .map(|window| views.subscribe_album_window(sort, group_by_artist, window.clone()))
                 .collect();
             for query in &mut live {
-                tokio::time::timeout(HANG_GUARD, query.next())
+                tokio::time::timeout(HANG_GUARD, query.next_inline())
                     .await
                     .unwrap()
                     .unwrap()
@@ -882,7 +887,12 @@ async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
             .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
             .collect();
         for query in &mut live {
-            tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+            tokio::time::timeout(HANG_GUARD, query.next_inline())
+                .await
+                .unwrap()
+                .unwrap()
+                .result
+                .unwrap();
         }
         let album = grouped_album(2);
         let mut holds = Vec::new();

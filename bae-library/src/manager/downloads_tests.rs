@@ -507,7 +507,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         // the release in the queue, so none has to.
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
-                let event = rows.next().await.expect("the inspector's read runs");
+                let event = rows.next_inline().await.expect("the inspector's read runs");
                 let value = event.result.unwrap().expect("the library holds the release");
                 let queued = !value.transfers.is_empty();
                 if queued {

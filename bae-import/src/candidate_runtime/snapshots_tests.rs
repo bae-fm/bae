@@ -118,7 +118,7 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
 async fn next_runtime(
     query: &mut coven::LiveQuery<Option<crate::CandidateRuntimeSnapshot>, bae_store::DbError>,
 ) -> Option<crate::CandidateRuntimeSnapshot> {
-    tokio::time::timeout(HANG_GUARD, query.next())
+    tokio::time::timeout(HANG_GUARD, query.next_inline())
         .await
         .expect("the query delivers")
         .expect("the query stays open")
@@ -201,7 +201,7 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
         (second.clone(), scanned_key(&runtime, second).await),
     ];
     let mut next_counts = async || {
-        tokio::time::timeout(HANG_GUARD, counts.next())
+        tokio::time::timeout(HANG_GUARD, counts.next_inline())
             .await
             .expect("the query delivers")
             .expect("the query stays open")

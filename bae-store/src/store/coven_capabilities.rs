@@ -92,6 +92,7 @@ impl Store {
             changes,
             rows,
             make,
+            self.inner.bugs.clone(),
         )
     }
 

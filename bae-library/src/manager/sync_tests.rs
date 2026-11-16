@@ -673,12 +673,12 @@ async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let mut paused = views(manager).subscribe_uploads_paused();
-    assert!(!paused.next().await.unwrap().unwrap());
+    assert!(!paused.next_inline().await.unwrap().unwrap());
     manager.store.set_uploads_paused(true).await.unwrap();
-    assert!(paused.next().await.unwrap().unwrap());
+    assert!(paused.next_inline().await.unwrap().unwrap());
     assert!(manager.store.uploads_paused().await.unwrap());
     manager.store.set_uploads_paused(false).await.unwrap();
-    assert!(!paused.next().await.unwrap().unwrap());
+    assert!(!paused.next_inline().await.unwrap().unwrap());
 }
 
 /// Whether files move only on unmetered networks reads from coven's setting
@@ -688,11 +688,11 @@ async fn the_unmetered_only_setting_follows_each_change() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let mut unmetered_only = views(manager).subscribe_unmetered_only();
-    assert!(!unmetered_only.next().await.unwrap().unwrap());
+    assert!(!unmetered_only.next_inline().await.unwrap().unwrap());
     manager.store.set_unmetered_only(true).await.unwrap();
-    assert!(unmetered_only.next().await.unwrap().unwrap());
+    assert!(unmetered_only.next_inline().await.unwrap().unwrap());
     manager.store.set_unmetered_only(false).await.unwrap();
-    assert!(!unmetered_only.next().await.unwrap().unwrap());
+    assert!(!unmetered_only.next_inline().await.unwrap().unwrap());
 }
 
 /// Close `manager`, delete this device's storage credentials as a keychain

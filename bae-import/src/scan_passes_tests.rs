@@ -161,7 +161,8 @@ impl DecisionFixture {
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {
             loop {
-                let window = live.next().await.expect("the query stays open").result.unwrap();
+                let window =
+                    live.next_inline().await.expect("the query stays open").result.unwrap();
                 let names: Vec<String> = window
                     .read
                     .rows

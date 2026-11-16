@@ -306,6 +306,8 @@ task_types = [
     "CatalogImages",
     "WithSyncState",
     "CancellableLiveQuery",
+    # One live query's results for an async reader, for as long as it reads.
+    "LiveResults",
     "AddDeviceStatusSubscription",
     "AdminChangesSubscription",
     "AlbumDetailSubscription",
@@ -364,8 +366,10 @@ task_types = [
     "ServerWatch",
     # One subscriber's watch on the catalog image cache's files.
     "RemoteImageWatch",
-    # One subscriber's watch on the outbox's transfers.
+    # One subscriber's watch on the outbox's transfers, and the transfers it
+    # reads them from.
     "OutboxTransfersWatch",
+    "SendingTransfers",
     # One subscriber's watch on the Activity transfer lines' bars.
     "ActivityBarsWatch",
     # One editor's session on one release, and the bridge's object the app
@@ -1667,13 +1671,14 @@ tables = [
 [read_shapes]
 rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
 read_types = ["SqlRead", "SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
-live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
+live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "LiveResults", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
 request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
 value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "LocalBytesWatch", "KeyedValueStream"]
 kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64"]
 plumbing = [
     "bae-store/src/live_query.rs",
     "bae-store/src/live_query/",
+    "bae-store/src/live_results.rs",
     "bae-store/src/store.rs",
     "bae-store/src/store_read.rs",
     "bae-store/src/store/coven_capabilities.rs",

@@ -71,7 +71,7 @@ async fn first_upcoming_until(
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let value = queue
-                .next()
+                .next_inline()
                 .await
                 .expect("the queue's upcoming read stays open")
                 .result

@@ -192,6 +192,15 @@ impl Store {
         self.inner.handle.subscribe(query)
     }
 
+    /// `query`'s results for async code to take, reporting a panic around a
+    /// run to the store's bug sink.
+    pub fn results<L: crate::live_results::CovenLiveQuery>(
+        &self,
+        query: L,
+    ) -> crate::live_results::LiveResults<L> {
+        crate::live_results::LiveResults::new(query, self.inner.bugs.clone())
+    }
+
     /// A live query whose request can be replaced without a new
     /// subscription. It fails with its query's own error, of which a failed
     /// read is one.

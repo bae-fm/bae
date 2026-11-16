@@ -8,6 +8,7 @@
 //! watch works out each bar again whenever the read or either transfer watch
 //! delivers a value.
 
+use bae_store::live_results::LiveResults;
 use bae_store::DbError;
 use bae_transfers::{DownloadTransfer, ReleaseTransferChange, ReleaseTransfersWatch};
 use bae_views::{ActivityBytes, DownloadBytes, UploadBytes};
@@ -222,7 +223,7 @@ fn move_to_this_device_share(transfer: &DownloadTransfer) -> Option<f64> {
 /// read has said what each batch holds, then each time the read or a transfer
 /// changes.
 pub struct ActivityBarsWatch {
-    bytes: coven::LiveQuery<ActivityBytes, DbError>,
+    bytes: LiveResults<coven::LiveQuery<ActivityBytes, DbError>>,
     uploads: coven::TransferWatch,
     downloads: ReleaseTransfersWatch<DownloadTransfer>,
     count: BarsCount,
@@ -230,7 +231,7 @@ pub struct ActivityBarsWatch {
 
 impl ActivityBarsWatch {
     pub(crate) fn of(
-        bytes: coven::LiveQuery<ActivityBytes, DbError>,
+        bytes: LiveResults<coven::LiveQuery<ActivityBytes, DbError>>,
         uploads: coven::TransferWatch,
         downloads: ReleaseTransfersWatch<DownloadTransfer>,
     ) -> Self {

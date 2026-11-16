@@ -149,7 +149,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
     let gallery = loop {
-        let event = live.next().await.expect("the read runs");
+        let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
             break event.result.unwrap().expect("the live query answers the request");
         }
@@ -186,7 +186,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     };
     let mut live = handle.subscribe_cover_gallery(Some(asked.clone()));
     let gallery = loop {
-        let event = live.next().await.expect("the read runs");
+        let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
             break event.result.unwrap().expect("the live query answers the request");
         }

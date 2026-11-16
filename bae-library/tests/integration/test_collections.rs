@@ -254,7 +254,7 @@ async fn detail_matching(
 ) -> Option<bae_views::playlists::PlaylistDetail> {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let event = values.next().await.expect("the playlist's read stays open");
+            let event = values.next_inline().await.expect("the playlist's read stays open");
             let detail = event.result.expect("the playlist reads");
             if matches(&detail) {
                 return detail;
@@ -443,7 +443,7 @@ async fn next_detail(
         bae_store::DbError,
     >,
 ) -> bae_views::album_detail::AlbumDetail {
-    let event = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, values.next())
+    let event = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, values.next_inline())
         .await
         .expect("the album detail arrives")
         .expect("the album detail's read stays open");

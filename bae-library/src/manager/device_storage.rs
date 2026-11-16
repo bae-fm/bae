@@ -177,6 +177,15 @@ impl LiveSource<DeviceStorage> for LiveDeviceStorage {
     }
 }
 
+impl bae_store::live_query::IntoLiveSource<DeviceStorage> for LiveDeviceStorage {
+    fn into_live_source(
+        self,
+        _bugs: coven::task::BugSinkRef,
+    ) -> Box<dyn bae_store::live_query::LiveSource<DeviceStorage>> {
+        Box::new(self)
+    }
+}
+
 impl LibraryManager {
     /// The open library's storage on this device: the first value at once,
     /// then one after each change.

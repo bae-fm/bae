@@ -221,7 +221,7 @@ async fn a_selection_with_a_release_mid_upload_offers_only_cancelling() {
         let asked = std::collections::BTreeSet::from([release_id]);
         let mut live = bae_views::LibraryViews::new(manager.store.clone())
             .subscribe_storage_selection(bae_views::StorageFilter::All, "", asked.clone());
-        let value = live.next().await.expect("the query stays open").result.unwrap();
+        let value = live.next_inline().await.expect("the query stays open").result.unwrap();
         bae_views::storage::resolve_storage_selection(&asked, value)
     };
 
@@ -275,7 +275,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
     });
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let event = browse.next().await.expect("the browse query answers");
+            let event = browse.next_inline().await.expect("the browse query answers");
             let projection = event.result.unwrap();
             let sending = projection.rows.iter().any(|row| {
                 row.release.id == release.id
@@ -673,7 +673,7 @@ async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
     let mut last = None;
     let shown = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let event = inspector.next().await.expect("the inspector's read runs");
+            let event = inspector.next_inline().await.expect("the inspector's read runs");
             let value = event.result.unwrap().expect("the library holds the release");
             last = Some(value.files.clone());
             let waits: Vec<_> = value
@@ -826,7 +826,7 @@ async fn moving_a_selection_queues_every_movable_release_in_one_write() {
     });
     let seen = rows.clone();
     let collector = tokio::spawn(async move {
-        while let Some(Ok(count)) = transitions.next().await {
+        while let Some(Ok(count)) = transitions.next_inline().await {
             seen.lock().unwrap().push(count);
         }
     });

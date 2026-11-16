@@ -488,7 +488,7 @@ async fn output_queue_until(
     let mut values = manager.subscribe_output_snapshot();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let queue = values.next().await.expect("the query stays open").unwrap();
+            let queue = values.next_inline().await.expect("the query stays open").unwrap();
             if done(&queue) {
                 return queue;
             }

@@ -68,7 +68,7 @@ async fn first(mut profiles: coven::LiveQuery<Vec<PersonProfile>, DbError>) -> V
 
 /// The followed profiles' next list.
 async fn next(profiles: &mut coven::LiveQuery<Vec<PersonProfile>, DbError>) -> Vec<PersonProfile> {
-    tokio::time::timeout(std::time::Duration::from_secs(30), profiles.next())
+    tokio::time::timeout(std::time::Duration::from_secs(30), profiles.next_inline())
         .await
         .expect("the list answers")
         .expect("the list stays open")

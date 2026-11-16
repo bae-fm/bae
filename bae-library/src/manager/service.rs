@@ -237,7 +237,7 @@ impl LibraryManager {
     /// start.
     pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
-        query: impl bae_store::live_query::LiveSource<T> + 'static,
+        query: impl bae_store::live_query::IntoLiveSource<T>,
     ) -> bae_store::live_query::LiveValues<T> {
         bae_store::live_query::LiveValues::new(query, self.tasks.closing.child_token(), self.bugs())
     }
@@ -454,7 +454,10 @@ impl LibraryManager {
     /// the files being sent together, told as each one moves.
     pub fn watch_outbox_transfers(&self) -> crate::OutboxTransfersWatch {
         crate::OutboxTransfersWatch::of(
-            self.records.subscribe_sending_uploads(),
+            bae_store::live_results::LiveResults::new(
+                self.records.subscribe_sending_uploads(),
+                self.bugs(),
+            ),
             self.store.subscribe_upload_transfers(),
             self.clock.clone(),
         )
@@ -464,7 +467,10 @@ impl LibraryManager {
     /// as the batch, its releases' storage or their transfers move.
     pub fn watch_activity_bars(&self) -> crate::ActivityBarsWatch {
         crate::ActivityBarsWatch::of(
-            self.store.subscribe(|sql| bae_views::activity_bytes_on(&sql)),
+            bae_store::live_results::LiveResults::new(
+                self.store.subscribe(|sql| bae_views::activity_bytes_on(&sql)),
+                self.bugs(),
+            ),
             self.store.subscribe_upload_transfers(),
             self.downloads.watch_transfers(),
         )

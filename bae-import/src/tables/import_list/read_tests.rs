@@ -51,7 +51,7 @@ where
 {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let value = live.next().await.expect("the query stays open").result.unwrap();
+            let value = live.next_inline().await.expect("the query stays open").result.unwrap();
             if accept(&value) {
                 return value;
             }
@@ -69,7 +69,7 @@ async fn count_until(
 ) -> crate::list::ImportListCount {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let value = live.next().await.expect("the query stays open").unwrap();
+            let value = live.next_inline().await.expect("the query stays open").unwrap();
             if accept(&value) {
                 return value;
             }
@@ -90,9 +90,9 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
     let mut window = tables.subscribe_import_window(list, first(50));
     let mut count = tables.subscribe_import_count(list);
-    let initial = window.next().await.expect("the query stays open").result.unwrap();
+    let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&initial.read.rows), ["release"]);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 1);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
     let initial_counts = tables.load_tab_counts().await.unwrap();
     assert_eq!((initial_counts.pending, initial_counts.done), (1, 0));
 
@@ -156,7 +156,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 
     let list = open_in_path_order(&db, crate::TriageTab::Done).await;
     let mut count = tables.subscribe_import_count(list);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 1);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
 
     bae_records::test_fixtures::delete_release(
         &bae_records::test_fixtures::test_records(&db),
@@ -183,7 +183,7 @@ async fn settled<T: Clone + PartialEq + Send + 'static, Request>(
 ) where
     Request: Clone + PartialEq + Send + Sync + 'static,
 {
-    window.next().await.expect("the query stays open");
+    window.next_inline().await.expect("the query stays open");
 }
 
 /// A scan item reruns the window whose range holds it and the count, and
@@ -205,19 +205,19 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
     let mut count = tables.subscribe_import_count(list);
     settled(&mut above).await;
     settled(&mut below).await;
-    count.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
 
     lib.run(lib.scan("Z")).await;
     assert!(below.is_marked_for_rerun(), "Z sorts into the lower window's range");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     assert!(count.is_marked_for_rerun());
-    let grown = below.next().await.expect("the query stays open").result.unwrap();
+    let grown = below.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&grown.read.rows).last().map(String::as_str), Some("Z"));
-    assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 7);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 7);
 
     lib.run(lib.scan("A0")).await;
     assert!(above.is_marked_for_rerun(), "A0 sorts into the upper window's range");
-    let grown = above.next().await.expect("the query stays open").result.unwrap();
+    let grown = above.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&grown.read.rows), ["A", "A0", "B", "C"]);
 }
 
@@ -244,9 +244,9 @@ async fn a_search_window_delivers_without_its_count() {
         searching_list(&["A wanted", "B other", "C wanted", "D other", "E wanted"]).await;
     let tables = lib.tables();
     let mut window = tables.subscribe_import_window(list, first(50));
-    let delivered = window.next().await.expect("the query stays open").result.unwrap();
+    let delivered = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&delivered.read.rows), ["A wanted", "C wanted", "E wanted"]);
-    let count = tables.subscribe_import_count(list).next().await.unwrap().unwrap();
+    let count = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap();
     assert_eq!(count.rows, 3);
 }
 
@@ -265,15 +265,15 @@ async fn a_scan_item_reruns_the_search_window_holding_it_and_the_count() {
     let mut count = tables.subscribe_import_count(list);
     settled(&mut above).await;
     settled(&mut below).await;
-    count.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
 
     lib.run(lib.scan("Z wanted")).await;
     assert!(below.is_marked_for_rerun(), "the lower window's range holds Z wanted");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     assert!(count.is_marked_for_rerun());
-    let grown = below.next().await.expect("the query stays open").result.unwrap();
+    let grown = below.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&grown.read.rows).last().map(String::as_str), Some("Z wanted"));
-    assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 7);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 7);
 }
 
 /// A commit that touches a table the windows do not read does not read them
@@ -294,7 +294,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let mut window = tables.subscribe_import_window(list, first(50));
     let mut count = tables.subscribe_import_count(list);
     settled(&mut window).await;
-    count.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
 
     // What a walk records about the directories it read: the list projects
     // candidates, and never reads this.
@@ -319,7 +319,7 @@ async fn import_list_wakes_on_a_scan_item() {
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
     let mut window = tables.subscribe_import_window(list, first(50));
-    let initial = window.next().await.expect("the query stays open").result.unwrap();
+    let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&initial.read.rows), vec!["first".to_string()]);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
@@ -350,15 +350,15 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     let mut count = tables.subscribe_import_count(list);
     let mut scans = tables.subscribe_scan_found_counts();
     settled(&mut window).await;
-    count.next().await.expect("the query stays open").unwrap();
-    scans.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
+    scans.next_inline().await.expect("the query stays open").unwrap();
 
     for name in ["first", "second"] {
         tables.save_folder_scan_item(root, rescan, &scan_candidate(root, name)).await.unwrap();
     }
     // The re-confirmed folders move the scan's progress, and nothing the
     // list's windows or count read.
-    tokio::time::timeout(HANG_GUARD, scans.next())
+    tokio::time::timeout(HANG_GUARD, scans.next_inline())
         .await
         .expect("the re-confirmed folders move the scan progress")
         .expect("the query stays open")
@@ -478,7 +478,7 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
         assert_eq!(
             tables
                 .subscribe_import_position(list, key)
-                .next()
+                .next_inline()
                 .await
                 .expect("the query stays open")
                 .result
@@ -508,7 +508,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
         .await
         .unwrap();
     let mut query = tables.subscribe_import_count(list);
-    let before = query.next().await.unwrap().unwrap();
+    let before = query.next_inline().await.unwrap().unwrap();
     assert_eq!(before.rows, whole(&tables, list).await.len() as u64);
     let mut follows = async |what: &str| {
         let fresh = tables.read_import_list_for_test(list).await.unwrap();
@@ -553,7 +553,7 @@ async fn a_fold_reruns_the_windows_holding_the_group() {
     tables.set_import_list_group_folded(list, lib.group_key("C"), true).await.unwrap();
     assert!(below.is_marked_for_rerun(), "the window holding the group reruns");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
-    let folded = below.next().await.expect("the query stays open").result.unwrap();
+    let folded = below.next_inline().await.expect("the query stays open").result.unwrap();
     assert!(!items_sequence(&folded.read.rows).contains(&"candidate C/One".to_string()));
 }
 
@@ -572,15 +572,15 @@ async fn a_selection_write_reruns_the_windows_holding_its_rows() {
     let mut selection = tables.subscribe_import_selection(list);
     settled(&mut above).await;
     settled(&mut below).await;
-    selection.next().await.expect("the query stays open").unwrap();
+    selection.next_inline().await.expect("the query stays open").unwrap();
 
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("E")] }).await;
     assert!(below.is_marked_for_rerun(), "the window holding E reruns");
     assert!(selection.is_marked_for_rerun(), "the selection summary reruns");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
-    let selected = below.next().await.expect("the query stays open").result.unwrap();
+    let selected = below.next_inline().await.expect("the query stays open").result.unwrap();
     assert!(window_rows(&selected).iter().any(|row| row.selected && row.display_path == "E"));
-    assert_eq!(selection.next().await.expect("the query stays open").unwrap().count, 1);
+    assert_eq!(selection.next_inline().await.expect("the query stays open").unwrap().count, 1);
 }
 
 /// Scan `start..end` more folders into the import list, each its own album

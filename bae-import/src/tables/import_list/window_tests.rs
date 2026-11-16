@@ -774,7 +774,7 @@ async fn a_done_row_reads_its_library_release() {
     let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
     let whole = bae_store::ListWindow::Forward { from: None, until: None, limit: 50 };
     let mut live = tables.subscribe_import_window(list, whole);
-    let first = live.next().await.expect("the query stays open").result.unwrap();
+    let first = live.next_inline().await.expect("the query stays open").result.unwrap();
     let done = window_rows(&first);
     assert_eq!(done.len(), 1);
     let done = &done[0];
@@ -810,7 +810,7 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(done.release_link, None);
 
     records.rename_album_for_test(&album_id, "Retitled").await.unwrap();
-    let retitled = tokio::time::timeout(HANG_GUARD, live.next())
+    let retitled = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("retitling the album wakes the list")
         .expect("the query stays open")

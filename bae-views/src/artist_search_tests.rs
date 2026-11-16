@@ -44,7 +44,7 @@ fn ids(window: &WindowRead<DbArtistSearchRow>) -> Vec<&str> {
 async fn found(db: &Store, text: &str) -> WindowRead<DbArtistSearchRow> {
     LibraryViews::new(db.clone())
         .subscribe_artist_search_window(query(text), first(10))
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -60,7 +60,7 @@ async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     let (db, _tmp) = seeded().await;
     let views = LibraryViews::new(db.clone());
     let mut top = views.subscribe_artist_search_window(query("artist name"), first(2));
-    let top = top.next().await.expect("the query stays open").result.unwrap();
+    let top = top.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(ids(&top), vec![FIRST, SECOND]);
     let beyond = top.beyond.clone().expect("the limit cut the window short");
     let below = views
@@ -68,7 +68,7 @@ async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
             query("artist name"),
             ListWindow::Forward { from: Some(beyond), until: None, limit: 2 },
         )
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -76,7 +76,7 @@ async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     assert_eq!(ids(&below), vec![THIRD]);
     let count = views
         .subscribe_artist_search_count(query("artist name"))
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap();
@@ -85,7 +85,8 @@ async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     assert_eq!(ids(&found(&db, "composer").await), vec![OTHER]);
     let none = found(&db, "   ").await;
     assert!(none.rows.is_empty());
-    let count = views.subscribe_artist_search_count(query("   ")).next().await.unwrap().unwrap();
+    let count =
+        views.subscribe_artist_search_count(query("   ")).next_inline().await.unwrap().unwrap();
     assert_eq!(count, 0);
 }
 
@@ -99,7 +100,7 @@ async fn artist_search_positions_and_jumps_by_key() {
         views.artist_search_key_at(query("artist name"), 1).await.unwrap().expect("a row at 1");
     let position = views
         .subscribe_artist_search_position(query("artist name"), second.clone())
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -110,7 +111,7 @@ async fn artist_search_positions_and_jumps_by_key() {
             query("artist name"),
             ListWindow::Forward { from: Some(second), until: None, limit: 10 },
         )
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -148,15 +149,20 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
     .collect();
     let mut count = views.subscribe_artist_search_count(query("artist name"));
     for window in &mut windows {
-        tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap().result.unwrap();
+        tokio::time::timeout(HANG_GUARD, window.next_inline())
+            .await
+            .unwrap()
+            .unwrap()
+            .result
+            .unwrap();
     }
-    count.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
 
     // "Artist Name BB" sorts between B and C.
     test_records(&db).find_or_create_artists(&[credit("Artist Name BB")]).await.unwrap();
     // The windows above and below hold what they held, so a rerun of either
     // delivers nothing new; the middle one delivers the artist.
-    let middle = tokio::time::timeout(HANG_GUARD, windows[1].next())
+    let middle = tokio::time::timeout(HANG_GUARD, windows[1].next_inline())
         .await
         .expect("coven reruns the window for a new artist the text finds")
         .expect("the query stays open")
@@ -166,7 +172,8 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
         middle.rows.iter().map(|row| row.artist.name.as_str()).collect::<Vec<_>>(),
         ["Artist Name B", "Artist Name BB"]
     );
-    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
+    let counted =
+        tokio::time::timeout(HANG_GUARD, count.next_inline()).await.unwrap().unwrap().unwrap();
     assert_eq!(counted, 4);
 }
 
@@ -179,25 +186,25 @@ async fn artist_search_follows_writes_to_what_it_finds() {
     let views = LibraryViews::new(db.clone());
     let mut live = views.subscribe_artist_search_window(query("artist name"), first(10));
     let mut count = views.subscribe_artist_search_count(query("artist name"));
-    let initial = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+    let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
     assert!(initial.rows.iter().all(|row| row.credit_names.is_empty()));
 
     records.find_or_create_artists(&[credit("Artist Name D")]).await.unwrap();
-    let added = tokio::time::timeout(HANG_GUARD, live.next())
+    let added = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("a new match wakes the search")
         .expect("the query stays open")
         .result
         .unwrap();
     assert_eq!(added.rows.len(), 4);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 4);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 4);
 
     records
         .add_artist_credit_name(FIRST, &bae_store::EnteredName::parse("Artist Alias").unwrap())
         .await
         .unwrap();
-    let named = tokio::time::timeout(HANG_GUARD, live.next())
+    let named = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("a found artist's new name wakes the search")
         .expect("the query stays open")

@@ -281,7 +281,10 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
                 |row| row.get::<_, String>(0),
             )?)
         });
-    assert_eq!(live.next().await.expect("the query stays open").result.unwrap(), "Album Title");
+    assert_eq!(
+        live.next_inline().await.expect("the query stays open").result.unwrap(),
+        "Album Title"
+    );
 
     exec(&db, "UPDATE albums SET title = 'Renamed Other Album' WHERE id = ?1", &[OTHER_ALBUM_ID])
         .await;

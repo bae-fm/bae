@@ -18,7 +18,7 @@ where
     E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
 {
     let revision = live.requests().set(request).expect("the subscription is open");
-    let event = tokio::time::timeout(HANG_GUARD, live.next())
+    let event = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("a new request reruns the query")
         .expect("the query stays open");

@@ -22,6 +22,7 @@ pub use file_version::file_version_sql;
 pub mod list_windows;
 pub use list_windows::{ListWindow, SortDirection, WindowRead};
 pub mod live_query;
+pub mod live_results;
 pub mod path_column;
 pub mod query;
 pub mod read;

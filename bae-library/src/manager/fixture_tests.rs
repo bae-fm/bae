@@ -89,11 +89,11 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         true,
         bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
     );
-    let grouped = browse.next().await.expect("the query stays open").result.unwrap();
+    let grouped = browse.next_inline().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.rows;
     let found = views(manager)
         .subscribe_album_sections(&[])
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap();

@@ -140,7 +140,7 @@ pub(super) async fn download_queue_until(
     let mut values = manager.subscribe_download_snapshot();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let queue = values.next().await.expect("the query stays open").unwrap();
+            let queue = values.next_inline().await.expect("the query stays open").unwrap();
             if done(&queue) {
                 return queue;
             }
@@ -249,7 +249,7 @@ impl ReleaseRef {
 pub(super) async fn listed_queues(manager: &LibraryManager) -> bae_views::StorageQueues {
     bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_queues()
-        .next()
+        .next_inline()
         .await
         .expect("the queues query answers")
         .unwrap()
@@ -260,7 +260,7 @@ pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &st
     let mut queued = manager.records.subscribe_row_file_queued_for_test(table, row_id);
     manager.store.sync_now();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while queued.next().await.expect("the query stays open").unwrap() {}
+        while queued.next_inline().await.expect("the query stays open").unwrap() {}
     })
     .await
     .expect("file uploaded");
@@ -643,7 +643,7 @@ pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_i
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
 pub(super) async fn pending_list_until(
-    values: &mut impl bae_store::live_query::LiveSource<bae_sync_status::SyncStatusSnapshot>,
+    values: &mut impl crate::followed::Followed<bae_sync_status::SyncStatusSnapshot>,
     matches: impl Fn(&[bae_sync_status::PendingItem]) -> bool,
 ) -> Vec<bae_sync_status::PendingItem> {
     crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
@@ -686,7 +686,7 @@ pub(super) async fn rows_until(
 ) -> bae_views::storage_inspector::StorageInspector {
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let event = rows.next().await.expect("the inspector's read runs");
+            let event = rows.next_inline().await.expect("the inspector's read runs");
             if let Some(value) = event.result.unwrap().filter(|value| accept(value)) {
                 break value;
             }

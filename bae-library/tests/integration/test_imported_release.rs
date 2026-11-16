@@ -203,7 +203,7 @@ async fn next_detail(
     >,
     waiting_for: &str,
 ) -> bae_views::album_detail::AlbumDetail {
-    let event = tokio::time::timeout(HANG_GUARD, values.next())
+    let event = tokio::time::timeout(HANG_GUARD, values.next_inline())
         .await
         .unwrap_or_else(|_| panic!("{waiting_for}"))
         .expect("the album detail's read stays open");
@@ -476,7 +476,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
             bae_views::LibrarySearchQuery::parse("Track Artist"),
             bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
         );
-    let found = search.next().await.expect("the artist search stays open").result.unwrap();
+    let found = search.next_inline().await.expect("the artist search stays open").result.unwrap();
     let bae_views::ListRows::ArtistSearch(rows) =
         bae_views::artist_search::resolve_artist_search_window(found).rows
     else {

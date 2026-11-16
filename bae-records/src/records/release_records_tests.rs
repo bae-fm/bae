@@ -586,12 +586,12 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let mut live = records.subscribe_library_statuses(LibraryChecks::default());
     let requests = live.requests();
     assert!(
-        live.next().await.expect("the query stays open").result.unwrap().is_empty(),
+        live.next_inline().await.expect("the query stays open").result.unwrap().is_empty(),
         "no offers check nothing"
     );
 
     requests.set([offered.clone(), other.clone()].into_iter().collect()).unwrap();
-    let initial = live.next().await.expect("the query stays open").result.unwrap();
+    let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.len(), 2);
     assert!(initial.iter().all(|status| !status.album_in_library()));
 
@@ -602,7 +602,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
-    let updated = tokio::time::timeout(HANG_GUARD, live.next())
+    let updated = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("identity write wakes the library statuses")
         .expect("the query stays open")
@@ -625,7 +625,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
         "UPDATE release_records SET kind = 'album', key = 'source-group-1', album_key = NULL WHERE id = ?1",
         &[IDENTITY_ID],
     ).await;
-    let album_only = tokio::time::timeout(HANG_GUARD, live.next())
+    let album_only = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("identity kind change wakes the library statuses")
         .expect("the query stays open")
@@ -636,7 +636,7 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     assert!(held.album_in_library());
 
     requests.set([other].into_iter().collect()).unwrap();
-    let narrowed = live.next().await.expect("the query stays open").result.unwrap();
+    let narrowed = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         narrowed.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
         vec!["source-release-2"],

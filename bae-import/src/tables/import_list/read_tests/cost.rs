@@ -63,7 +63,7 @@ async fn measure_view(
                 let started = Instant::now();
                 tables
                     .subscribe_import_position(list, key.clone())
-                    .next()
+                    .next_inline()
                     .await
                     .unwrap()
                     .result
@@ -219,9 +219,9 @@ async fn measure_import_list_typed(db: &Store) {
                 .await
                 .unwrap();
             let mut window = tables.subscribe_import_window(list, first(LIMIT));
-            window.next().await.unwrap().result.unwrap();
+            window.next_inline().await.unwrap().result.unwrap();
             runs.push(started.elapsed());
-            kept = tables.subscribe_import_count(list).next().await.unwrap().unwrap().rows;
+            kept = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap().rows;
             tables
                 .set_import_list_view(list, found_view("", PendingFilter::All, PathAscending))
                 .await

@@ -748,11 +748,11 @@ mod playback_queue_bench {
             false,
             bae_store::ListWindow::Forward { from: None, until: None, limit: 100 },
         );
-        value.next().await.unwrap().unwrap();
-        upcoming.next().await.unwrap();
+        value.next_inline().await.unwrap().unwrap();
+        upcoming.next_inline().await.unwrap();
         let screens = [
-            tokio::spawn(async move { while value.next().await.is_some() {} }),
-            tokio::spawn(async move { while upcoming.next().await.is_some() {} }),
+            tokio::spawn(async move { while value.next_inline().await.is_some() {} }),
+            tokio::spawn(async move { while upcoming.next_inline().await.is_some() {} }),
         ];
         bae_writes(&db, "queue screens open").await;
         for screen in screens {

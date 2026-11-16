@@ -10,6 +10,12 @@ impl LiveSource<u8> for Answers {
     }
 }
 
+impl IntoLiveSource<u8> for Answers {
+    fn into_live_source(self, _bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<u8>> {
+        Box::new(self)
+    }
+}
+
 fn bug(message: &str) -> coven::task::Bug {
     coven::task::Bug::new("live query", message)
 }

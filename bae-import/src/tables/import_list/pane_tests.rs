@@ -478,20 +478,20 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let mut live = tables.subscribe_import_candidate(None);
     let requests = live.requests();
     assert!(
-        live.next().await.expect("the query stays open").result.unwrap().is_none(),
+        live.next_inline().await.expect("the query stays open").result.unwrap().is_none(),
         "no key reads nothing"
     );
 
     for (key, name) in keys.iter().zip(["first", "second"]) {
         requests.set(Some(key.clone())).unwrap();
-        let read = live.next().await.expect("the query stays open");
+        let read = live.next_inline().await.expect("the query stays open");
         assert_eq!(read.request.as_ref(), Some(key));
         let detail = read.result.unwrap().expect("the candidate reads");
         assert_eq!(detail.candidate.name, name);
     }
 
     requests.set(None).unwrap();
-    assert!(live.next().await.expect("the query stays open").result.unwrap().is_none());
+    assert!(live.next_inline().await.expect("the query stays open").result.unwrap().is_none());
 }
 
 /// A folder that failed validation is listed under Skipped as what the scan
@@ -568,7 +568,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
 
     let mut detail = tables.subscribe_invalid_candidate(Some(key.clone()));
     let read = detail
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result
@@ -607,7 +607,7 @@ async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
 
     let read = tables
         .subscribe_invalid_candidate(Some(valid.key()))
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .result

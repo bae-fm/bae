@@ -159,11 +159,11 @@ impl SyncCycles {
             reason = "test support: the watcher ends with its test"
         )]
         let watcher = tokio::spawn(async move {
-            let mut previous = match ends.next().await {
+            let mut previous = match ends.next_inline().await {
                 Some(Ok(end)) => end,
                 _ => return,
             };
-            while let Some(Ok(current)) = ends.next().await {
+            while let Some(Ok(current)) = ends.next_inline().await {
                 if current == previous {
                     continue;
                 }

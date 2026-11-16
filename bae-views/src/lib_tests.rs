@@ -273,7 +273,7 @@ async fn an_artist_window_from_a_key_holds_the_rows_from_it_through_the_index() 
         &sort,
         ListWindow::Forward { from: Some(from.clone()), until: None, limit: 50 },
     );
-    let held = live.next().await.expect("the query stays open").result.unwrap();
+    let held = live.next_inline().await.expect("the query stays open").result.unwrap();
     let by_offset = views.get_artist_page(&sort, 150, 50).await.unwrap();
     let ids =
         |rows: &[DbArtistSummary]| rows.iter().map(|row| row.artist.id.clone()).collect::<Vec<_>>();

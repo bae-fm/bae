@@ -23,7 +23,7 @@ async fn album_titles_next(
         bae_store::DbError,
     >,
 ) -> Vec<String> {
-    let shown = live.next().await.expect("the query stays open").result.unwrap();
+    let shown = live.next_inline().await.expect("the query stays open").result.unwrap();
     shown.rows.iter().map(|row| row.album.title.clone()).collect()
 }
 
@@ -49,7 +49,9 @@ async fn a_language_change_reorders_the_window_a_list_shows() {
     );
     test_records(&db).set_sort_language("sv").await.unwrap();
     assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(300), live.next()).await.is_err(),
+        tokio::time::timeout(std::time::Duration::from_millis(300), live.next_inline())
+            .await
+            .is_err(),
         "the language it already has writes nothing"
     );
 }

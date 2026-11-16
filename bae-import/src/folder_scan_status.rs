@@ -10,6 +10,7 @@
 //! that the store would not take. Neither of those can outlive the process,
 //! so a root never reads as scanning with nothing scanning it.
 
+use bae_store::live_results::LiveResults;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -235,7 +236,7 @@ pub(crate) type FolderScansInMemory = BTreeMap<PathBuf, RootScanInMemory>;
 /// own live query only says when they change.
 pub(crate) struct FolderScansLive {
     tables: crate::tables::ImportTables,
-    changes: coven::LiveQuery<Vec<StoredRootScan>, bae_store::DbError>,
+    changes: LiveResults<coven::LiveQuery<Vec<StoredRootScan>, bae_store::DbError>>,
     in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
     /// Whether the coordinator still holds the memory's sender. Once it has
     /// stopped, the memory says what it last said and only the table moves.
@@ -251,9 +252,10 @@ impl FolderScansLive {
     pub(crate) fn new(
         tables: crate::tables::ImportTables,
         in_memory: tokio::sync::watch::Receiver<FolderScansInMemory>,
+        bugs: coven::task::BugSinkRef,
     ) -> Self {
         Self {
-            changes: tables.subscribe_stored_folder_scans(),
+            changes: LiveResults::new(tables.subscribe_stored_folder_scans(), bugs),
             tables,
             in_memory,
             coordinator_running: true,
@@ -302,6 +304,15 @@ impl FolderScansLive {
 impl bae_store::live_query::LiveSource<FolderScanProgress> for FolderScansLive {
     fn next(&mut self) -> bae_store::live_query::NextValue<'_, FolderScanProgress> {
         Box::pin(FolderScansLive::next(self))
+    }
+}
+
+impl bae_store::live_query::IntoLiveSource<FolderScanProgress> for FolderScansLive {
+    fn into_live_source(
+        self,
+        _bugs: coven::task::BugSinkRef,
+    ) -> Box<dyn bae_store::live_query::LiveSource<FolderScanProgress>> {
+        Box::new(self)
     }
 }
 

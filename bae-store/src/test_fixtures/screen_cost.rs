@@ -236,7 +236,7 @@ where
     }
 
     async fn delivered(&mut self) -> Projection {
-        self.next().await.expect("the query stays open").result.expect("the query's read")
+        self.next_inline().await.expect("the query stays open").result.expect("the query's read")
     }
 }
 

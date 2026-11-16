@@ -119,7 +119,7 @@ async fn the_receiver_cast_to_comes_first_even_before_discovery_finds_it() {
 
 /// The followed list's next value.
 async fn next(listed: &mut coven::LiveQuery<CastReceiverList, DbError>) -> CastReceiverList {
-    tokio::time::timeout(HANG_GUARD, listed.next())
+    tokio::time::timeout(HANG_GUARD, listed.next_inline())
         .await
         .expect("the list answers")
         .expect("the list stays open")

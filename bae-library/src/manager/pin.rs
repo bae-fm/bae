@@ -157,7 +157,7 @@ impl LibraryManager {
                     Ok(read)
                 })
             };
-            let mut kept = kept;
+            let mut kept = manager.store.results(kept);
             let mut transfers = manager.store.subscribe_download_file_transfers();
             let mut count = PinCount::new(sizes);
             let prepare = manager.store.prepare_pin(&files);

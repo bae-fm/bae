@@ -95,7 +95,7 @@ pub struct Finished(());
 /// the read saw the network in between. A failed read answers too: the
 /// worker's own read reports it. Never once the store has closed.
 async fn network_changed_from(store: &Store, seen: Option<bool>) {
-    let mut usable = store.subscribe(|sql| tables::network_usable_on(&sql));
+    let mut usable = store.results(store.subscribe(|sql| tables::network_usable_on(&sql)));
     match usable.next().await {
         Some(Ok(now)) if now == seen => {}
         Some(_) => return,

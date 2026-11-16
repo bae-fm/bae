@@ -345,13 +345,13 @@ async fn artist_window_reads_its_rows_and_their_images() {
     let mut live = views.subscribe_artist_window(&[], top_window());
     let mut count = views.subscribe_artist_count();
 
-    let initial = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 1);
+    let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 1);
     assert_eq!(initial.rows[0].artist.id, ARTIST_ID);
     assert!(initial.rows[0].image.is_none());
 
     let artist_image = write_artist_image(&records, ARTIST_ID, "artist image bytes").await;
-    let imaged = tokio::time::timeout(HANG_GUARD, live.next())
+    let imaged = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("an image on a listed artist wakes artist browse")
         .expect("the query stays open")
@@ -387,9 +387,14 @@ async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
         .collect();
     let mut count = views.subscribe_artist_count();
     for query in &mut live {
-        tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap().result.unwrap();
+        tokio::time::timeout(HANG_GUARD, query.next_inline())
+            .await
+            .unwrap()
+            .unwrap()
+            .result
+            .unwrap();
     }
-    count.next().await.expect("the query stays open").unwrap();
+    count.next_inline().await.expect("the query stays open").unwrap();
 
     // "D" sorts between the second row and the fourth.
     let (artist, album) = (artist_id(5), album_id(5));

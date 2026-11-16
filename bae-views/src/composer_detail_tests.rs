@@ -167,14 +167,14 @@ async fn each_part_of_the_page_opens_its_heading() {
     let views = LibraryViews::new(db.clone());
     let mut live = views.subscribe_composer_detail_window(COMPOSER, top_window());
     let window = crate::composer_detail::resolve_composer_detail_window(
-        live.next().await.expect("the query stays open").result.unwrap(),
+        live.next_inline().await.expect("the query stays open").result.unwrap(),
     );
     let crate::ListRows::ComposerPage(rows) = window.rows else {
         panic!("a composer's page window holds its page's rows");
     };
     let count = views
         .subscribe_composer_detail_count(COMPOSER)
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap();
@@ -274,8 +274,8 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         ListWindow::Forward { from: Some(from), until: None, limit: 50 },
     );
     let mut count = views.subscribe_composer_detail_count(COMPOSER);
-    let first = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 12);
+    let first = live.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 12);
     assert_eq!(first.rows.len(), 4);
 
     // An edit applying a catalog that credits nobody on the second release.
@@ -283,19 +283,19 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         .apply_release_links_for_test(RELEASE_SECOND, RecordsFixture::new().rows())
         .await
         .unwrap();
-    let after = tokio::time::timeout(HANG_GUARD, live.next())
+    let after = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("a credit leaving the page wakes its rows")
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 11);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 11);
     assert_eq!(after.rows.len(), 3);
     assert!(after.rows[0].opens_heading);
 
     let other = views
         .subscribe_composer_detail_count(OTHER_COMPOSER)
-        .next()
+        .next_inline()
         .await
         .expect("the query stays open")
         .unwrap();

@@ -310,7 +310,7 @@ async fn a_write_reruns_only_the_window_whose_range_holds_it() {
     let mut lower = subscribe(window(100, 300));
     let mut upper = subscribe(window(300, 600));
     for query in [&mut lower, &mut upper] {
-        tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap();
+        tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
     }
     let insert = |n: i64, id: &'static str| {
         let store = &store;
@@ -330,13 +330,13 @@ async fn a_write_reruns_only_the_window_whose_range_holds_it() {
         insert(n, id).await;
         assert!(upper.is_marked_for_rerun(), "{id} is inside the upper range");
         assert!(!lower.is_marked_for_rerun(), "{id} is past the lower range's end");
-        let event = tokio::time::timeout(HANG_GUARD, upper.next()).await.unwrap().unwrap();
+        let event = tokio::time::timeout(HANG_GUARD, upper.next_inline()).await.unwrap().unwrap();
         assert!(event.result.unwrap().rows.contains(&id.to_string()));
     }
     // Inside the lower range.
     insert(205, "x205").await;
     assert!(lower.is_marked_for_rerun() && !upper.is_marked_for_rerun());
-    tokio::time::timeout(HANG_GUARD, lower.next()).await.unwrap().unwrap();
+    tokio::time::timeout(HANG_GUARD, lower.next_inline()).await.unwrap().unwrap();
     // Above both, past both, and between the two windows' bounds' neighbours.
     for (n, id) in [(5, "x005"), (950, "x950"), (99, "x099")] {
         insert(n, id).await;
@@ -405,7 +405,7 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_
         }),
     ];
     for query in &mut windows {
-        tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap();
+        tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
     }
     let write = |sql: &'static str| {
         let store = &store;
@@ -430,7 +430,7 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_
         assert_eq!(marked, expected, "{sql}");
         for (query, marked) in windows.iter_mut().zip(expected) {
             if marked {
-                tokio::time::timeout(HANG_GUARD, query.next()).await.unwrap().unwrap();
+                tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
             }
         }
     }

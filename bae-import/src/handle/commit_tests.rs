@@ -145,7 +145,7 @@ fn audio_folder(root: &Path, name: &str) {
 /// that takes.
 async fn retitle(handle: &ImportServiceHandle, key: &crate::CandidateKey) {
     let mut pane_query = handle.subscribe_candidate(Some(key.clone()));
-    pane_query.next().await.expect("the query stays open").result.unwrap();
+    pane_query.next_inline().await.expect("the query stays open").result.unwrap();
     handle
         .set_candidate_edit_field(
             key,
@@ -158,7 +158,7 @@ async fn retitle(handle: &ImportServiceHandle, key: &crate::CandidateKey) {
         .unwrap();
     loop {
         let projection = pane_query
-            .next()
+            .next_inline()
             .await
             .expect("the query stays open")
             .result

@@ -105,7 +105,7 @@ async fn gallery_until(
 ) -> CoverGallery {
     tokio::time::timeout(Duration::from_secs(30), async {
         loop {
-            let event = gallery.next().await.expect("the read runs");
+            let event = gallery.next_inline().await.expect("the read runs");
             if event.request.as_ref() != Some(asked) {
                 continue;
             }

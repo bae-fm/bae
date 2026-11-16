@@ -43,7 +43,7 @@ impl LibraryManager {
         let mut kept = self.records.subscribe_release_files_kept(release_id);
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
-                let kept = kept.next().await.expect("the query stays open").unwrap();
+                let kept = kept.next_inline().await.expect("the query stays open").unwrap();
                 if kept.values().all(|kept| *kept) {
                     break;
                 }

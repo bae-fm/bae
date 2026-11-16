@@ -7,6 +7,7 @@
 use super::upload_throughput::UploadThroughput;
 use super::UploadBar;
 use bae_records::DbSendingUploads;
+use bae_store::live_results::LiveResults;
 use std::collections::{BTreeMap, HashMap};
 
 /// How far the files being sent have gone together and how fast they go.
@@ -109,7 +110,7 @@ pub enum OutboxTransferChange {
 /// The transfers each delivery of the files being sent, or each move of
 /// their bytes, measures.
 struct SendingTransfers {
-    sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
+    sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
     /// The files being sent as the query last read them; `None` until it
     /// first does.
     read: Option<DbSendingUploads>,
@@ -122,7 +123,7 @@ struct SendingTransfers {
 
 impl SendingTransfers {
     fn of(
-        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
+        sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
@@ -173,7 +174,7 @@ pub struct OutboxTransfersWatch {
 
 impl OutboxTransfersWatch {
     pub(crate) fn of(
-        sending: coven::LiveQuery<DbSendingUploads, bae_store::DbError>,
+        sending: LiveResults<coven::LiveQuery<DbSendingUploads, bae_store::DbError>>,
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {

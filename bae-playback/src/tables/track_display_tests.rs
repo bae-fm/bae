@@ -201,7 +201,7 @@ async fn track_infos_follow_the_ids_asked_across_releases_and_leave_out_the_miss
             INFO_SIDE_A.to_string(),
         ],
     );
-    let infos = follow.next().await.expect("the read runs").result.unwrap();
+    let infos = follow.next_inline().await.expect("the read runs").result.unwrap();
 
     let facts: Vec<_> = infos
         .iter()

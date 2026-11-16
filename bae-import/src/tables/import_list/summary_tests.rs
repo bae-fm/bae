@@ -530,11 +530,11 @@ async fn the_tab_counts_follow_the_placement() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let mut live = tables.subscribe_tab_counts();
-    let none = live.next().await.expect("the query stays open").unwrap();
+    let none = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(none, crate::TriageTabCounts::default());
 
     lib.run(lib.scan("Release")).await;
-    let found = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next())
+    let found = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
         .await
         .expect("a placed candidate wakes the counts")
         .expect("the query stays open")
@@ -542,7 +542,7 @@ async fn the_tab_counts_follow_the_placement() {
     assert_eq!(found, crate::TriageTabCounts { pending: 1, done: 0, skipped: 0 });
 
     lib.run(lib.skip("Release")).await;
-    let skipped = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next())
+    let skipped = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
         .await
         .expect("a skip wakes the counts")
         .expect("the query stays open")

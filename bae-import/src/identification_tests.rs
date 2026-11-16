@@ -141,7 +141,8 @@ pub(crate) async fn live_until<T: Clone + PartialEq + Send + 'static>(
 ) -> T {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let value = query.next().await.expect("the query stays open").expect("the query reads");
+            let value =
+                query.next_inline().await.expect("the query stays open").expect("the query reads");
             if wanted(&value) {
                 return value;
             }

@@ -91,7 +91,7 @@ struct BenchLibrary {
 pub(crate) async fn uploaded(handle: &coven::CovenHandle) -> Result<(), String> {
     let mut unsent = handle.subscribe_unsent_work();
     loop {
-        match unsent.next().await {
+        match unsent.next_inline().await {
             Some(Ok(work)) if work.is_empty() => return Ok(()),
             Some(Ok(_)) => {}
             Some(Err(error)) => return Err(format!("reading the unsent work failed: {error}")),

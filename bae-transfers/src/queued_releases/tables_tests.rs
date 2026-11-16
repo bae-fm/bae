@@ -445,13 +445,14 @@ async fn a_window_reads_its_range_and_the_queue_length_its_own() {
         until: Some(fourth),
         limit: 50,
     });
-    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     let shown: Vec<String> = read.rows.iter().map(|row| row.op.release_id.clone()).collect();
     assert_eq!(shown, releases[1..3].to_vec());
     assert_eq!(read.beyond, None);
-    let count = downloads.subscribe_row_count().next().await.expect("open").unwrap();
+    let count = downloads.subscribe_row_count().next_inline().await.expect("open").unwrap();
     assert_eq!(count, 5);
-    let before = downloads.subscribe_position(second).next().await.expect("open").result.unwrap();
+    let before =
+        downloads.subscribe_position(second).next_inline().await.expect("open").result.unwrap();
     assert_eq!(before, 1);
     let past_the_end = downloads.key_at(99).await.unwrap();
     assert_eq!(past_the_end, downloads.key_at(4).await.unwrap());
@@ -474,9 +475,9 @@ async fn an_entry_reruns_the_window_it_lands_in_and_the_length_alone() {
     .map(|window| downloads.subscribe_window(window));
     let mut length = downloads.subscribe_row_count();
     for window in &mut windows {
-        window.next().await.expect("the query stays open").result.unwrap();
+        window.next_inline().await.expect("the query stays open").result.unwrap();
     }
-    length.next().await.expect("open").unwrap();
+    length.next_inline().await.expect("open").unwrap();
 
     enqueue_releases(&db, vec![download(&releases[4])]).await.unwrap();
     assert!(!windows[0].is_marked_for_rerun());

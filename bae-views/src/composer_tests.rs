@@ -512,9 +512,11 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         let mut below = views.subscribe_composer_window(&sort, below);
         let mut count = views.subscribe_composer_count();
         let id_of = |window: &WindowRead<DbComposerSummary>| window.rows[0].artist.id.clone();
-        let initial_above = above.next().await.expect("the query stays open").result.unwrap();
-        let initial_below = below.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 2);
+        let initial_above =
+            above.next_inline().await.expect("the query stays open").result.unwrap();
+        let initial_below =
+            below.next_inline().await.expect("the query stays open").result.unwrap();
+        assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 2);
         assert_eq!(id_of(&initial_above), other);
         assert_eq!(id_of(&initial_below), COMPOSER_ID);
 
@@ -530,7 +532,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         devices.resume().await;
         let renamed = tokio::time::timeout(HANG_GUARD, async {
             loop {
-                let event = above.next().await.expect("the query stays open");
+                let event = above.next_inline().await.expect("the query stays open");
                 let shown = event.result.unwrap();
                 if shown.rows[0].artist.name == "Composer Name Renamed" {
                     return shown;
@@ -564,7 +566,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
             .await;
         assert!(below.is_marked_for_rerun());
         assert!(!above.is_marked_for_rerun());
-        let counted = below.next().await.expect("the query stays open").result.unwrap();
+        let counted = below.next_inline().await.expect("the query stays open").result.unwrap();
         assert_eq!(counted.rows[0].work_count, 2);
 
         // An image on the composer in the upper window reruns that window
@@ -572,7 +574,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         let composer_image = write_artist_image(&records, &other, "composer image bytes").await;
         assert!(above.is_marked_for_rerun());
         assert!(!below.is_marked_for_rerun());
-        let imaged = above.next().await.expect("the query stays open").result.unwrap();
+        let imaged = above.next_inline().await.expect("the query stays open").result.unwrap();
         assert_eq!(
             imaged.rows[0].image.as_ref().map(|image| image.version.as_str()),
             Some(composer_image.as_str())
@@ -589,9 +591,9 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         assert!(above.is_marked_for_rerun());
         assert!(!below.is_marked_for_rerun());
         assert!(count.is_marked_for_rerun());
-        let inserted = above.next().await.expect("the query stays open").result.unwrap();
+        let inserted = above.next_inline().await.expect("the query stays open").result.unwrap();
         assert_eq!(inserted.rows.len(), 2);
-        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+        assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
     });
 }
 
@@ -605,7 +607,7 @@ async fn settled(
     >,
 ) {
     while window.is_marked_for_rerun() {
-        tokio::time::timeout(HANG_GUARD, window.next())
+        tokio::time::timeout(HANG_GUARD, window.next_inline())
             .await
             .expect("a window marked for a rerun delivers it")
             .expect("the query stays open")
@@ -616,7 +618,7 @@ async fn settled(
 
 /// The composer count's next value, which changes with a write.
 async fn next_count(count: &mut coven::LiveQuery<u64, bae_store::DbError>) -> u64 {
-    tokio::time::timeout(HANG_GUARD, count.next())
+    tokio::time::timeout(HANG_GUARD, count.next_inline())
         .await
         .expect("a write that moves the count wakes it")
         .expect("the query stays open")
@@ -639,8 +641,8 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         let views = crate::LibraryViews::new(reader.clone());
         let mut live = views.subscribe_composer_window(&sort, top_window());
         let mut count = views.subscribe_composer_count();
-        live.next().await.expect("the query stays open").result.unwrap();
-        assert_eq!(count.next().await.expect("the query stays open").unwrap(), 0);
+        live.next_inline().await.expect("the query stays open").result.unwrap();
+        assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
             ListWindow,
             WindowRead<DbComposerSummary>,
@@ -649,7 +651,8 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                             expected: Vec<(&str, i64)>| {
             tokio::time::timeout(HANG_GUARD, async {
                 loop {
-                    let shown = live.next().await.expect("the query stays open").result.unwrap();
+                    let shown =
+                        live.next_inline().await.expect("the query stays open").result.unwrap();
                     let rows = shown
                         .rows
                         .iter()

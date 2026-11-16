@@ -830,7 +830,7 @@ impl AppServices {
     /// library closes.
     pub fn follow_source<T: Clone + PartialEq + Send + 'static>(
         &self,
-        source: impl bae_store::live_query::LiveSource<T> + 'static,
+        source: impl bae_store::live_query::IntoLiveSource<T>,
     ) -> bae_store::live_query::LiveValues<T> {
         self.inner.manager.values_until_closed(source)
     }

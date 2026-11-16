@@ -22,7 +22,7 @@ use crate::selection::{SelectedRows, SelectionChange, SelectionSummary};
 use crate::tables::{ImportListError, ImportTables, SelectionWrite};
 use crate::FolderReleaseDecisionKey;
 use bae_store::list_windows::OrderKey;
-use bae_store::live_query::{CancellableLiveQuery, LiveSource, LiveValues};
+use bae_store::live_query::{CancellableLiveQuery, IntoLiveSource, LiveValues};
 use bae_store::{DbError, ListWindow};
 use tokio_util::sync::CancellationToken;
 
@@ -211,7 +211,7 @@ impl LiveImportList {
     /// ends.
     pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
-        query: impl LiveSource<T> + 'static,
+        query: impl IntoLiveSource<T>,
     ) -> LiveValues<T> {
         LiveValues::new(query, self.closing.child_token(), self.bugs.clone())
     }

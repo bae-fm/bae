@@ -275,7 +275,7 @@ async fn next_resolution(
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let projection = pane
-                .next()
+                .next_inline()
                 .await
                 .expect("the query stays open")
                 .result

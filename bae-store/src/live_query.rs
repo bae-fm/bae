@@ -17,12 +17,15 @@
 //! awaits a coven query reports such a bug, and every subscription a surface
 //! pulls is awaited here, so each takes the bug sink it reports to.
 
+use crate::live_results::LiveResults;
 use tokio_util::sync::CancellationToken;
 
 mod read;
 mod values;
+/// Where a live source reports a panic around a coven run.
+pub use coven::task::BugSinkRef;
 pub use read::{LiveRead, LiveRequest, ReadFor};
-pub use values::{LiveSource, LiveValues, NextValue};
+pub use values::{IntoLiveSource, LiveSource, LiveValues, NextValue};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.
@@ -66,7 +69,9 @@ impl<E> From<LiveQueryCancelled> for LiveQueryError<E> {
 /// error its query fails with.
 pub struct CancellableLiveQuery<Request, Projection, E = crate::DbError> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
-    query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection, E>>>,
+    query: tokio::sync::Mutex<
+        Option<LiveResults<coven::ReconfigurableLiveQuery<Request, Projection, E>>>,
+    >,
     cancellation: CancellationToken,
     /// Where a bug a run of the query carries goes as it arrives.
     bugs: coven::task::BugSinkRef,
@@ -93,7 +98,7 @@ where
             requests: std::sync::Mutex::new(Some(query.requests())),
             #[cfg(any(test, feature = "test-utils"))]
             runs: std::sync::Mutex::new(query.runs()),
-            query: tokio::sync::Mutex::new(Some(query)),
+            query: tokio::sync::Mutex::new(Some(LiveResults::new(query, bugs.clone()))),
             cancellation,
             bugs,
         }
@@ -147,7 +152,7 @@ where
                 #[cfg(any(test, feature = "test-utils"))]
                 {
                     *self.runs.lock().expect("live query run count mutex poisoned") =
-                        query.runs();
+                        query.with(|query| query.runs());
                 }
                 event
             } => event,

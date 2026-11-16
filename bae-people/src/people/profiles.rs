@@ -207,7 +207,10 @@ impl People {
     /// The member using this device, once the library knows them: at once
     /// when their registration has applied, or when sync applies it.
     async fn known_member(&self) -> Result<coven::MemberId, DbError> {
-        let mut own = self.inner.store.subscribe(|sql| Ok(people_on(&sql, &own_person_sql(), [])?));
+        let mut own = self
+            .inner
+            .store
+            .results(self.inner.store.subscribe(|sql| Ok(people_on(&sql, &own_person_sql(), [])?)));
         while let Some(own) = own.next().await {
             if let Some(person) = own?.pop() {
                 return Ok(person.membership.id);
@@ -224,7 +227,7 @@ impl People {
     /// good, waits for the person, who acknowledges it by asking again
     /// (§5.4).
     pub async fn finish_profile_requests(&self) -> Result<(), ProfileRequestError> {
-        let mut requests = self.subscribe_profile_request();
+        let mut requests = self.inner.store.results(self.subscribe_profile_request());
         while let Some(request) = requests.next().await {
             if let Some(request) = request? {
                 if request.state()? == ProfileRequestState::Made {

@@ -23,13 +23,13 @@ async fn stored_scans_follow_the_walk_in_flight() {
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
     let mut live = tables.subscribe_stored_folder_scans();
-    let initial = live.next().await.expect("the query stays open").unwrap();
+    let initial = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(only_outcome(initial), crate::StoredScanOutcome::Unfinished);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
-    let complete = tokio::time::timeout(HANG_GUARD, live.next())
+    let complete = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("finishing the scan wakes the stored scans")
         .expect("the query stays open")
@@ -67,11 +67,11 @@ async fn found_counts_follow_the_walk_in_flight() {
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
     let mut live = tables.subscribe_scan_found_counts();
-    let initial = live.next().await.expect("the query stays open").unwrap();
+    let initial = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(initial, crate::ScanFoundCounts::from([(root.clone(), 1)]));
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(HANG_GUARD, live.next())
+    let grown = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("a scan item wakes the found counts")
         .expect("the query stays open")
@@ -79,7 +79,7 @@ async fn found_counts_follow_the_walk_in_flight() {
     assert_eq!(grown, crate::ScanFoundCounts::from([(root.clone(), 2)]));
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
-    let done = tokio::time::timeout(HANG_GUARD, live.next())
+    let done = tokio::time::timeout(HANG_GUARD, live.next_inline())
         .await
         .expect("finishing the scan wakes the found counts")
         .expect("the query stays open")

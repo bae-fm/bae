@@ -374,7 +374,7 @@ async fn moving_a_window_reruns_the_list_as_a_request_change() {
         .await
         .unwrap();
     assert!(matches!(opening, Some(bae_import::ImportListOpening::Top)));
-    let summary = list.subscribe_summary().next().await.expect("the summary").unwrap();
+    let summary = list.subscribe_summary().next_inline().await.expect("the summary").unwrap();
     assert_eq!(summary.narrowing.tab, bae_import::TriageTab::Done);
 }
 

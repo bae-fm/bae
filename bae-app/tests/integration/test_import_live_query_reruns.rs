@@ -141,7 +141,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let mut count = list.subscribe_count();
     let (count_tx, mut list_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let count_reader = tokio::spawn(async move {
-        while let Some(read) = count.next().await {
+        while let Some(read) = count.next_inline().await {
             let shown = read.expect("the count reads");
             count_tx.send_replace(Some((shown.rows, Counted::of(&count.runs()))));
         }
@@ -177,7 +177,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let mut progress = tables.subscribe_scan_found_counts();
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let progress_reader = tokio::spawn(async move {
-        while let Some(read) = progress.next().await {
+        while let Some(read) = progress.next_inline().await {
             let counts = read.expect("the found counts read");
             let [found_count] = counts.values().copied().collect::<Vec<_>>()[..] else {
                 panic!("the scan is running: {counts:?}");
@@ -192,7 +192,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     pane.requests().set(Some(key.clone())).unwrap();
     let (pane_tx, mut pane_seen) = tokio::sync::watch::channel(None::<(bool, Counted)>);
     let pane_reader = tokio::spawn(async move {
-        while let Some(event) = pane.next().await {
+        while let Some(event) = pane.next_inline().await {
             if let Some(projection) = event.result.expect("the pane reads") {
                 let skipped = projection.resolve().skipped;
                 pane_tx.send_replace(Some((skipped, Counted::of(&pane.runs()))));

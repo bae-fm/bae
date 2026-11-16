@@ -29,12 +29,13 @@ where
     /// ends the query, and the follow reads nothing more. A follow that panics
     /// is reported through `diagnostics` and reads nothing more either.
     pub(super) fn new(
-        mut query: coven::ReconfigurableLiveQuery<Request, Value, bae_store::DbError>,
+        query: coven::ReconfigurableLiveQuery<Request, Value, bae_store::DbError>,
         request: Request,
         what: &'static str,
         diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Self {
         let requests = query.requests();
+        let mut query = bae_store::live_results::LiveResults::new(query, diagnostics.bug_sink());
         let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
         let bugs = diagnostics.clone();
         let operation = format!("read {what} for playback");

@@ -49,6 +49,7 @@ impl ImportServiceHandle {
             crate::folder_scan_status::FolderScansLive::new(
                 self.services.tables.clone(),
                 self.scans_in_memory.clone(),
+                self.bugs(),
             ),
             self.services.closing.child_token(),
             self.bugs(),

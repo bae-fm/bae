@@ -122,17 +122,17 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let listed = |browse: &bae_store::WindowRead<bae_views::DbAlbumAppearance>| -> Vec<String> {
         browse.rows.iter().map(|row| row.album.id.clone()).collect()
     };
-    let before = browse.next().await.expect("the query stays open").result.unwrap();
+    let before = browse.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);
     let mut detail = views(manager).subscribe_album_detail(Some(album_id.clone()));
-    let shown = detail.next().await.expect("the query stays open").result.unwrap();
+    let shown = detail.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(shown.detail.expect("the album shows").releases.len(), 2);
 
     manager.delete_album(&album_id).await.unwrap();
 
     let after = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let value = browse.next().await.expect("the query stays open").result.unwrap();
+            let value = browse.next_inline().await.expect("the query stays open").result.unwrap();
             if value.rows.len() == 1 {
                 return value;
             }
@@ -143,7 +143,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     assert_eq!(listed(&after), std::slice::from_ref(&other.album_id));
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let value = detail.next().await.expect("the query stays open").result.unwrap();
+            let value = detail.next_inline().await.expect("the query stays open").result.unwrap();
             if value.detail.is_none() {
                 return;
             }

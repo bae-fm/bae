@@ -49,7 +49,7 @@ async fn until(
     let mut values = queue.subscribe();
     loop {
         let rows: Vec<_> = values
-            .next()
+            .next_inline()
             .await
             .expect("the query stays open")
             .unwrap()

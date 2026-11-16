@@ -49,7 +49,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
         asked: &Option<ReleaseFilesRequest>,
     ) -> Vec<String> {
         loop {
-            let event = files.next().await.expect("the read runs");
+            let event = files.next_inline().await.expect("the read runs");
             if event.request == *asked {
                 break event
                     .result

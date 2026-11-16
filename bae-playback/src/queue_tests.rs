@@ -572,7 +572,7 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
 
     let window = |from, until, limit| Forward { from, until, limit };
     let mut top = crate::tables::subscribe_upcoming_window(&f.db, false, window(None, None, 3));
-    let first = top.next().await.expect("the query stays open").result.unwrap();
+    let first = top.next_inline().await.expect("the query stays open").result.unwrap();
     let names = |read: &bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
         read.rows.iter().map(|item| f.name(&item.track_id)).collect()
     };
@@ -585,7 +585,7 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
         false,
         window(Some(beyond.clone()), None, 2),
     );
-    let second = next.next().await.expect("the query stays open").result.unwrap();
+    let second = next.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(names(&second), upcoming[3..5].to_vec());
     assert_eq!(second.first, Some(beyond.clone()));
 
@@ -596,26 +596,26 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
         false,
         window(Some(first.beyond.clone().unwrap()), Some(until), 100),
     );
-    let between = bounded.next().await.expect("the query stays open").result.unwrap();
+    let between = bounded.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(names(&between), upcoming[3..5].to_vec());
     assert_eq!(between.beyond, None, "the window reached its bound");
 
     let mut count = crate::tables::subscribe_upcoming_count(&f.db, false);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 119);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 119);
 
     // A jump: the key at a position starts a window there, and the number of
     // rows before the key is the position.
     let at = crate::tables::upcoming_key_at(&f.db, false, 100).await.unwrap().expect("a key");
     let mut jumped =
         crate::tables::subscribe_upcoming_window(&f.db, false, window(Some(at.clone()), None, 20));
-    let read = jumped.next().await.expect("the query stays open").result.unwrap();
+    let read = jumped.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         names(&read),
         upcoming[100..119].to_vec(),
         "a window past the end holds what remains"
     );
     let mut position = crate::tables::subscribe_upcoming_position(&f.db, false, at);
-    assert_eq!(position.next().await.expect("the query stays open").result.unwrap(), 100);
+    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 100);
     assert_eq!(
         crate::tables::upcoming_key_at(&f.db, false, 5_000).await.unwrap(),
         crate::tables::upcoming_key_at(&f.db, false, 118).await.unwrap(),
@@ -642,7 +642,7 @@ async fn test_upcoming_windows_follow_the_order_the_lane_reads_in() {
             shuffled_order,
             Forward { from: None, until: None, limit: 100 },
         );
-        async move { window.next().await.expect("the query stays open").result.unwrap() }
+        async move { window.next_inline().await.expect("the query stays open").result.unwrap() }
     };
     let names = |read: bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
         read.rows.iter().map(|item| f.name(&item.track_id)).collect()
@@ -675,7 +675,7 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
         ($check:expr) => {
             tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
                 loop {
-                    let read = value.next().await.expect("the query stays open").unwrap();
+                    let read = value.next_inline().await.expect("the query stays open").unwrap();
                     if $check(&read) {
                         break;
                     }
@@ -689,7 +689,7 @@ async fn test_the_queue_screens_follow_a_play_and_the_clears() {
         ($total:expr) => {
             tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
                 loop {
-                    let read = upcoming.next().await.expect("the query stays open").unwrap();
+                    let read = upcoming.next_inline().await.expect("the query stays open").unwrap();
                     if read == $total {
                         break;
                     }
@@ -759,7 +759,7 @@ async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
         Forward { from: Some(split), until: None, limit: 100 },
     );
     for window in [&mut lower, &mut upper] {
-        window.next().await.expect("the query stays open").result.unwrap();
+        window.next_inline().await.expect("the query stays open").result.unwrap();
     }
 
     let (t45, t50) = (f.entry("t45").await, f.entry("t50").await);

@@ -15,6 +15,7 @@
 //! rows newer than the state are as they should be, such as a pending record
 //! listed before the state names it.
 
+use crate::live_results::LiveResults;
 use crate::DbError;
 use std::sync::Arc;
 
@@ -27,13 +28,14 @@ pub(crate) type RowsRead<R> =
 /// into one value each time either changes.
 ///
 /// Its reads' failures, the live queries' and the rows', go to whoever pulls
-/// it, which reports a bug one carries, so none is reported here.
+/// it, which reports a bug one carries, so none is reported here. A panic
+/// around a live query's run goes to the store's bug sink.
 pub struct WithSyncState<R, T> {
     handle: coven::CovenHandle,
-    state: coven::LiveQuery<coven::SyncStatus, coven::CovenError>,
+    state: LiveResults<coven::LiveQuery<coven::SyncStatus, coven::CovenError>>,
     /// The rows' own live query, which says when they change; each value's
     /// rows are read afresh, after the latest state.
-    changes: coven::LiveQuery<R, DbError>,
+    changes: LiveResults<coven::LiveQuery<R, DbError>>,
     rows: RowsRead<R>,
     make: fn(coven::SyncStatus, R) -> T,
     latest_state: Option<coven::SyncStatus>,
@@ -52,8 +54,17 @@ where
         changes: coven::LiveQuery<R, DbError>,
         rows: RowsRead<R>,
         make: fn(coven::SyncStatus, R) -> T,
+        bugs: coven::task::BugSinkRef,
     ) -> Self {
-        Self { handle, state, changes, rows, make, latest_state: None, told: None }
+        Self {
+            handle,
+            state: LiveResults::new(state, bugs.clone()),
+            changes: LiveResults::new(changes, bugs),
+            rows,
+            make,
+            latest_state: None,
+            told: None,
+        }
     }
 
     /// The first value once coven's sync state has one, then one each time
