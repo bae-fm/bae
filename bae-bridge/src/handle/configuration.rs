@@ -22,6 +22,12 @@ impl AppHandle {
 // Every setter writes the preferences row, so each is an async call the host
 // awaits off its own thread.
 forward! { async this => {
+    /// This device's preferences for the library as stored now, as the
+    /// settings screens show them.
+    fn get_config() -> crate::types::BridgeConfig {
+        Ok(crate::types::BridgeConfig::from_core(&this.services.config().await?))
+    }
+
     /// Order this device's names (album titles, artists, composers, search
     /// results) as readers of the language `tag` expect, a language tag such
     /// as the app's first preferred language ("sv", "en-US"). Every stored

@@ -251,6 +251,12 @@ impl AppServices {
         Ok(())
     }
 
+    /// The library's preferences as stored now, as the settings screens read
+    /// them.
+    pub async fn config(&self) -> Result<bae_preferences::Config, bae_store::DbError> {
+        self.inner.manager.config().await
+    }
+
     /// The library's preferences as the settings screens read them: the
     /// first value at once, then one after each write that changes them.
     pub fn subscribe_config(&self) -> bae_store::live_query::LiveValues<bae_preferences::Config> {

@@ -78,30 +78,6 @@ public final class ScreenSubscription<Source: PulledSubscription>: Sendable {
     }
 }
 
-extension PulledSubscription {
-    /// The first value this subscription answers with, after which it ends:
-    /// for a read that wants the value as it stands now, not its changes.
-    public func firstValue() async throws -> Value {
-        let value: Value
-        do {
-            value = try await next()
-        }
-        catch {
-            do {
-                try await cancel()
-            }
-            catch let ending {
-                logger.warning(
-                    "a first-value read did not end cleanly: \(String(reflecting: ending))"
-                )
-            }
-            throw error
-        }
-        try await cancel()
-        return value
-    }
-}
-
 /// A subscription's values as a screen takes them: each value a bridge
 /// object answers with, turned into the shape the screen reads. Ending it
 /// ends the bridge object.

@@ -7,13 +7,12 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeException
 
 /**
  * A bridge object the app pulls its values from: each [next] answers with the next value core
  * delivers, and [cancel] ends it. Only this module calls [next]; the app reads a subscription
- * through [ScreenSubscription], [pullEach] or [firstValue].
+ * through [ScreenSubscription] or [pullEach].
  */
 interface PulledSubscription<Value> {
     suspend fun next(): Value
@@ -63,14 +62,6 @@ suspend fun <Value> PulledSubscription<Value>.pullEach(
         }
     }
 }
-
-/** The first value the subscription answers; it is cancelled once that pull ends, however it ends. */
-suspend fun <Value> PulledSubscription<Value>.firstValue(): Value =
-    try {
-        next()
-    } finally {
-        withContext(NonCancellable) { cancel() }
-    }
 
 /**
  * The one way a screen reads a subscription: [pullEach] on the main thread, handing each value to

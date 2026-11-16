@@ -42,30 +42,6 @@ class ScreenSubscriptionTest {
         }
 
     @Test
-    fun aFirstValueReadPullsOnceAndThenCancels() =
-        runTest(main) {
-            val source = Pulls<Int>()
-            source.deliver(1)
-            source.deliver(2)
-
-            assertEquals(1, source.firstValue())
-            assertEquals("one pull", 1, source.pullCount)
-            assertTrue("the subscription ends after its first value", source.cancelled)
-        }
-
-    @Test
-    fun aFirstValueReadThatFailsCancelsToo() =
-        runTest(main) {
-            val source = Pulls<Int>()
-            source.fail(readFailure())
-
-            val failed = runCatching { source.firstValue() }
-
-            assertTrue(failed.exceptionOrNull() is BridgeException.Diagnostic)
-            assertTrue("a failed first read still ends the subscription", source.cancelled)
-        }
-
-    @Test
     fun aScreenSubscriptionKeepsPullingAfterAFailedRead() =
         runTest(main) {
             val source = Pulls<String>()

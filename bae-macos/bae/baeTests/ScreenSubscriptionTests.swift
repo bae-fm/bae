@@ -93,28 +93,6 @@ struct ScreenSubscriptionTests {
         #expect(source.cancels == 1)
     }
 
-    @Test("a first-value read takes one value and ends the subscription")
-    func firstValueTakesOneValueAndEnds() async throws {
-        let source = QueuedReads()
-        source.answer(7)
-        source.answer(8)
-
-        #expect(try await source.firstValue() == 7)
-        #expect(source.pulls == 1)
-        #expect(source.cancels == 1)
-    }
-
-    @Test("a first-value read that fails ends the subscription too")
-    func failedFirstValueEnds() async {
-        let source = QueuedReads()
-        source.fail()
-
-        await #expect(throws: (any Error).self) {
-            try await source.firstValue()
-        }
-        #expect(source.cancels == 1)
-    }
-
     @MainActor
     @Test("a failed read is handed on and the pulls go on")
     func pullsGoOnAfterAFailedRead() async throws {

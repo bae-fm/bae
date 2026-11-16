@@ -293,7 +293,7 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
 
     var didClose: Bool { closeFlag.isSet }
 
-    func currentConfig() async throws -> BridgeConfig { config }
+    func getConfig() async throws -> BridgeConfig { config }
     func storageLocation() async throws -> BridgeStorageLocation? { nil }
     func getUploadsPaused() async throws -> Bool {
         try outbox.get()

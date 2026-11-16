@@ -50,6 +50,16 @@ impl LibraryManager {
         self.app_dir.registered_library(&self.store.store_id().to_string())
     }
 
+    /// The library's preferences as stored now, with the library and its
+    /// directory, as the settings screens read them.
+    pub async fn config(&self) -> Result<bae_preferences::Config, bae_store::DbError> {
+        Ok(bae_preferences::Config {
+            store_id: self.store.store_id(),
+            library_path: self.library_path(),
+            prefs: self.preferences().await?,
+        })
+    }
+
     /// The library's preferences as the settings screens read them, with the
     /// library and its directory: the first value at once, then one after
     /// each write that changes them, until the surface cancels or the library

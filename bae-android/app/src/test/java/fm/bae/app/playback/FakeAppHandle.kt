@@ -20,6 +20,7 @@ import uniffi.bae_bridge.BridgeCacheLimitChoice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
+import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -151,6 +152,8 @@ internal open class FakeAppHandle(
     override suspend fun savePlaybackState() {}
 
     override fun subscribeConfig(): ConfigSubscription = FakeConfigSubscription()
+
+    override suspend fun getConfig(): BridgeConfig = unfaked("getConfig")
 
     /** The sync status the handle answers, which a test delivers to. */
     val syncStatus = FakeSyncStatusSubscription()

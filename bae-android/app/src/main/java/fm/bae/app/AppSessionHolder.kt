@@ -18,8 +18,6 @@ import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackSystem
 import fm.bae.fastvalues.LatestSource
-import fm.bae.screensubscription.firstValue
-import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -867,7 +865,7 @@ object AppSessionHolder {
             withContext(NonCancellable + Dispatchers.IO) { handle.close() }
             throw e
         }
-        val config: BridgeConfig = handle.currentConfig()
+        val config: BridgeConfig = handle.getConfig()
         val initialUnmeteredOnly = handle.getUnmeteredOnly()
         val initialDownloads = handle.getDownloadCounts()
         val previous = current
@@ -928,7 +926,3 @@ object AppSessionHolder {
             cast = CastStore(),
         )
 }
-
-/** The library's preferences now: the first value a config subscription answers, which then ends. */
-private suspend fun AppHandle.currentConfig(): BridgeConfig =
-    subscribeConfig().use { subscription -> pulled(subscription::next, subscription::cancel).firstValue() }

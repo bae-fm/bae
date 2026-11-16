@@ -52,3 +52,20 @@ fn the_preferences_follow_each_write_until_cancelled() {
         Err(crate::types::BridgeError::Cancelled)
     ));
 }
+
+/// A plain read of the preferences answers what is stored at the time of the
+/// call.
+#[test]
+fn a_plain_read_answers_the_stored_preferences() {
+    let handle = super::super::tests::fresh_bridge_handle("config-read");
+    let runtime = &handle.handle().runtime;
+
+    let first = runtime.block_on(handle.handle().clone().get_config()).unwrap();
+    assert!(!first.show_remaining_time);
+    assert_eq!(first.library_id.len(), 36, "{}", first.library_id);
+
+    runtime.block_on(handle.handle().clone().set_show_remaining_time(true)).unwrap();
+    let after = runtime.block_on(handle.handle().clone().get_config()).unwrap();
+    assert!(after.show_remaining_time, "the read answers the write before it");
+    assert_eq!(after.library_id, first.library_id);
+}
