@@ -96,6 +96,7 @@ mod verdict_failure_rows;
 mod verdict_layout;
 mod verdict_rows;
 
+pub(super) use album_pick_rows::album_pick_sql;
 pub(super) use candidate_rows::{current_at_scan_sql, CandidateRows, OneCandidate, SCANNED_HASH};
 pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
 pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};

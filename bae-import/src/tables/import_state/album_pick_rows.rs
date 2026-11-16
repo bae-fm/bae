@@ -6,23 +6,42 @@ pub(super) const SQL: &str = include_str!("album_pick_rows.sql");
 
 use super::*;
 
+/// The statement that reads what the person picked for the album of the
+/// candidate whose content hash the SQL expression `content_hash` gives. It
+/// returns one row. Its `pick` is 'records' when the person picked nothing,
+/// 'new' when they picked a new album, and 'album' when they picked the
+/// library album `album_id`.
+pub(crate) fn album_pick_sql(content_hash: &str) -> String {
+    format!(
+        "SELECT CASE WHEN pick.content_hash IS NULL THEN 'records' \
+                     WHEN pick.album_id IS NULL THEN 'new' \
+                     ELSE 'album' END AS pick, \
+                pick.album_id AS album_id \
+         FROM (SELECT 1) \
+         LEFT JOIN import_candidate_album_pick AS pick ON pick.content_hash = {content_hash}"
+    )
+}
+
 /// The album the person picked for the candidate `content_hash`: a library
 /// album, a new album, or, when they picked none, the album its records name.
 pub(crate) fn load_album_pick_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
 ) -> Result<crate::AlbumPick, DbError> {
-    let row: Option<Option<String>> = sql
-        .query_row(
-            "SELECT album_id FROM import_candidate_album_pick WHERE content_hash = ?",
-            params![content_hash],
-            |row| row.get(0),
-        )
-        .optional()?;
-    Ok(match row {
-        None => crate::AlbumPick::Records,
-        Some(None) => crate::AlbumPick::New,
-        Some(Some(album_id)) => crate::AlbumPick::Album { album_id },
+    let (pick, album_id): (String, Option<String>) =
+        sql.query_row(&album_pick_sql("?"), params![content_hash], |row| {
+            Ok((row.get("pick")?, row.get("album_id")?))
+        })?;
+    Ok(match (pick.as_str(), album_id) {
+        ("records", None) => crate::AlbumPick::Records,
+        ("new", None) => crate::AlbumPick::New,
+        ("album", Some(album_id)) => crate::AlbumPick::Album { album_id },
+        (pick, album_id) => {
+            return Err(DbError::unreadable(
+                "a candidate's album pick",
+                (pick.to_string(), album_id),
+            ))
+        }
     })
 }
 

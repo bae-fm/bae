@@ -11,8 +11,8 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
-    current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on, load_pane_rows_on,
-    load_standing_on, OneCandidate, SCANNED_HASH,
+    album_pick_sql, current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on,
+    load_pane_rows_on, load_standing_on, OneCandidate, SCANNED_HASH,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{
@@ -210,17 +210,15 @@ fn candidate_album_on(
     let (kind, album_id, title, credits): (String, Option<String>, Option<String>, String) = sql
         .query_row(
             &format!(
-                "WITH pick AS (SELECT album_id FROM import_candidate_album_pick \
-                               WHERE content_hash = {SCANNED_HASH}), \
+                "WITH pick AS ({pick}), \
                  choice (kind, album_id) AS ( \
-                     SELECT CASE WHEN album_id IS NULL THEN 'picked_new' ELSE 'picked' END, \
-                            album_id \
-                     FROM pick \
+                     SELECT pick.pick, pick.album_id FROM pick WHERE pick.pick <> 'records' \
                      UNION ALL \
-                     SELECT 'named', named.id FROM ({named}) AS named \
-                     WHERE NOT EXISTS (SELECT 1 FROM pick)) \
-                 SELECT COALESCE(choice.kind, 'new'), a.id, a.title, {credits} \
+                     SELECT 'named', named.id \
+                     FROM ({named}) AS named JOIN pick ON pick.pick = 'records') \
+                 SELECT COALESCE(choice.kind, 'none'), a.id, a.title, {credits} \
                  FROM (SELECT 1) LEFT JOIN choice LEFT JOIN albums AS a ON a.id = choice.album_id",
+                pick = album_pick_sql(SCANNED_HASH),
                 credits = bae_records::records::query::album_credits_json_sql(),
             ),
             named_params! { ":key": key },
@@ -235,13 +233,14 @@ fn candidate_album_on(
         }
     };
     Ok(match kind.as_str() {
-        "new" => DraftAlbum::New,
-        "picked_new" => DraftAlbum::PickedNew,
+        // The person picked nothing and the records name no album.
+        "none" => DraftAlbum::New,
+        "new" => DraftAlbum::PickedNew,
         "named" => {
             let (album_id, title, artist_line) = album("named")?;
             DraftAlbum::Named { album_id, title, artist_line }
         }
-        "picked" => {
+        "album" => {
             let (album_id, title, artist_line) = album("picked")?;
             DraftAlbum::Picked { album_id, title, artist_line }
         }
