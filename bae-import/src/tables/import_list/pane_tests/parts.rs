@@ -354,7 +354,26 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
             }],
         },
         barcode: bae_identify::BarcodeStepView::Absent,
-        catalog: bae_identify::CatalogStepView::NoneFound,
+        catalog: bae_identify::CatalogStepView::Numbers {
+            scanning: false,
+            rows: vec![bae_identify::SignalValueRow {
+                value: "AB-1".to_string(),
+                excluded: false,
+                cells: vec![
+                    bae_identify::ProviderCell {
+                        source: LookupCatalog::MusicBrainz,
+                        lookup: bae_identify::LookupView::NoMatch,
+                    },
+                    bae_identify::ProviderCell {
+                        source: LookupCatalog::Discogs,
+                        lookup: bae_identify::LookupView::Failed {
+                            failure: LookupFailure::Timeout,
+                        },
+                    },
+                ],
+            }],
+            candidates: Vec::new(),
+        },
         isrc: bae_identify::IsrcStepView::Absent,
         search: bae_identify::SearchStepView::NotNeeded,
     };
@@ -370,6 +389,10 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
                 IdentifyFailure::DiscId(LookupFailure::Provider { status: Some(503) }),
                 // The same lookup failing in another way is a failure no cell shows.
                 IdentifyFailure::DiscId(LookupFailure::Timeout),
+                IdentifyFailure::Catalog(SourceFailure {
+                    source: Catalog::Discogs,
+                    failure: LookupFailure::Timeout,
+                }),
                 cover.clone(),
             ],
             findings: bae_identify::Findings::default(),
@@ -390,6 +413,44 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
     assert_eq!(failure_lines, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
+}
+
+/// A failed verdict with no ledger has no cell that shows a failure, so the
+/// pane says each failure in a line of its own.
+#[tokio::test]
+async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
+    use bae_catalogs::search::SourceFailure;
+    use bae_catalogs::LookupFailure;
+    use bae_identify::IdentifyFailure;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let failures = vec![IdentifyFailure::Search(SourceFailure {
+        source: Catalog::Discogs,
+        failure: LookupFailure::Network,
+    })];
+    store_verdict(
+        &db,
+        &candidate,
+        TerminalVerdict::Failed {
+            failures: failures.clone(),
+            findings: bae_identify::Findings::default(),
+            track_count: 1,
+            ledger: None,
+        },
+    )
+    .await;
+
+    let detail = crate::tables::ImportTables::new(db.clone())
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane");
+
+    let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
+    else {
+        panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
+    };
+    assert_eq!(failure_lines, failures);
 }
 
 /// The picker offers the covers the linked release states, each with its

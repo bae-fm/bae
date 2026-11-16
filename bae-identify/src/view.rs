@@ -171,53 +171,6 @@ impl IdentifyRunView {
         matches!(self.barcode, BarcodeStepView::Rows { scanning: true, .. })
             || matches!(self.catalog, CatalogStepView::Numbers { scanning: true, .. })
     }
-
-    /// Whether one of the ledger's cells shows `failure`: a lookup's cell
-    /// that failed as it did. The lookup of an offered row's pressing and the
-    /// fetches applying the release a run picked have no cell. The reference
-    /// cards (`reference_cards_of`) state the rule the stored
-    /// cards' statement answers with, and only they use it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub(super) fn shows(&self, failure: &super::IdentifyFailure) -> bool {
-        use super::IdentifyFailure;
-        let failed_as = |lookup: &LookupView, failed: &LookupFailure| {
-            let LookupView::Failed { failure } = lookup else {
-                return false;
-            };
-            failure == failed
-        };
-        let in_cells = |cells: &[ProviderCell], failed: &bae_catalogs::search::SourceFailure| {
-            cells.iter().any(|cell| {
-                cell.source.catalog() == failed.source && failed_as(&cell.lookup, &failed.failure)
-            })
-        };
-        let in_rows =
-            |rows: &[SignalValueRow], failed| rows.iter().any(|row| in_cells(&row.cells, failed));
-        match failure {
-            IdentifyFailure::DiscId(failed) => matches!(
-                &self.disc_id,
-                DiscIdStepView::Read { discs }
-                    if discs.iter().any(|disc| failed_as(&disc.lookup, failed))
-            ),
-            IdentifyFailure::Isrc(failed) => matches!(
-                &self.isrc,
-                IsrcStepView::Read { lookup, .. } if failed_as(lookup, failed)
-            ),
-            IdentifyFailure::Barcode(failed) => matches!(
-                &self.barcode,
-                BarcodeStepView::Rows { rows, .. } if in_rows(rows, failed)
-            ),
-            IdentifyFailure::Catalog(failed) => matches!(
-                &self.catalog,
-                CatalogStepView::Numbers { rows, .. } if in_rows(rows, failed)
-            ),
-            IdentifyFailure::Search(failed) => matches!(
-                &self.search,
-                SearchStepView::Searched { cells, .. } if in_cells(cells, failed)
-            ),
-            IdentifyFailure::Pressing(_) | IdentifyFailure::Cover(_) => false,
-        }
-    }
 }
 
 /// One candidate's identify state as a surface renders it. A settled state
