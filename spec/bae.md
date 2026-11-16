@@ -6174,7 +6174,9 @@ release's or track's id as UTF-8, or a candidate's key.
 - **What a read is.** Everything a screen shows comes from SQL, except values
   that change many times a second (keyed latest-value streams, §10.2) and state
   that lives only on screen (hover, focus, an open popover or menu, a drag in
-  progress), which the view holds. A read that must follow changes (a screen, or a bridge,
+  progress), which the view holds. A fast value may add a live query's values
+  to an in-memory value that changes fast, but a plain query result never goes
+  on a fast stream (§10.2). A read that must follow changes (a screen, or a bridge,
   automation or MCP subscriber) is one SQL query subscribed as a coven live
   query, and everything a screen shows beside its rows (counts, totals, groups
   and section headers, "N of M", sums, facets) comes from SQL, in the same
@@ -6216,7 +6218,13 @@ release's or track's id as UTF-8, or a candidate's key.
   only in a `KeyedValueStream`, keyed by release, file, track, candidate or
   Activity line,
   never in a callback, a
-  record field or a subscription value. Every stream is built in the
+  record field or a subscription value. A fast value is one core holds in
+  memory, or one core computes from such a value and the values of a live
+  query, as a release's upload bar adds its files' bytes on the way to its
+  stored bytes (§4.2). Core computes such a value again each time either side
+  changes, starting once both have a value, and keeps nothing from an earlier
+  read. A query's result alone never goes on a stream: it reaches the screen
+  in the screen's live query. Every stream is built in the
   bridge's `screens` module. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing, whatever still runs that
