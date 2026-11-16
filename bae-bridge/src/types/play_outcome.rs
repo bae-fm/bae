@@ -56,14 +56,16 @@ pub fn bridge_play_outcome_key(outcome: &BridgePlayOutcome) -> Option<String> {
     }
 }
 
-/// A queue command that changed nothing, in the class core gave it. A
-/// database failure crosses as its own text, as every database failure does.
+/// A volume set that playback did not store. Every case is a bug, so the app
+/// shows it in the Internal category.
 impl From<bae_playback::SetVolumeError> for super::BridgeError {
     fn from(error: bae_playback::SetVolumeError) -> Self {
         Self::categorized(error.category(), error)
     }
 }
 
+/// A queue command that changed nothing, in the class core gave it. A
+/// database failure crosses as its own text, as every database failure does.
 impl From<bae_playback::QueueEditError> for super::BridgeError {
     fn from(error: bae_playback::QueueEditError) -> Self {
         match error {
