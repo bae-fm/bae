@@ -25,8 +25,11 @@ fn poll_once<F: Future>(pull: Pin<&mut F>) -> Poll<F::Output> {
     pull.poll(&mut Context::from_waker(Waker::noop()))
 }
 
-/// What a pull answers now; `None` while it would wait.
+/// What a pull answers now; `None` while it would wait. The pull is polled
+/// on a runtime's clock, which it waits on to rest a moving key.
 fn pulled_now(values: &StreamValues) -> Option<Result<Vec<Vec<u8>>, BridgeError>> {
+    let clock = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+    let _entered = clock.enter();
     match poll_once(pin!(values.next())) {
         Poll::Ready(pulled) => Some(pulled),
         Poll::Pending => None,
@@ -243,12 +246,12 @@ fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() 
 
     // Not quiet long enough: still moving, and the next rest is due then.
     let almost = start + QUIET - Duration::from_millis(1);
-    assert_eq!(writer.rest_quiet_at(almost), Some(start + QUIET));
+    assert_eq!(values.rest_quiet_at(almost), Some(start + QUIET));
     assert!(stream.moving(b"a".to_vec()));
     assert_eq!(pulled_now(&values), None);
 
     // A paused download: nothing said for the quiet time.
-    assert_eq!(writer.rest_quiet_at(start + QUIET), None);
+    assert_eq!(values.rest_quiet_at(start + QUIET), None);
     assert!(!stream.moving(b"a".to_vec()));
     assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
     assert_eq!(stream.latest(b"a".to_vec()), Some(download(100)));
@@ -262,7 +265,7 @@ fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() 
     writer.set_at("a", download(200), start + QUIET * 3);
     assert!(stream.moving(b"a".to_vec()));
     assert_eq!(pulled_now(&values), keys(&["a"]), "starting to move is pulled");
-    assert_eq!(writer.rest_quiet_at(start + QUIET * 4), None);
+    assert_eq!(values.rest_quiet_at(start + QUIET * 4), None);
     assert!(!stream.moving(b"a".to_vec()));
 }
 
@@ -286,12 +289,12 @@ fn each_key_rests_on_its_own_clock() {
     );
     assert_eq!(pulled_now(&values), None);
 
-    assert_eq!(writer.rest_quiet_at(start + QUIET), Some(start + half + QUIET));
+    assert_eq!(values.rest_quiet_at(start + QUIET), Some(start + half + QUIET));
     assert!(!stream.moving(b"stalled".to_vec()));
     assert!(stream.moving(b"going".to_vec()));
     assert_eq!(pulled_now(&values), keys(&["stalled"]));
 
-    assert_eq!(writer.rest_quiet_at(start + half + QUIET), None);
+    assert_eq!(values.rest_quiet_at(start + half + QUIET), None);
     assert!(!stream.moving(b"going".to_vec()));
     assert_eq!(pulled_now(&values), keys(&["going"]));
 }
@@ -304,7 +307,7 @@ fn each_key_rests_on_its_own_clock() {
 #[test]
 fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (stream, writer, _values) = fed_stream(&runtime);
+    let (stream, writer, values) = fed_stream(&runtime);
     let start = Instant::now();
     let frame = Duration::from_micros(16_667);
 
@@ -312,10 +315,29 @@ fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
     let mut requested = 0;
     for n in 0..600 {
         let now = start + frame * n;
-        writer.rest_quiet_at(now);
+        values.rest_quiet_at(now);
         if stream.moving(b"a".to_vec()) {
             requested += 1;
         }
     }
     assert_eq!(requested, 60, "600 frames over 10 s; only the first second asks");
+}
+
+/// A pull rests a key whose value has gone [`QUIET`] unchanged, whatever
+/// feed writes it: a call's step that counts nothing rests as a stalled
+/// download does, and the pull names it.
+#[test]
+fn a_pull_rests_a_key_left_unchanged_for_the_quiet_time() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (stream, writer, values) = fed_stream(&runtime);
+    runtime.block_on(async {
+        writer.set_only(share(0.5));
+        assert_eq!(values.next().await, Ok(vec![Vec::new()]));
+        assert!(stream.moving(Vec::new()));
+
+        let started = Instant::now();
+        assert_eq!(values.next().await, Ok(vec![Vec::new()]), "coming to rest is pulled");
+        assert!(started.elapsed() >= QUIET - Duration::from_millis(50));
+        assert!(!stream.moving(Vec::new()));
+    });
 }

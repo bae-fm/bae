@@ -6235,11 +6235,13 @@ release's or track's id as UTF-8, or a candidate's key.
   view drawing a key reads the key's latest value once per display frame
   while the key is moving, and once on each pull that names it otherwise; the
   playing track's position rests while playback is paused or loading, and its buffered
-  parts rest once they are one stretch from start to end; a value the core says only
-  when it changes (a download's bytes, a transfer line's bar, a file's or
-  release's upload share, an export's percent) rests once a second passes
-  without one, and moves again with the next, so a stalled or paused transfer
-  asks for no frames; nothing the UI framework observes holds a fast value.
+  parts rest once they are one stretch from start to end; every other value
+  rests once a second passes without a change (a download's bytes, a file's
+  or release's upload share, an export's or import's percent, a preview's
+  position, a call's step), and moves again with the next, so a stalled or
+  paused transfer or a step that counts nothing asks for no frames; the
+  stream's pull rests it, whatever feed writes it; nothing the UI framework
+  observes holds a fast value.
 - **Pulled subscriptions** are the browse, download and queue lists, the
   searches, the import list and its counts, the detail views, the Storage
   manager's list, a release's files, and the read of which selected albums

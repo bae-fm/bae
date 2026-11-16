@@ -59,12 +59,12 @@ enum Values {
     Cancelled,
 }
 
-/// How long a value the feed writes only when it changes goes unchanged
-/// before it counts as at rest: a stalled or paused download, a held bar.
+/// How long a value goes unchanged before it counts as at rest: a stalled or
+/// paused download, a step that counts nothing, an import between percents.
 /// Longer than a display frame, so a value moving at a steady pace is not
 /// flipped between moving and resting; the key rests when the feed has
-/// said nothing of it for this long.
-pub(crate) const QUIET: Duration = Duration::from_secs(1);
+/// said nothing new of it for this long.
+const QUIET: Duration = Duration::from_secs(1);
 
 /// One key's value, and whether it is at rest: not changing until the feed
 /// says so, so a view need not read it each frame.
@@ -118,17 +118,27 @@ impl StreamValues {
         }
     }
 
-    /// When the first key that is moving has gone [`QUIET`] unchanged, if any
-    /// is moving: the feed rests it then (see [`StreamWriter::rest_quiet`]).
+    /// When the first key that is moving will have gone [`QUIET`] unchanged,
+    /// if any is moving: a pull waiting then rests it (see [`Self::next`]).
     fn next_rest(&self) -> Option<Instant> {
-        match &lock(&self.held).values {
-            Values::Open(values) => values
-                .values()
-                .filter(|entry| !entry.resting)
-                .map(|entry| entry.changed_at + QUIET)
-                .min(),
-            Values::Cancelled => None,
-        }
+        next_rest_of(&lock(&self.held).values)
+    }
+
+    /// Every key whose value has gone [`QUIET`] without changing rests, and
+    /// the next pull names each; a value that changes again moves it again.
+    /// Answers when the next moving key will have been quiet that long.
+    fn rest_quiet_at(&self, now: Instant) -> Option<Instant> {
+        self.write(|values| {
+            values
+                .iter_mut()
+                .filter(|(_, entry)| !entry.resting && entry.changed_at + QUIET <= now)
+                .map(|(key, entry)| {
+                    entry.resting = true;
+                    key.clone()
+                })
+                .collect()
+        });
+        self.next_rest()
     }
 
     /// Change the values, and keep the keys `change` says a view must be told
@@ -174,11 +184,13 @@ impl StreamValues {
 
     /// What the host has not pulled: the keys that started or stopped since
     /// the last pull, in byte order; else the feed's failed read; else, on a
-    /// cancelled stream, that it was cancelled. Waits while there is none.
+    /// cancelled stream, that it was cancelled. Waits while there is none,
+    /// and rests each moving key once it has gone [`QUIET`] unchanged, so a
+    /// view stops reading it each frame until it moves again.
     async fn next(&self) -> Result<Vec<Vec<u8>>, BridgeError> {
         loop {
             let unpulled = self.unpulled.notified();
-            {
+            let rest_at = {
                 let mut held = lock(&self.held);
                 if !held.keys.is_empty() {
                     return Ok(std::mem::take(&mut held.keys).into_iter().collect());
@@ -189,9 +201,31 @@ impl StreamValues {
                 if let Values::Cancelled = held.values {
                     return Err(BridgeError::Cancelled);
                 }
+                next_rest_of(&held.values)
+            };
+            match rest_at {
+                Some(at) => tokio::select! {
+                    () = unpulled => {}
+                    () = tokio::time::sleep_until(at) => {
+                        self.rest_quiet_at(Instant::now());
+                    }
+                },
+                None => unpulled.await,
             }
-            unpulled.await;
         }
+    }
+}
+
+/// When the first key of `values` that is moving will have gone [`QUIET`]
+/// unchanged, if any is moving.
+fn next_rest_of(values: &Values) -> Option<Instant> {
+    match values {
+        Values::Open(values) => values
+            .values()
+            .filter(|entry| !entry.resting)
+            .map(|entry| entry.changed_at + QUIET)
+            .min(),
+        Values::Cancelled => None,
     }
 }
 
@@ -286,8 +320,8 @@ impl StreamWriter {
     }
 
     /// The stream names `key` with `value`, a value that keeps changing until
-    /// the feed has said nothing of it for [`QUIET`] (see [`Self::rest_quiet`]).
-    /// The value it already holds changes nothing.
+    /// the feed has said nothing new of it for [`QUIET`]. The value it
+    /// already holds changes nothing.
     pub(crate) fn set(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue) {
         self.set_at(key, value, Instant::now());
     }
@@ -348,27 +382,6 @@ impl StreamWriter {
                 .collect();
             replace_values(values, all)
         });
-    }
-
-    /// Every key whose value has gone [`QUIET`] without changing rests, and
-    /// a view is told of each; a value that changes again moves it again.
-    /// Answers when the next moving key will have been quiet that long.
-    pub(crate) fn rest_quiet(&self) -> Option<Instant> {
-        self.rest_quiet_at(Instant::now())
-    }
-
-    fn rest_quiet_at(&self, now: Instant) -> Option<Instant> {
-        self.values.write(|values| {
-            values
-                .iter_mut()
-                .filter(|(_, entry)| !entry.resting && entry.changed_at + QUIET <= now)
-                .map(|(key, entry)| {
-                    entry.resting = true;
-                    key.clone()
-                })
-                .collect()
-        });
-        self.values.next_rest()
     }
 
     /// The stream names every key in `all`, and none other; `resting` says

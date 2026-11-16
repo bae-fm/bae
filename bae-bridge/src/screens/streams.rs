@@ -42,23 +42,6 @@ where
     Arc::new(KeyedValueStream::new(values, stop, runtime))
 }
 
-/// Wait for `next`, the feed's read of what changed. Meanwhile every key of
-/// `writers` whose value has gone unsaid for [`QUIET`](crate::keyed_values::QUIET) rests (a paused
-/// download, a held bar: the watches say a value only when it changes), so a
-/// view stops reading it each frame until it moves again.
-async fn resting_while<T>(writers: &[&StreamWriter], next: impl Future<Output = T>) -> T {
-    let mut next = std::pin::pin!(next);
-    let rest = || writers.iter().filter_map(|writer| writer.rest_quiet()).min();
-    let mut next_rest = rest();
-    loop {
-        let Some(at) = next_rest else { return next.await };
-        tokio::select! {
-            item = &mut next => return item,
-            () = tokio::time::sleep_until(at) => next_rest = rest(),
-        }
-    }
-}
-
 /// Write each batch of a release transfer watch: every release a `Reset`
 /// names, then each one that moved or left.
 fn write_release_changes<Progress>(
@@ -180,7 +163,7 @@ pub(crate) fn outbox_transfer_feeds(
     let (releases, total) = feed_pair(runtime, run, move |services, releases, total| {
         let mut transfers = services.watch_outbox_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&releases, &total], transfers.next()).await {
+            while let Some(changes) = transfers.next().await {
                 let changes = match changes {
                     Ok(changes) => changes,
                     Err(error) => {
@@ -205,7 +188,7 @@ pub(crate) fn upload_file_shares(
     feed(runtime, run, move |services, writer| {
         let mut files = services.watch_upload_file_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&writer], files.next()).await {
+            while let Some(changes) = files.next().await {
                 write_file_changes(&writer, changes);
             }
         }
@@ -220,7 +203,7 @@ pub(crate) fn pin_file_shares(
     feed(runtime, run, move |services, writer| {
         let mut files = services.watch_pin_file_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&writer], files.next()).await {
+            while let Some(changes) = files.next().await {
                 write_file_changes(&writer, changes);
             }
         }
@@ -284,7 +267,7 @@ pub(crate) fn download_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
+            while let Some(changes) = transfers.next().await {
                 write_release_changes(
                     &writer,
                     download_changes(changes, pin_progress),
@@ -305,7 +288,7 @@ pub(crate) fn move_to_this_device_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
+            while let Some(changes) = transfers.next().await {
                 write_release_changes(
                     &writer,
                     download_changes(changes, move_to_this_device_progress),
@@ -418,7 +401,7 @@ pub(crate) fn export_percents(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_output_transfers();
         async move {
-            while let Some(changes) = resting_while(&[&writer], transfers.next()).await {
+            while let Some(changes) = transfers.next().await {
                 write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
                     percent,
                 });
