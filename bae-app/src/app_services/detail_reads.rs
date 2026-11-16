@@ -1,6 +1,6 @@
-//! The detail views' live reads on [`AppServices`]: one read per view, its
-//! id moved in place as the view shows another album, release, artist,
-//! composer, work, or folder that failed import validation.
+//! The detail views' live reads on [`AppServices`]: one read per view, whose
+//! id the view changes on the same live query when it shows another album,
+//! release, artist, composer, work, or folder that failed import validation.
 
 use super::*;
 use crate::live_reads;

@@ -77,8 +77,8 @@ private final class OpenedReads: @unchecked Sendable {
 @Suite("StorageManagerStore")
 struct StorageManagerStoreTests {
     @MainActor
-    @Test("a new sort, filter or search is a list of its own")
-    func eachViewIsItsOwnList() async throws {
+    @Test("a new sort, filter or search opens new reads of the list")
+    func eachViewOpensItsOwnReads() async throws {
         let reads = OpenedReads()
         let rows = Array(PreviewData.storageRows.prefix(3))
         let store = StorageManagerStore(

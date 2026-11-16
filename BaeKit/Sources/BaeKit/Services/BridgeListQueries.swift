@@ -32,7 +32,8 @@ public struct ListWindowDelivery<Row: Sendable>: Sendable {
     }
 }
 
-/// A live read of one window of a list, moved in place with `setWindow`.
+/// A live read of one window of a list; `setWindow` changes the window on the
+/// same live query.
 public struct ListWindowQuery<Row: Sendable>: Sendable {
     public let setWindow: @Sendable (BridgeListWindow) throws -> Void
     public let values: PulledValues<ListWindowDelivery<Row>>
@@ -46,8 +47,8 @@ public struct ListWindowQuery<Row: Sendable>: Sendable {
     }
 }
 
-/// A live read of how many rows come before the row at a key, moved in place
-/// with `setKey`.
+/// A live read of how many rows come before the row at a key; `setKey` changes
+/// the key on the same live query.
 public struct ListPositionQuery: Sendable {
     public let setKey: @Sendable ([BridgeSortValue]) throws -> Void
     public let values: PulledValues<BridgeListPosition>

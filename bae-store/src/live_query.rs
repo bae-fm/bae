@@ -1,7 +1,7 @@
 //! One coven live query, held so it can be reconfigured and cancelled;
-//! [`LiveRead`], one whose request moves in place and whose reads resolve into
-//! what a screen takes; and [`LiveValues`], one a surface only pulls values
-//! from.
+//! [`LiveRead`], one whose request the caller changes on the same query and
+//! whose reads resolve into what a screen takes; and [`LiveValues`], one a
+//! surface only pulls values from.
 //!
 //! A subscription hands a UI a stream of values and takes back requests for
 //! different ones. Three things make that work: the query, the handle that

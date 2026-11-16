@@ -22,12 +22,12 @@ internal data class ListWindowDelivery<Row>(
     val beyond: List<BridgeSortValue>?,
 )
 
-/** A live read of one window of a list, moved in place with [setWindow]. */
+/** A live read of one window of a list; [setWindow] changes the window on the same live query. */
 internal interface ListWindowRead<Row> : PulledSubscription<ListWindowDelivery<Row>> {
     fun setWindow(window: BridgeListWindow)
 }
 
-/** A live read of how many rows come before the row at a key, moved in place with [setKey]. */
+/** A live read of how many rows come before the row at a key; [setKey] changes the key on the same live query. */
 internal interface ListPositionRead : PulledSubscription<BridgeListPosition> {
     fun setKey(key: List<BridgeSortValue>)
 }

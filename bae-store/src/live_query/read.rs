@@ -1,6 +1,6 @@
-//! A live query whose request moves in place, each read of it resolved into
-//! what its screen takes. Nothing runs between pulls: each
-//! [`next`](LiveRead::next) reads the query until a value that answers the
+//! A live query whose request the caller changes without opening another, each
+//! read of it resolved into what its screen takes. Nothing runs between pulls:
+//! each [`next`](LiveRead::next) reads the query until a value that answers the
 //! request last set resolves.
 
 use super::{CancellableLiveQuery, LiveQueryError};

@@ -151,8 +151,8 @@ pub type QueuedDownload = ReleaseQueueOp<DownloadRequest, ()>;
 pub type DownloadPhase = ReleaseQueueState<()>;
 pub type DownloadRow = ReleaseQueueRow<DownloadRequest, ()>;
 /// The download queue as the Downloads pane shows it: its entries and their
-/// phases, each beside its release. It changes as entries come, go, start or
-/// fail, not as bytes arrive.
+/// phases, each with its release. The snapshot changes as entries come, go,
+/// start or fail, not as bytes arrive.
 pub type DownloadSnapshot = ReleaseQueueSnapshot<DownloadRequest, ()>;
 
 #[cfg(test)]

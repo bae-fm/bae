@@ -1,5 +1,5 @@
 //! The transfer queues' reads on [`AppServices`]: the windows a pane draws of
-//! a queue, each entry beside its release read from the queue's table with
+//! a queue, each entry with its release read from the queue's table with
 //! it, so a title edited while the entry waits shows on its row; how many
 //! entries are in each phase; and how far the active entry has got, which
 //! travels apart, keyed by release.
@@ -71,7 +71,7 @@ impl AppServices {
         self.inner.manager.watch_download_transfers()
     }
 
-    /// The export queue as it stands now, each entry beside its release, the
+    /// The export queue as it stands now, each entry with its release, the
     /// active one with the percent it has reached: the automation surface's
     /// export status.
     #[cfg(desktop)]

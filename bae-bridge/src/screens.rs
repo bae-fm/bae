@@ -4,14 +4,14 @@
 //! device keeps), or from a `KeyedValueStream`, and reaches the app by pull: the app awaits each
 //! value's `next()`. Nothing here takes a channel or a closure loop.
 //!
-//! This file holds the pull every screen read answers through
-//! ([`PulledRead`] and `pulled_read!`) and the live queries a screen follows
-//! whole; the submodules hold the reads a screen moves in place (lists,
-//! searches, details, the Storage Manager, the queue's tail, the import list)
-//! and the streams (fast values, and the steps of an open, a setup call, a
-//! close or an apply of a catalog release).
-//! `AppHandle`'s `subscribe_*` and `feed_*` calls hand out what is built
-//! here, and nothing else builds a pull object.
+//! This file holds the pull every screen read answers through ([`PulledRead`]
+//! and `pulled_read!`) and the live queries a screen follows whole; the
+//! submodules hold the reads whose request a screen changes on the same live
+//! query (lists, searches, details, the Storage Manager, the queue's tail, the
+//! import list) and the streams (fast values, and the steps of an open, a setup
+//! call, a close or an apply of a catalog release). `AppHandle`'s `subscribe_*`
+//! and `feed_*` calls hand out what is built here, and nothing else builds a
+//! pull object.
 
 use std::future::Future;
 

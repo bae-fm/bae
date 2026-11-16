@@ -1,6 +1,6 @@
 //! The album, release, artist, composer, work, import candidate, invalid
 //! import folder, and storage inspector detail views, each read live through
-//! one subscription whose id moves in place as the view shows another item.
+//! one subscription whose id the view changes when it shows another item.
 
 use crate::types::BridgeError;
 

@@ -164,7 +164,7 @@ pub struct ReleaseQueueRow<Extra, Progress> {
     pub release: Option<QueuedRelease>,
 }
 
-/// The queue as the pane shows it: every entry beside its release, the
+/// The queue as the pane shows it: every entry with its release, the
 /// per-state counts, and whether the queue is paused.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueSnapshot<Extra, Progress> {

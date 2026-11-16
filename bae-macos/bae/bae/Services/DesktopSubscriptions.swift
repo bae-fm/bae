@@ -1,9 +1,10 @@
 import BaeKit
 import Foundation
 
-/// The read behind the one selected import candidate, whose key moves in place
-/// as the selection moves. Several selected candidates, or none, read nothing
-/// here: the pane several open reads core's selection summary instead.
+/// The read behind the one selected import candidate, whose key changes on the
+/// same live query as the selection changes. Several selected candidates, or
+/// none, read nothing here: the pane several open reads core's selection
+/// summary instead.
 @MainActor
 final class ImportSelectionObservation {
     private let open: () -> KeyedDetailQuery<BridgeImportCandidateDetail, Data>
@@ -85,8 +86,8 @@ final class ImportSelectionObservation {
 }
 
 /// The read behind the one selected folder that failed validation, whose key
-/// moves in place as the selection moves. Any other selection reads nothing
-/// here.
+/// changes on the same live query as the selection changes. Any other selection
+/// reads nothing here.
 @MainActor
 final class InvalidCandidateSelectionObservation {
     private let open: () -> KeyedDetailQuery<BridgeInvalidCandidateDetail, Data>

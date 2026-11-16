@@ -30,7 +30,7 @@ pub enum ListRows {
     Composers(Vec<crate::DbComposerSummary>),
     /// A composer's page's rows: its works, then its unlinked credits.
     ComposerPage(Vec<crate::album_detail::ComposerDetailRow>),
-    /// The download queue's entries, each beside its release.
+    /// The download queue's entries, each with its release.
     Downloads(Vec<bae_transfers::DownloadRow>),
     /// The tracks after the playing one, as the queue shows them.
     Upcoming(Vec<bae_playback::QueueItem>),
@@ -66,8 +66,8 @@ impl ListWindowValue {
     }
 }
 
-/// A window of a list read live: the window moves in place, and each read
-/// answers the window last set.
+/// A window of a list read live: the caller changes the window on the same
+/// live query, and each read answers the window last set.
 pub type LiveListWindow = LiveRead<ListWindow, ListWindowValue>;
 
 /// One delivery of a list's count: how many rows it has, which sizes its
@@ -110,6 +110,6 @@ pub struct ListPosition {
     pub rows_before: u64,
 }
 
-/// The position of a key read live: the key moves in place, and each read
-/// answers the key last set.
+/// The position of a key read live: the caller changes the key on the same
+/// live query, and each read answers the key last set.
 pub type LiveListPosition = LiveRead<OrderKey, ListPosition>;

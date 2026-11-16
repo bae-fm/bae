@@ -1,6 +1,6 @@
 //! The album views' live queries: the grid, its selection, an album's detail
-//! and library search, each moved in place by its request and woken by the
-//! writes that change what it shows, its own or another device's.
+//! and library search, each taking new requests on the same live query and
+//! woken by the writes that change what it shows, its own or another device's.
 
 use super::*;
 use bae_records::test_fixtures::aggregate_ordering::*;
@@ -103,9 +103,9 @@ async fn album_window_reads_only_the_primary_releases_cover() {
     assert_eq!(updated.rows[0].album.cover_version.as_deref(), Some(primary.as_str()));
 }
 
-/// One window's request moves in place, each value naming the window it
-/// answers; a write inside its range wakes it, one outside it does not, and a
-/// row whose sort values move it out of the range leaves it.
+/// A window's request changes on the same live query, each value naming the
+/// window it answers; a write inside its range wakes it, one outside it does
+/// not, and a row whose sort values move it out of the range leaves it.
 #[tokio::test]
 async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;

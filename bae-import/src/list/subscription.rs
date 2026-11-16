@@ -156,7 +156,8 @@ impl LiveImportList {
         Ok(self.tables.import_key_at(self.list, position).await?)
     }
 
-    /// One window of the list as a live query whose request moves in place.
+    /// One window of the list as a live query whose window the caller changes
+    /// on the same query.
     pub fn subscribe_window(
         &self,
         initial: ListWindow,
@@ -169,7 +170,8 @@ impl LiveImportList {
         self.tables.subscribe_import_count(self.list)
     }
 
-    /// How many items sit before the one at a key, whose key moves in place.
+    /// How many items sit before the one at a key, as a live query whose key
+    /// the caller changes on the same query.
     pub fn subscribe_position(
         &self,
         initial: OrderKey,

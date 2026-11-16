@@ -43,10 +43,10 @@ impl crate::types::BridgeReleaseFilesSnapshot {
 }
 
 pulled_read! {
-    /// A release's files in the order the Storage sheet's file table sorts
-    /// by, read live: one read for as long as the sheet shows, moved in place
-    /// as its order changes. It shows nothing until `set_request` names a
-    /// release.
+    /// A release's files in the order the Storage sheet's file table sorts by,
+    /// read live: one read for as long as the sheet shows, whose request
+    /// changes on the same live query when its order changes. It shows nothing
+    /// until `set_request` names a release.
     ReleaseFilesSubscription:
         bae_app::live_reads::LiveReleaseFiles => crate::types::BridgeReleaseFilesSnapshot,
     converted by crate::types::BridgeReleaseFilesSnapshot::from_core,

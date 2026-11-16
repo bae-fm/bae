@@ -95,9 +95,10 @@ async fn queue_value_with_context(services: &AppServices) -> bae_playback::Resol
 }
 
 /// The upcoming tracks are a list the queue screens read like any other: a
-/// window of a range of the lane's order that moves in place, its own count,
-/// and the key at a position. Skipping ahead moves the playing track, which
-/// moves the list's top, its count and the window over it.
+/// window of a range of the lane's order whose bounds the screen changes on the
+/// same live query, its own count, and the key at a position. Skipping ahead
+/// moves the playing track, which moves the list's top, its count and the
+/// window over it.
 #[tokio::test]
 async fn the_upcoming_list_follows_the_playing_track_through_its_window_and_count() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;

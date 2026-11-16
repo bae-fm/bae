@@ -57,7 +57,7 @@ impl ImportTables {
     }
 
     /// How many items of `list` sit before the one at a key, as a live query
-    /// whose key moves in place.
+    /// whose key the caller changes on the same query.
     pub(crate) fn subscribe_import_position(
         &self,
         list: ImportListId,

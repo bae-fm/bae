@@ -556,7 +556,7 @@ impl LibraryManager {
         self.downloads.watch_transfers()
     }
 
-    /// The export queue as it stands now, each entry beside its release, the
+    /// The export queue as it stands now, each entry with its release, the
     /// active one with the percent it has reached.
     #[cfg(desktop)]
     pub async fn output_snapshot(&self) -> Result<bae_transfers::OutputSnapshot, LibraryError> {

@@ -261,7 +261,7 @@ class Library(
 
     internal fun workDetails(id: String): DetailEvents<BridgeWorkDetail> = detailFlow(::workDetail, id)
 
-    /** One live library search whose query moves in place as the person types. */
+    /** One live library search, whose text changes on the same live query as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
 
     /** Reads that answer one request once, straight from the database, with no subscription. */
