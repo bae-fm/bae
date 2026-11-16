@@ -12,8 +12,8 @@ impl ImportServiceHandle {
     }
 
     /// The steps of the apply of a catalog release that `id` names, which a
-    /// screen shows: the apply writes each network read it waits on to the
-    /// row `id` keys while the read runs.
+    /// screen shows. While a network read runs, the apply writes that read
+    /// to the row whose key is `id`.
     pub fn catalog_apply_steps(&self, id: crate::CatalogApplyId) -> crate::CatalogApplySteps {
         crate::CatalogApplySteps::shown(
             id,
@@ -23,9 +23,10 @@ impl ImportServiceHandle {
         )
     }
 
-    /// The network read the apply `apply` names waits on: the first value at
-    /// once, then a value after each write that changes it; `None` while it
-    /// waits on none. Closing the library ends it.
+    /// The network read that the apply named by `apply` waits on. It sends
+    /// the first value at once and a new value after each write that changes
+    /// it, and `None` while the apply waits on no read. Closing the library
+    /// ends it.
     pub fn subscribe_catalog_apply_step(
         &self,
         apply: &crate::CatalogApplyId,

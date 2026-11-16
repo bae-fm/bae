@@ -1,6 +1,6 @@
-//! The objects an open, a setup call or a close reports its steps through,
-//! made on the host so that the app pulls their streams on the host's
-//! runtime.
+//! An open, a setup call or a close reports its steps through these
+//! objects. The app makes them on the host, so that it pulls their streams
+//! on the host's runtime.
 
 use std::sync::Arc;
 

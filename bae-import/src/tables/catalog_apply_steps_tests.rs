@@ -56,12 +56,12 @@ async fn the_row_holds_each_step_while_its_read_runs() {
         Ok::<_, DbError>(())
     };
     let (read, ()) = tokio::join!(steps.during(reading, read), watch);
-    read.expect("the step's row is written and deleted");
+    read.expect("the apply writes and deletes the step's row");
     step_until(&mut query, None).await;
 
     let cover = CatalogApplyStep::FetchingCover(Catalog::MusicBrainz);
     let fetched = steps.during(cover, async { Ok::<_, DbError>("the cover") }).await;
-    assert_eq!(fetched.expect("the step's row is written and deleted"), "the cover");
+    assert_eq!(fetched.expect("the apply writes and deletes the step's row"), "the cover");
     // The query may never see a step this short, so a new one reads the row
     // as the step left it.
     let mut after = tables.subscribe_catalog_apply_step(&apply);

@@ -36,9 +36,10 @@ impl AppHandle {
         crate::screens::import_counts(self.services.subscribe_import_counts(), self.runtime.clone())
     }
 
-    /// A new apply of a catalog release, for a pick or the release editor's
-    /// apply that the app shows: subscribe to its step, then hand it to the
-    /// apply.
+    /// A new object that follows one catalog apply the app shows: a pick, or
+    /// the release editor applying a catalog release. The app subscribes to
+    /// its step, then passes it as `apply` to `select_candidate_release` or
+    /// `ReleaseEditSession.apply_catalog`.
     pub fn catalog_apply(&self) -> std::sync::Arc<crate::BridgeCatalogApply> {
         crate::screens::catalog_apply(self.services.clone(), self.runtime.clone())
     }

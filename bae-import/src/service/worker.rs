@@ -50,9 +50,10 @@ impl ImportService {
         closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
-        // No run, import, open list or apply of a catalog release outlives
-        // the process that held it, so the library opens with no candidate
-        // standing, no list and no apply's step, before anything reads them.
+        // No run, import, open list or catalog release that bae is applying
+        // outlives the process, so bae clears the candidate standings, the
+        // steps of catalog releases being applied and the open lists before
+        // anything reads them.
         tables.clear_candidate_standings().await?;
         tables.clear_catalog_apply_steps().await?;
         tables.close_import_lists().await?;

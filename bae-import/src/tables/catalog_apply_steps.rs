@@ -1,8 +1,9 @@
-//! The network read each apply of a catalog release waits on now
-//! (`import_catalog_apply_step`), by the apply's id: written as the read
-//! starts, deleted as it ends, and read by the screen that shows the apply.
-//! No apply outlives the process, so the table is emptied as the library
-//! opens. Its table is `catalog_apply_steps.sql`.
+//! Each row of `import_catalog_apply_step` holds the network read that an
+//! apply of a catalog release waits on now, keyed by the apply's id. The
+//! apply writes the row as the read starts and deletes it as the read ends,
+//! and the screen that shows the apply reads it. No apply outlives the
+//! process, so bae empties the table when it opens the library. Its table
+//! is `catalog_apply_steps.sql`.
 
 use super::*;
 use crate::{CatalogApplyId, CatalogApplyStep};

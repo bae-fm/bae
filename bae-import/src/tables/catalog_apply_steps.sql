@@ -1,8 +1,9 @@
--- The network read each apply of a catalog release waits on now, by the id
--- the app's apply was given: an import pick's or the release editor's. The
--- apply writes the row as the read starts and deletes it as the read ends,
--- so a row exists only while its read runs. No apply outlives the process,
--- so the table is emptied as the library opens.
+-- Each row holds the network read that an apply of a catalog release is
+-- waiting on, keyed by the id the library's handle gave the apply when the
+-- import pick or the release editor started it. The apply writes the row as
+-- the read starts and deletes it as the read ends, so a row exists only
+-- while its read runs. No apply outlives the process, so bae-import deletes
+-- every row when the library opens.
 CREATE TABLE IF NOT EXISTS import_catalog_apply_step (
     apply_id TEXT PRIMARY KEY,
     step     TEXT NOT NULL CHECK (step IN ('reading_release', 'fetching_cover')),

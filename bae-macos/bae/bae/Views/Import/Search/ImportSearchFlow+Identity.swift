@@ -62,8 +62,8 @@ extension ImportSearchFlow {
         session.install(task)
     }
 
-    /// Run the pick core-side, each network read it waits on written to
-    /// `apply`'s row while it runs.
+    /// Run the pick in core. Core writes each network read the pick waits
+    /// on to `apply`'s row while the read runs.
     @MainActor
     private static func pick(
         _ application: MetadataApplication,

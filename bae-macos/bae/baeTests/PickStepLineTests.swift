@@ -6,7 +6,7 @@ import Testing
 @testable import bae
 
 /// A pick can wait on a catalog over the network, so the row it was made on
-/// shows the step it waits on, read from the apply's row, while it does. The run's own pick
+/// shows the step that the catalog apply's row holds while it waits. The run's own pick
 /// says its release is being read in a line of SwiftUI text, which the
 /// `import-search-reading-pick` shot shows.
 @MainActor

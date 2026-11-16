@@ -70,8 +70,8 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
-        /// Applying a catalog release, whose step its line reads while it
-        /// runs; `nil` where no bridge is behind the editor.
+        /// Applying a catalog release. The editor's step line shows the
+        /// network read the apply waits on; `nil` when no apply runs.
         case applying((any CatalogApplySource)?)
     }
 

@@ -282,8 +282,8 @@ forward! {
         /// is the path for the choices only a person can make. A catalog
         /// release that fails to load, or that lists another number of tracks
         /// than the folder holds, comes back as the error, for its own row to
-        /// say. Each network read it waits on is written to `apply`'s
-        /// row while it runs, when the app shows the pick.
+        /// say. When the app shows the pick, core writes each network read
+        /// the pick waits on to `apply`'s row while the read runs.
         fn select_candidate_release(
             candidate_key: Vec<u8>,
             link: crate::types::BridgePressingLink,
