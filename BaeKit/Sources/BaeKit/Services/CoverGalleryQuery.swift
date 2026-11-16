@@ -1,8 +1,8 @@
 import Foundation
 
-/// A library release's cover picker as a live read: the release and the
-/// source it shows change in place, and each value names the request it
-/// answers.
+/// Reads a library release's cover picker through one live query.
+/// `setRequest` changes the release and source the query reads, and each
+/// value carries the request it answers.
 public struct CoverGalleryQuery: Sendable {
     public let setRequest:
         @Sendable (_ releaseId: String, _ filter: BridgeCoverFilter) throws ->

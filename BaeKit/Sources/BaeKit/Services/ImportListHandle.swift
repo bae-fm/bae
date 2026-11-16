@@ -1,7 +1,7 @@
 import Foundation
 
-// The import list is a desktop surface: its bridge types are built behind the
-// bridge's desktop condition, which the iOS bindings leave out.
+// The import list is a desktop surface: bae-bridge compiles the import list's
+// types only for desktop targets, so the iOS bindings do not have them.
 #if os(macOS)
 
     /// One item of the import list, addressed by the key core computed for it.
@@ -50,7 +50,7 @@ import Foundation
         /// Found's filter entries with how many rows each holds.
         public let filterEntries:
             @Sendable () -> PulledValues<[BridgePendingFilterEntry]>
-        /// What the selection holds and can be told to do.
+        /// What the selection holds and the actions the person can run on it.
         public let selection:
             @Sendable () -> PulledValues<BridgeSelectionSummary>
         private let applyView:
@@ -154,9 +154,9 @@ import Foundation
             try await foldAll(folded)
         }
 
-        /// Where the candidate sits once revealed at its current placement:
-        /// its tab, with the filters cleared and its group opened, and the
-        /// key a chain of windows starts at to show it. `nil` when the list
+        /// Where the list shows the candidate after it clears the filters and
+        /// opens the candidate's group: its tab, and the key a chain of
+        /// windows starts at to show it. `nil` when the list
         /// lists no such candidate.
         public func locateCandidate(_ candidateKey: Data) async throws
             -> BridgeImportCandidateListLocation?

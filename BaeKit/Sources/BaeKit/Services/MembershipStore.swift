@@ -6,13 +6,14 @@ private let logger = Logger.bae("MembershipStore")
 
 /// The store's members joined with their profiles, the profile this device's
 /// person asked for, the invites this device has open and the admin changes
-/// it asked for. Whether this device's person is an admin is read for as
-/// long as the library is open, from `start()`: the menu bar always shows
-/// Rename Library, which it enables. The rest is read while a screen shows
-/// it, from `show()` to `hide()`: profiles, the requested profile, invites
-/// and admin changes are subscribed, and the people are one subscription of
-/// core's joined list: this device's person, the others and their counts. A
-/// person's page follows its own subscription, keyed by their member id.
+/// it asked for. The store reads whether this device's person is an admin
+/// for as long as the library is open, from `start()`: the menu bar always
+/// shows Rename Library, which it enables. The store reads the rest while a
+/// screen shows it, from `show()` to `hide()`: it subscribes to the people,
+/// the requested profile, invites and admin changes, and the people are one
+/// subscription of core's joined list: this device's person, the others and
+/// their counts. A person's page follows its own subscription, keyed by
+/// their member id.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -52,7 +53,7 @@ public final class MembershipStore {
 
     /// Starts the membership subscription, returning what keeps it running.
     private let subscribeMembers: @MainActor (MembershipStore) -> AnyObject
-    /// Starts the profile, requested profile, admin change and invite
+    /// Starts the people, requested profile, admin change and invite
     /// subscriptions a screen shows, returning what keeps each running.
     private let subscribeShown: @MainActor (MembershipStore) -> [AnyObject]
     /// Starts the subscription to the person with the member id, handing

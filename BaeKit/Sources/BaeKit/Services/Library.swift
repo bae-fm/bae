@@ -54,8 +54,8 @@ public final class Library: Sendable, Observable {
     /// One live read of the album grid's multi-selection, pointed at each new
     /// selection in place.
     public let albumSelection: @Sendable () -> AlbumSelectionQuery
-    /// The artists an artist picker's text finds: each text is a list of its
-    /// own.
+    /// Opens the live list of the artists that match an artist picker's
+    /// text; each text gets its own list.
     public let artistSearch: ArtistSearchOpener
     /// The Storage Manager list under one sort, filter and search text.
     public let storageList:
@@ -487,8 +487,8 @@ extension Library {
             }
         }
 
-        /// The artists each text an artist picker types finds, read through
-        /// `handle`.
+        /// Opens, through `handle`, the list of artists that match each text
+        /// the person types into an artist picker.
         private static func artistSearch(
             _ handle: any AppHandleProtocol
         ) -> ArtistSearchOpener {

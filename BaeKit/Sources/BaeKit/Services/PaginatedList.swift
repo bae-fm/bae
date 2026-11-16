@@ -14,9 +14,9 @@ private let logger = Logger.bae("PaginatedList")
 /// their own, so a row's position is never read inside a window.
 ///
 /// The chain follows the rows on screen, which are the positions held by
-/// `holdPage(containing:)` and `withPage(containing:_:)`. A position far from
-/// the chain is a jump: the chain starts over from the key the list has at
-/// that position, a plain read.
+/// `holdPage(containing:)` and `withPage(containing:_:)`. When a held position
+/// is far from the chain's rows, the list reads the key at that position once
+/// and starts the chain over from it.
 @MainActor
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
@@ -58,25 +58,27 @@ where Row.ID: Sendable {
 
     /// Advances when a delivery changes what the list holds: the rows at its
     /// positions, or the total. A value that repeats what the list already
-    /// holds leaves it alone. A rendered viewport uses this boundary to
-    /// restore the row it held while rows of different heights were
-    /// materialised or changed above it.
+    /// holds leaves it alone. When this value changes, the viewport scrolls
+    /// back to the row it showed, because rows of different heights above it
+    /// may have loaded or changed.
     public private(set) var contentRevision: UInt64 = 0
 
-    /// The cold first read failed. The consuming grid shows an error and Retry
-    /// instead of the empty-library placeholder: a failed first read is not an
-    /// empty library. Only `loadInitial` sets it; a later failure keeps what is
-    /// on screen and goes to `onError`.
+    /// The first read, made before the list held any rows, failed. The grid
+    /// that shows the list shows an error and Retry instead of the
+    /// empty-library placeholder: a failed first read is not an empty
+    /// library. Only `loadInitial` sets it; a later failure keeps what is on
+    /// screen and goes to `onError`.
     public private(set) var initialLoadError: DisplayError?
 
-    /// This list's `LoadEpoch`. Consumers fold it into a row's `RowLoadID`
-    /// `.task(id:)` so the row's load restarts when the list is swapped.
+    /// This list's `LoadEpoch`. A row puts it in its `RowLoadID` for
+    /// `.task(id:)`, so the row's load restarts when a new list replaces this
+    /// one.
     public var loadEpoch: LoadEpoch {
         LoadEpoch(instance: ObjectIdentifier(self))
     }
 
-    /// The rows the chain holds, laid end to end. Read during render, so it
-    /// stays observed.
+    /// The rows the chain holds, laid end to end. Views read it while they
+    /// draw, so Observation tracks it.
     private var placed: [Placed<Row>] = []
 
     @ObservationIgnored
@@ -91,14 +93,15 @@ where Row.ID: Sendable {
     @ObservationIgnored
     private var sectionDeliveries:
         ScreenSubscription<PulledValues<[BridgeLibraryBrowseSection]>>?
-    /// How many holds each position has: the rows on screen, or a reveal on
-    /// its way to a row.
+    /// How many holds each position has: the rows on screen, or a reveal
+    /// that scrolls to a row.
     @ObservationIgnored
     private var holds: [Int: Int] = [:]
     /// The tasks waiting for a position's row, each under the position.
     @ObservationIgnored
     private let rowWaiting = Waiting()
-    /// The jump in flight, which reads the key at a position.
+    /// The task that is reading the key at a position, before the chain
+    /// starts over there.
     @ObservationIgnored
     private var jump: Task<Void, Never>?
     @ObservationIgnored
@@ -119,17 +122,17 @@ where Row.ID: Sendable {
     // MARK: - Loading
 
     /// Read the top of the list and its count, and wait for the first window;
-    /// the count is drawn when it arrives. Called when the list is first
-    /// mounted, and again to retry a failed first read.
+    /// the view draws the count when it answers. The owner calls this when it
+    /// opens the list, and again to retry a failed first read.
     public func loadInitial() async {
         await reopen(at: nil, position: 0)
     }
 
-    /// Read the list again from `key` (its top when nil), standing `position`
-    /// in for the count of rows before it until that count answers, and wait
-    /// for the first window, not the count. The windows, the count and the
-    /// headings read before are dropped for new ones, so every value that
-    /// answers was read after whatever write made the reopen necessary.
+    /// Read the list again from `key` (its top when nil), using `position` as
+    /// the number of rows before `key` until the count query returns, and
+    /// wait for the first window, not the count. The list drops the windows,
+    /// count and headings it read before and opens new reads, so every value
+    /// it receives comes from after the write that made the reopen necessary.
     public func reopen(at key: [BridgeSortValue]?, position: Int) async {
         initialLoadError = nil
         // The count read before is not this read's: the list holds none until
@@ -156,12 +159,13 @@ where Row.ID: Sendable {
         }
     }
 
-    /// Hold `position` while `body` runs. `body` starts once the row at the
-    /// position has landed, or once the list is known to end before it, so the
-    /// row it holds is there to read, and stays there until `body` returns.
+    /// Hold `position` while `body` runs. `body` starts once a window has
+    /// delivered the row at the position, or once the count shows the list
+    /// ends before it, so the row is there to read, and stays there until
+    /// `body` returns.
     ///
-    /// A calling task cancelled before the row lands stops waiting, so `body`
-    /// runs without it.
+    /// A task that is cancelled before a window delivers the row stops
+    /// waiting, so `body` runs without the row.
     public func withPage<T>(
         containing position: Int,
         _ body: @MainActor () async throws -> T
@@ -340,8 +344,8 @@ where Row.ID: Sendable {
 
     // MARK: - Waiting
 
-    /// Whether the row at `position` has landed, or the list is known to end
-    /// before it.
+    /// Whether a window has delivered the row at `position`, or the count
+    /// shows the list ends before it.
     private func isSatisfied(_ position: Int) -> Bool {
         if row(at: position) != nil { return true }
         guard let count else { return false }
@@ -350,7 +354,8 @@ where Row.ID: Sendable {
 
     private var firstAnswered: Bool { chain?.hasAnswered ?? false }
 
-    /// Something landed: let go of everything it answers.
+    /// A window or the count delivered: resume every task whose row is now
+    /// there or past the list's end.
     private func settled() {
         rowWaiting.release(where: isSatisfied)
         if firstAnswered || initialLoadError != nil {

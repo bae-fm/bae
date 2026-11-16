@@ -1,17 +1,16 @@
 import Foundation
 
-/// The windows a list reads, in the order of its rows: each a live read of a
-/// range of the order, neighbours sharing a bound so every row is held once.
-/// A window owns its subscription and only its last delivery, replaced
-/// whole; the rows are those deliveries laid end to end from the position of
-/// the chain's first row, which is its own live read of how many rows come
-/// before the chain's start key.
+/// WindowChain holds the windows a list reads, in row order. Each window is a
+/// live read of a range of the order, and next windows share a bound, so the
+/// chain holds each row once. A window owns its subscription and only its
+/// last delivery, which the next delivery replaces whole. The chain lays
+/// those deliveries end to end from the position of its first row, which is
+/// its own live read of how many rows come before the chain's start key.
 ///
-/// The chain fits itself to what it delivers: an open window is closed at the
-/// row past its limit, a closed window that rows were added to is split there,
-/// a window that went empty is dropped into its neighbour. It grows one window
-/// below or above and drops windows well beyond the rows on screen, which the
-/// list tells it in `visible`.
+/// The chain closes an open window at the row past its limit, splits a
+/// closed window that gained rows, and merges an empty window into its
+/// neighbour. The chain grows one window below or above and drops windows
+/// well beyond the rows on screen, which the list tells it in `visible`.
 @MainActor
 final class WindowChain<Row: Sendable & Equatable> {
     /// The rows each window last delivered, laid end to end.
@@ -56,8 +55,9 @@ final class WindowChain<Row: Sendable & Equatable> {
     }
 
     /// Whether the row at `position` is near enough the chain's rows for the
-    /// chain to grow to it; a position farther is a jump. The last window of
-    /// the list, once answered, reaches every position past it.
+    /// chain to grow to it; for a position farther away, the list reads the
+    /// key there and starts the chain over. The last window of the list, once
+    /// answered, reaches every position past it.
     func reaches(_ position: Int) -> Bool {
         let near = 2 * pageSize
         let low = start.key == nil ? Int.min : start.value - near
@@ -131,8 +131,7 @@ final class WindowChain<Row: Sendable & Equatable> {
     // MARK: - Deliveries
 
     private func deliver(_ delivery: ListWindowDelivery<Row>, to id: UUID) {
-        // A value for a window the chain has since moved or dropped draws
-        // nothing.
+        // Ignore a value for a window the chain has since moved or dropped.
         guard let window = windows.first(where: { $0.id == id }),
             delivery.window == window.request
         else { return }
@@ -230,9 +229,9 @@ final class WindowChain<Row: Sendable & Equatable> {
 
     // MARK: - Following the rows on screen
 
-    /// Grow, trim and keep the chain around the rows on screen. A window is
-    /// added below or above only when the one next to it has answered, so its
-    /// bound and its row count are known.
+    /// Grow, trim and keep the chain around the rows on screen. The chain adds
+    /// a window below or above only after the window next to it has
+    /// delivered, so the chain has that window's bound and row count.
     func reconcile() {
         guard let visible, !windows.isEmpty else { return }
         let page = pageSize
@@ -289,9 +288,9 @@ final class WindowChain<Row: Sendable & Equatable> {
     // MARK: - Where the rows sit
 
     /// Lay the windows' last deliveries end to end from the chain's start
-    /// position. A window that has not answered yet ends the laying, except a
-    /// first window reading upward, whose rows are not what the start position
-    /// stands at.
+    /// position. The loop stops at the first window with no delivery. It
+    /// skips a first window that reads upward, because that window's rows sit
+    /// before the start position.
     private func layOut() {
         var next: [Placed<Row>] = []
         var position = start.value
@@ -339,7 +338,8 @@ final class ChainWindow<Row: Sendable> {
     var first: [BridgeSortValue]?
     var beyond: [BridgeSortValue]?
     var leadingHeader: Row?
-    /// Whether any delivery has landed. A window moved to a new request keeps
+    /// Whether the window has received a delivery. A window moved to a new
+    /// request keeps
     /// its last delivery until the new one replaces it whole.
     var answered = false
 

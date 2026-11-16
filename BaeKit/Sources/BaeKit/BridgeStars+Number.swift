@@ -10,7 +10,8 @@ extension BridgeStars {
         }
     }
 
-    /// The stars of this `number`, `nil` outside one to five.
+    /// Creates the stars for `number`, or returns nil when `number` is
+    /// outside one to five.
     public init?(number: Int) {
         switch number {
         case 1: self = .one

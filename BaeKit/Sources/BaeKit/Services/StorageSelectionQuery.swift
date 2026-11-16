@@ -1,8 +1,8 @@
 import Foundation
 
-/// The rows of the releases selected in the Storage Manager list that the
-/// list holds, read live: the selected ids change in place, and each value
-/// answers the ids last set.
+/// A live query reads the rows of the selected releases that the Storage
+/// Manager list holds. The caller changes the selected ids on the same
+/// query, and each value holds the rows for the ids the caller set last.
 public struct StorageSelectionQuery: Sendable {
     public let setSelected: @Sendable ([String]) throws -> Void
     public let values: PulledValues<BridgeStorageSelection>

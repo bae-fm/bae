@@ -260,9 +260,9 @@
     }
 
     /// A clear window over all of the window an alert sits on, which takes
-    /// every click aimed at it and does nothing with them. Nearly clear
-    /// rather than clear, since the window server lets a click through a
-    /// window that is fully so.
+    /// every click aimed at it and does nothing with them. bae fills the
+    /// window with 1% black, because the window server passes clicks through
+    /// a window that is fully clear.
     private final class AlertShield: NSWindow {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
@@ -287,11 +287,10 @@
         override func sendEvent(_ event: NSEvent) {}
     }
 
-    /// The alert's content in its panel: bae's face hung 36 points below the
-    /// top of the window it sits on, with room around it for its shadow. The
-    /// panel is a window of its own, so it draws in the tone, accent and
-    /// light or dark scheme of the window it sits on, which it inherits from
-    /// nothing.
+    /// The tone, accent and light or dark scheme of the window an alert sits
+    /// on. The panel is a separate window and inherits nothing from its
+    /// parent, so the presenting view passes it the parent's look, and
+    /// updates it when the parent's look changes.
     @MainActor
     @Observable
     private final class PanelLook {
@@ -304,6 +303,8 @@
         }
     }
 
+    /// The alert's face, 36 points below the top of the parent window, with
+    /// room around it for its shadow, drawn in the parent's look.
     private struct AlertPanelContent: View {
         static let hangs: CGFloat = 36
         static let shadowRoom: CGFloat = 24
@@ -326,11 +327,12 @@
 
     /// Shows alerts. An alert is a clear panel holding bae's face, a child of
     /// the window of the view that raised it, or of the alert or sheet that is
-    /// over that window, hung from the top centre of its parent. A shield
-    /// window between them takes the pointer, the keyboard stays with the
-    /// panel whenever its parent is made key, and the panel is the one
-    /// modal element of the accessibility tree, so the window below it cannot
-    /// be reached by pointer, keyboard or VoiceOver while it is up.
+    /// over that window. AlertWindows places the panel at the top centre of
+    /// its parent. A shield window between them takes the pointer,
+    /// AlertWindows makes the panel key again whenever something makes its
+    /// parent key, and the panel is the only modal element of the
+    /// accessibility tree, so the person cannot reach the window below with
+    /// the pointer, the keyboard or VoiceOver while the alert is up.
     @MainActor
     public final class AlertWindows {
         public static let shared = AlertWindows()
@@ -373,9 +375,10 @@
         }
 
         /// Places `panel` at the top centre of `parent` and `shield` over it,
-        /// and keeps them there as `parent` moves or resizes. The keyboard
-        /// stays with the alert: whatever makes the window below key hands
-        /// the key straight back. Returns the placing and the observers.
+        /// and keeps them there as `parent` moves or resizes. When something
+        /// makes the parent key, the panel makes itself key again. Returns the
+        /// closure that positions the panel and the shield, and the
+        /// observers.
         private static func keepWith(
             parent: NSWindow,
             panel: NSPanel,

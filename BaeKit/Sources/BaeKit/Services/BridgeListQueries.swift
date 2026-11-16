@@ -1,7 +1,7 @@
 import Foundation
 
-/// One delivery of a list window: the rows of the range it answers, with the
-/// keys that chain it to its neighbours.
+/// One delivery of a list window: the rows in its range, the sort values of
+/// its first row, and the sort values of the row after its last row.
 public struct ListWindowDelivery<Row: Sendable>: Sendable {
     /// The request this answers. A screen that has since moved the window
     /// drops the value.
@@ -62,9 +62,9 @@ public struct ListPositionQuery: Sendable {
     }
 }
 
-/// The reads of one list, which every list shares: each window of it is a
-/// live read of its own, its count and the position of a key in it are
-/// others, and a jump to a position is a plain read of the key there.
+/// The reads every list has. Each window is a live read. The row count is a
+/// live read. The number of rows before a key is a live read. `keyAt` reads
+/// the key at a position once.
 public struct BridgeListQueries<Row: Sendable>: Sendable {
     public let window:
         @Sendable (_ window: BridgeListWindow) -> ListWindowQuery<Row>

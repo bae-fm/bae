@@ -26,8 +26,8 @@ public final class Queue: Sendable, Observable {
     public let skipToEntry: @Sendable (_ entryId: String) async throws -> Void
     /// Flip the playing context between sequential and shuffled order.
     public let setShuffle: @Sendable (_ on: Bool) -> Void
-    /// The reads of the context's upcoming tracks as a list, in the order
-    /// the lane reads in: its own, or the shuffled one when `shuffled`.
+    /// Opens the live queries of the context's upcoming tracks, in the lane's
+    /// own order, or shuffled when `shuffled` is true.
     public let upcomingQueries:
         @Sendable (_ shuffled: Bool) -> BridgeListQueries<BridgeQueueEntry>
 
@@ -141,7 +141,9 @@ public final class Queue: Sendable, Observable {
         private static func upcomingQueries(
             _ handle: any AppHandleProtocol
         ) -> @Sendable (Bool) -> BridgeListQueries<BridgeQueueEntry> {
-            { _ in fatalError("the queue's upcoming list is read on macOS") }
+            { _ in
+                fatalError("only the macOS app reads the queue's upcoming list")
+            }
         }
     #endif
 

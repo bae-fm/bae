@@ -131,9 +131,9 @@
     }
 
     extension Library {
-        /// Core's canned answer to whether the list holds every release
-        /// asked about, for shots and tests: it does, whatever the filter,
-        /// search and releases.
+        /// The answer the caller chose, in core's place, to whether the list
+        /// holds every release asked about, for shots and tests: it does,
+        /// whatever the filter, search and releases.
         public static func fixedStorageHoldsAll()
             -> @Sendable (BridgeStorageFilter, String, [String]) async throws
             -> Bool
@@ -144,7 +144,7 @@
 
     extension StorageSelectionQuery {
         /// A selection read whose answers the caller chose, in core's place,
-        /// for shots and tests: every set of ids is answered with what
+        /// for shots and tests: the fixture answers each set of ids with what
         /// `answer` returns for it.
         public static func fixed(
             answers: UnansweredCount,
@@ -217,7 +217,7 @@
         }
 
         /// The window read of a fixed list: each request counts in `answers`
-        /// until it is answered with its range of `rows`.
+        /// until the fixed list answers it with its range of `rows`.
         private static func fixedWindow(
             of rows: [Row],
             answers: UnansweredCount,
@@ -244,10 +244,10 @@
             }
         }
 
-        /// A list over fixed, already-sorted rows, for shots and tests: every
-        /// window is answered with its range of `rows`, and a key is the
+        /// A list over fixed, already-sorted rows, for shots and tests: the list
+        /// answers every window with its range of `rows`, and a key is the
         /// position of its row. Each window request counts in `answers` until
-        /// it is answered.
+        /// the list answers it.
         public static func fixed(
             _ rows: [Row],
             answers: UnansweredCount,
@@ -303,7 +303,7 @@
         }
 
         /// A list whose every window read fails with `error`, for shots and
-        /// tests of the screen that shows a list that could not be read.
+        /// tests of the screen that shows a list bae failed to read.
         public static func failing(
             _ error: any Error & Sendable,
             answers: UnansweredCount
@@ -336,9 +336,9 @@
     #if os(macOS)
         extension ImportListHandle {
             /// An import list over fixed, already-ordered `items`, for shots and
-            /// tests: every window is answered with its range of them, a view
-            /// or fold changes nothing, and a candidate is found where `items`
-            /// holds it, on `tab`.
+            /// tests, on `tab`: the list answers every window with its range of
+            /// the items, a view or fold changes nothing, and the list finds a
+            /// candidate at its place in `items`.
             public static func fixed(
                 items: [BridgeImportListItem],
                 tab: BridgeTriageTab

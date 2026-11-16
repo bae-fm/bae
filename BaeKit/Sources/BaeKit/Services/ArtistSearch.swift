@@ -1,9 +1,9 @@
 import Foundation
 import Observation
 
-/// How an artist picker opens the list of the artists a text finds: each text
-/// is a list of its own, whose windows, count and positions are live reads
-/// like any other list's.
+/// How an artist picker opens the list of the artists a text finds: the
+/// picker opens a separate list for each text, whose windows, count and
+/// positions are live reads like any other list's.
 public typealias ArtistSearchOpener =
     @Sendable (_ text: String) -> BridgeListQueries<BridgeArtistSearchResult>
 
@@ -17,9 +17,9 @@ public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 /// One artist picker's search while it is open: the list of what the text
 /// typed last finds.
 ///
-/// A new text waits out typing, then opens the list of its own; the list the
-/// text before it found stays until the new one has answered, so the results
-/// never blank between keystrokes.
+/// Once typing pauses, ArtistSearchResults opens the new text's list, and
+/// keeps showing the previous text's list until the new one answers, so the
+/// results never blank between keystrokes.
 @MainActor
 @Observable
 public final class ArtistSearchResults {

@@ -4,7 +4,7 @@ import Foundation
 /// make it, add to it, rename it, choose who sees it, take an entry out,
 /// reorder it, delete it.
 public struct PlaylistWrites: Sendable {
-    /// Make a playlist holding `trackIds` in order, answering its id. A
+    /// Make a playlist holding `trackIds` in order, and return its id. A
     /// failed write leaves no playlist.
     public let create:
         @Sendable (

@@ -10,7 +10,8 @@ public final class StorageManagerStore {
     public private(set) var queues: BridgeStorageQueues?
     /// Core's last answer for the selection: the row of each selected release
     /// the list holds, wherever in the list it sits, the storage actions
-    /// every one of them allows, and whether any can only be cancelled.
+    /// every one of them allows, and whether Cancel is the only action one of
+    /// them offers.
     private var answer: BridgeStorageSelection?
 
     @ObservationIgnored
@@ -33,12 +34,12 @@ public final class StorageManagerStore {
     @ObservationIgnored
     private var queueDeliveries:
         ScreenSubscription<PulledValues<BridgeStorageQueues>>?
-    /// The filter and search text the list shows, which the one-off reads of
-    /// the list's releases are asked under.
+    /// The filter and search text the list shows, which `holdsAll` passes to
+    /// core when it asks about the list's releases.
     @ObservationIgnored
     private var shown: (filter: BridgeStorageFilter, search: String)?
-    /// The releases selected in the list, which the selection read is asked
-    /// about.
+    /// The releases selected in the list. The store asks the selection read
+    /// for their rows.
     @ObservationIgnored
     private var selection: Set<String> = []
 
@@ -119,7 +120,8 @@ public final class StorageManagerStore {
     }
 
     /// Read the selection's rows under `filter` and `search`, from the next
-    /// value on: the answer belongs to the list it was read under.
+    /// value on: core answers for the filter and search of the list on
+    /// screen.
     private func openSelection(filter: BridgeStorageFilter, search: String) {
         selectionDeliveries?.stop()
         answer = nil
@@ -152,7 +154,7 @@ public final class StorageManagerStore {
     }
 
     /// Whether the list, as core reads it now, holds every one of
-    /// `releaseIds`; `false` before the list is shown.
+    /// `releaseIds`; `false` before `update` shows the list.
     public func holdsAll(_ releaseIds: [String]) async throws -> Bool {
         guard let shown else { return false }
         return try await library.storageHoldsAll(
@@ -164,8 +166,9 @@ public final class StorageManagerStore {
 
     /// Core's answer, when it is for `selection` and not for an earlier
     /// one: the rows of the releases the list holds among `selection`, the
-    /// storage actions every one allows, and whether any can only be
-    /// cancelled. `nil` while core's answer is for other releases.
+    /// storage actions every one allows, and whether Cancel is the only
+    /// action one of them offers. `nil` while core's answer is for other
+    /// releases.
     public func answered(
         for selection: Set<String>
     ) -> BridgeStorageSelection? {

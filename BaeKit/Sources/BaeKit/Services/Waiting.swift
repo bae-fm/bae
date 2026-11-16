@@ -1,8 +1,8 @@
 import Foundation
 
-/// Tasks waiting for something to land, each under a key, let go when what
-/// they wait for has landed, when their own task is cancelled, or when the
-/// owner gives up.
+/// Waiting suspends tasks, each under a key. The owner resumes a task when
+/// what it waits for has arrived or when the owner gives up, and a cancelled
+/// task resumes itself.
 @MainActor
 final class Waiting {
     private struct Waiter {
@@ -12,7 +12,8 @@ final class Waiting {
 
     private var waiters: [UUID: Waiter] = [:]
 
-    /// Wait under `key`, unless `done` already. The wait ends with
+    /// Suspend the task under `key`, unless `done` is already true. The wait
+    /// ends with
     /// `release(where:)` naming the key, `releaseAll`, or the task's
     /// cancellation, and never starts for a task already cancelled.
     func wait(key: Int = 0, unless done: Bool) async {
@@ -33,7 +34,7 @@ final class Waiting {
         }
     }
 
-    /// Let go of the waiters whose key `done` answers for.
+    /// Resume the waiters whose key makes `done` return true.
     func release(where done: (Int) -> Bool) {
         for (id, waiter) in waiters where done(waiter.key) {
             waiters.removeValue(forKey: id)

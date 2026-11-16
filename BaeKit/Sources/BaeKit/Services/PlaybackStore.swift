@@ -157,7 +157,7 @@ public class PlaybackStore {
     }
 
     /// Tracks went into Up Next: the queue button's badge shows how many.
-    /// Nothing is shown when none went in.
+    /// When no tracks went in, the store sends nothing.
     public func publishQueueItemsAdded(_ count: Int) {
         guard count > 0 else {
             return
@@ -214,17 +214,17 @@ extension PlaybackStore {
         await upcoming?.list.holdPage(containing: index)
     }
 
-    /// Why the upcoming list could not be read, when it could not: its first
-    /// read failing, or a later one.
+    /// Why the store could not read the upcoming list: its first read failed,
+    /// or a later one did.
     @MainActor
     public var upcomingFailure: DisplayError? {
         upcoming?.readFailure ?? upcoming?.list.initialLoadError
     }
 
-    /// Open the upcoming list in the order the lane reads in now, while a
-    /// context plays, and wait for its count and first rows. A list open in
-    /// the other order stays shown until the new one has answered, so a
-    /// shuffle flip does not empty the lane.
+    /// Open the upcoming list in the lane's current order, shuffled or not,
+    /// while a context plays, and wait for its count and first rows. The lane
+    /// keeps showing the list in the other order until the new list's first
+    /// read returns, so turning shuffle on or off does not empty the lane.
     @MainActor
     public func showUpcoming(queue: Queue) async {
         guard queueContext != nil else {
