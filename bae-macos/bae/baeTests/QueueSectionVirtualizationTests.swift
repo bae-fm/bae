@@ -9,9 +9,10 @@ import Testing
 struct QueueSectionVirtualizationTests {
     /// The context lane counts the whole rest of the library, so opening the
     /// pane must not mount — and must not hold places for — rows thousands of
-    /// slots below the viewport: each place held is a window the list reads.
+    /// slots below the viewport: each row the section holds makes the list
+    /// read the rows around it.
     @MainActor
-    @Test("only rows near the viewport hold their place in the list")
+    @Test("only rows near the viewport ask the list to read around them")
     func holdsOnlyNearTheViewport() async throws {
         let recorder = HoldRecorder()
         let size = NSSize(width: 420, height: 565)

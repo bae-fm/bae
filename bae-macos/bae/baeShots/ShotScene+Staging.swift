@@ -30,9 +30,9 @@ enum OverWindow {
     }
 
     /// An alert, raised over `window` as the app raises it: `.macAlert`'s
-    /// own panel, attached to the window as a sheet. The shot takes the
-    /// window and the panel from the window server, so a scene showing one
-    /// is shown in its window.
+    /// own panel, a child window of the window. The shot captures the window
+    /// and the panel from the window server, so the scene presents the alert
+    /// in a real window.
     @MainActor
     static func alert(
         _ alert: (MacAlertWords, [MacAlertButton]),

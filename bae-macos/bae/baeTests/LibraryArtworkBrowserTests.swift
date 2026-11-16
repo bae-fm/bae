@@ -110,10 +110,9 @@ struct LibraryArtworkBrowserTests {
         #expect(browser.cursor?.items.first == cover)
     }
 
-    /// Core reads the gallery again for each source, so the content the
-    /// browser is handed changes under its cursor: the cursor stays on the
-    /// cover it was on while the new content holds it, else goes to the
-    /// first.
+    /// Core reads the gallery again for each source and gives the browser new
+    /// content. The cursor stays on its cover when the new content holds that
+    /// cover, and otherwise moves to the first.
     @Test("Arriving artwork preserves selection across the sources")
     func arrivalsAndFilters() throws {
         let discogs = remote("Booklet", source: .discogs)

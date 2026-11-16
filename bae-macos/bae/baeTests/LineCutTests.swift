@@ -5,12 +5,12 @@ import Testing
 
 @Suite("Line cut")
 struct LineCutTests {
-    @Test("a file name is cut in the middle")
+    @Test("LineCut cuts a file name in the middle")
     func fileNameIsCutInTheMiddle() {
         #expect(LineCut.fileName.truncation == .middle)
     }
 
-    @Test("a title is cut at the end")
+    @Test("LineCut cuts a title at the end")
     func titleIsCutAtTheEnd() {
         #expect(LineCut.prose.truncation == .tail)
     }

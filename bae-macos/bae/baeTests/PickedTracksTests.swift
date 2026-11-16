@@ -6,7 +6,7 @@ import Testing
 struct PickedTracksTests {
     private let rows = ["a", "b", "c", "d", "e"]
 
-    @Test("a row is picked and unpicked by setting its state")
+    @Test("setting a row's state picks or unpicks it")
     func setsMembership() {
         let picked = PickedTracks()
         picked.set("b", picked: true)

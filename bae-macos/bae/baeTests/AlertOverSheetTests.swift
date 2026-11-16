@@ -39,15 +39,16 @@ struct AlertOverSheetTests {
         return sheet
     }
 
-    /// Whether `condition` holds within the deadline, read at each idle of
-    /// the run loop: what it reads, AppKit's windows, publishes no change.
+    /// Whether `condition` holds within the deadline. AppKit's windows send
+    /// no change notice, so this checks `condition` each time the run loop
+    /// goes idle.
     private func holds(
         _ condition: @MainActor () -> Bool
     ) async -> Bool {
         let end = ContinuousClock.now.advanced(by: Wait.deadline)
-        // The window server's notices of a window made key or ordered in are
-        // handled in a pool of their own, as for a sheet, so they do not hold
-        // the hosted window past its test.
+        // `takeSheetNotices` drains the window server's key and order-in
+        // notices in its own autorelease pool, as for a sheet, so they do not
+        // keep the hosted window alive after its test.
         while !condition() {
             SnapshotTestSupport.takeSheetNotices()
             if condition() { return true }
@@ -72,7 +73,8 @@ struct AlertOverSheetTests {
         shield: NSWindow
     ) async throws {
         // The pointer: a window that takes clicks covers the sheet, above
-        // it and below the alert, so every click on the sheet lands on it.
+        // it and below the alert, so the covering window receives every click
+        // aimed at the sheet.
         #expect(shield.frame == sheet.frame)
         #expect(!shield.ignoresMouseEvents)
         #expect(shield.level == sheet.level)
@@ -149,7 +151,8 @@ struct AlertOverSheetTests {
             // It is a key-capable panel of its own, the last of the alerts
             // showing, and sized to its words and buttons.
             #expect(alert.frame.width > 0 && alert.frame.height > 0)
-            // The panel's top is the sheet's top, at its centre; its face hangs 36 points below.
+            // The panel's top is the sheet's top, at its centre; the panel
+            // draws the alert 36 points below its top.
             #expect(alert.frame.maxY == sheet.frame.maxY)
             #expect(abs(alert.frame.midX - sheet.frame.midX) < 1)
 
@@ -178,7 +181,7 @@ struct AlertOverSheetTests {
     }
 
     @Test(
-        "an alert asked for as its window's view is first built is raised once the view has a window"
+        "macAlert shows an alert that a view asks for before it has a window, once the view gets one"
     )
     func anAlertAskedForAtFirstBuildIsRaised() async throws {
         try await SnapshotTestSupport.withHostedWindow(

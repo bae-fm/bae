@@ -363,7 +363,8 @@ extension ShotScene {
         }
     }
 
-    /// An invite sent to another@example.com, which hasn't been answered.
+    /// An invite sent to another@example.com, which the person it went to
+    /// hasn't answered yet.
     private static let invited = BridgeInvite(
         id: "11",
         member: "4a1f2c3d-0000-4000-8000-000000000009",
@@ -373,8 +374,8 @@ extension ShotScene {
         held: nil
     )
 
-    /// An invite sent to dan@example.com, which shows its code and hasn't
-    /// been answered.
+    /// An invite sent to dan@example.com, which shows its code and which Dan
+    /// hasn't answered yet.
     private static let invitedDan = BridgeInvite(
         id: "11",
         member: "4a1f2c3d-0000-4000-8000-000000000009",

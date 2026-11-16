@@ -21,7 +21,9 @@ struct TrackRateMenuTests {
         return items
     }
 
-    @Test("it lists five stars down to one, the person's own checked")
+    @Test(
+        "the menu lists five stars down to one and checks the person's rating"
+    )
     func listsStars() throws {
         let items = try submenu(.four)
         let rows: [(String, Bool)] = items.compactMap {

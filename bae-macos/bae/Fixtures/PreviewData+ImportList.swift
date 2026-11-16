@@ -132,9 +132,10 @@ extension PreviewData {
 
     /// A selection of `keys` as core's selection statement answers it: each
     /// action offered once per selected candidate whose live state lists it,
-    /// in the order the surfaces list them. Combining stands once two rows are
-    /// selected and runs only when every one lists it. This restates the
-    /// statement for fixtures, since the apps hold no copy of it.
+    /// in the order the surfaces list them. The fixture offers Combine when
+    /// the person selects two or more rows, and enables it only when every
+    /// selected candidate lists it. This function repeats core's selection
+    /// query for fixtures, because the apps have no copy of that query.
     @MainActor
     static func importSelection(
         of keys: [Data],

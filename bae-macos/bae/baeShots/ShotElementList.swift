@@ -90,8 +90,8 @@ struct ShotElementList: Encodable {
         scale: Int
     ) throws -> Self {
         var tree = try AccessibilityTree.read(of: window, subject: board)
-        // An alert is a window of its own over this one; its elements are
-        // listed where it draws them in this window.
+        // An alert is a separate window over this one, so this list adds the
+        // alert's elements where the alert draws them over this window.
         for panel in AlertWindows.shared.panels {
             tree = tree.adding(
                 try AccessibilityTree.read(of: panel, subject: board),

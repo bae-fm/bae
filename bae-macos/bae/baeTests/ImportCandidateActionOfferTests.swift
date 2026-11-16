@@ -8,8 +8,8 @@ import Testing
 @Suite("The import row's action offers")
 struct ImportCandidateActionOfferTests {
     /// Each command the row lists is one offer for that row, in the order
-    /// listed, with a count of one and nothing disabled; combining reads
-    /// several rows as one release, so a lone row's menu leaves it out.
+    /// listed, with a count of one and nothing disabled; the combine command
+    /// makes several rows one release, so a lone row's menu leaves it out.
     @Test("a row offers each command its live state lists except combining")
     func aRowOffersEachCommandItListsExceptCombining() {
         let key = Data([1, 2, 3])

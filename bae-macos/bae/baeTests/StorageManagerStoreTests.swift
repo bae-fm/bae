@@ -111,7 +111,7 @@ struct StorageManagerStoreTests {
     }
 
     @MainActor
-    @Test("the transfer queues are read once for the manager's life")
+    @Test("the store reads the transfer queues once while the manager is open")
     func queuesAreReadOnce() async throws {
         let reads = OpenedReads()
         let store = StorageManagerStore(
@@ -136,7 +136,7 @@ struct StorageManagerStoreTests {
 
     @MainActor
     @Test(
-        "the selection is offered the actions core answered for it, and none while core has yet to answer"
+        "the store offers the actions core returned for the selection, and none until core returns them"
     )
     func selectionActionsAreCoresAnswer() async throws {
         let reads = OpenedReads()
@@ -166,7 +166,7 @@ struct StorageManagerStoreTests {
         )
         #expect(
             store.soleRelease == nil,
-            "two releases held have no sole one"
+            "when the list holds two of the selected releases, the store has no sole release"
         )
         #expect(
             try await store.holdsAll(Array(selected)),
@@ -175,11 +175,11 @@ struct StorageManagerStoreTests {
 
         #expect(
             store.answered(for: selected.union([rows[2].id])) == nil,
-            "a selection core has not answered for has no answer"
+            "the store has no answer for a selection that core has not answered"
         )
         #expect(
             reads.selected.last == selected.sorted(),
-            "the selection is asked about the releases selected"
+            "the store asks the selection read about the selected releases"
         )
         store.cancel()
     }

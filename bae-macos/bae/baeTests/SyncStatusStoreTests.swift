@@ -26,7 +26,9 @@ struct SyncStatusStoreTests {
     /// A copy behind another installation of its device resets at once, and
     /// the later statuses that still say so don't start a second reset.
     @MainActor
-    @Test("a copy behind another installation is reported once")
+    @Test(
+        "the store reports a copy that lacks another installation's changes once"
+    )
     func aCopyBehindIsReportedOnce() {
         let sync = SyncStatusStore()
         var reported: [BridgeUnsentWork] = []

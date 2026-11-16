@@ -29,9 +29,9 @@ extension PreviewData {
         )
     )
 
-    /// This device's person, an admin, with this Mac and a phone, whose
-    /// earlier registration of this Mac was replaced and whose old phone was
-    /// removed, and one other member with a removable device
+    /// This device's person, an admin, with this Mac and a phone, whose new
+    /// registration of this Mac replaced an earlier one, and who removed an
+    /// old phone, and one other member with a removable device
     /// and two removed ones, each reaching `storage` as its members do:
     /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
     /// iCloud. Ids are arbitrary UUIDs. Core reads them as two people with

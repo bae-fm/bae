@@ -154,8 +154,9 @@ struct ImportCandidateTablePlaceTests {
             size: Self.size
         ) { table in
             _ = table.view(atColumn: 0, row: 150, makeIfNecessary: true)
-            // The list lets the page go once the ask is answered, so the
-            // answer is what the wait reads: the window holding the row.
+            // The list releases the page after the source delivers it, so the
+            // test waits for the source to deliver the window that holds row
+            // 150.
             try await Wait.until { source.hasDelivered(Self.stableKey(150)) }
             #expect(Self.topRow(of: table) == 0)
         }
@@ -321,7 +322,7 @@ extension ImportCandidateTablePlaceTests {
 extension ImportCandidateTablePlaceTests {
     private static let size = NSSize(width: 460, height: 600)
 
-    /// A slot over `source` whose first window has landed.
+    /// A slot over `source` whose source has delivered its first window.
     @MainActor
     private static func loadedSlot(
         _ source: MutableImportList,
@@ -481,8 +482,9 @@ struct ImportCandidateTableContentTests {
         )
     }
 
-    /// A reveal scrolls to its own row; the deliveries it brings are taken
-    /// without a scroll of their own, and do not scroll once it has landed.
+    /// A reveal scrolls to its own row; the table takes the reveal's
+    /// deliveries without scrolling, and does not scroll for them after the
+    /// reveal finishes.
     @Test("a reveal's deliveries scroll nothing")
     func revealOwnsItsScroll() {
         var content = ImportCandidateTableContent(Self.read())

@@ -53,8 +53,8 @@ private func contextSnapshot(
     )
 }
 
-/// The upcoming lists a queue opened, by the order each was opened in: a
-/// test shows rows in them and reads which orders were asked for.
+/// Records each upcoming list the queue opens and whether the store asked
+/// for it shuffled; a test shows rows in the newest list.
 private final class OpenedLists: @unchecked Sendable {
     private let lock = NSLock()
     private var orders: [Bool] = []

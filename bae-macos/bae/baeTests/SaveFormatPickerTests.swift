@@ -170,7 +170,7 @@ struct SaveFormatPickerTests {
         #expect(configStore.addedSavePresetId == nil)
     }
 
-    @Test("a format that arrives without being added here leaves the choice")
+    @Test("a format added outside Settings keeps the current choice")
     func aFormatNotAddedHereKeepsTheChoice() async {
         let configStore = store([preset("a", "FLAC")], lastUsed: "a")
         let log = ChoiceLog()

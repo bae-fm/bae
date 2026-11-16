@@ -4,9 +4,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// Three tracks of the open album picked, with the menu of the picked set
-    /// open over them (`mac.album.play-picked-tracks`): tracks 2, 4 and 5 of
-    /// the board's album.
+    /// The person has picked tracks 2, 4 and 5 of the board's album, and the
+    /// menu for the picked tracks is open over them
+    /// (`mac.album.play-picked-tracks`).
     static let pickedTracksScenes: [ShotScene] = [
         ShotScene(
             id: "mac.album.play-picked-tracks",

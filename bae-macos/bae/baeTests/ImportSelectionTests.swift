@@ -205,9 +205,9 @@ struct ImportSelectionTests {
     }
 }
 
-/// What the list shows selected is what the rows it holds say: a click
-/// writes the selection, and the windows holding the rows it changed deliver
-/// them selected.
+/// The list shows a row as selected when the row's selected flag is set. A
+/// click writes the selection, and core sends the changed rows again with
+/// the new flag.
 @MainActor
 @Suite("The selection the list's rows show")
 struct ListSelectionTests {

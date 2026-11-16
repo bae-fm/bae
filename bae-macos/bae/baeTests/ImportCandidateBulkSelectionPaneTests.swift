@@ -102,8 +102,9 @@ struct ImportCandidateBulkSelectionPaneTests {
         }
     }
 
-    /// Every row draws a count chip, Combine's too: the whole selection when it
-    /// can run, none when a folder holds it back.
+    /// Every row draws a count chip, Combine's too: Combine's chip counts the
+    /// whole selection when Combine is enabled, and zero when a selected
+    /// folder disables it.
     @Test("every row draws a count chip")
     func everyRowDrawsACountChip() {
         let card = Self.card()

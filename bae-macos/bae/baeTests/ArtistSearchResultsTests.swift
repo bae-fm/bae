@@ -75,13 +75,16 @@ struct ArtistSearchResultsTests {
         clock.advance(by: .milliseconds(200))
         try await Wait.until { search.list != nil }
 
-        #expect(opened.all == ["Artist"], "the text typed first is never read")
+        #expect(
+            opened.all == ["Artist"],
+            "the search never opens a list for the text typed first"
+        )
         search.close()
     }
 
     @MainActor
     @Test(
-        "each text is a list of its own, and the later one replaces the earlier"
+        "the search opens a list for each text, and the later list replaces the earlier one"
     )
     func eachTextIsItsOwnList() async throws {
         let opened = OpenedTexts()

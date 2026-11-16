@@ -36,8 +36,8 @@ private final class ProbeList: @unchecked Sendable {
 
     var keyAtReads: [UInt64] { lock.withLock { keyReads } }
 
-    /// Answer no count until `releaseCount`: the windows answer, and the
-    /// count is still being read.
+    /// Answer no count until `releaseCount`: the windows answer while the
+    /// list still waits for the count.
     func holdCount() { lock.withLock { countHeld = true } }
 
     /// Answer the count a held read waits for.
@@ -109,7 +109,7 @@ private final class ProbeList: @unchecked Sendable {
         window.feed.emit(delivery(of: window.request))
     }
 
-    /// A value for `window` as it is, whatever the list holds.
+    /// Deliver `value` to `window` unchanged, whatever rows the list holds.
     func deliver(_ value: ListWindowDelivery<BridgeAlbum>, to window: Window) {
         window.feed.emit(value)
     }
@@ -281,7 +281,7 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("repeated rows keep the distinct count the list's count carries")
+    @Test("the list reports the count query's number when rows repeat")
     func distinctItemCount() async throws {
         let album = makeBridgeAlbum(id: "shared")
         let rows = BridgeListQueries<BridgeAlbum>
@@ -346,8 +346,8 @@ struct PaginatedListTests {
         }
         try await Wait.until { list.idAt(49) == "a0049" }
 
-        // Rows land inside the first window's range, so it holds more than
-        // its limit.
+        // The test adds rows inside the first window's range, so it holds
+        // more than its limit.
         let added = (1...5).map { "a0010x\($0)" }
         let all = (ids(0...199) + added).sorted()
         probe.set(all)
@@ -360,7 +360,7 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("a window that goes empty is dropped into its neighbour")
+    @Test("the list merges a window that goes empty into its neighbour")
     func emptyWindowIsDropped() async throws {
         let probe = ProbeList(ids(0...129))
         let list = await open(probe)
@@ -407,8 +407,8 @@ struct PaginatedListTests {
         }
         let first = try #require(probe.windows.first)
 
-        // The window answered the request it was opened with, which it has
-        // since left.
+        // This value answers the request the list opened the window with,
+        // which the list has since replaced.
         probe.deliver(
             ListWindowDelivery(
                 window: .forward(from: nil, until: nil, limit: 50),
@@ -418,7 +418,7 @@ struct PaginatedListTests {
             ),
             to: first
         )
-        // Let the value be taken, if it is going to be.
+        // Give the list time to read the value.
         for _ in 0..<20 { await Task.yield() }
 
         #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))

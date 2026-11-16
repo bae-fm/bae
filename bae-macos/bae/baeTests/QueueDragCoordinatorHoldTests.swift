@@ -32,8 +32,8 @@ extension QueueDragCoordinatorTests {
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
     }
 
-    /// A lane of another length than the move was made over has no such
-    /// slots: its hold is over.
+    /// When the lane has a different number of rows than when the person
+    /// moved the row, the coordinator ends the hold.
     @Test("a lane of another length ends the hold")
     func laneOfAnotherLengthEndsTheHold() {
         let coordinator = QueueDragCoordinator()

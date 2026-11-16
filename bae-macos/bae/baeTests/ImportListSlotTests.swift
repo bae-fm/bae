@@ -338,10 +338,10 @@ struct ImportListSlotTests {
 @MainActor
 @Suite("Import list slot view changes")
 struct ImportListSlotViewChangeTests {
-    /// Another tab is another view: until the write that sets it answers and
-    /// the windows read after it land, the rows the list holds are the tab's
-    /// before it, which the slot does not take as this one's.
-    @Test("a new tab's rows are the list's only once its windows land")
+    /// Another tab is another view: until the write returns and the windows
+    /// read after it return their rows, the list holds the previous tab's
+    /// rows, which the slot does not take as the new tab's.
+    @Test("the list takes a new tab's rows only after its windows return them")
     func aNewTabIsAnsweredByItsOwnRead() async throws {
         let delivery = AppliedViewResolver()
         let slot = ImportListSlot(
@@ -371,8 +371,8 @@ struct ImportListSlotViewChangeTests {
         try await Wait.until { slot.answersView }
     }
 
-    /// The write that sets a view answers where it opens; the windows are
-    /// read again from there, and the table is told which row to show.
+    /// The write that sets a view answers where it opens; the slot reads the
+    /// windows again from there and tells the table which row to show.
     @Test("a view change opens its windows at the row the write answers")
     func aViewChangeOpensAtItsOpening() async throws {
         let slot = ImportListSlot(

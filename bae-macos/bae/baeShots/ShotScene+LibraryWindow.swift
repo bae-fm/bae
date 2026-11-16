@@ -110,8 +110,8 @@ extension ShotScene {
                 ]
             )
         )
-        // The volume the boards' bar shows (70 percent, not muted), and
-        // repeat off, which give the bar its Mute and Repeat buttons.
+        // Set the volume the boards' bar shows (70 percent, not muted) and
+        // turn repeat off, so the bar shows its Mute and Repeat buttons.
         store.settings = PlaybackSettings(
             volume: 0.7,
             isMuted: false,

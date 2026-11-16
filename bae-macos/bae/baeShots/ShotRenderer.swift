@@ -48,9 +48,9 @@ enum ShotRenderer {
         window.isReleasedWhenClosed = false
         switch scene.frame {
         case .content:
-            // Key without being ordered to the front: the window sits past
-            // every display, and a field a scene focuses draws its ring only
-            // in a key window.
+            // The renderer makes the window key without activating the app.
+            // The window sits past every display, and a focused field draws
+            // its ring only in a key window.
             window.orderFront(nil)
             window.makeKey()
         case .window:
@@ -81,8 +81,9 @@ enum ShotRenderer {
         case .content:
             pixels = try png(of: host, size: host.bounds.size, scene: scene)
         case .window:
-            // The alerts are raised a few turns after the window is ordered
-            // in, so they are up before the key is settled on the top one.
+            // The app shows the alerts a few run loop passes after AppKit
+            // orders the window in, so this waits for them before it makes
+            // the top one key.
             let alerts = try await sheets(of: window, scene: scene)
             try await becomeKey(window, scene: scene)
             pixels = try await windowPNG(
@@ -105,9 +106,9 @@ enum ShotRenderer {
     }
 
     /// Put `window` wholly on the display with the most room, at its top left:
-    /// the screen capture takes only what is on a display, and a window past
-    /// a display's edge, or a title bar pushed up under the menu bar, would
-    /// be cut off or refused.
+    /// the screen capture takes only what is on a display, and would cut off
+    /// or refuse a window past a display's edge, or a title bar under the
+    /// menu bar.
     private static func place(_ window: NSWindow, scene: ShotScene) throws {
         guard
             let room = NSScreen.screens.map(\.visibleFrame)

@@ -2,7 +2,9 @@ import BaeKit
 import Testing
 
 struct AlbumRatingTextTests {
-    @Test("the line names this person first, then each other by name and stars")
+    @Test(
+        "the line names this person first, then each other rater by name and stars"
+    )
     func ratersLine() {
         let rating = BridgeAlbumRating(
             canRate: true,

@@ -3,10 +3,10 @@ import Foundation
 
 @testable import bae
 
-/// An import list whose items a test replaces: it answers each window with
-/// the range of items its keys name, where a key is an item's stable key, as
-/// stable as the item, and delivers the change to every window, the count and
-/// the position the list has open.
+/// An import list whose items a test replaces. The list answers each window
+/// with the items between its keys, where a key is the item's stable key.
+/// When a test replaces the items, the list sends the new rows to every open
+/// window, count and position.
 final class MutableImportList: @unchecked Sendable {
     private final class Window: @unchecked Sendable {
         let feed = ImportFeed<ListWindowDelivery<BridgeImportListItem>>()
@@ -44,8 +44,8 @@ final class MutableImportList: @unchecked Sendable {
         return items.firstIndex { $0.id == id } ?? items.count
     }
 
-    /// Whether a window has been answered with the item `id`, which stays
-    /// true once it has: a window the list lets go of takes its rows with it.
+    /// Whether the list has sent the item `id` to any window; this stays true
+    /// after the list closes that window.
     func hasDelivered(_ id: String) -> Bool {
         lock.withLock { deliveredIds.contains(id) }
     }

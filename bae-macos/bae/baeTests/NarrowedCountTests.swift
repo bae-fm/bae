@@ -3,13 +3,14 @@ import Testing
 
 @testable import bae
 
-/// The filter field shows core's count only beside the filter the list was
-/// opened under, so a count never outlives the text or entry it was for.
+/// The filter field shows core's count only beside the filter that the slot
+/// opened its list under, so the field never shows a count for other text or
+/// another entry.
 @MainActor
 @Suite("The filter field's count")
 struct NarrowedCountTests {
-    /// A slot whose list was read under the filter text `text`, and whose
-    /// count says 7 of 84.
+    /// A slot that read its list under the filter text `text`, with a count
+    /// of 7 of 84.
     private func slot(text: String) async throws -> ImportListSlot {
         let uiStore = UiStore()
         uiStore.setImportCandidateFilterText(text)

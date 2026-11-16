@@ -188,8 +188,8 @@ extension ShotScene {
         }
     ]
 
-    /// `MacScanCode`, the QR code of a short code with the buttons that
-    /// hand it over.
+    /// `MacScanCode`, the QR code of a short code with the buttons that copy
+    /// and share it.
     private static let scanCodeScenes: [ShotScene] = [
         component("mac.component.scan-code.default", height: 330) {
             MacScanCode(

@@ -69,7 +69,7 @@ struct CoverPickerTests {
     }
 
     /// The covers core reads for `release`: its image files that can be a
-    /// cover, saved from the library by their file ids.
+    /// cover. Saving one selects it by its library file id.
     private func gallery(of release: BridgeRelease) -> BridgeCoverGallery {
         let files = release.coverFiles.map {
             BridgeGalleryCover(

@@ -138,7 +138,7 @@ final class FakeInvites: InvitesSubscription, @unchecked Sendable {
 }
 
 /// Preferences that never change after the ones the service was built with:
-/// a pull waits until it is cancelled.
+/// a pull waits until the caller cancels it.
 final class SilentConfig: ConfigSubscription, @unchecked Sendable {
     private let values = PullQueue<BridgeConfig>()
 
@@ -288,7 +288,7 @@ final class SilentLibraryName: LibraryNameSubscription,
     override func cancel() async throws { values.cancel() }
 }
 
-/// The members, who never change: a pull waits until it is cancelled.
+/// The members, who never change: a pull waits until the caller cancels it.
 final class SilentMembers: MembersSubscription, @unchecked Sendable {
     private let values = PullQueue<BridgeMembership>()
 
@@ -307,7 +307,7 @@ final class SilentMembers: MembersSubscription, @unchecked Sendable {
     override func cancel() async throws { values.cancel() }
 }
 
-/// The people, who never change: a pull waits until it is cancelled.
+/// The people, who never change: a pull waits until the caller cancels it.
 final class SilentPeople: PeopleSubscription, @unchecked Sendable {
     private let values = PullQueue<BridgePeople>()
 

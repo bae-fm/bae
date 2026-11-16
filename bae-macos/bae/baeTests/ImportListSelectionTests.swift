@@ -59,7 +59,8 @@ struct ImportListSelectionTests {
                     ])
                 ]
             )
-            // The highlight is what core's windows hold once they deliver.
+            // The table highlights the rows that core's windows mark as
+            // selected, once the windows send them.
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [row]
                     && slot.list?.selectedKeys == [
@@ -99,7 +100,8 @@ struct ImportListSelectionTests {
             try await Wait.until { !changes.all.isEmpty }
             #expect(changes.all == [.replace(keys: [secondKey])])
 
-            // The windows holding the two rows the click changed deliver.
+            // The windows that hold the two rows the click changed send them
+            // again.
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [1]
                     && slot.list?.selectedKeys == [secondKey]

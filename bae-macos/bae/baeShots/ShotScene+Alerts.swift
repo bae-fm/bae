@@ -4,10 +4,9 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Mac's alerts, each raised over the window it opens on as the app
-    /// raises it, so each is shown in its window: the album and error alerts
-    /// over the library window, the pane alerts over Settings, and the unpin
-    /// confirmation over the Storage manager.
+    /// The Mac's alerts, each drawn over the window the app opens it on: the
+    /// album and error alerts over the library window, the pane alerts over
+    /// Settings, and the unpin confirmation over the Storage manager.
     static let alertScenes: [ShotScene] =
         [
             ShotScene(

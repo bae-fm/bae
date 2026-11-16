@@ -83,8 +83,8 @@ struct QueueDragCoordinatorTests {
             coordinator.floatingRow(in: .manual)
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
         )
-        // Core's echo: the lane's rows draw the grabbed row at the slot the
-        // move put it in, so the hold drops. The copy still draws the grabbed
+        // Core sends the lane's new rows, which put the grabbed row at slot 3,
+        // so the coordinator ends the hold. The copy still draws the grabbed
         // row at its slot.
         #expect(
             coordinator.holdEnded(.manual, count: 5) {

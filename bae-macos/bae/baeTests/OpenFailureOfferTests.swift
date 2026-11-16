@@ -44,7 +44,9 @@ struct OpenFailureOfferTests {
         )
     }
 
-    @Test("a damaged library with no storage offers none, coven refuses it")
+    @Test(
+        "a damaged library with no storage offers no reset, because coven refuses one"
+    )
     func damagedWithoutStorage() throws {
         #expect(
             !library(.openable(storage: nil))
@@ -52,7 +54,7 @@ struct OpenFailureOfferTests {
         )
     }
 
-    @Test("a failure a new copy would meet again offers none")
+    @Test("a failure that a new copy would also hit offers no reset")
     func notInTheCopy() throws {
         #expect(
             !library(.openable(storage: s3))
@@ -60,7 +62,7 @@ struct OpenFailureOfferTests {
         )
     }
 
-    @Test("a removal's failure that retrying can't pass offers no Retry")
+    @Test("a failed removal that a retry cannot fix offers no Retry")
     func removalFailureWithoutRetry() throws {
         #expect(try !failure(.databaseDamaged).offersRetry)
         #expect(try failure(.network).offersRetry)

@@ -227,8 +227,8 @@ extension XCTestCase {
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
-        // Registered after the app's termination, so it runs before it: the
-        // app is still up to describe.
+        // XCTest runs teardown blocks in reverse order, so this block runs
+        // before the one that ends the app, while the app is still running.
         addTeardownBlock { [self, app] in
             let text = try String(contentsOf: appLog, encoding: .utf8)
             let attachment = XCTAttachment(string: text)
@@ -259,9 +259,9 @@ extension XCTestCase {
 
 extension XCUIElement {
     /// The title bar's tab that selects the section named `name`: the strip
-    /// reports each tab as a tab (a radio button with the tab subrole), which
-    /// XCUIElement files under a type of its own, so this matches by label
-    /// across both.
+    /// reports each tab as a tab (a radio button with the tab subrole).
+    /// XCUITest gives a tab a type of its own, so `sectionTab` looks the tab
+    /// up by its label.
     func sectionTab(_ name: String) -> XCUIElement {
         descendants(matching: .any)
             .matching(

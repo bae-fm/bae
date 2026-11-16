@@ -10,8 +10,8 @@ extension ShotRenderer {
         of window: NSWindow,
         scene: ShotScene
     ) async throws -> [CGWindowID] {
-        // An alert is raised as its view appears, a few turns after the
-        // window is ordered in.
+        // The app shows an alert when the alert's view appears, a few run
+        // loop passes after AppKit orders the window in.
         try await Wait.until {
             AlertWindows.shared.panels.allSatisfy { $0.isVisible }
         }
@@ -32,10 +32,10 @@ extension ShotRenderer {
         sheets: [CGWindowID],
         sceneId: String
     ) async throws -> Data {
-        // The window server lists a window a moment after it is ordered in,
-        // with an empty frame until it is drawn; a capture sized from that
-        // frame is refused as an invalid parameter. Ask again until every
-        // window has a frame.
+        // The window server lists a window a moment after AppKit orders it
+        // in, with an empty frame until the window draws, and ScreenCaptureKit
+        // refuses a capture sized from that frame as an invalid parameter.
+        // Ask again until every window has a frame.
         var content: SCShareableContent?
         var parent: SCWindow?
         var held: [SCWindow] = []

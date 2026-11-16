@@ -108,8 +108,8 @@ struct ShotElementListTests {
         #expect(cancel.bounds.y > message.bounds.y, "\(json)")
     }
 
-    /// macOS reports a spinner as a busy indicator; the list reads it as a
-    /// progress bar, as VoiceOver does.
+    /// macOS reports a spinner as a busy indicator; the shot lists it with
+    /// the role progress, as VoiceOver reads it.
     @Test
     func listsASpinnerAsProgress() async throws {
         let list = try await list("mac.component.spinner.alone")
