@@ -80,14 +80,14 @@ pub fn release_details_on<X>(
                 EXISTS (SELECT 1 FROM release_records rr WHERE rr.release_id = rel.id) \
                     AS has_records, \
                 {elsewhere} AS elsewhere, \
-                COALESCE({RELEASE_STORAGE_PINNED}, 0) AS pinned, \
-                COALESCE(storage.stored = 1, 0) AS remote, \
+                {RELEASE_STORAGE_PINNED} AS pinned, \
+                storage.stored = 1 AS remote, \
                 {upload_columns}, \
                 {cover_version} AS cover_version, \
                 (SELECT number FROM release_number_in_album WHERE release_id = rel.id) \
                     AS release_number{extra_columns} \
          FROM releases rel \
-         LEFT JOIN release_storage storage ON storage.release_id = rel.id \
+         JOIN release_storage storage ON storage.release_id = rel.id \
          LEFT JOIN ({sending}) sending ON sending.release_id = rel.id \
          WHERE {condition}",
         labels = super::pressing_columns::release_labels_sql("rel.id"),

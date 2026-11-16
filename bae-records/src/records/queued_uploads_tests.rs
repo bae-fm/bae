@@ -93,3 +93,20 @@ fn the_progress_read_shows_the_full_reads_counts() {
                 4 AS stored_files";
     assert_eq!(conn.query_row(none, [], release_upload_progress_in_row).unwrap(), None);
 }
+
+/// Every release has a storage row, so a release's upload read with no
+/// queued count is a broken library, not a release with nothing queued: the
+/// read fails. The import list joins a release's storage row only when its
+/// files are queued, so its progress read shows none without one.
+#[test]
+fn a_release_upload_read_without_a_storage_row_fails() {
+    use crate::records::queued_uploads::{release_upload_in_row, release_upload_progress_in_row};
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    let missing = "SELECT NULL AS queued_count, NULL AS waiting_files, 0 AS sending_files, \
+                   NULL AS stored_files";
+    assert!(matches!(
+        conn.query_row(missing, [], release_upload_in_row),
+        Err(rusqlite::Error::InvalidColumnType(..))
+    ));
+    assert_eq!(conn.query_row(missing, [], release_upload_progress_in_row).unwrap(), None);
+}

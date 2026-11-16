@@ -112,8 +112,8 @@ pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Upload
 /// is queued. A count below zero, or past a `u32`, is a column-conversion
 /// error.
 fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32)>> {
-    let queued: Option<i64> = row.get("queued_count")?;
-    if queued.unwrap_or(0) == 0 {
+    let queued: i64 = row.get("queued_count")?;
+    if queued == 0 {
         return Ok(None);
     }
     Ok(Some((
@@ -124,8 +124,13 @@ fn upload_counts_in_row(row: &Row<'_>) -> rusqlite::Result<Option<(u32, u32, u32
 }
 
 /// The release's upload progress as [`RELEASE_UPLOAD_COUNT_COLUMNS`] read
-/// it; `None` when none of its files waits.
+/// it beside a `release_storage storage` the statement joins only when the
+/// release's files are queued; `None` when it joined none, or none of the
+/// files waits.
 pub fn release_upload_progress_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadProgress>> {
+    if row.get::<_, Option<i64>>("queued_count")?.is_none() {
+        return Ok(None);
+    }
     Ok(upload_counts_in_row(row)?
         .map(|(waiting, sending, _)| UploadProgress { queued: waiting, uploading: sending }))
 }
