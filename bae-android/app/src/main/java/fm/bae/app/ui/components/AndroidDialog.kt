@@ -95,9 +95,9 @@ internal fun AndroidDialog(
  */
 @Composable
 private fun DialogScrim(scrim: Color) {
-    val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+    val window = (LocalView.current.parent as DialogWindowProvider).window
     SideEffect {
-        window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        window?.setDimAmount(scrim.alpha)
+        window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window.setDimAmount(scrim.alpha)
     }
 }
