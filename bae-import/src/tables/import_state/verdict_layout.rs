@@ -9,7 +9,7 @@
 use super::layout::{store_list_text, ListLayout, ListOwner, Place};
 use super::match_record::load_owner_matches_on;
 use super::match_rows::{ordinal_column, Placed, StoredMatches};
-use super::verdict_rows::{outcome_of, read_verdict_row, verdict_columns, Outcome, Owner};
+use super::verdict_rows::{outcome_of, verdict_columns, verdict_row_of, Outcome, Owner};
 use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_identify::signals::{SourcedValue, TextLine};
@@ -135,16 +135,14 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
                 verdict = verdict_columns().select(),
             ),
             params![owner],
-            |row| Ok(read_verdict_row(row)),
+            |row| Ok(verdict_row_of(row)),
         )?
         .into_iter()
         .next();
     let Some(row) = row else {
         return Ok(());
     };
-    let Some(row) = row? else {
-        return Ok(());
-    };
+    let row = row?;
     let found: StoredMatches = load_owner_matches_on(sql, owner)?;
     let (outcome, _) = outcome_of(row, found)?;
     let outcome = Outcome::of(&outcome);

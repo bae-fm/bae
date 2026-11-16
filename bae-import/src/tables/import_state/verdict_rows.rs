@@ -401,11 +401,17 @@ pub(super) fn verdict_columns() -> ColumnList {
 /// The [`verdict_columns`] of `row`; none for a candidate no verdict stands
 /// for.
 pub(super) fn read_verdict_row(row: &impl Columns) -> Result<Option<VerdictRow>, DbError> {
-    let Some(content_hash) = row.get::<Option<String>>("verdict_row")? else {
+    if row.get::<Option<String>>("verdict_row")?.is_none() {
         return Ok(None);
-    };
-    Ok(Some(VerdictRow {
-        content_hash,
+    }
+    verdict_row_of(row).map(Some)
+}
+
+/// The [`verdict_columns`] of a row read from `import_candidate_verdict`
+/// itself, where every row holds a verdict.
+pub(super) fn verdict_row_of(row: &impl Columns) -> Result<VerdictRow, DbError> {
+    Ok(VerdictRow {
+        content_hash: row.get("verdict_row")?,
         kind: row.get("verdict_kind")?,
         track_count: row.get("verdict_track_count")?,
         failures: row.get("verdict_failures")?,
@@ -413,7 +419,7 @@ pub(super) fn read_verdict_row(row: &impl Columns) -> Result<Option<VerdictRow>,
         ledger: read_ledger(row)?,
         medium_conflict: medium_conflict_of(row.get("verdict_medium_conflict")?)?,
         kept_own_draft: row.get("verdict_kept_own_draft")?,
-    }))
+    })
 }
 
 /// Rebuild what identification concluded from its row, the matches it found
