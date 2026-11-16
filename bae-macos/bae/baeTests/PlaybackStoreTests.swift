@@ -402,4 +402,25 @@ struct PlaybackStoreSidePausePromptTests {
 
         #expect(store.presentedSidePausePrompt == Self.prompt)
     }
+
+    @MainActor
+    @Test("a pause at another boundary presents its prompt after a dismissal")
+    func anotherBoundaryPresents() {
+        let store = PlaybackStore()
+        let track = makeTrack("track-1")
+        let next = BridgeSidePausePrompt(
+            id: "side-pause-2",
+            boundary: .side,
+            sideLabel: "B",
+            countdown: nil
+        )
+
+        store.apply(
+            .paused(track: track, reason: .sideEnded(prompt: Self.prompt))
+        )
+        store.dismissSidePausePrompt(Self.prompt)
+        store.apply(.paused(track: track, reason: .sideEnded(prompt: next)))
+
+        #expect(store.presentedSidePausePrompt == next)
+    }
 }

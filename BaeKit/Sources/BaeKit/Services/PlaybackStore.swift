@@ -15,6 +15,8 @@ private let logger = Logger.bae("PlaybackStore")
 public class PlaybackStore {
     /// What playback is doing to which track, as core's latest value says.
     public private(set) var nowPlaying: BridgePlaybackValueState = .stopped
+    /// The id of the side-pause prompt the person dismissed, which stays
+    /// hidden while core's values keep naming it.
     private var dismissedSidePausePromptId: String?
 
     /// The volume, mute and repeat mode; `nil` until core's first playback
@@ -95,12 +97,16 @@ public class PlaybackStore {
         dismissedSidePausePromptId = prompt.id
     }
 
-    /// Take the state core's latest value says.
+    /// Take the state core's latest value says. A value with no side-pause
+    /// prompt ends the pause the person dismissed a prompt in, so the store
+    /// forgets that prompt's id, and a later pause at the same boundary,
+    /// which carries the same id, shows its prompt again. A value with a
+    /// different prompt shows it, since its id is not the dismissed one.
     public func apply(_ state: BridgePlaybackValueState) {
-        if nowPlaying.sidePausePrompt?.id != state.sidePausePrompt?.id {
+        nowPlaying = state
+        if state.sidePausePrompt == nil {
             dismissedSidePausePromptId = nil
         }
-        nowPlaying = state
     }
 
     /// Tracks went into Up Next: the queue button's badge shows how many.
