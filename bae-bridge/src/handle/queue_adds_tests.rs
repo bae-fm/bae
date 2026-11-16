@@ -40,10 +40,9 @@ fn handle_over_one_album(
     (super::super::tests::start_test_handle(runtime, library, root), track_ids)
 }
 
-/// Each add answers how many tracks it put in, which the screen that asked
-/// confirms.
+/// Each command that adds tracks to Up Next returns how many tracks it added.
 #[test]
-fn each_add_answers_how_many_tracks_went_in() {
+fn each_add_returns_how_many_tracks_it_added() {
     let (handle, tracks) = handle_over_one_album("queue-adds", &["One", "Two"]);
     let runtime = &handle.handle().runtime;
 

@@ -13,8 +13,8 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 
-    /// Tracks went into Up Next, or the write failed. The answer is how many
-    /// went in, which the screen that asked confirms.
+    /// Tracks went into Up Next, or the write failed. The function returns how
+    /// many tracks went in, and the screen that sent the add shows that number.
     pub(super) async fn queue_added(
         &mut self,
         added: Result<usize, bae_store::DbError>,

@@ -52,9 +52,9 @@ struct PlaybackFailureDisplayTests {
 @Suite("Queue additions", .serialized)
 struct QueueAdditionTests {
     @Test(
-        "each add confirms the count it answered, and an add of none confirms nothing"
+        "each add publishes how many tracks it added, and an add of none publishes nothing"
     )
-    func addAnswersReachTheBadge() async throws {
+    func addCountsReachTheBadge() async throws {
         let handle = FakeAppHandle()
         let store = PlaybackStore()
         var addedCounts: [Int] = []
@@ -70,7 +70,7 @@ struct QueueAdditionTests {
             confirmAdded: { store.publishQueueItemsAdded($0) }
         )
 
-        // Two adds alike in their count are two badges.
+        // Two adds of the same number of tracks each show their own badge.
         queue.addToQueue(["a", "b", "c"])
         queue.insertInQueue(["a", "b", "c"], 1)
         try await Wait.until { addedCounts == [3, 3] }

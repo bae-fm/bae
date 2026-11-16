@@ -258,7 +258,7 @@ private fun buildAlbumDetailCallbacks(
         }
     }
 
-    /** An add to Up Next: the snackbar confirms how many tracks the add answered it put in. */
+    /** Adds the release to Up Next and shows a snackbar with the number of tracks the command added. */
     fun runReleaseTransportCommand(
         operation: String,
         command: suspend (String) -> UInt,

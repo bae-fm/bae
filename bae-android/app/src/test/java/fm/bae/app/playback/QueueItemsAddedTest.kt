@@ -15,8 +15,8 @@ import org.robolectric.annotation.Config
 
 /**
  * The queue-add confirmation flow ([BaeCorePlayer.onTracksAdded] →
- * [BaeCorePlayer.queueItemsAdded]). Each add answers how many tracks it put
- * in, for the in-app root to surface as a snackbar.
+ * [BaeCorePlayer.queueItemsAdded]). Each add returns how many tracks it
+ * added, and the app's root shows that number in a snackbar.
  * The contract that matters is that the confirmation is shown once, not held:
  * a collector that subscribes after an add must not see it, so a
  * recomposition or screen change never re-shows a stale "+N added".

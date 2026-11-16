@@ -493,8 +493,8 @@ class BaeCorePlayer(
     }
 
     /**
-     * [count] tracks went into Up Next: confirm how many to whoever collects [queueItemsAdded] now. An add that
-     * put none in confirms nothing.
+     * [count] tracks went into Up Next: emit the number to whoever collects [queueItemsAdded] now. When no
+     * tracks went in, the function emits nothing.
      */
     fun onTracksAdded(count: Int) {
         if (count > 0) _queueItemsAdded.tryEmit(count)

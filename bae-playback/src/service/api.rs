@@ -571,9 +571,9 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::GetQueue(tx));
         rx.await.map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
     }
-    /// Add tracks to the end of Up Next, answering how many went in once they
-    /// are, or why they did not. The command is sent at the call, in order with the
-    /// commands sent before and after it.
+    /// Add tracks to the end of Up Next. The future returns the number of
+    /// tracks added, or why bae added none. This method sends the command when
+    /// you call it, in order with the commands sent before and after it.
     pub fn add_to_queue(
         &self,
         track_ids: Vec<String>,

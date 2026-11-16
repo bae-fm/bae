@@ -471,10 +471,10 @@ impl AppHandle {
             .await
     }
 
-    /// Add tracks to the end of Up Next, answering how many went in once they
-    /// are, which the screen that asked confirms. The
-    /// command is sent before the call first waits, so commands sent one after
-    /// another reach the queue in that order.
+    /// Add tracks to the end of Up Next, and return how many tracks it added,
+    /// so the screen that called it can show that number. The command is sent
+    /// before the call first waits, so commands sent one after another reach
+    /// the queue in that order.
     pub async fn add_to_queue(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
@@ -487,8 +487,8 @@ impl AppHandle {
         .await
     }
 
-    /// Add tracks to the front of Up Next, answering how many went in once
-    /// they are.
+    /// Add tracks to the front of Up Next, and return how many tracks it
+    /// added.
     pub async fn add_next(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
@@ -498,8 +498,8 @@ impl AppHandle {
             .await
     }
 
-    /// Add a release's tracks to the end of Up Next, answering how many went
-    /// in once they are.
+    /// Add a release's tracks to the end of Up Next, and return how many
+    /// tracks it added.
     pub async fn add_release_to_queue(
         self: std::sync::Arc<Self>,
         release_id: String,
@@ -511,8 +511,8 @@ impl AppHandle {
         .await
     }
 
-    /// Add a release's tracks to the front of Up Next, answering how many
-    /// went in once they are.
+    /// Add a release's tracks to the front of Up Next, and return how many
+    /// tracks it added.
     pub async fn add_release_next(
         self: std::sync::Arc<Self>,
         release_id: String,
@@ -525,8 +525,8 @@ impl AppHandle {
         .await
     }
 
-    /// Insert tracks into Up Next before the entry at `index`, answering how
-    /// many went in once they are.
+    /// Insert tracks into Up Next before the entry at `index`, and return how
+    /// many tracks it added.
     pub async fn insert_in_queue(
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,

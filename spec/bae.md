@@ -5634,10 +5634,11 @@ agree instead of the failure being only logged.
 What playback compares a later change against is what the row holds: a value
 the row refused stays the row's old one.
 Each command that puts tracks into Up next (add to queue, play next, add a
-release, insert) answers how many tracks it put in, leaving out tracks the
-library does not hold. The screen that sent the command confirms that count:
-the queue button's badge on macOS, a snackbar on Android. An add that put none
-in confirms nothing, and an add another surface made confirms nowhere else.
+release, insert) returns how many tracks it added, leaving out tracks the
+library does not hold. The screen that sent the command shows that number: the
+queue button's badge on macOS, a snackbar on Android. When an add puts no
+tracks in, no screen shows a count, and only the screen that sent an add shows
+its count.
 The timeline, for the operating system's media controls and Media3, which
 move the position on themselves, is another device-local row,
 `playback_timeline`: the line of the playing track and of a preview, each a

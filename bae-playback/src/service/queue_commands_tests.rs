@@ -16,10 +16,10 @@ async fn answer_with_failing_writes<T: Send + 'static>(
     answer.await.expect("the command answers")
 }
 
-/// Each add answers how many tracks it put in, so the screen that asked
-/// confirms exactly those: a track the library lacks is left out.
+/// Each add returns how many tracks it added, so the screen that sent it shows
+/// exactly that number: the command skips a track the library does not have.
 #[tokio::test]
-async fn each_add_answers_how_many_tracks_went_in() {
+async fn each_add_returns_how_many_tracks_it_added() {
     let (_store, mut service, _progress_rx) =
         seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;

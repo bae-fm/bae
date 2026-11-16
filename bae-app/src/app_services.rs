@@ -646,7 +646,9 @@ impl AppServices {
         self.inner.playback.set_shuffle(on)
     }
 
-    /// Add tracks to the end of Up Next, sent at this call; the future answers how many went in, or why none did.
+    /// Add tracks to the end of Up Next. This call sends the command at once;
+    /// the future returns the number of tracks added, or the error that stopped
+    /// them all.
     pub fn playback_add_to_queue(
         &self,
         track_ids: Vec<String>,
@@ -655,7 +657,9 @@ impl AppServices {
         self.inner.playback.add_to_queue(track_ids)
     }
 
-    /// Add tracks to the front of Up Next, sent at this call; the future answers how many went in, or why none did.
+    /// Add tracks to the front of Up Next. This call sends the command at once;
+    /// the future returns the number of tracks added, or the error that stopped
+    /// them all.
     pub fn playback_add_next(
         &self,
         track_ids: Vec<String>,
@@ -664,7 +668,9 @@ impl AppServices {
         self.inner.playback.add_next(track_ids)
     }
 
-    /// Add a release's tracks to the end of Up Next, sent at this call; the future answers how many went in, or why none did.
+    /// Add a release's tracks to the end of Up Next. This call sends the
+    /// command at once; the future returns the number of tracks added, or the
+    /// error that stopped them all.
     pub fn playback_add_release_to_queue(
         &self,
         release_id: String,
@@ -673,7 +679,9 @@ impl AppServices {
         self.inner.playback.add_release_to_queue(release_id)
     }
 
-    /// Add a release's tracks to the front of Up Next, sent at this call; the future answers how many went in, or why none did.
+    /// Add a release's tracks to the front of Up Next. This call sends the
+    /// command at once; the future returns the number of tracks added, or the
+    /// error that stopped them all.
     pub fn playback_add_release_next(
         &self,
         release_id: String,
@@ -682,7 +690,9 @@ impl AppServices {
         self.inner.playback.add_release_next(release_id)
     }
 
-    /// Insert tracks into Up Next before the entry at `index`, sent at this call; the future answers how many went in, or why none did.
+    /// Insert tracks into Up Next before the entry at `index`. This call sends
+    /// the command at once; the future returns the number of tracks added, or
+    /// the error that stopped them all.
     pub fn playback_insert_in_queue(
         &self,
         track_ids: Vec<String>,
