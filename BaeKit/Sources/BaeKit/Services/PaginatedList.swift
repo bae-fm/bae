@@ -63,10 +63,10 @@ where Row.ID: Sendable {
     /// may have loaded or changed.
     public private(set) var contentRevision: UInt64 = 0
 
-    /// The first read, made before the list held any rows, failed. The grid
-    /// that shows the list shows an error and Retry instead of the
-    /// empty-library placeholder: a failed first read is not an empty
-    /// library. Only `loadInitial` sets it; a later failure keeps what is on
+    /// The first read after `loadInitial`, its first window or its count,
+    /// failed before both delivered. The grid that shows the list shows an
+    /// error and Retry instead of the empty-library placeholder: a failed
+    /// first read is not an empty library. A later failure keeps what is on
     /// screen and goes to `onError`.
     public private(set) var initialLoadError: DisplayError?
 
@@ -110,6 +110,12 @@ where Row.ID: Sendable {
     private let firstAnswerWaiting = Waiting()
     @ObservationIgnored
     private var cancelled = false
+    /// Whether the first window and the count have both delivered since
+    /// `loadInitial` last opened the list. Until they have, a failed read is
+    /// the first read's failure; after, the list keeps its rows, also through
+    /// a `reopen`, and sends the failure to `onError`.
+    @ObservationIgnored
+    private var firstReadAnswered = false
 
     public init(
         queries: BridgeListQueries<Row>,
@@ -125,6 +131,7 @@ where Row.ID: Sendable {
     /// the view draws the count when it answers. The owner calls this when it
     /// opens the list, and again to retry a failed first read.
     public func loadInitial() async {
+        firstReadAnswered = false
         await reopen(at: nil, position: 0)
     }
 
@@ -357,6 +364,7 @@ where Row.ID: Sendable {
     /// A window or the count delivered: resume every task whose row is now
     /// there or past the list's end.
     private func settled() {
+        firstReadAnswered = firstReadAnswered || (firstAnswered && count != nil)
         rowWaiting.release(where: isSatisfied)
         if firstAnswered || initialLoadError != nil {
             firstAnswerWaiting.releaseAll()
@@ -371,7 +379,7 @@ where Row.ID: Sendable {
     // MARK: - Failures
 
     private func failed(_ error: any Error) {
-        if !(firstAnswered && count != nil), placed.isEmpty {
+        if !firstReadAnswered {
             initialLoadError = DisplayError(error)
             settled()
             return

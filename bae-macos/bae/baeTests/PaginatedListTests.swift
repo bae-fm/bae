@@ -40,6 +40,16 @@ private final class ProbeList: @unchecked Sendable {
     /// list still waits for the count.
     func holdCount() { lock.withLock { countHeld = true } }
 
+    /// Fail the count read with `error`.
+    func failCount(_ error: any Error) { counts.fail(error) }
+
+    /// Fail every open window's read with `error`.
+    func failWindows(_ error: any Error) {
+        for window in windows where !window.stopped {
+            window.feed.fail(error)
+        }
+    }
+
     /// Answer the count a held read waits for.
     func releaseCount() {
         let count = lock.withLock {
@@ -176,23 +186,38 @@ private final class ProbeList: @unchecked Sendable {
 /// One feed of values a probe answers a read with: a test emits, the read
 /// takes them in order.
 private final class Feed<Value: Sendable>: @unchecked Sendable {
-    private let stream: AsyncStream<Value>
-    private let continuation: AsyncStream<Value>.Continuation
-    private var iterator: AsyncStream<Value>.AsyncIterator
+    private let stream: AsyncThrowingStream<Value, any Error>
+    private let continuation: AsyncThrowingStream<Value, any Error>.Continuation
+    private var iterator: AsyncThrowingStream<Value, any Error>.AsyncIterator
 
     init() {
-        (stream, continuation) = AsyncStream.makeStream()
+        (stream, continuation) = AsyncThrowingStream.makeStream()
         iterator = stream.makeAsyncIterator()
     }
 
     func emit(_ value: Value) { continuation.yield(value) }
 
+    func fail(_ error: any Error) { continuation.finish(throwing: error) }
+
     func next() async throws -> Value {
-        guard let value = await iterator.next() else {
+        guard let value = try await iterator.next() else {
             throw CancellationError()
         }
         return value
     }
+}
+
+/// The failures a list sent to its `onError`.
+private final class Failures: @unchecked Sendable {
+    private let lock = NSLock()
+    private var errors: [any Error] = []
+
+    func record(_ error: any Error) {
+        lock.withLock { errors.append(error) }
+        Wait.happened()
+    }
+
+    var count: Int { lock.withLock { errors.count } }
 }
 
 private func ids(_ range: ClosedRange<Int>) -> [String] {
@@ -264,6 +289,52 @@ struct PaginatedListTests {
         probe.releaseCount()
         try await Wait.until { list.count != nil }
         #expect(list.count?.rows == 200)
+        list.cancel()
+    }
+
+    @MainActor
+    @Test(
+        "a count that fails before it delivers fails the first read, though a window delivered rows"
+    )
+    func countFailingFirstFailsTheFirstRead() async throws {
+        let probe = ProbeList(ids(0...9))
+        probe.holdCount()
+        let list = PaginatedList(
+            queries: probe.queries,
+            onError: { Issue.record("List failed: \($0)") }
+        )
+        await list.loadInitial()
+        #expect(list.row(at: 0) != nil)
+
+        probe.failCount(
+            BridgeError.Diagnostic(category: .database, detail: "locked")
+        )
+        try await Wait.until { list.initialLoadError != nil }
+        list.cancel()
+    }
+
+    @MainActor
+    @Test(
+        "a reopened list whose window read fails before its count delivers keeps its rows and reports the failure"
+    )
+    func reopenedReadFailureKeepsRows() async throws {
+        let probe = ProbeList(ids(0...9))
+        let failures = Failures()
+        let list = PaginatedList(
+            queries: probe.queries,
+            onError: { failures.record($0) }
+        )
+        await list.loadInitial()
+        try await Wait.until { list.count != nil }
+
+        probe.holdCount()
+        await list.reopen(at: nil, position: 0)
+        probe.failWindows(
+            BridgeError.Diagnostic(category: .database, detail: "locked")
+        )
+        try await Wait.until { failures.count > 0 }
+        #expect(list.initialLoadError == nil)
+        #expect(list.row(at: 0) != nil)
         list.cancel()
     }
 
