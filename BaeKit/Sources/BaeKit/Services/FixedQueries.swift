@@ -359,14 +359,12 @@
             /// holds it, on `tab`.
             public static func fixed(
                 items: [BridgeImportListItem],
-                tab: BridgeTriageTab,
-                answers: UnansweredCount = UnansweredCount(),
-                summary: BridgeImportQueueSummary? = nil
+                tab: BridgeTriageTab
             ) -> ImportListHandle {
                 let queries = BridgeListQueries<BridgeImportListItem>
                     .fixed(
                         items,
-                        answers: answers,
+                        answers: UnansweredCount(),
                         extra: BridgeListCountExtra.import(narrowed: nil)
                     )
                 return ImportListHandle(
@@ -374,16 +372,15 @@
                     summary: {
                         PulledValues<BridgeImportQueueSummary>
                             .fixed(
-                                summary
-                                    ?? BridgeImportQueueSummary(
-                                        watchedFolders: [],
-                                        hasGroups: false,
-                                        narrowing: BridgeImportListNarrowing(
-                                            tab: tab,
-                                            filterText: "",
-                                            pendingFilter: .all
-                                        )
+                                BridgeImportQueueSummary(
+                                    watchedFolders: [],
+                                    hasGroups: false,
+                                    narrowing: BridgeImportListNarrowing(
+                                        tab: tab,
+                                        filterText: "",
+                                        pendingFilter: .all
                                     )
+                                )
                             )
                     },
                     filterEntries: {
