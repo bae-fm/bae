@@ -300,7 +300,7 @@ private fun WorkDetailContent(
                 inset = true,
             )
         }
-        if (detail.childWorks.isNotEmpty()) {
+        if (detail.childWorkCount > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_works)) }
             items(detail.childWorks, key = { it.workId }) { work ->
                 AndroidLibraryRow(
@@ -312,7 +312,7 @@ private fun WorkDetailContent(
                 )
             }
         }
-        if (detail.releases.isNotEmpty()) {
+        if (detail.releaseCount > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_releases)) }
             items(detail.releases, key = { it.releaseId }) { release ->
                 AndroidLibraryRow(
@@ -324,7 +324,7 @@ private fun WorkDetailContent(
                 )
             }
         }
-        if (detail.tracks.isNotEmpty()) {
+        if (detail.trackCount > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_recordings)) }
             items(detail.tracks, key = { it.trackId }) { track ->
                 AndroidLibraryRow(title = track.trackTitle, subtitle = track.albumTitle, noArt = true)
