@@ -1,7 +1,8 @@
 -- The language this device orders names in, and the collation data its keys
 -- were written with (§2.1). Every listed name has a key beside it, written by
 -- `bae_name_key` in this language, and the lists order by the keys; a row
--- here is the one language all of them were written in. `data_version` is
+-- here is the one language all of them were written in, and the lists'
+-- triggers on it write every key again when it changes. `data_version` is
 -- `bae_util::name_key::DATA_VERSION` when the keys were last all written,
 -- 0 before that: a device finding another one rewrites every key before it
 -- serves a list. `und` is the root order, the language of a device that has

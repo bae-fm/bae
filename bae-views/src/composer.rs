@@ -145,7 +145,7 @@ fn find_work_detail_on(
     let child_works = sql.query(
         &work_summary_query(
             Some("JOIN work_parts wp ON wp.child_work_id = w.id AND wp.parent_work_id = ?"),
-            Some(&format!("ORDER BY wp.position, {}", crate::name_sort::sort_key_sql("w.title"))),
+            Some(&format!("ORDER BY wp.position, {}", crate::sort_key_sql("w.title"))),
         ),
         params![work.work.id],
         row_to_work_summary,
@@ -268,7 +268,7 @@ pub(crate) fn composer_listing_query(
 fn work_release_order(album: &str, release: &str) -> String {
     format!(
         "{}, {album}.id, {release}.album_order, {release}.id",
-        crate::name_sort::sort_key_sql(&format!("{album}.title"))
+        crate::sort_key_sql(&format!("{album}.title"))
     )
 }
 

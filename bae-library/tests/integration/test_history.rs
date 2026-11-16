@@ -198,8 +198,7 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         devices
             .settle("the profile on both devices", async |_, store| {
                 !bae_library::followed::value_matching(
-                    &mut bae_people::People::new(store.clone())
-                        .subscribe_profiles(bae_views::sort_language_on),
+                    &mut bae_people::People::new(store.clone()).subscribe_profiles(),
                     |_| true,
                 )
                 .await

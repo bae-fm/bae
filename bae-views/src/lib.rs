@@ -26,9 +26,8 @@ pub mod composer_detail;
 mod invites;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
-mod name_sort;
+mod name_keys;
 pub mod playlists;
-pub use name_sort::{sort_language_on, SortLanguageError};
 pub mod release;
 #[cfg(desktop)]
 mod release_files;
@@ -79,6 +78,7 @@ use release::{build_album_release_details_on, ReleaseDetailRows};
 use album_search::*;
 use bae_records::credits::LibraryCredit;
 use bae_records::records::files::{artist_image_version_sql, cover_version_sql};
+use bae_records::records::name_sort::sort_key_sql;
 use bae_records::records::pressing_columns::{read_media, release_media_sql};
 use bae_records::records::query::*;
 use bae_records::records::read::*;
@@ -98,7 +98,6 @@ use std::collections::BTreeSet;
 /// the order each runs after the files creating the tables its triggers fire
 /// on.
 pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(&[
-    name_sort::SQL,
     album::LISTING_SQL,
     artist::SQL,
     composer::SQL,
@@ -106,6 +105,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
     storage::SQL,
     sync_activity::SQL,
     search::SQL,
+    name_keys::SQL,
 ])
 .functions(SQL_FUNCTIONS)];
 

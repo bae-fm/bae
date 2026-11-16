@@ -62,6 +62,7 @@ use artist_resolution::relink;
 pub mod files;
 pub use files::{ImageWriteError, ImageWriteRefusal};
 pub(crate) mod identity_merges;
+pub mod name_sort;
 pub mod queued_uploads;
 pub mod release_records;
 // Only identifying a release, a desktop operation, changes its records.
@@ -159,9 +160,10 @@ impl Records {
     }
 }
 
-/// Records' part of the schema: `records.sql`.
+/// Records' part of the schema: `records.sql`, and the device's sort
+/// language's table (`records/name_sort.sql`).
 pub const SCHEMA: bae_store::SchemaPart =
-    bae_store::SchemaPart::new(&[include_str!("records.sql")])
+    bae_store::SchemaPart::new(&[include_str!("records.sql"), name_sort::SQL])
         .functions(SQL_FUNCTIONS)
         .collations(SQL_COLLATIONS)
         .synced(crate::synced::synced_tables, crate::synced::namespaces);

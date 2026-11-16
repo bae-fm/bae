@@ -53,7 +53,7 @@ impl LibraryManager {
     pub fn subscribe_profiles(
         &self,
     ) -> coven::LiveQuery<Vec<bae_people::people::PersonProfile>, bae_store::DbError> {
-        self.people.subscribe_profiles(bae_views::sort_language_on)
+        self.people.subscribe_profiles()
     }
 
     /// This person's restore code, for the QR code and to type, for their own

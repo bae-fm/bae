@@ -134,7 +134,7 @@ async fn the_followed_list_changes_as_playback_moves_to_a_receiver() {
     let picker = CastPicker::new(db.clone());
     let living_room = receiver("cast-1", "Living Room", RendererKind::Cast);
     picker.show(vec![living_room.clone()]).await.unwrap();
-    let mut listed = picker.subscribe(|_| Ok(SortLanguage::root()));
+    let mut listed = picker.subscribe();
     assert_eq!(next(&mut listed).await, found(vec![living_room.clone()]));
 
     PlaybackNowRow::new(db).apply(&cast_to(&living_room)).await.unwrap();
@@ -158,22 +158,21 @@ async fn opening_empties_the_picker() {
     assert_eq!(picker.receivers().await.unwrap(), found(Vec::new()));
 }
 
-/// The list reads by name in the language asked: Swedish puts ö after z, the
-/// root order puts it with o, and the byte order puts it after every ASCII
-/// letter.
+/// The list reads by name in the device's language, and a change of language
+/// lists it again: the root order puts ö with o, Swedish puts it after z, and
+/// the byte order puts it after every ASCII letter.
 #[tokio::test]
-async fn receivers_list_by_name_in_the_language_asked() {
+async fn receivers_list_by_name_in_the_devices_language() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    let picker = CastPicker::new(db);
+    let picker = CastPicker::new(db.clone());
     let ostra = receiver("cast-1", "Östra rummet", RendererKind::Cast);
     let zon = receiver("cast-2", "Zon", RendererKind::Cast);
     let olle = receiver("cast-3", "Olles rum", RendererKind::Cast);
     picker.show(vec![ostra.clone(), zon.clone(), olle.clone()]).await.unwrap();
+    let mut listed = picker.subscribe();
+    assert_eq!(next(&mut listed).await, found(vec![olle.clone(), ostra.clone(), zon.clone()]));
 
-    let sv = SortLanguage::parse("sv").unwrap();
-    assert_eq!(
-        picker.receivers_in(&sv).await.unwrap(),
-        found(vec![olle.clone(), zon.clone(), ostra.clone()])
-    );
-    assert_eq!(picker.receivers().await.unwrap(), found(vec![olle, ostra, zon]));
+    bae_records::test_fixtures::test_records(&db).set_sort_language("sv").await.unwrap();
+
+    assert_eq!(next(&mut listed).await, found(vec![olle, zon, ostra]));
 }

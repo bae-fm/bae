@@ -54,7 +54,7 @@ pub async fn start_library_services(
     let views = bae_views::LibraryViews::new(store.clone());
     // Every stored name key is of the collation data this build orders names
     // by, before anything lists or writes a name.
-    views.settle_name_keys().await?;
+    records.settle_name_keys().await?;
     manager.settle_playback_queue(restore_playback).await?;
     let queue_tables = bae_playback::tables::PlaybackQueueTables::new(store.clone());
     let now_row = bae_playback::tables::PlaybackNowRow::new(store.clone());

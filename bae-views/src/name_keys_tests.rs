@@ -41,14 +41,13 @@ async fn a_language_change_reorders_the_window_a_list_shows() {
         ["Åke", "Öl", "Zebra"],
         "the root order puts å and ö with a and o"
     );
-    views.set_sort_language("sv").await.unwrap();
-    assert_eq!(views.sort_language().await.unwrap().as_str(), "sv");
+    test_records(&db).set_sort_language("sv").await.unwrap();
     assert_eq!(
         album_titles_next(&mut live).await,
         ["Zebra", "Åke", "Öl"],
         "Swedish puts them after z, and the window that was showing follows"
     );
-    views.set_sort_language("sv").await.unwrap();
+    test_records(&db).set_sort_language("sv").await.unwrap();
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(300), live.next()).await.is_err(),
         "the language it already has writes nothing"
@@ -60,7 +59,7 @@ async fn cyrillic_titles_sort_by_letter_whatever_their_case() {
     let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     retitle(&db, ["Яблоко", "арбуз", "Борщ"]).await;
     let views = LibraryViews::new(db.clone());
-    views.set_sort_language("ru").await.unwrap();
+    test_records(&db).set_sort_language("ru").await.unwrap();
     let titles = views
         .get_album_page(
             &[AlbumSortCriterion {
@@ -82,7 +81,7 @@ async fn cyrillic_titles_sort_by_letter_whatever_their_case() {
 async fn the_storage_manager_and_links_follow_the_albums_language() {
     let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
     retitle(&db, ["Öl", "Zebra", "Åke"]).await;
-    LibraryViews::new(db.clone()).set_sort_language("sv").await.unwrap();
+    test_records(&db).set_sort_language("sv").await.unwrap();
     let ordered: (Vec<String>, Vec<String>) = db
         .read(|sql| {
             let ids = |query: &str| -> Result<Vec<String>, DbError> {
@@ -100,45 +99,43 @@ async fn the_storage_manager_and_links_follow_the_albums_language() {
 }
 
 #[tokio::test]
-async fn a_language_that_is_not_one_is_refused_and_changes_nothing() {
-    let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
-    let views = LibraryViews::new(db.clone());
-    assert!(matches!(
-        views.set_sort_language("not a language").await,
-        Err(SortLanguageError::Invalid(_))
-    ));
-    assert_eq!(views.sort_language().await.unwrap().as_str(), "und");
-}
-
-#[tokio::test]
 async fn keys_written_with_other_collation_data_are_written_again_when_a_library_opens() {
     let (db, _tmp) = listed_db(crate::TEST_SCHEMA).await;
-    let views = LibraryViews::new(db.clone());
-    views.settle_name_keys().await.unwrap();
+    let records = test_records(&db);
+    records.settle_name_keys().await.unwrap();
     // Keys of an earlier build's data: another key, under the data version
     // that build wrote.
+    records.age_name_keys_for_test().await.unwrap();
     db.call_bulk(|sql| {
-        sql.execute("UPDATE name_sort SET data_version = data_version + 1", [])?;
         sql.execute("UPDATE album_listing SET title_sort_key = x'01'", [])?;
+        sql.execute(
+            "UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'",
+            [],
+        )?;
         Ok(())
     })
     .await
     .unwrap();
 
-    views.settle_name_keys().await.unwrap();
+    records.settle_name_keys().await.unwrap();
 
-    let (stale, version): (i64, i64) = db
+    let (stale_titles, stale_names, version): (i64, i64, i64) = db
         .read(|sql| {
             Ok(sql.query_row(
                 "SELECT (SELECT COUNT(*) FROM album_listing l JOIN albums a ON a.id = l.album_id
                          WHERE l.title_sort_key IS NOT bae_name_key(a.title, 'und')),
+                        (SELECT COUNT(*) FROM artist_listing l JOIN artists a ON a.id = l.artist_id
+                         WHERE l.name_sort_key IS NOT bae_name_key(a.name, 'und')
+                            OR l.sort_name_sort_key
+                               IS NOT bae_name_key(COALESCE(a.sort_name, a.name), 'und')),
                         (SELECT data_version FROM name_sort)",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )?)
         })
         .await
         .unwrap();
-    assert_eq!(stale, 0, "every title key is the current data's");
+    assert_eq!(stale_titles, 0, "every title key is the current data's");
+    assert_eq!(stale_names, 0, "every artist name key is the current data's");
     assert_eq!(version, i64::from(bae_util::name_key::DATA_VERSION));
 }

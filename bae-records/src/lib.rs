@@ -1,8 +1,8 @@
 //! bae's library records and where each release's files are: artists, albums,
 //! releases, tracks, works and labels with their files, the rules that resolve
 //! credits and labels and merge identities, the row writers an import and an
-//! edit call inside their own writes, and release storage, behind the
-//! `Records` owner.
+//! edit call inside their own writes, release storage, and the language this
+//! device orders names in, behind the `Records` owner.
 
 mod cache_limit;
 pub mod credits;
@@ -27,6 +27,7 @@ pub use records::resolved_in_an_empty_library;
 pub use release_file_role::{DocumentKind, ReleaseFileRole};
 // Only an import names its own artist credits from outside bae-records.
 pub use records::artist_credit_names::CreditNameError;
+pub use records::name_sort::SortLanguageError;
 pub use records::AlbumFields;
 #[cfg(desktop)]
 pub use records::ArtistCredits;

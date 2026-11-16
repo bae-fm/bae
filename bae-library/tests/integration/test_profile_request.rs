@@ -44,9 +44,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     assert!(people.record_play(&played).await.unwrap());
 
     library.people().create_profile("Robin").await.unwrap();
-    assert!(value_matching(&mut people.subscribe_profiles(bae_views::sort_language_on), |_| true)
-        .await
-        .is_empty());
+    assert!(value_matching(&mut people.subscribe_profiles(), |_| true).await.is_empty());
     let requested = db.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
     let running = db

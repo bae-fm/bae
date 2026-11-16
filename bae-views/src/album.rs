@@ -459,7 +459,7 @@ fn search_albums_on(
         primary_cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
         album_matches = album_matches_sql("a.id", "?1"),
-        title_key = crate::name_sort::sort_key_sql("a.title"),
+        title_key = crate::sort_key_sql("a.title"),
     );
     Ok(sql.query(&album_query, params![pattern, limit, offset, cap], |row| {
         Ok(AlbumSearchRow {
@@ -496,8 +496,8 @@ fn search_library_on(
             ORDER BY {title_key}, t.id
             "#,
             select = TRACK_HIT_SELECT.as_str(),
-            sort_title_key = crate::name_sort::sort_key_sql("found.title"),
-            title_key = crate::name_sort::sort_key_sql("t.title"),
+            sort_title_key = crate::sort_key_sql("found.title"),
+            title_key = crate::sort_key_sql("t.title"),
         ),
         params![pattern, limit],
         track_hit_row,
@@ -529,9 +529,9 @@ fn search_library_on(
                     ORDER BY {}, found.id
                     LIMIT ?2
                 )",
-                crate::name_sort::sort_key_sql("found.title"),
+                crate::sort_key_sql("found.title"),
             )),
-            Some(&format!("ORDER BY {}, w.id", crate::name_sort::sort_key_sql("w.title"))),
+            Some(&format!("ORDER BY {}, w.id", crate::sort_key_sql("w.title"))),
         ),
         params![pattern, limit],
         row_to_work_summary,
@@ -558,8 +558,8 @@ fn search_library_on(
                 WHERE track_id IS NOT NULL
                 ORDER BY kind, found_key, tie LIMIT 1
                 "#,
-                track_key = crate::name_sort::sort_key_sql("t.title"),
-                album_key = crate::name_sort::sort_key_sql("a.title"),
+                track_key = crate::sort_key_sql("t.title"),
+                album_key = crate::sort_key_sql("a.title"),
                 primary_release = album_primary_release_sql(),
                 album_matches = album_matches_sql("a.id", "?1"),
             ),

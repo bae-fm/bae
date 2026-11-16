@@ -5,8 +5,7 @@ use super::profile_request::{
 use super::*;
 use crate::membership::{member_columns, member_row};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
-use bae_store::read::SortLanguageRead;
-use bae_util::name_key::SortLanguage;
+use bae_records::records::name_sort::sort_key_sql;
 
 /// The columns [`profile_row`] reads of the `people` row `p`: its own, and
 /// its avatar's version; [`PROFILE_COLUMN_COUNT`] of them.
@@ -66,16 +65,10 @@ impl People {
             .subscribe(move |sql| Ok(people_on(&sql, &person_sql(), params![member])?.pop()))
     }
 
-    /// Follow every profile, ordered by name in the language `language`
-    /// reads: a change of the language lists them again.
-    pub fn subscribe_profiles(
-        &self,
-        language: SortLanguageRead,
-    ) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
-        self.inner.store.subscribe(move |sql| {
-            let language = language(&sql)?;
-            Ok(profile_rows(&sql, &language)?)
-        })
+    /// Follow every profile, ordered by name in the device's language: a
+    /// change of the language lists them again.
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
+        self.inner.store.subscribe(|sql| Ok(sql.query(&profiles_sql(), [], profile_row)?))
     }
 
     pub async fn profile(&self, member: coven::MemberId) -> Result<Option<PersonProfile>, DbError> {
@@ -609,16 +602,13 @@ fn people_on(
     })
 }
 
-/// Every profile, by name in the language bound to `?1`, then id.
-pub(super) fn profiles_sql() -> String {
-    format!("SELECT {} FROM people AS p ORDER BY bae_name_key(p.name, ?1), p.id", profile_columns())
-}
-
-fn profile_rows(
-    sql: &SqlReadContext<'_>,
-    language: &SortLanguage,
-) -> rusqlite::Result<Vec<PersonProfile>> {
-    sql.query(&profiles_sql(), [language.as_str()], profile_row)
+/// Every profile, by name in the device's language, then id.
+fn profiles_sql() -> String {
+    format!(
+        "SELECT {} FROM people AS p ORDER BY {}, p.id",
+        profile_columns(),
+        sort_key_sql("p.name")
+    )
 }
 
 fn update_profile(

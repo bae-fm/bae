@@ -6056,7 +6056,7 @@ bindings export none of their symbols.
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-transfers | the transfer queues: the download queue that keeps releases on this device or makes them local and the export and save queue, each worked through one release at a time, paused, cancelled and retried, their entries as this device's tables hold them, each ended in the write that does its work, and the writes that move a selection's files to the cloud or out of the pinned cache |
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows (each a range of a list's order bounded by a key at both ends, read as a run of index seeks, with the count of the rows before a key and the key at a position), the cancellable live queries a surface pulls values from and the live reads over them, whose request moves in place and says whether a read that finished after it was replaced still answers (a window's rows do; another id's detail does not), and the names a person enters |
-| bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, and release storage, with the `Records` owner over them |
+| bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, release storage, and the language this device orders names in, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
 | bae-sync-status | the sync status as the Sync page and the Activity panel show it: coven's sync state beside the library's read of its pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
@@ -6220,8 +6220,9 @@ checkers it touched, as `.checks` lists them.
 The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
 code. bae-library assembles it from bae-records' parts, under
-`bae-records/src/`: the records' (`records.sql`) and release storage's
-(`release_storage.sql`), bae-people's, under `bae-people/src/`: the people's
+`bae-records/src/`: the records' (`records.sql`), the device's sort
+language's (`records/name_sort.sql`) and release storage's (`release_storage.sql`),
+bae-people's, under `bae-people/src/`: the people's
 (`people.sql`) and membership's (`membership.sql`), bae-sync-status's,
 `bae-sync-status/src/sync_status.sql`, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
 `bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
@@ -6239,7 +6240,7 @@ bae-transfers', under `bae-transfers/src/`: the transfer queues'
 under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
 list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
 page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library
-search's (`search.sql`). A part runs
+search's (`search.sql`) and the rewrite of the name keys (`name_keys.sql`). A part runs
 after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.
@@ -6319,6 +6320,7 @@ Beside them, device-local tables:
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and whether coven lists a file of it in a failed move, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
+| `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 
 What the library lists, bae-views' part, kept by its triggers:
 
@@ -6334,7 +6336,6 @@ What the library lists, bae-views' part, kept by its triggers:
 | `artist_listing` | artist the artist list shows (§2.1): its name, the sort keys of its name and of its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title key and credit key, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
 | `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
-| `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key; a track's or a work's results order by the title of the row itself |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 

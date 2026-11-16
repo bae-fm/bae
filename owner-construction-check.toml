@@ -1326,6 +1326,7 @@ tables = [
     "audio_formats",
     "audio_format_segments",
     "audio_segment_scrub_points",
+    "name_sort",
 ]
 
 [[database.domains]]
@@ -1635,7 +1636,6 @@ tables = [
     "artist_search",
     "artist_credit_search_entry",
     "artist_credit_search",
-    "name_sort",
 ]
 
 # coreaudio-rs is `coreaudio` in source.
@@ -1805,8 +1805,6 @@ frozen = [
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "pick", count = 1, finding = "tests each kept sample against the files coven is uploading with `any`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::rates", shape = "group", count = 1, finding = "returns each file's rate from the samples it kept, in a `HashMap`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::record", shape = "group", count = 1, finding = "keeps a sample window for each file coven is uploading (`entry`)" },
-    { path = "bae-people/src/people/profiles.rs", item = "People::subscribe_profiles", shape = "keyed-statement", count = 1, finding = "reads the profiles with `profile_rows` in the sort language that `language` read first" },
-    { path = "bae-playback/src/renderer/picker.rs", item = "CastPicker::subscribe", shape = "keyed-statement", count = 1, finding = "reads the cast receivers with `cast_receivers_on` in the sort language that `language` read first" },
     { path = "bae-playback/src/tables/now.rs", item = "playback_now.failures", shape = "reset-counter", count = 1, finding = "`playback_now.failures` is counted up and reset, so a live query reads again (found by the audit: forced rerun)" },
     { path = "bae-playback/src/tables/queue.rs", item = "PlaybackQueueTables::front", shape = "keyed-statement", count = 1, finding = "reads the next context track keyed by the queue row the first statement returned" },
     { path = "bae-records/src/identity.rs", item = "album_id_for_records", shape = "filter", count = 1, finding = "`album_id_for_records` filters with `filter_map` (found by the check)" },
@@ -1886,7 +1884,6 @@ allowed = [
     { path = "bae-types/src/pressing/country.rs", item = "Country::from_code", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-types/src/text_match/fold.rs", item = "folded", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
     { path = "bae-types/src/text_match/fold.rs", item = "squash", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
-    { path = "bae-util/src/name_key.rs", item = "NameKeys::for_language", shape = "kept-state", count = 1, reason = "a pattern or collator built once and kept for every call; it holds no read's result" },
     { path = "bae-bridge/src/types/pressing.rs", item = "bridge_pressing_details", shape = "filter", count = 1, reason = "drops one pressing's optional status when it is the official one; one value, not rows" },
     { path = "bae-diagnostics/src/ui_error/class.rs", item = "UiErrorClass::named", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::stored", shape = "length-branch", count = 1, reason = "asserts a pressing is built from at least one release; a check on its input, and no screen shows the count" },

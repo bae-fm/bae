@@ -444,13 +444,13 @@ impl From<bae_store::live_query::LiveQueryError> for BridgeError {
 
 /// A language tag the names cannot be ordered in is a configuration the
 /// caller built wrongly; a failed write crosses as the database's failure.
-impl From<bae_views::SortLanguageError> for BridgeError {
-    fn from(error: bae_views::SortLanguageError) -> Self {
+impl From<bae_records::SortLanguageError> for BridgeError {
+    fn from(error: bae_records::SortLanguageError) -> Self {
         match error {
-            bae_views::SortLanguageError::Invalid(error) => {
+            bae_records::SortLanguageError::Invalid(error) => {
                 BridgeError::diagnostic(BridgeErrorCategory::Config, error)
             }
-            bae_views::SortLanguageError::Database(error) => error.into(),
+            bae_records::SortLanguageError::Database(error) => error.into(),
         }
     }
 }

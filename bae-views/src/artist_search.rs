@@ -3,7 +3,7 @@
 //! of their own; a new text is new queries.
 
 use super::*;
-use crate::name_sort::sort_key_sql;
+use crate::sort_key_sql;
 use bae_records::records::artist_credit_names::{credit_names_column, credit_names_json_sql};
 use rusqlite::named_params;
 

@@ -12,10 +12,9 @@ pub(crate) const SCHEMA: bae_store::SchemaPart =
 /// The SQL functions the picker's read names: the key receivers order by.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
 
-use bae_store::read::SortLanguageRead;
+use bae_records::records::name_sort::sort_key_sql;
 use bae_store::DbError;
 use bae_store::Store;
-use bae_util::name_key::SortLanguage;
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 
@@ -60,11 +59,8 @@ pub(crate) fn kind_from_column<I: rusqlite::RowIndex + Copy>(
 }
 
 /// The picker's list: the receiver playback is cast to, then every other
-/// receiver discovery found.
-fn cast_receivers_on(
-    sql: &SqlReadContext<'_>,
-    language: &SortLanguage,
-) -> Result<CastReceiverList, DbError> {
+/// receiver discovery found, by name in the device's language.
+fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbError> {
     let casting = sql
         .query_row(
             "SELECT cast_receiver_id, cast_receiver_name, cast_receiver_kind, \
@@ -76,10 +72,13 @@ fn cast_receivers_on(
         )
         .optional()?;
     let found = sql.query(
-        "SELECT id, name, kind, model, address, takes_volume FROM cast_receiver \
-           WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
-         ORDER BY bae_name_key(name, ?1), id",
-        [language.as_str()],
+        &format!(
+            "SELECT id, name, kind, model, address, takes_volume FROM cast_receiver \
+               WHERE id NOT IN (SELECT cast_receiver_id FROM playback_now WHERE remote = 'on') \
+             ORDER BY {}, id",
+            sort_key_sql("name")
+        ),
+        [],
         |row| {
             Ok(CastReceiver {
                 id: row.get("id")?,
@@ -132,17 +131,10 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists, the one playback is cast to
-    /// apart from the rest.
-    /// The receivers are listed by name in the language `language` reads: a
-    /// change of the language lists them again.
-    pub fn subscribe(
-        &self,
-        language: SortLanguageRead,
-    ) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
-        self.store.subscribe(move |sql| {
-            let language = language(&sql)?;
-            cast_receivers_on(&sql, &language)
-        })
+    /// apart from the rest, by name in the device's language: a change of
+    /// the language lists them again.
+    pub fn subscribe(&self) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
+        self.store.subscribe(|sql| cast_receivers_on(&sql))
     }
 
     /// Empty the list: what the library opens with, since no discovery
@@ -156,17 +148,10 @@ impl CastPicker {
             .await
     }
 
-    /// The receivers the picker lists now, by name in `language`.
-    #[cfg(test)]
-    async fn receivers_in(&self, language: &SortLanguage) -> Result<CastReceiverList, DbError> {
-        let language = language.clone();
-        self.store.read(move |sql| cast_receivers_on(&sql, &language)).await
-    }
-
-    /// The receivers the picker lists now, by name in the root order.
+    /// The receivers the picker lists now.
     #[cfg(test)]
     async fn receivers(&self) -> Result<CastReceiverList, DbError> {
-        self.receivers_in(&SortLanguage::root()).await
+        self.store.read(|sql| cast_receivers_on(&sql)).await
     }
 }
 

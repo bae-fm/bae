@@ -381,7 +381,7 @@ async fn playlists_list_by_name_in_the_devices_language() {
     assert_eq!(names(&root), ["Ängel", "Apa", "Zebra"]);
     assert_eq!(root.total, 3);
 
-    views.set_sort_language("sv").await.unwrap();
+    library.records().set_sort_language("sv").await.unwrap();
     let swedish = value_matching(&mut listing, |listing| names(listing)[0] == "Apa").await;
     assert_eq!(names(&swedish), ["Apa", "Zebra", "Ängel"]);
     library.manager().close().await.unwrap();

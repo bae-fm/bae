@@ -23,14 +23,14 @@ async fn a_request_no_longer_stored_is_not_written_as_a_profile() {
         matches!(refused, Err(ProfileRequestError::Changed(refused)) if refused == operation),
         "{refused:?}"
     );
-    assert!(first(people.subscribe_profiles(root)).await.is_empty());
+    assert!(first(people.subscribe_profiles()).await.is_empty());
 }
 
-/// Profiles list by name in the language asked: Swedish puts ö after z, the
-/// root order puts it with o, and the byte order puts it after every ASCII
-/// letter.
+/// Profiles list by name in the device's language, and a change of language
+/// lists them again: the root order puts ö with o, Swedish puts it after z,
+/// and the byte order puts it after every ASCII letter.
 #[tokio::test]
-async fn profiles_list_by_name_in_the_language_asked() {
+async fn profiles_list_by_name_in_the_devices_language() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     db.call(|sql| {
         for (id, name) in [
@@ -48,25 +48,25 @@ async fn profiles_list_by_name_in_the_language_asked() {
     })
     .await
     .unwrap();
-    let people = People::new(db);
+    let people = People::new(db.clone());
     let names = |profiles: Vec<PersonProfile>| -> Vec<String> {
         profiles.into_iter().map(|profile| profile.name).collect()
     };
+    let mut profiles = people.subscribe_profiles();
+    assert_eq!(names(next(&mut profiles).await), ["Olle", "Östen", "Zoe"]);
 
-    assert_eq!(names(first(people.subscribe_profiles(swedish)).await), ["Olle", "Zoe", "Östen"]);
-    assert_eq!(names(first(people.subscribe_profiles(root)).await), ["Olle", "Östen", "Zoe"]);
-}
+    bae_records::test_fixtures::test_records(&db).set_sort_language("sv").await.unwrap();
 
-fn root(_: &SqlReadContext<'_>) -> Result<SortLanguage, DbError> {
-    Ok(SortLanguage::root())
-}
-
-fn swedish(_: &SqlReadContext<'_>) -> Result<SortLanguage, DbError> {
-    Ok(SortLanguage::parse("sv").unwrap())
+    assert_eq!(names(next(&mut profiles).await), ["Olle", "Zoe", "Östen"]);
 }
 
 /// The profiles a new subscription lists first: what is stored now.
 async fn first(mut profiles: coven::LiveQuery<Vec<PersonProfile>, DbError>) -> Vec<PersonProfile> {
+    next(&mut profiles).await
+}
+
+/// The followed profiles' next list.
+async fn next(profiles: &mut coven::LiveQuery<Vec<PersonProfile>, DbError>) -> Vec<PersonProfile> {
     tokio::time::timeout(std::time::Duration::from_secs(30), profiles.next())
         .await
         .expect("the list answers")

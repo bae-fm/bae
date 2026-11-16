@@ -117,7 +117,7 @@ pub(crate) fn playlists_sql(narrowing: &str) -> String {
                  WHERE e.playlist_id = pl.id ORDER BY e.position LIMIT 1) AS first_cover \
          FROM playlists AS pl JOIN people AS owner ON owner.id = pl.person_id{narrowing} \
          ORDER BY {name_key}, pl.id",
-        name_key = crate::name_sort::sort_key_sql("pl.name"),
+        name_key = crate::sort_key_sql("pl.name"),
         avatar = bae_store::file_version_sql("owner.avatar_id"),
         own = OWN_MEMBER,
         cover = cover_version_sql("t.release_id"),

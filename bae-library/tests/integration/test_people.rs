@@ -23,9 +23,7 @@ async fn a_profile_is_idempotent_once_asked_for() {
     )
     .await;
     let people = library.people().clone();
-    assert!(value_matching(&mut people.subscribe_profiles(bae_views::sort_language_on), |_| true)
-        .await
-        .is_empty());
+    assert!(value_matching(&mut people.subscribe_profiles(), |_| true).await.is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = made_profile(library.manager(), library.people(), "Robin").await;
     assert_eq!(profile.history_sharing, HistorySharing::Private);
@@ -61,12 +59,7 @@ async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
         Some("Robin"),
     )
     .await;
-    assert!(value_matching(
-        &mut library.people().subscribe_profiles(bae_views::sort_language_on),
-        |_| true
-    )
-    .await
-    .is_empty());
+    assert!(value_matching(&mut library.people().subscribe_profiles(), |_| true).await.is_empty());
     connect_storage(library.manager(), library.store(), &storage).await;
     let profile = requested_profile(library.manager(), library.people()).await;
     assert_eq!(profile.name, "Robin");
