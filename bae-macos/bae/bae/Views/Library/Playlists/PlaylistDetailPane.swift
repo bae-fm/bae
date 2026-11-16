@@ -153,9 +153,7 @@ struct PlaylistDetailPane: View {
         Task {
             do {
                 try await library.playlistWrites.delete(playlist.id)
-                if session.selectedPlaylistId == playlist.id {
-                    session.selectPlaylist(nil)
-                }
+                session.deselectPlaylist(playlist.id)
             }
             catch {
                 uiStore.showError(error)

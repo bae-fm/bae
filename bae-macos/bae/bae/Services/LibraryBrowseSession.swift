@@ -243,6 +243,14 @@ final class LibraryBrowseSession {
         selectedPlaylistId = playlistId
     }
 
+    /// Select no playlist when the selected one is `playlistId`, as when it
+    /// was deleted.
+    func deselectPlaylist(_ playlistId: String) {
+        if selectedPlaylistId == playlistId {
+            selectedPlaylistId = nil
+        }
+    }
+
     func selectArtist(_ artistId: String) {
         selectedArtistId = artistId
     }
