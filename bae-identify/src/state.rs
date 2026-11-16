@@ -94,12 +94,6 @@ impl IdentifyState {
         }
     }
 
-    /// The sample rate that rules a CD out, read off where this state's
-    /// signals say its audio came from; `None` for `Idle`.
-    pub fn rate_ruling_out_cd(&self) -> Option<u32> {
-        self.context().and_then(|context| context.origin.not_cd_rate)
-    }
-
     /// The audio this state read its offered releases against; `None` for
     /// `Idle` and before the audio is measured.
     pub fn read_audio(&self) -> Option<bae_catalogs::reading::ReadAudio> {
