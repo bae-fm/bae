@@ -49,8 +49,9 @@ mirror_struct! {
 }
 
 impl BridgeCandidateFiles {
-    /// The pane's files, with the identity of the audio behind a file-metadata
-    /// preview.
+    /// Builds the pane's file list from core's files, cover files and audio
+    /// summary, and keeps the identity of the audio files whose tags a
+    /// file-metadata preview reads.
     pub(crate) fn from_core(
         file_metadata_identity: String,
         files: Vec<bae_import::PaneFile>,

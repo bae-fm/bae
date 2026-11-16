@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
 ) STRICT;
 
 -- The lookups a failed verdict's run could not get answered, in the order the
--- run met them (a failed verdict holds at least one): the disc ID, a barcode,
+-- run sent them (a failed verdict holds at least one): the Disc ID, a barcode,
 -- a catalog number, the title search or the ISRCs, which the ledger lays out,
 -- or the lookup of an offered row's pressing or of the picked release's cover,
 -- which it does not. `catalog` is the catalog that failed, none for a disc ID

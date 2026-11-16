@@ -18,9 +18,10 @@ impl ImportServiceHandle {
     /// file, or clear the binding with `None`.
     ///
     /// Clearing does not restore the scan's guess: clearing says the guess was
-    /// wrong. Only audio the pane's mapping offers for the reference is
-    /// accepted: the write refuses what the stored scan facts refuse. The write also clears the stored identify verdict, because a
-    /// binding changes the folder's tracks.
+    /// wrong. `set_sheet_binding` accepts only audio that the pane's mapping
+    /// offers for the reference: the write returns an error for any audio file
+    /// that the stored scan facts rule out for it. The write also clears the
+    /// stored identify verdict, because a binding changes the folder's tracks.
     pub async fn set_sheet_binding(
         &self,
         candidate_key: crate::CandidateKey,

@@ -4,9 +4,9 @@ use rusqlite::types::Value;
 
 use bae_store::SchemaFunction;
 
-/// `bae_album_id`: the library album of the group a catalog (its first
-/// argument, as stored) files releases under by a key (its second): the id
-/// [`crate::identity::album_id`] gives it.
+/// `bae_album_id` takes a catalog's name, as stored, and the key of the group
+/// that the catalog files releases under. It returns the library album id
+/// that [`crate::identity::album_id`] computes for them.
 pub(crate) static ALBUM_IDENTITY: SchemaFunction = SchemaFunction {
     name: "bae_album_id",
     arguments: 2,

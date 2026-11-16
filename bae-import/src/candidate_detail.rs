@@ -54,8 +54,9 @@ pub struct ImportCandidateDetailProjection {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectedStage {
     Drafting(Box<DraftProjection>),
-    /// Its gallery is the folder's images, [`PaneFiles::images`]: the
-    /// library release's editor lists the release's files.
+    /// An imported candidate's pane shows the folder's images,
+    /// [`PaneFiles::images`], as its gallery, because the library release's
+    /// editor lists the release's own files.
     Imported {
         release: ImportedRelease,
     },
@@ -103,8 +104,8 @@ pub struct DraftProjection {
     pub session: Option<CandidateSession>,
 }
 
-/// The candidate's files as its pane lists them, each fact read from the
-/// scan's rows by the statement that reads them.
+/// The candidate's files as its pane lists them. The pane's files statement
+/// (`load_pane_files_on`) reads every fact here from the scan's rows.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PaneFiles {
     /// Every file of the folder, in release-relative path order.
@@ -113,7 +114,7 @@ pub struct PaneFiles {
     pub cover_files: Vec<PaneFile>,
     /// Every image of the folder, in the same order: the gallery.
     pub images: Vec<super::mapping::MappingImage>,
-    /// How many tracks the folder plays: its audio units.
+    /// How many tracks the folder holds: its audio units.
     pub track_count: u32,
     /// What the folder's audio is, summarized over its audio files; `None`
     /// for a folder with none.
@@ -431,8 +432,9 @@ impl ImportCandidateDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateStage {
     Drafting(Box<CandidateDraftPane>),
-    /// Its gallery is the folder's images, [`PaneFiles::images`]: the
-    /// library release's editor lists the release's files.
+    /// An imported candidate's pane shows the folder's images,
+    /// [`PaneFiles::images`], as its gallery, because the library release's
+    /// editor lists the release's own files.
     Imported {
         release: ImportedRelease,
     },

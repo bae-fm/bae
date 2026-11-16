@@ -371,9 +371,9 @@ forward! {
         /// or clear that reference with `audio_file_id: None`.
         ///
         /// Clearing leaves that reference unassigned; it does not restore what
-        /// the scan proposed. `audio_file_id` must be one the mapping's options
-        /// for the reference offer; a refused one is rejected here rather than
-        /// at commit.
+        /// the scan proposed. `audio_file_id` must be one that the mapping's
+        /// options offer for the reference: this call returns an error for any
+        /// other file, so the commit never sees it.
         ///
         /// Persists the decision and clears the candidate's stored identify
         /// verdict, because a bound sheet is a different disc. The candidate

@@ -639,8 +639,8 @@ impl crate::types::BridgeImportCandidateDetail {
 }
 
 impl crate::types::BridgeCandidateStage {
-    /// The pane's stage; an imported candidate's gallery is `images`, the
-    /// folder's.
+    /// Builds the pane's stage. An imported candidate's gallery shows
+    /// `images`, the images in the candidate's folder.
     fn from_core(stage: bae_import::CandidateStage, images: Vec<bae_import::MappingImage>) -> Self {
         match stage {
             bae_import::CandidateStage::Drafting(draft) => {

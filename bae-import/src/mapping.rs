@@ -75,10 +75,11 @@ pub enum MappingFileRow {
 
 /// One of the folder's images, as the gallery shows it.
 ///
-/// Which image leads the release is not a property of the image: it is the
-/// cover choice, which the stored row answers first, then the picked release's
-/// own art, then the folder's images by name. The gallery lists what the folder
-/// has; the card shows what was chosen.
+/// Whether an image is the release's cover is not a property of the image.
+/// bae picks the cover from the stored cover row first, then from the picked
+/// release's own art, then from the folder's images in name order. The
+/// gallery lists every image the folder has, and the card shows the cover
+/// that the person or bae picked.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingImage {
     /// The file's identity within the release (its relative path).

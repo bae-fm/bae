@@ -170,9 +170,10 @@ impl RemoteImageSet {
         Self { url, downscaled: Vec::new() }
     }
 
-    /// The image with the copies a stored row lists, as the read that lists
-    /// them orders them: smallest first, one per box size, which the copies'
-    /// table key keeps.
+    /// The image with the downscaled copies that a stored row lists, in the
+    /// order the read returns them. The read's query sorts the copies
+    /// smallest first, and the copies table's key allows one copy for each box
+    /// size, so this constructor neither sorts nor removes copies.
     pub fn stored(url: String, downscaled: Vec<DownscaledCopy>) -> Self {
         Self { url, downscaled }
     }

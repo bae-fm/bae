@@ -1,7 +1,7 @@
-//! A failed verdict's lookup failures as rows of their own
-//! (`import_candidate_verdict_failure`, in `verdict_rows.sql`), and the ones
-//! a surface says in lines of their own: those no cell of the verdict's
-//! ledger shows.
+//! This module stores a failed verdict's lookup failures as rows of their own
+//! (`import_candidate_verdict_failure`, in `verdict_rows.sql`), and picks out
+//! the ones that no cell of the verdict's ledger shows, so that a screen can
+//! show each of them on its own line.
 
 use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::Owner;
@@ -70,11 +70,12 @@ pub(super) fn verdict_failures_sql(verdict: &str) -> String {
     failures_json_sql(verdict, "TRUE")
 }
 
-/// The failures of the verdict joined as `verdict` that no cell of its
-/// ledger shows: no lookup of its ledger asked the same clue of the same
-/// catalog and failed the same way. The ledger lays out no lookup of an
-/// offered row's pressing or of the picked release's cover, so their
-/// failures are always said. A JSON array that [`failures_of`] reads.
+/// Builds the SQL for the failures of the verdict joined as `verdict` that no
+/// cell of its ledger shows: no lookup of its ledger asked the same clue of
+/// the same catalog and failed the same way. The ledger lays out no lookup of
+/// an offered row's pressing or of the picked release's cover, so this query
+/// always returns their failures, and the screen shows them on their own
+/// lines. The query returns a JSON array that [`failures_of`] reads.
 pub(super) fn failure_lines_sql(verdict: &str) -> String {
     failures_json_sql(
         verdict,

@@ -361,7 +361,8 @@ pub(super) struct VerdictRow {
     pub(super) content_hash: String,
     pub(super) kind: String,
     pub(super) track_count: Option<i64>,
-    /// The verdict's failures, a JSON array of [`verdict_failures_sql`].
+    /// The verdict's failures, a JSON array that [`verdict_failures_sql`]
+    /// builds.
     pub(super) failures: String,
     pub(super) error_detail: Option<String>,
     pub(super) ledger: StoredLedger,

@@ -289,13 +289,14 @@ pub fn album_records_name_on(
         .optional()?)
 }
 
-/// The statement naming the library album the records `records` selects file
-/// a release under, as one row holding the album's id, or no row for none.
+/// The statement that finds the library album to file a release under, from
+/// the records that `records` selects. It returns one row holding the album's
+/// id, or no row for none.
 /// `records` selects each record as `(position, catalog, kind, key,
 /// album_key)`: `kind` 'pressing' or 'album', `key` the pressing's or the
 /// album's, and `album_key` the album a pressing record files it under, NULL
 /// for none. `excluding` is an SQL expression for a JSON array of the
-/// releases whose records count for nothing.
+/// releases whose records the statement ignores.
 ///
 /// The applied record — the first, at the lowest `position` — decides, then
 /// each other record in order: the first that names an album the library
@@ -304,9 +305,10 @@ pub fn album_records_name_on(
 /// record naming the same release group or master, on
 /// `idx_release_records_catalog_album`). Library albums are the curator's:
 /// two albums the records name stay two, and the applied record's wins over a
-/// partner's. Where one record names several, its group's own album
-/// ([`crate::identity::album_id`]) is it if the library holds it, else the
-/// oldest (ties by id), so the answer is one album.
+/// partner's. Where one record names several albums, the statement picks the
+/// record's own group album ([`crate::identity::album_id`]) if the library
+/// holds it, and otherwise the oldest album (ties by id), so the answer is one
+/// album.
 pub fn album_records_name_sql(records: &str, excluding: &str) -> String {
     format!(
         "WITH named_records (position, catalog, kind, key, album_key) AS ({records}), \
@@ -366,8 +368,9 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
                   AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
                       <> json_extract(new.value, '$[1]'))";
 
-/// One statement answers every check: the checks go in as one JSON array,
-/// and [`library_status_sql`] answers one row for each, in check order.
+/// One statement answers every check: the caller passes the checks as one
+/// JSON array, and the statement that [`library_status_sql`] builds returns
+/// one row for each check, in check order.
 pub fn check_releases_in_library_on(
     sql: &impl coven::SqlRead,
     checks: &[LibraryCheck],
@@ -391,14 +394,15 @@ pub fn check_releases_in_library_on(
     )?)
 }
 
-/// The statement that says which library albums hold each release `checks`
-/// selects, as `(position, release_id, catalog, group_id)`: a catalog's
-/// release and the album (MusicBrainz release group, Discogs master) it
-/// files it under, `group_id` NULL for none.
+/// The statement that says which library albums hold each release that
+/// `checks` selects, as `(position, release_id, catalog, group_id)`: a
+/// catalog's release and the album (MusicBrainz release group, Discogs
+/// master) that the catalog files the release under, `group_id` NULL for
+/// none.
 ///
-/// Each check is matched by plain equality on the index its kind of record
-/// has — its pressing on `idx_release_records_catalog_key`, its album on
-/// `idx_release_records_catalog_album` — and one row comes back for each
+/// The statement matches each check by plain equality on the index its kind
+/// of record has (its pressing on `idx_release_records_catalog_key`, its
+/// album on `idx_release_records_catalog_album`) and returns one row for each
 /// check, in `position` order, holding its albums as a JSON array, those
 /// holding its pressing first, then by age. [`library_status_of`] reads a
 /// row.

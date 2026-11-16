@@ -109,9 +109,8 @@ async fn pane_draft(
         .clone()
 }
 
-/// The folder's track count and the summary of its audio count and summarize
-/// the files the scan stored, and the cover picker lists the folder's images
-/// it can show.
+/// The pane counts the tracks and summarizes the audio of the files the scan
+/// stored, and the cover picker lists the folder's images it can show.
 #[tokio::test]
 async fn the_pane_counts_and_summarizes_the_folder_s_files() {
     use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
@@ -333,9 +332,9 @@ async fn the_pane_names_the_album_the_linked_release_s_records_name() {
     assert_eq!(pane_draft(&db, &candidate).await.album, named(&copy));
 }
 
-/// A failed verdict says in lines of their own only the failures no cell of
-/// its ledger shows: the disc ID lookup's failure is on its cell, and the
-/// cover's has no cell.
+/// The pane shows a failed verdict's failures on lines of their own only when
+/// no cell of its ledger shows them: the Disc ID lookup's failure and the
+/// catalog number's are on their cells, and the cover's has no cell.
 #[tokio::test]
 async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
     use bae_catalogs::search::SourceFailure;
@@ -454,8 +453,8 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
 }
 
 /// The picker offers the covers the linked release states, each with its
-/// downscaled copies smallest first; the group's front, which nothing
-/// states, is not offered beside a stated one.
+/// downscaled copies smallest first; the picker does not offer the group's
+/// front, which nothing states, beside a stated one.
 #[tokio::test]
 async fn the_pane_offers_the_covers_the_linked_release_states() {
     let (db, _tmp, root) = watched_root().await;
