@@ -65,7 +65,7 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
     run_within(dir, tracks, parallelism, FileBudget::for_test()).await
 }
 
-/// [`run`] within `budget`.
+/// Runs `tracks` like [`run`], with places from `budget`.
 async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: FileBudget) -> Run {
     let opens = Arc::new(AtomicUsize::new(0));
     let first_batch = Arc::new(tokio::sync::Barrier::new(parallelism));

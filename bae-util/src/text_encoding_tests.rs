@@ -60,8 +60,8 @@ fn shift_jis_fallback() {
     assert_eq!(result.encoding, "Shift_JIS");
 }
 
-/// A text file is read through the place it is given, which goes back once
-/// the read is done, whether the file opened or not.
+/// read_text_file reads the file in the place it receives and returns the
+/// place when the read ends, whether or not the file opened.
 #[test]
 fn reading_a_text_file_gives_its_place_back() {
     let dir = std::env::temp_dir().join(format!("bae-text-{}", std::process::id()));

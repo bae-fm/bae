@@ -387,8 +387,8 @@ fn a_count_ffmpeg_states_as_zero_or_less_states_none() {
     assert_eq!(stated_count(44_100).map(std::num::NonZeroU32::get), Some(44_100));
 }
 
-/// A probe opens its file in the place it is given and gives the place back
-/// when it returns, the error path included.
+/// A probe opens its file in the place the caller passes it and gives the
+/// place back when it returns, the error path included.
 #[test]
 fn a_probe_gives_its_place_back_when_it_returns() {
     let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
@@ -408,8 +408,9 @@ fn a_probe_gives_its_place_back_when_it_returns() {
     assert_eq!(watch.holding(), 0, "a file that would not open gives its place back");
 }
 
-/// A landing search opens a FLAC twice at once, so it needs two places; a
-/// lease of one place fails it before it waits for a place that never comes.
+/// A landing search opens a FLAC twice at once, so it needs two places.
+/// seek_landing_bytes refuses a lease of one place before it opens the file,
+/// so it never waits forever for a second place.
 #[test]
 fn a_landing_search_needs_two_places() {
     let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
@@ -421,6 +422,11 @@ fn a_landing_search_needs_two_places() {
     assert!(refused.contains("needs 2 places"), "{refused}");
     assert_eq!(budget.watch().most_holding(), 0, "the refused search opened nothing");
 
-    assert_eq!(seek_landing_bytes(&path, &[0], &two).expect("two places search it").len(), 1);
+    assert_eq!(
+        seek_landing_bytes(&path, &[0], &two)
+            .expect("a lease of two places lets the search run")
+            .len(),
+        1
+    );
     assert_eq!(budget.watch().holding(), 0);
 }

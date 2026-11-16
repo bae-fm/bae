@@ -287,8 +287,8 @@ pub struct CovenFileReader {
     /// for one that reads it start to finish with nobody waiting to hear it.
     playback: Option<PlaybackRead>,
     diagnostics: Diagnostics,
-    /// The places of the open-files budget the stream of the file is opened
-    /// in: one, which the stream holds until its last read ends.
+    /// The place the fill opens the file's stream in; the stream holds it
+    /// until its last read ends.
     lease: FileLease,
 }
 

@@ -156,8 +156,8 @@ fn jpeg_source(width: u32, height: u32) -> Vec<u8> {
 }
 
 /// A JPEG decodes at the largest 1/2, 1/4 or 1/8 scale whose longer side still
-/// covers the 600-pixel output, so the decoded pixels follow the output and
-/// not the photo.
+/// covers the 600-pixel output, so the decoded size depends on the output
+/// size, not on the photo's size.
 #[test]
 fn a_jpeg_decodes_at_the_largest_scale_that_covers_the_output() {
     for (source, decoded) in [

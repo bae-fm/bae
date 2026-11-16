@@ -72,7 +72,7 @@ impl SourceStream {
 /// Run `work` over each of `tracks`, up to `parallelism` at once, handing each
 /// the open streams of the files `files_of` says it reads, keyed as
 /// `files_of` names them. `open` opens a file the first time a running track
-/// needs it, in a place of the lease it is given.
+/// needs it, in a place of the lease the pass hands it.
 ///
 /// The pass takes its places from `budget` in one wait before it opens
 /// anything: `parallelism` of them, or the budget's size when that is less,

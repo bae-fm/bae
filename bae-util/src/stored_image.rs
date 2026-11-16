@@ -23,7 +23,8 @@ const MAX_DECODE_ALLOC_BYTES: u64 = MAX_DECODE_DIMENSION as u64 * MAX_DECODE_DIM
 /// Decode the first image using the formats and resource limits shared by
 /// remote validation and [`stored_jpeg`]. A JPEG decodes at the largest 1/2,
 /// 1/4 or 1/8 scale whose longer side is still at least [`STORED_MAX_EDGE`]
-/// pixels, so its pixels follow the stored size and not the photo's.
+/// pixels, so the decoded size, and the memory it takes, depend on the stored
+/// size and not on the photo's size.
 pub fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), String> {
     let mut reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()

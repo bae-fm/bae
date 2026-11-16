@@ -143,7 +143,8 @@ impl Drop for OpenedFile {
 /// Open the file at `path` in `place` for FFmpeg to read, and find its best
 /// audio stream. Returns the opened file and the stream index, or why not: a
 /// read of the file failed (`Io`), or its stream info can't be read or it has
-/// no audio stream (`NotAudio`). The place goes back when the file closes.
+/// no audio stream (`NotAudio`). Closing the file returns its place to the
+/// lease.
 unsafe fn open_best_audio_stream(
     path: &Path,
     place: LeasePlace,
@@ -477,8 +478,8 @@ pub fn seek_landing_bytes(
 ) -> Result<Vec<u64>, String> {
     if lease.count() < SEEK_LANDING_PLACES {
         return Err(format!(
-            "a landing search needs {SEEK_LANDING_PLACES} places of the open-files budget, and \
-             its lease holds {}",
+            "finding where each track starts needs {SEEK_LANDING_PLACES} places of the \
+             open-files budget, and its lease holds {}",
             lease.count()
         ));
     }

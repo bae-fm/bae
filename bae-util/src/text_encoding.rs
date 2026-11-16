@@ -33,7 +33,8 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
 }
 
 /// Read a file, opened in `place`, and decode its contents, detecting
-/// encoding automatically. The file closes before the place goes back.
+/// encoding automatically. read_text_file closes the file before it drops
+/// `place`.
 pub fn read_text_file(path: &Path, place: LeasePlace) -> std::io::Result<DecodedText> {
     let mut file = place.open(path)?;
     let mut bytes = Vec::new();

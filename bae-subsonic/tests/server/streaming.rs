@@ -459,8 +459,8 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     seed_lossy_release_within(coven::FileBudget::for_test()).await
 }
 
-/// [`seed_lossy_release`] over a library that opens the person's files within
-/// `files`, a budget the test sizes and watches.
+/// Seeds the lossy release like [`seed_lossy_release`], in a library that
+/// opens files within `files`, a budget the test sizes and watches.
 async fn seed_lossy_release_within(
     files: coven::FileBudget,
 ) -> (AppServices, String, Vec<TempDir>) {
@@ -701,8 +701,9 @@ async fn a_stored_wav_is_served_as_audio_wav() {
 
 /// A stream request takes its places of the budget when it opens the track's
 /// files: with the only place of a budget of one held, the request waits, and
-/// it is answered once the place goes back, for the original bytes and for a
-/// transcode alike. The places are back once each response has ended.
+/// the router answers it once the test drops the held place, for the original
+/// bytes and for a transcode alike. The places are back once each response
+/// has ended.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_stream_request_holds_its_places_until_its_response_ends() {
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);

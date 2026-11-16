@@ -11,7 +11,8 @@ pub enum Stars {
 }
 
 impl Stars {
-    /// The stars a stored count names; `None` outside one to five.
+    /// Returns the stars for a stored value from 1 to 5, or `None` for any
+    /// other value.
     pub fn from_stored(value: i64) -> Option<Self> {
         match value {
             1 => Some(Self::One),
