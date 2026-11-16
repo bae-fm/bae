@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::admin_change::{
-    AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangeState,
+    AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
 };
 use rusqlite::OptionalExtension;
 
@@ -20,20 +20,40 @@ pub(super) enum AdminTarget {
     Approval(coven::MemberId, Option<String>),
 }
 
-/// Each change with its operation as coven lists it, the person's profile
-/// name and the device's name, in the order they were asked for.
-/// `coven_operations` lists a change's operation until the write that deletes
-/// the change's row acknowledges it.
-const ADMIN_CHANGES_SQL: &str = "SELECT a.operation, o.kind, o.outcome, \
-         a.member, a.device, a.role, a.name, p.name, d.name \
-     FROM admin_operations AS a \
-     JOIN coven_operations AS o ON o.operation = a.operation \
-     LEFT JOIN people AS p ON p.id = a.member \
-     LEFT JOIN coven_devices AS d ON d.device = a.device \
-     ORDER BY a.operation";
+/// The changes that show in `place`, each with its operation as coven lists
+/// it, the person's profile name and the device's name, in the order they
+/// were asked for. `coven_operations` lists a change's operation until the
+/// write that deletes the change's row acknowledges it.
+fn admin_changes_sql(place: &AdminChangePlace) -> String {
+    let shown = match place {
+        AdminChangePlace::Library => "o.kind = 'RenameStore'",
+        AdminChangePlace::Person(_) => "o.kind = 'SetRole' AND a.member = ?1",
+        AdminChangePlace::People => {
+            "o.kind IN ('RemoveMember', 'RemoveDevice', 'Invite', 'ReplaceMemberKeys')"
+        }
+    };
+    format!(
+        "SELECT a.operation, o.kind, o.outcome, \
+                a.member, a.device, a.role, a.name, p.name, d.name \
+         FROM admin_operations AS a \
+         JOIN coven_operations AS o ON o.operation = a.operation \
+         LEFT JOIN people AS p ON p.id = a.member \
+         LEFT JOIN coven_devices AS d ON d.device = a.device \
+         WHERE {shown} \
+         ORDER BY a.operation"
+    )
+}
 
-fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChange>> {
-    sql.query(ADMIN_CHANGES_SQL, [], |row| {
+fn admin_changes_on(
+    sql: &impl coven::SqlRead,
+    place: &AdminChangePlace,
+) -> rusqlite::Result<Vec<AdminChange>> {
+    let statement = admin_changes_sql(place);
+    let member = match place {
+        AdminChangePlace::Person(member) => Some(*member),
+        AdminChangePlace::Library | AdminChangePlace::People => None,
+    };
+    sql.query(&statement, rusqlite::params_from_iter(member.iter()), |row| {
         let operation = coven::OperationId(row.get(0)?);
         let member = || {
             row.get::<_, Option<coven::MemberId>>(3)?.ok_or_else(|| {
@@ -162,12 +182,13 @@ impl Membership {
             .await
     }
 
-    /// The admin changes this device asked for, live: each until its outcome
-    /// is acknowledged.
+    /// The admin changes this device asked for that show in `place`, live:
+    /// each until its outcome is acknowledged.
     pub fn subscribe_admin_changes(
         &self,
+        place: AdminChangePlace,
     ) -> coven::LiveQuery<Vec<AdminChange>, bae_store::DbError> {
-        self.store.subscribe(|sql| Ok(admin_changes_on(&sql)?))
+        self.store.subscribe(move |sql| Ok(admin_changes_on(&sql, &place)?))
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:

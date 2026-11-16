@@ -10,10 +10,11 @@ private let logger = Logger.bae("MembershipStore")
 /// for as long as the library is open, from `start()`: the menu bar always
 /// shows Rename Library, which it enables. The store reads the rest while a
 /// screen shows it, from `show()` to `hide()`: it subscribes to the people,
-/// the requested profile, invites and admin changes, and the people are one
-/// subscription of core's joined list: this device's person, the others and
-/// their counts. A person's page follows its own subscription, keyed by
-/// their member id.
+/// the requested profile and invites, and the people are one subscription
+/// of core's joined list: this device's person, the others and their
+/// counts. A person's page follows its own subscription, keyed by their
+/// member id, and each place that shows admin changes follows its own,
+/// keyed by the place.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -39,8 +40,10 @@ public final class MembershipStore {
     /// The open invite whose sheet shows, once its read arrives.
     public private(set) var shownInvite: ShownInvite?
     /// The admin changes this device asked for, each until the person
-    /// dismisses its outcome.
-    public private(set) var adminChanges: [BridgeAdminChange] = []
+    /// dismisses its outcome, by the place that shows them, for each place a
+    /// page reads.
+    public private(set) var adminChanges:
+        [BridgeAdminChangePlace: [BridgeAdminChange]] = [:]
     /// The last failed read; cleared by the next successful one.
     public private(set) var error: DisplayError?
     /// Where the pairing `followAddDevice` follows is, nil until it reports.
@@ -59,6 +62,11 @@ public final class MembershipStore {
     /// those of the invites with the ids, handing each value to the store.
     private let subscribeWaitingRequest:
         @MainActor (MembershipStore, Set<String>) throws -> AnyObject
+    /// Starts the subscription to the admin changes that show in the place,
+    /// handing each value to the store.
+    private let subscribeAdminChanges:
+        @MainActor (MembershipStore, BridgeAdminChangePlace) throws ->
+            AnyObject
     /// Starts the subscription to the open invite with the id, handing each
     /// value to the store.
     private let subscribeInvite:
@@ -85,6 +93,11 @@ public final class MembershipStore {
     /// What the page reads of the waiting join requests, while it does.
     @ObservationIgnored
     private var waitingRequestSubscription: AnyObject?
+    /// What the pages read of each place's admin changes, with how many
+    /// pages read it.
+    @ObservationIgnored
+    private var adminChangeReads:
+        [BridgeAdminChangePlace: (pages: Int, subscription: AnyObject)] = [:]
     /// What an invite's sheet reads, with the invite id it reads.
     @ObservationIgnored
     private var inviteSubscription: (inviteId: String, subscription: AnyObject)?
@@ -110,6 +123,9 @@ public final class MembershipStore {
                     store: store,
                     closed: closed
                 )
+            },
+            subscribeAdminChanges: { store, place in
+                try Self.followAdminChanges(handle, store: store, place: place)
             },
             subscribeInvite: { store, inviteId in
                 try Self.followInvite(handle, store: store, inviteId: inviteId)
@@ -137,6 +153,9 @@ public final class MembershipStore {
         subscribeWaitingRequest:
             @escaping @MainActor (MembershipStore, Set<String>) throws ->
             AnyObject,
+        subscribeAdminChanges:
+            @escaping @MainActor (MembershipStore, BridgeAdminChangePlace)
+            throws -> AnyObject,
         subscribeInvite:
             @escaping @MainActor (MembershipStore, String) throws -> AnyObject,
         followAddDeviceStatus:
@@ -153,6 +172,7 @@ public final class MembershipStore {
         self.subscribePerson = subscribePerson
         self.subscribeWaitingRequest = subscribeWaitingRequest
         self.subscribeInvite = subscribeInvite
+        self.subscribeAdminChanges = subscribeAdminChanges
         self.followAddDeviceStatus = followAddDeviceStatus
     }
 
@@ -222,7 +242,8 @@ public final class MembershipStore {
         people = nil
         requestedProfile = nil
         inviteEntries = []
-        adminChanges = []
+        adminChangeReads = [:]
+        adminChanges = [:]
         error = nil
     }
 
@@ -296,13 +317,6 @@ extension MembershipStore {
                 onError: { [weak store] error in store?.fail(error) }
             ),
             ScreenSubscription(
-                handle.subscribeAdminChanges(),
-                onValue: { [weak store] changes in
-                    store?.adminChanges = changes
-                },
-                onError: { [weak store] error in store?.fail(error) }
-            ),
-            ScreenSubscription(
                 handle.subscribeInvites(),
                 onValue: { [weak store] entries in
                     store?.inviteEntries = entries
@@ -310,6 +324,52 @@ extension MembershipStore {
                 onError: { [weak store] error in store?.fail(error) }
             ),
         ]
+    }
+
+    /// The subscription to the admin changes that show in `place`, which
+    /// hands each value to `store`.
+    private static func followAdminChanges(
+        _ handle: AppHandle,
+        store: MembershipStore,
+        place: BridgeAdminChangePlace
+    ) throws -> AnyObject {
+        ScreenSubscription(
+            try handle.subscribeAdminChanges(place: place),
+            onValue: { [weak store] changes in
+                store?.adminChanges[place] = changes
+            },
+            onError: { [weak store] error in store?.fail(error) }
+        )
+    }
+
+    /// Read the admin changes that show in `place` while a page shows them.
+    /// Pages that show the same place share one read.
+    public func showAdminChanges(at place: BridgeAdminChangePlace) {
+        if let read = adminChangeReads[place] {
+            adminChangeReads[place] = (read.pages + 1, read.subscription)
+            return
+        }
+        do {
+            adminChangeReads[place] = (
+                1, try subscribeAdminChanges(self, place)
+            )
+        }
+        catch {
+            fail(error)
+        }
+    }
+
+    /// End a page's read of the admin changes that show in `place`; the read
+    /// ends with the last page that shows them.
+    public func hideAdminChanges(at place: BridgeAdminChangePlace) {
+        guard let read = adminChangeReads[place] else { return }
+        if read.pages > 1 {
+            adminChangeReads[place] = (read.pages - 1, read.subscription)
+        }
+        else {
+            adminChangeReads[place] = nil
+            adminChanges[place] = nil
+        }
     }
 
     /// The subscription to the open invite with `inviteId`, which hands each
@@ -385,15 +445,16 @@ extension MembershipStore {
 
     #if DEBUG
         /// A store showing `invites` and `refusedInvites` and `people` from the
-        /// start, with no subscriptions; following a pairing finds
-        /// `addDeviceStatus`.
+        /// start, with no subscriptions; a page reading a place's admin
+        /// changes finds that place's in `adminChanges`, and following a
+        /// pairing finds `addDeviceStatus`.
         public static func stub(
             people: BridgePeople,
             selfIsAdmin: Bool,
             invites: [BridgeInvite] = [],
             refusedInvites: [BridgeRefusedInvite] = [],
             requestedProfile: BridgeRequestedProfile? = nil,
-            adminChanges: [BridgeAdminChange] = [],
+            adminChanges: [BridgeAdminChangePlace: [BridgeAdminChange]] = [:],
             addDeviceStatus: BridgeAddDeviceStatus? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
@@ -408,6 +469,10 @@ extension MembershipStore {
                     return NSObject()
                 },
                 subscribeWaitingRequest: { _, _ in NSObject() },
+                subscribeAdminChanges: { store, place in
+                    store.adminChanges[place] = adminChanges[place] ?? []
+                    return NSObject()
+                },
                 subscribeInvite: { store, inviteId in
                     store.shownInvite = ShownInvite(
                         inviteId: inviteId,
@@ -427,7 +492,6 @@ extension MembershipStore {
                 invites.map { .open(invite: $0) }
                 + refusedInvites.map { .refused(refused: $0) }
             store.requestedProfile = requestedProfile
-            store.adminChanges = adminChanges
             return store
         }
     #endif

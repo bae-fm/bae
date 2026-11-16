@@ -3263,7 +3263,10 @@ is and how it ended, so the row holds neither. Each change shows, in a box title
 **Changes from this Mac** on a Mac and **Changes from this device** on Android,
 where the change is: a rename under the library's name on the Library page, a
 role change on that person's page above their role, and removing a person or a
-device and approving a request on People and devices. Each shows as what it asks ("Remove Ben",
+device and approving a request on People and devices. Each place reads only
+its own changes: the read of the admin changes takes the place in its request
+and its statement chooses that place's rows from the kind of change coven's
+list gives. Each shows as what it asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or

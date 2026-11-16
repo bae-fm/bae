@@ -14,6 +14,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScreen
+import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgePeople
 
 // The pages of People and devices as the screen shows them once it has read the people.
@@ -43,7 +44,7 @@ internal fun LoadedPeoplePage(
                 selfIsAdmin = model.selfIsAdmin,
                 requested = model.requestedProfile,
                 invites = model.inviteEntries,
-                adminChanges = model.adminChanges,
+                adminChanges = model.adminChanges.at(BridgeAdminChangePlace.People),
                 callbacks = callbacks,
                 inviteCallbacks = inviteCallbacks(session, model, dialogs),
                 offline = offline,
@@ -62,7 +63,7 @@ internal fun LoadedPeoplePage(
                     member = shown.membership,
                     selfIsAdmin = model.selfIsAdmin,
                     name = shown.profile?.name ?: stringResource(R.string.members_unnamed),
-                    adminChanges = model.adminChanges,
+                    adminChanges = model.adminChanges.at(BridgeAdminChangePlace.Person(page.memberId)),
                     callbacks = callbacks,
                     error = model.error,
                     onBack = onBack,

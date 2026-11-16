@@ -83,9 +83,8 @@ internal fun PersonPage(
         contentPadding = PaddingValues(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        val shownChanges = adminChanges.at(AdminChangePlace.Person(member.id))
-        if (shownChanges.isNotEmpty()) {
-            item { AdminChangesList(changes = shownChanges, onDismiss = callbacks.onDismissChange) }
+        if (adminChanges.isNotEmpty()) {
+            item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         }
         item {
             AndroidCard {

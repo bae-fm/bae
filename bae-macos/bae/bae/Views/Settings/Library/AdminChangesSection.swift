@@ -4,32 +4,6 @@ import os.log
 
 private let logger = Logger.bae("AdminChangesSection")
 
-/// Where an admin change shows: next to what it changes. A rename shows under
-/// the library's name, a role change on that person's page, and the rest on
-/// People and devices.
-enum AdminChangePlace: Equatable {
-    case library
-    case person(member: String)
-    case people
-}
-
-extension BridgeAdminChange {
-    var place: AdminChangePlace {
-        switch change {
-        case .renameLibrary: .library
-        case .setRole(let member, _, _): .person(member: member)
-        case .removePerson, .removeDevice, .approve: .people
-        }
-    }
-}
-
-extension MembershipStore {
-    /// The admin changes this Mac asked for that show in `place`.
-    func adminChanges(at place: AdminChangePlace) -> [BridgeAdminChange] {
-        adminChanges.filter { $0.place == place }
-    }
-}
-
 /// The admin changes this Mac asked for that show in one place: renaming the
 /// library, changing a role, removing a person or a device. Each shows
 /// waiting until sync publishes it, then done, refused with why, or stopped
@@ -38,7 +12,7 @@ extension MembershipStore {
 struct AdminChangesSection: View {
     @Environment(MembershipStore.self)
     private var store
-    let place: AdminChangePlace
+    let place: BridgeAdminChangePlace
     @Environment(Sync.self)
     private var sync
 
@@ -48,7 +22,7 @@ struct AdminChangesSection: View {
     private var error: DisplayError?
 
     var body: some View {
-        let changes = store.adminChanges(at: place)
+        let changes = store.adminChanges[place] ?? []
         if !changes.isEmpty {
             Section("Changes from this Mac") {
                 ForEach(changes, id: \.operation) { change in

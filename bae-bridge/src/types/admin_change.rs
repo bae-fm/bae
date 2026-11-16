@@ -17,6 +17,30 @@ pub enum BridgeAdminChangeKind {
     RemoveDevice { device: u64, name: Option<String> },
     Approve { member: String, person: Option<String> },
 }
+/// Where an admin change shows: next to what it changes. A rename shows with
+/// the library's name, a role change on that person's page by member id, and
+/// removing a person or a device and letting a person in on People and
+/// devices.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeAdminChangePlace {
+    Library,
+    Person { member: String },
+    People,
+}
+impl BridgeAdminChangePlace {
+    /// The place the app names, with a member id that is no member id
+    /// refused as a configuration error.
+    pub(crate) fn into_core(
+        self,
+    ) -> Result<bae_people::admin_change::AdminChangePlace, super::BridgeError> {
+        use bae_people::admin_change::AdminChangePlace;
+        Ok(match self {
+            Self::Library => AdminChangePlace::Library,
+            Self::Person { member } => AdminChangePlace::Person(crate::from_app::member(&member)?),
+            Self::People => AdminChangePlace::People,
+        })
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAdminChangeState {
     /// Recorded on this device; sync hasn't published it yet.

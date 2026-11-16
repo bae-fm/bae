@@ -252,7 +252,7 @@ struct InvitesSubscriptionTests {
         store.show()
         #expect(
             Set(handle.subscribed.dropFirst())
-                == ["people", "requestedProfile", "adminChanges", "invites"]
+                == ["people", "requestedProfile", "invites"]
         )
         handle.deliverInvites([invite(id: "11")])
         try await Wait.until { store.inviteEntries.map(\.rowId) == ["11"] }
@@ -266,6 +266,15 @@ struct InvitesSubscriptionTests {
 
         store.show()
         #expect(handle.subscribed.filter { $0 == "invites" }.count == 2)
+
+        store.showAdminChanges(at: .library)
+        store.showAdminChanges(at: .library)
+        store.showAdminChanges(at: .people)
+        #expect(
+            handle.subscribed.filter { $0.hasPrefix("adminChanges") }
+                == ["adminChanges library", "adminChanges people"],
+            "pages that show one place share its read"
+        )
         #expect(handle.subscribed.filter { $0 == "members" }.count == 1)
     }
 
@@ -710,8 +719,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         return SilentRequestedProfile()
     }
 
-    override func subscribeAdminChanges() -> AdminChangesSubscription {
-        record("adminChanges")
+    override func subscribeAdminChanges(place: BridgeAdminChangePlace) throws
+        -> AdminChangesSubscription
+    {
+        record("adminChanges \(place)")
         return SilentAdminChanges()
     }
 

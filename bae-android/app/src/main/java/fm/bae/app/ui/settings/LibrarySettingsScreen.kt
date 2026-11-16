@@ -35,6 +35,7 @@ import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChangePlace
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
@@ -51,6 +52,7 @@ internal fun LibrarySettingsScreen(
     val members = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     LaunchedEffect(model) { model.loadStorage() }
     DisposableEffect(members) { onDispose(members.subscribe()) }
+    LaunchedEffect(members) { members.watchAdminChanges(BridgeAdminChangePlace.Library) }
     val line by session.syncStatusStore.line.collectAsState()
     val storage = model.storage
     var renaming by remember { mutableStateOf(false) }
@@ -61,7 +63,7 @@ internal fun LibrarySettingsScreen(
         sync = syncRowSummary(line),
         peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
         hasStorage = storage is Storage.At,
-        adminChanges = members.adminChanges.at(AdminChangePlace.Library),
+        adminChanges = members.adminChanges.at(BridgeAdminChangePlace.Library),
         onDismissChange = { change ->
             members.perform("dismiss an admin change") { session.appHandle.acknowledgeAdminChange(change.operation) }
         },

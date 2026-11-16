@@ -116,7 +116,10 @@ struct LibrarySettingsTab: View {
         // includes the pages it opens: the stack, not a page, owns that.
         .task { await libraryName.follow() }
         .task { await readStorage() }
-        .onAppear { membership.show() }
+        .onAppear {
+            membership.show()
+            membership.showAdminChanges(at: .library)
+        }
         // The restore code is made while this pane shows a library that
         // syncs, and dropped when it stops.
         .onChange(of: configStore.syncs, initial: true) { _, has in
@@ -129,6 +132,7 @@ struct LibrarySettingsTab: View {
         }
         .onDisappear {
             restoreCode.close()
+            membership.hideAdminChanges(at: .library)
             membership.hide()
         }
         .sheet(isPresented: $showSyncSetup) {

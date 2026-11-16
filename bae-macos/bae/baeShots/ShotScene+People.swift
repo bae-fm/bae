@@ -329,15 +329,17 @@ extension ShotScene {
             people: peopleWithBen(role: role),
             selfIsAdmin: true,
             adminChanges: [
-                BridgeAdminChange(
-                    operation: 1,
-                    change: .setRole(
-                        member: otherMemberId,
-                        person: "Ben",
-                        role: .admin
-                    ),
-                    state: state
-                )
+                .person(member: otherMemberId): [
+                    BridgeAdminChange(
+                        operation: 1,
+                        change: .setRole(
+                            member: otherMemberId,
+                            person: "Ben",
+                            role: .admin
+                        ),
+                        state: state
+                    )
+                ]
             ]
         )
         return ShotStage(

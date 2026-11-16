@@ -127,9 +127,8 @@ internal fun PeopleHome(
             ),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        val shownChanges = adminChanges.at(AdminChangePlace.People)
-        if (shownChanges.isNotEmpty()) {
-            item { AdminChangesList(changes = shownChanges, onDismiss = callbacks.onDismissChange) }
+        if (adminChanges.isNotEmpty()) {
+            item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         }
         item { AndroidSection(text = stringResource(R.string.members_you)) }
         item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }

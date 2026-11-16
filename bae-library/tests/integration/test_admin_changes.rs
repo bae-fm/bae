@@ -52,7 +52,9 @@ fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
         .unwrap();
         let guest = super::test_joined_library::loaded(joined.unwrap().unwrap());
 
-        let mut changes = library.manager().subscribe_admin_changes();
+        let mut changes = library
+            .manager()
+            .subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
         let done = bae_library::followed::query_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state == AdminChangeState::Done)
         })

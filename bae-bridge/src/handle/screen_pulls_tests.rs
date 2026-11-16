@@ -69,7 +69,8 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     ));
     let waiting = handle.subscribe_waiting_join_request(Vec::new()).unwrap();
     assert!(pull_until(&handle, || Box::pin(waiting.clone().next()), |_| true).is_none());
-    let changes = handle.subscribe_admin_changes();
+    let changes =
+        handle.subscribe_admin_changes(crate::types::BridgeAdminChangePlace::People).unwrap();
     assert!(pull_until(&handle, || Box::pin(changes.clone().next()), |_| true).is_empty());
 
     let name = handle.subscribe_library_name();

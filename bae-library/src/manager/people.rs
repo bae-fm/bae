@@ -124,12 +124,13 @@ impl LibraryManager {
         self.store.sync_often(crate::bootstrap::WAITING_SCREEN_CHECK_INTERVAL)
     }
 
-    /// The admin changes this device asked for, each until the person
-    /// dismisses its outcome, live (§5.6).
+    /// The admin changes this device asked for that show in `place`, each
+    /// until the person dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(
         &self,
+        place: bae_people::admin_change::AdminChangePlace,
     ) -> coven::LiveQuery<Vec<bae_people::admin_change::AdminChange>, bae_store::DbError> {
-        self.membership.subscribe_admin_changes()
+        self.membership.subscribe_admin_changes(place)
     }
 
     /// Remove a device. When it is one of this person's own and their account

@@ -17,6 +17,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
+import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAdminChangeState
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -278,14 +279,19 @@ class MembersModelTest {
         stop()
     }
 
-    /** Each list of admin changes the model pulls replaces the one it shows. */
+    /**
+     * The admin changes are read for the place the page shows, and each list the read answers replaces the one shown
+     * for that place; another place's page shows none of them.
+     */
     @Test
     fun eachPulledListOfAdminChangesReplacesTheShownOne() {
         val handle = SilentMembersHandle()
         val model =
             MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val stop = model.subscribe()
-        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges)
+        model.watchAdminChanges(BridgeAdminChangePlace.People)
+        assertEquals(listOf<BridgeAdminChangePlace>(BridgeAdminChangePlace.People), handle.adminChangePlaces)
+        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.People))
 
         val waiting =
             BridgeAdminChange(
@@ -295,11 +301,12 @@ class MembersModelTest {
             )
         handle.adminChanges.deliver(listOf(waiting))
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf(waiting), model.adminChanges)
+        assertEquals(listOf(waiting), model.adminChanges.at(BridgeAdminChangePlace.People))
+        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.Library))
 
         handle.adminChanges.deliver(emptyList())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges)
+        assertEquals(emptyList<BridgeAdminChange>(), model.adminChanges.at(BridgeAdminChangePlace.People))
         stop()
     }
 

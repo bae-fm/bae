@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAdminChange
+import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteEntry
@@ -114,8 +115,11 @@ internal class MembersModel(
     var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
         private set
 
-    /** The admin changes this device asked for, each until the person dismisses its outcome. */
-    var adminChanges by mutableStateOf<List<BridgeAdminChange>>(emptyList())
+    /**
+     * The admin changes this device asked for that show in the place the page reads, each until the person dismisses
+     * its outcome; null while no page reads them.
+     */
+    var adminChanges by mutableStateOf<ShownAdminChanges?>(null)
         private set
     var error by mutableStateOf<DisplayError?>(null)
 
@@ -141,12 +145,14 @@ internal class MembersModel(
     private var personSubscription: ScreenSubscription<BridgePerson?>? = null
     private var waitingRequestSubscription: ScreenSubscription<BridgeInvite?>? = null
     private var inviteSubscription: ScreenSubscription<BridgeInvite?>? = null
+    private var adminChangesSubscription: ScreenSubscription<List<BridgeAdminChange>>? = null
 
     /** Which subscription a people callback belongs to; the model ignores a callback from a replaced subscription. */
     private var peopleGeneration = 0
     private var personGeneration = 0
     private var waitingRequestGeneration = 0
     private var inviteGeneration = 0
+    private var adminChangesGeneration = 0
 
     /** Follow the library's people, replacing any subscription already running; a failed read shows Retry. */
     fun watchPeople() {
@@ -236,6 +242,39 @@ internal class MembersModel(
             )
     }
 
+    /** Follow the admin changes that show in [place] for its page, replacing any read of another place. */
+    fun watchAdminChanges(place: BridgeAdminChangePlace) {
+        stopWatchingAdminChanges()
+        val generation = adminChangesGeneration
+        val read =
+            try {
+                appHandle.subscribeAdminChanges(place)
+            } catch (e: BridgeException) {
+                logger.error("reading the library's admin changes failed", e)
+                error = errors.display(e)
+                return
+            }
+        adminChangesSubscription =
+            ScreenSubscription(
+                read.let { pulled(it::next, it::cancel) },
+                scope,
+                onValue = { value ->
+                    if (generation == adminChangesGeneration) adminChanges = ShownAdminChanges(place, value)
+                },
+                onError = { error ->
+                    logger.error("reading the library's admin changes failed", error)
+                    if (generation == adminChangesGeneration) this@MembersModel.error = errors.display(error)
+                },
+            )
+    }
+
+    fun stopWatchingAdminChanges() {
+        adminChangesGeneration++
+        adminChangesSubscription?.stop()
+        adminChangesSubscription = null
+        adminChanges = null
+    }
+
     /** Follow the open invite with id [inviteId] for its dialog, replacing any read of another invite. */
     fun watchInvite(inviteId: String) {
         stopWatchingInvite()
@@ -321,16 +360,6 @@ internal class MembersModel(
                 },
             )
         val requested = subscribeRequestedProfile()
-        val changes =
-            ScreenSubscription(
-                appHandle.subscribeAdminChanges().let { pulled(it::next, it::cancel) },
-                scope,
-                onValue = { value -> adminChanges = value },
-                onError = { error ->
-                    logger.error("reading the library's admin changes failed", error)
-                    this@MembersModel.error = errors.display(error)
-                },
-            )
         return {
             members.stop()
             stopWatchingPeople()
@@ -339,7 +368,7 @@ internal class MembersModel(
             stopWatchingInvite()
             open.stop()
             requested.stop()
-            changes.stop()
+            stopWatchingAdminChanges()
         }
     }
 
@@ -376,6 +405,17 @@ fun MembersScreen(
     DisposableEffect(model, shownMember) {
         if (shownMember != null) model.watchPerson(shownMember)
         onDispose { model.stopWatchingPerson() }
+    }
+    // The admin changes of the page that shows: People's, or a person's; the devices page shows none.
+    val adminPlace =
+        when (requested) {
+            PeoplePage.People -> BridgeAdminChangePlace.People
+            is PeoplePage.Person -> BridgeAdminChangePlace.Person(requested.memberId)
+            PeoplePage.Devices -> null
+        }
+    DisposableEffect(model, adminPlace) {
+        if (adminPlace != null) model.watchAdminChanges(adminPlace)
+        onDispose { model.stopWatchingAdminChanges() }
     }
     // A person's page whose person has left the library falls back to the first page.
     val shown = model.person as? PersonRead.Loaded

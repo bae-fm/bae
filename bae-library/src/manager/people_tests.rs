@@ -142,7 +142,8 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         let laptop = devices.a();
         laptop.stop_sync().await;
         let manager = laptop.manager();
-        let mut changes = manager.subscribe_admin_changes();
+        let mut changes =
+            manager.subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::Library);
         crate::followed::query_matching(&mut changes, Vec::is_empty).await;
 
         manager
@@ -161,6 +162,10 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
             panic!("one waiting rename: {waiting:?}");
         };
         assert_eq!(name, "Home");
+        // A rename shows with the library's name, not on People and devices.
+        let mut people =
+            manager.subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
+        assert!(people.next_inline().await.unwrap().unwrap().is_empty());
         let operation = *operation;
         assert_eq!(manager.store.store_name().await.unwrap(), "Two Devices");
         assert!(manager.membership.acknowledge_admin_change(operation).await.is_err());
@@ -214,7 +219,9 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
         };
         laptop.wait_until("the tablet's registration", || active(tablet_id)).await;
         laptop.stop_sync().await;
-        let mut changes = laptop.manager().subscribe_admin_changes();
+        let mut changes = laptop
+            .manager()
+            .subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
         laptop.membership().remove_device(tablet_id).await.unwrap();
 
         tablet.membership().remove_device(laptop_id).await.unwrap();
@@ -258,7 +265,9 @@ fn a_removal_of_a_device_this_device_hasnt_read_is_refused_as_gone() {
     run_two_device_test(async |devices| {
         let laptop = devices.a();
         laptop.stop_sync().await;
-        let mut changes = laptop.manager().subscribe_admin_changes();
+        let mut changes = laptop
+            .manager()
+            .subscribe_admin_changes(bae_people::admin_change::AdminChangePlace::People);
         crate::followed::query_matching(&mut changes, Vec::is_empty).await;
         let unknown = coven::DeviceId(u64::MAX);
         laptop.membership().remove_device(unknown).await.unwrap();

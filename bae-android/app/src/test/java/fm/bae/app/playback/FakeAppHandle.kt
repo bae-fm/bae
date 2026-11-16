@@ -11,6 +11,7 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistDetailSubscription
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddDeviceRequest
+import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
@@ -827,7 +828,11 @@ internal open class FakeAppHandle(
     /** The admin changes the handle answers, which a test delivers to. */
     val adminChanges = FakeAdminChangesSubscription()
 
-    override fun subscribeAdminChanges(): AdminChangesSubscription = adminChanges
+    /** The places whose admin changes the app read, in order. */
+    val adminChangePlaces = mutableListOf<BridgeAdminChangePlace>()
+
+    override fun subscribeAdminChanges(place: BridgeAdminChangePlace): AdminChangesSubscription =
+        adminChanges.also { adminChangePlaces += place }
 
     override suspend fun dismissRefusedInvite(operation: Long) {
         unfaked("dismissRefusedInvite")

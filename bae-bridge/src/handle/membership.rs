@@ -192,10 +192,16 @@ impl AppHandle {
             self.runtime.clone(),
         ))
     }
-    /// The admin changes this device asked for, each until the person
-    /// dismisses its outcome.
-    pub fn subscribe_admin_changes(&self) -> Arc<crate::AdminChangesSubscription> {
-        crate::screens::admin_changes(self.services.subscribe_admin_changes(), self.runtime.clone())
+    /// The admin changes this device asked for that show in `place`, each
+    /// until the person dismisses its outcome.
+    pub fn subscribe_admin_changes(
+        &self,
+        place: crate::types::BridgeAdminChangePlace,
+    ) -> Result<Arc<crate::AdminChangesSubscription>, BridgeError> {
+        Ok(crate::screens::admin_changes(
+            self.services.subscribe_admin_changes(place.into_core()?),
+            self.runtime.clone(),
+        ))
     }
     /// This device's open invites, each with its stage and what coven holds
     /// its work for; other devices' invites are never listed.

@@ -41,6 +41,16 @@ pub enum AdminChangeKind {
     },
 }
 
+/// Where an admin change shows: next to what it changes. A rename shows with
+/// the library's name, a role change on that person's page, and removing a
+/// person or a device and letting a person in on People and devices.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AdminChangePlace {
+    Library,
+    Person(coven::MemberId),
+    People,
+}
+
 /// How an admin change stands.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdminChangeState {

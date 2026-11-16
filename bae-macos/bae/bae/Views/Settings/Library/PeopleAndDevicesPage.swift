@@ -192,12 +192,18 @@ struct PeopleAndDevicesPage: View {
             }
             .formStyle(.grouped)
         }
-        .onChange(of: subpage, initial: true) { _, page in
+        .onChange(of: subpage, initial: true) { old, page in
             if case .person(let memberId) = page {
                 store.showPerson(memberId)
             }
             else {
                 store.hidePerson()
+            }
+            if old != page, let place = Self.adminChangePlace(old) {
+                store.hideAdminChanges(at: place)
+            }
+            if let place = Self.adminChangePlace(page) {
+                store.showAdminChanges(at: place)
             }
         }
         .onChange(of: closedRequests, initial: true) { _, closed in
@@ -206,6 +212,9 @@ struct PeopleAndDevicesPage: View {
         .onDisappear {
             store.hidePerson()
             store.hideWaitingRequest()
+            if let place = Self.adminChangePlace(subpage) {
+                store.hideAdminChanges(at: place)
+            }
         }
         .sheet(isPresented: $renaming) {
             RenameProfileSheet(
@@ -567,6 +576,18 @@ extension PeopleAndDevicesPage {
         }
         if !member.formerDevices.isEmpty {
             FormerDevicesDisclosure(devices: member.formerDevices)
+        }
+    }
+
+    /// The place whose admin changes `page` shows; the devices page shows
+    /// none.
+    private static func adminChangePlace(_ page: Subpage)
+        -> BridgeAdminChangePlace?
+    {
+        switch page {
+        case .people: .people
+        case .person(let memberId): .person(member: memberId)
+        case .devices: nil
         }
     }
 
