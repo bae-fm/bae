@@ -1,4 +1,10 @@
-extension BridgeStars {
+extension BridgeStars: CaseIterable {
+    /// The stars from one up. Swift writes this list only for an enum it
+    /// declares itself, and the bindings declare this one.
+    public static let allCases: [BridgeStars] = [
+        .one, .two, .three, .four, .five,
+    ]
+
     /// How many stars this is, one to five.
     public var number: Int {
         switch self {
@@ -7,19 +13,6 @@ extension BridgeStars {
         case .three: 3
         case .four: 4
         case .five: 5
-        }
-    }
-
-    /// Creates the stars for `number`, or returns nil when `number` is
-    /// outside one to five.
-    public init?(number: Int) {
-        switch number {
-        case 1: self = .one
-        case 2: self = .two
-        case 3: self = .three
-        case 4: self = .four
-        case 5: self = .five
-        default: return nil
         }
     }
 }

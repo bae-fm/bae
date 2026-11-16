@@ -6,6 +6,3 @@ import uniffi.bae_bridge.BridgeStars
  *  ordinal plus one is the count. */
 val BridgeStars.number: Int
     get() = ordinal + 1
-
-/** The stars of [number], `null` outside one to five. */
-fun starsOfNumber(number: Int): BridgeStars? = BridgeStars.entries.getOrNull(number - 1)

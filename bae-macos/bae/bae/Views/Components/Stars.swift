@@ -2,29 +2,29 @@ import BaeKit
 import SwiftUI
 
 /// Five stars filled in the accent up to `value`, the rest drawn as outlines.
-/// With `onRate` each star is a button that rates that many stars.
+/// With `onRate` each star is a button that rates with that many stars.
 struct Stars: View {
     /// How many stars are filled, zero to five.
     let value: Int
     let size: CGFloat
-    var onRate: ((Int) -> Void)?
+    var onRate: ((BridgeStars) -> Void)?
 
     var body: some View {
         HStack(spacing: ThemeSpace.line) {
-            ForEach(1...5, id: \.self) { index in
+            ForEach(BridgeStars.allCases, id: \.self) { stars in
                 if let onRate {
                     Button {
-                        onRate(index)
+                        onRate(stars)
                     } label: {
-                        star(index)
+                        star(stars.number)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
-                        String(localized: "Rate \(index) of 5 stars")
+                        String(localized: "Rate \(stars.number) of 5 stars")
                     )
                 }
                 else {
-                    star(index)
+                    star(stars.number)
                 }
             }
         }

@@ -34,7 +34,7 @@ struct AlbumRatingTextTests {
             mine: .four,
             raters: []
         )
-        #expect(rating.stars(afterTapping: 2) == .two)
-        #expect(rating.stars(afterTapping: 4) == nil)
+        #expect(rating.stars(afterTapping: .two) == .two)
+        #expect(rating.stars(afterTapping: .four) == nil)
     }
 }

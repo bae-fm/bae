@@ -18,8 +18,7 @@ extension BridgeAlbumRating {
 
     /// The stars a tap on the `tapped` star asks for: the same stars again
     /// clears the person's rating.
-    public func stars(afterTapping tapped: Int) -> BridgeStars? {
-        let tappedStars = BridgeStars(number: tapped)
-        return tappedStars == mine ? nil : tappedStars
+    public func stars(afterTapping tapped: BridgeStars) -> BridgeStars? {
+        tapped == mine ? nil : tapped
     }
 }

@@ -9,17 +9,14 @@ struct TrackRateMenu: MacMenuPart {
     let onRate: (BridgeStars?) -> Void
 
     var entries: [MacMenuEntry] {
-        var items: [MacMenuEntry] = [5, 4, 3, 2, 1]
-            .compactMap { count in
-                BridgeStars(number: count)
-                    .map { choice in
-                        .item(
-                            MacMenuItem(
-                                verbatim: String(repeating: "★", count: count),
-                                checked: choice == stars
-                            ) { onRate(choice) }
-                        )
-                    }
+        var items: [MacMenuEntry] = BridgeStars.allCases.reversed()
+            .map { choice in
+                .item(
+                    MacMenuItem(
+                        verbatim: String(repeating: "★", count: choice.number),
+                        checked: choice == stars
+                    ) { onRate(choice) }
+                )
             }
         items.append(.divider)
         items.append(

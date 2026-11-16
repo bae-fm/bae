@@ -41,7 +41,7 @@ class AlbumRatingTextTest {
     fun tappingTheStarsThePersonGaveClearsTheRating() {
         val rating = BridgeAlbumRating(canRate = true, shown = true, mine = BridgeStars.FOUR, raters = emptyList())
 
-        assertEquals(BridgeStars.TWO, rating.starsAfterTapping(2))
-        assertNull(rating.starsAfterTapping(4))
+        assertEquals(BridgeStars.TWO, rating.starsAfterTapping(BridgeStars.TWO))
+        assertNull(rating.starsAfterTapping(BridgeStars.FOUR))
     }
 }

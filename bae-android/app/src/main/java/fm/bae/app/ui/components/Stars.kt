@@ -21,19 +21,21 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import fm.bae.app.R
+import fm.bae.app.number
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import uniffi.bae_bridge.BridgeStars
 
 /**
  * Five stars filled in the accent up to [value], the rest drawn as outlines. With [onRate] each star is
- * a button that rates that many stars.
+ * a button that rates with that many stars.
  */
 @Composable
 fun Stars(
     value: Int,
     size: Dp,
     modifier: Modifier = Modifier,
-    onRate: ((Int) -> Unit)? = null,
+    onRate: ((BridgeStars) -> Unit)? = null,
 ) {
     val valueDescription =
         if (value == 0) stringResource(R.string.stars_none) else stringResource(R.string.stars_of_five, value)
@@ -44,17 +46,17 @@ fun Stars(
             },
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.line),
     ) {
-        for (index in 1..STAR_COUNT) {
-            val label = stringResource(R.string.stars_rate, index)
+        for (stars in BridgeStars.entries) {
+            val label = stringResource(R.string.stars_rate, stars.number)
             Star(
-                filled = index <= value,
+                filled = stars.number <= value,
                 size = size,
                 modifier =
                     if (onRate == null) {
                         Modifier
                     } else {
                         Modifier
-                            .clickable(role = Role.Button, onClick = { onRate(index) })
+                            .clickable(role = Role.Button, onClick = { onRate(stars) })
                             .semantics { contentDescription = label }
                     },
             )
@@ -66,7 +68,6 @@ fun Stars(
 private const val STAR_PATH = "M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z"
 private const val STAR_GRID = 24f
 private const val STAR_STROKE = 1.5f
-private const val STAR_COUNT = 5
 
 /** One star, drawn on the design system's grid. */
 @Composable
