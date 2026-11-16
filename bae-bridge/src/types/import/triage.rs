@@ -231,12 +231,31 @@ pub enum BridgeTriageImportStatus {
     Error { error: BridgeError },
 }
 
+/// A folder the person watches for imports. Mirrors
+/// `bae_import::WatchedFolder`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeWatchedFolder {
+    /// The watched folder's absolute path, as coven's bytes for it: what
+    /// every call naming the folder takes back.
+    pub path: Vec<u8>,
+    /// The whole path, shown as text (`coven::path_text`).
+    pub path_text: String,
+    /// The text that shows the folder: its last name, or the whole path for
+    /// a root.
+    pub name: String,
+}
+
+#[cfg(desktop)]
+impl BridgeWatchedFolder {
+    pub(crate) fn from_core(folder: bae_import::WatchedFolder) -> Self {
+        let bae_import::WatchedFolder { path, name } = folder;
+        Self { path: coven::path_bytes(&path), path_text: coven::path_text(&path), name }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeWatchedFolderScanStatus {
-    pub watched_folder_path: Vec<u8>,
-    pub watched_folder_name: String,
-    /// The whole path, shown as text.
-    pub watched_folder_path_text: String,
+    pub folder: BridgeWatchedFolder,
     pub status: BridgeFolderScanStatus,
     /// Whether this folder is on a network volume, which is also checked on a
     /// schedule because a watch misses changes made on the server.

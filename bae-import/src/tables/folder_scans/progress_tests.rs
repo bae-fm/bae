@@ -168,9 +168,7 @@ async fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
     assert_eq!(
         progress.statuses,
         [crate::WatchedFolderScanStatus {
-            watched_folder_path: root.clone(),
-            watched_folder_name: "music".to_string(),
-            watched_folder_path_text: coven::path_text(&root),
+            folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
             status: crate::FolderScanStatus::Failed { error: "the disk is full".to_string() },
             on_network_volume: true,
         }]
@@ -474,11 +472,7 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
     }
     let progress = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(
-        progress
-            .statuses
-            .iter()
-            .map(|status| status.watched_folder_path.clone())
-            .collect::<Vec<_>>(),
+        progress.statuses.iter().map(|status| status.folder.path.clone()).collect::<Vec<_>>(),
         roots
     );
 

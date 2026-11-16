@@ -17,10 +17,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchedFolderScanStatus {
-    pub watched_folder_path: std::path::PathBuf,
-    pub watched_folder_name: String,
-    /// The whole path, shown as text.
-    pub watched_folder_path_text: String,
+    pub folder: crate::WatchedFolder,
     pub status: FolderScanStatus,
     /// Whether this folder lives on a volume served over the network, which
     /// changes how it is watched: a filesystem watch on such a volume reports

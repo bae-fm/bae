@@ -259,7 +259,7 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     f.handle.add_watched_folder(missing_key.to_path_buf()).await.unwrap();
     wait_for_folder_scans(&f, "unavailable watched root reports a failed scan", |scans| {
         scans.statuses.iter().any(|status| {
-            status.watched_folder_path == missing_key
+            status.folder.path == missing_key
                 && matches!(status.status, bae_import::FolderScanStatus::Failed { .. })
         })
     })
@@ -287,7 +287,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     let scans = wait_for_folder_scans(&f, "unreadable decisions leave a failed scan", |scans| {
         scans.statuses.iter().any(|status| {
-            status.watched_folder_path == root_key
+            status.folder.path == root_key
                 && matches!(status.status, bae_import::FolderScanStatus::Failed { .. })
         })
     })
@@ -379,7 +379,7 @@ async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
     wait_for_folder_scans(f, what, |scans| {
         roots.iter().all(|root| {
             scans.statuses.iter().any(|status| {
-                status.watched_folder_path == *root
+                status.folder.path == *root
                     && matches!(status.status, bae_import::FolderScanStatus::Complete)
             })
         })
@@ -515,7 +515,7 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
     .await;
     assert!(candidate_rows(&projection).iter().any(|row| row.candidate_key == album_key));
     assert!(scans.statuses.iter().any(|status| {
-        status.watched_folder_path == root_key
+        status.folder.path == root_key
             && matches!(status.status, bae_import::FolderScanStatus::Failed { .. })
     }));
 }

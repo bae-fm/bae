@@ -32,17 +32,9 @@ mirror_enum! {
 
 impl crate::types::BridgeWatchedFolderScanStatus {
     pub(super) fn from_core(status: bae_import::WatchedFolderScanStatus) -> Self {
-        let bae_import::WatchedFolderScanStatus {
-            watched_folder_path,
-            watched_folder_name,
-            watched_folder_path_text,
-            on_network_volume,
-            status,
-        } = status;
+        let bae_import::WatchedFolderScanStatus { folder, on_network_volume, status } = status;
         Self {
-            watched_folder_path: coven::path_bytes(&watched_folder_path),
-            watched_folder_name,
-            watched_folder_path_text,
+            folder: crate::types::BridgeWatchedFolder::from_core(folder),
             on_network_volume,
             status: crate::types::BridgeFolderScanStatus::from_core(status),
         }

@@ -98,9 +98,7 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
     {
         statuses.push(WatchedFolderScanStatus {
             status: folder_scan_status(&watched_folder_path, status, detail)?,
-            watched_folder_name: folder_name(&watched_folder_path),
-            watched_folder_path_text: coven::path_text(&watched_folder_path),
-            watched_folder_path,
+            folder: crate::WatchedFolder::from_path(watched_folder_path),
             on_network_volume,
         });
     }

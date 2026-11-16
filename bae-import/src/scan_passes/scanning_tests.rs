@@ -478,7 +478,7 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     let progress = test.tables().load_folder_scan_progress().await.unwrap();
     let [status] = <[_; 1]>::try_from(progress.statuses).expect("the watched folder is listed");
-    assert_eq!(status.watched_folder_path, root);
+    assert_eq!(status.folder.path, root);
     let crate::FolderScanStatus::Failed { error } = status.status else {
         panic!("the folder's first scan failed");
     };

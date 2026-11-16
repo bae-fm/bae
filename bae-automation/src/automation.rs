@@ -78,13 +78,13 @@ impl Automation {
                         bae_import::FolderScanStatus::Failed { error } => {
                             return Err(AutomationError::import(format!(
                                 "{}: {error}",
-                                coven::path_text(&status.watched_folder_path)
+                                coven::path_text(&status.folder.path)
                             )));
                         }
                         bae_import::FolderScanStatus::Scanning => {
                             return Err(AutomationError::import(format!(
                                 "{}: another read of it began before this one was over",
-                                coven::path_text(&status.watched_folder_path)
+                                coven::path_text(&status.folder.path)
                             )));
                         }
                     }

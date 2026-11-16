@@ -16,9 +16,11 @@ struct CandidateListMenuTests {
         CandidateListMenuState(
             folders: [
                 BridgeWatchedFolderScanStatus(
-                    watchedFolderPath: Data("/Imports".utf8),
-                    watchedFolderName: "Imports",
-                    watchedFolderPathText: "/Imports",
+                    folder: BridgeWatchedFolder(
+                        path: Data("/Imports".utf8),
+                        pathText: "/Imports",
+                        name: "Imports"
+                    ),
                     status: scanStatus,
                     onNetworkVolume: false
                 )

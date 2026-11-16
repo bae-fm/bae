@@ -200,10 +200,10 @@ final class CandidateListMenuController {
                 ) : nil
         }
         let refreshing = state.refreshingFolders.contains(
-            folder.watchedFolderPath
+            folder.folder.path
         )
         let submenu = MacMenuSubmenu(
-            verbatim: folder.watchedFolderName,
+            verbatim: folder.folder.name,
             accessory: accessory
         ) {
             MacMenuItem(
@@ -215,11 +215,11 @@ final class CandidateListMenuController {
                 self?.actions.onRefreshFolder(folder)
             }
             MacMenuItem("Reveal in Finder") {
-                SystemActions.revealInFinder(folder: folder.watchedFolderPath)
+                SystemActions.revealInFinder(folder: folder.folder.path)
             }
             MacMenuDivider()
             MacMenuItem("Remove folder") { [weak self] in
-                self?.actions.onRemoveFolder(folder.watchedFolderPath)
+                self?.actions.onRemoveFolder(folder.folder.path)
             }
         }
         return submenu.entries[0]
