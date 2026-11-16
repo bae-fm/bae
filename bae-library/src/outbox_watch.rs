@@ -216,7 +216,7 @@ impl OutboxTransfersWatch {
 /// What a reader told `told` must hear to hold `next`.
 fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<OutboxTransferChange> {
     let mut changes: Vec<OutboxTransferChange> =
-        bae_transfers::release_changes(&told.releases, &next.releases, &BTreeMap::new())
+        bae_transfers::release_changes(&told.releases, &next.releases)
             .into_iter()
             .map(OutboxTransferChange::Release)
             .collect();

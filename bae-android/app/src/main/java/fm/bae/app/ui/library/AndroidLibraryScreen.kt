@@ -85,6 +85,7 @@ internal fun AndroidLibraryScreenContainer(
         syncActivity = {
             ActivityButton(
                 store = session.syncActivityStore,
+                downloads = session.downloadStore.releaseProgress,
                 app = launchProblems,
                 dismissed = state.activityDismissed,
                 onDismissProblem = { state.activityDismissed += it },

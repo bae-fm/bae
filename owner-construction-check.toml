@@ -374,8 +374,6 @@ task_types = [
     # reads them from.
     "OutboxTransfersWatch",
     "SendingTransfers",
-    # One subscriber's watch on the Activity transfer lines' bars.
-    "ActivityBarsWatch",
     # One editor's session on one release, and the bridge's object the app
     # holds over it.
     "ReleaseEdit",
@@ -1800,14 +1798,6 @@ frozen = [
     { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "pick", count = 1, finding = "`load_works` picks with `position` (found by the check)" },
     { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "sort", count = 1, finding = "reverses the performed works it collected on its way up the tree (`reverse`)" },
     { path = "bae-import/src/tables/watched_folders/watched_path.rs", item = "canonical_absolute_root", shape = "pick", count = 1, finding = "`canonical_absolute_root` picks with `any` (found by the check)" },
-    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::next", shape = "kept-state", count = 3, finding = "keeps what the read and the two transfer watches last delivered in `count` between deliveries" },
-    { path = "bae-library/src/activity_bars.rs", item = "BarsCount::downloads_heard", shape = "pick", count = 2, finding = "tests whether the last read lists a finished download as stored with `all` over the batches' waiting releases" },
-    { path = "bae-library/src/activity_bars.rs", item = "BarsCount::read", shape = "filter", count = 2, finding = "drops the kept finished uploads and downloads the new read lists as stored (`retain`)" },
-    { path = "bae-library/src/activity_bars.rs", item = "BarsCount::read", shape = "pick", count = 3, finding = "tests each kept file and release against the read's sending and waiting rows with `any`" },
-    { path = "bae-library/src/activity_bars.rs", item = "BarsCount::uploads_heard", shape = "pick", count = 1, finding = "tests whether the last read lists a finished upload as stored with `all` over its sending rows" },
-    { path = "bae-library/src/activity_bars.rs", item = "download_bar", shape = "aggregate", count = 1, finding = "adds up the in-flight bytes of a batch's waiting releases (`sum`)" },
-    { path = "bae-library/src/activity_bars.rs", item = "download_bar", shape = "filter", count = 1, finding = "keeps the waiting releases a transfer runs for (`filter_map`)" },
-    { path = "bae-library/src/activity_bars.rs", item = "upload_bar", shape = "aggregate", count = 1, finding = "adds up the in-flight bytes of the files coven is uploading (`sum`)" },
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::changed", shape = "kept-state", count = 3, finding = "keeps the latest byte measurement (`latest`) and advances the image watch (`images`) between deliveries" },
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::next", shape = "kept-state", count = 1, finding = "keeps the last storage it delivered (`last`) to skip an equal one" },
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage", shape = "kept-state", count = 1, finding = "keeps the catalog image cache's watch, which holds a `Mutex`, beside coven's byte watch" },
@@ -1818,7 +1808,6 @@ frozen = [
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "length-branch", count = 1, finding = "delivers only when the transfers changed since the ones it kept (`is_empty`)" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::next", shape = "kept-state", count = 3, finding = "keeps the last read of the files coven is uploading (`read`) and a per-file rate sample window (`throughput`) between deliveries" },
     { path = "bae-library/src/outbox_watch.rs", item = "SendingTransfers::of", shape = "group", count = 1, finding = "starts `progress` as an empty `BTreeMap`: the per-file progress that `next` fills from the upload watch and keeps between deliveries" },
-    { path = "bae-library/src/outbox_watch.rs", item = "changes_between", shape = "group", count = 1, finding = "diffs the kept and new transfers, passing an empty `BTreeMap` as the transfers that ended" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "filter", count = 2, finding = "keeps the files coven is uploading that have progress (`filter_map`) and drops the kept samples of files coven no longer uploads (`retain`)" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "pick", count = 1, finding = "tests each kept sample against the files coven is uploading with `any`" },
     { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::rates", shape = "group", count = 1, finding = "returns each file's rate from the samples it kept, in a `HashMap`" },
@@ -1853,7 +1842,6 @@ frozen = [
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::name_connection_cause", shape = "filter", count = 1, finding = "picks the pending rows about the connection to name their cause (`filter`)" },
     { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
     { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, finding = "diffs the transfers it kept against the new ones by release, keeping the ones gone and the ones changed (`filter`)" },
-    { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "join", count = 1, finding = "joins each gone release to how it ended by release id (`get`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "length-branch", count = 3, finding = "merges two label lines only when both state names and catalog numbers (`is_empty`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "pick", count = 2, finding = "groups a release's label rows into lines, finding each row's line by name or catalog numbers with `find`" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "same_numbers", shape = "filter", count = 1, finding = "keeps the catalog numbers of a label line that have a key (`filter_map`)" },
@@ -1935,7 +1923,6 @@ allowed = [
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::range_seeks", shape = "sort", count = 2, reason = "orders the seeks a range runs (`reverse`); the values are the statements a window runs, not rows" },
     { path = "bae-transfers/src/queued_releases/tables.rs", item = "queue_row", shape = "aggregate", count = 1, reason = "counts a row type's constant column list (`COLUMNS.len()`) to find where its columns start; not rows" },
     { path = "bae-transfers/src/release_queue.rs", item = "transfer_summary", shape = "filter", count = 1, reason = "drops the zero counts from a transfer's fixed list of count kinds; not rows" },
-    { path = "bae-transfers/src/release_transfers.rs", item = "ReleaseTransfersWatch::next", shape = "length-branch", count = 1, reason = "tests whether a transfer watch's update changed any release; the value stream's own fast values, not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "cutoff", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "is_placeholder", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },

@@ -418,7 +418,8 @@ async fn download_bytes_send_no_new_sync_activity() {
         crate::followed::value_matching(&mut activity, |next| next.moving).await.pins,
         Some(bae_views::DownloadQueueActivity {
             batch: bae_views::TransferBatch { done: 0, total: 1 },
-            wait: None
+            wait: None,
+            bar: bae_views::BatchBar::default(),
         })
     );
 

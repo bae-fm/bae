@@ -245,7 +245,7 @@ where
             .call(move |sql| tables::set_release_queue_paused_on::<Extra>(sql, paused))
             .await?;
         if paused {
-            self.stop(|_| true, coven::TransferEnd::Held);
+            self.stop(|_| true);
         } else if was_paused {
             self.wake();
         }
@@ -258,7 +258,7 @@ where
         self.store
             .call(move |sql| tables::cancel_queued_release_on::<Extra>(sql, &cancelled))
             .await?;
-        self.stop(|running| running == release_id, coven::TransferEnd::Dropped);
+        self.stop(|running| running == release_id);
         Ok(())
     }
 
@@ -285,15 +285,14 @@ where
     }
 
     /// Abort the running task when `cancelled` names its release, whose entry
-    /// the table no longer holds as active, and list its transfer as ended
-    /// as `end` says: held by a pause, dropped by a cancel.
-    fn stop(&self, cancelled: impl Fn(&str) -> bool, end: coven::TransferEnd) {
+    /// the table no longer holds as active, and list its transfer as ended.
+    fn stop(&self, cancelled: impl Fn(&str) -> bool) {
         let mut running = self.shared.running.lock().unwrap();
         let Some(stopped) = running.take_if(|running| cancelled(&running.release_id)) else {
             return;
         };
         stopped.abort.abort();
-        self.shared.transfers.remove(&stopped.release_id, end);
+        self.shared.transfers.remove(&stopped.release_id);
     }
 
     /// Record the active entry's progress. `false` when no task runs that
@@ -455,18 +454,18 @@ where
         if started {
             self.publish_started(release_id);
         } else {
-            self.unregister(release_id, coven::TransferEnd::Dropped);
+            self.unregister(release_id);
         }
         Ok(started)
     }
 
     /// Drop the running entry's task once the table no longer has it active.
-    fn unregister(&self, release_id: &str, end: coven::TransferEnd) {
+    fn unregister(&self, release_id: &str) {
         let mut running = self.shared.running.lock().unwrap();
         if running.as_ref().is_some_and(|running| running.release_id == release_id) {
             *running = None;
         }
-        self.shared.transfers.remove(release_id, end);
+        self.shared.transfers.remove(release_id);
     }
 
     /// Drain the queue serially, one release at a time, forever. The caller
@@ -595,13 +594,13 @@ where
             {
                 Ok(true) => self.publish_started(&release_id),
                 Ok(false) => {
-                    self.unregister(&release_id, coven::TransferEnd::Dropped);
+                    self.unregister(&release_id);
                     abort.abort();
                     debug!("{label} for {release_id} cancelled before it started; aborting");
                     continue;
                 }
                 Err(store) => {
-                    self.unregister(&release_id, coven::TransferEnd::Failed);
+                    self.unregister(&release_id);
                     abort.abort();
                     store_failed(label, &store);
                     self.shared.wake.notified().await;
@@ -623,17 +622,7 @@ where
                         .await
                 }
             };
-            self.unregister(
-                &release_id,
-                match (&result, &left) {
-                    (Ok(Finished(())), _) => coven::TransferEnd::Finished,
-                    (Err(_), Ok(true)) => coven::TransferEnd::Failed,
-                    // The entry left the table before the operation ended:
-                    // a pause or cancel already stopped the transfer.
-                    (Err(_), Ok(false)) => coven::TransferEnd::Dropped,
-                    (Err(_), Err(_)) => coven::TransferEnd::Failed,
-                },
-            );
+            self.unregister(&release_id);
             match left {
                 Ok(true) => {
                     if let Err(error) = &result {

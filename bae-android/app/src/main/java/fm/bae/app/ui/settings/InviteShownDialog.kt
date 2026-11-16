@@ -37,7 +37,7 @@ import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.sync.ShareBar
+import fm.bae.app.ui.sync.MovingBar
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteShown
@@ -273,7 +273,7 @@ private fun InviteGranting(
             ) {
                 val sharing = stringResource(R.string.invite_granting, invite.label)
                 Text(text = sharing, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ShareBar(share = null, description = sharing)
+                MovingBar(description = sharing)
             }
         }
     }

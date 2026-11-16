@@ -72,7 +72,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         pins,
         vec![
             ReleaseTransferChange::Reset([("pinning".to_string(), pin_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
         ]
     );
 
@@ -80,7 +80,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         vec![
             reset(),
             moved("pinning", &pin),
-            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
         ],
         move_to_this_device_progress,
     );
@@ -89,8 +89,8 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
         locals,
         vec![
             ReleaseTransferChange::Reset([("local".to_string(), local_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "pinning".to_string(), end: None },
-            ReleaseTransferChange::Removed { release_id: "local".to_string(), end: None },
+            ReleaseTransferChange::Removed { release_id: "pinning".to_string() },
+            ReleaseTransferChange::Removed { release_id: "local".to_string() },
         ]
     );
 }
@@ -135,39 +135,12 @@ fn one_batch_of_outbox_transfers_writes_both_streams() {
         vec![
             OutboxTransferChange::Release(ReleaseTransferChange::Removed {
                 release_id: "release-1".to_string(),
-                end: None,
             }),
             OutboxTransferChange::Total(UploadTransfer { bar: None, throughput_bps: 0 }),
         ],
     );
     assert_eq!(release_values.latest(b"release-1"), None);
     assert_eq!(total_values.latest(b""), None);
-}
-
-/// The Activity lines' bars are held under each line's name while its batch
-/// holds a release: the Pinning line's share of its batch's bytes while the
-/// pin batch lasts, and nothing once it empties.
-#[test]
-fn the_activity_bars_hold_pins_while_a_pin_batch_holds_a_release() {
-    use bae_library::{ActivityBars, BatchBar};
-    let values = StreamValues::new();
-    let writer = StreamWriter::new(values.clone());
-    let pinning = BatchBar { bytes_done: 250, bytes_total: 400 };
-    writer.reset(activity_bars_held(ActivityBars {
-        uploads: None,
-        pins: Some(pinning),
-        moving_to_this_device: None,
-    }));
-    assert_eq!(values.latest(b"pins"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
-    assert_eq!(values.latest(b"uploads"), None);
-    assert_eq!(values.latest(b"moving_to_this_device"), None);
-
-    writer.reset(activity_bars_held(ActivityBars {
-        uploads: None,
-        pins: None,
-        moving_to_this_device: None,
-    }));
-    assert_eq!(values.latest(b"pins"), None, "the pin batch is over");
 }
 
 /// A track is at rest in its stream once it is held in one stretch from its

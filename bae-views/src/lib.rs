@@ -14,7 +14,7 @@
 //! index serves it. Local triggers write them in the same write as the rows
 //! they come from, so they always match those rows.
 
-mod activity_bytes;
+mod activity_bars;
 pub mod album;
 pub mod album_detail;
 mod album_search;
@@ -40,9 +40,7 @@ pub mod storage_inspector;
 mod sync_activity;
 mod uploads;
 
-pub use activity_bytes::{
-    activity_bytes_on, ActivityBytes, DownloadBytes, SendingFile, UploadBytes, WaitingRelease,
-};
+pub use activity_bars::{ActivityBarRows, BatchBar, MovingShare};
 pub use browse::*;
 #[cfg(desktop)]
 pub use release_files::{

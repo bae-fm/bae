@@ -29,13 +29,10 @@ async fn a_reader_hears_each_release_whose_progress_moved() {
         }])
     );
 
-    transfers.remove("release-1", coven::TransferEnd::Finished);
+    transfers.remove("release-1");
     assert_eq!(
         watch.next().await,
-        Some(vec![ReleaseTransferChange::Removed {
-            release_id: "release-1".to_string(),
-            end: Some(coven::TransferEnd::Finished),
-        }])
+        Some(vec![ReleaseTransferChange::Removed { release_id: "release-1".to_string() }])
     );
 }
 
@@ -87,10 +84,7 @@ async fn a_report_lists_its_release_until_it_drops() {
     drop(report);
     assert_eq!(
         watch.next().await,
-        Some(vec![ReleaseTransferChange::Removed {
-            release_id: "release-1".to_string(),
-            end: Some(coven::TransferEnd::Dropped),
-        }])
+        Some(vec![ReleaseTransferChange::Removed { release_id: "release-1".to_string() }])
     );
 }
 
@@ -109,6 +103,6 @@ fn applying_the_changes_heard_holds_the_progress_they_describe() {
     let mut held = BTreeMap::new();
     apply_release_changes(&mut held, vec![ReleaseTransferChange::Reset(told.clone())]);
     assert_eq!(held, told);
-    apply_release_changes(&mut held, release_changes(&told, &next, &BTreeMap::new()));
+    apply_release_changes(&mut held, release_changes(&told, &next));
     assert_eq!(held, next);
 }

@@ -72,9 +72,7 @@ fn write_release_changes<Progress>(
             ReleaseTransferChange::Updated { release_id, progress } => {
                 writer.set(release_id, value(progress))
             }
-            ReleaseTransferChange::Removed { release_id, .. } => {
-                writer.remove(release_id.as_bytes())
-            }
+            ReleaseTransferChange::Removed { release_id } => writer.remove(release_id.as_bytes()),
             ReleaseTransferChange::Reset(all) => writer.reset(
                 all.into_iter()
                     .map(|(release_id, progress)| (release_id.into_bytes(), value(progress)))
@@ -229,36 +227,6 @@ pub(crate) fn pin_file_shares(
     })
 }
 
-/// The stream [`AppHandle::feed_activity_bars`](crate::AppHandle::feed_activity_bars) hands out.
-pub(crate) fn activity_bars(runtime: OperationRuntime, run: impl RunFeed) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let mut bars = services.watch_activity_bars();
-        async move {
-            while let Some(read) = resting_while(&[&writer], bars.next()).await {
-                match read {
-                    Ok(bars) => writer.reset(activity_bars_held(bars)),
-                    Err(error) => writer.fail(BridgeError::database_query(error)),
-                }
-            }
-        }
-    })
-}
-
-/// Each transfer line's bar as their stream holds it: the share of its
-/// batch's bytes done under the line's name, while its batch holds a
-/// release.
-fn activity_bars_held(bars: bae_library::ActivityBars) -> HashMap<Vec<u8>, BridgeFastValue> {
-    let bae_library::ActivityBars { uploads, pins, moving_to_this_device } = bars;
-    [("uploads", uploads), ("pins", pins), ("moving_to_this_device", moving_to_this_device)]
-        .into_iter()
-        .filter_map(|(line, bar)| {
-            bar.map(|bar| {
-                (line.as_bytes().to_vec(), BridgeFastValue::BatchShare { fraction: bar.fraction() })
-            })
-        })
-        .collect()
-}
-
 /// What a download watch's changes say to a stream of one kind of download:
 /// the releases doing that kind, and a release that stops doing it, whether
 /// it ended or turned to the other kind, as removed.
@@ -272,10 +240,10 @@ fn download_changes<Progress>(
         .map(|change| match change {
             ReleaseTransferChange::Updated { release_id, progress } => match kind(progress) {
                 Some(progress) => ReleaseTransferChange::Updated { release_id, progress },
-                None => ReleaseTransferChange::Removed { release_id, end: None },
+                None => ReleaseTransferChange::Removed { release_id },
             },
-            ReleaseTransferChange::Removed { release_id, end } => {
-                ReleaseTransferChange::Removed { release_id, end }
+            ReleaseTransferChange::Removed { release_id } => {
+                ReleaseTransferChange::Removed { release_id }
             }
             ReleaseTransferChange::Reset(all) => ReleaseTransferChange::Reset(
                 all.into_iter()

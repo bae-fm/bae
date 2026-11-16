@@ -98,7 +98,6 @@ final class CommonSubscriptions {
         )
         feeds =
             outboxStore.feedTransfers(from: appHandle, onError: onError) + [
-                syncActivityStore.feedBars(from: appHandle),
                 downloadStore.releaseProgress.feed(from: appHandle),
                 playbackStore.trackPositions.feed(from: appHandle),
                 playbackStore.trackBuffered.feed(from: appHandle),

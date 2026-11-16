@@ -2609,7 +2609,8 @@ being sent, that share of its size, beside the stored bytes a live query of the
 files being sent reads; the files being sent together count their objects'
 bytes. Core sends each bar's
 fraction, its bytes done of its bytes in all, and the apps fill the bar to
-it. Each file's share is told by file too, for the Storage manager's rings.
+it. Each file's share is told by file too, for the Storage manager's rings
+and the Activity panel's Uploading bar.
 How fast they go is measured beside the database from the same watch's bytes,
 file by file, as each step of them goes, so a file sent in one request has a
 rate too: a rate for each release, its files being sent together, and for every
@@ -4164,18 +4165,14 @@ keeps a copy on this one. Every count is in releases, a release done once all
 its files are, and every bar is filled by the bytes of the batch done (for
 uploads, the bytes the providers confirmed), each release counting its size: a
 done release all of it, an upload its stored files and its files' shares on the
-way, the pin or move-to-this-device downloading its share. The tables give the
-bytes done and the files and releases still on the move; the bar adds each one's
-size times its latest share, and core works it out again when the tables or a
-transfer change, with no value held from an earlier one. coven ends a file's
-upload progress only after the commit that records it stored, but the read can
-deliver that commit after the progress ends, so the bar keeps a file's last
-upload share until a read arrives that no longer lists the file as sending; a
-file whose upload failed or was held keeps none. A download's transfer ends the
-same way: the download queue says how each transfer ended (finished, failed,
-held by a pause, or dropped by a cancel), a finished release keeps its last
-download share until a read arrives that no longer lists it as waiting, and a
-release whose download failed, was held or was dropped keeps none. A release
+way, the pin or move-to-this-device downloading its share. The
+line's row in the activity's read gives the share of the batch's bytes done
+and each file being sent, or the release downloading, with where its segment
+starts and its share of the batch's bytes; the bar draws the bytes done, and
+fills each segment to the fraction that file's or release's transfer stream
+holds, so the panel adds nothing up. A file or release whose transfer ends
+leaves its stream, and its bytes count in the row's bytes done once the read
+that stores them arrives. A release
 removed from the library counts none of its bytes. A bar moves while a release's
 files transfer and its count waits. A batch is everything the queue has held
 since it was last empty, so a count only grows, and it starts over once the

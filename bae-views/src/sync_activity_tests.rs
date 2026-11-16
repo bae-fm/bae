@@ -36,7 +36,12 @@ fn status() -> SyncStatusSnapshot {
 /// Nothing moving, no line and nothing to fix: the indicator is absent.
 #[test]
 fn a_settled_library_is_quiet() {
-    let activity = SyncActivity::new(&status(), &idle_uploads(), &idle_downloads());
+    let activity = SyncActivity::new(
+        &status(),
+        &idle_uploads(),
+        &idle_downloads(),
+        ActivityBarRows::default(),
+    );
     assert!(!activity.moving);
     assert!(!activity.held());
     assert!(!activity.needs_attention());
@@ -52,7 +57,8 @@ fn a_settled_library_is_quiet() {
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
     syncing.coven.state = coven::SyncState::Syncing(coven::SyncActivity::Receiving);
-    let activity = SyncActivity::new(&syncing, &idle_uploads(), &idle_downloads());
+    let activity =
+        SyncActivity::new(&syncing, &idle_uploads(), &idle_downloads(), ActivityBarRows::default());
     assert!(activity.syncing);
     assert!(!activity.moving);
 }
@@ -63,17 +69,48 @@ fn a_pass_alone_is_not_movement() {
 #[test]
 fn a_file_being_sent_moves_with_or_without_a_line() {
     let cover = UploadQueueCounts { batch: batch(0, 0), sending: 1, wait: None };
-    let sending_cover = SyncActivity::new(&status(), &cover, &idle_downloads());
+    let sending_cover =
+        SyncActivity::new(&status(), &cover, &idle_downloads(), ActivityBarRows::default());
     assert!(sending_cover.moving);
     assert_eq!(sending_cover.uploads, None);
 
     let release = UploadQueueCounts { batch: batch(1, 2), sending: 1, wait: None };
-    let sending_release = SyncActivity::new(&status(), &release, &idle_downloads());
+    let sending_release =
+        SyncActivity::new(&status(), &release, &idle_downloads(), ActivityBarRows::default());
     assert!(sending_release.moving);
     assert_eq!(
         sending_release.uploads,
-        Some(UploadQueueActivity { batch: batch(1, 2), wait: None })
+        Some(UploadQueueActivity { batch: batch(1, 2), wait: None, bar: BatchBar::default() })
     );
+}
+
+/// Each line carries its own bar while its batch holds a release, and a
+/// line whose batch holds none shows no bar.
+#[test]
+fn each_line_carries_its_bar() {
+    let upload_bar = BatchBar {
+        done: 0.25,
+        moving: vec![MovingShare {
+            key: coven::FileId(uuid::Uuid::from_u128(1)),
+            start: 0.25,
+            share: 0.5,
+        }],
+    };
+    let pin_bar = BatchBar {
+        done: 0.5,
+        moving: vec![MovingShare { key: "pinning".to_string(), start: 0.5, share: 0.25 }],
+    };
+    let bars = ActivityBarRows {
+        uploads: upload_bar.clone(),
+        pins: pin_bar.clone(),
+        moving_to_this_device: BatchBar::default(),
+    };
+    let uploads = UploadQueueCounts { batch: batch(1, 2), sending: 1, wait: None };
+    let downloads = DownloadQueueCounts { pins: batch(1, 2), ..idle_downloads() };
+    let activity = SyncActivity::new(&status(), &uploads, &downloads, bars);
+    assert_eq!(activity.uploads.map(|line| line.bar), Some(upload_bar));
+    assert_eq!(activity.pins.map(|line| line.bar), Some(pin_bar));
+    assert_eq!(activity.moving_to_this_device, None);
 }
 
 /// Only an entry downloading moves bytes; a pin batch that only waits shows
@@ -81,11 +118,18 @@ fn a_file_being_sent_moves_with_or_without_a_line() {
 #[test]
 fn a_download_moves_only_while_an_entry_downloads() {
     let mut downloads = DownloadQueueCounts { pins: batch(0, 2), ..idle_downloads() };
-    let waiting = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+    let waiting =
+        SyncActivity::new(&status(), &idle_uploads(), &downloads, ActivityBarRows::default());
     assert!(!waiting.moving);
-    assert_eq!(waiting.pins, Some(DownloadQueueActivity { batch: batch(0, 2), wait: None }));
+    assert_eq!(
+        waiting.pins,
+        Some(DownloadQueueActivity { batch: batch(0, 2), wait: None, bar: BatchBar::default() })
+    );
     downloads.queue.total = ReleaseQueueProgress { queued: 1, active: 1, failed: 0 };
-    assert!(SyncActivity::new(&status(), &idle_uploads(), &downloads).moving);
+    assert!(
+        SyncActivity::new(&status(), &idle_uploads(), &downloads, ActivityBarRows::default())
+            .moving
+    );
 }
 
 /// Pins and moves-to-this-device share the download queue but are lines of their
@@ -98,11 +142,12 @@ fn pins_and_moves_to_this_device_are_lines_of_their_own() {
         moving_to_this_device: batch(2, 3),
         ..idle_downloads()
     };
-    let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+    let activity =
+        SyncActivity::new(&status(), &idle_uploads(), &downloads, ActivityBarRows::default());
     assert_eq!(activity.pins, None);
     assert_eq!(
         activity.moving_to_this_device,
-        Some(DownloadQueueActivity { batch: batch(2, 3), wait: None })
+        Some(DownloadQueueActivity { batch: batch(2, 3), wait: None, bar: BatchBar::default() })
     );
 }
 
@@ -126,20 +171,29 @@ fn a_held_line_keeps_its_count() {
             wait: Some(QueueWait::Offline),
         },
     };
-    let activity = SyncActivity::new(&status(), &uploads, &downloads);
+    let activity = SyncActivity::new(&status(), &uploads, &downloads, ActivityBarRows::default());
     assert!(!activity.moving);
     assert_eq!(
         activity.uploads,
         Some(UploadQueueActivity {
             batch: batch(1, 3),
-            wait: Some(bae_records::UploadQueueWait::Paused)
+            wait: Some(bae_records::UploadQueueWait::Paused),
+            bar: BatchBar::default(),
         })
     );
     assert_eq!(
         (activity.pins, activity.moving_to_this_device),
         (
-            Some(DownloadQueueActivity { batch: batch(0, 2), wait: Some(QueueWait::Offline) }),
-            Some(DownloadQueueActivity { batch: batch(1, 1), wait: Some(QueueWait::Offline) })
+            Some(DownloadQueueActivity {
+                batch: batch(0, 2),
+                wait: Some(QueueWait::Offline),
+                bar: BatchBar::default()
+            }),
+            Some(DownloadQueueActivity {
+                batch: batch(1, 1),
+                wait: Some(QueueWait::Offline),
+                bar: BatchBar::default()
+            })
         )
     );
 }
@@ -152,7 +206,10 @@ fn a_line_is_paused_only_by_the_person() {
     use bae_records::UploadQueueWait;
     let uploads = |wait| {
         let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait };
-        SyncActivity::new(&status(), &uploads, &idle_downloads()).uploads.unwrap().paused()
+        SyncActivity::new(&status(), &uploads, &idle_downloads(), ActivityBarRows::default())
+            .uploads
+            .unwrap()
+            .paused()
     };
     assert!(uploads(Some(UploadQueueWait::Paused)));
     for wait in [
@@ -175,7 +232,8 @@ fn a_line_is_paused_only_by_the_person() {
                 wait,
             },
         };
-        let activity = SyncActivity::new(&status(), &idle_uploads(), &downloads);
+        let activity =
+            SyncActivity::new(&status(), &idle_uploads(), &downloads, ActivityBarRows::default());
         (activity.pins.unwrap().paused(), activity.moving_to_this_device.unwrap().paused())
     };
     assert_eq!(downloads(Some(QueueWait::Paused)), (true, true));
@@ -198,7 +256,8 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
     ];
     for wait in upload_waits {
         let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait: Some(wait) };
-        let activity = SyncActivity::new(&status(), &uploads, &idle_downloads());
+        let activity =
+            SyncActivity::new(&status(), &uploads, &idle_downloads(), ActivityBarRows::default());
         assert!(activity.held(), "{:?}", activity.uploads);
     }
     for wait in [QueueWait::Paused, QueueWait::Offline] {
@@ -213,14 +272,23 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
             queue: held_queue.clone(),
             ..idle_downloads()
         };
-        assert!(SyncActivity::new(&status(), &idle_uploads(), &pins).held(), "pins {wait:?}");
+        assert!(
+            SyncActivity::new(&status(), &idle_uploads(), &pins, ActivityBarRows::default()).held(),
+            "pins {wait:?}"
+        );
         let moving_to_this_device = DownloadQueueCounts {
             moving_to_this_device: batch(0, 1),
             queue: held_queue,
             ..idle_downloads()
         };
         assert!(
-            SyncActivity::new(&status(), &idle_uploads(), &moving_to_this_device).held(),
+            SyncActivity::new(
+                &status(),
+                &idle_uploads(),
+                &moving_to_this_device,
+                ActivityBarRows::default()
+            )
+            .held(),
             "moving to this device {wait:?}"
         );
     }
@@ -233,7 +301,8 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
 fn bytes_moving_are_not_held() {
     let paused = Some(bae_records::UploadQueueWait::Paused);
     let sending_cover = UploadQueueCounts { batch: batch(0, 2), sending: 1, wait: paused.clone() };
-    let activity = SyncActivity::new(&status(), &sending_cover, &idle_downloads());
+    let activity =
+        SyncActivity::new(&status(), &sending_cover, &idle_downloads(), ActivityBarRows::default());
     assert!(activity.moving);
     assert!(!activity.held());
 
@@ -248,7 +317,7 @@ fn bytes_moving_are_not_held() {
         },
         ..idle_downloads()
     };
-    let activity = SyncActivity::new(&status(), &uploads, &downloading);
+    let activity = SyncActivity::new(&status(), &uploads, &downloading, ActivityBarRows::default());
     assert!(activity.moving);
     assert!(!activity.held());
 }
@@ -270,11 +339,19 @@ fn a_hold_without_its_line_or_a_line_without_a_hold_is_not_held() {
         },
         ..idle_downloads()
     };
-    assert!(!SyncActivity::new(&status(), &paused_empty, &downloads_paused_empty).held());
+    assert!(!SyncActivity::new(
+        &status(),
+        &paused_empty,
+        &downloads_paused_empty,
+        ActivityBarRows::default()
+    )
+    .held());
 
     let waiting = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: None };
     let pins_waiting = DownloadQueueCounts { pins: batch(0, 1), ..idle_downloads() };
-    assert!(!SyncActivity::new(&status(), &waiting, &pins_waiting).held());
+    assert!(
+        !SyncActivity::new(&status(), &waiting, &pins_waiting, ActivityBarRows::default()).held()
+    );
 }
 
 /// A sync failure or a pending record that needs the person marks the
@@ -331,7 +408,7 @@ fn connection(failure: coven::StorageFailure) -> coven::PendingRecord {
 }
 
 fn activity(status: &SyncStatusSnapshot) -> SyncActivity {
-    SyncActivity::new(status, &idle_uploads(), &idle_downloads())
+    SyncActivity::new(status, &idle_uploads(), &idle_downloads(), ActivityBarRows::default())
 }
 
 /// A pass that fails on the connection leaves coven's record of that

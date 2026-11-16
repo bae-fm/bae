@@ -15,14 +15,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
-import fm.bae.fastvalues.FrameFollowing
-import fm.bae.fastvalues.LatestSource
 
 private const val BAR_HEIGHT_DP = 4f
 
@@ -33,38 +29,20 @@ private const val PERCENT = 100f
 private const val GAP_DP = 4f
 
 /**
- * A transfer line's bar: how much of its batch's bytes are done, filled in the accent over a
- * track of the accent's tint, or moving while there is no share to show, as the line for
- * syncing has none. Screen readers name it [description], the line's words. A share reads from
- * [share]'s latest value each display frame while its bytes
- * move: arriving bytes recompose nothing.
+ * A bar that moves with no share to show, as the line for syncing has none: the accent over a
+ * track of the accent's tint. Screen readers name it [description], the line's words.
  */
 @Composable
-internal fun ShareBar(
-    share: LatestSource<Double>?,
+internal fun MovingBar(
     description: String,
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val track = accent.copy(alpha = ThemeOpacity.tintStrong)
-    if (share == null) {
-        LinearProgressIndicator(
-            modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
-            color = accent,
-            trackColor = track,
-        )
-    } else {
-        AndroidView(
-            modifier = modifier.fillMaxWidth(),
-            factory = { context -> ShareBarView(context) },
-            update = { view ->
-                view.contentDescription = description
-                view.applyColors(accent = accent.toArgb(), track = track.toArgb())
-                view.follow(share)
-            },
-            onRelease = { view -> view.stopFollowing() },
-        )
-    }
+    LinearProgressIndicator(
+        modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
+        color = accent,
+        trackColor = accent.copy(alpha = ThemeOpacity.tintStrong),
+    )
 }
 
 /** How long the moving bar's piece takes to cross the track. */
@@ -77,7 +55,7 @@ private const val MOVING_REST_PHASE = 0.3f
 private const val MOVING_SHARE = 0.4f
 
 /**
- * Material 3's linear progress bar drawn from a fraction the View reads itself: four tall, rounded,
+ * Material 3's linear progress bar drawn from the fraction [showFraction] hands it: four tall, rounded,
  * the filled part, a gap, the rest of the track and a dot at its end that marks where the bar stops.
  * [showMoving] swaps the fraction for a piece that crosses the track again and again, for a step that
  * counts nothing.
@@ -87,7 +65,6 @@ internal class ShareBarView(
 ) : View(context) {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val track = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val following = FrameFollowing<Double>(this, ::show)
     private var fraction = 0f
     private val bounds = RectF()
 
@@ -131,10 +108,6 @@ internal class ShareBarView(
         invalidate()
     }
 
-    fun follow(share: LatestSource<Double>) = following.follow(share)
-
-    fun stopFollowing() = following.stop()
-
     /** Shows [share] of the track filled, without following a stream. */
     fun showFraction(share: Float) {
         crossing.cancel()
@@ -151,11 +124,6 @@ internal class ShareBarView(
     override fun onDetachedFromWindow() {
         crossing.cancel()
         super.onDetachedFromWindow()
-    }
-
-    private fun show(share: Double?) {
-        fraction = (share ?: 0.0).coerceIn(0.0, 1.0).toFloat()
-        invalidate()
     }
 
     override fun onMeasure(

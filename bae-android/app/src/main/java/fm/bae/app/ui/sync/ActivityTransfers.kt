@@ -27,19 +27,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ActivityLine
 import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
-import fm.bae.fastvalues.LatestSource
+import fm.bae.fastvalues.LatestStream
+import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeSyncActivity
+
+/**
+ * The streams the transfer lines' bars fill their segments from: each file being sent's share, and
+ * each pinning release's progress.
+ */
+internal data class ActivityBarStreams(
+    val uploads: LatestStream<Double>,
+    val pins: LatestStream<BridgeDownloadTransferProgress>,
+)
 
 internal fun LazyListScope.transferRows(
     activity: BridgeSyncActivity,
     words: ActivityWords,
-    bar: (ActivityLine) -> LatestSource<Double>,
+    bars: ActivityBarStreams,
     onOpenDownloads: () -> Unit,
     onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
@@ -47,7 +56,9 @@ internal fun LazyListScope.transferRows(
     item { AndroidEyebrow(LocalContext.current.coreString("core.activity.transfers")) }
     if (activity.syncing) {
         item {
-            TransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)
+            TransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null) { title ->
+                MovingBar(description = title)
+            }
         }
     }
     activity.uploads?.let { uploads ->
@@ -56,8 +67,7 @@ internal fun LazyListScope.transferRows(
             TransferLine(
                 title = context.coreString("core.activity.uploading"),
                 count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
-                share = bar(ActivityLine.UPLOADS),
-            )
+            ) { title -> BatchBar(uploads.bar, bars.uploads, { it }, description = title) }
         }
     }
     activity.pins?.let { pins ->
@@ -67,26 +77,24 @@ internal fun LazyListScope.transferRows(
             TransferLine(
                 title = context.coreString("core.activity.pinning"),
                 count = words.pinsWait ?: context.releasesDoneText(pins.batch),
-                share = bar(ActivityLine.PINS),
                 modifier = Modifier.clickable(onClick = onOpenDownloads),
                 end = { PausePinning(paused = paused, onClick = { onSetDownloadsPaused(!paused) }) },
-            )
+            ) { title -> BatchBar(pins.bar, bars.pins, { it.fraction }, description = title) }
         }
     }
 }
 
 /**
  * A transfer's line: its words, and at the end how many of its releases are done, or what holds its
- * queue back, then [end], and under them its bar, which is [share] of the batch's bytes, or moving
- * when there is none.
+ * queue back, then [end], and under them its [bar], which screen readers name by the line's words.
  */
 @Composable
 private fun TransferLine(
     title: String,
     count: String?,
-    share: LatestSource<Double>?,
     modifier: Modifier = Modifier,
     end: (@Composable () -> Unit)? = null,
+    bar: @Composable (String) -> Unit,
 ) {
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = ThemeSpace.related),
@@ -103,7 +111,7 @@ private fun TransferLine(
             }
             end?.invoke()
         }
-        ShareBar(share, description = title)
+        bar(title)
     }
 }
 
