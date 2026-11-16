@@ -91,10 +91,10 @@ pub struct PlaylistDetail {
 
 /// The playlists, with the columns [`playlist_row`] reads, over `playlists pl`
 /// and its owner's profile, `narrowing` narrowing them, by name in the
-/// device's language, then id. Each playlist's summary comes with it: its
-/// entries counted and summed, the covers of its first releases (`cover_grid`,
-/// when it has a grid's worth of different releases) and the cover of its
-/// first entry's release.
+/// device's language, then id. The query also counts each playlist's entries,
+/// adds up their durations, and reads the covers of its first releases
+/// (`cover_grid`, when it has a grid's worth of different releases) and the
+/// cover of its first entry's release.
 pub(crate) fn playlists_sql(narrowing: &str) -> String {
     format!(
         "SELECT pl.id, pl.name, pl.audience, pl.person_id, owner.name, {avatar}, \

@@ -122,8 +122,8 @@ pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,
     pub status: StorageRowStatus,
-    /// Whether the release can only be cancelled: it is mid-transition, or
-    /// its move failed.
+    /// Whether Cancel is the only action the release offers: it is
+    /// mid-transition, or its move failed.
     pub cancel_only: bool,
     /// When the release was added to the library.
     pub date_added: chrono::DateTime<chrono::Utc>,

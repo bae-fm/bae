@@ -336,7 +336,7 @@ async fn artist_detail_absent_or_album_less_artist_is_none() {
 }
 
 /// The artist grid reads the artists its window holds, and follows the images
-/// of those artists only: the count it reads beside is its own query.
+/// of those artists only: the artist count comes from a separate live query.
 #[tokio::test]
 async fn artist_window_reads_its_rows_and_their_images() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
@@ -363,9 +363,9 @@ async fn artist_window_reads_its_rows_and_their_images() {
     );
 }
 
-/// Windows of the artist list sharing bounds, each its own live query, and the
-/// list's count its own: a write that lands in one window's range reruns that
-/// window and the count and no other window.
+/// Each window of the artist list and the list's count run as separate live
+/// queries. A write that adds a row inside one window's range reruns that
+/// window and the count, and no other window.
 #[tokio::test]
 async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

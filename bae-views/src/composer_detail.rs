@@ -95,8 +95,8 @@ impl LibraryViews {
         })
     }
 
-    /// Follow how many rows `artist_id`'s page holds. Its own query, never
-    /// beside a window's rows.
+    /// Follow how many rows `artist_id`'s page holds. The count runs as a
+    /// separate query from the windows' rows.
     pub fn subscribe_composer_detail_count(
         &self,
         artist_id: &str,
@@ -106,7 +106,8 @@ impl LibraryViews {
     }
 
     /// Follow how many rows of `artist_id`'s page come before the row at a
-    /// key, a count over index ranges that moves in place with the key.
+    /// key, a count over index ranges; the caller changes the key on the same
+    /// query.
     pub fn subscribe_composer_detail_position(
         &self,
         artist_id: &str,

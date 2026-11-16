@@ -1,6 +1,6 @@
 //! The artist picker's live search: each window of what its text finds, the
 //! count of what it finds and the position of a key in it are live queries
-//! of their own; a new text is new queries.
+//! of their own; the picker opens new queries for each new text.
 
 use super::*;
 use crate::sort_key_sql;
@@ -57,8 +57,8 @@ impl LibraryViews {
         })
     }
 
-    /// Follow how many artists the text finds. Its own query, never beside a
-    /// window's rows.
+    /// Follow how many artists the text finds. The count runs as a separate
+    /// query from the windows' rows.
     pub fn subscribe_artist_search_count(
         &self,
         query: Option<crate::LibrarySearchQuery>,

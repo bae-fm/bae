@@ -86,8 +86,9 @@ impl LibraryViews {
     }
 
     /// Follow how many releases the Storage Manager list holds under `filter`
-    /// and `search`, and their files' total size. Its own query, never beside
-    /// a window's rows: every release added or removed moves it.
+    /// and `search`, and their files' total size. This count is a query of
+    /// its own, apart from the windows' rows, because every release added or
+    /// removed changes it.
     pub fn subscribe_storage_count(
         &self,
         filter: StorageFilter,
@@ -102,8 +103,8 @@ impl LibraryViews {
     }
 
     /// Follow how many releases of the Storage Manager list come before the
-    /// row at a key, a count over index ranges that moves in place with the
-    /// key.
+    /// row at a key. The caller sets a new key on the same live query, which
+    /// counts over index ranges.
     pub fn subscribe_storage_position(
         &self,
         sort: &StorageSortCriterion,
@@ -163,7 +164,8 @@ impl LibraryViews {
     /// sit, with the storage actions every one of them allows. A selected
     /// release the list no longer holds is absent, so the inspector never
     /// shows, and the storage actions never act on, a release the list
-    /// doesn't. The selection moves in place through the request handle.
+    /// doesn't. The caller changes the selected ids through the request
+    /// handle, and the same query reads them again.
     pub fn subscribe_storage_selection(
         &self,
         filter: StorageFilter,
@@ -217,8 +219,8 @@ pub fn resolve_storage_window(read: WindowRead<DbStorageRow>) -> crate::ListWind
 }
 
 /// The rows of the selected releases the Storage Manager list holds, the
-/// storage actions every one of them allows, and whether any of them can only
-/// be cancelled.
+/// storage actions every one of them allows, and whether Cancel is the only
+/// action one of them offers.
 pub fn resolve_storage_selection(
     asked: &BTreeSet<String>,
     (rows, actions, sole): DbStorageSelection,
@@ -479,8 +481,8 @@ pub(crate) fn storage_selected_query(filter: StorageFilter, searching: bool) -> 
 }
 
 /// How many releases the Storage Manager list under `filter` holds and their
-/// files' total size, with `pattern` (a search pattern) narrowed to the
-/// releases whose album it finds.
+/// files' total size. When `pattern` is given, the count and size cover only
+/// the releases whose album the search pattern finds.
 pub(crate) fn storage_counts_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
@@ -642,8 +644,8 @@ pub(crate) fn storage_sole_selected_on(
 }
 
 /// What every one of the `release_ids` the list under `filter` and the search
-/// `pattern` holds allows, and whether any of them can only be cancelled: the
-/// least of each action's flag over their rows, none for no rows.
+/// `pattern` holds allows, and whether Cancel is the only action one of them
+/// offers: the least of each action's flag over their rows, none for no rows.
 pub(crate) fn storage_selection_actions_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,

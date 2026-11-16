@@ -324,8 +324,7 @@ async fn a_searched_count_and_list_find_the_same_releases() {
     }
 }
 
-/// The ids in the five rows of the Storage Manager list narrowed by `text`
-/// that a window starting at `from` holds.
+/// A forward window of five rows that starts at `from`.
 fn window_of_five_from(from: bae_store::list_windows::OrderKey) -> ListWindow {
     ListWindow::Forward { from: Some(from), until: None, limit: 5 }
 }
@@ -334,11 +333,10 @@ fn ids_of(read: &WindowRead<DbStorageRow>) -> Vec<String> {
     read.rows.iter().map(|row| row.release.id.clone()).collect()
 }
 
-/// A live Storage Manager window narrowed by a search and started at a key
-/// holds what a fresh read from that key holds, and keeps holding it after a
-/// name an album's credit prints brings an album into what the search finds
-/// above the window, which moves no row of the listing itself: the window is
-/// a range of the order from its key, wherever that key then sits.
+/// A live Storage Manager search window that starts at a key holds what a
+/// fresh read from that key holds. An album's new credit name brings the
+/// album into the search above the window. The window still holds the same
+/// rows, because it starts at the same key.
 #[tokio::test]
 async fn a_search_window_from_a_key_holds_its_rows_across_a_printed_name() {
     let (db, _tmp) = library().await;
@@ -791,9 +789,10 @@ fn a_media_edit_from_another_device_sorts_its_release() {
     });
 }
 
-/// The Storage Manager's selection tells in SQL which of the releases asked
-/// about the list holds, whether it holds all of a set, and the one release
-/// it holds when only one: the apps read these and never search the rows.
+/// The Storage Manager's selection query returns which of the requested
+/// releases the list contains, whether it holds all of a set, and the one
+/// release it holds when only one: the apps read these and never search the
+/// rows.
 #[tokio::test]
 async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;

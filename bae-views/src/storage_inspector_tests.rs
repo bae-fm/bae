@@ -115,8 +115,8 @@ fn a_release_no_queue_holds_has_no_transfers() {
     assert!(inspector.transfers.is_empty());
 }
 
-/// The download of a pinning release counts its files by where their pins
-/// stand, each count left out at zero, and counts nothing for a release that
+/// The download of a pinning release counts its files by pin state and
+/// leaves out each count that is zero, and counts nothing for a release that
 /// is not pinning.
 #[test]
 fn a_pinning_releases_download_counts_its_files() {

@@ -1,16 +1,16 @@
 //! What each Activity transfer line's bar counts from the library's tables:
 //! the bytes of the line's batch and how many of them the tables say are done,
-//! with the files and releases whose bytes are still on the move. How far
-//! those have got changes with every byte, and travels with the transfers.
+//! with the files being sent and the releases downloading. Their progress
+//! changes with every byte, so the transfer watches carry it.
 
 use crate::sync_activity::DownloadLine;
 use bae_records::records::queued_uploads::RELEASE_BYTES_STORED;
 use bae_store::read::count_column;
 use bae_store::DbError;
 
-/// Each transfer line's batch in bytes, as one read finds it. Bytes moving
-/// change none of it, so they rerun nothing; a batch growing, a release's
-/// files stored or pinned, and a file starting or ending its upload do.
+/// Each transfer line's batch in bytes, as one read finds it. Coven does not
+/// rerun this query when bytes move; it reruns when a batch grows, a
+/// release's files are stored or pinned, or a file starts or ends its upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityBytes {
     pub uploads: Option<UploadBytes>,

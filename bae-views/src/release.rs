@@ -153,7 +153,8 @@ fn release_standing_columns() -> String {
 
 type ReleaseStanding = (Option<bae_transfers::DownloadEntry>, crate::DbStorageActions);
 
-/// The standing of a release as [`release_standing_columns`] read it.
+/// The release's download queue entry and storage actions, as
+/// [`release_standing_columns`] read them.
 fn release_standing(row: &Row<'_>) -> rusqlite::Result<ReleaseStanding> {
     Ok((bae_transfers::download_entry_column(row)?, crate::DbStorageActions::of_row(row)?))
 }

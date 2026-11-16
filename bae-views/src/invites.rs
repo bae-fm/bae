@@ -49,7 +49,7 @@ impl InviteEntry {
     }
 }
 
-/// Every row of People's invites in the order their operations were made:
+/// Every row of People's invites in the order coven started their operations:
 /// this device's open invites, each with the pending record of its operation
 /// unless that record is the invite's own waiting (the join request at its
 /// own path while no request has arrived, and the admin's decision once one
@@ -76,7 +76,7 @@ const INVITE_ROWS: &str = "\
     WHERE o.kind = 'Invite' AND o.outcome_kind = 'sharing_refused' \
     ORDER BY operation";
 
-/// One row of [`INVITE_ROWS`] as the statement holds it.
+/// Build the [`InviteEntry`] for one row of [`INVITE_ROWS`].
 fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
     let operation = coven::OperationId(row.get("operation")?);
     let conversion = |error: Box<dyn std::error::Error + Send + Sync>| {
@@ -98,8 +98,10 @@ fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
             // profile is a row no writer here makes.
             if row.get::<_, bool>("has_request")? && requester.is_none() {
                 return Err(conversion(
-                    format!("people.name of the member recovering with invite {operation:?}")
-                        .into(),
+                    format!(
+                        "the member recovering with invite {operation:?} has no name in people"
+                    )
+                    .into(),
                 ));
             }
             Ok(InviteEntry::Open(OpenInvite { invite, held, requester }))
@@ -108,7 +110,13 @@ fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
             coven::OperationOutcome::SharingRefused { account, refusal } => {
                 Ok(InviteEntry::Refused(RefusedInvite { operation, address: account, refusal }))
             }
-            other => Err(conversion(format!("the outcome of a refused invite: {other:?}").into())),
+            other => Err(conversion(
+                format!(
+                    "a refused invite's operation ended with {other:?}, which is not a sharing \
+                     refusal"
+                )
+                .into(),
+            )),
         },
     }
 }
@@ -118,7 +126,7 @@ impl LibraryViews {
     /// operation when coven holds one that is a hold, and the invites a
     /// sharing refusal ended and nobody dismissed, live from coven's
     /// `coven_invites`, `coven_pending` and `coven_operations` in one
-    /// statement, in the order they were made.
+    /// statement, in the order coven started their operations.
     pub fn subscribe_invites(&self) -> coven::LiveQuery<Vec<InviteEntry>, bae_store::DbError> {
         self.store.subscribe(|sql| Ok(sql.query(INVITE_ROWS, [], invite_entry)?))
     }

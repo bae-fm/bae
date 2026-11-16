@@ -260,8 +260,8 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
 }
 
 /// An artist window starting at a key holds the rows from that key on, the
-/// rows reading by offset holds, and each statement a window can run searches
-/// the order's index and sorts nothing.
+/// same rows that a read by offset returns, and each query the window runs
+/// searches the order's index without sorting.
 #[tokio::test]
 async fn an_artist_window_from_a_key_holds_the_rows_from_it_through_the_index() {
     let (db, _tmp) = library().await;

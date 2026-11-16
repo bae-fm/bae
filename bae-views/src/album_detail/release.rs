@@ -7,7 +7,8 @@ use bae_records::DbReleaseDetail;
 
 /// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: the release's own cover reference
-/// and the album facts its tracks are shown against.
+/// and whether the album is a compilation and its year, which the track
+/// projections compare against.
 /// Bundled so the constructors take one context rather than a pile of parameters.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
@@ -57,8 +58,8 @@ pub struct ReleaseSummary {
 }
 
 impl ReleaseSummary {
-    /// [`ReleaseDetail::from_raw`] projects its fat aggregate down to a slim
-    /// row and routes through here too.
+    /// Builds a release summary from its raw row. [`ReleaseDetail::from_raw`]
+    /// calls it too.
     pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote, raw.pinned);
         let upload = raw.upload.map(ReleaseUpload::from_raw);

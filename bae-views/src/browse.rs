@@ -58,7 +58,8 @@ pub struct ListWindowValue {
 }
 
 impl ListWindowValue {
-    /// `read`, its rows put into the variant of [`ListRows`] `rows` makes.
+    /// Build the value from `read`, with its rows in the [`ListRows`] variant
+    /// that `rows` returns.
     pub fn of<R>(read: WindowRead<R>, rows: impl FnOnce(Vec<R>) -> ListRows) -> Self {
         let WindowRead { window, rows: read_rows, first, beyond } = read;
         Self { window, rows: rows(read_rows), first, beyond }
@@ -82,8 +83,8 @@ pub struct ListCount {
 pub enum ListCountExtra {
     None,
     /// The album grid's album count, which grouped by artist is not its row
-    /// count: an album shows once under each of its artists, and whether the
-    /// library holds a track to shuffle.
+    /// count: an album shows once under each of its artists. The variant also
+    /// says whether the library holds a track to shuffle.
     AlbumGrid {
         albums: u64,
         can_shuffle: bool,

@@ -41,7 +41,8 @@ impl LibraryViews {
 
     /// One window of the albums a search finds, in title order: at most `limit`
     /// albums starting `offset` albums in, and none past the search's
-    /// [`crate::SEARCH_RESULT_LIMIT`]. A one-off read, so it pages by offset.
+    /// [`crate::SEARCH_RESULT_LIMIT`]. The function reads once instead of
+    /// following the rows, so it pages by offset.
     pub async fn search_album_page(
         &self,
         query: &crate::LibrarySearchQuery,
@@ -171,8 +172,8 @@ impl LibraryViews {
 
     /// Follow how many rows the album grid has: its albums, and flat or
     /// grouped by artist, its rows, which grouped is an album under each of
-    /// its artists. Its own query, never beside a window's rows: every album
-    /// added or removed moves it.
+    /// its artists. The count is a query of its own, apart from the window's
+    /// rows, because adding or removing any album changes it.
     pub fn subscribe_album_count(
         &self,
         group_by_artist: bool,
@@ -187,7 +188,8 @@ impl LibraryViews {
     }
 
     /// Follow how many rows of the album grid come before the row at a key,
-    /// a count over index ranges that moves in place with the key.
+    /// a count over index ranges; a new key changes this query's request
+    /// instead of opening another query.
     pub fn subscribe_album_position(
         &self,
         sort: &[AlbumSortCriterion],
@@ -567,8 +569,9 @@ fn search_library_on(
             |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
         )
         .optional()?;
-    // Whether any kind has a row, found by the statements that list each kind
-    // and stopping at the first row of any.
+    // This query checks whether any album, track, artist, composer or work
+    // matches, through the statements that list each kind, and stops at the
+    // first match.
     let found: bool = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM albums a WHERE {album_matches}) \
@@ -729,7 +732,8 @@ pub struct AlbumCounts {
     /// The grid's rows: the albums, or grouped by artist an appearance of
     /// each album under each of its artists.
     pub rows: u64,
-    /// Whether the library holds a track, which shuffling it plays.
+    /// Whether the library holds at least one track, so Shuffle Library has
+    /// something to play.
     pub can_shuffle: bool,
 }
 

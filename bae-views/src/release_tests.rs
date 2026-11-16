@@ -251,9 +251,9 @@ const SIDED_TRACKS: [&str; 5] = [
 ];
 
 /// A release holding a CD, then a record of two sides, then a record of one:
-/// the CD is a numbered disc, the sides of the records are lettered across
-/// both records, each group sums its own tracks, and a credit over the
-/// record sides names their letters.
+/// the CD is a numbered disc, the detail letters the records' sides A to C
+/// across both records, each group adds up its own tracks' lengths, and a
+/// credit over the record sides names their letters.
 #[tokio::test]
 async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
     use bae_types::mediums::{ReleaseMedium, TrackSide};
@@ -350,9 +350,9 @@ async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
 const FILED_ALBUM: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f01";
 const FILED_RELEASE: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f02";
 
-/// A release's files come back with the lists its screens show beside them:
-/// every image, the images a cover can be made from, the files no track
-/// plays from, and their count and sizes summed, each file counted once.
+/// The release detail returns the release's files with every image, the
+/// images bae can make a cover from, the files no track plays from, and the
+/// files' count and total size, counting each file once.
 #[tokio::test]
 async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
     use bae_records::source_audio::{SourceAudioFile, SourceAudioLayout};
@@ -428,10 +428,10 @@ async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
 
 const ONE_GROUP_RELEASE: &str = "d0f4b8a5-6e72-4f9b-8a31-4c5d6e7f8a02";
 
-/// A release of one group shows no time beside it, and a credit over every
-/// track prints no tracks, however many credits add up to that, while a
-/// qualifier keeps two credits of one role apart and one artist in two roles
-/// is two rows.
+/// A release of one group shows no time beside it, and a role that covers
+/// every track lists no tracks, even when separate track credits make it
+/// cover them all, while a qualifier keeps two credits of one role apart and
+/// one artist in two roles is two rows.
 #[tokio::test]
 async fn a_release_of_one_group_shows_no_group_time_and_its_credits_by_qualifier() {
     use bae_types::credit_role::RoleQualifier;

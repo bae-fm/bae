@@ -1,7 +1,7 @@
 use super::*;
 
-/// Coven's views as `INVITE_ROWS` reads them, as tables holding the columns
-/// the views give, beside the library's own `people`.
+/// Open an in-memory library and create tables with the columns of the coven
+/// views `INVITE_ROWS` reads, beside the library's own `people`.
 fn views() -> rusqlite::Connection {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::TEST_SCHEMA.open_bare_library(&conn);
@@ -69,7 +69,7 @@ fn an_invite_shows_the_record_its_operation_holds() {
 /// Once Dan's invite shows its code, coven's pass looks for his request and
 /// holds a record naming the request it hasn't found: that is the invite
 /// waiting for him, not a hold to show. A record of a failure to read the
-/// request is one, whatever stage the invite is at.
+/// request is a hold the invite shows, whatever stage the invite is at.
 #[test]
 fn a_waiting_invite_shows_no_record_for_the_request_it_waits_on() {
     let conn = views();
@@ -99,8 +99,8 @@ fn a_pause_before_the_code_shows_is_a_hold() {
 
 /// A request shows the name a new person typed; an invite with no request
 /// shows none, and a recovering member's request, which carries no name,
-/// shows none unless the member's profile gives one: the read refuses a
-/// request that arrived with no name to show.
+/// shows none unless the member's profile gives one. `invite_entry` returns
+/// an error for a request that arrived with no name.
 #[test]
 fn a_request_shows_the_name_a_new_person_typed() {
     let conn = views();
@@ -117,9 +117,9 @@ fn a_request_shows_the_name_a_new_person_typed() {
     );
 }
 
-/// Open invites and the ones a sharing refusal ended are one list in the
-/// order their operations were made; an outcome that is not a refusal lists
-/// nothing.
+/// Open invites and the ones a sharing refusal ended are one list.
+/// `INVITE_ROWS` lists them in the order coven started their operations and
+/// leaves out operations with any other outcome.
 #[test]
 fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
     let conn = views();

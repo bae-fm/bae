@@ -1,6 +1,6 @@
-//! The artist picker's live search: each window of what its text finds, the
-//! count and the position of a key their own queries, woken by writes to what
-//! it finds.
+//! The artist picker's live search. Each window, the count and the position
+//! of a key are separate live queries, and a write to an artist the search
+//! finds reruns them.
 
 use crate::LibrarySearchQuery;
 use crate::*;
@@ -52,8 +52,8 @@ async fn found(db: &Store, text: &str) -> WindowRead<DbArtistSearchRow> {
 }
 
 /// Each window answers with its slice of what the text finds, and the count
-/// is of everything found, a query of its own; another text is other queries,
-/// and no text finds nothing while still answering.
+/// is of everything found, a query of its own. A different text opens
+/// different queries. An empty text returns no rows and a count of zero.
 #[tokio::test]
 async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     let (db, _tmp) = seeded().await;
@@ -124,11 +124,11 @@ async fn artist_search_positions_and_jumps_by_key() {
     assert_eq!(views.artist_search_key_at(query("   "), 0).await.unwrap(), None);
 }
 
-/// A new artist the text finds lands in the one window whose range its sort
-/// values fall in, and the count follows. Every window of a search reruns for
-/// the write, and delivers only what changed: the search's order ranks by an
-/// expression of the text, which coven's narrowing of a live query to the
-/// range it reads does not reach.
+/// A new artist appears only in the window whose range holds its sort
+/// values, and the count goes up by one. Coven reruns every window of the
+/// search for the write, because the search's order depends on the text and
+/// coven cannot limit the rerun to one range; each window delivers only what
+/// changed.
 #[tokio::test]
 async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows() {
     let (db, _tmp) = seeded().await;
@@ -157,7 +157,7 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
     // delivers nothing new; the middle one delivers the artist.
     let middle = tokio::time::timeout(HANG_GUARD, windows[1].next())
         .await
-        .expect("a write the text finds reruns the window")
+        .expect("a new artist the text finds reruns the window")
         .expect("the query stays open")
         .result
         .unwrap();
@@ -229,7 +229,8 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let image = write_artist_image(&records, FIRST, "artist image bytes").await;
 
     let found = found(&db, "artist name").await;
-    let first = found.rows.iter().find(|row| row.artist.id == FIRST).expect("the artist is found");
+    let first =
+        found.rows.iter().find(|row| row.artist.id == FIRST).expect("the search finds the artist");
     assert_eq!(first.image_version.as_deref(), Some(image.as_str()));
     assert_eq!(
         first.credit_names.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),

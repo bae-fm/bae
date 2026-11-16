@@ -45,14 +45,15 @@ impl LibraryViews {
         })
     }
 
-    /// Follow how many artists the list has. Its own query, never beside a
-    /// window's rows: every artist added or removed moves it.
+    /// Follow how many artists the list has. The count runs as a separate
+    /// query from the windows, because every artist added or removed changes
+    /// it.
     pub fn subscribe_artist_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
         self.store.subscribe(|sql| artist_count_on(&sql))
     }
 
     /// Follow how many artists come before the row at a key, a count over
-    /// index ranges that moves in place with the key.
+    /// index ranges; the caller changes the key on the same query.
     pub fn subscribe_artist_position(
         &self,
         sort: &[ArtistSortCriterion],
@@ -218,8 +219,8 @@ pub(crate) fn artist_rows_on(
     })?)
 }
 
-/// How many artists come before the rows `seek` reads: what a count over one
-/// of the seeks before a key adds up to.
+/// How many artists come before the rows `seek` reads. `rows_before` adds
+/// these counts over the seeks before a key to get the key's position.
 pub(crate) fn artist_seek_count_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,

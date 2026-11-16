@@ -8,8 +8,8 @@
 /// list doesn't.
 #[derive(Debug, Clone)]
 pub struct StorageSelection {
-    /// The releases the selection was asked about, held or not: which
-    /// selection this answers.
+    /// The release ids the caller asked about, held or not, so the caller can
+    /// tell which request this answers.
     pub asked: Vec<String>,
     pub selected: Vec<crate::album_detail::StorageRow>,
     /// The one release the list holds among those asked about, when it holds

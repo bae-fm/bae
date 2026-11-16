@@ -43,14 +43,14 @@ impl LibraryViews {
         })
     }
 
-    /// Follow how many composers the list has. Its own query, never beside a
-    /// window's rows.
+    /// Follow how many composers the list has. The count runs as a separate
+    /// query from the windows' rows.
     pub fn subscribe_composer_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
         self.store.subscribe(|sql| composer_count_on(&sql))
     }
 
     /// Follow how many composers come before the row at a key, a count over
-    /// index ranges that moves in place with the key.
+    /// index ranges; the caller changes the key on the same query.
     pub fn subscribe_composer_position(
         &self,
         sort: &[ComposerSortCriterion],

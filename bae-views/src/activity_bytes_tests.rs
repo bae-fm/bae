@@ -9,8 +9,8 @@ async fn bytes_now(store: &bae_store::Store) -> ActivityBytes {
     store.read(|sql| activity_bytes_on(&sql)).await.unwrap()
 }
 
-/// The Uploading line's batch reads the size of its releases and the bytes of
-/// their stored files: a release whose file uploaded counts all of its size,
+/// The read counts the Uploading batch's release sizes and the bytes of their
+/// stored files: a release whose file uploaded counts all of its size,
 /// one whose original is missing none. Once the batch empties there is nothing
 /// to read.
 #[test]
@@ -24,7 +24,7 @@ fn the_upload_batch_reads_its_size_and_stored_bytes() {
         queue_upload(store, RELEASE_LATE).await;
         let first = bytes_now(store).await.uploads.expect("two releases are queued");
         assert_eq!((first.bytes_total, first.bytes_done), (8, 0));
-        assert!(first.sending.is_empty(), "nothing is being sent");
+        assert!(first.sending.is_empty(), "bae sends no file");
 
         std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
         store.set_uploads_paused(false).await.unwrap();

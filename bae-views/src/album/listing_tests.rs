@@ -696,10 +696,11 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
 }
 
 /// Windows of the grid sharing bounds, each its own live query, and the
-/// grid's count its own: a write that lands in one window's range reruns that
-/// window and the count and no other window, flat and grouped by artist.
+/// grid's count its own: a write that adds a row inside one window's range
+/// reruns that window and the count and no other window, flat and grouped by
+/// artist.
 #[tokio::test]
-async fn a_write_reruns_the_window_it_lands_in_and_the_count_alone() {
+async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
     use bae_util::test_channels::HANG_GUARD;
     for group_by_artist in [false, true] {
         let (db, _dir) = grouped_library().await;
@@ -785,7 +786,7 @@ async fn a_write_reruns_the_window_it_lands_in_and_the_count_alone() {
 /// a nullable year and the artist's sort key among them. A write that changes
 /// what a row shows, its cover, reruns only the windows showing that row.
 #[tokio::test]
-async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
+async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
     use bae_util::test_channels::HANG_GUARD;
     let mut sorts = vec![Vec::new()];
     for field in [
@@ -843,7 +844,8 @@ async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
             let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
             if marked != holds {
                 wrong.push(format!(
-                    "{sort:?} grouped {group_by_artist}: reran {marked:?}, landed in {holds:?}"
+                    "{sort:?} grouped {group_by_artist}: reran {marked:?}, but the album is in \
+                     {holds:?}"
                 ));
             }
         }
@@ -851,8 +853,8 @@ async fn every_album_sort_reruns_only_the_window_a_write_lands_in() {
     assert!(wrong.is_empty(), "windows rerun by a write outside them:\n{}", wrong.join("\n"));
 }
 
-/// A cover written for an album, through the records domain's own write,
-/// reruns only the windows showing that album, flat and grouped by artist,
+/// A write that adds a cover to an album, through the records domain, reruns
+/// only the windows that show the album, flat and grouped by artist,
 /// for a sort whose windows split the grid in three.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {

@@ -35,8 +35,9 @@ pub struct DbStorageActions {
     /// Whether files wait to upload or a transfer runs: the release offers
     /// only cancelling then.
     pub transitioning: bool,
-    /// Whether the release can only be cancelled: it is mid-transition, or
-    /// its move to storage failed and cancelling ends the move.
+    /// Whether Cancel is the only action the release offers: it is
+    /// mid-transition, or its move to storage failed and cancelling ends the
+    /// move.
     pub cancel_only: bool,
 }
 
@@ -63,8 +64,8 @@ impl DbStorageActions {
 /// Whether a release's files wait to upload or a transfer of them runs, for
 /// the release `release` (an SQL expression naming its id) whose
 /// `release_storage` row is `storage`: files wait in the upload queue, or its
-/// download queue entry runs, or is a move to this device waiting. Another
-/// storage action would race it.
+/// download queue entry runs, or is a move to this device waiting. Starting
+/// another storage action then would conflict with it.
 fn transitioning_sql(release: &str) -> String {
     format!(
         "(COALESCE(storage.queued_count > 0, 0) \
@@ -80,8 +81,8 @@ fn transitioning_sql(release: &str) -> String {
 ///
 /// Storage needs the library to sync; a release mid-transition offers none.
 /// `Upload` moves the files of a release not in storage, from this device's
-/// originals, so it is offered only where no audio file is on another device
-/// only. A release in storage offers `Pin` or `Unpin` by whether this device
+/// originals, so a release offers it only when each audio file is on this
+/// device. A release in storage offers `Pin` or `Unpin` by whether this device
 /// keeps every file, and `MoveToThisDevice`.
 pub(crate) fn storage_action_columns(release: &str) -> String {
     let offered = format!(
@@ -104,8 +105,8 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
     )
 }
 
-/// What every one of a set of releases allows, and whether any of them can
-/// only be cancelled, as [`selection_action_columns`] reads them.
+/// What every one of a set of releases allows, and whether Cancel is the only
+/// action one of them offers, as [`selection_action_columns`] reads them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbSelectionActions {
     pub upload: bool,
@@ -137,7 +138,7 @@ impl DbSelectionActions {
 
 /// The columns over rows carrying [`storage_action_columns`]: each action
 /// every row offers (the least of its flags, none for no rows) and whether
-/// any row can only be cancelled.
+/// Cancel is the only action one of the rows offers.
 pub(crate) fn selection_action_columns() -> &'static str {
     "COALESCE(MIN(can_upload), 0) AS can_upload, \
      COALESCE(MIN(can_pin), 0) AS can_pin, \

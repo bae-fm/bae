@@ -174,7 +174,10 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
         .unwrap();
     assert!(left.rows.is_empty());
     records.rename_album_for_test(OTHER_ALBUM_ID, "Album Earlier Title Again").await.unwrap();
-    assert!(!live.is_marked_for_rerun(), "an album that left the range");
+    assert!(
+        !live.is_marked_for_rerun(),
+        "an edit to an album that left the range does not rerun the window"
+    );
 
     // The top of the list holds it again, first.
     requests.set(top(50)).unwrap();
@@ -201,7 +204,10 @@ async fn album_window_ignores_an_unread_table() {
         .await
         .unwrap();
 
-    assert!(!live.is_marked_for_rerun(), "a table the window does not read");
+    assert!(
+        !live.is_marked_for_rerun(),
+        "a write to a table the window does not read does not rerun the window"
+    );
     let moved = next_run_is_only_the_request(&mut live, top(49)).await.result.unwrap();
     assert_eq!(moved.rows, initial.rows);
 }
@@ -563,9 +569,10 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
     assert_eq!(top("Nothing Matches This").await, None);
 }
 
-/// A search says whether it found anything of any kind, so no surface tests
-/// the five kinds' lists for an empty state: a track title, an album title
-/// and an artist's name each count, and a query that matches none does not.
+/// A search says whether it found anything of any kind, so no app screen
+/// tests the album, track, artist, composer and work lists to show that
+/// nothing matched: a track title, an album title and an artist's name each
+/// count, and a query that matches none does not.
 #[tokio::test]
 async fn a_search_says_whether_it_found_anything() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -620,8 +627,8 @@ async fn a_search_skips_a_found_album_with_no_track_to_play() {
 
 const PAGED_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5021";
 
-/// A search's albums come in windows of the title order; the window past the
-/// last album is empty.
+/// `search_album_page` returns a search's albums one page at a time, in title
+/// order; the page past the last album is empty.
 #[tokio::test]
 async fn a_search_pages_its_albums_in_sql() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -670,8 +677,8 @@ async fn a_search_pages_its_albums_in_sql() {
 const PICKED_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5043";
 const OTHER_TRACK: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5044";
 
-/// A browse item for one track is read by its ids; a track on another release
-/// is none.
+/// `find_release_track` returns the browse item for a track by its release
+/// and track ids, and none when the track is on another release.
 #[tokio::test]
 async fn a_release_track_is_read_by_its_ids() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -869,7 +876,8 @@ async fn a_release_names_the_works_each_track_performs_in_order() {
     assert!(detail.performs_works);
 }
 
-/// A release none of whose tracks performs a work says so.
+/// The detail of a release whose tracks perform no work has performs_works
+/// false.
 #[tokio::test]
 async fn a_release_whose_tracks_perform_no_work_says_so() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -887,8 +895,8 @@ async fn a_release_whose_tracks_perform_no_work_says_so() {
     assert!(!detail.performs_works);
 }
 
-/// A release says whether a catalog describes it: not before one does, and
-/// so once a record is written.
+/// A release's detail reports no catalog records until the test writes one,
+/// and reports the record after.
 #[tokio::test]
 async fn a_release_says_whether_a_catalog_describes_it() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

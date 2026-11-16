@@ -595,8 +595,8 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
     });
 }
 
-/// Read what a window has been marked to rerun for, so the next write finds it
-/// at rest.
+/// Read every rerun coven has marked the window for, so the window has no
+/// rerun waiting when the next write arrives.
 async fn settled(
     window: &mut coven::ReconfigurableLiveQuery<
         ListWindow,
