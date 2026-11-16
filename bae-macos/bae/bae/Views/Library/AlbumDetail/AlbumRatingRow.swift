@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The album's stars and who rated it. A person who can rate the album taps
+/// The album's stars and who rated it. A person who can rate the album clicks
 /// the stars to rate it. Everyone sees who rated it.
 struct AlbumRatingRow: View {
     let rating: BridgeAlbumRating

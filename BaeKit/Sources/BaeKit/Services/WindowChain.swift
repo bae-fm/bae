@@ -1,8 +1,8 @@
 import Foundation
 
 /// WindowChain holds the windows a list reads, in row order. Each window is a
-/// live read of a range of the order, and next windows share a bound, so the
-/// chain holds each row once. A window owns its subscription and only its
+/// live read of a range of the order, and neighbouring windows share a bound,
+/// so the chain holds each row once. A window owns its subscription and only its
 /// last delivery, which the next delivery replaces whole. The chain lays
 /// those deliveries end to end from the position of its first row, which is
 /// its own live read of how many rows come before the chain's start key.
@@ -56,8 +56,8 @@ final class WindowChain<Row: Sendable & Equatable> {
 
     /// Whether the row at `position` is near enough the chain's rows for the
     /// chain to grow to it; for a position farther away, the list reads the
-    /// key there and starts the chain over. The last window of the list, once
-    /// answered, reaches every position past it.
+    /// key there and starts the chain over. Once the last window of the list
+    /// has delivered, it reaches every position past it.
     func reaches(_ position: Int) -> Bool {
         let near = 2 * pageSize
         let low = start.key == nil ? Int.min : start.value - near
@@ -288,9 +288,9 @@ final class WindowChain<Row: Sendable & Equatable> {
     // MARK: - Where the rows sit
 
     /// Lay the windows' last deliveries end to end from the chain's start
-    /// position. The loop stops at the first window with no delivery. It
-    /// skips a first window that reads upward, because that window's rows sit
-    /// before the start position.
+    /// position. The loop stops at the first window with no delivery, except
+    /// that it passes over a first window that reads upward and has no
+    /// delivery yet, because that window's rows sit before the start position.
     private func layOut() {
         var next: [Placed<Row>] = []
         var position = start.value

@@ -38,7 +38,8 @@ struct QueueSection: View {
     let count: Int
     let itemAt: (Int) -> BridgeQueueEntry?
     /// Names the list the lane reads, which restarts the rows' holds when the
-    /// store replaces the list. `nil` for the manual lane, which is never windowed.
+    /// store replaces the list. The manual lane passes `nil` because it reads
+    /// all its rows at once.
     let loadEpoch: LoadEpoch?
     /// Hold the row at an index in the lane's list for as long as the call
     /// runs, so the list reads around it. `nil` for the manual lane.

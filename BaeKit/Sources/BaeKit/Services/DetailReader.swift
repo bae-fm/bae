@@ -58,7 +58,7 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     /// `close`.
     public private(set) var id: Id?
 
-    /// A reader whose `open` opens the read of the id it is given.
+    /// A reader whose `open` opens the read of the id the reader passes it.
     public init(
         opening open: @escaping (Id) throws -> KeyedDetailQuery<Value, Id>,
         onValue: @escaping @MainActor (Id, Value?) -> Void,

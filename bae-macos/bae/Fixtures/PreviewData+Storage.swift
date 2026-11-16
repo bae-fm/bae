@@ -518,8 +518,8 @@ extension PreviewData {
 
     /// Core's answer for no release or the one release `ids` names among
     /// `rows`: core answers one release as the sole one, with its own
-    /// actions, offering only cancelling while it is on the move. A shot that
-    /// selects several releases passes core's answer for them in
+    /// actions, offering only cancelling while it is transitioning. A shot
+    /// that selects several releases passes core's answer for them in
     /// `selections`.
     nonisolated private static func storageSelection(
         _ ids: Set<String>,

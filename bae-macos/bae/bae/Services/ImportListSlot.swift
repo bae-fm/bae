@@ -9,18 +9,18 @@ struct ImportListOpened: Equatable {
     let position: Int
 }
 
-/// The import sidebar's `PaginatedList`, which stays loaded while the view
-/// changes, the reads around it, and the view they show.
+/// Holds the import sidebar's `PaginatedList`, the reads around it and the
+/// view they show. The list stays loaded while the view changes.
 ///
 /// The view — which tab, which filter text, which order — and the groups
 /// folded shut decide which items sit in which windows, so they are core's
 /// list's rather than applied to a window after it arrives. A view change is
-/// a write that answers where the new view opens; once it has, the list
-/// drops its windows and count and reads them again from that place, so
-/// every value they deliver was read after the write. Until the first
+/// a write that returns the row where the new view opens; once it has, the
+/// list drops its windows and count and reads them again from that place, so
+/// core reads every value they deliver after the write. Until the first
 /// window's rows arrive, the rows the list holds are the previous view's,
-/// which the sidebar does not show as this one's. Which groups are folded is core's alone; each
-/// header says whether it is open.
+/// which the sidebar does not show as this one's. Which groups are folded is
+/// core's alone; each header says whether it is open.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
@@ -576,14 +576,14 @@ extension PaginatedList<BridgeImportListItem> {
     }
 
     /// Whether the text filter or the filter entry narrows the list, as the
-    /// list's count says; `false` until the count answers.
+    /// list's count says; `false` until core delivers the count.
     var isNarrowed: Bool {
         narrowed != nil
     }
 
     /// How many of the tab's rows the list shows while its filters narrow
     /// it, as the list's count says; `nil` while they narrow nothing, or
-    /// until the count answers.
+    /// until core delivers the count.
     fileprivate var narrowed: BridgeNarrowedCount? {
         guard let count else { return nil }
         guard case .import(let narrowed) = count.extra else {

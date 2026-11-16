@@ -44,8 +44,8 @@ final class MutableImportList: @unchecked Sendable {
         return items.firstIndex { $0.id == id } ?? items.count
     }
 
-    /// Whether the list has sent the item `id` to any window; this stays true
-    /// after the list closes that window.
+    /// Whether the list has sent the item `id` to any window; the answer
+    /// stays true after the list closes that window.
     func hasDelivered(_ id: String) -> Bool {
         lock.withLock { deliveredIds.contains(id) }
     }

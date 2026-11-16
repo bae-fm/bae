@@ -51,8 +51,8 @@ public final class LogFile: Sendable {
     private let handle: FileHandle
     private let queue = DispatchQueue(label: "fm.bae.log-file")
 
-    /// Opens the file at `path` empty, creating it; `nil` when the file
-    /// cannot be created or opened for writing.
+    /// Opens the file at `path` empty, creating it. Returns nil when it
+    /// cannot create the file or open it for writing.
     public init?(path: String) {
         guard FileManager.default.createFile(atPath: path, contents: nil),
             let handle = FileHandle(forWritingAtPath: path)
@@ -74,7 +74,7 @@ public final class LogFile: Sendable {
 }
 
 /// The log file `appendEveryMessage` installed, which every logger appends
-/// to; none until it is called.
+/// to. There is no log file until the app calls `appendEveryMessage`.
 private let installedLogFile = InstalledLogFile()
 
 private final class InstalledLogFile: @unchecked Sendable {

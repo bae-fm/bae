@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// How an artist picker opens the list of the artists a text finds: the
+/// How an artist picker opens the list of the artists that match a text: the
 /// picker opens a separate list for each text, whose windows, count and
 /// positions are live reads like any other list's.
 public typealias ArtistSearchOpener =
@@ -11,15 +11,15 @@ extension BridgeArtistSearchResult: Identifiable {
     public var id: String { artist.artistId }
 }
 
-/// The artists an artist search finds, a page at a time.
+/// The artists that match an artist search's text, a page at a time.
 public typealias ArtistSearchList = PaginatedList<BridgeArtistSearchResult>
 
-/// One artist picker's search while it is open: the list of what the text
-/// typed last finds.
+/// One artist picker's search while it is open: the list of the artists that
+/// match the text typed last.
 ///
 /// Once typing pauses, ArtistSearchResults opens the new text's list, and
-/// keeps showing the previous text's list until the new one answers, so the
-/// results never blank between keystrokes.
+/// keeps showing the previous text's list until the new list's query returns
+/// its first rows, so the results never blank between keystrokes.
 @MainActor
 @Observable
 public final class ArtistSearchResults {

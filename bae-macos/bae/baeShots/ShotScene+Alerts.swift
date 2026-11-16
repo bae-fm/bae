@@ -339,9 +339,10 @@ extension ShotScene {
             frame: .window(title: "Storage Manager")
         ) {
             let pinned: Set<String> = ["rel-row-3", "rel-row-10", "rel-row-12"]
-            // Core's answer for the three: the board's rows offer no storage
-            // action of their own, none is on the move, and three releases
-            // have no sole one, so the inspector shows Select a release.
+            // Core's answer for the three: core returns no storage actions
+            // for these rows, none of them is being transferred and no move
+            // has failed, and core names no single release because three are
+            // selected, so the inspector shows Select a release.
             let selected = boardStorageRows.filter { pinned.contains($0.id) }
             let fixture = StorageManagerPreviewFixture(
                 rows: boardStorageRows,

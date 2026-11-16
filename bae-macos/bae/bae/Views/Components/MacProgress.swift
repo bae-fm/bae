@@ -249,8 +249,8 @@ private struct StepProgressBar<Step: ProgressStep>: NSViewRepresentable {
 }
 
 /// A step's name over a bar, in the pane or sheet it runs in: the name in
-/// primary text, the bar 4pt high under it. The view draws the values it is
-/// given; a container reads the stream that moves the bar.
+/// primary text, the bar 4pt high under it. The view draws the values its
+/// container passes it; the container reads the stream that moves the bar.
 struct MacProgress<Bar: View>: View {
     let title: String
     let bar: Bar

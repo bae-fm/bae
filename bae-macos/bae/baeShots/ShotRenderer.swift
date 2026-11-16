@@ -82,8 +82,8 @@ enum ShotRenderer {
             pixels = try png(of: host, size: host.bounds.size, scene: scene)
         case .window:
             // The app shows the alerts a few run loop passes after AppKit
-            // orders the window in, so this waits for them before it makes
-            // the top one key.
+            // orders the window in, so the renderer waits for them before it
+            // makes the top one key.
             let alerts = try await sheets(of: window, scene: scene)
             try await becomeKey(window, scene: scene)
             pixels = try await windowPNG(

@@ -131,9 +131,9 @@
     }
 
     extension Library {
-        /// The answer the caller chose, in core's place, to whether the list
-        /// holds every release asked about, for shots and tests: it does,
-        /// whatever the filter, search and releases.
+        /// Core's answer, for shots and tests, to whether the list holds every
+        /// release asked about: it always does, whatever the filter, search
+        /// and releases.
         public static func fixedStorageHoldsAll()
             -> @Sendable (BridgeStorageFilter, String, [String]) async throws
             -> Bool

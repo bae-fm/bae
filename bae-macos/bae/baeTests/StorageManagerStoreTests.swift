@@ -241,8 +241,9 @@ extension BridgeStorageSelection {
         cancelOnly: false
     )
 
-    /// Core's answer for a selection of `rows`, held and offering `actions`,
-    /// with `sole` as the one release when it holds one.
+    /// Core's answer when the list holds every release in `rows`: core
+    /// offers `actions` and names `sole` as the one release when the
+    /// selection has only one.
     fileprivate static func of(
         _ rows: [BridgeStorageRow],
         actions: [BridgeReleaseStorageAction],

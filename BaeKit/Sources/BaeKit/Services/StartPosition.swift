@@ -2,8 +2,9 @@ import Foundation
 
 /// Where a chain's first row sits in its list: the key of that row and the
 /// number of rows before it, a live read of its own that follows the key.
-/// The list's top has no key and sits at zero. Until the read answers for a
-/// key, StartPosition uses the position the chain gave with the key.
+/// The list's top has no key and sits at zero. Until the position read
+/// returns a value for a key, StartPosition uses the position the chain gave
+/// with the key.
 @MainActor
 final class StartPosition {
     private(set) var value = 0
@@ -19,7 +20,9 @@ final class StartPosition {
         opening: { [position] key in Self.read(position(key)) },
         onValue: { [weak self] _, rowsBefore in
             guard let rowsBefore else {
-                preconditionFailure("a list position read answers every key")
+                preconditionFailure(
+                    "a list position read returns a row count for every key"
+                )
             }
             self?.apply(Int(rowsBefore))
         },
@@ -58,8 +61,8 @@ final class StartPosition {
         onChange()
     }
 
-    /// The position read `query` as a keyed read: each value names the key
-    /// it counts the rows before.
+    /// Wraps the position query `query` in a keyed read whose values each
+    /// name the key they count the rows before.
     private static func read(
         _ query: ListPositionQuery
     ) -> KeyedDetailQuery<UInt64, [BridgeSortValue]> {

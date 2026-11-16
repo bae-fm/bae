@@ -34,8 +34,9 @@ extension PreviewData {
     /// old phone, and one other member with a removable device
     /// and two removed ones, each reaching `storage` as its members do:
     /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
-    /// iCloud. Ids are arbitrary UUIDs. Core reads them as two people with
-    /// three devices: the Mac and the phone, and the other member's tablet.
+    /// iCloud. Ids are arbitrary UUIDs. The counts are two people and three
+    /// devices, as core counts them: the Mac and the phone, and the other
+    /// member's tablet.
     static func members(reaching storage: BridgeStorageLocation)
         -> BridgePeople
     {
@@ -59,7 +60,8 @@ extension PreviewData {
         )
     }
 
-    /// People with nobody in them, for fixtures that show no people.
+    /// An empty `BridgePeople`, with no people and no devices, for fixtures
+    /// that show no people.
     static let noPeople = BridgePeople(
         own: nil,
         others: [],

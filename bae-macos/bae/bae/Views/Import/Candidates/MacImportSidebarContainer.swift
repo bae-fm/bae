@@ -343,8 +343,8 @@ private struct ImportCoverWarmer: View {
 /// The list's table, or the empty tab, or a narrowed list with no matches.
 /// The view draws a plain surface until the list query and the summary have
 /// returned their first values, while another view shows the rows, and while
-/// the count has not answered: a list core has not counted yet is neither
-/// empty nor filled, and only the count says which.
+/// core has not returned the count: a list core has not counted yet is
+/// neither empty nor filled, and only the count tells them apart.
 /// A view of its own so that the list's count and the summary are read here
 /// and not by the list's chrome.
 private struct ImportCandidateListSwitch<Table: View>: View {
