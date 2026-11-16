@@ -60,5 +60,13 @@ fi
     echo ""
     echo "#endif"
 } > "$TMP"
-mv "$TMP" "$DEST"
+
+# Xcode compiles the BaeBridge module again whenever this file's modification
+# time changes, so the script replaces the file only when its content differs.
+# A run whose bindings match the installed ones leaves the file untouched.
+if cmp -s "$TMP" "$DEST"; then
+    rm "$TMP"
+else
+    mv "$TMP" "$DEST"
+fi
 trap - EXIT
