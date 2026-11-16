@@ -46,7 +46,7 @@ struct QueueSection: View {
     let holdRow: (@MainActor (_ index: Int) async -> Void)?
     let acceptsExternalDrops: Bool
     /// This lane's key in the drag coordinator.
-    let laneId: QueueLaneID
+    let laneId: BridgeQueueLane
     /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
     /// Empties this lane; offered only while the lane has rows.
@@ -261,7 +261,7 @@ extension QueueSection {
     private func commitReorder(
         _ entryId: String,
         _ move: QueueRowMove,
-        _ lane: QueueLaneID
+        _ lane: BridgeQueueLane
     ) {
         let commit = coordinator.hold(move, lane: lane)
         let coordinator = coordinator
@@ -271,7 +271,7 @@ extension QueueSection {
             do {
                 if try await onReorder(
                     entryId,
-                    lane.bridgeLane,
+                    lane,
                     UInt64(move.to)
                 ) {
                     coordinator.reorderMoved(lane, commit: commit)
@@ -421,20 +421,6 @@ extension QueueSection {
             else {
                 QueuePlaceholderRow()
             }
-        }
-    }
-}
-
-/// Which queue lane a section renders.
-enum QueueLaneID {
-    case manual
-    case context
-
-    /// The lane as core names it.
-    var bridgeLane: BridgeQueueLane {
-        switch self {
-        case .manual: .manual
-        case .context: .context
         }
     }
 }

@@ -22,7 +22,7 @@ private struct QueueLaneGeometry {
 /// end-of-drag signal (releases, including outside the pane, always deliver
 /// it).
 private struct ActiveQueueDrag {
-    let lane: QueueLaneID
+    let lane: BridgeQueueLane
     /// The row that was grabbed. The floating copy draws this value, never a
     /// lookup by index: the canonical index the row started at belongs to
     /// whichever row moves into it the moment core echoes a reorder.
@@ -49,7 +49,7 @@ private struct HeldReorder {
 /// (the in-place row stays hidden), so the release reads as the row settling
 /// rather than vanishing under the cursor and reappearing at its slot.
 private struct SettlingQueueRow {
-    let lane: QueueLaneID
+    let lane: BridgeQueueLane
     /// The released row, as grabbed — see `ActiveQueueDrag.item`.
     let item: BridgeQueueEntry
     /// The row's canonical index at grab time: what a held reorder's order
@@ -119,11 +119,11 @@ struct QueueFloatingRow: Equatable {
 final class QueueDragCoordinator {
     private var active: ActiveQueueDrag?
     private var settling: SettlingQueueRow?
-    private var geometry: [QueueLaneID: QueueLaneGeometry] = [:]
+    private var geometry: [BridgeQueueLane: QueueLaneGeometry] = [:]
     /// A committed reorder, held per lane so the rows stay put from the
     /// gesture ending until the reorder's write returns. Then the lane draws
     /// its rows, which show what is stored.
-    private var held: [QueueLaneID: HeldReorder] = [:]
+    private var held: [BridgeQueueLane: HeldReorder] = [:]
     /// How many reorders have been held, which names each commit.
     private var commits = 0
     /// The manual lane's row count, mirrored here by `MacQueuePanel` so the context
@@ -137,7 +137,7 @@ final class QueueDragCoordinator {
     /// z-order between SECTIONS, or a row dragged across the boundary renders
     /// underneath the sibling section's rows (zIndex only arbitrates among
     /// siblings, and the sections are siblings of each other).
-    func isDragSource(_ lane: QueueLaneID) -> Bool {
+    func isDragSource(_ lane: BridgeQueueLane) -> Bool {
         active?.lane == lane
     }
 
@@ -153,7 +153,7 @@ final class QueueDragCoordinator {
     /// The entry whose in-place row `lane` hides because the floating copy is
     /// drawing it — the dragged row while a drag is live, the released row
     /// while it settles — else `nil`.
-    func floatingEntryId(in lane: QueueLaneID) -> String? {
+    func floatingEntryId(in lane: BridgeQueueLane) -> String? {
         if let active, active.lane == lane {
             return active.item.id
         }
@@ -163,7 +163,8 @@ final class QueueDragCoordinator {
         return nil
     }
 
-    func setRowsGeometry(_ lane: QueueLaneID, frame: CGRect, rowCount: Int) {
+    func setRowsGeometry(_ lane: BridgeQueueLane, frame: CGRect, rowCount: Int)
+    {
         var geo = geometry[lane] ?? QueueLaneGeometry()
         geo.rowsFrame = frame
         geo.rowCount = rowCount
@@ -174,7 +175,7 @@ final class QueueDragCoordinator {
         }
     }
 
-    func setAppendFrame(_ lane: QueueLaneID, frame: CGRect) {
+    func setAppendFrame(_ lane: BridgeQueueLane, frame: CGRect) {
         var geo = geometry[lane] ?? QueueLaneGeometry()
         geo.appendFrame = frame
         if geometry[lane]?.appendFrame != geo.appendFrame {
@@ -183,7 +184,7 @@ final class QueueDragCoordinator {
     }
 
     func begin(
-        lane: QueueLaneID,
+        lane: BridgeQueueLane,
         item: BridgeQueueEntry,
         startSlot: Int,
         location: CGPoint
@@ -237,7 +238,7 @@ final class QueueDragCoordinator {
     /// moves no row: the lane marks where the row will land with a line
     /// (`dropGap`). Derived against the CURRENT `count`, so a queue change
     /// can never leave a move over slots the lane no longer has.
-    func displayMove(for lane: QueueLaneID, count: Int) -> QueueRowMove? {
+    func displayMove(for lane: BridgeQueueLane, count: Int) -> QueueRowMove? {
         if let hold = held[lane], hold.move.count == count {
             return hold.move
         }
@@ -261,7 +262,7 @@ final class QueueDragCoordinator {
     /// release would leave the row where it is, or the drag is aimed at the
     /// manual lane. The row after the gap is the lane's canonical row at this
     /// index, whichever way the row moves.
-    func dropGap(in lane: QueueLaneID, count: Int) -> Int? {
+    func dropGap(in lane: BridgeQueueLane, count: Int) -> Int? {
         guard let active, active.lane == lane,
             let move = dragMove(count: count)
         else {
@@ -273,7 +274,7 @@ final class QueueDragCoordinator {
     /// The row `lane` draws as a floating copy over its rows region: under
     /// the cursor while a drag is live there, at its landing slot while a
     /// released row settles. `nil` in any lane that has neither.
-    func floatingRow(in lane: QueueLaneID) -> QueueFloatingRow? {
+    func floatingRow(in lane: BridgeQueueLane) -> QueueFloatingRow? {
         if let active, active.lane == lane, let geo = geometry[lane] {
             return QueueFloatingRow(
                 item: active.item,
@@ -354,7 +355,7 @@ final class QueueDragCoordinator {
     /// which commit it is, for the write's return to name. The settling row
     /// lands in the slot the move places it at.
     @discardableResult
-    func hold(_ move: QueueRowMove, lane: QueueLaneID) -> Int {
+    func hold(_ move: QueueRowMove, lane: BridgeQueueLane) -> Int {
         commits += 1
         held[lane] = HeldReorder(move: move, commit: commits)
         if let settling, settling.lane == lane {
@@ -368,7 +369,7 @@ final class QueueDragCoordinator {
     /// The write for `commit` moved the row: the lane draws its rows, which
     /// show the move. A return for a commit a later drop replaced changes
     /// nothing.
-    func reorderMoved(_ lane: QueueLaneID, commit: Int) {
+    func reorderMoved(_ lane: BridgeQueueLane, commit: Int) {
         guard held[lane]?.commit == commit else {
             return
         }
@@ -378,7 +379,7 @@ final class QueueDragCoordinator {
     /// The write for `commit` moved nothing or failed: the lane draws its
     /// rows, which show the row where it is stored, so a move that failed
     /// never stays on screen.
-    func reorderFailed(_ lane: QueueLaneID, commit: Int) {
+    func reorderFailed(_ lane: BridgeQueueLane, commit: Int) {
         guard held[lane]?.commit == commit else {
             return
         }
@@ -398,7 +399,7 @@ final class QueueDragCoordinator {
 
     enum Outcome {
         case none
-        case reorder(entryId: String, move: QueueRowMove, lane: QueueLaneID)
+        case reorder(entryId: String, move: QueueRowMove, lane: BridgeQueueLane)
         case insertIntoManual(trackId: String, gap: Int)
     }
 }

@@ -8,6 +8,7 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueLane
 import uniffi.bae_bridge.BridgeTrackDisplay
 
 class QueueOrderTest {
@@ -52,7 +53,7 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(emptyList(), context(total = 6, read = rows("a", "b", "c", "d")))
         order.dragging()
-        order.started(OrderLane.CONTEXT, "a", 0)
+        order.started(BridgeQueueLane.CONTEXT, "a", 0)
         order.drop(2)
         assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
 
@@ -63,7 +64,7 @@ class QueueOrderTest {
         order.apply(emptyList(), context(total = 6, read = rows("a", "c", "b", "d")))
         assertEquals(listOf("b", "c", "a", "d", null, null), order.context.shown())
 
-        order.reorderReturned(OrderLane.CONTEXT)
+        order.reorderReturned(BridgeQueueLane.CONTEXT)
         assertEquals(
             "the lane shows core's read once the reorder returns, without waiting for it to match",
             listOf("a", "c", "b", "d", null, null),
@@ -78,13 +79,13 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
         order.dragging()
-        order.started(OrderLane.MANUAL, "a", 0)
+        order.started(BridgeQueueLane.MANUAL, "a", 0)
         order.drop(2)
         order.released()
         order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
         assertEquals("the hold waits for the reorder", listOf("b", "c", "a"), order.manual.map { it.entryId })
 
-        order.reorderReturned(OrderLane.MANUAL)
+        order.reorderReturned(BridgeQueueLane.MANUAL)
         assertEquals("a failed move never stays on screen", listOf("a", "b", "c"), order.manual.map { it.entryId })
     }
 
@@ -93,18 +94,18 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
         order.dragging()
-        order.started(OrderLane.MANUAL, "a", 0)
+        order.started(BridgeQueueLane.MANUAL, "a", 0)
         order.drop(1)
         order.released()
         order.dragging()
-        order.started(OrderLane.MANUAL, "c", 2)
+        order.started(BridgeQueueLane.MANUAL, "c", 2)
         order.drop(-1)
         order.released()
         order.apply(listOf(entry("a"), entry("b"), entry("c")), null)
 
-        order.reorderReturned(OrderLane.MANUAL)
+        order.reorderReturned(BridgeQueueLane.MANUAL)
         assertEquals("the second reorder is still in flight", listOf("b", "c", "a"), order.manual.map { it.entryId })
-        order.reorderReturned(OrderLane.MANUAL)
+        order.reorderReturned(BridgeQueueLane.MANUAL)
         assertEquals(listOf("a", "b", "c"), order.manual.map { it.entryId })
     }
 
@@ -113,13 +114,13 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("a"), entry("b")), context(total = 2, read = rows("x", "y")))
         order.dragging()
-        order.started(OrderLane.MANUAL, "a", 0)
+        order.started(BridgeQueueLane.MANUAL, "a", 0)
         order.drop(1)
         order.released()
         order.dragging()
-        order.started(OrderLane.CONTEXT, "x", 0)
+        order.started(BridgeQueueLane.CONTEXT, "x", 0)
         order.drop(1)
-        order.reorderReturned(OrderLane.MANUAL)
+        order.reorderReturned(BridgeQueueLane.MANUAL)
         assertEquals("a drag in progress keeps every lane as it is", listOf("b", "a"), order.manual.map { it.entryId })
         assertEquals(listOf("y", "x"), order.context.shown())
 
@@ -144,7 +145,7 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("m")), context(total = 2, read = rows("a", "b")))
         order.dragging()
-        order.started(OrderLane.CONTEXT, "a", 0)
+        order.started(BridgeQueueLane.CONTEXT, "a", 0)
         order.drop(1)
         order.apply(listOf(entry("n")), context(total = 2, read = rows("a", "b")))
         assertEquals(listOf("n"), order.manual.map { it.entryId })
@@ -158,18 +159,18 @@ class QueueOrderTest {
             listOf(entry("m"), entry("n")),
             context(total = 4, read = rows("a", "b", "c")),
         )
-        order.started(OrderLane.MANUAL, "m", 0)
-        assertEquals(LaneDrop(OrderLane.MANUAL, "m", 1), order.drop(1))
+        order.started(BridgeQueueLane.MANUAL, "m", 0)
+        assertEquals(LaneDrop(BridgeQueueLane.MANUAL, "m", 1), order.drop(1))
         assertEquals(listOf("n", "m"), order.manual.map { it.entryId })
         assertNull("a step past the lane's end moves nothing", order.drop(1))
         order.released()
 
-        order.started(OrderLane.CONTEXT, "a", 0)
-        assertEquals(LaneDrop(OrderLane.CONTEXT, "a", 1), order.drop(1))
+        order.started(BridgeQueueLane.CONTEXT, "a", 0)
+        assertEquals(LaneDrop(BridgeQueueLane.CONTEXT, "a", 1), order.drop(1))
         assertEquals(listOf("b", "a", "c", null), order.context.shown())
         assertEquals(
             "a drop just before a row not read yet moves, and core finds that row",
-            LaneDrop(OrderLane.CONTEXT, "a", 2),
+            LaneDrop(BridgeQueueLane.CONTEXT, "a", 2),
             order.drop(1),
         )
         assertEquals(listOf("b", "c", "a", null), order.context.shown())
@@ -180,8 +181,8 @@ class QueueOrderTest {
     fun aDropAfterTheLastRowSitsAtTheLanesLastPlace() {
         val order = QueueOrder()
         order.apply(emptyList(), context(total = 3, read = rows("a", "b", "c")))
-        order.started(OrderLane.CONTEXT, "a", 0)
-        assertEquals(LaneDrop(OrderLane.CONTEXT, "a", 2), order.drop(2))
+        order.started(BridgeQueueLane.CONTEXT, "a", 0)
+        assertEquals(LaneDrop(BridgeQueueLane.CONTEXT, "a", 2), order.drop(2))
         assertEquals(listOf("b", "c", "a"), order.context.shown())
     }
 
@@ -191,7 +192,7 @@ class QueueOrderTest {
         order.apply(listOf(entry("m"), entry("n"), entry("o"), entry("p")), context(total = 0))
         order.dragging()
         // The held row passes "n" then "o": the rows move on screen, and nothing is sent.
-        order.started(OrderLane.MANUAL, "m", 0)
+        order.started(BridgeQueueLane.MANUAL, "m", 0)
         order.drop(1)
         order.drop(1)
         assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
@@ -201,12 +202,12 @@ class QueueOrderTest {
 
         assertEquals(
             "one reorder, for where the row now sits",
-            LaneDrop(OrderLane.MANUAL, "m", 2),
+            LaneDrop(BridgeQueueLane.MANUAL, "m", 2),
             order.released(),
         )
         assertNull("a release sends once", order.released())
         order.apply(listOf(entry("n"), entry("o"), entry("m"), entry("p")), context(total = 0))
-        order.reorderReturned(OrderLane.MANUAL)
+        order.reorderReturned(BridgeQueueLane.MANUAL)
         assertEquals(listOf("n", "o", "m", "p"), order.manual.map { it.entryId })
     }
 
@@ -215,7 +216,7 @@ class QueueOrderTest {
         val order = QueueOrder()
         order.apply(listOf(entry("m"), entry("n")), context(total = 0))
         order.dragging()
-        order.started(OrderLane.MANUAL, "m", 0)
+        order.started(BridgeQueueLane.MANUAL, "m", 0)
         assertNull("a step onto a section header leaves the lane", order.drop(-1))
         assertNull(order.released())
     }

@@ -9,21 +9,6 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueLane
 
-/** The two lanes of the queue. */
-internal enum class OrderLane {
-    MANUAL,
-    CONTEXT,
-    ;
-
-    /** The lane as core names it. */
-    val bridgeLane: BridgeQueueLane
-        get() =
-            when (this) {
-                MANUAL -> BridgeQueueLane.MANUAL
-                CONTEXT -> BridgeQueueLane.CONTEXT
-            }
-}
-
 /**
  * The lanes as the sheet shows them: core's read of each, with the moves of a drag laid over a lane
  * until the reorder the drag sent returns. A lane's moves are held while the drag runs and while its
@@ -41,7 +26,7 @@ internal class QueueOrder {
     private var dragging = false
 
     /** How many reorders each held lane has in flight, counting the drag in progress. */
-    private val holds = mutableMapOf<OrderLane, Int>()
+    private val holds = mutableMapOf<BridgeQueueLane, Int>()
 
     /** Where the drag's last step left its row, which its release sends core. */
     private var pending: LaneDrop? = null
@@ -54,7 +39,7 @@ internal class QueueOrder {
 
     /** A drag took hold of the row [entryId], drawn at [index] of [lane]. */
     fun started(
-        lane: OrderLane,
+        lane: BridgeQueueLane,
         entryId: String,
         index: Int,
     ) {
@@ -72,8 +57,8 @@ internal class QueueOrder {
         val row = held?.takeIf { by != 0 && row(it.index + by, it.lane) } ?: return null
         val to = row.index + by
         when (row.lane) {
-            OrderLane.MANUAL -> manual.add(to, manual.removeAt(row.index))
-            OrderLane.CONTEXT -> context.move(row.index, to)
+            BridgeQueueLane.MANUAL -> manual.add(to, manual.removeAt(row.index))
+            BridgeQueueLane.CONTEXT -> context.move(row.index, to)
         }
         row.index = to
         val drop = LaneDrop(row.lane, row.entryId, to)
@@ -85,8 +70,8 @@ internal class QueueOrder {
     /** Whether [lane] has a row at [index]. */
     private fun row(
         index: Int,
-        lane: OrderLane,
-    ): Boolean = index in 0 until if (lane == OrderLane.MANUAL) manual.size else context.size
+        lane: BridgeQueueLane,
+    ): Boolean = index in 0 until if (lane == BridgeQueueLane.MANUAL) manual.size else context.size
 
     /** The drag ended: the reorder to send core, where the dragged row now sits, or null when it moved nothing. */
     fun released(): LaneDrop? {
@@ -100,7 +85,7 @@ internal class QueueOrder {
     }
 
     /** A reorder of a row of [lane] is held until it returns: the drag's first step makes it. */
-    private fun moveSent(lane: OrderLane) {
+    private fun moveSent(lane: BridgeQueueLane) {
         holds[lane] = (holds[lane] ?: 0) + 1
     }
 
@@ -108,7 +93,7 @@ internal class QueueOrder {
      * A reorder of a row of [lane] returned, whether it moved the row, moved nothing or failed: the lane
      * shows core's read, unless a later drag's reorder is still in flight, which keeps its own moves held.
      */
-    fun reorderReturned(lane: OrderLane) {
+    fun reorderReturned(lane: BridgeQueueLane) {
         val inFlight = holds[lane] ?: return
         if (inFlight > 1) {
             holds[lane] = inFlight - 1
@@ -131,24 +116,24 @@ internal class QueueOrder {
     private fun show() {
         val value = latest ?: return
         if (dragging) return
-        for (lane in OrderLane.entries) {
+        for (lane in BridgeQueueLane.entries) {
             if (lane !in holds) reseed(lane, value)
         }
     }
 
     private fun reseed(
-        lane: OrderLane,
+        lane: BridgeQueueLane,
         value: QueueValue,
     ) {
         when (lane) {
-            OrderLane.MANUAL -> {
+            BridgeQueueLane.MANUAL -> {
                 if (manual.toList() != value.manual) {
                     manual.clear()
                     manual.addAll(value.manual)
                 }
             }
 
-            OrderLane.CONTEXT -> {
+            BridgeQueueLane.CONTEXT -> {
                 context.seed(value.context)
             }
         }
@@ -202,14 +187,14 @@ internal class ContextLaneOrder {
 
 /** A row a drag moved, in [lane], and the [position] among the lane's rows it then sits at, as core is told it. */
 internal data class LaneDrop(
-    val lane: OrderLane,
+    val lane: BridgeQueueLane,
     val entryId: String,
     val position: Int,
 )
 
 /** The row a drag holds, in [lane], and its [index] among the lane's rows as the sheet draws them now. */
 private class HeldRow(
-    val lane: OrderLane,
+    val lane: BridgeQueueLane,
     val entryId: String,
     var index: Int,
 )

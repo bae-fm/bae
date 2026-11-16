@@ -40,6 +40,7 @@ import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeQueueLane
 
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
@@ -132,7 +133,7 @@ internal fun rememberReorderableQueue(
         order.released()?.let { drop ->
             scope.launch {
                 failures.answer("reorderEntry ${drop.entryId} to ${drop.lane} ${drop.position}") {
-                    session.appHandle.reorderEntry(drop.entryId, drop.lane.bridgeLane, drop.position.toULong())
+                    session.appHandle.reorderEntry(drop.entryId, drop.lane, drop.position.toULong())
                 }
                 order.reorderReturned(drop.lane)
             }
@@ -196,7 +197,7 @@ internal fun LazyListScope.queueContent(
         // Always fully resolved, so no load hook.
         queueRows(
             session,
-            QueueLane(OrderLane.MANUAL, size = order.manual.size, itemAt = order.manual::get, hold = null),
+            QueueLane(BridgeQueueLane.MANUAL, size = order.manual.size, itemAt = order.manual::get, hold = null),
             queue,
             onSkipped,
         )
@@ -234,7 +235,7 @@ private fun LazyListScope.contextLane(
     queueRows(
         session,
         QueueLane(
-            OrderLane.CONTEXT,
+            BridgeQueueLane.CONTEXT,
             size = order.context.size,
             itemAt = order.context::itemAt,
             hold = session.playback.upcoming::hold,
@@ -248,7 +249,7 @@ private fun LazyListScope.contextLane(
 /** One lane's rows for [queueRows], one row per index. [hold] keeps a row's index read until the returned release
  *  runs. [hold] is null for the manual lane, which core reads whole. */
 private class QueueLane(
-    val lane: OrderLane,
+    val lane: BridgeQueueLane,
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
     val hold: ((index: Int) -> () -> Unit)?,
