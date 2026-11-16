@@ -485,8 +485,9 @@ extension PeopleAndDevicesPage {
     }
 
     private func deviceCount(_ member: BridgeMember) -> String {
+        // An Int makes the key "%lld devices", as the string catalog has it.
         String(
-            localized: "\(member.activeDeviceCount) devices",
+            localized: "\(Int(member.activeDeviceCount)) devices",
             comment: "How many devices a person has in the library"
         )
     }
@@ -880,7 +881,9 @@ private struct FormerDevicesDisclosure: View {
                 }
             }
         } label: {
-            Text("Removed devices (\(count))")
+            // An Int makes the key "Removed devices (%lld)", as the string
+            // catalog has it.
+            Text("Removed devices (\(Int(count)))")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
         }
