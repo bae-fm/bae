@@ -13,10 +13,11 @@ on bae-macos/ macos-tests
 on BaeKit/ macos-tests
 on bae-android/ android-bridge android
 on bae-bridge/ macos-tests android-bridge android
-# The shot scenes compile in their own scheme and tree, which takes as long to
-# compile as the app's, so an app build compiles them only for a change to the
-# scenes. bae-shots compiles them for a --shots run, and the `test mac:shots`
-# line for a --test run of a scenes' class.
+# The shot scenes' scheme compiles the app again in its own tree, so a build
+# that compiled both schemes would take twice as long as one that compiles the
+# app's. An app build compiles the scenes only for a change to them. bae-shots
+# compiles them for a --shots run, and the `test mac:shots` line for a --test
+# run of a scenes' class.
 on bae-macos/bae/baeShots/ macos-shots-tests
 # What a --test or --shots run needs built when the branch changes nothing its
 # lane builds.

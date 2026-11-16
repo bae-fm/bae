@@ -8,8 +8,9 @@
 # A run builds only the scheme of the bundle it runs: the `bae` scheme (the app,
 # baeTests and baeUITests) in the unsigned tree, or with `--bundle baeShots`
 # the `baeShots` scheme (the screenshot scenes) in the shots tree
-# (scripts/xcode-trees.sh). Each scheme takes as long to compile as the other,
-# so a run of the unit tests never compiles the scenes.
+# (scripts/xcode-trees.sh). Each scheme compiles the app in its own tree, so a
+# run that compiled both would take twice as long as one that compiles the
+# scheme it runs.
 #
 # `--build-only` compiles that scheme and stops, running nothing: the check
 # after a change to a bridge shape or Swift code, which `run.sh` alone misses
