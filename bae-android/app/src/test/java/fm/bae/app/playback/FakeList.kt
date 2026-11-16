@@ -232,11 +232,10 @@ internal class FakeComposerPage(
         wrap = { BridgeListRows.ComposerPage(it) },
     )
 
-/** The composer list as the bridge lists it, over [rows] in the order of their artist ids. */
-internal class FakeComposerList(
-    rows: List<BridgeComposerSummary> = emptyList(),
-) : FakeList<BridgeComposerSummary>(
-        rows,
+/** The composer list as the bridge lists it, with no composers. */
+internal class FakeComposerList :
+    FakeList<BridgeComposerSummary>(
+        emptyList(),
         idOf = { it.artistId },
         wrap = { BridgeListRows.Composers(it) },
     )

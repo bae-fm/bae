@@ -113,7 +113,6 @@ internal fun unfaked(method: String): Nothing = throw AssertionError("the test r
  */
 internal open class FakeAppHandle(
     val albumList: FakeAlbumList = FakeAlbumList(),
-    val composerList: FakeComposerList = FakeComposerList(),
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
     private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
     private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
@@ -123,6 +122,8 @@ internal open class FakeAppHandle(
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
     var deliverSearchResultsImmediately: Boolean = true,
 ) : EditionFakeAppHandle() {
+    private val composerList = FakeComposerList()
+
     var pauseCount = 0
     var resumeCount = 0
     var playbackFailureDismissals = 0
