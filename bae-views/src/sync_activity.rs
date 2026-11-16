@@ -10,9 +10,9 @@ use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
 /// What sync is doing now: the work that needs the person and the transfer
 /// lines, each counting the releases of its batch, with its bar's bytes done
-/// and each file or release on the move. How far those have got is not part
-/// of it: it changes with each part a provider confirms or a download
-/// receives, and travels with the transfers.
+/// and each file bae is sending or release it is downloading. The bytes each
+/// of them has moved are not part of it: they change with each part a
+/// provider confirms or a download receives, and travel with the transfers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivity {
     /// The sync failure the status line shows, such as being offline,

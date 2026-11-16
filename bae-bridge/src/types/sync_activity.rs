@@ -74,14 +74,15 @@ mirror_struct! {
 }
 
 /// A transfer line's bar: the share of its batch's bytes done, then each
-/// file or release on the move. The view fills each one's segment to the
-/// fraction its transfer's stream holds under its key. Mirrors
-/// `bae_views::BatchBar`.
+/// file or release bae is transferring now. The view fills each one's
+/// segment to the fraction its transfer's stream holds under its key.
+/// Mirrors `bae_views::BatchBar`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeBatchBar {
     /// The share of the batch's bytes done, from 0 to 1.
     pub done: f64,
-    /// Each file or release on the move, in the order the bar draws them.
+    /// Each file or release bae is transferring now, in the order the bar
+    /// draws them.
     pub moving: Vec<BridgeMovingShare>,
 }
 
@@ -125,8 +126,8 @@ pub struct BridgeUploadQueueActivity {
     pub wait: Option<super::BridgeUploadQueueWait>,
     /// The person paused the upload queue: the line ends in Resume, not Pause.
     pub paused: bool,
-    /// The line's bar, whose files on the move are keyed as the upload file
-    /// shares stream keys them.
+    /// The line's bar. Each moving share's key is the file id that the
+    /// upload file shares stream uses.
     pub bar: BridgeBatchBar,
 }
 
@@ -152,8 +153,8 @@ pub struct BridgeDownloadQueueActivity {
     /// The person paused the download queue: the line ends in Resume, not
     /// Pause.
     pub paused: bool,
-    /// The line's bar, whose release on the move is keyed as the line's
-    /// download stream keys it.
+    /// The line's bar. Its moving share's key is the release id that the
+    /// line's download stream uses.
     pub bar: BridgeBatchBar,
 }
 

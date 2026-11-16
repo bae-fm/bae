@@ -418,9 +418,10 @@ extension ImportListSlot {
 #if DEBUG
     extension ImportListSlot {
         // periphery:ignore - called by baeTests, through the fixtures' `preview`
-        /// A slot over a fixed set of items, with `tabCounts` as the list's
-        /// count carries them. The list is seeded synchronously so a canvas
-        /// draws without a live query.
+        /// A slot over a fixed set of items, with `tabCounts` as the import
+        /// list's count holds them. This function loads the items into the
+        /// list before it returns, so a canvas draws them without a live
+        /// query.
         static func seededWithItems(
             importStore: ImportStore,
             uiStore: UiStore,

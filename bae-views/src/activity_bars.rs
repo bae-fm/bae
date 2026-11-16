@@ -1,36 +1,37 @@
 //! Each Activity transfer line's bar as the library's tables give it: the
 //! share of the line's batch whose bytes are done, and each file or release
-//! whose bytes are on the move now with its share of the batch. How far a
-//! file or release on the move has got changes with every byte: it travels on
-//! its transfer's stream under the key the bar names, and the view fills each
-//! share to it.
+//! that is uploading or downloading now with its share of the batch. How far
+//! a transferring file or release has got changes with every byte: core sends
+//! it on its transfer's stream under the key the bar names, and the view
+//! fills each share to it.
 
 use crate::sync_activity::DownloadLine;
 use bae_records::records::queued_uploads::RELEASE_BYTES_STORED;
 use bae_store::DbError;
 
 /// A transfer line's bar: the share of its batch's bytes done, then each
-/// file or release on the move with its own share, keyed as its transfer's
-/// stream keys it.
+/// file or release transferring now with its own share, under the key its
+/// transfer's stream uses.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchBar<Key> {
     /// The share of the batch's bytes done, from 0 to 1. A batch of no bytes
     /// has done none of them.
     pub done: f64,
-    /// Each file or release whose bytes are on the move now, in the order the
-    /// bar draws them after the bytes done.
+    /// Each file or release that is uploading or downloading now, in the
+    /// order the bar draws them after the bytes done.
     pub moving: Vec<MovingShare<Key>>,
 }
 
 impl<Key> Default for BatchBar<Key> {
-    /// The bar of a batch with nothing done and nothing on the move.
+    /// The bar of a batch with nothing done and nothing transferring.
     fn default() -> Self {
         Self { done: 0.0, moving: Vec::new() }
     }
 }
 
-/// A file or release on the move: where its segment of the bar starts, and
-/// its share of its batch's bytes, which its segment spans once it is done.
+/// A file or release that is transferring now: where its segment of the bar
+/// starts, and its share of its batch's bytes, which its segment spans once
+/// it is done.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MovingShare<Key> {
     pub key: Key,
@@ -41,18 +42,21 @@ pub struct MovingShare<Key> {
     pub share: f64,
 }
 
-/// Each transfer line's bar, as one read finds it. Bytes moving change none
-/// of it, so they rerun nothing; a batch growing, a release's files stored or
-/// pinned, a file starting or ending its upload, and a download starting or
-/// ending do. A line whose batch holds no release has an empty bar.
+/// Each transfer line's bar, as one read finds it. Transferred bytes change
+/// none of these rows, so coven does not rerun the query for them; coven
+/// reruns it when a batch grows, a release's files are stored or pinned, a
+/// file starts or ends its upload, or a download starts or ends. A line whose
+/// batch holds no release has an empty bar.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ActivityBarRows {
-    /// The Uploading line's: the files this process is sending now, by file.
+    /// The Uploading line's bar, with one segment for each file this process
+    /// is sending now.
     pub uploads: BatchBar<coven::FileId>,
-    /// The Pinning line's: the release downloading now, by release.
+    /// The Pinning line's bar, with a segment for the release downloading
+    /// now.
     pub pins: BatchBar<String>,
-    /// The Moving to this device line's: the release downloading now, by
-    /// release.
+    /// The Moving to this device line's bar, with a segment for the release
+    /// downloading now.
     pub moving_to_this_device: BatchBar<String>,
 }
 

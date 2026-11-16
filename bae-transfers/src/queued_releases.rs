@@ -285,7 +285,8 @@ where
     }
 
     /// Abort the running task when `cancelled` names its release, whose entry
-    /// the table no longer holds as active, and list its transfer as ended.
+    /// the table no longer holds as active, and take its transfer off the
+    /// list of transfers in progress.
     fn stop(&self, cancelled: impl Fn(&str) -> bool) {
         let mut running = self.shared.running.lock().unwrap();
         let Some(stopped) = running.take_if(|running| cancelled(&running.release_id)) else {

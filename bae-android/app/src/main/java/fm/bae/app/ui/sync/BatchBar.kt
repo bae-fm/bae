@@ -15,9 +15,10 @@ import uniffi.bae_bridge.BridgeBatchBar
 
 /**
  * A transfer line's bar: the share of its batch's bytes done, as the line's row says, then for
- * each file or release on the move a segment that starts where the row says and spans its share,
- * filled to the fraction [stream] holds under its key. Filled in the accent over a track of the
- * accent's tint. Screen readers name it [description], the line's words. Each segment reads its
+ * each file or release that bae is uploading or downloading a segment that starts where the row says
+ * and spans its share, filled to the fraction [stream] holds under its key. The bar draws its fill in
+ * the accent color over a track in the accent's tint. Screen readers name it [description], the
+ * line's words. Each segment reads its
  * key's latest value each display frame while its bytes move: arriving bytes recompose nothing.
  */
 @Composable
@@ -44,14 +45,13 @@ internal fun <V : Any> BatchBar(
 
 /**
  * Draws a [BatchBar]: four tall and rounded, the track, the bytes done from its start, and each
- * segment filled from where it starts. Each segment's fraction is read by its own
- * [FrameFollowing], one per place in the row's list, so a file that follows another in its place
- * reuses its reader.
+ * segment filled from where it starts. Each segment's own [FrameFollowing] reads its fraction, one
+ * per place in the row's list, so a file that follows another in its place reuses its reader.
  */
 internal class BatchBarView<V : Any>(
     context: Context,
 ) : TrackBarView(context) {
-    /** One file or release on the move, and how far its stream says it has got. */
+    /** One file or release that bae is transferring, and the fraction of it that its stream reports done. */
     private class Segment<V : Any>(
         val following: FrameFollowing<V>,
     ) {

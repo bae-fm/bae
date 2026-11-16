@@ -60,7 +60,8 @@ enum Values {
 }
 
 /// How long a value goes unchanged before it counts as at rest: a stalled or
-/// paused download, a step that counts nothing, an import between percents.
+/// paused download, a step that reports no count, or an import whose percent
+/// has not changed yet.
 /// Longer than a display frame, so a value moving at a steady pace is not
 /// flipped between moving and resting; the key rests when the feed has
 /// said nothing new of it for this long.

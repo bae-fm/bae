@@ -193,7 +193,7 @@ pub struct BridgeDownloadTransferProgress {
 
 /// How far a release being moved to this device has downloaded: the bytes of the file
 /// coven is downloading, and of every file of the release, with the share
-/// of the release's bytes down, from 0 to 1, which its bar fills to.
+/// of the release's bytes downloaded, from 0 to 1, which its bar fills to.
 /// Mirrors `MoveToThisDeviceTransferProgress`.
 #[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeMoveToThisDeviceProgress {

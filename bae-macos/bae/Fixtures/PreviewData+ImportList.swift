@@ -9,7 +9,8 @@ import Foundation
 struct ImportPreviewFixture {
     let store: ImportStore
     let itemsByTab: [BridgeTriageTab: [BridgeImportListItem]]
-    /// Every tab's count, as the list's count carries it.
+    /// How many rows each tab holds, as core sends them with the import
+    /// list's count.
     let tabCounts: BridgeTriageTabCounts
 
     @MainActor

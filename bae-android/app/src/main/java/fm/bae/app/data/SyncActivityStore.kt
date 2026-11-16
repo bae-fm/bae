@@ -15,8 +15,8 @@ import uniffi.bae_bridge.BridgeSyncActivity
  */
 class SyncActivityStore(
     /**
-     * The share of each file being sent its object has moved, by file, which core's stream fills:
-     * the Uploading line's bar fills each file's segment to it.
+     * For each file bae is uploading, the share of its bytes sent so far. Core's stream writes these
+     * values, and the Uploading line's bar fills each file's segment to that share.
      */
     val fileShares: LatestStream<Double> = LatestStream.fileShares(),
 ) {

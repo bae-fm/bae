@@ -82,13 +82,13 @@ class LatestFeedTest {
                 }
 
             assertEquals(0.43, stream.latest("file-a")!!, 0.0)
-            assertNull("a file not being sent has no share", stream.latest("file-b"))
+            assertNull("a file bae is not sending has no share", stream.latest("file-b"))
             feed.cancel()
         }
 
     private fun feedScope() = CoroutineScope(SupervisorJob() + main)
 
-    /** A stream holding a file share under each of [shares]' files; nothing changes after it is fed. */
+    /** A stream holding a file share under each of [shares]' files; nothing changes after the test feeds it. */
     private class HeldShares(
         private val shares: Map<String, Double>,
     ) : KeyedValueStream(NoHandle) {

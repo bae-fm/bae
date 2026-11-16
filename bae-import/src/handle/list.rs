@@ -70,7 +70,8 @@ impl ImportServiceHandle {
 
     /// How many entries each tab holds, for a test that waits on a scan: the
     /// first value at once, then a value after each write that moves one.
-    /// Closing the library ends it. A screen reads them in its list's count.
+    /// Closing the library ends it. A screen reads each tab's count from its
+    /// open import list's count instead of this stream.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_tab_counts(
         &self,

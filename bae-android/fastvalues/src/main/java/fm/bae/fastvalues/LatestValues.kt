@@ -122,8 +122,8 @@ class LatestStream<V : Any> private constructor(
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
         /**
-         * The share of each file being sent its object has moved, from 0 to 1, by file id; a
-         * shot's holds [values] and nothing feeds it.
+         * How much of each file bae has uploaded so far, from 0 to 1, by file id; a shot's holds
+         * [values] and nothing feeds it.
          */
         fun fileShares(values: Map<String, Double>? = null): LatestStream<Double> =
             LatestStream(values) { (it as? BridgeFastValue.FileShare)?.fraction }

@@ -6,14 +6,14 @@ import SwiftUI
 private let logger = Logger.bae("BatchBar")
 
 /// A transfer line's bar: the share of its batch's bytes done, as the line's
-/// row says, then for each file or release on the move a segment that starts
-/// where the row says and spans its share, filled to the fraction its
-/// stream holds. Each segment reads its key's latest value once per display
-/// frame while the key moves, with no SwiftUI update; a key the stream holds
-/// nothing for leaves its segment empty.
+/// row says, then for each file or release that bae is transferring a segment
+/// that starts where the row says and spans its share, filled to the fraction
+/// its stream holds. Each segment reads its key's latest value once per
+/// display frame while the key's value changes, with no SwiftUI update; a key
+/// the stream holds nothing for leaves its segment empty.
 final class BatchBarNSView<Value: Sendable & Equatable>: NSView {
-    /// One file or release on the move, and how far its stream says it has
-    /// got. Each place in the row's list keeps its reader, so a file that
+    /// One file or release that bae is transferring, and the fraction of it
+    /// that its stream reports done. Each place in the row's list keeps its reader, so a file that
     /// follows another in its place reuses it.
     private struct Segment {
         var start: Double = 0
@@ -131,7 +131,7 @@ final class BatchBarNSView<Value: Sendable & Equatable>: NSView {
     }
 }
 
-/// SwiftUI's place for a transfer line's bar: it hands the bar the line's
+/// The SwiftUI view that wraps a transfer line's bar and passes it the line's
 /// row and the stream its segments follow, never a value.
 struct BatchBar<Value: Sendable & Equatable>: NSViewRepresentable {
     @Environment(\.accentChoice)

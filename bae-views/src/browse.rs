@@ -106,8 +106,9 @@ pub enum ListCountExtra {
         total_size: u64,
         searching: bool,
     },
-    /// The import list's narrowed count, how many of its tab's entries its
-    /// filters keep, while they narrow it, and every tab's count.
+    /// The import list's count while filters narrow it: how many of its
+    /// tab's entries the filters keep. The variant also holds the count of
+    /// every tab.
     #[cfg(desktop)]
     Import {
         narrowed: Option<bae_import::NarrowedCount>,

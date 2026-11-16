@@ -175,7 +175,8 @@ pub struct ImportListCount {
     /// while the text filter or the filter entry narrows it; `None` while
     /// nothing does.
     pub narrowed: Option<NarrowedCount>,
-    /// Every tab's count, whatever the list is narrowed by.
+    /// Every tab's count, whether or not the text filter or the filter entry
+    /// narrows the list.
     pub tabs: crate::TriageTabCounts,
 }
 

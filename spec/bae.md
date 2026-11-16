@@ -2611,12 +2611,12 @@ being sent, that share of its size, beside the stored bytes a live query of the
 files being sent reads; the files being sent together count their objects'
 bytes. Core sends each bar's
 fraction, its bytes done of its bytes in all, and the apps fill the bar to
-it. Each file's share is told by file too, for the Storage manager's rings
-and the Activity panel's Uploading bar.
-How fast they go is measured beside the database from the same watch's bytes,
-file by file, as each step of them goes, so a file sent in one request has a
-rate too: a rate for each release, its files being sent together, and for every
-file being sent together; no screen shows one file's rate, so none is sent. A
+it. Core also sends each file's share, keyed by file, for the Storage
+manager's rings and the Activity panel's Uploading bar. Core measures how fast
+they go outside the database, from the same watch's bytes, file by file, as
+each step of them goes, so a file sent in one request has a rate too: a rate
+for each release, its files being sent together, and for every file being sent
+together; no screen shows one file's rate, so none is sent. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
 the release offers no storage action but cancelling, which would race it
 otherwise. The query that reads a release's storage state decides each
@@ -2802,7 +2802,7 @@ writes it under a temporary name in its final folder, and renames it once it
 is whole and synced. While it downloads, the release's Storage manager row and
 its storage band fill Moving to This Mac… as far as its copies have downloaded, and
 the inspector shows the bytes of the whole release and of the file being
-downloaded, over a bar that fills to the share of the release's bytes down,
+downloaded, over a bar that fills to the share of the release's bytes downloaded,
 which core sends with the bytes. coven reports both as each file's
 bytes arrive, a few times a second; they are kept only in memory, keyed by
 release, beside the tables, in the stream of the active download's progress,

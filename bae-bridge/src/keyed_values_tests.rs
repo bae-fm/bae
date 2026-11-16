@@ -25,8 +25,9 @@ fn poll_once<F: Future>(pull: Pin<&mut F>) -> Poll<F::Output> {
     pull.poll(&mut Context::from_waker(Waker::noop()))
 }
 
-/// What a pull answers now; `None` while it would wait. The pull is polled
-/// on a runtime's clock, which it waits on to rest a moving key.
+/// What a pull answers now; `None` while it would wait. `pulled_now` polls
+/// the pull inside a runtime, whose timer the pull waits on to rest a moving
+/// key.
 fn pulled_now(values: &StreamValues) -> Option<Result<Vec<Vec<u8>>, BridgeError>> {
     let clock = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
     let _entered = clock.enter();
@@ -216,7 +217,7 @@ fn a_key_at_rest_is_pulled_when_it_flips_or_its_value_changes() {
 
     rests(share(0.5));
     assert!(!stream.moving(b"a".to_vec()));
-    assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
+    assert_eq!(pulled_now(&values), keys(&["a"]), "the pull returns the key when it comes to rest");
     assert!(!stream.moving(b"missing".to_vec()));
 }
 
@@ -253,7 +254,7 @@ fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() 
     // A paused download: nothing said for the quiet time.
     assert_eq!(values.rest_quiet_at(start + QUIET), None);
     assert!(!stream.moving(b"a".to_vec()));
-    assert_eq!(pulled_now(&values), keys(&["a"]), "coming to rest is pulled");
+    assert_eq!(pulled_now(&values), keys(&["a"]), "the pull returns the key when it comes to rest");
     assert_eq!(stream.latest(b"a".to_vec()), Some(download(100)));
 
     // Saying the same value again changes nothing.
@@ -336,7 +337,11 @@ fn a_pull_rests_a_key_left_unchanged_for_the_quiet_time() {
         assert!(stream.moving(Vec::new()));
 
         let started = Instant::now();
-        assert_eq!(values.next().await, Ok(vec![Vec::new()]), "coming to rest is pulled");
+        assert_eq!(
+            values.next().await,
+            Ok(vec![Vec::new()]),
+            "the pull returns the key when it comes to rest"
+        );
         assert!(started.elapsed() >= QUIET - Duration::from_millis(50));
         assert!(!stream.moving(Vec::new()));
     });

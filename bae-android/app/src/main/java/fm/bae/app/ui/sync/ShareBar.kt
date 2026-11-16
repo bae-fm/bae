@@ -44,7 +44,7 @@ private const val MOVING_REST_PHASE = 0.3f
 private const val MOVING_SHARE = 0.4f
 
 /**
- * Material 3's linear progress bar drawn from the fraction [showFraction] hands it: four tall, rounded,
+ * Material 3's linear progress bar drawn from the fraction that callers pass to [showFraction]: four tall, rounded,
  * the filled part, a gap, the rest of the track and a dot at its end that marks where the bar stops.
  * [showMoving] swaps the fraction for a piece that crosses the track again and again, for a step that
  * counts nothing.

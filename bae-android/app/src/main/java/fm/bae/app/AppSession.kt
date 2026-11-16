@@ -185,7 +185,9 @@ class OpenLibrary internal constructor(
                 onError = { error -> subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail) },
             )
         streamFeeds +=
-            stores.syncActivity.fileShares.feed(appHandle, scope) { bugs.report("read the files being sent", it) }
+            stores.syncActivity.fileShares.feed(appHandle, scope) {
+                bugs.report("read how much of each file bae has uploaded", it)
+            }
         screenSubscriptions += playbackValues(scope)
         screenSubscriptions += playbackTimeline(scope)
         streamFeeds +=

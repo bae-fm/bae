@@ -39,8 +39,8 @@ pub(crate) async fn scan_albums(services: &AppServices, collection: &Path, count
     tab_counts_until(services, |counts| counts.pending as usize == count).await;
 }
 
-/// The tab counts, as a list's count carries them, until `accept` admits
-/// some.
+/// Waits until `accept` admits the tab counts that the import list's count
+/// holds, and returns them.
 async fn tab_counts_until(
     services: &AppServices,
     accept: impl Fn(&bae_import::TriageTabCounts) -> bool,

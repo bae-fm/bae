@@ -566,9 +566,10 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     );
 }
 
-/// A list's count carries every tab's count, whatever the list is narrowed
-/// to: a candidate placed on Found moves Found's count, and skipping it moves
-/// the count to Skipped, in the count of a list open on Imported.
+/// A list's count includes every tab's count, whatever the list is narrowed
+/// to: placing a candidate on Found adds one to Found's count, and skipping it
+/// moves that one from Found to Skipped, even while the list is open on
+/// Imported.
 #[tokio::test]
 async fn the_list_count_carries_the_tab_counts() {
     let lib = Library::new().await;

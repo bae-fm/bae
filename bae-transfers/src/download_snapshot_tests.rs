@@ -49,8 +49,8 @@ fn a_release_has_come_as_far_as_its_files_before_and_its_file() {
     );
 }
 
-/// A release that has downloaded nothing has come no way, and so has one
-/// with no bytes to download.
+/// A release's progress fraction is 0 before bae downloads any bytes, and
+/// also when the release has no bytes to download.
 #[test]
 fn a_release_with_nothing_down_has_come_no_way() {
     assert_eq!(MoveToThisDeviceTransferProgress::begin(1_000).fraction, 0.0);

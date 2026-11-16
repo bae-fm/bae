@@ -334,13 +334,13 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         async move { manager.drain_uploads_for_test().await }
     });
     let sending = crate::followed::value_matching(&mut activity, |next| next.moving).await;
-    let line = sending.uploads.expect("the release's line shows while its file is sent");
+    let line = sending.uploads.expect("the release's line shows while bae sends its file");
     assert_eq!((line.batch, line.wait), (bae_views::TransferBatch { done: 0, total: 1 }, None));
-    assert_eq!(line.bar.done, 0.0, "nothing is stored");
+    assert_eq!(line.bar.done, 0.0, "the cloud holds none of the release's bytes yet");
     assert_eq!(
         line.bar.moving.iter().map(|moving| (moving.start, moving.share)).collect::<Vec<_>>(),
         vec![(0.0, 1.0)],
-        "the release's one file is on the move, all of its bytes"
+        "bae is sending the release's one file, which holds all of its bytes"
     );
     created.await.unwrap();
     resume.send(()).unwrap();

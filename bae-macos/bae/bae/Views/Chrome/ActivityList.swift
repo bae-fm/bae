@@ -173,8 +173,9 @@ extension BridgeSyncActivity {
 /// A pass running, then the Uploading, Pinning and Moving to This Mac lines, each
 /// while its batch holds a release, counting its releases done or showing
 /// what holds its queue back in the count's place, with a bar of its batch's
-/// bytes: the bytes done from the line's row, and each file or release on the
-/// move filled from its transfer's stream. Each queue's line ends in the
+/// bytes: the bytes done from the line's row, and the share done of each file
+/// or release that bae is transferring now, which the bar reads from that
+/// transfer's stream. Each queue's line ends in the
 /// button that pauses it.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity

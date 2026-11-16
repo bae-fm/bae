@@ -229,9 +229,9 @@ async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
 }
 
 /// The Pinning line's bar is the share of its batch's bytes pinned: none
-/// while its releases wait, the release downloading on the move with its
-/// share, the first release's size once it is pinned, and no line once the
-/// batch's last release is and the batch is over.
+/// while its releases wait; while a release downloads, the bar shows that
+/// release's share as moving; the first release's size once bae pins it; and
+/// no line once bae pins the batch's last release and the batch is over.
 #[tokio::test]
 async fn the_pin_bar_fills_with_each_release_pinned() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -254,7 +254,7 @@ async fn the_pin_bar_fills_with_each_release_pinned() {
                 share: first / total,
             }],
         }),
-        "the release downloading is on the move"
+        "the bar shows the downloading release's share as moving"
     );
     manager.pin_release_files_with_progress(&releases[0], entry, |_| {}).await.unwrap();
     manager.set_downloads_paused(true).await.unwrap();
