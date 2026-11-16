@@ -15,9 +15,6 @@ pub struct StorageSelection {
     /// The one release the list holds among those asked about, when it holds
     /// exactly one: the release the inspector shows.
     pub sole: Option<String>,
-    /// Whether the list holds any of the releases asked about, so the
-    /// selection has a release to act on.
-    pub holds_any: bool,
     pub selection_actions: Vec<bae_types::release_storage::ReleaseStorageAction>,
     /// Whether some selected release is mid-transition or its move failed:
     /// the selection offers only cancelling, which ends those.

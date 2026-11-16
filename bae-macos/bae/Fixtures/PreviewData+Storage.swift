@@ -557,7 +557,6 @@ extension PreviewData {
                 asked: Array(ids),
                 selected: [],
                 sole: nil,
-                holdsAny: false,
                 selectionActions: [],
                 cancelOnly: false
             )
@@ -566,7 +565,6 @@ extension PreviewData {
             asked: [row.id],
             selected: [row],
             sole: row.id,
-            holdsAny: true,
             selectionActions: row.release.storageActions,
             cancelOnly: row.release.transitioning
         )

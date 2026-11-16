@@ -5596,19 +5596,18 @@ Reads come two ways:
   size, and whether a search narrows it; a new sort, filter or search opens new
   queries. Its selection is a live query of its own. The app tells it which
   releases the person selected, and each value carries the row of each selected
-  release the list holds, on screen or not, whether it holds any, and the
-  storage actions all of them allow. The app offers only those actions. A row's
-  menu acts on the row drawn where the person clicked, or on the selection when
-  that row is in it. Another live query reads which
-  transfer queues hold work. Its inspector shows, and its storage actions act
+  release the list holds, on screen or not, and the storage actions all of them
+  allow. The app offers only those actions. A row's menu acts on the row drawn
+  where the person clicked, or on the selection when that row is in it. Another
+  live query reads which transfer queues hold work. Its inspector shows, and its storage actions act
   on, a selected release only while the list holds it: a release that finishes
   uploading out of the Local list, no longer matches the filter, or is deleted
   leaves the inspector and the actions' targets as it leaves the list, including
   while an action's confirmation or folder prompt is open. The details of the
   file selected in the inspector are a live read of that file by its id. The
-  inspector reads its release live by id: the release's files, each beside its upload while one
-  waits (whether it is being sent, and what it waits for with the error behind
-  that while this process holds it; how far it has got arrives apart, by file;
+  inspector reads its release live by id: the release's files, each beside its
+  upload while one waits (whether it is being sent, and what it waits for with
+  the error behind that while this process holds it; how far it has got arrives apart, by file;
   and while the release waits in or runs through the download queue, whether the
   file is kept whole on this device yet, as coven's `coven_pins` says; and
   whether coven is downloading the file now to be kept, as `coven_downloading`

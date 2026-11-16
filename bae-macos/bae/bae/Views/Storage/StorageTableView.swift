@@ -549,7 +549,7 @@ extension StorageTableView.Coordinator {
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
         let targets = menuTargets(forClicked: clicked)
-        guard targets.holdsAny else { return entries }
+        guard !targets.rows.isEmpty else { return entries }
         let releaseIds = targets.rows.map(\.id)
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
@@ -611,7 +611,6 @@ extension StorageTableView.Coordinator {
         {
             return MenuTargets(
                 rows: answer.selected,
-                holdsAny: answer.holdsAny,
                 actions: answer.selectionActions,
                 cancelOnly: answer.cancelOnly
             )
@@ -620,18 +619,15 @@ extension StorageTableView.Coordinator {
         applySelection([clicked.id], to: tableView)
         return MenuTargets(
             rows: [clicked],
-            holdsAny: true,
             actions: clicked.release.storageActions,
             cancelOnly: clicked.cancelOnly
         )
     }
 
-    /// The releases a menu acts on, whether core found any, the storage
-    /// actions they all allow, and whether Cancel is the only action one of
-    /// them offers.
+    /// The releases a menu acts on, the storage actions they all allow, and
+    /// whether Cancel is the only action one of them offers.
     private struct MenuTargets {
         let rows: [BridgeStorageRow]
-        let holdsAny: Bool
         let actions: [BridgeReleaseStorageAction]
         let cancelOnly: Bool
     }

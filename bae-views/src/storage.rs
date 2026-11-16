@@ -180,10 +180,10 @@ impl LibraryViews {
                 let rows = storage_selected_on(&sql, filter, pattern.as_deref(), selected)?;
                 let actions =
                     storage_selection_actions_on(&sql, filter, pattern.as_deref(), selected)?;
-                let held = storage_selection_held_on(&sql, filter, pattern.as_deref(), selected)?;
-                Ok((rows, actions, held))
+                let sole = storage_sole_selected_on(&sql, filter, pattern.as_deref(), selected)?;
+                Ok((rows, actions, sole))
             })
-            .process(|(rows, actions, held)| Ok((process_storage_rows(rows)?, actions, held)))
+            .process(|(rows, actions, sole)| Ok((process_storage_rows(rows)?, actions, sole)))
     }
 
     /// Follow the transfer queues holding work, as the Storage Manager shows
@@ -196,19 +196,9 @@ impl LibraryViews {
 }
 
 /// What the Storage Manager's selection read returns: the rows of the selected
-/// releases the list holds, what all of them allow, and which of them the list
-/// holds.
-pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbStorageActionFlags, DbSelectionHeld);
-
-/// Which of the releases a selection asked about the Storage Manager list
-/// holds, as SQL counts them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbSelectionHeld {
-    /// The one release the list holds among them, when it holds exactly one.
-    pub sole: Option<String>,
-    /// Whether the list holds any of them.
-    pub any: bool,
-}
+/// releases the list holds, what all of them allow, and the one release the
+/// list holds among them when it holds exactly one.
+pub type DbStorageSelection = (Vec<DbStorageRow>, crate::DbStorageActionFlags, Option<String>);
 
 /// How many releases the Storage Manager list holds, their files' total size,
 /// and whether a search narrows it.
@@ -233,12 +223,11 @@ pub fn resolve_storage_window(read: WindowRead<DbStorageRow>) -> crate::ListWind
 /// action one of them offers.
 pub fn resolve_storage_selection(
     asked: &BTreeSet<String>,
-    (rows, actions, held): DbStorageSelection,
+    (rows, actions, sole): DbStorageSelection,
 ) -> crate::StorageSelection {
     crate::StorageSelection {
         asked: asked.iter().cloned().collect(),
-        sole: held.sole,
-        holds_any: held.any,
+        sole,
         selected: rows.into_iter().map(StorageRow::from_raw).collect(),
         selection_actions: actions.list(),
         cancel_only: actions.cancel_only,
@@ -635,17 +624,17 @@ pub(crate) fn storage_holds_all_on(
 /// The one release of the `release_ids` the list under `filter` and the
 /// search `pattern` holds, when it holds exactly one of them; none for no
 /// release or several.
-pub(crate) fn storage_selection_held_on(
+pub(crate) fn storage_sole_selected_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,
     release_ids: &BTreeSet<String>,
-) -> Result<DbSelectionHeld, DbError> {
+) -> Result<Option<String>, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let selected = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("selected release ids", error))?;
     let statement = format!(
-        "SELECT CASE WHEN COUNT(*) = 1 THEN MIN(listing.release_id) END, COUNT(*) > 0 \
+        "SELECT CASE WHEN COUNT(*) = 1 THEN MIN(listing.release_id) END \
          FROM release_listing listing \
          WHERE {filter} AND {searched} \
             AND listing.release_id IN (SELECT value FROM json_each(:selected))",
@@ -656,9 +645,7 @@ pub(crate) fn storage_selection_held_on(
     if let Some(pattern) = &pattern {
         params.push((":search", pattern));
     }
-    Ok(sql.query_row(&statement, params.as_slice(), |row| {
-        Ok(DbSelectionHeld { sole: row.get(0)?, any: row.get(1)? })
-    })?)
+    Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
 }
 
 /// What every one of the `release_ids` the list under `filter` and the search
