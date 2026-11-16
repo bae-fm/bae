@@ -23,6 +23,7 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
+import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeHeldImage
@@ -808,7 +809,7 @@ internal open class FakeAppHandle(
     override suspend fun movePlaylistEntry(
         playlist: String,
         position: String,
-        to: ULong,
+        place: BridgeEntryPlace,
     ) {
         unfaked("movePlaylistEntry")
     }

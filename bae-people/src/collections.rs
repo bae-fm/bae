@@ -13,6 +13,16 @@ pub enum RatingTarget {
     Track(String),
 }
 
+/// Where a move puts a playlist entry: just before or just after another
+/// entry, named by its position id, or one place up or down.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryPlace {
+    Before(uuid::Uuid),
+    After(uuid::Uuid),
+    Up,
+    Down,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rating {
     pub person: coven::MemberId,

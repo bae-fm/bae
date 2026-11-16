@@ -21,6 +21,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgePlayOutcome
 
 /** A playlist's page plays the playlist, or one of its entries, through the session. */
@@ -39,14 +40,14 @@ class PlaylistScreenTest {
     private class PlayingHandle : FakeAppHandle() {
         val played = mutableListOf<Played>()
         val removed = mutableListOf<String>()
-        val moved = mutableListOf<Pair<String, ULong>>()
+        val moved = mutableListOf<Pair<String, BridgeEntryPlace>>()
 
         override suspend fun movePlaylistEntry(
             playlist: String,
             position: String,
-            to: ULong,
+            place: BridgeEntryPlace,
         ) {
-            moved += position to to
+            moved += position to place
         }
 
         override suspend fun removePlaylistEntry(
@@ -147,6 +148,6 @@ class PlaylistScreenTest {
         compose.runOnUiThread { down.action() }
         compose.waitUntil(HANG_GUARD_MS) { handle.moved.isNotEmpty() }
 
-        assertEquals(listOf("position-1" to 1uL), handle.moved)
+        assertEquals(listOf("position-1" to BridgeEntryPlace.Down), handle.moved)
     }
 }

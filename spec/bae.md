@@ -3033,7 +3033,8 @@ holds, counted by the database, which both apps read to tell an empty list from
 one that has rows. A playlist's page shows its owner, count, length
 and who sees it, then its tracks in order, each with its credit line (§2.3),
 album and release cover. On macOS each track also shows its number in the
-playlist, from 1, which the page's query counts. The Add to playlist menu offers only the person's own
+playlist, from 1, which the page's query counts; while a move's write runs,
+the rows show no number. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
@@ -3063,14 +3064,16 @@ device. Its tracks stay in the library.") and then deletes it on every device. S
 an edit writes the name and who sees it in one write, so a failure changes
 neither and leaves the dialog open with its error. A track's menu on a playlist's page offers Play
 next and Add to queue to everyone, and *Remove from playlist* to the owner. The
-owner reorders the entries by dragging a row: on macOS a line marks where the
-row goes when the owner lets go, and on Android a held row lifts and the rows
-between make room. Letting go writes a move: the row's position id and the
-place it goes, counted from 0. On Android a screen reader also offers *Move up*
-and *Move down* on each of the owner's rows, each a move of one place, except
-*Move up* on the first entry and *Move down* on the last, which the page's
-query marks on each row. The row stays where the person let it go until the
-write returns; then the page draws the entries as stored, so a write that fails
+owner reorders the entries by dragging a row: on macOS a line marks the edge
+of the row the dragged copy is over, where the entry goes when the owner lets
+go, and on Android a held row lifts and the rows between make room. Letting go
+writes a move: the row's position id and the entry it now sits just before or
+just after, and core finds that entry's place in the playlist's order. On
+Android a screen reader also offers *Move up* and *Move down* on each of the
+owner's rows, each a move of one place that core makes, except *Move up* on the
+first entry and *Move down* on the last, which the page's query marks on each
+row. The row stays where the person let it go until the write returns; then the
+page draws the entries as stored, so a write that fails
 puts the row back.
 
 On Android a track's menu, on an album's page and on a playlist's, offers *Add
@@ -3080,9 +3083,10 @@ makes a new one holding it.
 
 Ben adds a track to his party playlist, which holds seven entries: the new
 entry takes position 7. He drags it to the top: the move names the entry and
-place 0, and core puts it there in one write, renumbering the other entries
-from 1 in the order they were in. A move to a place past the last entry puts the
-entry last, and a move of an entry the playlist no longer holds fails.
+the entry it now sits just before, and core puts it there in one write,
+renumbering the other entries from 1 in the order they were in. A move up from
+the first entry or down from the last leaves the order as it was, and a move
+that names an entry the playlist no longer holds fails.
 
 ### 5.4 Profiles
 

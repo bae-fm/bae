@@ -183,18 +183,18 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Move the entry `positionId` to the place `to` among `playlist`'s
-    /// entries, and show the error when the write fails.
+    /// Move the entry `positionId` to `place` in `playlist`, and show the
+    /// error when the write fails.
     private func move(
         _ positionId: String,
-        to: Int,
+        to place: BridgeEntryPlace,
         in playlist: BridgePlaylistSummary
     ) async {
         do {
             try await library.playlistWrites.moveEntry(
                 playlist.id,
                 positionId,
-                UInt64(to)
+                place
             )
         }
         catch {

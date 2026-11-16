@@ -2,7 +2,8 @@ use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
 use crate::collections::{
-    AlbumRatings, CollectionError, OtherRating, Playlist, PlaylistEntry, RatingTarget, Stars,
+    AlbumRatings, CollectionError, EntryPlace, OtherRating, Playlist, PlaylistEntry, RatingTarget,
+    Stars,
 };
 use crate::people::Sharing;
 
@@ -146,19 +147,20 @@ impl People {
         .await
     }
 
-    /// Moves the entry `position` to the place `to` among the playlist's
-    /// entries, counted from 0, or to the end when `to` is past it, and
-    /// renumbers every entry from 0 in the order that leaves. Fails as
-    /// missing when the playlist holds no such entry.
+    /// Moves the entry `position` to `place` in the playlist, and renumbers
+    /// every entry from 0 in the resulting order. Fails as missing when the
+    /// playlist holds no such entry, or no entry `place` names.
     pub async fn move_playlist_entry(
         &self,
         playlist: uuid::Uuid,
         position: uuid::Uuid,
-        to: u64,
+        place: EntryPlace,
     ) -> Result<(), CollectionError> {
-        let to = i64::try_from(to).unwrap_or(i64::MAX);
         self.change_playlist(playlist, move |sql| {
-            let changed = sql.execute(
+            let Some(to) = place_among_others_on(sql, playlist, position, place)? else {
+                return Ok(Err(CollectionError::Missing));
+            };
+            sql.execute(
                 "WITH others AS ( \
                      SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place \
                      FROM playlist_entries WHERE playlist_id = ?1 AND position_id <> ?2), \
@@ -166,16 +168,13 @@ impl People {
                      SELECT position_id, CASE WHEN place >= ?3 THEN place + 1 ELSE place END \
                             AS place FROM others \
                      UNION ALL \
-                     SELECT position_id, MIN(?3, (SELECT COUNT(*) FROM others)) \
-                     FROM playlist_entries WHERE playlist_id = ?1 AND position_id = ?2) \
+                     SELECT ?2, MIN(?3, (SELECT COUNT(*) FROM others))) \
                  UPDATE playlist_entries SET position = placed.place FROM placed \
                  WHERE playlist_entries.playlist_id = ?1 \
-                   AND playlist_entries.position_id = placed.position_id \
-                   AND EXISTS (SELECT 1 FROM playlist_entries \
-                               WHERE playlist_id = ?1 AND position_id = ?2)",
+                   AND playlist_entries.position_id = placed.position_id",
                 params![playlist.to_string(), position.to_string(), to],
             )?;
-            Ok(if changed > 0 { Ok(()) } else { Err(CollectionError::Missing) })
+            Ok(Ok(()))
         })
         .await
     }
@@ -313,4 +312,53 @@ pub fn album_ratings_on(
 struct StoredRating {
     name: String,
     stars: i64,
+}
+
+/// The place, counted from 0 among the playlist's other entries, that a move
+/// of the entry `moved` to `place` puts it at; none when the playlist holds no
+/// such entry, or no entry `place` names.
+fn place_among_others_on(
+    sql: &CovenWrite<'_>,
+    playlist: uuid::Uuid,
+    moved: uuid::Uuid,
+    place: EntryPlace,
+) -> Result<Option<i64>, DbError> {
+    // The entries before `beside`, other than the moved one; `after` counts
+    // `beside` itself as well.
+    let before_entry = |beside: uuid::Uuid, after: bool| -> Result<Option<i64>, DbError> {
+        Ok(sql
+            .query_row(
+                &format!(
+                    "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
+                             WHERE other.playlist_id = ?1 AND other.position_id <> ?2 \
+                               AND other.position {compare} beside.position) \
+                     FROM playlist_entries AS beside \
+                     WHERE beside.playlist_id = ?1 AND beside.position_id = ?3 \
+                       AND beside.position_id <> ?2 \
+                       AND EXISTS (SELECT 1 FROM playlist_entries \
+                                   WHERE playlist_id = ?1 AND position_id = ?2)",
+                    compare = if after { "<=" } else { "<" },
+                ),
+                params![playlist.to_string(), moved.to_string(), beside.to_string()],
+                |row| row.get(0),
+            )
+            .optional()?)
+    };
+    match place {
+        EntryPlace::Before(beside) => before_entry(beside, false),
+        EntryPlace::After(beside) => before_entry(beside, true),
+        EntryPlace::Up | EntryPlace::Down => {
+            let own: Option<i64> = sql
+                .query_row(
+                    "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
+                             WHERE other.playlist_id = ?1 AND other.position < own.position) \
+                     FROM playlist_entries AS own \
+                     WHERE own.playlist_id = ?1 AND own.position_id = ?2",
+                    params![playlist.to_string(), moved.to_string()],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            Ok(own.map(|own| if place == EntryPlace::Up { (own - 1).max(0) } else { own + 1 }))
+        }
+    }
 }

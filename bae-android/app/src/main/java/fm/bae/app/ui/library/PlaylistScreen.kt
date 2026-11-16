@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +44,7 @@ import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.runTrackQueueCommand
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistSummary
 
@@ -147,10 +150,10 @@ internal fun PlaylistPage(
                         session.appHandle.removePlaylistEntry(playlistId, positionId)
                     }
                 },
-                onMove = { positionId, to, onReturned ->
-                    session.messages.perform("move $positionId to $to in playlist $playlistId") {
+                onMove = { positionId, place, onReturned ->
+                    session.messages.perform("move $positionId to $place in playlist $playlistId") {
                         try {
-                            session.appHandle.movePlaylistEntry(playlistId, positionId, to.toULong())
+                            session.appHandle.movePlaylistEntry(playlistId, positionId, place)
                         } finally {
                             onReturned()
                         }
@@ -172,7 +175,14 @@ internal fun PlaylistContent(
     val context = LocalContext.current
     val summary = detail.summary
     val reorder = rememberPlaylistReorder(detail, actions.onMove)
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    val latestReorder by rememberUpdatedState(reorder)
+    val listState = rememberLazyListState()
+    val reorderState =
+        rememberReorderableLazyListState(listState) { from, to ->
+            // A step of the drag moves the rows on screen only; letting go writes the one move.
+            (to.key as? String)?.let { onto -> latestReorder.step(onto, down = to.index > from.index) }
+        }
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
@@ -212,6 +222,6 @@ internal fun PlaylistContent(
                 }
             }
         }
-        playlistEntries(detail, actions, reorder, context)
+        playlistEntries(detail, actions, reorder, reorderState, context)
     }
 }

@@ -24,11 +24,14 @@ public struct PlaylistWrites: Sendable {
     public let removeEntry:
         @Sendable (_ playlistId: String, _ positionId: String) async throws
             -> Void
-    /// Move the entry `positionId` to the place `to` among a playlist's
-    /// entries, counted from 0, or to the end past them.
+    /// Move the entry `positionId` of a playlist to `place`: just before or
+    /// just after another entry, or one place up or down.
     public let moveEntry:
-        @Sendable (_ playlistId: String, _ positionId: String, _ to: UInt64)
-            async throws -> Void
+        @Sendable (
+            _ playlistId: String,
+            _ positionId: String,
+            _ place: BridgeEntryPlace
+        ) async throws -> Void
     /// Delete a playlist, on every device. Its tracks stay in the library.
     public let delete: @Sendable (_ playlistId: String) async throws -> Void
 
@@ -50,7 +53,8 @@ public struct PlaylistWrites: Sendable {
                 _ in throw StubError.notImplemented
             },
         moveEntry:
-            @escaping @Sendable (String, String, UInt64) async throws -> Void =
+            @escaping @Sendable (String, String, BridgeEntryPlace) async throws
+            -> Void =
             {
                 _,
                 _,
@@ -104,7 +108,7 @@ public struct PlaylistWrites: Sendable {
                     try await handle.movePlaylistEntry(
                         playlist: $0,
                         position: $1,
-                        to: $2
+                        place: $2
                     )
                 },
                 delete: { try await handle.deletePlaylist(id: $0) }

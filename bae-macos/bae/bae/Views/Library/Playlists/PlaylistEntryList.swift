@@ -3,27 +3,27 @@ import SwiftUI
 
 /// A playlist's entries in order, each with the menu of a track in a
 /// playlist. The playlist's owner moves an entry by dragging its row: the row
-/// stays in place and dims, a copy follows the pointer, and a line over the
-/// gap marks where the entry goes when the owner lets go; letting go writes
-/// the move.
+/// stays in place and dims, a copy follows the pointer, and a line marks the
+/// edge of the row the entry would go beside; letting go writes the move.
 struct PlaylistEntryList: View {
     let detail: BridgePlaylistDetail
     let play: (BridgePlaylistEntryRow) -> Void
     let playNext: (BridgePlaylistEntryRow) -> Void
     let addToQueue: (BridgePlaylistEntryRow) -> Void
     let remove: (BridgePlaylistEntryRow) -> Void
-    /// Move the entry `positionId` to the place `to` among the entries, where
-    /// core changes the order, returning when the write returns.
-    let move: (_ positionId: String, _ to: Int) async -> Void
+    /// Move the entry `positionId` to `place`, where core finds the entry's
+    /// new place in the playlist, returning when the write returns.
+    let move: (_ positionId: String, _ place: BridgeEntryPlace) async -> Void
 
     @State
     private var drag: PlaylistEntryDrag?
-    /// The order just written, drawn until its write returns. Then the list
-    /// draws the playlist's read, which shows what is stored.
+    /// The order the list wrote, which it draws until the write returns. Then
+    /// the list draws the playlist's rows, in the order the library stores.
     @State
     private var held: [String]?
+    /// Where the list draws each row it has on screen, by position id.
     @State
-    private var rowHeight: CGFloat = 0
+    private var rowFrames: [String: CGRect] = [:]
 
     private static let space = "playlistEntries"
     /// How faint the dragged entry's own row is, and how faint the copy
@@ -34,13 +34,13 @@ struct PlaylistEntryList: View {
     private var canChange: Bool { detail.summary.yours }
 
     var body: some View {
-        let entries = shown
         LazyVStack(spacing: 0) {
-            ForEach(Array(entries.enumerated()), id: \.element.positionId) {
-                index,
-                entry in
+            ForEach(shown, id: \.positionId) { entry in
+                // While a move's write runs, the numbers core gave the rows
+                // no longer match the order drawn, so the rows draw none.
                 PlaylistEntryRow(
                     entry: entry,
+                    number: held == nil ? entry.number : nil,
                     play: { play(entry) },
                     playNext: { playNext(entry) },
                     addToQueue: { addToQueue(entry) },
@@ -53,29 +53,33 @@ struct PlaylistEntryList: View {
                 .background(
                     GeometryReader { proxy in
                         Color.clear.preference(
-                            key: PlaylistEntryHeightKey.self,
-                            value: proxy.size.height
+                            key: PlaylistEntryFramesKey.self,
+                            value: [
+                                entry.positionId: proxy.frame(
+                                    in: .named(Self.space)
+                                )
+                            ]
                         )
                     }
                 )
                 .gesture(
-                    dragGesture(entry, index: index, count: entries.count),
+                    dragGesture(entry),
                     including: canChange ? .all : .subviews
                 )
             }
         }
         .coordinateSpace(name: Self.space)
-        .onPreferenceChange(PlaylistEntryHeightKey.self) { rowHeight = $0 }
+        .onPreferenceChange(PlaylistEntryFramesKey.self) { rowFrames = $0 }
         .overlay(alignment: .topLeading) {
-            if let drag, rowHeight > 0 {
-                insertLine(drag: drag, count: entries.count)
+            if let drag {
+                insertLine(drag.target(over: rowFrames))
                 floatingCopy(drag)
             }
         }
     }
 
-    /// The entries as drawn: the order just written until its write returns,
-    /// else the query's rows.
+    /// The entries as drawn: the order the list wrote until its write
+    /// returns, else the playlist's rows.
     private var shown: [BridgePlaylistEntryRow] {
         guard let held else {
             return detail.entries
@@ -86,23 +90,19 @@ struct PlaylistEntryList: View {
         return held.compactMap { byId[$0] }
     }
 
-    /// The drag of `entry`, drawn at `index` among `count` rows.
-    private func dragGesture(
-        _ entry: BridgePlaylistEntryRow,
-        index: Int,
-        count: Int
-    ) -> some Gesture {
+    /// The person's drag of `entry`.
+    private func dragGesture(_ entry: BridgePlaylistEntryRow) -> some Gesture {
         DragGesture(
             minimumDistance: ThemeSpace.inline,
             coordinateSpace: .named(Self.space)
         )
         .onChanged { value in
-            guard rowHeight > 0 else { return }
             if drag == nil {
+                guard let frame = rowFrames[entry.positionId] else { return }
                 drag = PlaylistEntryDrag(
                     entry: entry,
-                    index: index,
-                    grab: value.startLocation.y - CGFloat(index) * rowHeight,
+                    grab: value.startLocation.y - frame.minY,
+                    height: frame.height,
                     pointerY: value.location.y
                 )
             }
@@ -111,30 +111,25 @@ struct PlaylistEntryList: View {
         .onEnded { _ in
             guard let finished = drag else { return }
             drag = nil
-            let target = finished.target(rowHeight: rowHeight, count: count)
-            guard target != finished.index else { return }
-            var order = shown.map(\.positionId)
-            order.insert(order.remove(at: finished.index), at: target)
-            held = order
+            guard let target = finished.target(over: rowFrames) else { return }
+            held = target.order(moving: finished.entry, in: shown)
             Task {
-                await move(finished.entry.positionId, target)
+                await move(finished.entry.positionId, target.place)
                 held = nil
             }
         }
     }
 
-    /// The line over the gap the dragged entry moves to when the owner lets
-    /// go; nothing while it would stay where it is.
+    /// The line at the edge of the row the dragged entry would go beside;
+    /// nothing while the copy is over no other row.
     @ViewBuilder
-    private func insertLine(drag: PlaylistEntryDrag, count: Int) -> some View {
-        let target = drag.target(rowHeight: rowHeight, count: count)
-        if target != drag.index {
-            let gap = target > drag.index ? target + 1 : target
+    private func insertLine(_ target: PlaylistEntryTarget?) -> some View {
+        if let target {
             Rectangle()
                 .fill(Color.accentColor)
                 .frame(height: 2)
                 .padding(.horizontal, ThemeSpace.related)
-                .offset(y: CGFloat(gap) * rowHeight - 1)
+                .offset(y: target.edge - 1)
                 .allowsHitTesting(false)
         }
     }
@@ -143,6 +138,7 @@ struct PlaylistEntryList: View {
     private func floatingCopy(_ drag: PlaylistEntryDrag) -> some View {
         PlaylistEntryRow(
             entry: drag.entry,
+            number: drag.entry.number,
             play: {},
             playNext: {},
             addToQueue: {},
@@ -163,27 +159,70 @@ struct PlaylistEntryList: View {
     }
 }
 
-/// The entry being dragged, the place its row was drawn at, where in the row
-/// the pointer took hold, and where the pointer is, in the list's own space.
+/// The entry the person is dragging, where in its row the pointer took hold,
+/// the row's height, and where the pointer is, in the list's own space.
 private struct PlaylistEntryDrag {
     let entry: BridgePlaylistEntryRow
-    let index: Int
     let grab: CGFloat
+    let height: CGFloat
     var pointerY: CGFloat
 
-    /// The slot the entry would take: the one its dragged copy's middle is
-    /// over, kept inside the list.
-    func target(rowHeight: CGFloat, count: Int) -> Int {
-        let middle = pointerY - grab + rowHeight / 2
-        return min(max(Int((middle / rowHeight).rounded(.down)), 0), count - 1)
+    /// The row the dragged copy's middle is over, from the rows' `frames`,
+    /// and whether the entry goes before or after it; nil while the middle
+    /// is over the dragged entry's own row or over no row.
+    func target(over frames: [String: CGRect]) -> PlaylistEntryTarget? {
+        let middle = pointerY - grab + height / 2
+        guard
+            let (positionId, frame) = frames.first(where: {
+                $0.value.minY <= middle && middle < $0.value.maxY
+            }),
+            positionId != entry.positionId
+        else {
+            return nil
+        }
+        let after = middle >= frame.midY
+        return PlaylistEntryTarget(
+            beside: positionId,
+            after: after,
+            edge: after ? frame.maxY : frame.minY
+        )
     }
 }
 
-private struct PlaylistEntryHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
+/// Where a dropped entry goes: just before or just after the entry `beside`,
+/// and the y of the row edge the line marks.
+private struct PlaylistEntryTarget {
+    let beside: String
+    let after: Bool
+    let edge: CGFloat
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
+    /// The place core is sent.
+    var place: BridgeEntryPlace {
+        after ? .after(positionId: beside) : .before(positionId: beside)
+    }
+
+    /// The order of `rows`' ids with `moved` at this place, which the list
+    /// draws until the move's write returns.
+    func order(
+        moving moved: BridgePlaylistEntryRow,
+        in rows: [BridgePlaylistEntryRow]
+    ) -> [String] {
+        var order = rows.map(\.positionId).filter { $0 != moved.positionId }
+        let at = order.firstIndex(of: beside).map { after ? $0 + 1 : $0 }
+        order.insert(moved.positionId, at: at ?? order.count)
+        return order
+    }
+}
+
+/// Each drawn row's frame in the list's space, by position id.
+private struct PlaylistEntryFramesKey: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+
+    static func reduce(
+        value: inout [String: CGRect],
+        nextValue: () -> [String: CGRect]
+    ) {
+        value.merge(nextValue()) { $1 }
     }
 }
 
@@ -192,6 +231,8 @@ private struct PlaylistEntryHeightKey: PreferenceKey {
 /// `remove` is given.
 private struct PlaylistEntryRow: View {
     let entry: BridgePlaylistEntryRow
+    /// The entry's number in the playlist, or nil to draw none.
+    let number: UInt64?
     let play: () -> Void
     let playNext: () -> Void
     let addToQueue: () -> Void
@@ -202,7 +243,7 @@ private struct PlaylistEntryRow: View {
 
     var body: some View {
         MacListRow(
-            lead: String(entry.number),
+            lead: number.map { String($0) } ?? "",
             cover: entry.cover,
             title: entry.title,
             subtitle: FactList.joined([entry.artistLine.text, entry.albumTitle]

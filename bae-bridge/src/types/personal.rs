@@ -44,6 +44,31 @@ mirror_enum! { BridgeRatingTarget = bae_people::collections::RatingTarget,
     variants: { Album(id), Track(id) },
 }
 
+/// Where a move puts a playlist entry: just before or just after another
+/// entry, named by its position id, or one place up or down.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeEntryPlace {
+    Before { position_id: String },
+    After { position_id: String },
+    Up,
+    Down,
+}
+
+impl BridgeEntryPlace {
+    pub(crate) fn into_core(self) -> Result<bae_people::collections::EntryPlace, BridgeError> {
+        use bae_people::collections::EntryPlace;
+        let id = |position_id: String| -> Result<_, BridgeError> {
+            position_id.parse().map_err(BridgeError::config)
+        };
+        Ok(match self {
+            Self::Before { position_id } => EntryPlace::Before(id(position_id)?),
+            Self::After { position_id } => EntryPlace::After(id(position_id)?),
+            Self::Up => EntryPlace::Up,
+            Self::Down => EntryPlace::Down,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgePersonProfile {
     pub id: String,

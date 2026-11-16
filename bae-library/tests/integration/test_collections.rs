@@ -61,17 +61,27 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
         entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>()
     };
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, b, c]);
-    // A move puts the entry at its place among the others, counted from 0,
-    // or at the end past them; one naming an entry the playlist lacks is
-    // refused and moves nothing.
-    people.move_playlist_entry(id, b, 0).await.unwrap();
+    // move_playlist_entry puts the entry just before or just after the entry
+    // it names, or one place up or down, and keeps it in the playlist at
+    // either end. It refuses a move that names an entry the playlist lacks,
+    // and the order stays as it was.
+    use bae_people::collections::EntryPlace;
+    people.move_playlist_entry(id, b, EntryPlace::Before(a)).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![b, a, c]);
-    people.move_playlist_entry(id, b, 9).await.unwrap();
+    people.move_playlist_entry(id, b, EntryPlace::After(c)).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
-    assert!(people.move_playlist_entry(id, uuid::Uuid::nil(), 0).await.is_err());
+    people.move_playlist_entry(id, b, EntryPlace::Down).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
-    people.move_playlist_entry(id, c, 0).await.unwrap();
-    people.move_playlist_entry(id, b, 1).await.unwrap();
+    let nil = uuid::Uuid::nil();
+    assert!(people.move_playlist_entry(id, nil, EntryPlace::Up).await.is_err());
+    assert!(people.move_playlist_entry(id, a, EntryPlace::After(nil)).await.is_err());
+    assert!(people.move_playlist_entry(id, nil, EntryPlace::Before(a)).await.is_err());
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
+    people.move_playlist_entry(id, c, EntryPlace::Up).await.unwrap();
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![c, a, b]);
+    people.move_playlist_entry(id, c, EntryPlace::Up).await.unwrap();
+    assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![c, a, b]);
+    people.move_playlist_entry(id, a, EntryPlace::Down).await.unwrap();
     let entries = people.playlist_entries(id).await.unwrap();
     assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);
     assert_eq!(entries[0].track_id, first);
@@ -342,7 +352,10 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     assert_eq!(grown.summary.track_count.count, 3);
     let mut order: Vec<_> = grown.entries.iter().map(|entry| entry.position_id).collect();
     order.rotate_right(1);
-    people.move_playlist_entry(id, appended, 0).await.unwrap();
+    people
+        .move_playlist_entry(id, appended, bae_people::collections::EntryPlace::Before(order[1]))
+        .await
+        .unwrap();
     let reordered = detail_matching(&mut detail, |detail| {
         detail.as_ref().is_some_and(|detail| detail.entries[0].position_id == appended)
     })
