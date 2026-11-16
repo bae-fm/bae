@@ -77,18 +77,18 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
             guard buttons.count == kinds.count, let first = buttons.first,
                 let bar = first.superview
             else {
-                // The window updates many times a second; one warning says
-                // it.
+                // The window updates many times a second, so the placer logs
+                // the missing buttons only once.
                 if !reportedMissing {
                     reportedMissing = true
                     let missing = found.filter { $0.1 == nil }
                         .map { Self.name(of: $0.0) }
                     logger.warning(
                         """
-                        Settings window \(window.title) leaves its buttons \
-                        where they are: missing \
-                        \(missing.joined(separator: ", ")), or the buttons \
-                        are in no view
+                        bae cannot move the buttons of the Settings window \
+                        \(window.title): the window has no \
+                        \(missing.joined(separator: ", ")) button, or the \
+                        buttons have no superview
                         """
                     )
                 }

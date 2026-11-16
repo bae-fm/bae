@@ -6,8 +6,9 @@ import SwiftUI
 struct CandidateListMenuState {
     /// Every watched root with where its scan stands and whether it is on a
     /// network volume, which is checked on a schedule rather than reported
-    /// the moment it changes: core's folder scans. `nil` until core first
-    /// delivers them, when the menu lists no root.
+    /// the moment it changes: core's folder scans. The folders are `nil`
+    /// until core first delivers them, and until then the menu lists no
+    /// root.
     let folders: [BridgeWatchedFolderScanStatus]?
     /// Whether any root's last scan failed or left it not watched, which
     /// also marks the trigger.

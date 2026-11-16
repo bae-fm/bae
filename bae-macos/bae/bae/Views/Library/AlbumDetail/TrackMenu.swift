@@ -9,7 +9,7 @@ struct TrackMenu: MacMenuPart {
     /// among several, else the row's track alone.
     let targets: [String]
     /// What the menu does with several picked tracks, or `nil` where the
-    /// list picks no tracks.
+    /// list does not let the person pick tracks.
     let picking: TrackPicking?
     let onPlay: () -> Void
     let onAddNext: (String) -> Void

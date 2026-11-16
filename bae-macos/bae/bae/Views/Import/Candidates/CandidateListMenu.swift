@@ -33,7 +33,8 @@ struct CandidateListMenu: View {
     private var state: CandidateListMenuState {
         CandidateListMenuState(
             folders: importStore.folderScans?.statuses,
-            // Before the first delivery, no scan is known to have failed.
+            // Until the folder scans query returns its first value, the menu
+            // shows no scan problem.
             hasScanProblem: importStore.folderScans?.hasProblem == true,
             refreshingFolders: refreshingFolders,
             hasGroups: hasGroups,

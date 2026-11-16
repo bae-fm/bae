@@ -115,8 +115,9 @@ struct TrackRowView: View {
     var onRate: ((BridgeStars?) -> Void)?
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
-    /// What a menu on several picked tracks does, or `nil` where the list
-    /// picks no tracks. The picks themselves are the page's, in `UiStore`.
+    /// What the menu does with several picked tracks, or `nil` where the
+    /// person cannot pick tracks in this list. `UiStore` holds the page's
+    /// picked tracks.
     var picking: TrackPicking?
 
     @State

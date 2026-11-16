@@ -9,7 +9,8 @@ struct ImportListFilterField: View {
     var focused: FocusState<Bool>.Binding
     /// Reads the count for the filter the field holds now; `nil` while
     /// nothing narrows the list, and while core has not counted under this
-    /// filter. Nothing stands in for a count still being read.
+    /// filter. The field shows nothing in place of the count while core
+    /// counts.
     let narrowed: () -> BridgeNarrowedCount?
 
     var body: some View {

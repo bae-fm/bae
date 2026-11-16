@@ -11,8 +11,9 @@ struct StorageInspector: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Only the part of the selection the list holds, so the
-            // inspector never shows a release the list doesn't.
+            // The inspector shows a release only when the list holds exactly
+            // one of the selected releases, so it never shows a release the
+            // list does not show.
             if let releaseId = storageManagerStore.soleRelease {
                 StorageContentsInspector(
                     releaseId: releaseId,

@@ -1,5 +1,5 @@
-/// One feed of values a probe answers a read with: a test emits, the read
-/// takes them in order.
+/// A probe answers each read with the next value from this feed. A test
+/// emits the values, and the read takes them in order.
 final class Feed<Value: Sendable>: @unchecked Sendable {
     private let stream: AsyncThrowingStream<Value, any Error>
     private let continuation: AsyncThrowingStream<Value, any Error>.Continuation

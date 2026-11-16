@@ -83,9 +83,10 @@ final class AlbumGridViewport {
     /// What decides whether the held slot needs a scroll: where it sits, and
     /// where the scroll stands.
     ///
-    /// The dead-code check reads the compiler's equality of a struct as
-    /// assigning its properties without using them, so each property tells
-    /// it to skip the property.
+    /// Periphery, the dead-code check, treats the compiler's generated `==`
+    /// as writing these properties without reading them, so a
+    /// `periphery:ignore` comment above each property makes Periphery skip
+    /// it.
     private struct HoldScroll: Equatable {
         // periphery:ignore
         let slot: AlbumGridSlot
