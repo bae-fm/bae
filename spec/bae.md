@@ -2608,9 +2608,9 @@ about, so the Mac's menu acts on the rows core answered for the selection it
 shows and offers nothing while the answer is for an earlier one. The answer
 also names the one release the list holds among them when it holds exactly one,
 with its album's title, which the inspector shows and the Unpin alert names,
-and before an action runs the app asks core whether
-the list still holds every release it will act on; the app does not search its
-own rows for either one. A release in a download is the download queue's entry
+and before an action runs the app asks core which of the action's releases are
+no longer in the list, and the action does nothing when core names any; the app
+does not search its own rows for either one. A release in a download is the download queue's entry
 for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write that
 changes its files, so the entry and coven's change commit together and the
 release never shows a download its files have finished. The storage rows and the

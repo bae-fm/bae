@@ -41,7 +41,7 @@ public final class StorageManagerStore {
     @ObservationIgnored
     private var queueDeliveries:
         ScreenSubscription<PulledValues<BridgeStorageQueues>>?
-    /// The sort, filter and search text the list shows, which `holdsAll`,
+    /// The sort, filter and search text the list shows, which `unlisted`,
     /// `idsBetween` and `allIds` pass to core when they ask about the list's
     /// releases.
     @ObservationIgnored
@@ -161,11 +161,16 @@ public final class StorageManagerStore {
         answer?.sole?.releaseId
     }
 
-    /// Whether the list, as core reads it now, holds every one of
-    /// `releaseIds`; `false` before `update` shows the list.
-    public func holdsAll(_ releaseIds: [String]) async throws -> Bool {
-        guard let shown else { return false }
-        return try await library.storageHoldsAll(
+    /// The ones of `releaseIds` the list, as core reads it now, doesn't
+    /// hold, in id order. Asked only while the list is shown: a storage
+    /// action acts on releases picked from the shown list's rows.
+    public func unlisted(_ releaseIds: [String]) async throws -> [String] {
+        guard let shown else {
+            preconditionFailure(
+                "A storage action asked about releases while no list is shown"
+            )
+        }
+        return try await library.storageUnlisted(
             shown.filter,
             shown.search,
             releaseIds

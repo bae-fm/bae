@@ -131,14 +131,16 @@
     }
 
     extension Library {
-        /// Core's answer, for shots and tests, to whether the list holds every
-        /// release asked about: it always does, whatever the filter, search
-        /// and releases.
-        public static func fixedStorageHoldsAll()
+        /// Core's canned answer to which releases asked about the list
+        /// doesn't hold, for shots and tests: `unlisted`, whatever the
+        /// filter, search and releases.
+        public static func fixedStorageUnlisted(
+            _ unlisted: [String]
+        )
             -> @Sendable (BridgeStorageFilter, String, [String]) async throws
-            -> Bool
+            -> [String]
         {
-            { _, _, _ in true }
+            { _, _, _ in unlisted }
         }
     }
 

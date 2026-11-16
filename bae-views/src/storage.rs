@@ -120,19 +120,19 @@ impl LibraryViews {
         })
     }
 
-    /// Whether the Storage Manager list under `filter` and the `search` text
-    /// holds every one of the `release_ids`: the check before a storage
-    /// action acts on releases chosen earlier.
-    pub async fn storage_holds_all(
+    /// The ones of the `release_ids` the Storage Manager list under `filter`
+    /// and the `search` text doesn't hold, in id order: the check before a
+    /// storage action acts on releases chosen earlier.
+    pub async fn storage_unlisted(
         &self,
         filter: StorageFilter,
         search: &str,
         release_ids: BTreeSet<String>,
-    ) -> Result<bool, DbError> {
+    ) -> Result<Vec<String>, DbError> {
         let pattern =
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
-            .read(move |sql| storage_holds_all_on(&sql, filter, pattern.as_deref(), &release_ids))
+            .read(move |sql| storage_unlisted_on(&sql, filter, pattern.as_deref(), &release_ids))
             .await
     }
 
@@ -642,23 +642,23 @@ pub(crate) fn storage_selected_on(
     Ok(sql.query(&query, params.as_slice(), storage_row_parts)?)
 }
 
-/// Whether the list under `filter` and the search `pattern` holds every one of
-/// the `release_ids`.
-pub(crate) fn storage_holds_all_on(
+/// The ones of the `release_ids` the list under `filter` and the search
+/// `pattern` doesn't hold, in id order.
+pub(crate) fn storage_unlisted_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,
     release_ids: &BTreeSet<String>,
-) -> Result<bool, DbError> {
+) -> Result<Vec<String>, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let ids = serde_json::to_string(release_ids)
         .map_err(|error| DbError::encode("release ids", error))?;
     let statement = format!(
-        "SELECT NOT EXISTS ( \
-            SELECT 1 FROM json_each(:ids) wanted \
-            WHERE wanted.value NOT IN ( \
-                SELECT listing.release_id FROM release_listing listing \
-                WHERE {filter} AND {searched}))",
+        "SELECT wanted.value FROM json_each(:ids) wanted \
+         WHERE wanted.value NOT IN ( \
+            SELECT listing.release_id FROM release_listing listing \
+            WHERE {filter} AND {searched}) \
+         ORDER BY wanted.value",
         filter = storage_filter(filter),
         searched = storage_search_condition(rows, "listing.album_id"),
     );
@@ -666,7 +666,7 @@ pub(crate) fn storage_holds_all_on(
     if let Some(pattern) = &pattern {
         params.push((":search", pattern));
     }
-    Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
+    Ok(sql.query(&statement, params.as_slice(), |row| row.get(0))?)
 }
 
 /// The releases the list under `filter` and the search `pattern` shows from

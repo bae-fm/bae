@@ -279,11 +279,11 @@ internal open class FakeAppHandle(
         search: String,
     ): StorageSelectionSubscription = unfaked("subscribeStorageSelection")
 
-    override suspend fun storageHoldsAll(
+    override suspend fun storageUnlisted(
         filter: BridgeStorageFilter,
         search: String,
         releaseIds: List<String>,
-    ): Boolean = unfaked("storageHoldsAll")
+    ): List<String> = unfaked("storageUnlisted")
 
     override suspend fun storageIdsBetween(
         sort: BridgeStorageSort,

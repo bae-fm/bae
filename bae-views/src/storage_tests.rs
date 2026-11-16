@@ -840,15 +840,25 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     assert_eq!(filtered_out.sole, None);
     assert!(filtered_out.selected.is_empty());
 
-    let holds = |filter: StorageFilter, search: &'static str, asked: BTreeSet<String>| {
+    let unlisted = |filter: StorageFilter, search: &'static str, asked: BTreeSet<String>| {
         let views = views.clone();
-        async move { views.storage_holds_all(filter, search, asked).await.unwrap() }
+        async move { views.storage_unlisted(filter, search, asked).await.unwrap() }
     };
-    assert!(holds(StorageFilter::All, "", ids(&[RELEASE_EARLY, RELEASE_LATE])).await);
-    assert!(holds(StorageFilter::All, "", ids(&[])).await);
-    assert!(!holds(StorageFilter::All, "", ids(&[RELEASE_EARLY, "no-such-release"])).await);
-    assert!(!holds(StorageFilter::Remote, "", ids(&[RELEASE_EARLY])).await);
-    assert!(!holds(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await);
+    let none: Vec<String> = Vec::new();
+    assert_eq!(unlisted(StorageFilter::All, "", ids(&[RELEASE_EARLY, RELEASE_LATE])).await, none);
+    assert_eq!(unlisted(StorageFilter::All, "", ids(&[])).await, none);
+    assert_eq!(
+        unlisted(StorageFilter::All, "", ids(&[RELEASE_EARLY, "no-such-release"])).await,
+        vec!["no-such-release".to_string()]
+    );
+    assert_eq!(
+        unlisted(StorageFilter::Remote, "", ids(&[RELEASE_EARLY])).await,
+        vec![RELEASE_EARLY.to_string()]
+    );
+    assert_eq!(
+        unlisted(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await,
+        vec![RELEASE_EARLY.to_string()]
+    );
 }
 
 /// A range selected with Shift and Select All take their releases from SQL:

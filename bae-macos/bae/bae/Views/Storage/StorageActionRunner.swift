@@ -2,6 +2,9 @@ import AppKit
 import BaeKit
 import Observation
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("StorageActionRunner")
 
 /// Runs Storage Manager row context-menu actions against a set of releases.
 ///
@@ -70,14 +73,24 @@ final class StorageActionRunner {
     /// out, deleted), so the runner never acts on a release the list does
     /// not hold.
     private func listed(_ releaseIds: [String]) async -> [String]? {
+        let unlisted: [String]
         do {
-            return try await storageManagerStore.holdsAll(releaseIds)
-                ? releaseIds : nil
+            unlisted = try await storageManagerStore.unlisted(releaseIds)
         }
         catch {
             uiStore.showError(error)
             return nil
         }
+        guard unlisted.isEmpty else {
+            logger.warning(
+                """
+                A storage action acts on nothing: the list no longer holds \
+                \(unlisted.joined(separator: ", "), privacy: .public)
+                """
+            )
+            return nil
+        }
+        return releaseIds
     }
 
     /// Export each release verbatim to a folder chosen once for the whole batch.

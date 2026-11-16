@@ -494,7 +494,7 @@ extension PreviewData {
                     selections[ids] ?? storageSelection(ids, in: rows)
                 }
             },
-            storageHoldsAll: Library.fixedStorageHoldsAll(),
+            storageUnlisted: Library.fixedStorageUnlisted([]),
             storageQueues: { .fixed(queues) },
             storageInspector: {
                 .fixed(answers: answers) { inspectors[$0] }

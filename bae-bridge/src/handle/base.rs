@@ -316,15 +316,15 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// Whether the Storage Manager list under `filter` and the `search` text
-    /// holds every one of the releases.
-    fn storage_holds_all(
+    /// The ones of the releases the Storage Manager list under `filter` and
+    /// the `search` text doesn't hold, in id order.
+    fn storage_unlisted(
         filter: crate::types::BridgeStorageFilter,
         search: String,
         release_ids: Vec<String>,
-    ) -> bool {
+    ) -> Vec<String> {
         this.services
-            .storage_holds_all(filter.into_core(), &search, release_ids.into_iter().collect())
+            .storage_unlisted(filter.into_core(), &search, release_ids.into_iter().collect())
             .await
             .map_err(BridgeError::from)
     }
