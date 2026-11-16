@@ -1,5 +1,5 @@
 //! bae-shots-lint: lists the shots the harnesses declare, and the entries of
-//! the record, that have no board. It fails when it lists any.
+//! the record, that have no board. bae-shots-lint fails when it lists any.
 
 use bae_shots_lint::{declared, lint, record, repository_root};
 use std::process::ExitCode;

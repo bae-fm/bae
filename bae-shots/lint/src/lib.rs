@@ -1,8 +1,8 @@
 //! The shots' names and declarations: board names, the shots the harnesses
 //! declare, the record of the pairs confirmed against their boards, and the
 //! shots and record entries that have no board. The shots lint needs only
-//! these, so the commit hook builds them without bae-shots' browser and image
-//! code; bae-shots builds on them.
+//! these, so the commit hook compiles them without bae-shots' browser and
+//! image code. bae-shots depends on this crate.
 
 pub mod declared;
 pub mod lint;
