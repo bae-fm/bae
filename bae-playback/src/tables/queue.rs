@@ -632,20 +632,21 @@ fn entry_after_place_on(
     position: u64,
 ) -> rusqlite::Result<Option<i64>> {
     let offset = i64::try_from(position).unwrap_or(i64::MAX);
-    let statement = match lane {
-        QueueLane::Manual => "SELECT entry FROM playback_manual WHERE entry <> ?1 \
-                         ORDER BY position LIMIT 1 OFFSET ?2"
-            .to_string(),
+    let shuffled = queue_row_on(sql)?.shuffled;
+    // The context lane's rows as the screens show them start after its
+    // playing track; Up Next shows every row.
+    let after = match lane {
+        QueueLane::Manual => String::new(),
         QueueLane::Context => {
-            let shuffled = queue_row_on(sql)?.shuffled;
-            format!(
-                "SELECT c.entry FROM playback_context c WHERE c.entry <> ?1 AND {after} \
-                 ORDER BY c.{column} LIMIT 1 OFFSET ?2",
-                after = super::queue_upcoming::after_the_playing_track(shuffled),
-                column = context_order_column(shuffled),
-            )
+            format!(" AND {}", super::queue_upcoming::after_the_playing_track(shuffled))
         }
     };
+    let statement = format!(
+        "SELECT c.entry FROM {table} c WHERE c.entry <> ?1{after} \
+         ORDER BY c.{column} LIMIT 1 OFFSET ?2",
+        table = lane.table(),
+        column = lane.order_column(shuffled),
+    );
     sql.query_row(&statement, params![entry, offset], |row| row.get(0)).optional()
 }
 
