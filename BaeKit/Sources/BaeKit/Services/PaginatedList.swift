@@ -393,29 +393,15 @@ extension PaginatedList {
     // MARK: - Another order
 
     /// Read the rows again in another order. A window starts at a row's sort
-    /// values in the order it was opened in, so the windows start over at
-    /// the row the list now has at the first position on screen, and the
-    /// count stands: another order moves the rows, not how many there are.
-    /// Waits for the first window.
+    /// values in the order the list opened it in, so the list jumps to the
+    /// row it now has at the first position on screen, and keeps its count:
+    /// another order moves the rows, not how many there are. Waits for the
+    /// first window.
     public func reorder() async {
         jump?.cancel()
-        jump = nil
-        let id = UUID()
-        jumpId = id
-        chain?.stop()
-        if let chain { take(chain.placed) }
-        let position = visible?.lowerBound ?? 0
-        let key: [BridgeSortValue]?
-        do {
-            key = try await queries.keyAt(UInt64(position))
-        }
-        catch {
-            jumpFailed(error, id: id)
-            return
-        }
-        guard jumpId == id, !cancelled else { return }
-        let known = count.map { max(Int($0.rows) - 1, 0) } ?? position
-        startChain(at: key, position: min(position, known))
+        jumpTo(visible?.lowerBound ?? 0)
+        let started = jump
+        await started?.value
         await firstAnswerWaiting.wait(
             unless: firstAnswered || initialLoadError != nil
         )
