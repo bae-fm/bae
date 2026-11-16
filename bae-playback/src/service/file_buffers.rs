@@ -100,12 +100,9 @@ impl FileBuffers {
         self.storage_fetches.fetching().as_deref() == Some(track_id)
     }
 
-    /// Wait until the current track starts or stops fetching from storage;
-    /// never, once the arbiter is gone.
+    /// Wait until the current track starts or stops fetching from storage.
     pub(super) async fn storage_fetch_changed(&mut self) {
-        if self.storage_fetches.changed().await.is_err() {
-            std::future::pending::<()>().await;
-        }
+        self.storage_fetches.changed().await;
     }
 
     /// Hold a track that has left the live slot. Its buffers stay cached and

@@ -73,7 +73,8 @@ impl FetchArbiter {
         self.is_foreground(buffer_id)
     }
 
-    /// Hear the playing track while one of its reads fetches from storage.
+    /// A watch of the playing track while one of its reads fetches from
+    /// storage.
     pub fn subscribe_storage_fetches(&self) -> StorageFetchWatch {
         self.fetches.subscribe()
     }

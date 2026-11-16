@@ -46,9 +46,11 @@ impl StorageFetches {
         }
     }
 
-    /// Hear the playing track while one of its reads fetches from storage.
-    pub(crate) fn subscribe(&self) -> StorageFetchWatch {
-        StorageFetchWatch(self.tx.subscribe())
+    /// A watch of the playing track while one of its reads fetches from
+    /// storage. The watch holds these fetches, so their sender lives as long
+    /// as it does.
+    pub(crate) fn subscribe(self: &Arc<Self>) -> StorageFetchWatch {
+        StorageFetchWatch { rx: self.tx.subscribe(), _fetches: self.clone() }
     }
 
     /// Make `track_id`, reading from `buffer_ids`, the playing track.
@@ -126,22 +128,25 @@ fn fetching_from_storage(state: &FetchesState) -> Option<String> {
         .then(|| foreground.track_id.clone())
 }
 
-/// Hears whether the playing track fetches from storage, from the storage
-/// fetches that made it.
-pub struct StorageFetchWatch(watch::Receiver<Option<String>>);
+/// A watch of whether the playing track fetches from storage. It holds the
+/// storage fetches it watches, so its channel stays open while it exists.
+pub struct StorageFetchWatch {
+    rx: watch::Receiver<Option<String>>,
+    _fetches: Arc<StorageFetches>,
+}
 
 impl StorageFetchWatch {
     /// The playing track while one of its reads fetches from storage, by
     /// id, `None` while none does. Reading it leaves the value unseen, so
-    /// [`Self::changed`] still wakes for it.
+    /// [`Self::changed`] still returns for it.
     pub fn fetching(&self) -> Option<String> {
-        self.0.borrow().clone()
+        self.rx.borrow().clone()
     }
 
     /// Wait until the fetching track differs from the one last seen, and
-    /// mark it seen; an error once playback is gone.
-    pub async fn changed(&mut self) -> Result<(), watch::error::RecvError> {
-        self.0.changed().await
+    /// mark it seen.
+    pub async fn changed(&mut self) {
+        self.rx.changed().await.expect("the watch holds the storage fetches that send to it");
     }
 }
 
