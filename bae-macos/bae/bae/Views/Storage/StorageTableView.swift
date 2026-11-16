@@ -159,6 +159,7 @@ struct StorageTableView: NSViewRepresentable {
         coordinator: Coordinator
     ) {
         coordinator.releasePages()
+        coordinator.cancelSelectionRead()
     }
 }
 
@@ -211,6 +212,9 @@ extension StorageTableView {
         /// True while the coordinator sets the table's highlight, which is
         /// no person's change to the selection.
         var applyingSelection = false
+        /// The read of core's ids that the last Shift gesture or Select All
+        /// started. A later gesture or a new list cancels it.
+        var selectionRead: Task<Void, Never>?
 
         init(
             list: StorageList,
@@ -245,6 +249,11 @@ extension StorageTableView {
             downloadStore: DownloadStore,
             outboxStore: OutboxStore,
         ) {
+            // A new list cancels the read, whose ids are the old list's
+            // releases.
+            if list !== self.list {
+                cancelSelectionRead()
+            }
             self.list = list
             self.imageStore = imageStore
             self.downloadStore = downloadStore
@@ -574,7 +583,7 @@ extension StorageTableView.Coordinator {
                 soleTitle: answer.sole?.albumTitle
             )
         }
-        selection.wrappedValue = [clicked.id]
+        select([clicked.id])
         anchorId = clicked.id
         applySelection([clicked.id])
         return MenuTargets(
@@ -599,7 +608,7 @@ extension StorageTableView.Coordinator {
         _ presented: Bool,
         releaseId: String
     ) {
-        selection.wrappedValue = [releaseId]
+        select([releaseId])
         anchorId = releaseId
         applySelection([releaseId])
         inspectorPresented.wrappedValue = presented

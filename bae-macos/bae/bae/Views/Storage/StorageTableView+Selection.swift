@@ -35,12 +35,12 @@ extension StorageTableView.Coordinator {
             anchorId =
                 target.flatMap { list.row(at: $0)?.id }
                 ?? (proposedIds.count == 1 ? proposedIds.first : anchorId)
-            selection.wrappedValue = proposedIds
+            select(proposedIds)
         case .toggle:
             let add = ids(at: proposed.subtracting(current))
             let remove = ids(at: current.subtracting(proposed))
             anchorId = target.flatMap { list.row(at: $0)?.id } ?? anchorId
-            selection.wrappedValue = kept.union(add).subtracting(remove)
+            select(kept.union(add).subtracting(remove))
         case .extend:
             extend(proposed: proposed, current: current, target: target)
         }
@@ -56,7 +56,7 @@ extension StorageTableView.Coordinator {
         let added = proposed.subtracting(current)
         guard let first = added.first, let last = added.last else {
             let remove = ids(at: current.subtracting(proposed))
-            selection.wrappedValue = kept.subtracting(remove)
+            select(kept.subtracting(remove))
             return
         }
         let end = target ?? (last > (current.last ?? -1) ? last : first)
@@ -68,17 +68,14 @@ extension StorageTableView.Coordinator {
         }
         let from = anchorId ?? to
         anchorId = from
-        selection.wrappedValue = kept.union(ids(at: proposed))
-        let list = list
-        Task { [weak self, storageManagerStore] in
+        select(kept.union(ids(at: proposed)))
+        selectionRead = Task { [weak self, storageManagerStore] in
             guard
                 let run = await storageManagerStore.idsBetween(
                     from: from,
                     to: to
                 ),
-                // A tab, sort or search change since swapped the list, and
-                // with it what the run means.
-                let self, list === self.list
+                !Task.isCancelled, let self
             else { return }
             self.selection.wrappedValue.formUnion(run)
         }
@@ -87,13 +84,28 @@ extension StorageTableView.Coordinator {
     /// Select every release the list shows, loaded or not: core's ids, not
     /// the table's Select All, which knows only the rows it has loaded.
     func selectAllShown() {
-        let list = list
-        Task { [weak self, storageManagerStore] in
+        cancelSelectionRead()
+        selectionRead = Task { [weak self, storageManagerStore] in
             guard let ids = await storageManagerStore.allIds(),
-                let self, list === self.list
+                !Task.isCancelled, let self
             else { return }
             self.selection.wrappedValue = Set(ids)
         }
+    }
+
+    /// Keep the ids a gesture selects. A read of core's ids that an earlier
+    /// gesture started would overwrite them when it answers, so the
+    /// coordinator cancels it.
+    func select(_ ids: Set<String>) {
+        cancelSelectionRead()
+        selection.wrappedValue = ids
+    }
+
+    /// Cancel the read of core's ids that a Shift gesture or Select All
+    /// started, if it has not answered.
+    func cancelSelectionRead() {
+        selectionRead?.cancel()
+        selectionRead = nil
     }
 
     /// Highlight the rows in view whose releases `kept` names, each from the
