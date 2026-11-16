@@ -4,16 +4,7 @@ func answerCommand(
     _ show: @escaping @MainActor @Sendable (DisplayError) -> Void,
     _ command: @escaping @Sendable () async throws -> Void
 ) {
-    Task { @MainActor in
-        do {
-            try await command()
-        }
-        catch {
-            if let shown = DisplayError(error) {
-                show(shown)
-            }
-        }
-    }
+    answerCommand(show, command, confirm: { _ in })
 }
 
 /// Run a command nobody waits on, confirm what it answered, and show why it
