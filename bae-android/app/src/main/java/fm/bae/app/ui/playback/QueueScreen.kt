@@ -126,17 +126,16 @@ internal fun rememberReorderableQueue(
                 logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")
             }
         }
-    // The move is held over its lane until core's read shows it; one that failed (and shows its error)
-    // or that moved nothing shows the lane's read at once.
+    // The move is held over its lane until the reorder returns; then the lane shows core's read, which
+    // shows what is stored whether the reorder moved the row, moved nothing or failed (and shows its error).
     val onDropped: () -> Unit = {
         order.released()?.let { drop ->
             val beforeEntryId = (drop.place as? LanePlace.Before)?.entryId
             scope.launch {
-                val moved =
-                    failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
-                        session.appHandle.reorderEntry(drop.entryId, beforeEntryId)
-                    }
-                if (moved == true) order.moveAnswered(drop.lane) else order.moveFailed(drop.lane)
+                failures.answer("reorderEntry ${drop.entryId} before $beforeEntryId") {
+                    session.appHandle.reorderEntry(drop.entryId, beforeEntryId)
+                }
+                order.reorderReturned(drop.lane)
             }
         }
     }

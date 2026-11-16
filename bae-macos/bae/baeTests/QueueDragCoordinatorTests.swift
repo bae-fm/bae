@@ -78,20 +78,14 @@ struct QueueDragCoordinatorTests {
                 == QueueFloatingRow(item: grabbed, top: 1 * Self.pitch)
         )
 
-        coordinator.hold(move, entryId: grabbed.id, lane: .manual)
+        let commit = coordinator.hold(move, lane: .manual)
         #expect(
             coordinator.floatingRow(in: .manual)
                 == QueueFloatingRow(item: grabbed, top: 3 * Self.pitch)
         )
-        // Core sends the lane's new rows, which put the grabbed row at slot 3,
-        // so the coordinator ends the hold. The copy still draws the grabbed
-        // row at its slot.
-        #expect(
-            coordinator.holdEnded(.manual, count: 5) {
-                $0 == 3 ? grabbed.id : "other"
-            }
-        )
-        coordinator.releaseHold(.manual)
+        // The write returns having moved the row, so the coordinator ends the
+        // hold. The copy still draws the grabbed row at its slot.
+        coordinator.reorderMoved(.manual, commit: commit)
         #expect(coordinator.displayMove(for: .manual, count: 5) == nil)
         #expect(
             coordinator.floatingRow(in: .manual)

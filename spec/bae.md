@@ -4741,12 +4741,12 @@ show a drop (no line over a gap that leaves it where it is, or before a row not
 read yet); Android's held row follows the finger and the other rows slide apart
 around an open slot where it will land.
 
-The queue screens keep a row dragged to a new place there until the part's read
-has the row in the slot where the person dropped it (or the part has changed
-length), so it never jumps back while the move is on its way, and when a move
-fails or moves nothing, the screen shows the part's read rows again at once. A
-move names the entry it goes before, or the part's end, so a row dragged to just
-before a row the screen hasn't read yet stays where it was.
+The queue screens keep a row dragged to a new place there until its move
+returns, so it never jumps back while the move is on its way. When the move
+returns, the part draws its rows, which show what is stored: the row in its new
+place, or where it was when the move failed or moved nothing. A move names the entry
+it goes before, or the part's end, so a row dragged to just before a row the
+screen hasn't read yet stays where it was.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;

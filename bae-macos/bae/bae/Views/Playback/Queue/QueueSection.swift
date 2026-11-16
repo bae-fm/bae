@@ -199,13 +199,6 @@ struct QueueSection: View {
                     )
                 )
         }
-        // The lane's rows show the held reorder: they now match the held
-        // order, and dropping the hold doesn't snap.
-        .onChange(of: holdEnded, initial: true) {
-            if holdEnded {
-                coordinator.releaseHold(laneId)
-            }
-        }
         // Drop the hover when a drag starts, since `.onHover` won't fire again
         // until it ends.
         .onChange(of: coordinator.isDragging) {
@@ -218,11 +211,6 @@ struct QueueSection: View {
 
 /// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
-    /// Whether the lane's rows show the reorder the coordinator holds.
-    private var holdEnded: Bool {
-        coordinator.holdEnded(laneId, count: count) { itemAt($0)?.id }
-    }
-
     /// The gap the lane draws its drop line over, `nil` hiding it: the manual
     /// lane's from an external drop or a cross-lane drag, either lane's from a
     /// row of its own held over a gap, unless the row after that gap isn't
@@ -283,22 +271,25 @@ extension QueueSection {
         }
     }
 
-    /// Hold `move` on screen and ask core for it: the hold ends once the
-    /// lane's rows show the move, or at once when core moved nothing, with
-    /// the failure shown when it failed.
+    /// Hold `move` on screen and ask core for it: the hold ends when the write
+    /// returns, and the lane then draws its rows, with the failure shown when
+    /// it failed.
     private func commitReorder(
         _ entryId: String,
         before beforeEntryId: String?,
         _ move: QueueRowMove,
         _ lane: QueueLaneID
     ) {
-        let commit = coordinator.hold(move, entryId: entryId, lane: lane)
+        let commit = coordinator.hold(move, lane: lane)
         let coordinator = coordinator
         let onReorder = onReorder
         let onReorderFailed = onReorderFailed
         Task { @MainActor in
             do {
-                if try await !onReorder(entryId, beforeEntryId) {
+                if try await onReorder(entryId, beforeEntryId) {
+                    coordinator.reorderMoved(lane, commit: commit)
+                }
+                else {
                     coordinator.reorderFailed(lane, commit: commit)
                 }
             }
