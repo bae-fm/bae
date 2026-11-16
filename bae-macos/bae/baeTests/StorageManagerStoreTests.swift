@@ -179,7 +179,7 @@ struct StorageManagerStoreTests {
         )
         #expect(
             reads.selected.last == selected.sorted(),
-            "the store asks the selection read about the selected releases"
+            "the store passes the selected releases to the selection read"
         )
         store.cancel()
     }

@@ -29,14 +29,14 @@ extension PreviewData {
         )
     )
 
-    /// This device's person, an admin, with this Mac and a phone, whose new
-    /// registration of this Mac replaced an earlier one, and who removed an
-    /// old phone, and one other member with a removable device
-    /// and two removed ones, each reaching `storage` as its members do:
-    /// by an S3 key on S3, by their own account on Dropbox, OneDrive and
-    /// iCloud. Ids are arbitrary UUIDs. The counts are two people and three
-    /// devices, as core counts them: the Mac and the phone, and the other
-    /// member's tablet.
+    /// Returns two people who reach `storage` as its members do: by an S3
+    /// key on S3, by their own account on Dropbox, OneDrive and iCloud.
+    /// This device's person is an admin with this Mac and a phone. Their
+    /// former devices are an old Mac, which this Mac's new registration
+    /// replaced, and a removed old phone. The other member has a removable
+    /// tablet and two removed devices. Ids are arbitrary UUIDs. The counts
+    /// are two people and three devices, as core counts them: the Mac and
+    /// the phone, and the other member's tablet.
     static func members(reaching storage: BridgeStorageLocation)
         -> BridgePeople
     {
